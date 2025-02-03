@@ -2,145 +2,215 @@
 {% block title %}Dashboard - Participante{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<!-- CSS customizado para o Dashboard -->
+<style>
+  /* Cabeçalho do Dashboard */
+  .dashboard-header {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+  .dashboard-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #343a40;
+  }
+  .dashboard-header h3 {
+    font-size: 1.25rem;
+    color: #6c757d;
+  }
+  
+  /* Cartões de oficina */
+  .card {
+    border: none;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+  .card-header {
+    background-color: #007bff;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.75rem 1rem;
+  }
+  .card-body {
+    padding: 1rem;
+  }
+  .card-body p {
+    margin-bottom: 0.5rem;
+    color: #495057;
+  }
+  .card-body ul {
+    padding-left: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  .card-body li {
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Botões customizados */
+  .btn-block {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .d-flex.flex-column.gap-2 > * {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Rodapé */
+  footer {
+    background: #343a40;
+    color: #fff;
+    padding: 1rem 0;
+    margin-top: 2rem;
+  }
+  footer p {
+    margin: 0;
+  }
+</style>
+
+<div class="container">
+  <div class="dashboard-header text-center">
+    <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
+    <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
+  </div>
+  
+  <div class="row">
+    {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
     
-    <h2 class="text-center text-dark mt-4">Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
-    <h3 class="text-center text-secondary">Aqui estão as oficinas disponíveis para inscrição.</h3>
-
-    <div class="row mt-4">
-        {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
-
-        {% if oficinas %}
-            {% for oficina in oficinas %}
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card shadow-lg" data-oficina-id="{{ oficina.id }}">
-                        <div class="card-header bg-primary text-white fw-bold text-center">
-                            {{ oficina.titulo }}
-                        </div>
-                        <div class="card-body">
-                            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
-                            <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
-
-                            <p><strong>Datas e Horários:</strong></p>
-                            <ul class="list-unstyled">
-                                {% for dia in oficina.dias %}
-                                    <li>📅 {{ dia }}</li>
-                                {% endfor %}
-                            </ul>
-
-                            <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
-                           <!-- <p><strong>Vagas:</strong> <span class="info-vagas">{{ oficina.vagas }}</span> 
-                                {% if oficina.vagas == 0 %}
-                                    <span class="text-danger">(Esgotado)</span>
-                                {% endif %}
-                            </p> -->
-
-
-                            <div class="text-center">
-                                {% if permitir_checkin_global or oficina.id in inscricoes_ids %}
-                                    <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                                        Realizar Check-in
-                                    </a>
-                                {% else %}
-                                    {% if oficina.id in inscricoes_ids %}
-                                        <div class="d-flex gap-2 w-100">
-                                            <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                                                <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
-                                            </form>
-                                            {% for inscricao in usuario.inscricoes %}
-                                                {% if inscricao.oficina.id == oficina.id %}
-                                                    <a href="{{ url_for('routes.baixar_comprovante', oficina_id=inscricao.oficina.id) }}" class="btn btn-primary w-100">
-                                                        📄 Baixar Comprovante
-                                                    </a>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% elif oficina.vagas > 0 %}
-                                        <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                                            Inscrever-se
-                                        </button>
-                                    {% else %}
-                                        <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+    {% if oficinas %}
+      {% for oficina in oficinas %}
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card shadow-sm" data-oficina-id="{{ oficina.id }}">
+          <div class="card-header">
+            {{ oficina.titulo }}
+          </div>
+          <div class="card-body">
+            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
+            <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+            <p><strong>Datas e Horários:</strong></p>
+            <ul class="list-unstyled">
+              {% for dia in oficina.dias %}
+              <li>📅 {{ dia }}</li>
+              {% endfor %}
+            </ul>
+            <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
+            {# Se desejar exibir vagas, descomente o bloco abaixo: #}
+            {#
+            <p>
+              <strong>Vagas:</strong>
+              <span class="info-vagas">{{ oficina.vagas }}</span>
+              {% if oficina.vagas == 0 %}
+                <span class="text-danger">(Esgotado)</span>
+              {% endif %}
+            </p>
+            #}
+            
+            {% if permitir_checkin_global %}
+              <!-- Check-in global: exibe somente o botão de Check-in -->
+              <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning btn-block">
+                Realizar Check-in
+              </a>
+            {% else %}
+              {% if oficina.id in inscricoes_ids %}
+                <!-- Usuário já inscrito: exibe ações de Check-in, Cancelamento e Comprovante -->
+                <div class="d-flex flex-column gap-2">
+                  <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning btn-block">
+                    Realizar Check-in
+                  </a>
+                  <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger btn-block">Cancelar Inscrição</button>
+                  </form>
+                  <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary btn-block">
+                    📄 Baixar Comprovante
+                  </a>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p class="text-center text-warning mt-4">Nenhuma oficina disponível no momento.</p>
-        {% endif %}
-    </div>
+              {% elif oficina.vagas > 0 %}
+                <!-- Usuário não inscrito e ainda há vagas: exibe botão de inscrição -->
+                <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success btn-block">
+                  Inscrever-se
+                </button>
+              {% else %}
+                <!-- Sem vagas -->
+                <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="col-12">
+        <p class="text-center text-warning">Nenhuma oficina disponível no momento.</p>
+      </div>
+    {% endif %}
+  </div>
 </div>
 
-<!-- Rodapé -->
-<footer class="text-center text-white bg-dark p-3 mt-4">
-    <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
+<footer class="text-center">
+  <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
 </footer>
 
+<!-- Script para inscrição assíncrona -->
 <script>
-    function inscrever(oficinaId) {
-        let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-        
-        if (!oficinaCard) return;
-
-        // Atualizar imediatamente o número de vagas antes da requisição
-        let vagasElement = oficinaCard.querySelector(".info-vagas");
-        if (vagasElement) {
-            let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-            vagasElement.innerText = vagasAtualizadas;
-            if (vagasAtualizadas === 0) {
-                vagasElement.innerHTML = '0 <span class="text-danger">(Esgotado)</span>';
-            }
-        }
-
-        // Remover o botão de inscrição imediatamente
-        let botaoInscrever = oficinaCard.querySelector(".btn-success");
-        if (botaoInscrever) {
-            botaoInscrever.remove();
-        }
-
-        // Criar botões de Cancelar Inscrição e Check-in instantaneamente
-        let cancelarBtn = document.createElement("form");
-        cancelarBtn.setAttribute("action", `/remover_inscricao/${oficinaId}`);
-        cancelarBtn.setAttribute("method", "post");
-        cancelarBtn.innerHTML = `<button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>`;
-
-        let checkinBtn = document.createElement("a");
-        checkinBtn.setAttribute("href", `/checkin/${oficinaId}`);
-        checkinBtn.setAttribute("class", "btn btn-warning mt-2 w-100");
-        checkinBtn.innerHTML = "Realizar Check-in";
-
-        // Adicionar botões no card da oficina
-        let buttonContainer = oficinaCard.querySelector(".text-center");
-        buttonContainer.appendChild(cancelarBtn);
-        buttonContainer.appendChild(checkinBtn);
-
-        // Enviar requisição ao servidor
-        fetch(`/inscrever/${oficinaId}`, {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Criar botão de baixar comprovante após sucesso da inscrição
-                let comprovanteBtn = document.createElement("a");
-                comprovanteBtn.setAttribute("href", data.pdf_url);
-                comprovanteBtn.setAttribute("class", "btn btn-primary w-100 mt-2");
-                comprovanteBtn.innerHTML = "📄 Baixar Comprovante";
-                
-                buttonContainer.appendChild(comprovanteBtn);
-            } else {
-                alert(data.message);
-                location.reload(); // Recarregar a página se houver erro
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            location.reload(); // Recarregar a página se houver erro
-        });
+  function inscrever(oficinaId) {
+    let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
+    if (!oficinaCard) return;
+    
+    // Atualiza imediatamente o número de vagas (se estiver sendo exibido)
+    let vagasElement = oficinaCard.querySelector(".info-vagas");
+    if (vagasElement) {
+      let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+      vagasElement.innerText = vagasAtualizadas;
+      if (vagasAtualizadas === 0) {
+        vagasElement.innerHTML = '0 <span class="text-danger">(Esgotado)</span>';
+      }
     }
+    
+    // Remove o botão de inscrição
+    let botaoInscrever = oficinaCard.querySelector(".btn-success");
+    if (botaoInscrever) {
+      botaoInscrever.remove();
+    }
+    
+    // Cria os botões de Cancelar Inscrição e Check-in
+    let buttonContainer = oficinaCard.querySelector(".card-body");
+    let div = document.createElement("div");
+    div.className = "d-flex flex-column gap-2 mt-2";
+    div.innerHTML = `
+      <form action="/remover_inscricao/${oficinaId}" method="post">
+        <button type="submit" class="btn btn-danger btn-block">Cancelar Inscrição</button>
+      </form>
+      <a href="/checkin/${oficinaId}" class="btn btn-warning btn-block">Realizar Check-in</a>
+    `;
+    buttonContainer.appendChild(div);
+    
+    // Envia requisição ao servidor para registrar a inscrição
+    fetch(`/inscrever/${oficinaId}`, {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        let comprovanteBtn = document.createElement("a");
+        comprovanteBtn.setAttribute("href", data.pdf_url);
+        comprovanteBtn.className = "btn btn-primary btn-block mt-2";
+        comprovanteBtn.innerHTML = "📄 Baixar Comprovante";
+        buttonContainer.appendChild(comprovanteBtn);
+      } else {
+        alert(data.message);
+        location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      location.reload();
+    });
+  }
 </script>
-
 {% endblock %}

@@ -252,7 +252,7 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            qr_code=None
+        
         )
 
         print("✅ [DEBUG] Oficina criada, salvando no banco de dados...")

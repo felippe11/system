@@ -41,6 +41,8 @@ class Oficina(db.Model):
         self.carga_horaria = carga_horaria
         self.estado = estado.upper()  # Garante que a sigla do estado fique sempre maiúscula
         self.cidade = cidade
+        
+        
     
 
     def __repr__(self):
