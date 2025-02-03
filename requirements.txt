@@ -12,7 +12,6 @@ colorama==0.4.6
 configobj==5.0.6
 constantly==15.1.0
 cryptography==3.4.8
-dbus-python==1.2.18
 distro==1.7.0
 et_xmlfile==2.0.0
 Flask==3.1.0
@@ -52,7 +51,6 @@ psycopg2-binary==2.9.10
 pyasn1==0.4.8
 pyasn1-modules==0.2.1
 pycurl==7.44.1
-PyGObject==3.42.1
 PyHamcrest==2.0.2
 PyJWT==2.3.0
 pyOpenSSL==21.0.0
