@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Editar Oficina{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Editar Oficina</h2>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="titulo" class="form-label">Título da Oficina</label>
+            <input type="text" class="form-control" id="titulo" name="titulo" value="{{ oficina.titulo }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea class="form-control" id="descricao" name="descricao" required>{{ oficina.descricao }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="ministrante" class="form-label">Ministrante</label>
+            <input type="text" class="form-control" id="ministrante" name="ministrante" value="{{ oficina.ministrante }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="vagas" class="form-label">Número de Vagas</label>
+            <input type="number" class="form-control" id="vagas" name="vagas" value="{{ oficina.vagas }}" min="0" required>
+        </div>
+        <div class="mb-3">
+            <label for="carga_horaria" class="form-label">Carga Horária (em horas)</label>
+            <input type="number" class="form-control" id="carga_horaria" name="carga_horaria" value="{{ oficina.carga_horaria }}" required>
+        </div>
+
+        <!-- Múltiplas Datas e Horários -->
+        <div id="datas-container">
+            <label>Datas e Horários:</label>
+            {% for dia in oficina.dias %}
+            <div class="data-item mb-3">
+                <input type="date" name="data[]" class="form-control mb-2" value="{{ dia.data.strftime('%Y-%m-%d') }}" required>
+                <input type="time" name="horario_inicio[]" class="form-control mb-2" value="{{ dia.horario_inicio }}" required>
+                <input type="time" name="horario_fim[]" class="form-control mb-2" value="{{ dia.horario_fim }}" required>
+                <input type="text" name="palavra_chave_manha[]" class="form-control mb-2" value="{{ dia.palavra_chave_manha }}" placeholder="Palavra-chave manhã" required>
+                <input type="text" name="palavra_chave_tarde[]" class="form-control mb-2" value="{{ dia.palavra_chave_tarde }}" placeholder="Palavra-chave tarde" required>
+                <button type="button" class="btn btn-danger btn-sm btn-remove" onclick="removerData(this)">Remover</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <label for="estado">Estado:</label>
+        <select name="estado" id="estado" class="form-control" required>
+            <option value="">Selecione um estado</option>
+            {% for sigla, nome in estados %}
+                <option value="{{ sigla }}" {% if oficina.estado == sigla %} selected {% endif %}>{{ nome }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="cidade">Cidade:</label>
+        <select name="cidade" id="cidade" class="form-control" required>
+            <option value="{{ oficina.cidade }}">{{ oficina.cidade }}</option>
+        </select>
+
+        <button type="button" class="btn btn-info w-100 mt-3" onclick="adicionarData()">+ Adicionar Dia</button>
+        <button type="submit" class="btn btn-success w-100 mt-3">Salvar Alterações</button>
+    </form>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Cancelar</a>
+</div>
+
+<script>
+    document.getElementById("estado").addEventListener("change", function() {
+        var estado = this.value;
+        var cidadeSelect = document.getElementById("cidade");
+
+        if (!estado) {
+            cidadeSelect.innerHTML = "<option value=''>Selecione um estado primeiro</option>";
+            return;
+        }
+
+        cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
+
+        fetch("/get_cidades/" + estado)
+            .then(response => response.json())
+            .then(data => {
+                cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
+                data.forEach(cidade => {
+                    var option = document.createElement("option");
+                    option.value = cidade;
+                    option.textContent = cidade;
+                    cidadeSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao buscar cidades:", error);
+                cidadeSelect.innerHTML = "<option value=''>Erro ao carregar cidades</option>";
+            });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var estadoAtual = document.getElementById("estado").value;
+        var cidadeAtual = "{{ oficina.cidade }}"; 
+
+        if (estadoAtual) {
+            fetch("/get_cidades/" + estadoAtual)
+                .then(response => response.json())
+                .then(data => {
+                    var cidadeSelect = document.getElementById("cidade");
+                    cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
+
+                    data.forEach(cidade => {
+                        var option = document.createElement("option");
+                        option.value = cidade;
+                        option.textContent = cidade;
+                        if (cidade === cidadeAtual) {
+                            option.selected = true;
+                        }
+                        cidadeSelect.appendChild(option);
+                    });
+                })
+                .catch(error => console.error("Erro ao carregar cidades iniciais:", error));
+        }
+    });
+
+    function adicionarData() {
+        const container = document.getElementById("datas-container");
+        const div = document.createElement("div");
+        div.className = "data-item mb-3";
+
+        div.innerHTML = `
+            <input type="date" name="data[]" class="form-control mb-2" required>
+            <input type="time" name="horario_inicio[]" class="form-control mb-2" placeholder="Horário de Início" required>
+            <input type="time" name="horario_fim[]" class="form-control mb-2" placeholder="Horário de Fim" required>
+            <input type="text" name="palavra_chave_manha[]" class="form-control mb-2" placeholder="Palavra-chave Manhã" required>
+            <input type="text" name="palavra_chave_tarde[]" class="form-control mb-2" placeholder="Palavra-chave Tarde" required>
+            <button type="button" class="btn btn-danger btn-sm btn-remove" onclick="removerData(this)">Remover</button>
+        `;
+
+        container.appendChild(div);
+    }
+
+    function removerData(button) {
+        button.parentElement.remove();
+    }
+</script>
+{% endblock %}

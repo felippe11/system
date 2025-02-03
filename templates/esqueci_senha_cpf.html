@@ -1,0 +1,10 @@
+<!-- esqueci_senha_cpf.html -->
+{% extends "base.html" %}
+{% block content %}
+  <h2>Esqueci Minha Senha (por CPF)</h2>
+  <form method="POST">
+    <label for="cpf">Informe seu CPF:</label>
+    <input type="text" id="cpf" name="cpf" required>
+    <button type="submit">Continuar</button>
+  </form>
+{% endblock %}

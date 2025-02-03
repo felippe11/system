@@ -1,0 +1,14 @@
+<!-- reset_senha_cpf.html -->
+{% extends "base.html" %}
+{% block content %}
+  <h2>Redefinir Senha</h2>
+  <form method="POST">
+    <label for="nova_senha">Nova Senha:</label>
+    <input type="password" name="nova_senha" required>
+
+    <label for="confirmar_senha">Confirmar Senha:</label>
+    <input type="password" name="confirmar_senha" required>
+
+    <button type="submit">Redefinir Senha</button>
+  </form>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Login - Sistema de Oficinas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center vh-100">
+    <div class="login-container bg-light p-4 rounded shadow-lg" style="max-width: 400px; width: 100%;">
+        <h2 class="text-center mb-4 text-primary fw-bold">Acesse o Sistema</h2>
+
+        <!-- Exibir mensagens flash (ex: erro de login) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} text-center" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                <input type="email" name="email" class="form-control" placeholder="E-mail" required>
+            </div>
+            
+            <div class="mb-3 input-group">
+                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                <input type="password" name="senha" id="senha" class="form-control" placeholder="Senha" required>
+                <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
+                    <i class="bi bi-eye" id="toggleIcon"></i>
+                </button>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Entrar</button>
+
+            <!-- Link para recuperação de senha -->
+            <div class="text-center mt-3">
+                <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="btn btn-outline-warning w-100">
+                    <i class="bi bi-key"></i> Esqueci minha senha
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Script para mostrar/ocultar senha -->
+<script>
+    function toggleSenha() {
+        let senhaInput = document.getElementById("senha");
+        let toggleIcon = document.getElementById("toggleIcon");
+
+        if (senhaInput.type === "password") {
+            senhaInput.type = "text";
+            toggleIcon.classList.replace("bi-eye", "bi-eye-slash");
+        } else {
+            senhaInput.type = "password";
+            toggleIcon.classList.replace("bi-eye-slash", "bi-eye");
+        }
+    }
+</script>
+{% endblock %}

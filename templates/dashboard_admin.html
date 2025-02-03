@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Administrador{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    
+    <h2 class="text-center text-dark mt-4">Painel Administrativo</h2>
+    
+    <!-- Seção de Importação e Configuração -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center my-3 gap-3">
+        <!-- Importação de Oficinas -->
+        <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data" class="d-flex gap-2">
+            <input type="file" name="arquivo" accept=".xlsx" class="form-control" required>
+            <button type="submit" class="btn btn-success">📂 Importar Oficinas</button>
+        </form>
+
+        <!-- Botão para baixar o modelo -->
+        <a href="{{ url_for('static', filename='modelo_oficinas.xlsx') }}" class="btn btn-outline-info">
+            📥 Baixar Modelo de Oficinas
+        </a>
+
+        <!-- Importação de Usuários -->
+        <form action="{{ url_for('routes.importar_usuarios') }}" method="POST" enctype="multipart/form-data" class="d-flex gap-2">
+            <input type="file" name="arquivo" accept=".xlsx" class="form-control" required>
+            <button type="submit" class="btn btn-success">📂 Importar Usuários</button>
+        </form>
+
+        <!-- Botão para baixar o modelo de usuários -->
+        <a href="{{ url_for('static', filename='modelo_usuarios.xlsx') }}" class="btn btn-outline-info">
+            📥 Baixar Modelo de Usuários
+        </a>
+    </div>
+
+    <!-- Exclusão de todas as oficinas -->
+    <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post" class="text-center mt-3" 
+          onsubmit="return confirm('Tem certeza que deseja excluir todas as oficinas?');">
+        <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Excluir Todas as Oficinas
+        </button>
+    </form>
+
+    <!-- Alternância do Check-in Global -->
+    <form action="{{ url_for('routes.toggle_checkin_global') }}" method="post" class="text-center mt-4">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="toggleCheckinGlobal" 
+                   onchange="this.form.submit()" {% if permitir_checkin_global %}checked{% endif %}>
+            <label class="form-check-label" for="toggleCheckinGlobal">
+                Permitir Check-in Global (Todos podem realizar check-in)
+            </label>
+        </div>
+    </form>
+
+    <!-- Botão para criar nova oficina -->
+    <div class="text-center my-4">
+        <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-warning fw-bold">+ Criar Nova Oficina</a>
+    </div>
+
+    <h2 class="text-center text-dark mt-4">Gerenciamento de Oficinas</h2>
+
+    <!-- Contêiner das oficinas -->
+    <div class="row mt-4">
+        {% for oficina in oficinas %}
+        <div class="col-md-4">
+            <div class="card shadow-lg mb-4">
+                <div class="card-header text-white text-center fw-bold bg-primary">
+                    {{ oficina.titulo }}
+                </div>
+                <div class="card-body text-center">
+                    <p class="info"><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+                    <p class="info"><strong>Datas:</strong>  
+                        {% for dia in oficina.dias %}
+                            {{ dia }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </p>
+                    <p class="info"><strong>Vagas disponíveis:</strong> {{ oficina.vagas }}</p>
+                    <p class="info"><strong>Total de inscritos:</strong> {{ oficina.inscritos | length }}</p>
+
+                    <!-- Botões de Ações -->
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                        <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" class="btn btn-warning btn-sm fw-bold">Editar</a>
+                        <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="post" onsubmit="return confirm('Tem certeza que deseja excluir esta oficina?');">
+                            <button type="submit" class="btn btn-danger btn-sm fw-bold">Excluir</button>
+                        </form>
+                        <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-primary btn-sm fw-bold">Check-ins</a>
+                    </div>
+
+                    <!-- Botão para abrir o modal -->
+                    <button type="button" class="btn btn-info btn-sm fw-bold mt-3 w-100" data-bs-toggle="modal" data-bs-target="#modalOficina{{ oficina.id }}">
+                        <i class="bi bi-eye"></i> Ver Inscritos
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para mostrar inscritos -->
+        <div class="modal fade" id="modalOficina{{ oficina.id }}" tabindex="-1" aria-labelledby="modalLabel{{ oficina.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <!-- Cabeçalho do Modal -->
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title fw-bold" id="modalLabel{{ oficina.id }}">
+                            <i class="bi bi-people"></i> Inscritos - {{ oficina.titulo }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+
+                    <!-- Corpo do Modal -->
+                    <div class="modal-body">
+                        {% if oficina.inscritos | length > 0 %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover align-middle">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>CPF</th>
+                                            <th>E-mail</th>
+                                            <th>Formação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for inscrito in oficina.inscritos %}
+                                        <tr>
+                                            <td>{{ inscrito.nome }}</td>
+                                            <td>{{ inscrito.cpf }}</td>
+                                            <td>{{ inscrito.email }}</td>
+                                            <td>{{ inscrito.formacao }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-center text-danger fs-5">Nenhum inscrito ainda.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Rodapé do Modal -->
+                    <div class="modal-footer d-flex justify-content-center gap-2 flex-wrap">
+                        <a href="{{ url_for('routes.gerar_pdf_inscritos', oficina_id=oficina.id) }}" class="btn btn-outline-primary">
+                            📄 Baixar Lista de Inscritos
+                        </a>
+                        <a href="{{ url_for('routes.gerar_lista_frequencia', oficina_id=oficina.id) }}" class="btn btn-outline-secondary">
+                            📜 Lista de Frequência
+                        </a>
+                        <a href="{{ url_for('routes.gerar_certificados', oficina_id=oficina.id) }}" class="btn btn-outline-success">
+                            🎓 Gerar Certificados
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}
