@@ -1,0 +1,20 @@
+# Ignorar arquivos de cache do Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorar arquivos de ambiente virtual
+venv/
+.env
+
+# Ignorar arquivos do sistema
+.DS_Store
+.tables
+SELECT__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+.DS_Store
+.tables
+SELECT
