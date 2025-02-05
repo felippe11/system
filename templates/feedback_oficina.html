@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Feedbacks - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Feedbacks da Oficina: {{ oficina.titulo }}</h2>
+  {% if feedbacks %}
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Avaliação</th>
+          <th>Comentário</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fb in feedbacks %}
+        <tr>
+          <td>{{ fb.usuario.nome }}</td>
+          <td>
+            {% for i in range(1,6) %}
+              {% if i <= fb.rating %}
+                <span class="text-warning">&#9733;</span>
+              {% else %}
+                <span class="text-muted">&#9733;</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td>{{ fb.comentario }}</td>
+          <td>{{ fb.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="text-center mt-4">
+      <a href="{{ url_for('routes.gerar_pdf_feedback_route', oficina_id=oficina.id) }}" class="btn btn-secondary">
+        Imprimir Feedbacks (PDF)
+      </a>
+    </div>
+  {% else %}
+    <p class="text-center">Nenhum feedback enviado para essa oficina.</p>
+  {% endif %}
+</div>
+{% endblock %}

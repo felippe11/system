@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Feedback - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<!-- Estilos para o controle de avaliação por estrelas -->
+<style>
+  /* Container para as estrelas: a ordem é invertida (rtl) para facilitar a seleção */
+  .star-rating {
+    direction: rtl;
+    display: inline-flex;
+    font-size: 2rem;
+    unicode-bidi: bidi-override;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+  /* Oculta os inputs reais */
+  .star-rating input {
+    display: none;
+  }
+  /* Estilo padrão dos labels (estrelas não preenchidas) */
+  .star-rating label {
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  /* Ao passar o mouse sobre uma estrela (e as anteriores) */
+  .star-rating label:hover,
+  .star-rating label:hover ~ label {
+    color: #ffca08;
+  }
+  /* Quando um input estiver selecionado, todas as estrelas à direita (visualmente à esquerda, devido ao rtl) ficam preenchidas */
+  .star-rating input:checked ~ label {
+    color: #ffca08;
+  }
+  /* Ajuste opcional: ao clicar, pode aplicar uma cor ligeiramente diferente */
+  .star-rating input:checked + label:hover,
+  .star-rating input:checked + label:hover ~ label {
+    color: #ffc107;
+  }
+</style>
+
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Avalie a Oficina: {{ oficina.titulo }}</h2>
+  <form method="POST">
+    <div class="mb-3 text-center">
+      <label class="form-label fw-bold d-block">Sua Avaliação (1 a 5 estrelas):</label>
+      <div class="star-rating">
+        <!-- A ordem dos inputs é do 5 ao 1 para que a marcação funcione corretamente com rtl -->
+        <input type="radio" name="rating" id="star5" value="5" required>
+        <label for="star5" title="5 estrelas">&#9733;</label>
+        
+        <input type="radio" name="rating" id="star4" value="4">
+        <label for="star4" title="4 estrelas">&#9733;</label>
+        
+        <input type="radio" name="rating" id="star3" value="3">
+        <label for="star3" title="3 estrelas">&#9733;</label>
+        
+        <input type="radio" name="rating" id="star2" value="2">
+        <label for="star2" title="2 estrelas">&#9733;</label>
+        
+        <input type="radio" name="rating" id="star1" value="1">
+        <label for="star1" title="1 estrela">&#9733;</label>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label for="comentario" class="form-label fw-bold">Comentário:</label>
+      <textarea name="comentario" id="comentario" rows="4" class="form-control" placeholder="Deixe sua opinião sobre a oficina"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Enviar Feedback</button>
+  </form>
+</div>
+{% endblock %}

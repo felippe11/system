@@ -1,10 +1,27 @@
-<!-- esqueci_senha_cpf.html -->
 {% extends "base.html" %}
+{% block title %}Esqueci Minha Senha{% endblock %}
+
 {% block content %}
-  <h2>Esqueci Minha Senha (por CPF)</h2>
-  <form method="POST">
-    <label for="cpf">Informe seu CPF:</label>
-    <input type="text" id="cpf" name="cpf" required>
-    <button type="submit">Continuar</button>
-  </form>
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+      <!-- Card de Redefinição de Senha -->
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white text-center">
+          <h4 class="mb-0">Esqueci Minha Senha</h4>
+          <small class="d-block">Informe seu CPF para redefinir sua senha</small>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="mb-3">
+              <label for="cpf" class="form-label">CPF</label>
+              <input type="text" id="cpf" name="cpf" class="form-control" placeholder="Digite seu CPF" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Continuar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

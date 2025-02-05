@@ -96,12 +96,11 @@
             <p><strong>Datas e Horários:</strong></p>
             <ul class="list-unstyled">
               {% for dia in oficina.dias %}
-              <li>📅 {{ dia }}</li>
+                <li>📅 {{ dia }}</li>
               {% endfor %}
             </ul>
             <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
-            {# Se desejar exibir vagas, descomente o bloco abaixo: #}
-            {#
+            
             <p>
               <strong>Vagas:</strong>
               <span class="info-vagas">{{ oficina.vagas }}</span>
@@ -109,48 +108,44 @@
                 <span class="text-danger">(Esgotado)</span>
               {% endif %}
             </p>
-            #}
             
-            {% if permitir_checkin_global %}
-              <!-- Check-in global: exibe somente o botão de Check-in -->
-              <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning btn-block">
-                Realizar Check-in
-              </a>
-            {% else %}
-              {% if oficina.id in inscricoes_ids %}
-                <!-- Usuário já inscrito: exibe ações de Check-in, Cancelamento e Comprovante -->
+            
+            {% if oficina.id in inscricoes_ids %}
                 <div class="d-flex flex-column gap-2">
-                  <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning btn-block">
+                    <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
                     Realizar Check-in
-                  </a>
-                  <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                    <button type="submit" class="btn btn-danger btn-block">Cancelar Inscrição</button>
-                  </form>
-                  <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary btn-block">
+                    </a>
+                    <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
+                    </form>
+                    <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
                     📄 Baixar Comprovante
-                  </a>
+                    </a>
+                    {% if habilitar_feedback %}
+                    <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
+                        Enviar Feedback
+                    </a>
+                    {% endif %}
                 </div>
-              {% elif oficina.vagas > 0 %}
-                <!-- Usuário não inscrito e ainda há vagas: exibe botão de inscrição -->
-                <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success btn-block">
-                  Inscrever-se
+                {% elif oficina.vagas > 0 %}
+                <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
+                    Inscrever-se
                 </button>
-              {% else %}
-                <!-- Sem vagas -->
+                {% else %}
                 <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
-              {% endif %}
             {% endif %}
-          </div>
-        </div>
-      </div>
+
+          </div> <!-- Fim card-body -->
+        </div> <!-- Fim card -->
+      </div> <!-- Fim col -->
       {% endfor %}
     {% else %}
       <div class="col-12">
         <p class="text-center text-warning">Nenhuma oficina disponível no momento.</p>
       </div>
     {% endif %}
-  </div>
-</div>
+  </div> <!-- Fim row -->
+</div> <!-- Fim container -->
 
 <footer class="text-center">
   <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
