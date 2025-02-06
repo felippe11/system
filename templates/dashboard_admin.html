@@ -217,10 +217,11 @@
                                     <tbody>
                                         {% for inscricao in oficina.inscritos %}
                                         <tr>
-                                            <td>{{ inscricao.usuario.nome }}</td>
-                                            <td>{{ inscricao.usuario.cpf }}</td>
-                                            <td>{{ inscricao.usuario.email }}</td>
-                                            <td>{{ inscricao.usuario.formacao }}</td>
+                                            <td>{{ inscricao.nome }}</td>
+                                            <td>{{ inscricao.cpf }}</td>
+                                            <td>{{ inscricao.email }}</td>
+                                            <td>{{ inscricao.formacao }}</td>
+
                                         </tr>
                                         {% endfor %}
                                     </tbody>

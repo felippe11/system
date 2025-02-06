@@ -162,14 +162,8 @@ def dashboard():
             for inscricao in inscritos:
                 usuario = Usuario.query.get(inscricao.usuario_id)
                 if usuario:
-                    inscritos_info.append({
-                        'id': usuario.id,
-                        'nome': usuario.nome,
-                        'cpf': usuario.cpf,
-                        'email': usuario.email,
-                        'formacao': usuario.formacao
-                    })
-            
+                    inscritos_info.append(usuario)  # Passa o objeto ao invés de dicionário
+
             oficinas_com_inscritos.append({
                 'id': oficina.id,
                 'titulo': oficina.titulo,
