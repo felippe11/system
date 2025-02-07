@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
-# ATENÇÃO: Escolha de onde vai importar o db e mantenha um único import!
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
 
 
@@ -35,7 +34,6 @@ class Configuracao(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     permitir_checkin_global = db.Column(db.Boolean, default=False)
-    # Se precisar manter habilitar_feedback
     habilitar_feedback = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
@@ -43,40 +41,64 @@ class Configuracao(db.Model):
 
 
 # =================================
+#          MINISTRANTE
+# =================================
+class Ministrante(db.Model, UserMixin):
+    __tablename__ = 'ministrante'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    formacao = db.Column(db.String(255), nullable=False)
+    areas_atuacao = db.Column(db.String(255), nullable=False)
+    cpf = db.Column(db.String(20), unique=True, nullable=False)
+    pix = db.Column(db.String(255), nullable=False)
+    cidade = db.Column(db.String(255), nullable=False)
+    estado = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    senha = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def tipo(self):
+        return 'ministrante'
+
+    def __repr__(self):
+        return f"<Ministrante {self.nome}>"
+
+
+# ... (outras importações permanecem iguais)
+
+# =================================
 #             OFICINA
 # =================================
 class Oficina(db.Model):
     __tablename__ = 'oficina'
-
+    
     id = db.Column(db.Integer, primary_key=True)
     titulo = db.Column(db.String(100), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
-    ministrante = db.Column(db.String(100), nullable=False)
+    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
+    
+    # Relação corretamente definida
+    ministrante = db.relationship('Ministrante', backref='oficinas')
+    
     vagas = db.Column(db.Integer, nullable=False)
     carga_horaria = db.Column(db.String(10), nullable=False)
-    estado = db.Column(db.String(2), nullable=False)  # Ex.: 'PA', 'SP'...
+    estado = db.Column(db.String(2), nullable=False)
     cidade = db.Column(db.String(100), nullable=False)
     qr_code = db.Column(db.String(255), nullable=True)
 
-    def __init__(self, titulo, descricao, ministrante, vagas, carga_horaria, estado, cidade, qr_code=None):
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, qr_code=None):
         self.titulo = titulo
         self.descricao = descricao
-        self.ministrante = ministrante
+        self.ministrante_id = ministrante_id
         self.vagas = vagas
         self.carga_horaria = carga_horaria
-        self.estado = estado.upper()  # Garante que a sigla fique maiúscula
+        self.estado = estado
         self.cidade = cidade
         self.qr_code = qr_code
 
     def __repr__(self):
         return f"<Oficina {self.titulo}>"
-
-    def delete_qr_code(self):
-        """Deleta o arquivo de QR Code (se existir) e limpa o campo no banco."""
-        if self.qr_code and os.path.exists(self.qr_code):
-            os.remove(self.qr_code)
-            print(f"QR Code removido: {self.qr_code}")
-            self.qr_code = None
 
 
 # =================================
@@ -144,7 +166,7 @@ class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
-    rating = db.Column(db.Integer, nullable=False)   # Nota de 1 a 5
+    rating = db.Column(db.Integer, nullable=False)  # Nota de 1 a 5
     comentario = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -156,22 +178,46 @@ class Feedback(db.Model):
 
 
 # =================================
-#          MINISTRANTE
+#       MATERIAL DA OFICINA
 # =================================
-class Ministrante(db.Model):
-    __tablename__ = 'ministrante'
+class MaterialOficina(db.Model):
+    __tablename__ = 'material_oficina'
 
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(255), nullable=False)
-    formacao = db.Column(db.String(255), nullable=False)
-    areas_atuacao = db.Column(db.String(255), nullable=False)
-    cpf = db.Column(db.String(20), unique=True, nullable=False)
-    pix = db.Column(db.String(255), nullable=False)
-    cidade = db.Column(db.String(255), nullable=False)
-    estado = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
-    senha = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
+    nome_arquivo = db.Column(db.String(255), nullable=False)
+    caminho_arquivo = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    oficina = db.relationship('Oficina', backref='materiais')
 
     def __repr__(self):
-        return f"<Ministrante {self.nome}>"
+        return f"<MaterialOficina id={self.id}, arquivo={self.nome_arquivo}>"
+
+
+# =================================
+#       RELATÓRIO DA OFICINA
+# =================================
+class RelatorioOficina(db.Model):
+    __tablename__ = 'relatorio_oficina'
+
+    id = db.Column(db.Integer, primary_key=True)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
+    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=False)
+
+    metodologia = db.Column(db.Text, nullable=True)
+    resultados = db.Column(db.Text, nullable=True)
+    fotos_videos_path = db.Column(db.String(255), nullable=True)
+    enviado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    oficina = db.relationship(
+        'Oficina',
+        backref=db.backref('relatorios_oficina', lazy=True)
+    )
+    ministrante = db.relationship(
+        'Ministrante',
+        backref=db.backref('relatorios_ministrante', lazy=True)
+    )
+
+    def __repr__(self):
+        return f"<RelatorioOficina oficina_id={self.oficina_id} ministrante_id={self.ministrante_id}>"

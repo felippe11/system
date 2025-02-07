@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Dashboard do Ministrante: {{ ministrante.nome }}</h2>
+
+  <hr>
+
+  {% if oficinas %}
+    <div class="row">
+      {% for oficina in oficinas %}
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            {{ oficina.titulo }}
+          </div>
+          <div class="card-body">
+            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
+            <p><strong>Vagas:</strong> {{ oficina.vagas }}</p>
+
+            <!-- Quantitativo de inscritos -->
+            <p><strong>Quantidade de inscritos:</strong> {{ oficina.inscritos|length }}</p>
+
+            <!-- Botões de ação -->
+            <a href="{{ url_for('routes.upload_material', oficina_id=oficina.id) }}" class="btn btn-sm btn-info">
+                Anexar Material
+              </a>
+            <a href="{{ url_for('routes.enviar_relatorio', oficina_id=oficina.id) }}" class="btn btn-sm btn-warning">
+              Enviar Relatório
+            </a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>Nenhuma oficina vinculada a este ministrante.</p>
+  {% endif %}
+</div>
+{% endblock %}

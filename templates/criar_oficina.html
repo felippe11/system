@@ -17,10 +17,13 @@
             <input type="text" class="form-control" id="descricao" name="descricao" required>
         </div>
 
-        <div class="mb-3">
-            <label for="ministrante" class="form-label">Ministrante:</label>
-            <input type="text" class="form-control" id="ministrante" name="ministrante" required>
-        </div>
+        <select name="ministrante_id" class="form-control">
+            <option value="">-- Selecione um Ministrante --</option>
+            {% for minist in ministrantes %}
+                 <option value="{{ minist.id }}">{{ minist.nome }}</option>
+            {% endfor %}
+        </select>
+          
 
         <div class="mb-3">
             <label for="vagas" class="form-label">Número de Vagas:</label>

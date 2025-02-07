@@ -1,10 +1,10 @@
 import os
 from datetime import datetime
-
+import logging
 import pandas as pd
 import qrcode
 import requests
-
+from models import Ministrante
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from flask_login import login_user, logout_user, login_required, current_user
@@ -14,7 +14,7 @@ from werkzeug.utils import secure_filename
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
-                    Configuracao, Feedback, Ministrante)
+                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina)
 from utils import obter_estados, obter_cidades, gerar_qr_code  # Funções auxiliares
 
 # ReportLab para PDFs
@@ -105,30 +105,70 @@ def cadastro_participante():
 # ===========================
 @login_manager.user_loader
 def load_user(user_id):
-    return Usuario.query.get(int(user_id))
+    user_type = session.get('user_type')
+    if user_type == 'ministrante':
+        return Ministrante.query.get(int(user_id))
+    elif user_type == 'admin' or user_type == 'participante':
+        return Usuario.query.get(int(user_id))
+    # Caso não haja informação, tenta buscar em ambas (opcional)
+    user = Usuario.query.get(int(user_id))
+    if user:
+        return user
+    return Ministrante.query.get(int(user_id))
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 @routes.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form['email']
         senha = request.form['senha']
-
+        print(f"Tentativa de login para o email: {email}")
+        
+        # Tenta buscar primeiro em Usuario
         usuario = Usuario.query.filter_by(email=email).first()
         if usuario:
-            print(f"Usuário encontrado: {usuario.email}, Tipo: {usuario.tipo}")
+            print(f"Usuário encontrado na tabela Usuario: {usuario.email}, tipo: {getattr(usuario, 'tipo', 'N/A')}")
         else:
-            print("Usuário não encontrado.")
-
+            print("Não encontrado na tabela Usuario, buscando em Ministrante...")
+            usuario = Ministrante.query.filter_by(email=email).first()
+            if usuario:
+                print(f"Usuário encontrado na tabela Ministrante: {usuario.email}")
+            else:
+                print("Usuário não encontrado em nenhuma tabela.")
+        
         if usuario and check_password_hash(usuario.senha, senha):
+            print("Senha verificada com sucesso!")
+            
+            # Armazena o tipo do usuário na sessão
+            if isinstance(usuario, Ministrante):
+                session['user_type'] = 'ministrante'
+            elif hasattr(usuario, 'tipo'):
+                session['user_type'] = usuario.tipo
+            else:
+                session['user_type'] = 'usuario'
+            
             login_user(usuario)
             flash('Login realizado com sucesso!', 'success')
-            if usuario.tipo == 'admin':
+            
+            # Redirecionamento conforme o tipo
+            if session.get('user_type') == 'admin':
+                print("Redirecionando para o dashboard do Admin")
                 return redirect(url_for('routes.dashboard'))
-            else:
+            elif session.get('user_type') == 'participante':
+                print("Redirecionando para o dashboard do Participante")
                 return redirect(url_for('routes.dashboard_participante'))
+            elif session.get('user_type') == 'ministrante':
+                print("Redirecionando para o dashboard do Ministrante")
+                return redirect(url_for('routes.dashboard_ministrante'))
+            else:
+                print("Redirecionamento padrão para dashboard_ministrante")
+                return redirect(url_for('routes.dashboard_ministrante'))
         else:
+            print("Usuário não encontrado ou senha incorreta.")
             flash('E-mail ou senha incorretos!', 'danger')
-
+    
     return render_template('login.html')
 
 @routes.route('/logout')
@@ -149,9 +189,16 @@ def dashboard():
         oficinas = Oficina.query.all()
         oficinas_com_inscritos = []
         
-        config = Configuracao.query.first()
-        permitir_checkin_global = config.permitir_checkin_global if config else False
-        habilitar_feedback = config.habilitar_feedback if config else False
+        # Importante: Buscar os ministrantes cadastrados
+        ministrantes = Ministrante.query.all()
+        
+        # Consulta os relatórios, ordenando os mais recentes primeiro
+        relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
+        
+        # Buscar configurações
+        configuracao = Configuracao.query.first()
+        permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
+        habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
         
         for oficina in oficinas:
             dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
@@ -162,29 +209,37 @@ def dashboard():
             for inscricao in inscritos:
                 usuario = Usuario.query.get(inscricao.usuario_id)
                 if usuario:
-                    inscritos_info.append(usuario)  # Passa o objeto ao invés de dicionário
-
+                    inscritos_info.append({
+                        'id': usuario.id,
+                        'nome': usuario.nome,
+                        'cpf': usuario.cpf,
+                        'email': usuario.email,
+                        'formacao': usuario.formacao
+                    })
+            
             oficinas_com_inscritos.append({
                 'id': oficina.id,
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
-                'ministrante': oficina.ministrante,
+                # Acessa o ministrante via relacionamento (backref: ministrante_obj)
+               'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
                 'dias': dias_formatados,
                 'inscritos': inscritos_info
             })
-        
-        print("permitir_checkin_global:", permitir_checkin_global)
-        print("habilitar_feedback:", habilitar_feedback)
-        
+            
         return render_template('dashboard_admin.html',
                                usuario=current_user,
                                oficinas=oficinas_com_inscritos,
+                               ministrantes=ministrantes,
+                               relatorios=relatorios,
                                permitir_checkin_global=permitir_checkin_global,
-                               habilitar_feedback=habilitar_feedback)
-    else:
-        return redirect(url_for('routes.dashboard_participante'))
+                               habilitar_feedback=habilitar_feedback,
+                               )
+    
+    return redirect(url_for('routes.dashboard_participante'))
+
 
 @routes.route('/dashboard_participante')
 @login_required
@@ -207,7 +262,8 @@ def dashboard_participante():
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            'ministrante': oficina.ministrante,
+            # Atualize aqui para acessar o ministrante via relacionamento:
+            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': [dia.data.strftime('%d/%m/%Y') for dia in dias],
@@ -238,12 +294,15 @@ def criar_oficina():
         return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
+    # Buscar todos os ministrantes para exibir no dropdown
+    todos_ministrantes = Ministrante.query.all()
 
     if request.method == 'POST':
         print("📌 [DEBUG] Recebendo dados do formulário...")
         titulo = request.form.get('titulo')
         descricao = request.form.get('descricao')
-        ministrante = request.form.get('ministrante')
+        # Agora, o campo deve ser "ministrante_id" conforme o template
+        ministrante_id = request.form.get('ministrante_id')
         vagas = request.form.get('vagas')
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
@@ -251,6 +310,7 @@ def criar_oficina():
 
         print(f"📌 [DEBUG] Estado: {estado}")
         print(f"📌 [DEBUG] Cidade: {cidade}")
+        print(f"📌 [DEBUG] Ministrante selecionado (ID): {ministrante_id}")
 
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
@@ -270,7 +330,7 @@ def criar_oficina():
         nova_oficina = Oficina(
             titulo=titulo,
             descricao=descricao,
-            ministrante=ministrante,
+            ministrante_id=ministrante_id,  # Usando ministrante_id
             vagas=int(vagas),
             carga_horaria=carga_horaria,
             estado=estado,
@@ -305,29 +365,13 @@ def criar_oficina():
 
     return render_template('criar_oficina.html',
                            estados=estados,
+                           ministrantes=todos_ministrantes,
                            datas=[],
                            horarios_inicio=[],
                            horarios_fim=[],
                            palavras_chave_manha=[],
                            palavras_chave_tarde=[])
 
-def gerar_qr_code(oficina_id):
-    pasta_qrcodes = os.path.join("static", "qrcodes")
-    os.makedirs(pasta_qrcodes, exist_ok=True)
-    qr_code_path = os.path.join(pasta_qrcodes, f"checkin_{oficina_id}.png")
-    qr_data = f"/checkin/{oficina_id}"
-
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_data)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    img.save(qr_code_path)
-    return qr_code_path
 
 
 @routes.route('/get_cidades/<estado_sigla>')
@@ -340,23 +384,28 @@ def get_cidades(estado_sigla):
 @routes.route('/editar_oficina/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
 def editar_oficina(oficina_id):
+    # Apenas admin pode editar a oficina (ou adapte para ministrantes se necessário)
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
     oficina = Oficina.query.get_or_404(oficina_id)
+    # Buscar todos os ministrantes para o dropdown
+    todos_ministrantes = Ministrante.query.all()
 
     if request.method == 'POST':
-        oficina.titulo = request.form['titulo']
-        oficina.descricao = request.form['descricao']
-        oficina.ministrante = request.form['ministrante']
+        # Atualiza os dados da oficina
+        oficina.titulo = request.form.get('titulo')
+        oficina.descricao = request.form.get('descricao')
+        # Alteração: atualizar o vínculo com o ministrante via ministrante_id
+        oficina.ministrante_id = request.form.get('ministrante_id')
         oficina.vagas = int(request.form.get('vagas'))
-        oficina.carga_horaria = request.form['carga_horaria']
-        oficina.estado = request.form['estado']
-        oficina.cidade = request.form['cidade']
+        oficina.carga_horaria = request.form.get('carga_horaria')
+        oficina.estado = request.form.get('estado')
+        oficina.cidade = request.form.get('cidade')
 
-        # Remove as datas antigas e adiciona as novas
+        # Remove os registros antigos de datas/horários
         OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
 
         datas = request.form.getlist('data[]')
@@ -370,21 +419,21 @@ def editar_oficina(oficina_id):
                 try:
                     data_formatada = datetime.strptime(datas[i], "%Y-%m-%d").date()
                 except ValueError:
-                    raise ValueError(f"Data inválida: {datas[i]}. O formato esperado é dd/mm/yyyy.")
-            novo_dia = OficinaDia(
-                oficina_id=oficina.id,
-                data=data_formatada,
-                horario_inicio=horarios_inicio[i],
-                horario_fim=horarios_fim[i],
-                palavra_chave_manha=palavras_chave_manha[i],
-                palavra_chave_tarde=palavras_chave_tarde[i],
-            )
-            db.session.add(novo_dia)
+                    raise ValueError(f"Data inválida: {datas[i]}. O formato esperado é YYYY-MM-DD.")
+                novo_dia = OficinaDia(
+                    oficina_id=oficina.id,
+                    data=data_formatada,
+                    horario_inicio=horarios_inicio[i],
+                    horario_fim=horarios_fim[i],
+                    palavra_chave_manha=palavras_chave_manha[i],
+                    palavra_chave_tarde=palavras_chave_tarde[i],
+                )
+                db.session.add(novo_dia)
         db.session.commit()
         flash('Oficina editada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard'))
 
-    # Preparar dados para edição
+    # Preparar os dados para o template (GET)
     datas = [dia.data.strftime('%Y-%m-%d') for dia in oficina.dias]
     horarios_inicio = [dia.horario_inicio for dia in oficina.dias]
     horarios_fim = [dia.horario_fim for dia in oficina.dias]
@@ -394,11 +443,13 @@ def editar_oficina(oficina_id):
     return render_template('editar_oficina.html',
                            oficina=oficina,
                            estados=estados,
+                           ministrantes=todos_ministrantes,
                            datas=datas,
                            horarios_inicio=horarios_inicio,
                            horarios_fim=horarios_fim,
                            palavras_chave_manha=palavras_chave_manha,
                            palavras_chave_tarde=palavras_chave_tarde)
+
 
 
 @routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])
@@ -416,29 +467,29 @@ def excluir_oficina(oficina_id):
     try:
         print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")
 
-        # Excluir todos os feedbacks relacionados à oficina (iterando e removendo individualmente)
+        # 1. Excluir Feedbacks relacionados à oficina (removendo individualmente)
         feedbacks = Feedback.query.filter_by(oficina_id=oficina.id).all()
         for fb in feedbacks:
             db.session.delete(fb)
         db.session.commit()
         print("✅ [DEBUG] Feedbacks removidos.")
 
-        # Excluir todos os check-ins relacionados à oficina
+        # 2. Excluir Check-ins relacionados à oficina
         db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
         db.session.commit()
         print("✅ [DEBUG] Check-ins removidos.")
 
-        # Excluir todas as inscrições associadas à oficina
+        # 3. Excluir Inscrições associadas à oficina
         db.session.query(Inscricao).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
         db.session.commit()
         print("✅ [DEBUG] Inscrições removidas.")
 
-        # Excluir todos os registros de datas da oficina
+        # 4. Excluir registros de datas (OficinaDia)
         db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
         db.session.commit()
         print("✅ [DEBUG] Dias da oficina removidos.")
 
-        # Excluir a oficina
+        # 5. Excluir a própria oficina
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
@@ -1190,9 +1241,22 @@ def toggle_feedback():
 # ===========================
 #   CADASTRO DE MINISTRANTE
 # ===========================
+import logging
+from flask import Flask, render_template, redirect, url_for, flash, request
+from werkzeug.security import generate_password_hash
+from extensions import db
+from models import Ministrante
+
+# Configure o logger (isso pode ser configurado globalmente no seu app)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 @routes.route('/cadastro_ministrante', methods=['GET', 'POST'])
 def cadastro_ministrante():
     if request.method == 'POST':
+        print("Iniciando o cadastro de ministrante")
+        
+        # Coleta dos dados do formulário
         nome = request.form.get('nome')
         formacao = request.form.get('formacao')
         areas = request.form.get('areas')
@@ -1202,14 +1266,24 @@ def cadastro_ministrante():
         estado = request.form.get('estado')
         email = request.form.get('email')
         senha = request.form.get('senha')
+        
+        print(f"Dados recebidos - Nome: {nome}, Email: {email}, CPF: {cpf}")
+        
+        # Verifica se já existe um ministrante com o mesmo email
         existing_email = Ministrante.query.filter_by(email=email).first()
         if existing_email:
+            logger.warning(f"E-mail já cadastrado: {email}")
             flash('Erro: Este e-mail já está cadastrado!', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
+        
+        # Verifica se já existe um ministrante com o mesmo CPF
         existing_cpf = Ministrante.query.filter_by(cpf=cpf).first()
         if existing_cpf:
+            logger.warning(f"CPF já cadastrado: {cpf}")
             flash('Erro: Este CPF já está cadastrado!', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
+        
+        # Criação do novo ministrante
         novo_ministrante = Ministrante(
             nome=nome,
             formacao=formacao,
@@ -1221,14 +1295,200 @@ def cadastro_ministrante():
             email=email,
             senha=generate_password_hash(senha)
         )
+        
         try:
+            print("Adicionando novo ministrante no banco de dados")
             db.session.add(novo_ministrante)
             db.session.commit()
+            print("Ministrante cadastrado com sucesso!")
             flash('Cadastro realizado com sucesso!', 'success')
             return redirect(url_for('routes.login'))
         except Exception as e:
             db.session.rollback()
+            logger.error(f"Erro ao cadastrar ministrante: {e}", exc_info=True)
             flash('Erro ao cadastrar ministrante. Tente novamente.', 'danger')
-            print("Erro ao cadastrar ministrante:", e)
             return redirect(url_for('routes.cadastro_ministrante'))
+    
     return render_template('cadastro_ministrante.html')
+
+@routes.route('/dashboard_ministrante')
+@login_required
+def dashboard_ministrante():
+    # Log para depuração: exibir o tipo do current_user e seus atributos
+    import logging
+    logger = logging.getLogger(__name__)
+    print(f"current_user: {current_user}, type: {type(current_user)}")
+    # Se estiver usando UserMixin, current_user pode não ter o atributo 'tipo'
+    # Então, usamos isinstance para verificar se é Ministrante.
+    if not isinstance(current_user, Ministrante):
+        print("current_user não é uma instância de Ministrante")
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.home'))
+
+    # Busca o ministrante logado com base no email (ou use current_user diretamente)
+    ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
+    if not ministrante_logado:
+        print("Ministrante não encontrado no banco de dados")
+        flash('Ministrante não encontrado!', 'danger')
+        return redirect(url_for('routes.home'))
+
+    # Buscar as oficinas deste ministrante
+    oficinas_do_ministrante = Oficina.query.filter_by(ministrante_id=ministrante_logado.id).all()
+    print(f"Foram encontradas {len(oficinas_do_ministrante)} oficinas para o ministrante {ministrante_logado.email}")
+
+    return render_template(
+        'dashboard_ministrante.html',
+        ministrante=ministrante_logado,
+        oficinas=oficinas_do_ministrante
+    )
+
+@routes.route('/enviar_relatorio/<int:oficina_id>', methods=['GET', 'POST'])
+@login_required
+def enviar_relatorio(oficina_id):
+    if current_user.tipo != 'ministrante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.home'))
+
+    oficina = Oficina.query.get_or_404(oficina_id)
+    ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
+
+    if oficina.ministrante_id != ministrante_logado.id:
+        flash('Você não é responsável por esta oficina!', 'danger')
+        return redirect(url_for('routes.dashboard_ministrante'))
+
+    if request.method == 'POST':
+        metodologia = request.form.get('metodologia')
+        resultados = request.form.get('resultados')
+
+        # Upload de fotos/vídeos se desejado
+        arquivo_midia = request.files.get('arquivo_midia')
+        midia_path = None
+        if arquivo_midia:
+            filename = secure_filename(arquivo_midia.filename)
+            pasta_uploads = os.path.join('uploads', 'relatorios')
+            os.makedirs(pasta_uploads, exist_ok=True)
+            caminho_arquivo = os.path.join(pasta_uploads, filename)
+            arquivo_midia.save(caminho_arquivo)
+            midia_path = caminho_arquivo
+
+        novo_relatorio = RelatorioOficina(
+            oficina_id=oficina.id,
+            ministrante_id=ministrante_logado.id,
+            metodologia=metodologia,
+            resultados=resultados,
+            fotos_videos_path=midia_path
+        )
+        db.session.add(novo_relatorio)
+        db.session.commit()
+
+        flash("Relatório enviado com sucesso!", "success")
+        return redirect(url_for('routes.dashboard_ministrante'))
+
+    return render_template('enviar_relatorio.html', oficina=oficina)
+
+@routes.route('/upload_material/<int:oficina_id>', methods=['GET', 'POST'])
+@login_required
+def upload_material(oficina_id):
+    # Verifica se o usuário é um ministrante
+    from models import Ministrante  # Certifique-se de importar se necessário
+    if not hasattr(current_user, 'tipo') or current_user.tipo != 'ministrante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.home'))
+    
+    # Buscar a oficina e verificar se o ministrante logado é responsável por ela
+    oficina = Oficina.query.get_or_404(oficina_id)
+    ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
+    if not ministrante_logado or oficina.ministrante_id != ministrante_logado.id:
+        flash('Você não é responsável por esta oficina!', 'danger')
+        return redirect(url_for('routes.dashboard_ministrante'))
+    
+    if request.method == 'POST':
+        arquivo = request.files.get('arquivo')
+        if arquivo:
+            filename = secure_filename(arquivo.filename)
+            pasta_uploads = os.path.join('uploads', 'materiais')
+            os.makedirs(pasta_uploads, exist_ok=True)
+            caminho_arquivo = os.path.join(pasta_uploads, filename)
+            arquivo.save(caminho_arquivo)
+            
+            novo_material = MaterialOficina(
+                oficina_id=oficina.id,
+                nome_arquivo=filename,
+                caminho_arquivo=caminho_arquivo
+            )
+            db.session.add(novo_material)
+            db.session.commit()
+            
+            flash('Material anexado com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_ministrante'))
+        else:
+            flash('Nenhum arquivo foi enviado.', 'danger')
+    
+    return render_template('upload_material.html', oficina=oficina)
+
+@routes.route('/editar_ministrante/<int:ministrante_id>', methods=['GET', 'POST'])
+@login_required
+def editar_ministrante(ministrante_id):
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    ministrante = Ministrante.query.get_or_404(ministrante_id)
+    
+    if request.method == 'POST':
+        # Coleta os dados do formulário
+        ministrante.nome = request.form.get('nome')
+        ministrante.formacao = request.form.get('formacao')
+        ministrante.areas_atuacao = request.form.get('areas')
+        ministrante.cpf = request.form.get('cpf')
+        ministrante.pix = request.form.get('pix')
+        ministrante.cidade = request.form.get('cidade')
+        ministrante.estado = request.form.get('estado')
+        ministrante.email = request.form.get('email')
+        nova_senha = request.form.get('senha')
+        if nova_senha:
+            from werkzeug.security import generate_password_hash
+            ministrante.senha = generate_password_hash(nova_senha)
+        
+        try:
+            db.session.commit()
+            flash('Ministrante atualizado com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar ministrante: {str(e)}', 'danger')
+            return redirect(url_for('routes.editar_ministrante', ministrante_id=ministrante_id))
+    
+    return render_template('editar_ministrante.html', ministrante=ministrante)
+
+@routes.route('/excluir_ministrante/<int:ministrante_id>', methods=['POST'])
+@login_required
+def excluir_ministrante(ministrante_id):
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    ministrante = Ministrante.query.get_or_404(ministrante_id)
+    try:
+        db.session.delete(ministrante)
+        db.session.commit()
+        flash('Ministrante excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir ministrante: {str(e)}', 'danger')
+    return redirect(url_for('routes.dashboard'))
+
+@routes.route('/gerenciar_ministrantes', methods=['GET'])
+@login_required
+def gerenciar_ministrantes():
+    # Apenas administradores têm acesso a essa rota
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Busca todos os ministrantes cadastrados
+    ministrantes = Ministrante.query.all()
+    return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
+
+
+
