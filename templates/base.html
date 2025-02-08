@@ -79,10 +79,28 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.home') }}">Início</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.login') }}">Login</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('routes.cadastro_participante') }}">Cadastro</a></li>
+                    {% if not current_user.is_authenticated %}
+                      <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('routes.login') }}">Login</a>
+                      </li>
+                      <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('routes.cadastro_participante') }}">Cadastro</a>
+                      </li>
+                    {% else %}
+                      <li class="nav-item">
+                        <a class="btn btn-danger" href="{{ url_for('routes.logout') }}">Sair</a>
+                      </li>
+                      <li class="nav-item">
+                        <a>  -  </a>
+                      </li>
+                    {% endif %}
                 </ul>
+
+                {% if current_user.is_authenticated and current_user.tipo == 'participante' %}
+                <a href="{{ url_for('routes.editar_participante') }}" class="btn btn-primary">
+                  <i class="bi bi-pencil"></i> Editar Perfil
+                </a>
+                {% endif %}
 
                 <!-- Botão de alternância de tema -->
                 <button class="btn btn-outline-light ms-3" id="toggle-theme">
