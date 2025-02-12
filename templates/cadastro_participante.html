@@ -50,6 +50,20 @@
   .login-link:hover {
     text-decoration: underline;
   }
+  
+  /* Estilos para o bloco de localização */
+  .location-block {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 5px;
+    position: relative;
+  }
+  .remove-location-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+  }
 </style>
 
 <div class="d-flex justify-content-center align-items-center vh-100">
@@ -99,6 +113,15 @@
           <input type="text" class="form-control" name="formacao" id="formacao" placeholder="Informe sua formação acadêmica" required>
         </div>
 
+        <!-- Seção para Locais de Atuação -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">Locais onde atua</label>
+          <div id="locations-container">
+            <!-- Os blocos de localização serão adicionados aqui dinamicamente -->
+          </div>
+          <button type="button" id="add-location-btn" class="btn btn-secondary btn-sm">Adicionar Local</button>
+        </div>
+
         <button type="submit" class="btn btn-success w-100 fw-bold">Cadastrar</button>
       </form>
 
@@ -121,5 +144,100 @@
       cpfInput.value = value;
     });
   });
+</script>
+
+<!-- Script para adicionar e remover blocos de localização e preencher os selects via API do IBGE -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Variável global para armazenar os dados dos estados
+    let statesData = [];
+
+    // Busca os estados utilizando a API do IBGE (neste exemplo, a rota v1/localidades/estados)
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+      .then(response => response.json())
+      .then(data => {
+          data.sort((a, b) => a.nome.localeCompare(b.nome));
+          statesData = data;
+          // Adiciona um primeiro bloco de localização assim que os estados forem carregados
+          addLocationBlock();
+      })
+      .catch(error => console.error('Erro ao buscar estados:', error));
+
+    const locationsContainer = document.getElementById('locations-container');
+    const addLocationBtn = document.getElementById('add-location-btn');
+
+    addLocationBtn.addEventListener('click', addLocationBlock);
+
+    function addLocationBlock() {
+        // Cria um container para o bloco de localização
+        const block = document.createElement('div');
+        block.classList.add('location-block');
+
+        // Cria o select para Estado
+        const stateLabel = document.createElement('label');
+        stateLabel.classList.add('form-label', 'fw-bold');
+        stateLabel.textContent = "Estado";
+        const stateSelect = document.createElement('select');
+        stateSelect.name = 'estados[]';
+        stateSelect.classList.add('form-select', 'mb-2');
+        stateSelect.innerHTML = '<option value="">Selecione o Estado</option>';
+        // Popula o select de estados com os dados obtidos
+        statesData.forEach(state => {
+            const option = document.createElement('option');
+            option.value = state.sigla;
+            option.text = state.nome;
+            stateSelect.add(option);
+        });
+
+        // Cria o select para Cidade
+        const cityLabel = document.createElement('label');
+        cityLabel.classList.add('form-label', 'fw-bold');
+        cityLabel.textContent = "Cidade";
+        const citySelect = document.createElement('select');
+        citySelect.name = 'cidades[]';
+        citySelect.classList.add('form-select', 'mb-2');
+        citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
+
+        // Quando o estado for selecionado, preenche o select de cidade
+        stateSelect.addEventListener('change', function() {
+            const uf = this.value;
+            // Limpa as opções atuais do select de cidade
+            citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
+            if (uf) {
+                fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
+                  .then(response => response.json())
+                  .then(cities => {
+                      cities.sort((a, b) => a.nome.localeCompare(b.nome));
+                      cities.forEach(city => {
+                          const option = document.createElement('option');
+                          option.value = city.nome;
+                          option.text = city.nome;
+                          citySelect.add(option);
+                      });
+                  })
+                  .catch(error => console.error('Erro ao buscar cidades para ' + uf + ':', error));
+            }
+        });
+
+        // Cria o botão para remover o bloco de localização
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = 'Remover Local';
+        removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-location-btn');
+        removeBtn.addEventListener('click', function() {
+            locationsContainer.removeChild(block);
+        });
+
+        // Adiciona os elementos ao bloco
+        block.appendChild(removeBtn);
+        block.appendChild(stateLabel);
+        block.appendChild(stateSelect);
+        block.appendChild(cityLabel);
+        block.appendChild(citySelect);
+
+        // Adiciona o bloco no container de localizações
+        locationsContainer.appendChild(block);
+    }
+});
 </script>
 {% endblock %}
