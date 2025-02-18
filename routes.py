@@ -282,12 +282,11 @@ def dashboard():
                 'id': oficina.id,
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
-<<<<<<< HEAD
+
                 # Acessa o ministrante via relacionamento (backref: ministrante_obj)
-               'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
-=======
+
                 'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
->>>>>>> origin/main
+
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
                 'dias': dias_formatados,
