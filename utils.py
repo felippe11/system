@@ -2,6 +2,23 @@ import requests
 import qrcode
 import os
 
+def gerar_qr_code_inscricao(qr_code_token):
+    """Gera o QR Code para a inscrição com base no token único."""
+    caminho_pasta = os.path.join('static', 'qrcodes_inscricoes')
+    os.makedirs(caminho_pasta, exist_ok=True)
+    
+    nome_arquivo = f'inscricao_{qr_code_token}.png'
+    caminho_completo = os.path.join(caminho_pasta, nome_arquivo)
+
+    # IMPORTANTE: a URL/URI que será codificada aponta para uma rota
+    # que faz o check-in ao ser acessada, ou que o app web decodifica e chama.
+    qr_data = f"https://www.appfiber.com.br/leitor_checkin?token={qr_code_token}"
+
+    img_qr = qrcode.make(qr_data)
+    img_qr.save(caminho_completo)
+
+    return caminho_completo
+
 def obter_estados():
     url = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
     response = requests.get(url)
@@ -19,9 +36,6 @@ def obter_cidades(estado_sigla):
         cidades = response.json()
         return sorted([cidade["nome"] for cidade in cidades])
     return []
-
-import qrcode
-import os
 
 def gerar_qr_code(oficina_id):
     caminho_pasta = os.path.join('static', 'qrcodes')

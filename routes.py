@@ -543,7 +543,7 @@ def excluir_oficina(oficina_id):
     try:
         print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")
 
-        # 1. Excluir Feedbacks relacionados à oficina (removendo individualmente)
+        # 1. Excluir Feedbacks relacionados à oficina
         feedbacks = Feedback.query.filter_by(oficina_id=oficina.id).all()
         for fb in feedbacks:
             db.session.delete(fb)
@@ -565,17 +565,33 @@ def excluir_oficina(oficina_id):
         db.session.commit()
         print("✅ [DEBUG] Dias da oficina removidos.")
 
-        # 5. Excluir a própria oficina
+        # 5. Excluir Materiais associados à oficina
+        materiais = MaterialOficina.query.filter_by(oficina_id=oficina.id).all()
+        for material in materiais:
+            db.session.delete(material)
+        db.session.commit()
+        print("✅ [DEBUG] Materiais da oficina removidos.")
+
+        # 6. Excluir Relatórios associados à oficina (NOVO TRECHO)
+        relatorios = RelatorioOficina.query.filter_by(oficina_id=oficina.id).all()
+        for relatorio in relatorios:
+            db.session.delete(relatorio)
+        db.session.commit()
+        print("✅ [DEBUG] Relatórios da oficina removidos.")
+
+        # 7. Excluir a própria oficina
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
         flash('Oficina excluída com sucesso!', 'success')
+
     except Exception as e:
         db.session.rollback()
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
     return redirect(url_for('routes.dashboard'))
+
 
 
 # ===========================
@@ -597,16 +613,21 @@ def inscrever(oficina_id):
         flash('Esta oficina está lotada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
 
+    # Evita duplicidade
     if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
         flash('Você já está inscrito nesta oficina!', 'warning')
         return redirect(url_for('routes.dashboard_participante'))
 
+    # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
     inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id)
     db.session.add(inscricao)
     db.session.commit()
 
-    pdf_path = gerar_comprovante_pdf(current_user, oficina)
+    # Gera PDF de comprovante (com QR Code embutido)
+    pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+    
+    # Retorna via JSON (pode ficar do mesmo jeito ou redirecionar)
     return jsonify({'success': True, 'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)})
 
 @routes.route('/remover_inscricao/<int:oficina_id>', methods=['POST'])
@@ -630,11 +651,16 @@ def remover_inscricao(oficina_id):
 # ===========================
 #   COMPROVANTE DE INSCRIÇÃO (PDF)
 # ===========================
-def gerar_comprovante_pdf(usuario, oficina):
+@routes.route('/leitor_checkin', methods=['GET'])
+@login_required
+def gerar_comprovante_pdf(usuario, oficina, inscricao):
     pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
     pdf_path = os.path.join("static/comprovantes", pdf_filename)
     os.makedirs("static/comprovantes", exist_ok=True)
 
+    # Gera o QR Code da inscrição
+    qr_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
+    
     c = canvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
 
@@ -652,19 +678,17 @@ def gerar_comprovante_pdf(usuario, oficina):
         f"Nome: {usuario.nome}",
         f"CPF: {usuario.cpf}",
         f"E-mail: {usuario.email}",
-        f"Oficina: {oficina.titulo}",
-        f"Ministrante: {oficina.ministrante}",
+        f"Oficina: {oficina.titulo}"
     ]
     for dado in dados:
         c.drawString(50, y_position, dado)
         y_position -= 20
 
-    for dia in oficina.dias:
-        c.drawString(50, y_position, f"Data: {dia.data.strftime('%d/%m/%Y')}")
-        y_position -= 20
+    # Desenhar o QR Code (caso queira imprimir no PDF)
+    qr_img = ImageReader(qr_path)
+    c.drawImage(qr_img, 400, y_position - 100, width=100, height=100)
 
-    c.line(50, y_position - 30, 250, y_position - 30)
-    c.drawString(50, y_position - 45, "Assinatura do Coordenador")
+    c.showPage()
     c.save()
     return pdf_path
 
@@ -1182,33 +1206,61 @@ def excluir_todas_oficinas():
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
         return redirect(url_for("routes.dashboard"))
+
     try:
         oficinas = Oficina.query.all()
         if not oficinas:
             flash("Não há oficinas para excluir.", "warning")
             return redirect(url_for("routes.dashboard"))
+
         print(f"📌 [DEBUG] Encontradas {len(oficinas)} oficinas para exclusão.")
+
         qr_code_folder = os.path.join("static", "qrcodes")
+
         for oficina in oficinas:
+            # Remover QR Code associado à oficina
             if oficina.qr_code:
                 qr_code_path = os.path.join(qr_code_folder, f"checkin_{oficina.id}.png")
                 if os.path.exists(qr_code_path):
                     os.remove(qr_code_path)
                     print(f"✅ [DEBUG] QR Code removido: {qr_code_path}")
-        num_inscricoes = db.session.query(Inscricao).delete()
-        print(f"✅ [DEBUG] {num_inscricoes} inscrições excluídas.")
+
+        # Excluir Feedbacks relacionados às oficinas
+        num_feedbacks = db.session.query(Feedback).delete()
+        print(f"✅ [DEBUG] {num_feedbacks} feedbacks excluídos.")
+
+        # Excluir Check-ins relacionados às oficinas
         num_checkins = db.session.query(Checkin).delete()
         print(f"✅ [DEBUG] {num_checkins} check-ins excluídos.")
+
+        # Excluir Inscrições associadas às oficinas
+        num_inscricoes = db.session.query(Inscricao).delete()
+        print(f"✅ [DEBUG] {num_inscricoes} inscrições excluídas.")
+
+        # Excluir Registros de Datas (OficinaDia)
         num_dias = db.session.query(OficinaDia).delete()
         print(f"✅ [DEBUG] {num_dias} registros de dias excluídos.")
+
+        # Excluir Materiais das Oficinas
+        num_materiais = db.session.query(MaterialOficina).delete()
+        print(f"✅ [DEBUG] {num_materiais} materiais de oficina excluídos.")
+
+        # Excluir Relatórios das Oficinas
+        num_relatorios = db.session.query(RelatorioOficina).delete()
+        print(f"✅ [DEBUG] {num_relatorios} relatórios de oficina excluídos.")
+
+        # Excluir as Oficinas após limpar todas as referências
         num_oficinas = db.session.query(Oficina).delete()
         print(f"✅ [DEBUG] {num_oficinas} oficinas excluídas.")
+
         db.session.commit()
         flash(f"{num_oficinas} oficinas e todos os dados relacionados foram excluídos com sucesso!", "success")
+
     except Exception as e:
         db.session.rollback()
         print(f"❌ [ERRO] Erro ao excluir oficinas: {str(e)}")
         flash(f"Erro ao excluir oficinas: {str(e)}", "danger")
+
     return redirect(url_for("routes.dashboard"))
 
 @routes.route("/importar_usuarios", methods=["POST"])
@@ -1635,5 +1687,51 @@ def gerenciar_ministrantes():
     ministrantes = Ministrante.query.all()
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
 
+@routes.route('/leitor_checkin', methods=['GET'])
+@login_required
+def leitor_checkin():
+    # Verifica se o user atual é admin ou staff
+    # Caso queira que "qualquer um" possa ler, basta remover a verificação
+    if current_user.tipo not in ('admin', 'staff'):
+        flash("Acesso negado! Apenas staff/admin podem efetuar check-in.", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
+    token = request.args.get('token', None)
+    if not token:
+        flash("Token não encontrado no QR Code!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
+    # Busca a inscrição que tem esse token
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        flash("Inscrição não encontrada ou token inválido!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
+    # Registra o check-in
+    # Verifica se já existe check-in para esse usuário e oficina, se quiser evitar duplicidade
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id
+    ).first()
+    if checkin_existente:
+        flash("Check-in já foi realizado anteriormente!", "warning")
+        return redirect(url_for('routes.dashboard'))
+    
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO",  # Se quiser registrar algo indicando que foi via QR
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
+    
+    flash(f"Check-in realizado com sucesso para {inscricao.usuario.nome}!", "success")
+    return redirect(url_for('routes.dashboard'))
 
-
+@routes.route('/admin_scan')
+@login_required
+def admin_scan():
+    if current_user.tipo not in ('admin', 'staff'):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    return render_template("scan_qr.html")
