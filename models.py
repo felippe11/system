@@ -78,8 +78,13 @@ class Oficina(db.Model):
     descricao = db.Column(db.Text, nullable=False)
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     
-    # Relação corretamente definida
-    ministrante = db.relationship('Ministrante', backref='oficinas')
+   
+    # Declara o relacionamento para acessar o objeto ministrante
+    ministrante_obj = db.relationship(
+        "Ministrante",
+        backref="oficinas",  # com esse nome, do lado do Ministrante, vc acessa "um_ministrante.oficinas"
+        lazy=True
+    )
     
     vagas = db.Column(db.Integer, nullable=False)
     carga_horaria = db.Column(db.String(10), nullable=False)
@@ -193,6 +198,7 @@ class MaterialOficina(db.Model):
 
     def __repr__(self):
         return f"<MaterialOficina id={self.id}, arquivo={self.nome_arquivo}>"
+    
 
 
 # =================================
