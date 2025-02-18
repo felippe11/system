@@ -104,6 +104,13 @@
                         </a>
                     </div>
 
+                    <!-- Botão para criar nova oficina -->
+                    <div class="mb-4">
+                      <a href="{{ url_for('routes.admin_scan') }}" class="btn btn-dark w-100 fw-bold">
+                          <i class="bi bi-plus-circle"></i> Escanear QR Code
+                      </a>
+                  </div>
+
                     <!-- Exclusão de todas as oficinas -->
                     <form action="{{ url_for('routes.excluir_todas_oficinas') }}"
                           method="post"

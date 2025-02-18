@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Leitor de QR Code{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center text-dark mb-4">Leitor de QR Code</h2>
+  <div id="reader" style="width: 400px; margin: 0 auto;"></div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Importa a lib do html5-qrcode -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  function onScanSuccess(decodedText, decodedResult) {
+    // Redireciona para a rota do checkin
+    window.location.href = "/leitor_checkin?token=" + decodedText;
+  }
+  function onScanFailure(error) {
+    console.warn(`QR Code não detectado: ${error}`);
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  });
+</script>
+{% endblock %}
