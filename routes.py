@@ -64,9 +64,15 @@ def cadastro_participante():
         email = request.form.get('email')
         senha = request.form.get('senha')
         formacao = request.form.get('formacao')
+        # CAPTURA DOS CAMPOS DE LOCALIZAÇÃO (como array, pois são multi-select):
+        estados = request.form.getlist('estados[]')
+        cidades = request.form.getlist('cidades[]')
+        # Junta os valores selecionados em strings separadas por vírgula:
+        estados_str = ','.join(estados) if estados else ''
+        cidades_str = ','.join(cidades) if cidades else ''
 
-        print(f"📌 Recebido: Nome={nome}, CPF={cpf}, Email={email}, Formação={formacao}, Senha={senha}")
-        
+        print(f"📌 Recebido: Nome={nome}, CPF={cpf}, Email={email}, Formação={formacao}, Estados={estados_str}, Cidades={cidades_str}")
+
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
         if usuario_existente:
@@ -86,7 +92,9 @@ def cadastro_participante():
                 email=email,
                 senha=generate_password_hash(senha),
                 formacao=formacao,
-                tipo='participante'
+                tipo='participante',
+                estados=estados_str,
+                cidades=cidades_str
             )
             try:
                 db.session.add(novo_usuario)
@@ -99,6 +107,52 @@ def cadastro_participante():
                 alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
 
     return render_template('cadastro_participante.html', alert=alert)
+
+# ===========================
+#      EDITAR PARTICIPANTE
+# ===========================
+
+@routes.route('/editar_participante', methods=['GET', 'POST'])
+@login_required
+def editar_participante():
+    # Verifica se o usuário logado é do tipo participante
+    if current_user.tipo != 'participante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    if request.method == 'POST':
+        # Captura os dados enviados pelo formulário de edição
+        nome = request.form.get('nome')
+        cpf = request.form.get('cpf')
+        email = request.form.get('email')
+        formacao = request.form.get('formacao')
+        # Captura os arrays dos locais (estados e cidades)
+        estados = request.form.getlist('estados[]')
+        cidades = request.form.getlist('cidades[]')
+        # Atualiza os dados do usuário
+        current_user.nome = nome
+        current_user.cpf = cpf
+        current_user.email = email
+        current_user.formacao = formacao
+        # Armazena os locais como strings separadas por vírgula
+        current_user.estados = ','.join(estados) if estados else ''
+        current_user.cidades = ','.join(cidades) if cidades else ''
+        
+        # Se o participante informar uma nova senha, atualiza-a
+        nova_senha = request.form.get('senha')
+        if nova_senha:
+            current_user.senha = generate_password_hash(nova_senha)
+        
+        try:
+            db.session.commit()
+            flash("Perfil atualizado com sucesso!", "success")
+            return redirect(url_for('routes.dashboard_participante'))
+        except Exception as e:
+            db.session.rollback()
+            flash("Erro ao atualizar o perfil: " + str(e), "danger")
+    
+    # Renderiza o template passando o usuário logado (current_user)
+    return render_template('editar_participante.html', usuario=current_user)
 
 
 # ===========================
@@ -187,24 +241,31 @@ def logout():
 @login_required
 def dashboard():
     if current_user.tipo == 'admin':
-        oficinas = Oficina.query.all()
+        # Obtem os filtros (vazios se não fornecidos)
+        estado_filter = request.args.get('estado', '').strip()
+        cidade_filter = request.args.get('cidade', '').strip()
+
+        # Inicia a query e adiciona os filtros se existirem
+        query = Oficina.query
+        if estado_filter:
+            query = query.filter(Oficina.estado == estado_filter)
+        if cidade_filter:
+            query = query.filter(Oficina.cidade == cidade_filter)
+        oficinas = query.all()
+
         oficinas_com_inscritos = []
         
-        # Importante: Buscar os ministrantes cadastrados
+        # Busca os ministrantes e configurações
         ministrantes = Ministrante.query.all()
-        
-        # Consulta os relatórios, ordenando os mais recentes primeiro
         relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
-        
-        # Buscar configurações
         configuracao = Configuracao.query.first()
         permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
         habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
-        
+
+        # Processa as oficinas (incluindo datas e inscritos)
         for oficina in oficinas:
             dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
             dias_formatados = [dia.data.strftime('%d/%m/%Y') for dia in dias]
-            
             inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).all()
             inscritos_info = []
             for inscricao in inscritos:
@@ -217,13 +278,16 @@ def dashboard():
                         'email': usuario.email,
                         'formacao': usuario.formacao
                     })
-            
             oficinas_com_inscritos.append({
                 'id': oficina.id,
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
+<<<<<<< HEAD
                 # Acessa o ministrante via relacionamento (backref: ministrante_obj)
                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
+=======
+                'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
+>>>>>>> origin/main
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
                 'dias': dias_formatados,
@@ -237,9 +301,12 @@ def dashboard():
                                relatorios=relatorios,
                                permitir_checkin_global=permitir_checkin_global,
                                habilitar_feedback=habilitar_feedback,
+                               estado_filter=estado_filter,
+                               cidade_filter=cidade_filter
                                )
     
     return redirect(url_for('routes.dashboard_participante'))
+
 
 
 @routes.route('/dashboard_participante')
@@ -248,7 +315,17 @@ def dashboard_participante():
     if current_user.tipo != 'participante':
         return redirect(url_for('routes.dashboard'))
 
-    oficinas = Oficina.query.all()
+    # Se o participante registrou localizações, filtra as oficinas.
+    if current_user.estados and current_user.cidades:
+        estados = [e.strip() for e in current_user.estados.split(',') if e.strip()]
+        cidades = [c.strip() for c in current_user.cidades.split(',') if c.strip()]
+        oficinas = Oficina.query.filter(
+            Oficina.estado.in_(estados),
+            Oficina.cidade.in_(cidades)
+        ).all()
+    else:
+        oficinas = Oficina.query.all()
+
     configuracao = Configuracao.query.first()
     permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
     habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
@@ -263,8 +340,7 @@ def dashboard_participante():
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            # Atualize aqui para acessar o ministrante via relacionamento:
-            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
+            'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': [dia.data.strftime('%d/%m/%Y') for dia in dias],
@@ -274,7 +350,6 @@ def dashboard_participante():
             oficinas_inscrito.append(oficina_formatada)
         else:
             oficinas_nao_inscrito.append(oficina_formatada)
-
     oficinas_ordenadas = oficinas_inscrito + oficinas_nao_inscrito
 
     return render_template('dashboard_participante.html', 
@@ -282,6 +357,7 @@ def dashboard_participante():
                            oficinas=oficinas_ordenadas, 
                            permitir_checkin_global=permitir_checkin_global,
                            habilitar_feedback=habilitar_feedback)
+
 
 
 # ===========================

@@ -18,12 +18,17 @@ class Usuario(db.Model, UserMixin):
     senha = db.Column(db.String(255), nullable=False)
     formacao = db.Column(db.String(255), nullable=False)
     tipo = db.Column(db.String(20), nullable=False, default='participante')
+    # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
+    estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
+    cidades = db.Column(db.String(255), nullable=True)   # Ex.: "São Paulo,Rio de Janeiro,Belo Horizonte"
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)
 
     def __repr__(self):
         return f"<Usuario {self.nome}>"
+
+
 
 
 # =================================

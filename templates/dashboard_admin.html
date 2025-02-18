@@ -307,10 +307,31 @@
             </div>
         </div>
 
-        
 
     <!-- Seção de Gerenciamento de Oficinas -->
-    <h3 class="text-center text-dark mt-5">Gerenciamento de Oficinas</h3>
+    <h3 class="text-center text-dark mt-5">Gerenciamento de Oficinas</h3><br>
+    <!-- Filtro de Estado e Cidade -->
+    <form method="GET" action="{{ url_for('routes.dashboard') }}">
+      <div class="row mb-4">
+         <div class="col-md-4">
+             <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
+             <select id="estadoSelect" name="estado" class="form-select">
+                 <option value="">Todos os Estados</option>
+             </select>
+         </div>
+         <div class="col-md-4">
+             <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
+             <select id="cidadeSelect" name="cidade" class="form-select">
+                 <option value="">Todas as Cidades</option>
+             </select>
+         </div>
+         <div class="col-md-4 d-flex align-items-end">
+             <button type="submit" class="btn btn-primary">Filtrar</button>
+         </div>
+      </div>
+    </form>
+    
+
     <div class="row mt-4">
         {% for oficina in oficinas %}
         <div class="col-md-6 col-lg-4 mb-4">
@@ -493,6 +514,62 @@
     </div><!-- Fim row das oficinas -->
 
 </div><!-- Fim container -->
+
+<!-- Script para buscar estados e cidades usando a API do IBGE -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      const estadoSelect = document.getElementById('estadoSelect');
+      const cidadeSelect = document.getElementById('cidadeSelect');
+      const estadoFilter = "{{ estado_filter|default('') }}";
+      const cidadeFilter = "{{ cidade_filter|default('') }}";
+  
+      // Busca todos os estados – usando a API de localidades do IBGE
+      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+        .then(response => response.json())
+        .then(data => {
+            // Ordena os estados por nome
+            data.sort((a, b) => a.nome.localeCompare(b.nome));
+            data.forEach(estado => {
+                const option = document.createElement('option');
+                option.value = estado.sigla;
+                option.text = estado.nome;
+                if (estado.sigla === estadoFilter) {
+                    option.selected = true;
+                }
+                estadoSelect.add(option);
+            });
+            // Se já houver estado selecionado, dispara o evento para carregar as cidades
+            if(estadoSelect.value) {
+                estadoSelect.dispatchEvent(new Event('change'));
+            }
+        })
+        .catch(error => console.error('Erro ao buscar estados:', error));
+  
+      // Quando o estado for alterado, busca as cidades correspondentes
+      estadoSelect.addEventListener('change', function() {
+          const uf = this.value;
+          // Limpa as opções atuais de cidade
+          cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
+          if (uf) {
+              fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf + '/municipios')
+                .then(response => response.json())
+                .then(data => {
+                    data.sort((a, b) => a.nome.localeCompare(b.nome));
+                    data.forEach(cidade => {
+                        const option = document.createElement('option');
+                        option.value = cidade.nome;
+                        option.text = cidade.nome;
+                        if(cidade.nome === cidadeFilter) {
+                            option.selected = true;
+                        }
+                        cidadeSelect.add(option);
+                    });
+                })
+                .catch(error => console.error('Erro ao buscar cidades:', error));
+          }
+      });
+  });
+  </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
