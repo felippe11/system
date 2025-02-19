@@ -15,7 +15,11 @@ from werkzeug.utils import secure_filename
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
                     Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina)
-from utils import obter_estados, obter_cidades, gerar_qr_code  # Funções auxiliares
+from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf   # Funções auxiliares
+from reportlab.lib.units import inch
+
+
+
 
 # ReportLab para PDFs
 from reportlab.pdfgen import canvas
@@ -244,6 +248,10 @@ def dashboard():
         # Obtem os filtros (vazios se não fornecidos)
         estado_filter = request.args.get('estado', '').strip()
         cidade_filter = request.args.get('cidade', '').strip()
+        
+         # Obtém os check-ins que foram feitos com a palavra_chave = 'QR-AUTO'
+        checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
+        
 
         # Inicia a query e adiciona os filtros se existirem
         query = Oficina.query
@@ -261,6 +269,7 @@ def dashboard():
         configuracao = Configuracao.query.first()
         permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
         habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+        
 
         # Processa as oficinas (incluindo datas e inscritos)
         for oficina in oficinas:
@@ -301,7 +310,8 @@ def dashboard():
                                permitir_checkin_global=permitir_checkin_global,
                                habilitar_feedback=habilitar_feedback,
                                estado_filter=estado_filter,
-                               cidade_filter=cidade_filter
+                               cidade_filter=cidade_filter,
+                               checkins_via_qr=checkins_via_qr
                                )
     
     return redirect(url_for('routes.dashboard_participante'))
@@ -653,44 +663,45 @@ def remover_inscricao(oficina_id):
 # ===========================
 @routes.route('/leitor_checkin', methods=['GET'])
 @login_required
-def gerar_comprovante_pdf(usuario, oficina, inscricao):
-    pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
-    pdf_path = os.path.join("static/comprovantes", pdf_filename)
-    os.makedirs("static/comprovantes", exist_ok=True)
+def leitor_checkin():
+    # Se quiser que somente admin/staff faça check-in, verifique current_user.tipo
+    # if current_user.tipo not in ('admin', 'staff'):
+    #     flash("Acesso negado!", "danger")
+    #     return redirect(url_for('routes.dashboard'))
 
-    # Gera o QR Code da inscrição
-    qr_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
-    
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    width, height = letter
+    # 1. Obtém o token enviado pelo QR Code
+    token = request.args.get('token')
+    if not token:
+        flash("Token não fornecido ou inválido.", "danger")
+        return redirect(url_for('routes.dashboard'))
 
-    c.setFont("Helvetica-Bold", 18)
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.drawString(200, height - 80, "Comprovante de Inscrição")
-    c.setStrokeColor(colors.HexColor("#00A8CC"))
-    c.setLineWidth(2)
-    c.line(50, height - 90, 550, height - 90)
+    # 2. Busca a inscrição correspondente
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        flash("Inscrição não encontrada para este token.", "danger")
+        return redirect(url_for('routes.dashboard'))
 
-    c.setFont("Helvetica", 12)
-    c.setFillColor(colors.black)
-    y_position = height - 120
-    dados = [
-        f"Nome: {usuario.nome}",
-        f"CPF: {usuario.cpf}",
-        f"E-mail: {usuario.email}",
-        f"Oficina: {oficina.titulo}"
-    ]
-    for dado in dados:
-        c.drawString(50, y_position, dado)
-        y_position -= 20
+    # 3. Verifica se o check-in já foi feito anteriormente
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id, 
+        oficina_id=inscricao.oficina_id
+    ).first()
+    if checkin_existente:
+        flash("Check-in já foi realizado!", "warning")
+        return redirect(url_for('routes.dashboard'))
 
-    # Desenhar o QR Code (caso queira imprimir no PDF)
-    qr_img = ImageReader(qr_path)
-    c.drawImage(qr_img, 400, y_position - 100, width=100, height=100)
+    # 4. Registra o novo check-in
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO"  # Se quiser indicar que foi via QR
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
 
-    c.showPage()
-    c.save()
-    return pdf_path
+    flash("Check-in realizado com sucesso!", "success")
+    # 5. Redireciona ao dashboard (admin ou participante, conforme sua lógica)
+    return redirect(url_for('routes.dashboard'))
 
 @routes.route('/baixar_comprovante/<int:oficina_id>')
 @login_required
@@ -699,13 +710,22 @@ def baixar_comprovante(oficina_id):
     if not oficina:
         flash('Oficina não encontrada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
-    pdf_path = gerar_comprovante_pdf(current_user, oficina)
+
+    # Busca a inscrição do usuário logado nessa oficina
+    inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
+    if not inscricao:
+        flash('Você não está inscrito nesta oficina.', 'danger')
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # Agora chamamos a função com o parâmetro adicional "inscricao"
+    pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
     return send_file(pdf_path, as_attachment=True)
 
 
 # ===========================
 # GERAÇÃO DE PDFs (Inscritos, Lista de Frequência, Certificados, Check-ins, Oficina)
 # ===========================
+
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -1687,46 +1707,6 @@ def gerenciar_ministrantes():
     ministrantes = Ministrante.query.all()
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
 
-@routes.route('/leitor_checkin', methods=['GET'])
-@login_required
-def leitor_checkin():
-    # Verifica se o user atual é admin ou staff
-    # Caso queira que "qualquer um" possa ler, basta remover a verificação
-    if current_user.tipo not in ('admin', 'staff'):
-        flash("Acesso negado! Apenas staff/admin podem efetuar check-in.", "danger")
-        return redirect(url_for('routes.dashboard'))
-    
-    token = request.args.get('token', None)
-    if not token:
-        flash("Token não encontrado no QR Code!", "danger")
-        return redirect(url_for('routes.dashboard'))
-    
-    # Busca a inscrição que tem esse token
-    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
-    if not inscricao:
-        flash("Inscrição não encontrada ou token inválido!", "danger")
-        return redirect(url_for('routes.dashboard'))
-    
-    # Registra o check-in
-    # Verifica se já existe check-in para esse usuário e oficina, se quiser evitar duplicidade
-    checkin_existente = Checkin.query.filter_by(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id
-    ).first()
-    if checkin_existente:
-        flash("Check-in já foi realizado anteriormente!", "warning")
-        return redirect(url_for('routes.dashboard'))
-    
-    novo_checkin = Checkin(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id,
-        palavra_chave="QR-AUTO",  # Se quiser registrar algo indicando que foi via QR
-    )
-    db.session.add(novo_checkin)
-    db.session.commit()
-    
-    flash(f"Check-in realizado com sucesso para {inscricao.usuario.nome}!", "success")
-    return redirect(url_for('routes.dashboard'))
 
 @routes.route('/admin_scan')
 @login_required
