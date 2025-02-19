@@ -1,9 +1,10 @@
 import os
+import uuid
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
-
+from sqlalchemy.orm import relationship  # Adicione esta linha!
 
 # =================================
 #             USUÁRIO
@@ -82,9 +83,8 @@ class Oficina(db.Model):
     titulo = db.Column(db.String(100), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
-    
-    # Relação corretamente definida
-    ministrante = db.relationship('Ministrante', backref='oficinas')
+    ministrante = db.relationship("Ministrante", backref="oficinas", lazy=True)
+
     
     vagas = db.Column(db.Integer, nullable=False)
     carga_horaria = db.Column(db.String(10), nullable=False)
@@ -135,10 +135,19 @@ class Inscricao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'))
-
+    
+    # Novo campo:
+    qr_code_token = db.Column(db.String(100), unique=True, nullable=True)
+    
     usuario = db.relationship('Usuario', backref='inscricoes')
     oficina = db.relationship('Oficina', backref='inscritos')
-
+    
+    def __init__(self, usuario_id, oficina_id):
+        self.usuario_id = usuario_id
+        self.oficina_id = oficina_id
+        # Exemplo: usar uuid4
+        self.qr_code_token = str(uuid.uuid4())
+    
     def __repr__(self):
         return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
 
@@ -198,6 +207,7 @@ class MaterialOficina(db.Model):
 
     def __repr__(self):
         return f"<MaterialOficina id={self.id}, arquivo={self.nome_arquivo}>"
+    
 
 
 # =================================

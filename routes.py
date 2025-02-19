@@ -15,7 +15,11 @@ from werkzeug.utils import secure_filename
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
                     Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina)
-from utils import obter_estados, obter_cidades, gerar_qr_code  # Funções auxiliares
+from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf   # Funções auxiliares
+from reportlab.lib.units import inch
+
+
+
 
 # ReportLab para PDFs
 from reportlab.pdfgen import canvas
@@ -26,6 +30,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+
 
 # Registrar a fonte personalizada
 pdfmetrics.registerFont(TTFont("AlexBrush", "AlexBrush-Regular.ttf"))
@@ -243,6 +248,10 @@ def dashboard():
         # Obtem os filtros (vazios se não fornecidos)
         estado_filter = request.args.get('estado', '').strip()
         cidade_filter = request.args.get('cidade', '').strip()
+        
+         # Obtém os check-ins que foram feitos com a palavra_chave = 'QR-AUTO'
+        checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
+        
 
         # Inicia a query e adiciona os filtros se existirem
         query = Oficina.query
@@ -260,6 +269,7 @@ def dashboard():
         configuracao = Configuracao.query.first()
         permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
         habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+        
 
         # Processa as oficinas (incluindo datas e inscritos)
         for oficina in oficinas:
@@ -281,7 +291,11 @@ def dashboard():
                 'id': oficina.id,
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
+
+                # Acessa o ministrante via relacionamento (backref: ministrante_obj)
+
                 'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
+
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
                 'dias': dias_formatados,
@@ -296,7 +310,8 @@ def dashboard():
                                permitir_checkin_global=permitir_checkin_global,
                                habilitar_feedback=habilitar_feedback,
                                estado_filter=estado_filter,
-                               cidade_filter=cidade_filter
+                               cidade_filter=cidade_filter,
+                               checkins_via_qr=checkins_via_qr
                                )
     
     return redirect(url_for('routes.dashboard_participante'))
@@ -538,7 +553,7 @@ def excluir_oficina(oficina_id):
     try:
         print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")
 
-        # 1. Excluir Feedbacks relacionados à oficina (removendo individualmente)
+        # 1. Excluir Feedbacks relacionados à oficina
         feedbacks = Feedback.query.filter_by(oficina_id=oficina.id).all()
         for fb in feedbacks:
             db.session.delete(fb)
@@ -560,17 +575,33 @@ def excluir_oficina(oficina_id):
         db.session.commit()
         print("✅ [DEBUG] Dias da oficina removidos.")
 
-        # 5. Excluir a própria oficina
+        # 5. Excluir Materiais associados à oficina
+        materiais = MaterialOficina.query.filter_by(oficina_id=oficina.id).all()
+        for material in materiais:
+            db.session.delete(material)
+        db.session.commit()
+        print("✅ [DEBUG] Materiais da oficina removidos.")
+
+        # 6. Excluir Relatórios associados à oficina (NOVO TRECHO)
+        relatorios = RelatorioOficina.query.filter_by(oficina_id=oficina.id).all()
+        for relatorio in relatorios:
+            db.session.delete(relatorio)
+        db.session.commit()
+        print("✅ [DEBUG] Relatórios da oficina removidos.")
+
+        # 7. Excluir a própria oficina
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
         flash('Oficina excluída com sucesso!', 'success')
+
     except Exception as e:
         db.session.rollback()
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
     return redirect(url_for('routes.dashboard'))
+
 
 
 # ===========================
@@ -592,16 +623,21 @@ def inscrever(oficina_id):
         flash('Esta oficina está lotada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
 
+    # Evita duplicidade
     if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
         flash('Você já está inscrito nesta oficina!', 'warning')
         return redirect(url_for('routes.dashboard_participante'))
 
+    # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
     inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id)
     db.session.add(inscricao)
     db.session.commit()
 
-    pdf_path = gerar_comprovante_pdf(current_user, oficina)
+    # Gera PDF de comprovante (com QR Code embutido)
+    pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+    
+    # Retorna via JSON (pode ficar do mesmo jeito ou redirecionar)
     return jsonify({'success': True, 'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)})
 
 @routes.route('/remover_inscricao/<int:oficina_id>', methods=['POST'])
@@ -625,43 +661,47 @@ def remover_inscricao(oficina_id):
 # ===========================
 #   COMPROVANTE DE INSCRIÇÃO (PDF)
 # ===========================
-def gerar_comprovante_pdf(usuario, oficina):
-    pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
-    pdf_path = os.path.join("static/comprovantes", pdf_filename)
-    os.makedirs("static/comprovantes", exist_ok=True)
+@routes.route('/leitor_checkin', methods=['GET'])
+@login_required
+def leitor_checkin():
+    # Se quiser que somente admin/staff faça check-in, verifique current_user.tipo
+    # if current_user.tipo not in ('admin', 'staff'):
+    #     flash("Acesso negado!", "danger")
+    #     return redirect(url_for('routes.dashboard'))
 
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    width, height = letter
+    # 1. Obtém o token enviado pelo QR Code
+    token = request.args.get('token')
+    if not token:
+        flash("Token não fornecido ou inválido.", "danger")
+        return redirect(url_for('routes.dashboard'))
 
-    c.setFont("Helvetica-Bold", 18)
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.drawString(200, height - 80, "Comprovante de Inscrição")
-    c.setStrokeColor(colors.HexColor("#00A8CC"))
-    c.setLineWidth(2)
-    c.line(50, height - 90, 550, height - 90)
+    # 2. Busca a inscrição correspondente
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        flash("Inscrição não encontrada para este token.", "danger")
+        return redirect(url_for('routes.dashboard'))
 
-    c.setFont("Helvetica", 12)
-    c.setFillColor(colors.black)
-    y_position = height - 120
-    dados = [
-        f"Nome: {usuario.nome}",
-        f"CPF: {usuario.cpf}",
-        f"E-mail: {usuario.email}",
-        f"Oficina: {oficina.titulo}",
-        f"Ministrante: {oficina.ministrante}",
-    ]
-    for dado in dados:
-        c.drawString(50, y_position, dado)
-        y_position -= 20
+    # 3. Verifica se o check-in já foi feito anteriormente
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id, 
+        oficina_id=inscricao.oficina_id
+    ).first()
+    if checkin_existente:
+        flash("Check-in já foi realizado!", "warning")
+        return redirect(url_for('routes.dashboard'))
 
-    for dia in oficina.dias:
-        c.drawString(50, y_position, f"Data: {dia.data.strftime('%d/%m/%Y')}")
-        y_position -= 20
+    # 4. Registra o novo check-in
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO"  # Se quiser indicar que foi via QR
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
 
-    c.line(50, y_position - 30, 250, y_position - 30)
-    c.drawString(50, y_position - 45, "Assinatura do Coordenador")
-    c.save()
-    return pdf_path
+    flash("Check-in realizado com sucesso!", "success")
+    # 5. Redireciona ao dashboard (admin ou participante, conforme sua lógica)
+    return redirect(url_for('routes.dashboard'))
 
 @routes.route('/baixar_comprovante/<int:oficina_id>')
 @login_required
@@ -670,114 +710,159 @@ def baixar_comprovante(oficina_id):
     if not oficina:
         flash('Oficina não encontrada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
-    pdf_path = gerar_comprovante_pdf(current_user, oficina)
+
+    # Busca a inscrição do usuário logado nessa oficina
+    inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
+    if not inscricao:
+        flash('Você não está inscrito nesta oficina.', 'danger')
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # Agora chamamos a função com o parâmetro adicional "inscricao"
+    pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
     return send_file(pdf_path, as_attachment=True)
 
 
 # ===========================
 # GERAÇÃO DE PDFs (Inscritos, Lista de Frequência, Certificados, Check-ins, Oficina)
 # ===========================
-def gerar_pdf_inscritos_pdf(oficina, pdf_path):
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16)
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.drawString(180, 750, f"Lista de Inscritos - {oficina.titulo}")
-    c.setStrokeColor(colors.black)
-    c.line(50, 740, 550, 740)
-    c.setFont("Helvetica", 12)
-    c.drawString(50, 720, f"Ministrante: {oficina.ministrante}")
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.drawString(50, 700, "Datas e Horários:")
-    y_position = 680
-    c.setFont("Helvetica", 11)
-    c.setFillColor(colors.black)
-    for dia in oficina.dias:
-        data_formatada = dia.data.strftime('%d/%m/%Y')
-        horario_inicio = dia.horario_inicio
-        horario_fim = dia.horario_fim
-        c.drawString(50, y_position, f"📅 {data_formatada}  |  ⏰ {horario_inicio} às {horario_fim}")
-        y_position -= 20
-    c.line(50, y_position - 5, 550, y_position - 5)
-    y_position -= 30
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.drawString(50, y_position, "Lista de Inscritos:")
-    y_position -= 20
+
+def gerar_lista_frequencia_pdf(oficina, pdf_path):
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+
+    # Configurações do documento
+    styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements = []
+
+    # Título
+    elements.append(Paragraph(f"Lista de Frequência - {oficina.titulo}", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    # Informações da oficina
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
+
+    # Datas e horários
+    if oficina.dias:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", styles['Normal']))
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            horario_inicio = dia.horario_inicio
+            horario_fim = dia.horario_fim
+            elements.append(Paragraph(f"📅 {data_formatada} | ⏰ {horario_inicio} às {horario_fim}", styles['Normal']))
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", styles['Normal']))
+
+    elements.append(Spacer(1, 20))
+
+    # Tabela de frequência
+    table_data = [["Nome Completo", "Assinatura"]]
+    for inscricao in oficina.inscritos:
+        table_data.append([
+            Paragraph(inscricao.usuario.nome, styles['Normal']),
+            "",  # Espaço para assinatura
+        ])
+
+    # Criar a tabela
+    table = Table(table_data, colWidths=[300, 200])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 20))
+
+    # Assinatura
+    elements.append(Paragraph("Assinatura do Coordenador", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Gerar o PDF
+    doc.build(elements)
+    
+    
+@routes.route('/gerar_pdf_inscritos/<int:oficina_id>', methods=['GET'])
+@login_required
+def gerar_pdf_inscritos_pdf(oficina_id):
+    # Busca a oficina no banco de dados
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Define o caminho onde o PDF será salvo
+    pdf_filename = f"inscritos_oficina_{oficina.id}.pdf"
+    pdf_path = os.path.join("static/comprovantes", pdf_filename)
+    os.makedirs("static/comprovantes", exist_ok=True)
+
+    # Configurações do documento
+    styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements = []
+
+    # Título
+    elements.append(Paragraph(f"Lista de Inscritos - {oficina.titulo}", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+    # Informações da oficina
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
+
+    # Datas e horários
+    if oficina.dias:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", styles['Normal']))
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            horario_inicio = dia.horario_inicio
+            horario_fim = dia.horario_fim
+            elements.append(Paragraph(f"📅 {data_formatada} | ⏰ {horario_inicio} às {horario_fim}", styles['Normal']))
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", styles['Normal']))
+
+    elements.append(Spacer(1, 20))
+
+    # Tabela de inscritos
     table_data = [["Nome", "CPF", "E-mail"]]
     for inscricao in oficina.inscritos:
-        table_data.append([inscricao.usuario.nome, inscricao.usuario.cpf, inscricao.usuario.email])
-    from reportlab.platypus import Table  # Import local para garantir
+        table_data.append([
+            Paragraph(inscricao.usuario.nome, styles['Normal']),
+            Paragraph(inscricao.usuario.cpf, styles['Normal']),
+            Paragraph(inscricao.usuario.email, styles['Normal']),
+        ])
+
+    # Criar a tabela
     table = Table(table_data, colWidths=[200, 120, 200])
-    table_style = TableStyle([
+    table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ])
-    table.setStyle(table_style)
-    table.wrapOn(c, 50, y_position)
-    table.drawOn(c, 50, y_position - 100)
-    y_position -= (len(oficina.inscritos) * 20) + 130
-    c.line(50, y_position, 250, y_position)
-    c.setFont("Helvetica", 11)
-    c.drawString(50, y_position - 15, "Assinatura do Coordenador")
-    c.save()
-
-@routes.route('/gerar_pdf_inscritos/<int:oficina_id>', methods=['GET'])
-@login_required
-def gerar_pdf_inscritos(oficina_id):
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('routes.dashboard'))
-    os.makedirs("static/comprovantes", exist_ok=True)
-    pdf_filename = f"inscritos_{oficina.id}.pdf"
-    pdf_path = os.path.join("static/comprovantes", pdf_filename)
-    gerar_pdf_inscritos_pdf(oficina, pdf_path)
-    return send_file(pdf_path, as_attachment=True)
-
-def gerar_lista_frequencia_pdf(oficina, pdf_path):
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(180, 750, f"Lista de Frequência - {oficina.titulo}")
-    c.setFont("Helvetica", 12)
-    c.drawString(50, 720, f"Ministrante: {oficina.ministrante}")
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, 700, "Datas e Horários:")
-    y_position = 680
-    c.setFont("Helvetica", 11)
-    for dia in oficina.dias:
-        data_formatada = dia.data.strftime('%d/%m/%Y')
-        horario_inicio = dia.horario_inicio
-        horario_fim = dia.horario_fim
-        c.drawString(50, y_position, f"{data_formatada} - {horario_inicio} às {horario_fim}")
-        y_position -= 20
-    y_position -= 20
-    from reportlab.platypus import Table
-    table_data = [["Nome Completo", "Assinatura"]]
-    for inscricao in oficina.inscritos:
-        table_data.append([inscricao.usuario.nome, ""])
-    table = Table(table_data, colWidths=[300, 200])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 12),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-        ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-        ("GRID", (0, 0), (-1, -1), 1, colors.black),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
     ]))
-    table.wrapOn(c, 50, y_position)
-    table.drawOn(c, 50, y_position - (len(table_data) * 20))
-    c.drawString(50, y_position - (len(table_data) * 20) - 40, "__________________________")
-    c.drawString(50, y_position - (len(table_data) * 20) - 55, "Assinatura do Coordenador")
-    c.save()
 
+    elements.append(table)
+    elements.append(Spacer(1, 20))
+
+    # Assinatura
+    elements.append(Paragraph("Assinatura do Coordenador", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Gerar o PDF
+    doc.build(elements)
+
+    # Retorna o arquivo PDF gerado
+    return send_file(pdf_path, as_attachment=True)
+    
 @routes.route('/gerar_lista_frequencia/<int:oficina_id>')
 @login_required
 def gerar_lista_frequencia(oficina_id):
@@ -791,32 +876,49 @@ def gerar_lista_frequencia(oficina_id):
     return send_file(pdf_path, as_attachment=True)
 
 def gerar_certificados_pdf(oficina, inscritos, pdf_path):
-    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+
+    # Configurações do documento
+    styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(pdf_path, pagesize=landscape(A4))
+    elements = []
+
+    # Fundo do certificado
     fundo_path = "static/Certificado IAFAP.png"
+    try:
+        fundo = Image(fundo_path, width=A4[1], height=A4[0])
+        elements.append(fundo)
+    except Exception as e:
+        print("⚠️ Fundo do certificado não encontrado:", e)
+
+    # Conteúdo do certificado
     for inscrito in inscritos:
-        try:
-            fundo = ImageReader(fundo_path)
-            c.drawImage(fundo, 0, 0, width=A4[1], height=A4[0])
-        except Exception as e:
-            print("⚠️ Fundo do certificado não encontrado:", e)
-        c.setFont("AlexBrush", 35)
-        c.setFillColor(colors.black)
-        c.drawCentredString(420, 310, inscrito.usuario.nome)
-        c.setFont("Helvetica", 16)
-        texto_oficina = f"participou da oficina {oficina.titulo}, ministrada por {oficina.ministrante},"
-        c.drawCentredString(420, 270, texto_oficina)
+        elements.append(Spacer(1, 100))
+        elements.append(Paragraph(inscrito.usuario.nome, styles['Title']))
+        elements.append(Spacer(1, 20))
+
+        ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+        texto_oficina = f"participou da oficina {oficina.titulo}, ministrada por {ministrante_nome},"
+        elements.append(Paragraph(texto_oficina, styles['Normal']))
+        elements.append(Spacer(1, 10))
+
         texto_carga_horaria = f"com carga horária de {oficina.carga_horaria} horas, realizada nos dias:"
-        c.drawCentredString(420, 240, texto_carga_horaria)
+        elements.append(Paragraph(texto_carga_horaria, styles['Normal']))
+        elements.append(Spacer(1, 10))
+
         if len(oficina.dias) > 1:
             datas_formatadas = ", ".join([dia.data.strftime('%d/%m/%Y') for dia in oficina.dias[:-1]]) + \
-                                " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
+                              " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
         else:
             datas_formatadas = oficina.dias[0].data.strftime('%d/%m/%Y')
-        c.setFont("Helvetica", 16)
-        c.drawCentredString(420, 210, datas_formatadas)
-        c.showPage()
-    c.save()
+        elements.append(Paragraph(datas_formatadas, styles['Normal']))
+        elements.append(Spacer(1, 20))
 
+        # Nova página para o próximo certificado
+        elements.append(PageBreak())
+
+    # Gerar o PDF
+    doc.build(elements)
+    
 @routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
 @login_required
 def gerar_certificados(oficina_id):
@@ -890,6 +992,7 @@ def gerar_pdf_checkins(oficina_id):
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
     dias = OficinaDia.query.filter_by(oficina_id=oficina_id).all()
     pdf_path = f"static/checkins_oficina_{oficina.id}.pdf"
+    
     styles = getSampleStyleSheet()
     header_style = ParagraphStyle(
         name="Header",
@@ -899,20 +1002,32 @@ def gerar_pdf_checkins(oficina_id):
         spaceAfter=12,
     )
     normal_style = styles["Normal"]
+    
     doc = SimpleDocTemplate(pdf_path, pagesize=letter)
     elementos = []
+    
+    # Corrigido: Acessa ministrante via ministrante_obj
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    
     elementos.append(Paragraph(f"Lista de Check-ins - {oficina.titulo}", header_style))
     elementos.append(Spacer(1, 12))
-    elementos.append(Paragraph(f"<b>Ministrante:</b> {oficina.ministrante}", normal_style))
+    elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))  # Linha corrigida
     elementos.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
+    
     if dias:
         elementos.append(Paragraph("<b>Datas:</b>", normal_style))
         for dia in dias:
             data_formatada = dia.data.strftime('%d/%m/%Y')
-            elementos.append(Paragraph(f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})", normal_style))
+            elementos.append(Paragraph(
+                f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})", 
+                normal_style
+            ))
     else:
         elementos.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", normal_style))
+    
     elementos.append(Spacer(1, 20))
+    
+    # Tabela de check-ins
     data_table = [["Nome", "CPF", "E-mail", "Data e Hora do Check-in"]]
     for checkin in checkins:
         data_table.append([
@@ -921,6 +1036,7 @@ def gerar_pdf_checkins(oficina_id):
             checkin.usuario.email,
             checkin.data_hora.strftime("%d/%m/%Y %H:%M"),
         ])
+    
     from reportlab.platypus import Table
     tabela = Table(data_table, colWidths=[150, 100, 200, 150])
     tabela.setStyle(TableStyle([
@@ -933,6 +1049,7 @@ def gerar_pdf_checkins(oficina_id):
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
     ]))
+    
     elementos.append(tabela)
     doc.build(elementos)
     return send_file(pdf_path, as_attachment=True)
@@ -959,7 +1076,8 @@ def gerar_pdf(oficina_id):
     c.drawCentredString(width / 2, height - 180, oficina.titulo.upper())
     c.setFont("Helvetica-Bold", 22)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(width / 2, height - 230, f"Ministrante: {oficina.ministrante}")
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    c.drawCentredString(width / 2, height - 230, f"Ministrante: {ministrante_nome}")
     c.setLineWidth(1)
     c.line(50, height - 250, width - 50, height - 250)
     c.setFont("Helvetica-Bold", 20)
@@ -1108,33 +1226,61 @@ def excluir_todas_oficinas():
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
         return redirect(url_for("routes.dashboard"))
+
     try:
         oficinas = Oficina.query.all()
         if not oficinas:
             flash("Não há oficinas para excluir.", "warning")
             return redirect(url_for("routes.dashboard"))
+
         print(f"📌 [DEBUG] Encontradas {len(oficinas)} oficinas para exclusão.")
+
         qr_code_folder = os.path.join("static", "qrcodes")
+
         for oficina in oficinas:
+            # Remover QR Code associado à oficina
             if oficina.qr_code:
                 qr_code_path = os.path.join(qr_code_folder, f"checkin_{oficina.id}.png")
                 if os.path.exists(qr_code_path):
                     os.remove(qr_code_path)
                     print(f"✅ [DEBUG] QR Code removido: {qr_code_path}")
-        num_inscricoes = db.session.query(Inscricao).delete()
-        print(f"✅ [DEBUG] {num_inscricoes} inscrições excluídas.")
+
+        # Excluir Feedbacks relacionados às oficinas
+        num_feedbacks = db.session.query(Feedback).delete()
+        print(f"✅ [DEBUG] {num_feedbacks} feedbacks excluídos.")
+
+        # Excluir Check-ins relacionados às oficinas
         num_checkins = db.session.query(Checkin).delete()
         print(f"✅ [DEBUG] {num_checkins} check-ins excluídos.")
+
+        # Excluir Inscrições associadas às oficinas
+        num_inscricoes = db.session.query(Inscricao).delete()
+        print(f"✅ [DEBUG] {num_inscricoes} inscrições excluídas.")
+
+        # Excluir Registros de Datas (OficinaDia)
         num_dias = db.session.query(OficinaDia).delete()
         print(f"✅ [DEBUG] {num_dias} registros de dias excluídos.")
+
+        # Excluir Materiais das Oficinas
+        num_materiais = db.session.query(MaterialOficina).delete()
+        print(f"✅ [DEBUG] {num_materiais} materiais de oficina excluídos.")
+
+        # Excluir Relatórios das Oficinas
+        num_relatorios = db.session.query(RelatorioOficina).delete()
+        print(f"✅ [DEBUG] {num_relatorios} relatórios de oficina excluídos.")
+
+        # Excluir as Oficinas após limpar todas as referências
         num_oficinas = db.session.query(Oficina).delete()
         print(f"✅ [DEBUG] {num_oficinas} oficinas excluídas.")
+
         db.session.commit()
         flash(f"{num_oficinas} oficinas e todos os dados relacionados foram excluídos com sucesso!", "success")
+
     except Exception as e:
         db.session.rollback()
         print(f"❌ [ERRO] Erro ao excluir oficinas: {str(e)}")
         flash(f"Erro ao excluir oficinas: {str(e)}", "danger")
+
     return redirect(url_for("routes.dashboard"))
 
 @routes.route("/importar_usuarios", methods=["POST"])
@@ -1562,4 +1708,10 @@ def gerenciar_ministrantes():
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
 
 
-
+@routes.route('/admin_scan')
+@login_required
+def admin_scan():
+    if current_user.tipo not in ('admin', 'staff'):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    return render_template("scan_qr.html")
