@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Leitor de QR Code{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center text-dark mb-4">Leitor de QR Code</h2>
+  <!-- O elemento que exibirá a câmera -->
+  <div id="reader" style="width: 400px; margin: 0 auto;"></div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<!-- Importa a lib html5-qrcode do CDN -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  function onScanSuccess(decodedText, decodedResult) {
+    // decodedText deve ser exatamente "http://127.0.0.1:5000/leitor_checkin?token=ALGUMA-UUID"
+    // Portanto, vamos redirecionar diretamente para essa URL,
+    // sem concatenar nada extra:
+    window.location.href = decodedText;
+  }
+
+  function onScanFailure(error) {
+    console.warn(`QR Code não detectado: ${error}`);
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Cria o scanner
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+  });
+</script>
+{% endblock %}
