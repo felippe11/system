@@ -109,7 +109,7 @@ def gerar_qr_code_inscricao(qr_code_token):
     # Se quiser testar localmente, use http://127.0.0.1:5000
     # Em produção, use seu domínio real, ex.: https://www.appfiber.com.br
     #qr_data = f"http://127.0.0.1:5000/leitor_checkin?token={qr_code_token}"
-    qr_data = f"https://www.appfiber.com.br/leitor_checkin?token={qr_code_token}
+    qr_data = f"https://www.appfiber.com.br/leitor_checkin?token={qr_code_token}"
 
     # IMPORTANTE: a URL/URI que será codificada aponta para uma rota
     # que faz o check-in ao ser acessada, ou que o app web decodifica e chama.
