@@ -84,7 +84,7 @@ class Oficina(db.Model):
     descricao = db.Column(db.Text, nullable=False)
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     ministrante = db.relationship("Ministrante", backref="oficinas", lazy=True)
-    observacao = db.Column(db.Text)  # Adicione um novo campo
+  
 
     
     vagas = db.Column(db.Integer, nullable=False)
