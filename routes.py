@@ -1741,7 +1741,7 @@ def gerar_pdf_checkins_qr():
     # 3. Configura o Documento
     doc = SimpleDocTemplate(
         pdf_path,
-        pagesize=letter,
+        pagesize=landscape(A4),
         rightMargin=20,
         leftMargin=20,
         topMargin=30,
