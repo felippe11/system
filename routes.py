@@ -4,6 +4,7 @@ import logging
 import pandas as pd
 import qrcode
 import requests
+from flask import send_from_directory
 from models import Ministrante
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
@@ -1716,3 +1717,91 @@ def admin_scan():
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
     return render_template("scan_qr.html")
+
+@routes.route('/relatorios/<path:filename>')
+@login_required
+def get_relatorio_file(filename):
+    # Ajuste o caminho para a pasta de relatórios
+    pasta_uploads = os.path.join('uploads', 'relatorios')
+    return send_from_directory(pasta_uploads, filename)
+
+@routes.route('/gerar_pdf_checkins_qr', methods=['GET'])
+@login_required
+def gerar_pdf_checkins_qr():
+    # 1. Busca os Check-ins com palavra_chave="QR-AUTO"
+    checkins_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
+    if not checkins_qr:
+        flash("Não há check-ins via QR Code para gerar o PDF.", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    # 2. Define o caminho do PDF (pasta static/comprovantes, por ex.)
+    pdf_filename = "checkins_via_qr.pdf"
+    pdf_path = os.path.join("static", "comprovantes", pdf_filename)
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # 3. Configura o Documento
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        rightMargin=20,
+        leftMargin=20,
+        topMargin=30,
+        bottomMargin=20
+    )
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # 4. Título
+    title_style = styles["Title"]
+    title_para = Paragraph("Lista de Check-ins via QR Code", title_style)
+    elements.append(title_para)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    # 5. Monta a tabela
+    # Cabeçalhos
+    data_table = [["Nome", "E-mail", "Oficina", "Data/Hora Check-in"]]
+
+    # Linhas do corpo
+    for ck in checkins_qr:
+        usuario = ck.usuario
+        oficina = ck.oficina
+        data_str = ck.data_hora.strftime('%d/%m/%Y %H:%M') if ck.data_hora else ""
+        data_table.append([
+            usuario.nome if usuario else "",
+            usuario.email if usuario else "",
+            oficina.titulo if oficina else "",
+            data_str
+        ])
+
+    # 6. Cria o objeto Table (flowable) e estilo
+    table = Table(
+        data_table,
+        colWidths=[2.0 * inch, 2.5 * inch, 2.5 * inch, 1.5 * inch]  # Ajuste conforme necessidade
+    )
+
+    table.setStyle(TableStyle([
+        # Cabeçalho com fundo azul e texto branco
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+
+        # Grid em toda a tabela
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+
+        # Fonte do cabeçalho
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+
+        # Alinhamento vertical
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+
+        # Repete cabeçalho em cada página
+        ('REPEATROWS', (0,0), (-1,0))
+    ]))
+
+    elements.append(table)
+
+    # 7. Constrói o PDF (o ReportLab fará a quebra de página automática)
+    doc.build(elements)
+
+    # 8. Retorna para download
+    return send_file(pdf_path, as_attachment=True)
