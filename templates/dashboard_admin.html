@@ -153,6 +153,16 @@
                 </tbody>
               </table>
             </div>
+
+             <!-- Botão para gerar PDF dos checkins via QR -->
+            <div class="d-flex justify-content-end">
+              <a href="{{ url_for('routes.gerar_pdf_checkins_qr') }}"
+                class="btn btn-outline-primary fw-bold">
+                <i class="bi bi-file-earmark-arrow-down"></i> Baixar PDF
+              </a>
+            </div>
+
+
           {% else %}
             <p>Nenhum check-in via QR Code encontrado até o momento.</p>
           {% endif %}
