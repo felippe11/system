@@ -228,6 +228,64 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de Relatórios Formadores -->
+<div class="modal fade" id="modalRelatorios" tabindex="-1" aria-labelledby="modalRelatoriosLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="modalRelatoriosLabel">Relatórios Formadores</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        {% if relatorios and relatorios|length > 0 %}
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Oficina</th>
+                  <th>Ministrante</th>
+                  <th>Metodologia</th>
+                  <th>Resultados</th>
+                  <th>Enviado Em</th>
+                  <th>Anexo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rel in relatorios %}
+                  <tr>
+                    <td>{{ rel.id }}</td>
+                    <td>{{ rel.oficina.titulo }}</td>
+                    <td>{{ rel.ministrante.nome }}</td>
+                    <td>{{ rel.metodologia }}</td>
+                    <td>{{ rel.resultados }}</td>
+                    <td>{{ rel.enviado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td>
+                      {% if rel.fotos_videos_path %}
+                      {% set nome_arquivo = rel.fotos_videos_path.split('/')[-1] %}
+                          <a href="{{ url_for('routes.get_relatorio_file', filename=nome_arquivo) }}">
+                            Visualizar
+                          </a>                    
+                      {% else %}
+                        N/A
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p>Nenhum relatório encontrado.</p>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
   
   <!-- Modal de Edição de Ministrante -->
   <div class="modal fade" id="modalEditarMinistrante" tabindex="-1" aria-labelledby="modalEditarMinistranteLabel" aria-hidden="true">

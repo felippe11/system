@@ -4,6 +4,7 @@ import logging
 import pandas as pd
 import qrcode
 import requests
+from flask import send_from_directory
 from models import Ministrante
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
@@ -1715,3 +1716,10 @@ def admin_scan():
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
     return render_template("scan_qr.html")
+
+@routes.route('/relatorios/<path:filename>')
+@login_required
+def get_relatorio_file(filename):
+    # Ajuste o caminho para a pasta de relatórios
+    pasta_uploads = os.path.join('uploads', 'relatorios')
+    return send_from_directory(pasta_uploads, filename)
