@@ -17,6 +17,7 @@ from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
                     Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina)
 from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf   # Funções auxiliares
 from reportlab.lib.units import inch
+from reportlab.platypus import Image
 
 
 
@@ -25,7 +26,7 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
@@ -178,7 +179,7 @@ def load_user(user_id):
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-@routes.route('/login', methods=['GET', 'POST'])
+@routes.route('/login', methods=['GET', 'POST'], endpoint='login')
 def login():
     if request.method == 'POST':
         email = request.form['email']
@@ -294,7 +295,7 @@ def dashboard():
 
                 # Acessa o ministrante via relacionamento (backref: ministrante_obj)
 
-                'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
+                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
 
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
@@ -349,7 +350,7 @@ def dashboard_participante():
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            'ministrante': oficina.ministrante.nome if oficina.ministrante else 'N/A',
+            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': [dia.data.strftime('%d/%m/%Y') for dia in dias],
