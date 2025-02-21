@@ -878,89 +878,95 @@ def gerar_lista_frequencia(oficina_id):
     return send_file(pdf_path, as_attachment=True)
 
 def gerar_certificados_pdf(oficina, inscritos, pdf_path):
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak, Frame, PageTemplate
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
 
-    # Configurar o tamanho da página em modo paisagem
+    # Definir o tamanho da página como A4 em modo paisagem
     page_width, page_height = landscape(A4)
 
-    # Criar um frame que ocupa toda a página (sem margens ou espaçamento)
-    frame = Frame(
-        x1=0,
-        y1=0,
-        width=page_width,
-        height=page_height,
-        leftPadding=0,
-        bottomPadding=0,
-        rightPadding=0,
-        topPadding=0
-    )
-
-    # Criar um PageTemplate com o frame personalizado
-    page_template = PageTemplate(id="FundoCompleto", frames=[frame])
-
-    # Configurar o documento com margens zeradas
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=(page_width, page_height),
-        leftMargin=0,
         rightMargin=0,
+        leftMargin=0,
         topMargin=0,
         bottomMargin=0
     )
-
-    # Adicionar o PageTemplate personalizado ao documento
-    doc.addPageTemplates([page_template])  # Método correto para adicionar templates
-
     elements = []
     styles = getSampleStyleSheet()
+
     fundo_path = "static/Certificado IAFAP.png"
 
     for inscrito in inscritos:
-        # 1) Imagem de fundo cobrindo toda a página
+        # 1) Imagem de fundo que preenche a página inteira
         try:
             fundo_img = Image(
-                fundo_path,
-                width=page_width,
-                height=page_height
+                fundo_path, 
+                width=page_width,  # Largura da página em modo paisagem
+                height=page_height  # Altura da página em modo paisagem
             )
             elements.append(fundo_img)
         except Exception as e:
-            print(f"Erro ao carregar imagem de fundo: {e}")
+            print("⚠ Erro ao carregar imagem de fundo:", e)
 
-        # 2) Textos sobrepostos
+        # 2) Espaço
         elements.append(Spacer(1, 20))
+
+        # 3) Título: nome do inscrito
         elements.append(Paragraph(inscrito.usuario.nome, styles['Title']))
         elements.append(Spacer(1, 10))
 
-        # 3) Detalhes da oficina
-        ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else "N/A"
+        # 4) Texto da oficina
+        ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
         texto_oficina = f"participou da oficina {oficina.titulo}, ministrada por {ministrante_nome},"
         elements.append(Paragraph(texto_oficina, styles['Normal']))
         elements.append(Spacer(1, 10))
 
-        # 4) Carga horária
-        texto_carga = f"com carga horária de {oficina.carga_horaria} horas, realizada nos dias:"
-        elements.append(Paragraph(texto_carga, styles['Normal']))
+        # 5) Carga horária
+        texto_carga_horaria = f"com carga horária de {oficina.carga_horaria} horas, realizada nos dias:"
+        elements.append(Paragraph(texto_carga_horaria, styles['Normal']))
         elements.append(Spacer(1, 10))
 
-        # 5) Datas
-        datas = [dia.data.strftime("%d/%m/%Y") for dia in oficina.dias]
-        if len(datas) > 1:
-            datas_str = ", ".join(datas[:-1]) + " e " + datas[-1]
-        elif datas:
-            datas_str = datas[0]
+        # 6) Datas
+        datas_oficina = [dia.data.strftime('%d/%m/%Y') for dia in oficina.dias]
+        if len(datas_oficina) > 1:
+            datas_texto = ", ".join(datas_oficina[:-1]) + " e " + datas_oficina[-1]
+        elif datas_oficina:
+            datas_texto = datas_oficina[0]
         else:
-            datas_str = "N/A"
-        elements.append(Paragraph(datas_str, styles['Normal']))
+            datas_texto = "N/A"
+
+        elements.append(Paragraph(datas_texto, styles['Normal']))
         elements.append(Spacer(1, 20))
 
-        # 6) Quebra de página para o próximo certificado
+        # 7) PageBreak para o próximo inscrito
         elements.append(PageBreak())
 
     doc.build(elements)
+
     
+@routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
+@login_required
+def gerar_certificados(oficina_id):
+    if current_user.tipo != 'admin':
+        flash("Apenas administradores podem gerar certificados.", "danger")
+        return redirect(url_for('routes.dashboard'))
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash("Oficina não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    inscritos = oficina.inscritos
+    if not inscritos:
+        flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
+        return redirect(url_for('routes.dashboard'))
+    pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+    gerar_certificados_pdf(oficina, inscritos, pdf_path)
+    flash("Certificados gerados com sucesso!", "success")
+    return send_file(pdf_path, as_attachment=True)
+
 @routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
 def checkin(oficina_id):
