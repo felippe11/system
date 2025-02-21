@@ -1485,7 +1485,7 @@ def toggle_checkin_global():
     config.permitir_checkin_global = not config.permitir_checkin_global
     db.session.commit()
     status = "ativado" if config.permitir_checkin_global else "desativado"
-    flash(f"Check-in global {status} com sucesso!", "success")
+    print(f"🔍 Check-in Global está {'Ativado' if config.permitir_checkin_global else 'Desativado'}")
     return redirect(url_for("routes.dashboard"))
 
 
