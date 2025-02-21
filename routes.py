@@ -265,6 +265,8 @@ def dashboard():
         participantes = Usuario.query.filter_by(tipo='participante').all()
         
         inscricoes = Inscricao.query.all()
+        
+        msg_relatorio = None  # Adiciona um valor padrão
 
 
         # ========== 1) Dados gerais ==========
