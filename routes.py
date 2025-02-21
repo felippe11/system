@@ -256,6 +256,51 @@ def dashboard():
         
         participantes = Usuario.query.filter_by(tipo='participante').all()
         
+         # 1) Número total de oficinas
+        total_oficinas = Oficina.query.count()
+
+        # 2) Soma total de vagas ofertadas
+        from sqlalchemy import func
+        total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+
+        # 3) Vagas preenchidas = total de inscrições
+        total_inscricoes = Inscricao.query.count()
+
+        # 4) % de adesão (evite divisão por zero)
+        if total_vagas > 0:
+            percentual_adesao = (total_inscricoes / total_vagas) * 100
+        else:
+            percentual_adesao = 0
+
+        # 5) Estatísticas por oficina
+        # Exemplo: lista de dicts com { 'titulo': ..., 'vagas': ..., 'inscricoes': ..., 'ocupacao': ... }
+        oficinas_estatisticas = []
+        oficinas = Oficina.query.all()
+        for of in oficinas:
+            inscricoes_of = Inscricao.query.filter_by(oficina_id=of.id).count()
+            if of.vagas > 0:
+                ocupacao = (inscricoes_of / of.vagas) * 100
+            else:
+                ocupacao = 0
+            oficinas_estatisticas.append({
+                'id': of.id,
+                'titulo': of.titulo,
+                'vagas': of.vagas,
+                'inscricoes': inscricoes_of,
+                'ocupacao': ocupacao
+            })
+            
+            # Monta a mensagem padrão
+        msg_relatorio = (
+            "Relatório do Sistema IAFAP:\n"
+            f"• Total de Oficinas: {total_oficinas}\n"
+            f"• Vagas Ofertadas: {total_vagas}\n"
+            f"• Vagas Preenchidas: {total_inscricoes}\n"
+            f"• % de Adesão: {percentual_adesao:.2f}%\n"
+            "\n"
+            "Você pode editar esse texto aqui mesmo!"
+        )
+        
 
         # Inicia a query e adiciona os filtros se existirem
         query = Oficina.query
@@ -316,7 +361,13 @@ def dashboard():
                                habilitar_feedback=habilitar_feedback,
                                estado_filter=estado_filter,
                                cidade_filter=cidade_filter,
-                               checkins_via_qr=checkins_via_qr
+                               checkins_via_qr=checkins_via_qr,
+                               total_oficinas=total_oficinas,
+                               total_vagas=total_vagas,
+                               total_inscricoes=total_inscricoes,
+                               percentual_adesao=percentual_adesao,
+                               oficinas_estatisticas=oficinas_estatisticas,
+                               msg_relatorio=msg_relatorio
                                )
     
     return redirect(url_for('routes.dashboard_participante'))
@@ -1898,3 +1949,31 @@ def editar_participante_admin(participante_id):
     db.session.commit()
     flash('Participante atualizado com sucesso!', 'success')
     return redirect(url_for('routes.dashboard'))
+
+@routes.route('/gerar_relatorio_mensagem', methods=['GET'])
+@login_required
+def gerar_relatorio_mensagem():
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    # Mesmo cálculo do dashboard:
+    from sqlalchemy import func
+    total_oficinas = Oficina.query.count()
+    total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+    total_inscricoes = Inscricao.query.count()
+    if total_vagas > 0:
+        percentual_adesao = (total_inscricoes / total_vagas)*100
+    else:
+        percentual_adesao = 0
+
+    # Monta string simples
+    mensagem = (
+        "Relatório do Sistema IAFAP:\n"
+        f" - Total de Oficinas: {total_oficinas}\n"
+        f" - Vagas Ofertadas: {total_vagas}\n"
+        f" - Vagas Preenchidas: {total_inscricoes}\n"
+        f" - Adesão: {percentual_adesao:.2f}%\n"
+    )
+
+    return mensagem
