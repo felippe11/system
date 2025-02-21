@@ -34,7 +34,17 @@
             <input type="number" class="form-control" id="carga_horaria" name="carga_horaria" value="{{ oficina.carga_horaria }}" required>
         </div>
 
-        <!-- Múltiplas Datas e Horários -->
+        <!-- Campos para configuração do check-in -->
+        <div class="mb-3">
+            <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
+            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5" required>
+        </div>
+        <div class="mb-3">
+            <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
+            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta" required>
+        </div>
+
+        <!-- Múltiplas Datas e Horários (somente data e horários) -->
         <div id="datas-container">
             <label>Datas e Horários:</label>
             {% for dia in oficina.dias %}
@@ -42,8 +52,6 @@
                 <input type="date" name="data[]" class="form-control mb-2" value="{{ dia.data.strftime('%Y-%m-%d') }}" required>
                 <input type="time" name="horario_inicio[]" class="form-control mb-2" value="{{ dia.horario_inicio }}" required>
                 <input type="time" name="horario_fim[]" class="form-control mb-2" value="{{ dia.horario_fim }}" required>
-                <input type="text" name="palavra_chave_manha[]" class="form-control mb-2" value="{{ dia.palavra_chave_manha }}" placeholder="Palavra-chave manhã" required>
-                <input type="text" name="palavra_chave_tarde[]" class="form-control mb-2" value="{{ dia.palavra_chave_tarde }}" placeholder="Palavra-chave tarde" required>
                 <button type="button" class="btn btn-danger btn-sm btn-remove" onclick="removerData(this)">Remover</button>
             </div>
             {% endfor %}
@@ -129,8 +137,6 @@
             <input type="date" name="data[]" class="form-control mb-2" required>
             <input type="time" name="horario_inicio[]" class="form-control mb-2" placeholder="Horário de Início" required>
             <input type="time" name="horario_fim[]" class="form-control mb-2" placeholder="Horário de Fim" required>
-            <input type="text" name="palavra_chave_manha[]" class="form-control mb-2" placeholder="Palavra-chave Manhã" required>
-            <input type="text" name="palavra_chave_tarde[]" class="form-control mb-2" placeholder="Palavra-chave Tarde" required>
             <button type="button" class="btn btn-danger btn-sm btn-remove" onclick="removerData(this)">Remover</button>
         `;
         container.appendChild(div);
