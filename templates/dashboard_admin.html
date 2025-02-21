@@ -574,4 +574,41 @@
     });
   });
 </script>
+<script>
+  // Seleciona o modal pelo ID
+  var modalEditar = document.getElementById('modalEditarMinistrante');
+
+  // Evento do Bootstrap disparado quando o modal vai ser exibido
+  modalEditar.addEventListener('show.bs.modal', function (event) {
+    // O "relatedTarget" é o botão que acionou o modal
+    var button = event.relatedTarget;
+
+    // Extrai cada data-* do botão
+    var id = button.getAttribute('data-id');
+    var nome = button.getAttribute('data-nome');
+    var formacao = button.getAttribute('data-formacao');
+    var areas = button.getAttribute('data-areas');
+    var cpf = button.getAttribute('data-cpf');
+    var pix = button.getAttribute('data-pix');
+    var cidade = button.getAttribute('data-cidade');
+    var estado = button.getAttribute('data-estado');
+    var email = button.getAttribute('data-email');
+
+    // Preenche os campos no modal
+    modalEditar.querySelector('#nome').value = nome;
+    modalEditar.querySelector('#formacao').value = formacao;
+    modalEditar.querySelector('#areas').value = areas;
+    modalEditar.querySelector('#cpf').value = cpf;
+    modalEditar.querySelector('#pix').value = pix;
+    modalEditar.querySelector('#cidade').value = cidade;
+    modalEditar.querySelector('#estado').value = estado;
+    modalEditar.querySelector('#email').value = email;
+
+    // Ajusta o action do formulário para incluir o ministrante_id
+    var form = modalEditar.querySelector('#formEditarMinistrante');
+    var baseUrl = "{{ url_for('routes.editar_ministrante', ministrante_id=0) }}";
+    form.action = baseUrl.replace('0', id);
+  });
+</script>
+
 {% endblock %}
