@@ -252,83 +252,80 @@ def logout():
 @login_required
 def dashboard():
     if current_user.tipo == 'admin':
-        # Obtem os filtros (vazios se não fornecidos)
+        from sqlalchemy import func
+
+        # Obtem filtros
         estado_filter = request.args.get('estado', '').strip()
         cidade_filter = request.args.get('cidade', '').strip()
-        
-         # Obtém os check-ins que foram feitos com a palavra_chave = 'QR-AUTO'
+
+        # Check-ins via QR
         checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
-        
+
+        # Lista de participantes (se quiser gerenciar)
         participantes = Usuario.query.filter_by(tipo='participante').all()
         
-         # 1) Número total de oficinas
+        inscricoes = Inscricao.query.all()
+
+
+        # ========== 1) Dados gerais ==========
         total_oficinas = Oficina.query.count()
-
-        # 2) Soma total de vagas ofertadas
-        from sqlalchemy import func
         total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
-
-        # 3) Vagas preenchidas = total de inscrições
         total_inscricoes = Inscricao.query.count()
-
-        # 4) % de adesão (evite divisão por zero)
         if total_vagas > 0:
             percentual_adesao = (total_inscricoes / total_vagas) * 100
         else:
             percentual_adesao = 0
 
-        # 5) Estatísticas por oficina
-        # Exemplo: lista de dicts com { 'titulo': ..., 'vagas': ..., 'inscricoes': ..., 'ocupacao': ... }
-        oficinas_estatisticas = []
+        # ========== 2) Estatísticas por oficina ==========
         oficinas = Oficina.query.all()
+        lista_oficinas_info = []
         for of in oficinas:
-            inscricoes_of = Inscricao.query.filter_by(oficina_id=of.id).count()
+            num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
             if of.vagas > 0:
-                ocupacao = (inscricoes_of / of.vagas) * 100
+                perc_ocupacao = (num_inscritos / of.vagas) * 100
             else:
-                ocupacao = 0
-            oficinas_estatisticas.append({
-                'id': of.id,
+                perc_ocupacao = 0
+
+            lista_oficinas_info.append({
                 'titulo': of.titulo,
                 'vagas': of.vagas,
-                'inscricoes': inscricoes_of,
-                'ocupacao': ocupacao
+                'inscritos': num_inscritos,
+                'ocupacao': perc_ocupacao
             })
-            
-            # Monta a mensagem padrão
-        msg_relatorio = (
-            "Relatório do Sistema IAFAP:\n"
-            f"• Total de Oficinas: {total_oficinas}\n"
-            f"• Vagas Ofertadas: {total_vagas}\n"
-            f"• Vagas Preenchidas: {total_inscricoes}\n"
-            f"• % de Adesão: {percentual_adesao:.2f}%\n"
-            "\n"
-            "Você pode editar esse texto aqui mesmo!"
-        )
-        
 
-        # Inicia a query e adiciona os filtros se existirem
+        # ========== 3) Monta a string do relatório (somente UMA vez) ==========
+            msg_relatorio = (
+            "📊 *Relatório do Sistema IAFAP*\n\n"
+            f"✅ *Total de Oficinas:* {total_oficinas}\n"
+            f"✅ *Vagas Ofertadas:* {total_vagas}\n"
+            f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
+            f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
+            "----------------------------------------\n"
+            "📌 *DADOS POR OFICINA:*\n"
+        )
+
+        for info in lista_oficinas_info:
+            msg_relatorio += (
+                f"\n🎓 *Oficina:* {info['titulo']}\n"
+                f"🔹 *Vagas:* {info['vagas']}\n"
+                f"🔹 *Inscritos:* {info['inscritos']}\n"
+                f"🔹 *Ocupação:* {info['ocupacao']:.2f}%\n"
+            )
+
+
+        # ========== 4) Mais lógica para dashboard (filtros, etc.) ==========
         query = Oficina.query
         if estado_filter:
             query = query.filter(Oficina.estado == estado_filter)
         if cidade_filter:
             query = query.filter(Oficina.cidade == cidade_filter)
-        oficinas = query.all()
+        oficinas_filtradas = query.all()
 
         oficinas_com_inscritos = []
-        
-        # Busca os ministrantes e configurações
-        ministrantes = Ministrante.query.all()
-        relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
-        configuracao = Configuracao.query.first()
-        permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
-        habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
-        
-
-        # Processa as oficinas (incluindo datas e inscritos)
-        for oficina in oficinas:
+        for oficina in oficinas_filtradas:
             dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
             dias_formatados = [dia.data.strftime('%d/%m/%Y') for dia in dias]
+
             inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).all()
             inscritos_info = []
             for inscricao in inscritos:
@@ -341,41 +338,48 @@ def dashboard():
                         'email': usuario.email,
                         'formacao': usuario.formacao
                     })
+
             oficinas_com_inscritos.append({
                 'id': oficina.id,
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
-
-                # Acessa o ministrante via relacionamento (backref: ministrante_obj)
-
                 'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
-
                 'vagas': oficina.vagas,
                 'carga_horaria': oficina.carga_horaria,
                 'dias': dias_formatados,
                 'inscritos': inscritos_info
             })
-            
-        return render_template('dashboard_admin.html',
-                               participantes=participantes,
-                               usuario=current_user,
-                               oficinas=oficinas_com_inscritos,
-                               ministrantes=ministrantes,
-                               relatorios=relatorios,
-                               permitir_checkin_global=permitir_checkin_global,
-                               habilitar_feedback=habilitar_feedback,
-                               estado_filter=estado_filter,
-                               cidade_filter=cidade_filter,
-                               checkins_via_qr=checkins_via_qr,
-                               total_oficinas=total_oficinas,
-                               total_vagas=total_vagas,
-                               total_inscricoes=total_inscricoes,
-                               percentual_adesao=percentual_adesao,
-                               oficinas_estatisticas=oficinas_estatisticas,
-                               msg_relatorio=msg_relatorio
-                               )
-    
-    return redirect(url_for('routes.dashboard_participante'))
+
+        # Busca ministrantes, relatorios, config...
+        ministrantes = Ministrante.query.all()
+        relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
+        configuracao = Configuracao.query.first()
+        permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
+        habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+
+        # ========== 5) Renderiza ==========
+        return render_template(
+            'dashboard_admin.html',
+            participantes=participantes,
+            usuario=current_user,
+            oficinas=oficinas_com_inscritos,
+            ministrantes=ministrantes,
+            relatorios=relatorios,
+            permitir_checkin_global=permitir_checkin_global,
+            habilitar_feedback=habilitar_feedback,
+            estado_filter=estado_filter,
+            cidade_filter=cidade_filter,
+            checkins_via_qr=checkins_via_qr,
+            total_oficinas=total_oficinas,
+            total_vagas=total_vagas,
+            total_inscricoes=total_inscricoes,
+            percentual_adesao=percentual_adesao,
+            oficinas_estatisticas=lista_oficinas_info,  # ou outro nome
+            msg_relatorio=msg_relatorio,
+            inscricoes=inscricoes
+        )
+    else:
+        return redirect(url_for('routes.dashboard_participante'))
 
 
 
@@ -2024,3 +2028,110 @@ def gerar_relatorio_mensagem():
     )
 
     return mensagem
+
+@routes.route('/cancelar_inscricoes_lote', methods=['POST'])
+@login_required
+def cancelar_inscricoes_lote():
+    # Verifica se é admin
+    if current_user.tipo != 'admin':
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Pega os IDs marcados
+    inscricao_ids = request.form.getlist('inscricao_ids')
+    if not inscricao_ids:
+        flash("Nenhuma inscrição selecionada!", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    # Converte para int
+    inscricao_ids = list(map(int, inscricao_ids))
+
+    try:
+        # Busca todas as inscrições com esses IDs
+        inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+        # Cancela removendo do banco
+        for insc in inscricoes:
+            db.session.delete(insc)
+
+        db.session.commit()
+        flash(f"Foram canceladas {len(inscricoes)} inscrições!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao cancelar inscrições: {e}", "danger")
+
+    return redirect(url_for('routes.dashboard'))
+
+
+@routes.route('/mover_inscricoes_lote', methods=['POST'])
+@login_required
+def mover_inscricoes_lote():
+    if current_user.tipo != 'admin':
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    inscricao_ids = request.form.getlist('inscricao_ids')
+    if not inscricao_ids:
+        flash("Nenhuma inscrição selecionada!", "warning")
+        return redirect(url_for('routes.dashboard'))
+    
+    oficina_destino_id = request.form.get('oficina_destino')
+    if not oficina_destino_id:
+        flash("Nenhuma oficina de destino selecionada!", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    # Converte os ids
+    inscricao_ids = list(map(int, inscricao_ids))
+    oficina_destino_id = int(oficina_destino_id)
+
+    # Verifica se a oficina existe
+    oficina_destino = Oficina.query.get(oficina_destino_id)
+    if not oficina_destino:
+        flash("Oficina de destino não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    try:
+        # Busca as inscrições
+        inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+
+        # (Opcional) verifique se oficina_destino tem vagas suficientes, se for caso
+        # Exemplo: se oficina_destino.vagas < len(inscricoes), ...
+        # mas lembre que você pode já ter decrementado as vagas no momento em que
+        # usuário se inscreve. Precisaria de uma lógica de "vagas" robusta.
+
+        # Atualiza a oficina
+        for insc in inscricoes:
+            # 1) Incrementa a vaga na oficina atual (opcional, se você decrementou ao inscrever)
+            oficina_origem = insc.oficina
+            oficina_origem.vagas += 1  # se estiver usando contagem de vagas "ao vivo"
+
+            # 2) Decrementa a vaga na oficina destino
+            oficina_destino.vagas -= 1
+
+            # 3) Move a inscrição
+            insc.oficina_id = oficina_destino_id
+
+        db.session.commit()
+        flash(f"Foram movidas {len(inscricoes)} inscrições para a oficina {oficina_destino.titulo}!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao mover inscrições: {e}", "danger")
+
+    return redirect(url_for('routes.dashboard'))
+
+@routes.route('/cancelar_inscricao/<int:inscricao_id>', methods=['GET','POST'])
+@login_required
+def cancelar_inscricao(inscricao_id):
+    if current_user.tipo != 'admin':
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    insc = Inscricao.query.get_or_404(inscricao_id)
+    try:
+        db.session.delete(insc)
+        db.session.commit()
+        flash("Inscrição cancelada com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao cancelar inscrição: {e}", "danger")
+
+    return redirect(url_for('routes.dashboard'))
+
