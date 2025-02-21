@@ -83,7 +83,7 @@
             <!-- Botão para gerar PDF -->
             <a href="{{ url_for('routes.gerar_pdf_checkins', oficina_id=oficina.id) }}" class="btn btn-primary">📄 Gerar PDF</a>
         </div>
-        <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+        <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A' }}</p>
         <p class="text-center"><strong>Local:</strong> {{ oficina.cidade }}, {{ oficina.estado }}</p>
 
         <h2 class="mt-4">Usuários que realizaram check-in</h2>
