@@ -20,6 +20,11 @@ from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_ins
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+
 
 
 
@@ -877,74 +882,75 @@ def gerar_lista_frequencia(oficina_id):
     gerar_lista_frequencia_pdf(oficina, pdf_path)
     return send_file(pdf_path, as_attachment=True)
 
-def gerar_certificados_pdf(oficina, inscritos, pdf_path):
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
-    from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 
-    # Definir o tamanho da página como A4 em modo paisagem
-    page_width, page_height = landscape(A4)
-
-    doc = SimpleDocTemplate(
-        pdf_path,
-        pagesize=(page_width, page_height),
-        rightMargin=0,
-        leftMargin=0,
-        topMargin=0,
-        bottomMargin=0
-    )
-    elements = []
-    styles = getSampleStyleSheet()
-
-    fundo_path = "static/Certificado IAFAP.png"
-
-    for inscrito in inscritos:
-        # 1) Imagem de fundo que preenche a página inteira
-        try:
-            fundo_img = Image(
-                fundo_path, 
-                width=page_width,  # Largura da página em modo paisagem
-                height=page_height  # Altura da página em modo paisagem
-            )
-            elements.append(fundo_img)
-        except Exception as e:
-            print("⚠ Erro ao carregar imagem de fundo:", e)
-
-        # 2) Espaço
-        elements.append(Spacer(1, 20))
-
-        # 3) Título: nome do inscrito
-        elements.append(Paragraph(inscrito.usuario.nome, styles['Title']))
-        elements.append(Spacer(1, 10))
-
-        # 4) Texto da oficina
-        ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-        texto_oficina = f"participou da oficina {oficina.titulo}, ministrada por {ministrante_nome},"
-        elements.append(Paragraph(texto_oficina, styles['Normal']))
-        elements.append(Spacer(1, 10))
-
-        # 5) Carga horária
-        texto_carga_horaria = f"com carga horária de {oficina.carga_horaria} horas, realizada nos dias:"
-        elements.append(Paragraph(texto_carga_horaria, styles['Normal']))
-        elements.append(Spacer(1, 10))
-
-        # 6) Datas
-        datas_oficina = [dia.data.strftime('%d/%m/%Y') for dia in oficina.dias]
-        if len(datas_oficina) > 1:
-            datas_texto = ", ".join(datas_oficina[:-1]) + " e " + datas_oficina[-1]
-        elif datas_oficina:
-            datas_texto = datas_oficina[0]
+def wrap_text(text, font, font_size, max_width, canvas):
+    words = text.split()
+    lines = []
+    current_line = ""
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        if canvas.stringWidth(test_line, font, font_size) <= max_width:
+            current_line = test_line
         else:
-            datas_texto = "N/A"
+            lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+    return lines
 
-        elements.append(Paragraph(datas_texto, styles['Normal']))
-        elements.append(Spacer(1, 20))
+def gerar_certificados_pdf(oficina, inscritos, pdf_path):
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    fundo_path = "static/Certificado IAFAP.png"
+    for inscrito in inscritos:
+        try:
+            fundo = ImageReader(fundo_path)
+            c.drawImage(fundo, 0, 0, width=A4[1], height=A4[0])
+        except Exception as e:
+            print("⚠️ Fundo do certificado não encontrado:", e)
+        
+        # Texto da oficina com quebra de linha manual
+        c.setFont("Helvetica", 16)
+        texto_oficina = (f"{inscrito.usuario.nome}, portador do {inscrito.usuario.cpf}, participou da oficina de tema "
+                          f"{oficina.titulo}, com carga horária total de {oficina.carga_horaria} horas, Este certificado é "
+                          f"concedido como reconhecimento pela dedicação e participação no evento realizado na cidade "
+                          f"{oficina.cidade} nos dias:")
+        max_width = 600  # largura máxima permitida para o texto
+        lines = wrap_text(texto_oficina, "Helvetica", 16, max_width, c)
+        y = 340
+        for line in lines:
+            c.drawCentredString(420, y, line)
+            y -= 25  # espaçamento entre linhas
+        
+        # Datas da oficina
+        if len(oficina.dias) > 1:
+            datas_formatadas = ", ".join([dia.data.strftime('%d/%m/%Y') for dia in oficina.dias[:-1]]) + \
+                                " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
+        else:
+            datas_formatadas = oficina.dias[0].data.strftime('%d/%m/%Y')
+        c.drawCentredString(420, y, datas_formatadas)
+        
+        # Adiciona a assinatura como imagem
+        try:
+            signature_path = "static/signature.png"  # Caminho da imagem da assinatura
+            signature_width = 360  # Largura da assinatura em pontos
+            signature_height = 90  # Altura da assinatura em pontos
+            # Centraliza horizontalmente (considerando que a página em paisagem tem 840 pontos de largura, ex: A4[1])
+            x_signature = 420 - (signature_width / 2)
+            y_signature = y - 187  # Ajuste vertical; 80 pontos abaixo do último texto (datas)
+            c.drawImage(signature_path, x_signature, y_signature,
+                        width=signature_width, height=signature_height,
+                        preserveAspectRatio=True, mask='auto')
+        except Exception as e:
+            print("Erro ao adicionar a assinatura:", e)
+        
+        c.showPage()
+    c.save()
 
-        # 7) PageBreak para o próximo inscrito
-        elements.append(PageBreak())
 
-    doc.build(elements)
 
     
 @routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
