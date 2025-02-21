@@ -93,6 +93,9 @@ class Oficina(db.Model):
     cidade = db.Column(db.String(100), nullable=False)
     qr_code = db.Column(db.String(255), nullable=True)
 
+    opcoes_checkin = db.Column(db.String(255), nullable=True)  # Ex: "palavra1,palavra2,palavra3,palavra4,palavra5"
+    palavra_correta = db.Column(db.String(50), nullable=True)
+
     def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, qr_code=None):
         self.titulo = titulo
         self.descricao = descricao
@@ -139,6 +142,8 @@ class Inscricao(db.Model):
     
     # Novo campo:
     qr_code_token = db.Column(db.String(100), unique=True, nullable=True)
+
+    checkin_attempts = db.Column(db.Integer, default=0)
     
     usuario = db.relationship('Usuario', backref='inscricoes')
     oficina = db.relationship('Oficina', backref='inscritos')

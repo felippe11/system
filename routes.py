@@ -456,6 +456,10 @@ def criar_oficina():
         estado = request.form.get('estado')
         cidade = request.form.get('cidade')
 
+        # Captura os dados de check-in de múltipla escolha:
+        opcoes_checkin = request.form.get('opcoes_checkin')  # Exemplo: "chave1,chave2,chave3,chave4,chave5"
+        palavra_correta = request.form.get('palavra_correta')
+
         print(f"📌 [DEBUG] Estado: {estado}")
         print(f"📌 [DEBUG] Cidade: {cidade}")
         print(f"📌 [DEBUG] Ministrante selecionado (ID): {ministrante_id}")
@@ -490,6 +494,13 @@ def criar_oficina():
         db.session.commit()
         print("✅ [DEBUG] Oficina salva com sucesso!")
 
+        # Configura as opções de check-in
+        nova_oficina.opcoes_checkin = opcoes_checkin
+        nova_oficina.palavra_correta = palavra_correta
+
+        db.session.add(nova_oficina)
+        db.session.commit()
+
         # Gerar o QR Code
         qr_code_path = gerar_qr_code(nova_oficina.id)
         nova_oficina.qr_code = qr_code_path
@@ -502,8 +513,8 @@ def criar_oficina():
                 data=datetime.strptime(datas[i], "%Y-%m-%d").date(),
                 horario_inicio=horarios_inicio[i],
                 horario_fim=horarios_fim[i],
-                palavra_chave_manha=palavras_chave_manha[i],
-                palavra_chave_tarde=palavras_chave_tarde[i],
+                #palavra_chave_manha=palavras_chave_manha[i],
+                #palavra_chave_tarde=palavras_chave_tarde[i],
             )
             db.session.add(novo_dia)
         db.session.commit()
@@ -516,9 +527,9 @@ def criar_oficina():
                            ministrantes=todos_ministrantes,
                            datas=[],
                            horarios_inicio=[],
-                           horarios_fim=[],
-                           palavras_chave_manha=[],
-                           palavras_chave_tarde=[])
+                           horarios_fim=[])
+                           #palavras_chave_manha=[],
+                           #palavras_chave_tarde=[])
 
 
 
@@ -546,21 +557,24 @@ def editar_oficina(oficina_id):
         # Atualiza os dados da oficina
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
-        # Alteração: atualizar o vínculo com o ministrante via ministrante_id
+        # Atualiza o vínculo com o ministrante via ministrante_id
         oficina.ministrante_id = request.form.get('ministrante_id')
         oficina.vagas = int(request.form.get('vagas'))
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
 
+        # Atualiza os campos de configuração de check-in
+        oficina.opcoes_checkin = request.form.get('opcoes_checkin')
+        oficina.palavra_correta = request.form.get('palavra_correta')
+
         # Remove os registros antigos de datas/horários
         OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
 
+        # Agora, somente as datas e os horários são enviados
         datas = request.form.getlist('data[]')
         horarios_inicio = request.form.getlist('horario_inicio[]')
         horarios_fim = request.form.getlist('horario_fim[]')
-        palavras_chave_manha = request.form.getlist('palavra_chave_manha[]')
-        palavras_chave_tarde = request.form.getlist('palavra_chave_tarde[]')
 
         for i in range(len(datas)):
             if datas[i] and horarios_inicio[i] and horarios_fim[i]:
@@ -572,14 +586,26 @@ def editar_oficina(oficina_id):
                     oficina_id=oficina.id,
                     data=data_formatada,
                     horario_inicio=horarios_inicio[i],
-                    horario_fim=horarios_fim[i],
-                    palavra_chave_manha=palavras_chave_manha[i],
-                    palavra_chave_tarde=palavras_chave_tarde[i],
+                    horario_fim=horarios_fim[i]
                 )
                 db.session.add(novo_dia)
         db.session.commit()
         flash('Oficina editada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard'))
+
+    # Preparar os dados para o template (GET)
+    datas = [dia.data.strftime('%Y-%m-%d') for dia in oficina.dias]
+    horarios_inicio = [dia.horario_inicio for dia in oficina.dias]
+    horarios_fim = [dia.horario_fim for dia in oficina.dias]
+
+    return render_template('editar_oficina.html',
+                           oficina=oficina,
+                           estados=estados,
+                           ministrantes=todos_ministrantes,
+                           datas=datas,
+                           horarios_inicio=horarios_inicio,
+                           horarios_fim=horarios_fim)
+
 
     # Preparar os dados para o template (GET)
     datas = [dia.data.strftime('%Y-%m-%d') for dia in oficina.dias]
@@ -1032,31 +1058,46 @@ def gerar_certificados(oficina_id):
 @login_required
 def checkin(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
-    dias = OficinaDia.query.filter_by(oficina_id=oficina_id).order_by(OficinaDia.data).all()
+    
     if request.method == 'POST':
-        dia_id = request.form.get('dia_id')
-        palavra_chave_manha = request.form.get('palavra_chave_manha')
-        palavra_chave_tarde = request.form.get('palavra_chave_tarde')
-        dia = OficinaDia.query.get(dia_id)
-        if not dia:
-            flash("Dia selecionado não é válido!", "danger")
+        palavra_escolhida = request.form.get('palavra_escolhida')
+        if not palavra_escolhida:
+            flash("Selecione uma opção de check-in.", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
-        if dia.palavra_chave_manha and dia.palavra_chave_manha != palavra_chave_manha:
-            flash("Palavra-chave da manhã está incorreta!", "danger")
+        
+        # Verifica se o usuário está inscrito na oficina
+        inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
+        if not inscricao:
+            flash("Você não está inscrito nesta oficina!", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
-        if palavra_chave_tarde and dia.palavra_chave_tarde and dia.palavra_chave_tarde != palavra_chave_tarde:
-            flash("Palavra-chave da tarde está incorreta!", "danger")
+        
+        # Se o usuário já errou duas vezes, bloqueia o check-in
+        if inscricao.checkin_attempts >= 2:
+            flash("Você excedeu o número de tentativas de check-in.", "danger")
+            return redirect(url_for('routes.dashboard'))
+        
+        # Verifica se a alternativa escolhida é a correta
+        if palavra_escolhida.strip() != oficina.palavra_correta.strip():
+            inscricao.checkin_attempts += 1
+            db.session.commit()
+            flash("Palavra-chave incorreta!", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
+        
+        # Se a resposta estiver correta, registra o check-in
         checkin = Checkin(
             usuario_id=current_user.id,
             oficina_id=oficina.id,
-            palavra_chave=palavra_chave_manha if palavra_chave_manha else palavra_chave_tarde
+            palavra_chave=palavra_escolhida
         )
         db.session.add(checkin)
         db.session.commit()
         flash("Check-in realizado com sucesso!", "success")
         return redirect(url_for('routes.dashboard'))
-    return render_template('checkin.html', oficina=oficina, dias=dias)
+    
+    # Para o GET: extrai as opções configuradas (supondo que foram salvas como uma string separada por vírgulas)
+    opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
+    return render_template('checkin.html', oficina=oficina, opcoes=opcoes)
+
 
 @routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
 @login_required
