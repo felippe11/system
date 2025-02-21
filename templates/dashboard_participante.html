@@ -124,6 +124,14 @@
                     <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
                         📄 Baixar Comprovante
                     </a>
+                    {% if habilitar_certificado_individual %}
+                    <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
+                       class="btn btn-success w-100 mt-2">
+                       🎓 Baixar Certificado
+                    </a>
+                    {% endif %}
+                  
+                  
                     {% if habilitar_feedback %}
                     <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
                         Enviar Feedback

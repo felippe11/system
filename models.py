@@ -41,6 +41,7 @@ class Configuracao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     permitir_checkin_global = db.Column(db.Boolean, default=False)
     habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f"<Configuracao permitir_checkin_global={self.permitir_checkin_global}>"
