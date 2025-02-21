@@ -270,40 +270,44 @@
   </div>
 </div>
 
-  <!-- Modal do Relatório de Mensagem -->
+<!-- Modal do Relatório de Mensagem -->
 <div class="modal fade" id="modalRelatorioMensagem" tabindex="-1"
-aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
-<div class="modal-dialog modal-lg">
-<div class="modal-content">
+     aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
 
- <div class="modal-header bg-success text-white">
-   <h5 class="modal-title" id="modalRelatorioMensagemLabel">
-     Relatório - Mensagem de Texto
-   </h5>
-   <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-           aria-label="Fechar"></button>
- </div>
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalRelatorioMensagemLabel">
+          Relatório - Mensagem de Texto
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                aria-label="Fechar"></button>
+      </div>
 
- <div class="modal-body">
-   <!-- Campo de texto (textarea) para exibir e editar a mensagem -->
-   <textarea id="textoRelatorio" class="form-control" rows="8">
-{{ msg_relatorio }}
-   </textarea>
- </div>
+      <div class="modal-body">
+        <!-- Campo de texto (textarea) para exibir e editar a mensagem -->
+        <textarea id="textoRelatorio" class="form-control" rows="8">{{ msg_relatorio }}</textarea>
+      </div>
 
- <div class="modal-footer">
-   <!-- Botão para copiar o texto -->
-   <button type="button" class="btn btn-primary fw-bold" onclick="copiarMensagem()">
-     <i class="bi bi-clipboard"></i> Copiar Mensagem
-   </button>
-   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-     Fechar
-   </button>
- </div>
+      <div class="modal-footer">
+        <!-- Botão para copiar o texto -->
+        <button type="button" class="btn btn-primary fw-bold" onclick="copiarMensagem()">
+          <i class="bi bi-clipboard"></i> Copiar Mensagem
+        </button>
+        <!-- Novo botão para enviar por WhatsApp -->
+        <button type="button" class="btn btn-success fw-bold" onclick="enviarWhatsAppRelatorio()">
+          <i class="bi bi-whatsapp"></i> Enviar por WhatsApp
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          Fechar
+        </button>
+      </div>
 
+    </div>
+  </div>
 </div>
-</div>
-</div>
+
+
 
   <!-- Modal de Check-ins via QR -->
   <div class="modal fade" id="modalCheckinsQR" tabindex="-1" aria-labelledby="modalCheckinsQRLabel" aria-hidden="true">
@@ -956,6 +960,7 @@ aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
   });
 </script>
 
+
 <script>
   function copiarMensagem() {
     let texto = document.getElementById("textoRelatorio").value;
@@ -967,6 +972,20 @@ aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
   }
   
 </script>
+
+{% block scripts_extra %}
+<script>
+  function enviarWhatsAppRelatorio() {
+    // Obtém o texto do relatório
+    let mensagem = document.getElementById("textoRelatorio").value;
+    // Cria a URL do WhatsApp com o texto codificado
+    let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
+    // Abre a URL em uma nova aba
+    window.open(url, "_blank");
+  }
+</script>
+{% endblock %}
+
 
 
 
