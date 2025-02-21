@@ -356,6 +356,7 @@ def dashboard():
         configuracao = Configuracao.query.first()
         permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
         habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+        habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
 
         # ========== 5) Renderiza ==========
         return render_template(
@@ -376,7 +377,8 @@ def dashboard():
             percentual_adesao=percentual_adesao,
             oficinas_estatisticas=lista_oficinas_info,  # ou outro nome
             msg_relatorio=msg_relatorio,
-            inscricoes=inscricoes
+            inscricoes=inscricoes,
+            habilitar_certificado_individual=habilitar_certificado_individual
         )
     else:
         return redirect(url_for('routes.dashboard_participante'))
@@ -404,6 +406,7 @@ def dashboard_participante():
     configuracao = Configuracao.query.first()
     permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
     habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+    habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
 
     inscricoes_ids = [inscricao.oficina_id for inscricao in current_user.inscricoes]
     oficinas_inscrito = []
@@ -431,7 +434,8 @@ def dashboard_participante():
                            usuario=current_user, 
                            oficinas=oficinas_ordenadas, 
                            permitir_checkin_global=permitir_checkin_global,
-                           habilitar_feedback=habilitar_feedback)
+                           habilitar_feedback=habilitar_feedback,
+                           habilitar_certificado_individual=habilitar_certificado_individual)
 
 
 
@@ -1489,6 +1493,32 @@ def toggle_checkin_global():
     return redirect(url_for("routes.dashboard"))
 
 
+@routes.route("/toggle_certificado_individual", methods=["POST"])
+@login_required
+def toggle_certificado_individual():
+    if current_user.tipo != "admin":
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("routes.dashboard"))
+
+    config = Configuracao.query.first()
+    if not config:
+        # Se não houver registro, cria um
+        config = Configuracao(
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config)
+
+    # Inverte o booleano
+    config.habilitar_certificado_individual = not config.habilitar_certificado_individual
+    db.session.commit()
+
+    status = "ativado" if config.habilitar_certificado_individual else "desativado"
+    flash(f"Certificado individual {status} com sucesso!", "success")
+    return redirect(url_for("routes.dashboard"))
+
+
 # ===========================
 #         FEEDBACK
 # ===========================
@@ -1587,6 +1617,33 @@ def toggle_feedback():
     db.session.commit()
     flash(f"Feedback global {'ativado' if config.habilitar_feedback else 'desativado'} com sucesso!", "success")
     return redirect(url_for("routes.dashboard"))
+
+@routes.route('/gerar_certificado/<int:oficina_id>', methods=['GET'])
+@login_required
+def gerar_certificado_individual(oficina_id):
+    """
+    Gera um certificado individual para o usuário logado em uma oficina específica.
+    """
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash("Oficina não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # Verifica se o usuário está inscrito na oficina
+    inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
+    if not inscricao:
+        flash("Você não está inscrito nesta oficina!", "danger")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # Define o caminho do certificado
+    pdf_path = f"static/certificados/certificado_{current_user.id}_{oficina.id}.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # Gera o certificado (mesmo layout do admin, mas apenas para o usuário logado)
+    gerar_certificados_pdf(oficina, [inscricao], pdf_path)
+
+    # Retorna o arquivo PDF gerado
+    return send_file(pdf_path, as_attachment=True)
 
 
 # ===========================
