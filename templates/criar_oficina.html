@@ -3,10 +3,9 @@
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="text-center"> Criar Nova Oficina </h2>
+    <h2 class="text-center">Criar Nova Oficina</h2>
 
     <form action="{{ url_for('routes.criar_oficina') }}" method="POST">
-        
         <div class="mb-3">
             <label for="titulo" class="form-label">Título da Oficina:</label>
             <input type="text" class="form-control" id="titulo" name="titulo" required>
@@ -17,14 +16,13 @@
             <input type="text" class="form-control" id="descricao" name="descricao" required>
         </div>
 
-        <select name="ministrante_id" class="form-control">
+        <select name="ministrante_id" class="form-control" required>
             <option value="">-- Selecione um Ministrante --</option>
             {% for minist in ministrantes %}
                  <option value="{{ minist.id }}">{{ minist.nome }}</option>
             {% endfor %}
         </select>
           
-
         <div class="mb-3">
             <label for="vagas" class="form-label">Número de Vagas:</label>
             <input type="number" class="form-control" id="vagas" name="vagas" required>
@@ -35,6 +33,17 @@
             <input type="number" class="form-control" id="carga_horaria" name="carga_horaria" required>
         </div>
 
+        <!-- Novos campos para configuração do check-in -->
+        <div class="mb-3">
+            <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
+            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" placeholder="Ex: chave1,chave2,chave3,chave4,chave5" required>
+        </div>
+        <div class="mb-3">
+            <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
+            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" placeholder="Informe a palavra correta" required>
+        </div>
+
+        <!-- Múltiplas Datas e Horários (sem palavras-chave por dia) -->
         <div id="horarios-container">
             {% for i in range(datas|length if datas is defined else 1) %}
             <div class="mb-3 p-3 border rounded">
@@ -46,12 +55,6 @@
                 
                 <label>Horário de Fim:</label>
                 <input type="time" class="form-control mb-2" name="horario_fim[]" value="{{ horarios_fim[i] if horarios_fim is defined else '' }}" required>
-                
-                <label>Palavra-chave Manhã:</label>
-                <input type="text" class="form-control mb-2" name="palavra_chave_manha[]" value="{{ palavras_chave_manha[i] if palavras_chave_manha is defined else '' }}" required>
-                
-                <label>Palavra-chave Tarde:</label>
-                <input type="text" class="form-control mb-2" name="palavra_chave_tarde[]" value="{{ palavras_chave_tarde[i] if palavras_chave_tarde is defined else '' }}" required>
             </div>
             {% endfor %}
         </div>
@@ -74,8 +77,8 @@
         </div>
 
         <button type="button" id="add-horario" class="btn btn-info w-100 mb-3">+ Adicionar Dia</button>
-        <button type="submit" class="btn btn-success w-100"> Criar Oficina </button>
-        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3"> Voltar </a>
+        <button type="submit" class="btn btn-success w-100">Criar Oficina</button>
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Voltar</a>
     </form>
 </div>
 
@@ -87,18 +90,10 @@ document.getElementById('add-horario').addEventListener('click', function () {
     newGroup.innerHTML = `
         <label>Data:</label>
         <input type="date" class="form-control mb-2" name="data[]" required>
-
         <label>Horário de Início:</label>
         <input type="time" class="form-control mb-2" name="horario_inicio[]" required>
-
         <label>Horário de Fim:</label>
         <input type="time" class="form-control mb-2" name="horario_fim[]" required>
-
-        <label>Palavra-chave Manhã:</label>
-        <input type="text" class="form-control mb-2" name="palavra_chave_manha[]" required>
-
-        <label>Palavra-chave Tarde:</label>
-        <input type="text" class="form-control mb-2" name="palavra_chave_tarde[]" required>
     `;
     container.appendChild(newGroup);
 });
@@ -123,11 +118,9 @@ document.getElementById("estado").addEventListener("change", function() {
         .catch(error => console.error("Erro ao buscar cidades:", error));
 });
 
-// Impedir envio do formulário se estado ou cidade não forem selecionados
 document.querySelector("form").addEventListener("submit", function(event) {
     var estado = document.getElementById("estado").value;
     var cidade = document.getElementById("cidade").value;
-
     if (!estado || !cidade) {
         event.preventDefault();
         alert("❌ ERRO: Selecione um estado e uma cidade antes de continuar.");

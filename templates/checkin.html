@@ -8,102 +8,68 @@
     <style>
         body {
             background: linear-gradient(to right, rgba(0, 119, 182, 0.7), rgba(0, 119, 182, 0.6));
-            color: white;
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
         }
-
         .container {
-            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
             animation: fadeIn 1.5s ease-in-out;
             max-width: 600px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255,255,255,0.95);
             border-radius: 15px;
             padding: 25px;
             margin-top: 30px;
             backdrop-filter: blur(10px);
-            color: black;
         }
-
         h2, h3 {
             text-align: center;
             font-weight: bold;
-            color: black;
             margin-bottom: 20px;
         }
-
-        /* Estilização do formulário */
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        button {
-            background-color: #0077b6;
-            border: none;
-            color: white;
-            font-weight: bold;
-            padding: 10px 20px;
-            border-radius: 8px;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background-color: #023e8a;
-            transform: scale(1.05);
-        }
-
-        .alert {
-            margin-top: 15px;
-            display: block;
-        }
-
         .btn-group {
             display: flex;
             gap: 10px;
             margin-top: 15px;
         }
-
         .btn-back {
             background-color: #ff4d4d;
             color: white;
         }
-
         .btn-back:hover {
             background-color: #d93d3d;
         }
     </style>
 </head>
 <body>
-
     <div class="container">
+        <!-- Bloco de alertas -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <h2>Check-in na Oficina</h2>
         <h3>{{ oficina.titulo }}</h3>
-        <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+        <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A' }}</p>
 
-        <!-- Formulário de Check-in -->
+        <!-- Formulário de Check-in com opções de múltipla escolha -->
         <form method="POST" action="{{ url_for('routes.checkin', oficina_id=oficina.id) }}">
-            <div class="mb-3">
-                <label for="dia_id" class="form-label">Selecione o dia:</label>
-                <select id="dia_id" name="dia_id" class="form-select" required>
-                    {% for dia in dias %}
-                    <option value="{{ dia.id }}">{{ dia.data.strftime('%d/%m/%Y') }}</option>
-                    {% endfor %}
-                </select>
+            <p>Selecione a opção correta:</p>
+            {% for opcao in opcoes %}
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="palavra_escolhida" id="opcao{{ loop.index }}" value="{{ opcao }}" required>
+                <label class="form-check-label" for="opcao{{ loop.index }}">
+                    {{ opcao }}
+                </label>
             </div>
+            {% endfor %}
 
-            <div class="mb-3">
-                <label for="palavra_chave_manha" class="form-label">Palavra-chave (Manhã):</label>
-                <input type="text" id="palavra_chave_manha" name="palavra_chave_manha" class="form-control" 
-                    placeholder="Digite a palavra-chave da manhã" required>
-            </div>
-
-            <div class="mb-3">
-                <label for="palavra_chave_tarde" class="form-label">Palavra-chave (Tarde):</label>
-                <input type="text" id="palavra_chave_tarde" name="palavra_chave_tarde" class="form-control"
-                    placeholder="Digite a palavra-chave da tarde">
-                <small class="form-text text-muted">Deixe vazio se for apenas check-in da manhã.</small>
-            </div>
-
-            <div class="btn-group">
+            <div class="btn-group mt-3">
                 <button type="submit" class="btn btn-success w-100">Realizar Check-in</button>
                 <a href="{{ url_for('routes.dashboard') }}" class="btn btn-back w-100">Voltar</a>
             </div>
