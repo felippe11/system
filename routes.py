@@ -1236,6 +1236,43 @@ def gerar_pdf(oficina_id):
     return send_file(pdf_file, as_attachment=True, download_name=f"oficina_{oficina_id}.pdf")
 
 
+@routes.route('/gerar_certificado_individual_admin', methods=['POST'])
+@login_required
+def gerar_certificado_individual_admin():
+    if current_user.tipo != 'admin':
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    oficina_id = request.form.get('oficina_id')
+    usuario_id = request.form.get('usuario_id')
+    
+    if not oficina_id or not usuario_id:
+        flash("Oficina ou participante não informado.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Busca a oficina
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash("Oficina não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Verifica se o participante está inscrito na oficina
+    inscricao = Inscricao.query.filter_by(oficina_id=oficina_id, usuario_id=usuario_id).first()
+    if not inscricao:
+        flash("O participante não está inscrito nesta oficina!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Define o caminho do PDF e gera o certificado
+    pdf_path = f"static/certificados/certificado_{usuario_id}_{oficina_id}_admin.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # Gera o certificado utilizando a função existente; observe que passamos uma lista contendo só essa inscrição
+    gerar_certificados_pdf(oficina, [inscricao], pdf_path)
+
+    flash("Certificado individual gerado com sucesso!", "success")
+    return send_file(pdf_path, as_attachment=True)
+
+
 # ===========================
 #   RESET DE SENHA VIA CPF
 # ===========================

@@ -771,6 +771,12 @@
                 <i class="bi bi-card-checklist"></i> Check-ins
               </a>
             </div>
+            <!-- Botão para abrir a modal de certificado individual -->
+            <button type="button" class="btn btn-outline-success w-100 fw-bold mt-2" 
+                    data-bs-toggle="modal" data-bs-target="#modalCertificadoIndividual{{ oficina.id }}">
+              <i class="bi bi-award-fill"></i> Certificado Individual
+            </button>
+
             <button type="button" class="btn btn-info btn-sm fw-bold mt-3" data-bs-toggle="modal"
                     data-bs-target="#modalOficina{{ oficina.id }}">
               <i class="bi bi-eye-fill"></i> Ver Inscritos
@@ -778,6 +784,44 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal para gerar certificado individual para uma oficina -->
+      <div class="modal fade" id="modalCertificadoIndividual{{ oficina.id }}"
+      tabindex="-1" aria-labelledby="modalCertificadoIndividualLabel{{ oficina.id }}"
+      aria-hidden="true">
+      <div class="modal-dialog">
+      <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold" id="modalCertificadoIndividualLabel{{ oficina.id }}">
+          Certificado Individual - {{ oficina.titulo }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <form action="{{ url_for('routes.gerar_certificado_individual_admin') }}" method="POST">
+          <!-- Envia o ID da oficina -->
+          <input type="hidden" name="oficina_id" value="{{ oficina.id }}">
+          <div class="mb-3">
+            <label for="usuarioSelect{{ oficina.id }}" class="form-label">Selecione o participante</label>
+            <select name="usuario_id" id="usuarioSelect{{ oficina.id }}" class="form-select" required>
+              <option value="">-- Selecione --</option>
+              {% for inscricao in oficina.inscritos %}
+                <!-- Aqui assumimos que cada inscrição possui os dados do usuário, ex: inscricao.usuario -->
+                <option value="{{ inscricao.id }}">{{ inscricao.nome }} - {{ inscricao.email }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary fw-bold">
+              <i class="bi bi-award-fill"></i> Gerar Certificado
+            </button>
+          </div>
+        </form>
+      </div>
+      </div>
+      </div>
+      </div>
+
 
       <!-- Modal para mostrar inscritos da oficina -->
       <div class="modal fade" id="modalOficina{{ oficina.id }}" tabindex="-1" aria-labelledby="modalLabel{{ oficina.id }}"
