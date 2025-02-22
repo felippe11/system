@@ -9,6 +9,7 @@ from models import Ministrante
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -46,6 +47,10 @@ pdfmetrics.registerFont(TTFont("AlexBrush", "AlexBrush-Regular.ttf"))
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
 ALLOWED_EXTENSIONS = {"xlsx"}
+
+# Inicialize o LoginManager com o app e defina a rota de login.
+login_manager.init_app(app)
+login_manager.login_view = 'routes.login'  # Essa é a rota que será usada para login
 
 routes = Blueprint("routes", __name__)
 
