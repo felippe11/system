@@ -14,7 +14,7 @@ def create_app():
     login_manager.init_app(app)
     migrate.init_app(app, db)
 
-    login_manager.login_view = "login"
+    login_manager.login_view = "routes.login"
     login_manager.session_protection = "strong"
 
     # Definição do filtro para formatação de datas

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard do Cliente{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Painel do Cliente</h2>
+
+    <!-- Estatísticas -->
+    <div class="row my-4">
+        <div class="col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Total de Oficinas</h5>
+                    <p class="card-text display-6">{{ total_oficinas }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Vagas Ofertadas</h5>
+                    <p class="card-text display-6">{{ total_vagas }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">Vagas Preenchidas</h5>
+                    <p class="card-text display-6">{{ total_inscricoes }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">% de Adesão</h5>
+                    <p class="card-text display-6">
+                        {{ "%.2f"|format(percentual_adesao) }}%
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões principais -->
+    <button id="gerarLinkBtn" class="btn btn-primary">Gerar Link de Inscrição</button>
+    <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-success" id="btnCriarOficina">Criar Oficina</a>
+    <a href="{{ url_for('routes.admin_scan') }}" class="btn btn-dark" id="btnScanQr">Escanear QR Code</a>
+    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#modalCheckinsQR">Ver Check-ins via QR</button>
+    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalGerenciarInscricoes">Gerenciar Inscrições</button>
+    
+    <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post" 
+          onsubmit="return confirm('Tem certeza que deseja excluir todas as oficinas?');" class="d-inline">
+        <button type="submit" class="btn btn-danger">Excluir Todas as Oficinas</button>
+    </form>
+
+    <h3 class="mt-4">Minhas Oficinas</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for oficina in oficinas %}
+            <tr>
+                <td>{{ oficina.id }}</td>
+                <td>{{ oficina.titulo }}</td>
+                <td>{{ oficina.descricao }}</td>
+                <td>
+                    <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" class="btn btn-warning btn-sm">Editar</a>
+                    <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir esta oficina?');">Excluir</button>
+                    </form>
+                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalOficina{{ oficina.id }}">
+                        Ver Inscritos
+                    </button>
+                    <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-primary btn-sm">
+                        Check-ins
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}            
+            
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal para exibir Check-ins via QR Code -->
+<div class="modal fade" id="modalCheckinsQR" tabindex="-1" aria-labelledby="modalCheckinsQRLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Check-ins via QR Code</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if checkins_via_qr and checkins_via_qr|length > 0 %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Oficina</th>
+                            <th>Data/Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for checkin in checkins_via_qr %}
+                        <tr>
+                            <td>{{ checkin.usuario.nome }}</td>
+                            <td>{{ checkin.oficina.titulo }}</td>
+                            <td>{{ checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>Nenhum check-in encontrado.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para gerenciar inscrições -->
+<div class="modal fade" id="modalGerenciarInscricoes" tabindex="-1" aria-labelledby="modalGerenciarInscricoesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gerenciar Inscrições</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Participante</th>
+                            <th>Oficina</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for insc in inscritos %}
+                        <tr>
+                            <td>{{ insc.id }}</td>
+                            <td>{{ insc.usuario.nome }}</td>
+                            <td>{{ insc.oficina.titulo }}</td>
+                            <td>
+                                <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="modalLinkCadastro" tabindex="-1" aria-labelledby="modalLinkLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLinkLabel">Link de Inscrição Gerado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Copie o link abaixo e compartilhe:</p>
+                <input type="text" id="linkCadastro" class="form-control" readonly>
+                <button class="btn btn-secondary mt-2" onclick="copiarLink()">Copiar Link</button>
+                <a id="whatsappShare" class="btn btn-success mt-2" target="_blank">Enviar pelo WhatsApp</a>
+            </div>
+        </div>
+    </div>
+</div>
+  
+  <script>
+    document.getElementById("btnCriarOficina").addEventListener("click", function(event) {
+        console.log("Botão Criar Oficina clicado!");
+    });
+    document.getElementById("btnScanQr").addEventListener("click", function(event) {
+        console.log("Botão Escanear QR Code clicado!");
+    });
+    document.getElementById("gerarLinkBtn").addEventListener("click", function() {
+        fetch("{{ url_for('routes.gerar_link') }}")
+            .then(response => response.text())
+            .then(linkGerado => {
+                console.log("Link gerado:", linkGerado);
+                document.getElementById("linkCadastro").value = linkGerado;
+                
+                // Atualiza o link do WhatsApp
+                const mensagem = `Olá! Cadastre-se através deste link: ${linkGerado}`;
+                document.getElementById("whatsappShare").href = `https://api.whatsapp.com/send?text=${encodeURIComponent(mensagem)}`;
+    
+                // Exibe o modal
+                var modal = new bootstrap.Modal(document.getElementById("modalLinkCadastro"));
+                modal.show();
+            })
+            .catch(error => {
+                console.error("Erro ao gerar o link:", error);
+                alert("Erro ao gerar o link. Tente novamente.");
+            });
+    });
+    
+    function copiarLink() {
+        let linkInput = document.getElementById("linkCadastro");
+        linkInput.select();
+        document.execCommand("copy");
+        alert("Link copiado para a área de transferência!");
+    }
+  </script>
+  
+
+{% endblock %}
