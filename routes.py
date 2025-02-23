@@ -306,6 +306,11 @@ def dashboard():
     # Verifica o tipo de usuário
     is_admin = current_user.tipo == 'admin'
     is_cliente = current_user.tipo == 'cliente'
+    
+    # Se for admin, busca também os clientes
+    clientes = []
+    if is_admin:
+        clientes = Cliente.query.all()
 
     # ========== 1) Dados gerais ==========
     if is_admin:
@@ -419,7 +424,8 @@ def dashboard():
         oficinas_estatisticas=lista_oficinas_info,
         msg_relatorio=msg_relatorio,
         inscricoes=inscricoes,
-        habilitar_certificado_individual=habilitar_certificado_individual
+        habilitar_certificado_individual=habilitar_certificado_individual,
+        clientes=clientes
     )
 
 @routes.route('/dashboard_participante')
@@ -2357,18 +2363,16 @@ def superadmin_dashboard():
     return render_template('dashboard_superadmin.html', clientes=clientes)
 
 
-@app.route('/toggle_cliente/<int:cliente_id>')
+@routes.route('/toggle_cliente/<int:cliente_id>')
 @login_required
 def toggle_cliente(cliente_id):
-    if not current_user.is_superuser():
-        return abort(403)
-
+    # Permite admin (não exige superadmin)
     cliente = Cliente.query.get_or_404(cliente_id)
     cliente.ativo = not cliente.ativo
     db.session.commit()
-
     flash(f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success")
-    return redirect(url_for('superadmin_dashboard'))
+    return redirect(url_for('routes.dashboard'))
+
 
 @routes.route('/cadastrar_cliente', methods=['GET', 'POST'])
 @login_required
@@ -2413,3 +2417,38 @@ def listar_oficinas():
         oficinas = Oficina.query.all()
 
     return render_template('oficinas.html', oficinas=oficinas)
+
+@routes.route('/editar_cliente/<int:cliente_id>', methods=['GET', 'POST'])
+@login_required
+def editar_cliente(cliente_id):
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+    if request.method == 'POST':
+        cliente.nome = request.form.get('nome')
+        cliente.email = request.form.get('email')
+        nova_senha = request.form.get('senha')
+        if nova_senha:
+            from werkzeug.security import generate_password_hash
+            cliente.senha = generate_password_hash(nova_senha)
+        try:
+            db.session.commit()
+            flash("Cliente atualizado com sucesso!", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash("Erro ao atualizar cliente: " + str(e), "danger")
+        return redirect(url_for('superadmin_dashboard'))
+    return render_template('editar_cliente.html', cliente=cliente)
+
+@routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
+@login_required
+def excluir_cliente(cliente_id):
+    cliente = Cliente.query.get_or_404(cliente_id)
+    try:
+        db.session.delete(cliente)
+        db.session.commit()
+        flash("Cliente excluído com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash("Erro ao excluir cliente: " + str(e), "danger")
+    return redirect(url_for('superadmin_dashboard'))
+
