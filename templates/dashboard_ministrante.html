@@ -21,12 +21,18 @@
             <p><strong>Quantidade de inscritos:</strong> {{ oficina.inscritos|length }}</p>
 
             <!-- Botões de ação -->
-            <a href="{{ url_for('routes.upload_material', oficina_id=oficina.id) }}" class="btn btn-sm btn-info">
+            <a href="{{ url_for('routes.upload_material', oficina_id=oficina.id) }}" class="btn btn-sm btn-secondary">
                 Anexar Material
               </a>
             <a href="{{ url_for('routes.enviar_relatorio', oficina_id=oficina.id) }}" class="btn btn-sm btn-warning">
               Enviar Relatório
             </a>
+
+            {% if habilitar_feedback %}
+            <a href="{{ url_for('routes.feedback_ministrante', oficina_id=oficina.id) }}" class="btn btn-sm btn-info">
+                Enviar Feedback
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
