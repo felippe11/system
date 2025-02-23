@@ -12,7 +12,10 @@ body {
 .alert {
     transition: opacity 0.2s ease-out;
   }
-  
+
+.modal-backdrop.show {
+    opacity: 0.3; /* ajuste esse valor conforme necessário */
+  }
 /* ============================= */
 /*          NAVBAR               */
 /* ============================= */

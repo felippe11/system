@@ -774,11 +774,6 @@
                 <i class="bi bi-card-checklist"></i> Check-ins
               </a>
             </div>
-            <!-- Botão para abrir a modal de certificado individual -->
-            <button type="button" class="btn btn-outline-success w-100 fw-bold mt-2" 
-                    data-bs-toggle="modal" data-bs-target="#modalCertificadoIndividual{{ oficina.id }}">
-              <i class="bi bi-award-fill"></i> Certificado Individual
-            </button>
 
             <button type="button" class="btn btn-info btn-sm fw-bold mt-3" data-bs-toggle="modal"
                     data-bs-target="#modalOficina{{ oficina.id }}">
@@ -875,6 +870,10 @@
               <a href="{{ url_for('routes.gerar_certificados', oficina_id=oficina.id) }}" class="btn btn-outline-success">
                 <i class="bi bi-award-fill"></i> Gerar Certificados
               </a>
+              <!-- Botão para abrir a modal de certificado individual -->
+              <a href="#" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalCertificadoIndividual{{ oficina.id }}">
+                <i class="bi bi-award-fill"></i> Certificado Individual
+              </a>
               <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}" class="btn btn-outline-info">
                 <i class="bi bi-alphabet"></i> Gerar Feedback
               </a>
@@ -885,6 +884,19 @@
     {% endfor %}
   </div>
 </div>
+
+<script>
+  document.querySelectorAll('[id^="modalCertificadoIndividual"]').forEach(function(modalElement) {
+    modalElement.addEventListener("hidden.bs.modal", function () {
+      var backdrop = document.querySelector(".modal-backdrop");
+      if (backdrop) {
+        backdrop.parentNode.removeChild(backdrop);
+      }
+      document.body.classList.remove("modal-open");
+    });
+  });
+</script>
+
 
 <!-- Script para buscar estados e cidades via API do IBGE -->
 <script>

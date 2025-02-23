@@ -200,17 +200,22 @@ class Feedback(db.Model):
     __tablename__ = 'feedback'
 
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)  # Nota de 1 a 5
     comentario = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     usuario = db.relationship('Usuario', backref='feedbacks')
+    ministrante = db.relationship('Ministrante', backref='feedbacks')
     oficina = db.relationship('Oficina', backref='feedbacks')
 
     def __repr__(self):
-        return f"<Feedback id={self.id} Usuario={self.usuario_id} Oficina={self.oficina_id}>"
+        return f"<Feedback id={self.id} " \
+               f"Usuario={self.usuario_id if self.usuario_id else 'N/A'} " \
+               f"Ministrante={self.ministrante_id if self.ministrante_id else 'N/A'} " \
+               f"Oficina={self.oficina_id}>"
 
 
 # =================================
