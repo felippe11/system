@@ -1,11 +1,14 @@
 import os
+import uuid
 from datetime import datetime
 import logging
 import pandas as pd
 import qrcode
 import requests
+from flask import abort
 from flask import send_from_directory
 from models import Ministrante
+from models import Cliente
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from flask_login import login_user, logout_user, login_required, current_user
@@ -24,6 +27,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Page
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
+from models import LinkCadastro
+
 
 
 
@@ -68,6 +73,16 @@ def home():
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 def cadastro_participante():
     alert = None
+    token = request.args.get('token')  # Pega o token da URL se existir
+    cliente_id = None
+
+    # Se houver um token, verifica se é válido
+    if token:
+        link = LinkCadastro.query.filter_by(token=token).first()
+        if not link:
+            flash("Erro: Link de cadastro inválido ou expirado!", "danger")
+            return redirect(url_for('routes.cadastro_participante'))
+        cliente_id = link.cliente_id  # Associa ao Cliente
 
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -75,20 +90,18 @@ def cadastro_participante():
         email = request.form.get('email')
         senha = request.form.get('senha')
         formacao = request.form.get('formacao')
-        # CAPTURA DOS CAMPOS DE LOCALIZAÇÃO (como array, pois são multi-select):
         estados = request.form.getlist('estados[]')
         cidades = request.form.getlist('cidades[]')
-        # Junta os valores selecionados em strings separadas por vírgula:
         estados_str = ','.join(estados) if estados else ''
         cidades_str = ','.join(cidades) if cidades else ''
 
-        print(f"📌 Recebido: Nome={nome}, CPF={cpf}, Email={email}, Formação={formacao}, Estados={estados_str}, Cidades={cidades_str}")
+        print(f"📌 Recebido: Nome={nome}, CPF={cpf}, Email={email}, Formação={formacao}, Estados={estados_str}, Cidades={cidades_str}, Cliente ID={cliente_id}")
 
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
         if usuario_existente:
             flash('Erro: Este e-mail já está cadastrado!', 'danger')
-            return redirect(url_for('routes.cadastro_participante'))
+            return redirect(url_for('routes.cadastro_participante', token=token) if token else url_for('routes.cadastro_participante'))
 
         # Verifica se o CPF já existe
         usuario_existente = Usuario.query.filter_by(cpf=cpf).first()
@@ -105,7 +118,8 @@ def cadastro_participante():
                 formacao=formacao,
                 tipo='participante',
                 estados=estados_str,
-                cidades=cidades_str
+                cidades=cidades_str,
+                cliente_id=cliente_id  # Associa ao Cliente se veio por link
             )
             try:
                 db.session.add(novo_usuario)
@@ -117,7 +131,8 @@ def cadastro_participante():
                 print(f"Erro ao cadastrar usuário: {e}")
                 alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
 
-    return render_template('cadastro_participante.html', alert=alert)
+    return render_template('cadastro_participante.html', alert=alert, token=token)
+
 
 # ===========================
 #      EDITAR PARTICIPANTE
@@ -174,68 +189,84 @@ def load_user(user_id):
     user_type = session.get('user_type')
     if user_type == 'ministrante':
         return Ministrante.query.get(int(user_id))
-    elif user_type == 'admin' or user_type == 'participante':
+    elif user_type in ['admin', 'participante']:
         return Usuario.query.get(int(user_id))
-    # Caso não haja informação, tenta buscar em ambas (opcional)
+    elif user_type == 'cliente':
+        from models import Cliente
+        return Cliente.query.get(int(user_id))
+    # Fallback: tenta buscar em Usuario e Ministrante
     user = Usuario.query.get(int(user_id))
     if user:
         return user
     return Ministrante.query.get(int(user_id))
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 
 @routes.route('/login', methods=['GET', 'POST'], endpoint='login')
 def login():
     if request.method == 'POST':
         email = request.form['email']
         senha = request.form['senha']
-        print(f"Tentativa de login para o email: {email}")
-        
-        # Tenta buscar primeiro em Usuario
+        print(f"Tentativa de login para o email: {email}, senha: {senha}")
+
+        # Busca o usuário no banco de dados
         usuario = Usuario.query.filter_by(email=email).first()
         if usuario:
-            print(f"Usuário encontrado na tabela Usuario: {usuario.email}, tipo: {getattr(usuario, 'tipo', 'N/A')}")
+            print(f"Usuário encontrado na tabela Usuario: {usuario.email}, tipo: {getattr(usuario, 'tipo', 'N/A')}, senha salva: {usuario.senha}")
         else:
             print("Não encontrado na tabela Usuario, buscando em Ministrante...")
             usuario = Ministrante.query.filter_by(email=email).first()
             if usuario:
-                print(f"Usuário encontrado na tabela Ministrante: {usuario.email}")
+                print(f"Usuário encontrado na tabela Ministrante: {usuario.email}, senha salva: {usuario.senha}")
             else:
-                print("Usuário não encontrado em nenhuma tabela.")
-        
-        if usuario and check_password_hash(usuario.senha, senha):
-            print("Senha verificada com sucesso!")
-            
-            # Armazena o tipo do usuário na sessão
-            if isinstance(usuario, Ministrante):
-                session['user_type'] = 'ministrante'
-            elif hasattr(usuario, 'tipo'):
-                session['user_type'] = usuario.tipo
+                print("Não encontrado na tabela Ministrante, buscando em Cliente...")
+                usuario = Cliente.query.filter_by(email=email).first()
+                if usuario:
+                    print(f"Usuário encontrado na tabela Cliente: {usuario.email}, senha salva: {usuario.senha}")
+                else:
+                    print("Usuário não encontrado em nenhuma tabela.")
+
+        # Verifica a senha
+        if usuario:
+            print(f"Comparando senha digitada ({senha}) com senha salva ({usuario.senha})")
+
+            # Verifica se a senha está em texto puro ou se é um hash
+            if usuario.senha.startswith("scrypt:") or usuario.senha.startswith("pbkdf2:") or usuario.senha.startswith("sha256$"):
+                senha_correta = check_password_hash(usuario.senha, senha)
             else:
-                session['user_type'] = 'usuario'
-            
-            login_user(usuario)
-            flash('Login realizado com sucesso!', 'success')
-            
-            # Redirecionamento conforme o tipo
-            if session.get('user_type') == 'admin':
-                print("Redirecionando para o dashboard do Admin")
-                return redirect(url_for('routes.dashboard'))
-            elif session.get('user_type') == 'participante':
-                print("Redirecionando para o dashboard do Participante")
-                return redirect(url_for('routes.dashboard_participante'))
-            elif session.get('user_type') == 'ministrante':
-                print("Redirecionando para o dashboard do Ministrante")
-                return redirect(url_for('routes.dashboard_ministrante'))
+                senha_correta = usuario.senha == senha
+
+            if senha_correta:
+                print("Senha verificada com sucesso!")
+                
+                session['user_type'] = (
+                    'ministrante' if isinstance(usuario, Ministrante) else
+                    'cliente' if isinstance(usuario, Cliente) else
+                    usuario.tipo if hasattr(usuario, 'tipo') else 'usuario'
+                )
+
+                login_user(usuario)
+                flash('Login realizado com sucesso!', 'success')
+
+                # Redirecionamento conforme o tipo de usuário
+                redirecionamentos = {
+                    'admin': 'routes.dashboard',
+                    'cliente': 'routes.dashboard_cliente',
+                    'participante': 'routes.dashboard_participante',
+                    'ministrante': 'routes.dashboard_ministrante'
+                }
+                destino = redirecionamentos.get(session.get('user_type'), 'routes.dashboard_ministrante')
+                print(f"Redirecionando para {destino}")
+                return redirect(url_for(destino))
             else:
-                print("Redirecionamento padrão para dashboard_ministrante")
-                return redirect(url_for('routes.dashboard_ministrante'))
+                print("Senha incorreta.")
         else:
-            print("Usuário não encontrado ou senha incorreta.")
-            flash('E-mail ou senha incorretos!', 'danger')
-    
+            print("Usuário não encontrado.")
+
+        flash('E-mail ou senha incorretos!', 'danger')
+
     return render_template('login.html')
+
 
 @routes.route('/logout')
 @login_required
@@ -251,142 +282,140 @@ def logout():
 @routes.route('/dashboard')
 @login_required
 def dashboard():
-    if current_user.tipo == 'admin':
-        from sqlalchemy import func
+    from sqlalchemy import func
 
-        # Obtem filtros
-        estado_filter = request.args.get('estado', '').strip()
-        cidade_filter = request.args.get('cidade', '').strip()
+    # Obtem filtros
+    estado_filter = request.args.get('estado', '').strip()
+    cidade_filter = request.args.get('cidade', '').strip()
 
-        # Check-ins via QR
-        checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
+    # Check-ins via QR
+    checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
 
-        # Lista de participantes (se quiser gerenciar)
-        participantes = Usuario.query.filter_by(tipo='participante').all()
-        
-        inscricoes = Inscricao.query.all()
-        
-        msg_relatorio = None  # Adiciona um valor padrão
+    # Lista de participantes (se quiser gerenciar)
+    participantes = Usuario.query.filter_by(tipo='participante').all()
+    
+    inscricoes = Inscricao.query.all()
+    
+    msg_relatorio = None  # Adiciona um valor padrão
 
+    # Verifica o tipo de usuário
+    is_admin = current_user.tipo == 'admin'
+    is_cliente = current_user.tipo == 'cliente'
 
-        # ========== 1) Dados gerais ==========
+    # ========== 1) Dados gerais ==========
+    if is_admin:
         total_oficinas = Oficina.query.count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
         total_inscricoes = Inscricao.query.count()
-        if total_vagas > 0:
-            percentual_adesao = (total_inscricoes / total_vagas) * 100
-        else:
-            percentual_adesao = 0
+    else:  # Cliente vê apenas suas oficinas
+        total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
+        total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
+        total_inscricoes = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).count()
 
-        # ========== 2) Estatísticas por oficina ==========
-        oficinas = Oficina.query.all()
-        lista_oficinas_info = []
-        for of in oficinas:
-            num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
-            if of.vagas > 0:
-                perc_ocupacao = (num_inscritos / of.vagas) * 100
-            else:
-                perc_ocupacao = 0
+    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
 
-            lista_oficinas_info.append({
-                'titulo': of.titulo,
-                'vagas': of.vagas,
-                'inscritos': num_inscritos,
-                'ocupacao': perc_ocupacao
-            })
+    # ========== 2) Estatísticas por oficina ==========
+    oficinas_query = Oficina.query.filter_by(cliente_id=current_user.id) if is_cliente else Oficina.query
+    oficinas = oficinas_query.all()
 
-        # ========== 3) Monta a string do relatório (somente UMA vez) ==========
-            msg_relatorio = (
-            "📊 *Relatório do Sistema IAFAP*\n\n"
-            f"✅ *Total de Oficinas:* {total_oficinas}\n"
-            f"✅ *Vagas Ofertadas:* {total_vagas}\n"
-            f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
-            f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
-            "----------------------------------------\n"
-            "📌 *DADOS POR OFICINA:*\n"
+    lista_oficinas_info = []
+    for of in oficinas:
+        num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
+        perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
+
+        lista_oficinas_info.append({
+            'titulo': of.titulo,
+            'vagas': of.vagas,
+            'inscritos': num_inscritos,
+            'ocupacao': perc_ocupacao
+        })
+
+    # ========== 3) Monta a string do relatório (somente UMA vez) ==========
+    msg_relatorio = (
+        "📊 *Relatório do Sistema IAFAP*\n\n"
+        f"✅ *Total de Oficinas:* {total_oficinas}\n"
+        f"✅ *Vagas Ofertadas:* {total_vagas}\n"
+        f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
+        f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
+        "----------------------------------------\n"
+        "📌 *DADOS POR OFICINA:*\n"
+    )
+
+    for info in lista_oficinas_info:
+        msg_relatorio += (
+            f"\n🎓 *Oficina:* {info['titulo']}\n"
+            f"🔹 *Vagas:* {info['vagas']}\n"
+            f"🔹 *Inscritos:* {info['inscritos']}\n"
+            f"🔹 *Ocupação:* {info['ocupacao']:.2f}%\n"
         )
 
-        for info in lista_oficinas_info:
-            msg_relatorio += (
-                f"\n🎓 *Oficina:* {info['titulo']}\n"
-                f"🔹 *Vagas:* {info['vagas']}\n"
-                f"🔹 *Inscritos:* {info['inscritos']}\n"
-                f"🔹 *Ocupação:* {info['ocupacao']:.2f}%\n"
-            )
+    # ========== 4) Mais lógica para dashboard (filtros, etc.) ==========
+    query = oficinas_query
+    if estado_filter:
+        query = query.filter(Oficina.estado == estado_filter)
+    if cidade_filter:
+        query = query.filter(Oficina.cidade == cidade_filter)
+    oficinas_filtradas = query.all()
 
+    oficinas_com_inscritos = []
+    for oficina in oficinas_filtradas:
+        dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
+        dias_formatados = [dia.data.strftime('%d/%m/%Y') for dia in dias]
 
-        # ========== 4) Mais lógica para dashboard (filtros, etc.) ==========
-        query = Oficina.query
-        if estado_filter:
-            query = query.filter(Oficina.estado == estado_filter)
-        if cidade_filter:
-            query = query.filter(Oficina.cidade == cidade_filter)
-        oficinas_filtradas = query.all()
+        inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).all()
+        inscritos_info = []
+        for inscricao in inscritos:
+            usuario = Usuario.query.get(inscricao.usuario_id)
+            if usuario:
+                inscritos_info.append({
+                    'id': usuario.id,
+                    'nome': usuario.nome,
+                    'cpf': usuario.cpf,
+                    'email': usuario.email,
+                    'formacao': usuario.formacao
+                })
 
-        oficinas_com_inscritos = []
-        for oficina in oficinas_filtradas:
-            dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
-            dias_formatados = [dia.data.strftime('%d/%m/%Y') for dia in dias]
+        oficinas_com_inscritos.append({
+            'id': oficina.id,
+            'titulo': oficina.titulo,
+            'descricao': oficina.descricao,
+            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
+            'vagas': oficina.vagas,
+            'carga_horaria': oficina.carga_horaria,
+            'dias': dias_formatados,
+            'inscritos': inscritos_info
+        })
 
-            inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).all()
-            inscritos_info = []
-            for inscricao in inscritos:
-                usuario = Usuario.query.get(inscricao.usuario_id)
-                if usuario:
-                    inscritos_info.append({
-                        'id': usuario.id,
-                        'nome': usuario.nome,
-                        'cpf': usuario.cpf,
-                        'email': usuario.email,
-                        'formacao': usuario.formacao
-                    })
+    # Busca ministrantes, relatorios, config...
+    ministrantes = Ministrante.query.all()
+    relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
+    configuracao = Configuracao.query.first()
+    permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
+    habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
+    habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
 
-            oficinas_com_inscritos.append({
-                'id': oficina.id,
-                'titulo': oficina.titulo,
-                'descricao': oficina.descricao,
-                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
-                'vagas': oficina.vagas,
-                'carga_horaria': oficina.carga_horaria,
-                'dias': dias_formatados,
-                'inscritos': inscritos_info
-            })
-
-        # Busca ministrantes, relatorios, config...
-        ministrantes = Ministrante.query.all()
-        relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
-        configuracao = Configuracao.query.first()
-        permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
-        habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
-        habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
-
-        # ========== 5) Renderiza ==========
-        return render_template(
-            'dashboard_admin.html',
-            participantes=participantes,
-            usuario=current_user,
-            oficinas=oficinas_com_inscritos,
-            ministrantes=ministrantes,
-            relatorios=relatorios,
-            permitir_checkin_global=permitir_checkin_global,
-            habilitar_feedback=habilitar_feedback,
-            estado_filter=estado_filter,
-            cidade_filter=cidade_filter,
-            checkins_via_qr=checkins_via_qr,
-            total_oficinas=total_oficinas,
-            total_vagas=total_vagas,
-            total_inscricoes=total_inscricoes,
-            percentual_adesao=percentual_adesao,
-            oficinas_estatisticas=lista_oficinas_info,  # ou outro nome
-            msg_relatorio=msg_relatorio,
-            inscricoes=inscricoes,
-            habilitar_certificado_individual=habilitar_certificado_individual
-        )
-    else:
-        return redirect(url_for('routes.dashboard_participante'))
-
-
-
+    # ========== 5) Renderiza ==========
+    return render_template(
+        'dashboard_admin.html' if is_admin else 'dashboard_cliente.html',
+        participantes=participantes,
+        usuario=current_user,
+        oficinas=oficinas_com_inscritos,
+        ministrantes=ministrantes,
+        relatorios=relatorios,
+        permitir_checkin_global=permitir_checkin_global,
+        habilitar_feedback=habilitar_feedback,
+        estado_filter=estado_filter,
+        cidade_filter=cidade_filter,
+        checkins_via_qr=checkins_via_qr,
+        total_oficinas=total_oficinas,
+        total_vagas=total_vagas,
+        total_inscricoes=total_inscricoes,
+        percentual_adesao=percentual_adesao,
+        oficinas_estatisticas=lista_oficinas_info,
+        msg_relatorio=msg_relatorio,
+        inscricoes=inscricoes,
+        habilitar_certificado_individual=habilitar_certificado_individual
+    )
 
 @routes.route('/dashboard_participante')
 @login_required
@@ -394,17 +423,17 @@ def dashboard_participante():
     if current_user.tipo != 'participante':
         return redirect(url_for('routes.dashboard'))
 
-    # Se o participante registrou localizações, filtra as oficinas.
-    if current_user.estados and current_user.cidades:
-        estados = [e.strip() for e in current_user.estados.split(',') if e.strip()]
-        cidades = [c.strip() for c in current_user.cidades.split(',') if c.strip()]
+    print(f"🔍 Participante autenticado: {current_user.email}, Cliente ID: {current_user.cliente_id}")
+
+    if current_user.cliente_id:
         oficinas = Oficina.query.filter(
-            Oficina.estado.in_(estados),
-            Oficina.cidade.in_(cidades)
+            (Oficina.cliente_id == current_user.cliente_id) | (Oficina.cliente_id == None)
         ).all()
     else:
-        oficinas = Oficina.query.all()
+        # Participantes sem cliente associado veem apenas oficinas do Admin
+        oficinas = Oficina.query.filter(Oficina.cliente_id == None).all()
 
+    # Configurações globais
     configuracao = Configuracao.query.first()
     permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
     habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
@@ -430,6 +459,7 @@ def dashboard_participante():
             oficinas_inscrito.append(oficina_formatada)
         else:
             oficinas_nao_inscrito.append(oficina_formatada)
+
     oficinas_ordenadas = oficinas_inscrito + oficinas_nao_inscrito
 
     return render_template('dashboard_participante.html', 
@@ -447,100 +477,48 @@ def dashboard_participante():
 @routes.route('/criar_oficina', methods=['GET', 'POST'])
 @login_required
 def criar_oficina():
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:  # Apenas Admin e Cliente podem criar oficinas
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
-    # Buscar todos os ministrantes para exibir no dropdown
     todos_ministrantes = Ministrante.query.all()
 
     if request.method == 'POST':
-        print("📌 [DEBUG] Recebendo dados do formulário...")
         titulo = request.form.get('titulo')
         descricao = request.form.get('descricao')
-        # Agora, o campo deve ser "ministrante_id" conforme o template
         ministrante_id = request.form.get('ministrante_id')
         vagas = request.form.get('vagas')
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
         cidade = request.form.get('cidade')
 
-        # Captura os dados de check-in de múltipla escolha:
-        opcoes_checkin = request.form.get('opcoes_checkin')  # Exemplo: "chave1,chave2,chave3,chave4,chave5"
-        palavra_correta = request.form.get('palavra_correta')
-
-        print(f"📌 [DEBUG] Estado: {estado}")
-        print(f"📌 [DEBUG] Cidade: {cidade}")
-        print(f"📌 [DEBUG] Ministrante selecionado (ID): {ministrante_id}")
-
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
-            return redirect(url_for('criar_oficina'))
-
-        # Captura múltiplas datas, horários e palavras-chave
-        datas = request.form.getlist('data[]')
-        horarios_inicio = request.form.getlist('horario_inicio[]')
-        horarios_fim = request.form.getlist('horario_fim[]')
-        palavras_chave_manha = request.form.getlist('palavra_chave_manha[]')
-        palavras_chave_tarde = request.form.getlist('palavra_chave_tarde[]')
-
-        if not datas or not horarios_inicio or not horarios_fim:
-            flash('Você deve informar pelo menos uma data e horário!', 'danger')
-            return redirect(url_for('criar_oficina'))
+            return redirect(url_for('routes.criar_oficina'))
 
         nova_oficina = Oficina(
             titulo=titulo,
             descricao=descricao,
-            ministrante_id=ministrante_id,  # Usando ministrante_id
+            ministrante_id=ministrante_id,
             vagas=int(vagas),
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
+            cliente_id=current_user.id if current_user.tipo == 'cliente' else None  # Cliente cria apenas suas oficinas
         )
 
-        print("✅ [DEBUG] Oficina criada, salvando no banco de dados...")
-        db.session.add(nova_oficina)
-        db.session.commit()
-        print("✅ [DEBUG] Oficina salva com sucesso!")
-
-        # Configura as opções de check-in
-        nova_oficina.opcoes_checkin = opcoes_checkin
-        nova_oficina.palavra_correta = palavra_correta
-
         db.session.add(nova_oficina)
         db.session.commit()
 
-        # Gerar o QR Code
-        qr_code_path = gerar_qr_code(nova_oficina.id)
-        nova_oficina.qr_code = qr_code_path
-        db.session.commit()
-
-        # Adiciona as datas da oficina
-        for i in range(len(datas)):
-            novo_dia = OficinaDia(
-                oficina_id=nova_oficina.id,
-                data=datetime.strptime(datas[i], "%Y-%m-%d").date(),
-                horario_inicio=horarios_inicio[i],
-                horario_fim=horarios_fim[i],
-                #palavra_chave_manha=palavras_chave_manha[i],
-                #palavra_chave_tarde=palavras_chave_tarde[i],
-            )
-            db.session.add(novo_dia)
-        db.session.commit()
-        
         flash('Oficina criada com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template('criar_oficina.html',
-                           estados=estados,
-                           ministrantes=todos_ministrantes,
-                           datas=[],
-                           horarios_inicio=[],
-                           horarios_fim=[])
-                           #palavras_chave_manha=[],
-                           #palavras_chave_tarde=[])
-
+    return render_template(
+        'criar_oficina.html',
+        estados=estados,
+        ministrantes=todos_ministrantes
+    )
 
 
 @routes.route('/get_cidades/<estado_sigla>')
@@ -553,141 +531,69 @@ def get_cidades(estado_sigla):
 @routes.route('/editar_oficina/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
 def editar_oficina(oficina_id):
-    # Apenas admin pode editar a oficina (ou adapte para ministrantes se necessário)
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+    oficina = Oficina.query.get_or_404(oficina_id)
+
+    # Cliente só pode editar oficinas que ele criou
+    if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
+        flash('Você não tem permissão para editar esta oficina.', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
 
     estados = obter_estados()
-    oficina = Oficina.query.get_or_404(oficina_id)
-    # Buscar todos os ministrantes para o dropdown
-    todos_ministrantes = Ministrante.query.all()
+    ministrantes = Ministrante.query.all()
 
     if request.method == 'POST':
-        # Atualiza os dados da oficina
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
-        # Atualiza o vínculo com o ministrante via ministrante_id
         oficina.ministrante_id = request.form.get('ministrante_id')
         oficina.vagas = int(request.form.get('vagas'))
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
 
-        # Atualiza os campos de configuração de check-in
-        oficina.opcoes_checkin = request.form.get('opcoes_checkin')
-        oficina.palavra_correta = request.form.get('palavra_correta')
-
-        # Remove os registros antigos de datas/horários
-        OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
-
-        # Agora, somente as datas e os horários são enviados
-        datas = request.form.getlist('data[]')
-        horarios_inicio = request.form.getlist('horario_inicio[]')
-        horarios_fim = request.form.getlist('horario_fim[]')
-
-        for i in range(len(datas)):
-            if datas[i] and horarios_inicio[i] and horarios_fim[i]:
-                try:
-                    data_formatada = datetime.strptime(datas[i], "%Y-%m-%d").date()
-                except ValueError:
-                    raise ValueError(f"Data inválida: {datas[i]}. O formato esperado é YYYY-MM-DD.")
-                novo_dia = OficinaDia(
-                    oficina_id=oficina.id,
-                    data=data_formatada,
-                    horario_inicio=horarios_inicio[i],
-                    horario_fim=horarios_fim[i]
-                )
-                db.session.add(novo_dia)
         db.session.commit()
         flash('Oficina editada com sucesso!', 'success')
+
+        if current_user.tipo == 'cliente':
+            return redirect(url_for('routes.dashboard_cliente'))
         return redirect(url_for('routes.dashboard'))
 
-    # Preparar os dados para o template (GET)
-    datas = [dia.data.strftime('%Y-%m-%d') for dia in oficina.dias]
-    horarios_inicio = [dia.horario_inicio for dia in oficina.dias]
-    horarios_fim = [dia.horario_fim for dia in oficina.dias]
-
-    return render_template('editar_oficina.html',
-                           oficina=oficina,
-                           estados=estados,
-                           ministrantes=todos_ministrantes,
-                           datas=datas,
-                           horarios_inicio=horarios_inicio,
-                           horarios_fim=horarios_fim)
-
-
-    # Preparar os dados para o template (GET)
-    datas = [dia.data.strftime('%Y-%m-%d') for dia in oficina.dias]
-    horarios_inicio = [dia.horario_inicio for dia in oficina.dias]
-    horarios_fim = [dia.horario_fim for dia in oficina.dias]
-    palavras_chave_manha = [dia.palavra_chave_manha for dia in oficina.dias]
-    palavras_chave_tarde = [dia.palavra_chave_tarde for dia in oficina.dias]
-
-    return render_template('editar_oficina.html',
-                           oficina=oficina,
-                           estados=estados,
-                           ministrantes=todos_ministrantes,
-                           datas=datas,
-                           horarios_inicio=horarios_inicio,
-                           horarios_fim=horarios_fim,
-                           palavras_chave_manha=palavras_chave_manha,
-                           palavras_chave_tarde=palavras_chave_tarde)
-
+    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes)
 
 
 @routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])
 @login_required
 def excluir_oficina(oficina_id):
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+    oficina = Oficina.query.get_or_404(oficina_id)
 
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        flash('Oficina não encontrada!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+    # 🚨 Cliente só pode excluir oficinas que ele criou
+    if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
+        flash('Você não tem permissão para excluir esta oficina.', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
 
     try:
         print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")
 
-        # 1. Excluir Feedbacks relacionados à oficina
-        feedbacks = Feedback.query.filter_by(oficina_id=oficina.id).all()
-        for fb in feedbacks:
-            db.session.delete(fb)
-        db.session.commit()
-        print("✅ [DEBUG] Feedbacks removidos.")
-
-        # 2. Excluir Check-ins relacionados à oficina
-        db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
-        db.session.commit()
+        # 1️⃣ **Excluir check-ins relacionados à oficina**
+        db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Check-ins removidos.")
 
-        # 3. Excluir Inscrições associadas à oficina
-        db.session.query(Inscricao).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
-        db.session.commit()
+        # 2️⃣ **Excluir inscrições associadas à oficina**
+        db.session.query(Inscricao).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Inscrições removidas.")
 
-        # 4. Excluir registros de datas (OficinaDia)
-        db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete(synchronize_session=False)
-        db.session.commit()
+        # 3️⃣ **Excluir registros de datas da oficina (OficinaDia)**
+        db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Dias da oficina removidos.")
 
-        # 5. Excluir Materiais associados à oficina
-        materiais = MaterialOficina.query.filter_by(oficina_id=oficina.id).all()
-        for material in materiais:
-            db.session.delete(material)
-        db.session.commit()
+        # 4️⃣ **Excluir materiais da oficina**
+        db.session.query(MaterialOficina).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Materiais da oficina removidos.")
 
-        # 6. Excluir Relatórios associados à oficina (NOVO TRECHO)
-        relatorios = RelatorioOficina.query.filter_by(oficina_id=oficina.id).all()
-        for relatorio in relatorios:
-            db.session.delete(relatorio)
-        db.session.commit()
+        # 5️⃣ **Excluir relatórios associados à oficina**
+        db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Relatórios da oficina removidos.")
 
-        # 7. Excluir a própria oficina
+        # 6️⃣ **Excluir a própria oficina**
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
@@ -698,8 +604,7 @@ def excluir_oficina(oficina_id):
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
-    return redirect(url_for('routes.dashboard'))
-
+    return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
 
 # ===========================
@@ -1400,65 +1305,37 @@ def importar_oficinas():
 @routes.route("/excluir_todas_oficinas", methods=["POST"])
 @login_required
 def excluir_todas_oficinas():
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
         return redirect(url_for("routes.dashboard"))
 
     try:
-        oficinas = Oficina.query.all()
+        if current_user.tipo == 'admin':
+            oficinas = Oficina.query.all()
+        else:  # Cliente só pode excluir suas próprias oficinas
+            oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
+
         if not oficinas:
             flash("Não há oficinas para excluir.", "warning")
-            return redirect(url_for("routes.dashboard"))
-
-        print(f"📌 [DEBUG] Encontradas {len(oficinas)} oficinas para exclusão.")
-
-        qr_code_folder = os.path.join("static", "qrcodes")
+            return redirect(url_for("routes.dashboard_cliente" if current_user.tipo == 'cliente' else "routes.dashboard"))
 
         for oficina in oficinas:
-            # Remover QR Code associado à oficina
-            if oficina.qr_code:
-                qr_code_path = os.path.join(qr_code_folder, f"checkin_{oficina.id}.png")
-                if os.path.exists(qr_code_path):
-                    os.remove(qr_code_path)
-                    print(f"✅ [DEBUG] QR Code removido: {qr_code_path}")
-
-        # Excluir Feedbacks relacionados às oficinas
-        num_feedbacks = db.session.query(Feedback).delete()
-        print(f"✅ [DEBUG] {num_feedbacks} feedbacks excluídos.")
-
-        # Excluir Check-ins relacionados às oficinas
-        num_checkins = db.session.query(Checkin).delete()
-        print(f"✅ [DEBUG] {num_checkins} check-ins excluídos.")
-
-        # Excluir Inscrições associadas às oficinas
-        num_inscricoes = db.session.query(Inscricao).delete()
-        print(f"✅ [DEBUG] {num_inscricoes} inscrições excluídas.")
-
-        # Excluir Registros de Datas (OficinaDia)
-        num_dias = db.session.query(OficinaDia).delete()
-        print(f"✅ [DEBUG] {num_dias} registros de dias excluídos.")
-
-        # Excluir Materiais das Oficinas
-        num_materiais = db.session.query(MaterialOficina).delete()
-        print(f"✅ [DEBUG] {num_materiais} materiais de oficina excluídos.")
-
-        # Excluir Relatórios das Oficinas
-        num_relatorios = db.session.query(RelatorioOficina).delete()
-        print(f"✅ [DEBUG] {num_relatorios} relatórios de oficina excluídos.")
-
-        # Excluir as Oficinas após limpar todas as referências
-        num_oficinas = db.session.query(Oficina).delete()
-        print(f"✅ [DEBUG] {num_oficinas} oficinas excluídas.")
+            db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(Inscricao).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(MaterialOficina).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
+            db.session.delete(oficina)
 
         db.session.commit()
-        flash(f"{num_oficinas} oficinas e todos os dados relacionados foram excluídos com sucesso!", "success")
+        flash("Oficinas excluídas com sucesso!", "success")
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ [ERRO] Erro ao excluir oficinas: {str(e)}")
         flash(f"Erro ao excluir oficinas: {str(e)}", "danger")
 
-    return redirect(url_for("routes.dashboard"))
+    return redirect(url_for("routes.dashboard_cliente" if current_user.tipo == 'cliente' else "routes.dashboard"))
+
 
 @routes.route("/importar_usuarios", methods=["POST"])
 def importar_usuarios():
@@ -1941,9 +1818,9 @@ def gerenciar_ministrantes():
 @routes.route('/admin_scan')
 @login_required
 def admin_scan():
-    if current_user.tipo not in ('admin', 'staff'):
+    if current_user.tipo not in ('admin', 'cliente'):  # Agora clientes podem acessar
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
     return render_template("scan_qr.html")
 
 @routes.route('/relatorios/<path:filename>')
@@ -2231,3 +2108,164 @@ def cancelar_inscricao(inscricao_id):
 
     return redirect(url_for('routes.dashboard'))
 
+@routes.route('/dashboard_cliente')
+@login_required
+def dashboard_cliente():
+    if current_user.tipo != 'cliente':
+        return redirect(url_for('routes.dashboard'))
+
+    print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
+
+    # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
+    oficinas = Oficina.query.filter(
+        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    ).all()
+
+    total_oficinas = len(oficinas)
+    total_vagas = sum(of.vagas for of in oficinas)
+    total_inscricoes = Inscricao.query.join(Oficina).filter(
+        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    ).count()
+    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
+
+    checkins_via_qr = Checkin.query.join(Oficina).filter(
+        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    ).all()
+
+    inscritos = Inscricao.query.join(Oficina).filter(
+        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    ).all()
+
+    return render_template(
+        'dashboard_cliente.html',
+        usuario=current_user,
+        oficinas=oficinas,
+        total_oficinas=total_oficinas,
+        total_vagas=total_vagas,
+        total_inscricoes=total_inscricoes,
+        percentual_adesao=percentual_adesao,
+        checkins_via_qr=checkins_via_qr,
+        inscritos=inscritos
+    )
+
+
+
+@app.route('/oficinas_disponiveis')
+@login_required
+def oficinas_disponiveis():
+    oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
+    return render_template('oficinas.html', oficinas=oficinas)
+
+@routes.route('/gerar_link', methods=['GET'])
+@login_required
+def gerar_link():
+    if session.get('user_type') not in ['cliente', 'admin']:
+        return "Forbidden", 403
+    
+    cliente_id = current_user.id
+    novo_token = str(uuid.uuid4())
+
+    # Criar o link de cadastro no banco
+    novo_link = LinkCadastro(cliente_id=cliente_id, token=novo_token)
+    db.session.add(novo_link)
+    db.session.commit()
+
+    # Detecta se está rodando localmente ou no Render
+    if request.host.startswith("127.0.0.1") or "localhost" in request.host:
+        base_url = "http://127.0.0.1:5000"  # URL local
+    else:
+        base_url = "https://appfiber.com.br"  # URL do Render
+
+    # Criar o link apontando para /cadastro_participante?token=TOKEN
+    link_gerado = f"{base_url}{url_for('routes.cadastro_participante', token=novo_token)}"
+
+    return link_gerado  # Retorna apenas o link para ser exibido no modal
+
+
+
+@app.route('/inscricao/<token>', methods=['GET', 'POST'])
+def inscricao(token):
+    cliente = Cliente.query.filter_by(token=token).first()
+    
+    if not cliente:
+        return "Link inválido", 404
+
+    if request.method == 'POST':
+        novo_usuario = Usuario(
+            email=request.form['email'],
+            senha_hash=generate_password_hash(request.form['senha']),
+            cliente_id=cliente.id,
+            tipo="usuario"
+        )
+        db.session.add(novo_usuario)
+        db.session.commit()
+        return redirect(url_for('login'))
+
+    return render_template('inscricao.html', cliente=cliente)
+
+@app.route('/superadmin_dashboard')
+@login_required
+def superadmin_dashboard():
+    if not current_user.is_superuser():
+        return abort(403)
+
+    clientes = Cliente.query.all()
+    return render_template('dashboard_superadmin.html', clientes=clientes)
+
+
+@app.route('/toggle_cliente/<int:cliente_id>')
+@login_required
+def toggle_cliente(cliente_id):
+    if not current_user.is_superuser():
+        return abort(403)
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+    cliente.ativo = not cliente.ativo
+    db.session.commit()
+
+    flash(f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success")
+    return redirect(url_for('superadmin_dashboard'))
+
+@routes.route('/cadastrar_cliente', methods=['GET', 'POST'])
+@login_required
+def cadastrar_cliente():
+    if session.get('user_type') != 'admin':  # Apenas admin pode cadastrar clientes
+        abort(403)
+
+    if request.method == 'POST':
+        nome = request.form['nome']
+        email = request.form['email']
+        senha = request.form['senha']
+
+        # Verifica se o e-mail já está cadastrado
+        cliente_existente = Cliente.query.filter_by(email=email).first()
+        if cliente_existente:
+            flash("Já existe um cliente com esse e-mail!", "danger")
+            return redirect(url_for('routes.cadastrar_cliente'))
+
+        # Cria o cliente
+        novo_cliente = Cliente(
+            nome=request.form['nome'],
+            email=request.form['email'],
+            senha=request.form['senha']  # ✅ CORRETO
+        )
+
+
+        db.session.add(novo_cliente)
+        db.session.commit()
+
+        flash("Cliente cadastrado com sucesso!", "success")
+        return redirect(url_for('routes.dashboard'))
+
+    return render_template('cadastrar_cliente.html')
+
+
+@routes.route('/oficinas', methods=['GET'])
+@login_required
+def listar_oficinas():
+    if session.get('user_type') == 'participante':
+        oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()  # ✅ Mostra apenas oficinas do Cliente que registrou o usuário
+    else:
+        oficinas = Oficina.query.all()
+
+    return render_template('oficinas.html', oficinas=oficinas)

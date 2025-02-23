@@ -1,33 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Leitor de QR Code{% endblock %}
+
+{% block title %}Escanear QR Code{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="text-center text-dark mb-4">Leitor de QR Code</h2>
-  <!-- O elemento que exibirá a câmera -->
-  <div id="reader" style="width: 400px; margin: 0 auto;"></div>
+<div class="container mt-4 text-center">
+    <h2>Escanear QR Code</h2>
+    <video id="qr-video" width="400" height="300" autoplay></video>
+    <p id="qr-result" class="mt-3"></p>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Voltar</a>
 </div>
-{% endblock %}
 
-{% block scripts_extra %}
-<!-- Importa a lib html5-qrcode do CDN -->
+<!-- Adicionando o leitor de QR Code -->
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
-  function onScanSuccess(decodedText, decodedResult) {
-    // decodedText deve ser exatamente "http://127.0.0.1:5000/leitor_checkin?token=ALGUMA-UUID"
-    // Portanto, vamos redirecionar diretamente para essa URL,
-    // sem concatenar nada extra:
-    window.location.href = decodedText;
-  }
+document.addEventListener("DOMContentLoaded", function () {
+    let scanner = new Html5Qrcode("qr-video");
 
-  function onScanFailure(error) {
-    console.warn(`QR Code não detectado: ${error}`);
-  }
+    function onScanSuccess(decodedText) {
+        document.getElementById("qr-result").innerHTML = `<strong>QR Code Lido:</strong> ${decodedText}`;
+        window.location.href = decodedText;  // Redireciona automaticamente
+    }
 
-  document.addEventListener("DOMContentLoaded", function () {
-    // Cria o scanner
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
-  });
+    function onScanError(errorMessage) {
+        console.warn("Erro ao escanear:", errorMessage);
+    }
+
+    scanner.start(
+        { facingMode: "environment" }, // Usa a câmera traseira no celular
+        { fps: 10, qrbox: 250 },
+        onScanSuccess,
+        onScanError
+    );
+});
 </script>
 {% endblock %}

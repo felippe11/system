@@ -19,6 +19,10 @@ class Usuario(db.Model, UserMixin):
     senha = db.Column(db.String(255), nullable=False)
     formacao = db.Column(db.String(255), nullable=False)
     tipo = db.Column(db.String(20), nullable=False, default='participante')
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Alterado para permitir NULL
+
+    
+    cliente = db.relationship('Cliente', backref=db.backref('usuarios', lazy=True))
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
     cidades = db.Column(db.String(255), nullable=True)   # Ex.: "São Paulo,Rio de Janeiro,Belo Horizonte"
@@ -28,6 +32,12 @@ class Usuario(db.Model, UserMixin):
 
     def __repr__(self):
         return f"<Usuario {self.nome}>"
+    
+    def is_superuser(self):
+        return self.tipo == "superadmin"
+
+    def is_cliente(self):
+        return self.tipo == "cliente"
 
 
 
@@ -86,8 +96,6 @@ class Oficina(db.Model):
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     ministrante_obj = db.relationship("Ministrante", backref="oficinas", lazy=True)
   
-
-    
     vagas = db.Column(db.Integer, nullable=False)
     carga_horaria = db.Column(db.String(10), nullable=False)
     estado = db.Column(db.String(2), nullable=False)
@@ -96,8 +104,11 @@ class Oficina(db.Model):
 
     opcoes_checkin = db.Column(db.String(255), nullable=True)  # Ex: "palavra1,palavra2,palavra3,palavra4,palavra5"
     palavra_correta = db.Column(db.String(50), nullable=True)
+    
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionado
+    cliente = db.relationship("Cliente", back_populates="oficinas")  # ✅ Corrigido para `back_populates`
 
-    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, qr_code=None):
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
@@ -106,6 +117,7 @@ class Oficina(db.Model):
         self.estado = estado
         self.cidade = cidade
         self.qr_code = qr_code
+        self.cliente_id = cliente_id  # ✅ Adicionando o cliente_id corretamente
 
     def __repr__(self):
         return f"<Oficina {self.titulo}>"
@@ -148,6 +160,7 @@ class Inscricao(db.Model):
     
     usuario = db.relationship('Usuario', backref='inscricoes')
     oficina = db.relationship('Oficina', backref='inscritos')
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False) 
     
     def __init__(self, usuario_id, oficina_id):
         self.usuario_id = usuario_id
@@ -157,6 +170,8 @@ class Inscricao(db.Model):
     
     def __repr__(self):
         return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
+    
+    
 
 
 # =================================
@@ -243,3 +258,37 @@ class RelatorioOficina(db.Model):
 
     def __repr__(self):
         return f"<RelatorioOficina oficina_id={self.oficina_id} ministrante_id={self.ministrante_id}>"
+
+class Cliente(db.Model, UserMixin):
+    __tablename__ = 'cliente'
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    senha = db.Column(db.String(255), nullable=False) 
+    ativo = db.Column(db.Boolean, default=True)  # Habilitação pelo superusuário
+    tipo = db.Column(db.String(20), default='cliente')  # Define o tipo do usuário
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionando relação com Cliente
+
+     # Relacionamento com Oficina
+    oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`
+
+    
+    def is_active(self):
+        """Retorna True se o cliente está ativo."""
+        return self.ativo
+    def get_id(self):
+        """Retorna o ID do cliente como string, necessário para Flask-Login."""
+        return str(self.id)
+
+class LinkCadastro(db.Model):
+    __tablename__ = 'link_cadastro'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    token = db.Column(db.String(36), unique=True, nullable=False, default=str(uuid.uuid4()))
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    cliente = db.relationship('Cliente', backref=db.backref('links_cadastro', lazy=True))
+
+    def __repr__(self):
+        return f"<LinkCadastro cliente_id={self.cliente_id}, token={self.token}>"
