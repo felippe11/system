@@ -1601,36 +1601,122 @@ def feedback_oficina(oficina_id):
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
     oficina = Oficina.query.get_or_404(oficina_id)
-    feedbacks = Feedback.query.filter_by(oficina_id=oficina_id).order_by(Feedback.created_at.desc()).all()
-    return render_template('feedback_oficina.html', oficina=oficina, feedbacks=feedbacks)
+
+    # Cálculo das estatísticas gerais (sem os filtros da query abaixo)
+    total_feedbacks_all = Feedback.query.filter_by(oficina_id=oficina_id).all()
+    total_count = len(total_feedbacks_all)
+    total_avg = (sum(fb.rating for fb in total_feedbacks_all) / total_count) if total_count > 0 else 0
+
+    feedbacks_usuarios = Feedback.query.filter(
+        Feedback.oficina_id == oficina_id,
+        Feedback.usuario_id.isnot(None)
+    ).all()
+    count_usuarios = len(feedbacks_usuarios)
+    avg_usuarios = (sum(fb.rating for fb in feedbacks_usuarios) / count_usuarios) if count_usuarios > 0 else 0
+
+    feedbacks_ministrantes = Feedback.query.filter(
+        Feedback.oficina_id == oficina_id,
+        Feedback.ministrante_id.isnot(None)
+    ).all()
+    count_ministrantes = len(feedbacks_ministrantes)
+    avg_ministrantes = (sum(fb.rating for fb in feedbacks_ministrantes) / count_ministrantes) if count_ministrantes > 0 else 0
+
+    # Aplicando filtros (tipo e número de estrelas) para a listagem
+    query = Feedback.query.filter(Feedback.oficina_id == oficina_id)
+    tipo = request.args.get('tipo')
+    if tipo == 'usuario':
+        query = query.filter(Feedback.usuario_id.isnot(None))
+    elif tipo == 'ministrante':
+        query = query.filter(Feedback.ministrante_id.isnot(None))
+    estrelas = request.args.get('estrelas')
+    if estrelas and estrelas.isdigit():
+        query = query.filter(Feedback.rating == int(estrelas))
+    feedbacks = query.order_by(Feedback.created_at.desc()).all()
+    
+    return render_template('feedback_oficina.html', oficina=oficina, feedbacks=feedbacks,
+                           total_count=total_count, total_avg=total_avg,
+                           count_ministrantes=count_ministrantes, avg_ministrantes=avg_ministrantes,
+                           count_usuarios=count_usuarios, avg_usuarios=avg_usuarios)
+
+
 
 def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, SimpleDocTemplate
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from datetime import datetime
+
     styles = getSampleStyleSheet()
+    normal_style = styles['Normal']
+    heading_style = ParagraphStyle(
+        'HeadingStyle',
+        parent=styles['Heading4'],
+        textColor=colors.white
+    )
+
     elements = []
+    # Título
     title = Paragraph(f"Feedbacks da Oficina - {oficina.titulo}", styles['Title'])
     elements.append(title)
     elements.append(Spacer(1, 12))
-    table_data = [["Usuário", "Avaliação", "Comentário", "Data"]]
+    
+    # Cria a linha de cabeçalho utilizando Paragraph para melhor formatação
+    header = [
+        Paragraph("Usuário", heading_style),
+        Paragraph("Avaliação", heading_style),
+        Paragraph("Comentário", heading_style),
+        Paragraph("Data", heading_style)
+    ]
+    table_data = [header]
+    
+    # Prepara os dados da tabela (usando Paragraph para células com texto possivelmente longo)
     for fb in feedbacks:
         rating_str = '★' * fb.rating + '☆' * (5 - fb.rating)
         data_str = fb.created_at.strftime('%d/%m/%Y %H:%M')
-        table_data.append([fb.usuario.nome, rating_str, fb.comentario or "", data_str])
-    from reportlab.platypus import Table
-    table = Table(table_data, colWidths=[100, 80, 250, 100])
+        nome_autor = fb.usuario.nome if fb.usuario is not None else (
+                     fb.ministrante.nome if fb.ministrante is not None else "Desconhecido")
+        # Cria um Paragraph para o comentário para permitir quebra de linha
+        comentario_paragraph = Paragraph(fb.comentario or "", normal_style)
+        row = [
+            Paragraph(nome_autor, normal_style),
+            Paragraph(rating_str, normal_style),
+            comentario_paragraph,
+            Paragraph(data_str, normal_style)
+        ]
+        table_data.append(row)
+    
+    # Cria o documento em modo paisagem com margens pequenas
+    doc = SimpleDocTemplate(pdf_path, pagesize=landscape(letter), leftMargin=36, rightMargin=36)
+    available_width = doc.width  # largura disponível após as margens
+
+    # Define as larguras das colunas (porcentagem da largura disponível)
+    col_widths = [
+        available_width * 0.2,  # Usuário
+        available_width * 0.15, # Avaliação
+        available_width * 0.45, # Comentário
+        available_width * 0.2   # Data
+    ]
+    
+    table = Table(table_data, colWidths=col_widths)
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('ALIGN', (1, 1), (1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
     elements.append(table)
     elements.append(Spacer(1, 12))
-    footer = Paragraph("Feedbacks gerados em " + datetime.utcnow().strftime('%d/%m/%Y %H:%M'), styles['Normal'])
+    footer = Paragraph("Feedbacks gerados em " + datetime.utcnow().strftime('%d/%m/%Y %H:%M'), normal_style)
     elements.append(footer)
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements.append(PageBreak())
+    
     doc.build(elements)
+
 
 @routes.route('/gerar_pdf_feedback/<int:oficina_id>')
 @login_required
@@ -1639,13 +1725,27 @@ def gerar_pdf_feedback_route(oficina_id):
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
     oficina = Oficina.query.get_or_404(oficina_id)
-    feedbacks = Feedback.query.filter_by(oficina_id=oficina_id).order_by(Feedback.created_at.desc()).all()
+    
+    # Replicar a lógica de filtragem usada na rota feedback_oficina
+    query = Feedback.query.filter(Feedback.oficina_id == oficina_id)
+    tipo = request.args.get('tipo')
+    if tipo == 'usuario':
+        query = query.filter(Feedback.usuario_id.isnot(None))
+    elif tipo == 'ministrante':
+        query = query.filter(Feedback.ministrante_id.isnot(None))
+    estrelas = request.args.get('estrelas')
+    if estrelas and estrelas.isdigit():
+        query = query.filter(Feedback.rating == int(estrelas))
+    
+    feedbacks = query.order_by(Feedback.created_at.desc()).all()
+    
     pdf_folder = os.path.join("static", "feedback_pdfs")
     os.makedirs(pdf_folder, exist_ok=True)
     pdf_filename = f"feedback_{oficina.id}.pdf"
     pdf_path = os.path.join(pdf_folder, pdf_filename)
     gerar_pdf_feedback(oficina, feedbacks, pdf_path)
     return send_file(pdf_path, as_attachment=True)
+
 
 @routes.route("/toggle_feedback", methods=["POST"])
 @login_required
@@ -1661,6 +1761,41 @@ def toggle_feedback():
     db.session.commit()
     flash(f"Feedback global {'ativado' if config.habilitar_feedback else 'desativado'} com sucesso!", "success")
     return redirect(url_for("routes.dashboard"))
+
+@routes.route('/feedback_ministrante/<int:oficina_id>', methods=['GET', 'POST'])
+@login_required
+def feedback_ministrante(oficina_id):
+    # Verifica se o usuário é um ministrante
+    if current_user.tipo != 'ministrante':
+        flash('Apenas ministrantes podem enviar feedback por aqui.', 'danger')
+        return redirect(url_for('routes.dashboard_ministrante'))
+    
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    if request.method == 'POST':
+        try:
+            rating = int(request.form.get('rating', 0))
+        except ValueError:
+            rating = 0
+        comentario = request.form.get('comentario', '').strip()
+        if rating < 1 or rating > 5:
+            flash('A avaliação deve ser entre 1 e 5 estrelas.', 'danger')
+            return redirect(url_for('routes.feedback_ministrante', oficina_id=oficina_id))
+        
+        novo_feedback = Feedback(
+            ministrante_id=current_user.id,  # Salva o id do ministrante
+            oficina_id=oficina.id,
+            rating=rating,
+            comentario=comentario
+        )
+        db.session.add(novo_feedback)
+        db.session.commit()
+        flash('Feedback enviado com sucesso!', 'success')
+        return redirect(url_for('routes.dashboard_ministrante'))
+    
+    # Reaproveita o template existente (feedback.html) ou crie um específico se desejar
+    return render_template('feedback.html', oficina=oficina)
+
 
 @routes.route('/gerar_certificado/<int:oficina_id>', methods=['GET'])
 @login_required
@@ -1786,12 +1921,16 @@ def dashboard_ministrante():
 
     # Buscar as oficinas deste ministrante
     oficinas_do_ministrante = Oficina.query.filter_by(ministrante_id=ministrante_logado.id).all()
+    # Carrega a configuração e define habilitar_feedback
+    config = Configuracao.query.first()
+    habilitar_feedback = config.habilitar_feedback if config else False
     print(f"Foram encontradas {len(oficinas_do_ministrante)} oficinas para o ministrante {ministrante_logado.email}")
 
     return render_template(
         'dashboard_ministrante.html',
         ministrante=ministrante_logado,
-        oficinas=oficinas_do_ministrante
+        oficinas=oficinas_do_ministrante,
+        habilitar_feedback=habilitar_feedback
     )
 
 @routes.route('/enviar_relatorio/<int:oficina_id>', methods=['GET', 'POST'])
