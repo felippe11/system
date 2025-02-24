@@ -655,6 +655,7 @@ def inscrever(oficina_id):
     # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
     inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id)
+    inscricao.cliente_id = current_user.cliente_id
     db.session.add(inscricao)
     db.session.commit()
 
@@ -670,7 +671,7 @@ def remover_inscricao(oficina_id):
     inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina_id).first()
     if not inscricao:
         flash('Você não está inscrito nesta oficina!', 'warning')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_participante'))
 
     oficina = Oficina.query.get(oficina_id)
     if oficina:
@@ -679,7 +680,7 @@ def remover_inscricao(oficina_id):
     db.session.delete(inscricao)
     db.session.commit()
     flash('Inscrição removida com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('routes.dashboard_participante'))
 
 
 # ===========================
