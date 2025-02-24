@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Detalhes da Resposta</h2>
+
+    <p><strong>Usuário:</strong> {{ resposta.usuario.nome }}</p>
+    <p><strong>Data de Envio:</strong> {{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</p>
+
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Campo</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campo in resposta.respostas_campos %}
+            <tr>
+                <td>{{ campo.campo.nome }}</td>
+                <td>
+                    {% if campo.campo.tipo == 'file' %}
+                    <a href="{{ campo.valor }}" target="_blank">📂 Ver Arquivo</a>
+                    {% else %}
+                    {{ campo.valor }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="{{ url_for('routes.listar_respostas', formulario_id=resposta.formulario.id) }}" class="btn btn-secondary">Voltar</a>
+</div>
+{% endblock %}

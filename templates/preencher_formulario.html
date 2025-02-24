@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Preencher Formulário - {{ formulario.nome }}</h2>
+    <p>{{ formulario.descricao }}</p>
+
+    <form method="POST" enctype="multipart/form-data">
+        {% for campo in formulario.campos %}
+        <div class="mb-3">
+            <label class="form-label">{{ campo.nome }}</label>
+            {% if campo.tipo == 'text' %}
+            <input type="text" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
+            {% elif campo.tipo == 'textarea' %}
+            <textarea name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}></textarea>
+            {% elif campo.tipo == 'number' %}
+            <input type="number" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
+            {% elif campo.tipo == 'file' %}
+            <input type="file" name="file_{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
+            {% elif campo.tipo == 'date' %}
+            <input type="date" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
+            {% elif campo.tipo == 'dropdown' %}
+            <select name="{{ campo.id }}" class="form-select" {% if campo.obrigatorio %}required{% endif %}>
+                {% for opcao in campo.opcoes.split(',') %}
+                <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
+                {% endfor %}
+            </select>
+            {% elif campo.tipo == 'checkbox' %}
+            {% for opcao in campo.opcoes.split(',') %}
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="{{ campo.id }}" value="{{ opcao.strip() }}">
+                <label class="form-check-label">{{ opcao.strip() }}</label>
+            </div>
+            {% endfor %}
+            {% elif campo.tipo == 'radio' %}
+            {% for opcao in campo.opcoes.split(',') %}
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="{{ campo.id }}" value="{{ opcao.strip() }}" required>
+                <label class="form-check-label">{{ opcao.strip() }}</label>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+
+    <a href="{{ url_for('routes.dashboard_participante') }}" class="btn btn-secondary mt-3">Voltar</a>
+
+</div>
+{% endblock %}
