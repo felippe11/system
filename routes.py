@@ -973,7 +973,7 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
 @routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
 @login_required
 def gerar_certificados(oficina_id):
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
         flash("Apenas administradores podem gerar certificados.", "danger")
         return redirect(url_for('routes.dashboard'))
     oficina = Oficina.query.get(oficina_id)
@@ -1167,7 +1167,7 @@ def gerar_pdf(oficina_id):
 @routes.route('/gerar_certificado_individual_admin', methods=['POST'])
 @login_required
 def gerar_certificado_individual_admin():
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
 
@@ -1490,10 +1490,10 @@ def feedback(oficina_id):
 @routes.route('/feedback_oficina/<int:oficina_id>')
 @login_required
 def feedback_oficina(oficina_id):
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    oficina = Oficina.query.get_or_404(oficina_id)
+    oficina = Oficina.query.get_or_404(oficina_id)  # Primeiro
+    if current_user.tipo not in ['admin', 'cliente'] or (current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id and oficina.cliente_id is not None):
+        flash('Você não tem permissão para visualizar o feedback desta oficina.', 'danger')
+        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
     # Cálculo das estatísticas gerais (sem os filtros da query abaixo)
     total_feedbacks_all = Feedback.query.filter_by(oficina_id=oficina_id).all()
@@ -1614,7 +1614,7 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
 @routes.route('/gerar_pdf_feedback/<int:oficina_id>')
 @login_required
 def gerar_pdf_feedback_route(oficina_id):
-    if current_user.tipo != 'admin':
+    if current_user.tipo != 'admin' and current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
     oficina = Oficina.query.get_or_404(oficina_id)
@@ -2277,10 +2277,10 @@ def dashboard_cliente():
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
-    oficinas = Oficina.query.filter(
-        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(
+        db.joinedload(Oficina.inscritos).joinedload(Inscricao.usuario)
     ).all()
-
+    # Cálculo das estatísticas
     total_oficinas = len(oficinas)
     total_vagas = sum(of.vagas for of in oficinas)
     total_inscricoes = Inscricao.query.join(Oficina).filter(
