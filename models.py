@@ -170,7 +170,7 @@ class Inscricao(db.Model):
 
     checkin_attempts = db.Column(db.Integer, default=0)
     
-    usuario = db.relationship('Usuario', backref='inscricoes')
+    usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))  # Adicionar lazy loading
     oficina = db.relationship('Oficina', backref='inscritos')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False) 
     
