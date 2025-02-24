@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Respostas - {{ formulario.nome }}</h2>
+
+    {% if respostas %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Usuário</th>
+                <th>Data de Envio</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for resposta in respostas %}
+            <tr>
+                <td>{{ resposta.usuario.nome }}</td>
+                <td>{{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=resposta.id) }}" class="btn btn-info btn-sm">
+                        Ver Detalhes
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-warning">Nenhuma resposta enviada ainda.</p>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}" class="btn btn-primary">📄 Exportar PDF</a>
+        <a href="{{ url_for('routes.exportar_csv', formulario_id=formulario.id) }}" class="btn btn-success">
+            📊 Exportar CSV
+        </a>
+             
+    </div>
+
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}

@@ -2,6 +2,17 @@
 {% block content %}
 <div class="container mt-4">
   <h2>Dashboard do Ministrante: {{ ministrante.nome }}</h2>
+  <div class="mb-4">
+    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary w-100 fw-bold">
+        <i class="bi bi-ui-checks"></i> Gerenciar Formulários
+    </a>
+</div>
+
+<div class="mb-4">
+  <a href="{{ url_for('routes.listar_respostas', formulario_id=1) }}" class="btn btn-primary w-100 fw-bold">
+      📄 Gerenciar Respostas dos Formulários
+  </a>
+</div>
 
   <hr>
 

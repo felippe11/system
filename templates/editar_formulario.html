@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Editar Formulário</h2>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Formulário</label>
+            <input type="text" id="nome" name="nome" class="form-control" value="{{ formulario.nome }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea id="descricao" name="descricao" class="form-control">{{ formulario.descricao }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Salvar Alterações</button>
+    </form>
+
+    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}

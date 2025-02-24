@@ -79,6 +79,13 @@
     <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
     <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
   </div>
+
+      <div class="mb-4">
+          <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
+              📝 Preencher Formulários
+          </a>
+      </div>
+
   
   <div class="row">
     {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}

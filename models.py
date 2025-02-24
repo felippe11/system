@@ -9,6 +9,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Email
 
+
 # =================================
 #             CLIENTE
 # =================================
@@ -308,3 +309,63 @@ class LinkCadastro(db.Model):
 
     def __repr__(self):
         return f"<LinkCadastro cliente_id={self.cliente_id}, token={self.token}>"
+    
+
+from extensions import db
+
+class Formulario(db.Model):
+    __tablename__ = 'formularios'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
+    
+    cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
+    campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Formulario {self.nome}>"
+
+class CampoFormulario(db.Model):
+    __tablename__ = 'campos_formulario'
+
+    id = db.Column(db.Integer, primary_key=True)
+    formulario_id = db.Column(db.Integer, db.ForeignKey('formularios.id'), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # Exemplo: texto, número, arquivo, dropdown
+    opcoes = db.Column(db.Text, nullable=True)  # Para dropdowns/checklists (valores separados por vírgula)
+    obrigatorio = db.Column(db.Boolean, default=False)
+    tamanho_max = db.Column(db.Integer, nullable=True)  # Para limitar caracteres
+    regex_validacao = db.Column(db.String(255), nullable=True)  # Validação customizada
+
+    def __repr__(self):
+        return f"<Campo {self.nome} ({self.tipo})>"
+
+class RespostaFormulario(db.Model):
+    __tablename__ = 'respostas_formulario'
+
+    id = db.Column(db.Integer, primary_key=True)
+    formulario_id = db.Column(db.Integer, db.ForeignKey('formularios.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
+
+    formulario = db.relationship('Formulario', backref=db.backref('respostas', lazy=True))
+    usuario = db.relationship('Usuario', backref=db.backref('respostas', lazy=True))
+
+    def __repr__(self):
+        return f"<RespostaFormulario ID {self.id} - Formulário {self.formulario_id} - Usuário {self.usuario_id}>"
+
+class RespostaCampo(db.Model):
+    __tablename__ = 'respostas_campo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    resposta_formulario_id = db.Column(db.Integer, db.ForeignKey('respostas_formulario.id'), nullable=False)
+    campo_id = db.Column(db.Integer, db.ForeignKey('campos_formulario.id'), nullable=False)
+    valor = db.Column(db.Text, nullable=False)
+
+    resposta_formulario = db.relationship('RespostaFormulario', backref=db.backref('respostas_campos', lazy=True))
+    campo = db.relationship('CampoFormulario', backref=db.backref('respostas', lazy=True))
+
+    def __repr__(self):
+        return f"<RespostaCampo ID {self.id} - Campo {self.campo_id} - Valor {self.valor}>"

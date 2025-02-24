@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Formulários Criados</h2>
+
+    <a href="{{ url_for('routes.criar_formulario') }}" class="btn btn-success mb-3">
+        + Criar Novo Formulário
+    </a>
+
+    {% if formularios %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for formulario in formularios %}
+            <tr>
+                <td>{{ formulario.nome }}</td>
+                <td>{{ formulario.descricao or "Sem descrição" }}</td>
+                <td>
+                    <a href="{{ url_for('routes.gerenciar_campos', formulario_id=formulario.id) }}" class="btn btn-info btn-sm">
+                        Gerenciar Campos
+                    </a>
+                    <a href="{{ url_for('routes.editar_formulario', formulario_id=formulario.id) }}" class="btn btn-warning btn-sm">
+                        Editar
+                    </a>
+                    <form action="{{ url_for('routes.deletar_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este formulário?')">
+                            Excluir
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-warning">Nenhum formulário criado ainda.</p>
+    {% endif %}
+</div>
+{% endblock %}
