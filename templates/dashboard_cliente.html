@@ -38,11 +38,23 @@
                     <h5 class="card-title text-primary">% de Adesão</h5>
                     <p class="card-text display-6">
                         {{ "%.2f"|format(percentual_adesao) }}%
+                        
                     </p>
                 </div>
             </div>
         </div>
     </div>
+    <div class="mb-4">
+        <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary w-100 fw-bold">
+            <i class="bi bi-ui-checks"></i> Gerenciar Formulários
+        </a>
+    </div>
+
+    <div class="mb-4">
+      <a href="{{ url_for('routes.listar_respostas', formulario_id=1) }}" class="btn btn-primary w-100 fw-bold">
+          📄 Gerenciar Respostas dos Formulários
+      </a>
+  </div>
 
     <!-- Botões principais -->
     <button id="gerarLinkBtn" class="btn btn-primary">Gerar Link de Inscrição</button>
