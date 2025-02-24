@@ -6,6 +6,7 @@ import pandas as pd
 import qrcode
 import requests
 from flask import abort
+from sqlalchemy.exc import IntegrityError
 from flask import send_from_directory
 from models import Ministrante
 from models import Cliente
@@ -227,6 +228,15 @@ def login():
                 print("Não encontrado na tabela Ministrante, buscando em Cliente...")
                 usuario = Cliente.query.filter_by(email=email).first()
                 if usuario:
+                    if not usuario.is_active():
+                        flash('Sua conta está desativada. Contate o administrador.', 'danger')
+                        return render_template('login.html')
+                    if check_password_hash(usuario.senha, senha):
+                        session['user_type'] = 'cliente'
+                        login_user(usuario)
+                        flash('Login realizado com sucesso!', 'success')
+                        return redirect(url_for('routes.dashboard_cliente'))
+                    flash('E-mail ou senha incorretos!', 'danger')
                     print(f"Usuário encontrado na tabela Cliente: {usuario.email}, senha salva: {usuario.senha}")
                 else:
                     print("Usuário não encontrado em nenhuma tabela.")
@@ -2366,9 +2376,12 @@ def superadmin_dashboard():
 @routes.route('/toggle_cliente/<int:cliente_id>')
 @login_required
 def toggle_cliente(cliente_id):
-    # Permite admin (não exige superadmin)
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
     cliente = Cliente.query.get_or_404(cliente_id)
-    cliente.ativo = not cliente.ativo
+    cliente.ativo = not cliente.ativo  # Alterna o estado (True -> False ou False -> True)
     db.session.commit()
     flash(f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success")
     return redirect(url_for('routes.dashboard'))
@@ -2421,27 +2434,35 @@ def listar_oficinas():
 @routes.route('/editar_cliente/<int:cliente_id>', methods=['GET', 'POST'])
 @login_required
 def editar_cliente(cliente_id):
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
 
     cliente = Cliente.query.get_or_404(cliente_id)
     if request.method == 'POST':
         cliente.nome = request.form.get('nome')
         cliente.email = request.form.get('email')
         nova_senha = request.form.get('senha')
-        if nova_senha:
-            from werkzeug.security import generate_password_hash
+        if nova_senha:  # Só atualiza a senha se ela for fornecida
             cliente.senha = generate_password_hash(nova_senha)
         try:
             db.session.commit()
             flash("Cliente atualizado com sucesso!", "success")
         except Exception as e:
             db.session.rollback()
-            flash("Erro ao atualizar cliente: " + str(e), "danger")
-        return redirect(url_for('superadmin_dashboard'))
+            flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
     return render_template('editar_cliente.html', cliente=cliente)
 
 @routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
 @login_required
 def excluir_cliente(cliente_id):
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    logger.info(f"Tentando excluir cliente ID: {cliente_id}")
     cliente = Cliente.query.get_or_404(cliente_id)
     try:
         db.session.delete(cliente)
@@ -2449,6 +2470,6 @@ def excluir_cliente(cliente_id):
         flash("Cliente excluído com sucesso!", "success")
     except Exception as e:
         db.session.rollback()
-        flash("Erro ao excluir cliente: " + str(e), "danger")
-    return redirect(url_for('superadmin_dashboard'))
-
+        logger.error(f"Erro ao excluir cliente {cliente_id}: {str(e)}")
+        flash(f"Erro ao excluir cliente: {str(e)}", "danger")
+    return redirect(url_for('routes.dashboard'))

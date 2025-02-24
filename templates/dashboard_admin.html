@@ -110,7 +110,8 @@
           data-bs-target="#modalEditarCliente"
           data-id="{{ cliente.id }}"
           data-nome="{{ cliente.nome }}"
-          data-email="{{ cliente.email }}">
+          data-email="{{ cliente.email }}"
+          data-senha="{{ cliente.senha }}">
             Editar
           </button>
           <!-- Botão para alternar status -->
@@ -262,6 +263,7 @@
   <!-- Fim da primeira linha -->
 
   <!-- Modal de confirmação de exclusão -->
+<!-- Modal de confirmação de exclusão -->
 <div class="modal fade" id="modalExcluirCliente" tabindex="-1" aria-labelledby="modalExcluirClienteLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -272,7 +274,6 @@
         </div>
         <div class="modal-body">
           <p>Tem certeza que deseja excluir este cliente?</p>
-          <input type="hidden" name="cliente_id" id="excluirClienteId">
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-danger">Sim, Excluir</button>
@@ -957,6 +958,7 @@
 </div>
 
 <!-- Modal de edição de cliente -->
+<!-- Modal de edição de cliente -->
 <div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalEditarClienteLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -966,8 +968,6 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
-          <!-- Campo oculto para armazenar o ID -->
-          <input type="hidden" name="cliente_id" id="clienteId">
           <div class="mb-3">
             <label for="clienteNome" class="form-label">Nome</label>
             <input type="text" class="form-control" name="nome" id="clienteNome" required>
@@ -978,7 +978,8 @@
           </div>
           <div class="mb-3">
             <label for="clienteSenha" class="form-label">Nova Senha (opcional)</label>
-            <input type="password" class="form-control" name="senha" id="clienteSenha">
+            <input type="password" class="form-control" name="senha" id="clienteSenha" placeholder="Deixe em branco para manter a senha atual">
+            <small class="form-text text-muted">A senha só será alterada se você preencher este campo.</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -1000,23 +1001,25 @@
       document.body.classList.remove("modal-open");
     });
   });
+</script>
+<script>
+  // Define a URL base em uma variável JavaScript
+  var editarClienteBaseUrl = "{{ url_for('routes.editar_cliente', cliente_id=0) }}".replace('/0', '');
 
   var modalEditarCliente = document.getElementById('modalEditarCliente');
-  modalEditarCliente.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var clienteId = button.getAttribute('data-id');
-      var nome = button.getAttribute('data-nome');
-      var email = button.getAttribute('data-email');
-      
-      // Preenche os campos do formulário do modal
-      modalEditarCliente.querySelector('#clienteId').value = clienteId;
-      modalEditarCliente.querySelector('#clienteNome').value = nome;
-      modalEditarCliente.querySelector('#clienteEmail').value = email;
-      
-      // Atualiza a action do formulário para incluir o ID do cliente
-      var form = document.getElementById('formEditarCliente');
-      form.action = form.action.replace("0", clienteId);
-  });
+modalEditarCliente.addEventListener('show.bs.modal', function (event) {
+    var button = event.relatedTarget;
+    var clienteId = button.getAttribute('data-id');
+    var nome = button.getAttribute('data-nome');
+    var email = button.getAttribute('data-email');
+    
+    var form = modalEditarCliente.querySelector('#formEditarCliente');
+    form.querySelector('#clienteNome').value = nome;
+    form.querySelector('#clienteEmail').value = email;
+    form.querySelector('#clienteSenha').value = ''; // Mantém em branco
+    
+    form.action = editarClienteBaseUrl + '/' + clienteId;
+});
 </script>
 
 
@@ -1153,12 +1156,16 @@
 
   var modalExcluirCliente = document.getElementById('modalExcluirCliente');
   modalExcluirCliente.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var clienteId = button.getAttribute('data-id');
-      modalExcluirCliente.querySelector('#excluirClienteId').value = clienteId;
-      
-      var form = document.getElementById('formExcluirCliente');
-      form.action = form.action.replace("0", clienteId);
+    var button = event.relatedTarget;
+    var clienteId = button.getAttribute('data-id');
+    
+    // Atualiza o action do formulário com o cliente_id correto
+    var form = document.getElementById('formExcluirCliente');
+    var baseUrl = "{{ url_for('routes.excluir_cliente', cliente_id=0) }}";
+    form.action = baseUrl.replace('0', clienteId);
+    
+    // Preenche o campo hidden (opcional, mas mantemos para consistência)
+    modalExcluirCliente.querySelector('#excluirClienteId').value = clienteId;
   });
 </script>
 
