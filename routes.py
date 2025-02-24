@@ -1,5 +1,7 @@
 import os
 import uuid
+import csv
+from flask import Response
 from datetime import datetime
 import logging
 import pandas as pd
@@ -16,6 +18,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from models import RespostaFormulario, RespostaCampo
+
 
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
@@ -30,9 +34,10 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from models import LinkCadastro
-
-
-
+from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
+from models import Formulario, CampoFormulario
+from extensions import db
+from flask_login import login_required, current_user
 
 
 # ReportLab para PDFs
@@ -2474,3 +2479,238 @@ def excluir_cliente(cliente_id):
         logger.error(f"Erro ao excluir cliente {cliente_id}: {str(e)}")
         flash(f"Erro ao excluir cliente: {str(e)}", "danger")
     return redirect(url_for('routes.dashboard'))
+
+@routes.route('/formularios', methods=['GET'])
+@login_required
+def listar_formularios():
+    formularios = Formulario.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('formularios.html', formularios=formularios)
+
+@routes.route('/formularios/novo', methods=['GET', 'POST'])
+@login_required
+def criar_formulario():
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        
+        novo_formulario = Formulario(
+            nome=nome,
+            descricao=descricao,
+            cliente_id=current_user.id  # Relaciona com o cliente logado
+        )
+        db.session.add(novo_formulario)
+        db.session.commit()
+        flash('Formulário criado com sucesso!', 'success')
+        return redirect(url_for('routes.listar_formularios'))
+    
+    return render_template('criar_formulario.html')
+
+@routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_formulario(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    if request.method == 'POST':
+        formulario.nome = request.form.get('nome')
+        formulario.descricao = request.form.get('descricao')
+        db.session.commit()
+        flash('Formulário atualizado!', 'success')
+        return redirect(url_for('routes.listar_formularios'))
+
+    return render_template('editar_formulario.html', formulario=formulario)
+
+@routes.route('/formularios/<int:formulario_id>/deletar', methods=['POST'])
+@login_required
+def deletar_formulario(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+    db.session.delete(formulario)
+    db.session.commit()
+    flash('Formulário deletado com sucesso!', 'success')
+    return redirect(url_for('routes.listar_formularios'))
+
+@routes.route('/formularios/<int:formulario_id>/campos', methods=['GET', 'POST'])
+@login_required
+def gerenciar_campos(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        tipo = request.form.get('tipo')
+        opcoes = request.form.get('opcoes', '').strip()
+        obrigatorio = request.form.get('obrigatorio') == 'on'
+        tamanho_max = request.form.get('tamanho_max') or None
+        regex_validacao = request.form.get('regex_validacao') or None
+
+        novo_campo = CampoFormulario(
+            formulario_id=formulario.id,
+            nome=nome,
+            tipo=tipo,
+            opcoes=opcoes if tipo in ['dropdown', 'checkbox', 'radio'] else None,
+            obrigatorio=obrigatorio,
+            tamanho_max=int(tamanho_max) if tamanho_max else None,
+            regex_validacao=regex_validacao
+        )
+
+        db.session.add(novo_campo)
+        db.session.commit()
+        flash('Campo adicionado com sucesso!', 'success')
+
+        return redirect(url_for('routes.gerenciar_campos', formulario_id=formulario.id))
+
+    return render_template('gerenciar_campos.html', formulario=formulario)
+
+@routes.route('/campos/<int:campo_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_campo(campo_id):
+    campo = CampoFormulario.query.get_or_404(campo_id)
+
+    if request.method == 'POST':
+        campo.nome = request.form.get('nome')
+        campo.tipo = request.form.get('tipo')
+        campo.opcoes = request.form.get('opcoes', '').strip() if campo.tipo in ['dropdown', 'checkbox', 'radio'] else None
+        campo.obrigatorio = request.form.get('obrigatorio') == 'on'
+        campo.tamanho_max = request.form.get('tamanho_max') or None
+        campo.regex_validacao = request.form.get('regex_validacao') or None
+
+        db.session.commit()
+        flash('Campo atualizado com sucesso!', 'success')
+
+        return redirect(url_for('routes.gerenciar_campos', formulario_id=campo.formulario_id))
+
+    return render_template('editar_campo.html', campo=campo)
+
+@routes.route('/campos/<int:campo_id>/deletar', methods=['POST'])
+@login_required
+def deletar_campo(campo_id):
+    campo = CampoFormulario.query.get_or_404(campo_id)
+    formulario_id = campo.formulario_id
+    db.session.delete(campo)
+    db.session.commit()
+    flash('Campo removido com sucesso!', 'success')
+
+    return redirect(url_for('routes.gerenciar_campos', formulario_id=formulario_id))
+
+@routes.route('/formularios/<int:formulario_id>/preencher', methods=['GET', 'POST'])
+@login_required
+def preencher_formulario(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    if request.method == 'POST':
+        resposta_formulario = RespostaFormulario(
+            formulario_id=formulario.id,
+            usuario_id=current_user.id
+        )
+        db.session.add(resposta_formulario)
+        db.session.commit()
+
+        for campo in formulario.campos:
+            valor = request.form.get(str(campo.id))
+            if campo.tipo == 'file' and 'file_' + str(campo.id) in request.files:
+                arquivo = request.files['file_' + str(campo.id)]
+                if arquivo.filename:
+                    filename = secure_filename(arquivo.filename)
+                    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
+                    os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+                    arquivo.save(caminho_arquivo)
+                    valor = caminho_arquivo  # Salva o caminho do arquivo
+
+            resposta_campo = RespostaCampo(
+                resposta_formulario_id=resposta_formulario.id,
+                campo_id=campo.id,
+                valor=valor
+            )
+            db.session.add(resposta_campo)
+
+        db.session.commit()
+        flash("Formulário enviado com sucesso!", "success")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    return render_template('preencher_formulario.html', formulario=formulario)
+
+@routes.route('/formularios/<int:formulario_id>/respostas', methods=['GET'])
+@login_required
+def listar_respostas(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    return render_template('listar_respostas.html', formulario=formulario, respostas=respostas)
+
+@routes.route('/formularios_participante', methods=['GET'])
+@login_required
+def listar_formularios_participante():
+    if current_user.tipo != 'participante':
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Busca apenas formulários disponíveis para o participante
+    formularios = Formulario.query.all()
+
+    if not formularios:
+        flash("Nenhum formulário disponível no momento.", "warning")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    return render_template('formularios_participante.html', formularios=formularios)
+
+@routes.route('/respostas/<int:resposta_id>', methods=['GET'])
+@login_required
+def visualizar_resposta(resposta_id):
+    resposta = RespostaFormulario.query.get_or_404(resposta_id)
+    return render_template('visualizar_resposta.html', resposta=resposta)
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+@routes.route('/formularios/<int:formulario_id>/exportar_pdf')
+@login_required
+def gerar_pdf_respostas(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    pdf_filename = f"respostas_{formulario.id}.pdf"
+    pdf_path = f"static/{pdf_filename}"
+
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(100, 750, f"Respostas do Formulário: {formulario.nome}")
+
+    y = 720
+    for resposta in respostas:
+        c.setFont("Helvetica", 12)
+        c.drawString(100, y, f"Usuário: {resposta.usuario.nome} - Enviado em {resposta.data_submissao.strftime('%d/%m/%Y %H:%M')}")
+        y -= 20
+        for campo in resposta.respostas_campos:
+            c.drawString(120, y, f"{campo.campo.nome}: {campo.valor}")
+            y -= 15
+        y -= 10
+
+        if y < 50:  # Se estiver perto do final da página, cria uma nova
+            c.showPage()
+            y = 750
+
+    c.save()
+    return send_file(pdf_path, as_attachment=True)
+
+@routes.route('/formularios/<int:formulario_id>/exportar_csv')
+@login_required
+def exportar_csv(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    csv_filename = f"respostas_{formulario.id}.csv"
+    
+    def generate():
+        data = csv.writer(Response(), delimiter=',')
+        data.writerow(["Usuário", "Data de Envio"] + [campo.nome for campo in formulario.campos])
+
+        for resposta in respostas:
+            row = [resposta.usuario.nome, resposta.data_submissao.strftime('%d/%m/%Y %H:%M')]
+            for campo in formulario.campos:
+                valor = next((resp.valor for resp in resposta.respostas_campos if resp.campo_id == campo.id), "")
+                row.append(valor)
+            data.writerow(row)
+        
+        return data
+
+    response = Response(generate(), mimetype="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename={csv_filename}"
+    return response

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Formulários Disponíveis</h2>
+
+    {% if formularios %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for formulario in formularios %}
+            <tr>
+                <td>{{ formulario.nome }}</td>
+                <td>{{ formulario.descricao or "Sem descrição" }}</td>
+                <td>
+                    <a href="{{ url_for('routes.preencher_formulario', formulario_id=formulario.id) }}" class="btn btn-success btn-sm">
+                        Preencher
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-warning">Nenhum formulário disponível no momento.</p>
+    {% endif %}
+
+    <a href="{{ url_for('routes.dashboard_participante') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}

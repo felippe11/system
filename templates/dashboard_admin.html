@@ -244,6 +244,22 @@
           </div>
 
           <div class="mb-4">
+            <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary w-100 fw-bold">
+                <i class="bi bi-ui-checks"></i> Gerenciar Formulários
+            </a>
+        </div>
+
+        <div class="mb-4">
+          <a href="{{ url_for('routes.listar_respostas', formulario_id=1) }}" class="btn btn-primary w-100 fw-bold">
+              📄 Gerenciar Respostas dos Formulários
+          </a>
+      </div>
+
+        
+      
+      
+
+          <div class="mb-4">
             <!-- Botão que abre o modal de gerenciamento de inscrições -->
             <button type="button" class="btn btn-success w-100 fw-bold"
             data-bs-toggle="modal" data-bs-target="#modalGerenciarInscricoes">
@@ -261,6 +277,8 @@
     </div>
   </div>
   <!-- Fim da primeira linha -->
+
+  
 
   <!-- Modal de confirmação de exclusão -->
 <!-- Modal de confirmação de exclusão -->
