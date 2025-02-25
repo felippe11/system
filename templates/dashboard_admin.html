@@ -841,11 +841,13 @@
           <div class="card-body text-center d-flex flex-column justify-content-between">
             <div>
               <p class="info m-0"><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
-              <p class="info m-0"><strong>Datas:</strong>
+              <p><strong>Datas e Horários:</strong></p>
+              <ul class="list-unstyled">
                 {% for dia in oficina.dias %}
-                  {{ dia }}{% if not loop.last %}, {% endif %}
+                  <li>📅 {{ dia.data.strftime('%d/%m/%Y') }} - 🕒 {{ dia.horario_inicio }} às {{ dia.horario_fim }}</li>
                 {% endfor %}
-              </p>
+              </ul>
+              
               <p class="info m-0"><strong>Vagas disponíveis:</strong> {{ oficina.vagas }}</p>
               <p class="info"><strong>Total de inscritos:</strong> {{ oficina.inscritos | length }}</p>
             </div>
