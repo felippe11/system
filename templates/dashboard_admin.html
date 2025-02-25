@@ -73,7 +73,7 @@
         <tr>
           <td>{{ ofst.titulo }}</td>
           <td>{{ ofst.vagas }}</td>
-          <td>{{ ofst.inscricoes }}</td>
+          <td>{{ ofst.inscritos }}</td>
           <td>{{ "%.2f"|format(ofst.ocupacao) }}</td>
         </tr>
         {% endfor %}
@@ -85,7 +85,6 @@
 <a href="{{ url_for('routes.cadastrar_cliente') }}" class="btn btn-primary mb-3">+ Novo Cliente</a>
 <h3>Gerenciamento de Clientes</h3>
 {% if clientes %}
-  <h3>Clientes</h3>
   <table class="table table-striped">
     <thead>
       <tr>
