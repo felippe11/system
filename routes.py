@@ -357,7 +357,7 @@ def dashboard():
 
     # ========== 3) Monta a string do relatório (somente UMA vez) ==========
     msg_relatorio = (
-        "📊 *Relatório do Sistema IAFAP*\n\n"
+        "📊 *Relatório do Sistema*\n\n"
         f"✅ *Total de Oficinas:* {total_oficinas}\n"
         f"✅ *Vagas Ofertadas:* {total_vagas}\n"
         f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
@@ -1044,7 +1044,7 @@ def checkin(oficina_id):
 @routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
 @login_required
 def lista_checkins(oficina_id):
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
     oficina = Oficina.query.get_or_404(oficina_id)
@@ -2143,30 +2143,49 @@ def editar_participante_admin(participante_id):
 @routes.route('/gerar_relatorio_mensagem', methods=['GET'])
 @login_required
 def gerar_relatorio_mensagem():
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-
-    # Mesmo cálculo do dashboard:
     from sqlalchemy import func
-    total_oficinas = Oficina.query.count()
-    total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
-    total_inscricoes = Inscricao.query.count()
-    if total_vagas > 0:
-        percentual_adesao = (total_inscricoes / total_vagas)*100
+    
+    # Se quiser só as oficinas do cliente, verifique se current_user é admin ou cliente:
+    is_admin = (current_user.tipo == 'admin')
+    if is_admin:
+        total_oficinas = Oficina.query.count()
+        total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+        total_inscricoes = Inscricao.query.count()
+        oficinas_list = Oficina.query.all()
     else:
-        percentual_adesao = 0
+        total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
+        total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
+        total_inscricoes = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).count()
+        oficinas_list = Oficina.query.filter_by(cliente_id=current_user.id).all()
+    
+    # Cálculo de adesão
+    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
 
-    # Monta string simples
+    # Monta a mensagem com emojis e loop
     mensagem = (
-        "Relatório do Sistema IAFAP:\n"
-        f" - Total de Oficinas: {total_oficinas}\n"
-        f" - Vagas Ofertadas: {total_vagas}\n"
-        f" - Vagas Preenchidas: {total_inscricoes}\n"
-        f" - Adesão: {percentual_adesao:.2f}%\n"
+        "📊 *Relatório do Sistema*\n\n"
+        f"✅ *Total de Oficinas:* {total_oficinas}\n"
+        f"✅ *Vagas Ofertadas:* {total_vagas}\n"
+        f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
+        f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
+        "----------------------------------------\n"
+        "📌 *DADOS POR OFICINA:*\n"
     )
 
+    for oficina in oficinas_list:
+        # Conta inscritos
+        num_inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).count()
+        ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+        
+        mensagem += (
+            f"\n🎓 *Oficina:* {oficina.titulo}\n"
+            f"🔹 *Vagas:* {oficina.vagas}\n"
+            f"🔹 *Inscritos:* {num_inscritos}\n"
+            f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+        )
+
     return mensagem
+
 
 @routes.route('/cancelar_inscricoes_lote', methods=['POST'])
 @login_required
