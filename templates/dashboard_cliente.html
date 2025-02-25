@@ -89,6 +89,10 @@
         <i class="bi bi-file-earmark-text"></i> Gerenciar Respostas dos Formulários</a>
     <button type="button" class="btn btn-warning mb-3" data-bs-toggle="modal" data-bs-target="#modalGerenciarInscricoes">
         <i class="bi bi-clipboard"></i> Gerenciar Inscrições</button>
+        <a href="{{ url_for('routes.gerenciar_ministrantes') }}" class="btn btn-primary mb-3">
+            <i class="bi bi-person-badge"></i> Gerenciar Ministrantes
+        </a>
+        
     
     <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post" 
           onsubmit="return confirm('Tem certeza que deseja excluir todas as oficinas?');" class="d-inline">

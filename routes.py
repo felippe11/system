@@ -503,12 +503,17 @@ def dashboard_participante():
 @routes.route('/criar_oficina', methods=['GET', 'POST'])
 @login_required
 def criar_oficina():
-    if current_user.tipo not in ['admin', 'cliente']:  # Apenas Admin e Cliente podem criar oficinas
+    if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
-    todos_ministrantes = Ministrante.query.all()
+
+    # Cliente vê apenas os ministrantes que ele cadastrou
+    if current_user.tipo == 'cliente':
+        ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all()
+    else:
+        ministrantes_disponiveis = Ministrante.query.all()  # Admin vê todos
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -531,20 +536,16 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=current_user.id if current_user.tipo == 'cliente' else None  # Cliente cria apenas suas oficinas
+            cliente_id=current_user.id if current_user.tipo == 'cliente' else None
         )
 
         db.session.add(nova_oficina)
         db.session.commit()
-
         flash('Oficina criada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template(
-        'criar_oficina.html',
-        estados=estados,
-        ministrantes=todos_ministrantes
-    )
+    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis)
+
 
 
 @routes.route('/get_cidades/<estado_sigla>')
@@ -1739,6 +1740,10 @@ logger = logging.getLogger(__name__)
 
 @routes.route('/cadastro_ministrante', methods=['GET', 'POST'])
 def cadastro_ministrante():
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
     if request.method == 'POST':
         print("Iniciando o cadastro de ministrante")
         
@@ -1779,7 +1784,8 @@ def cadastro_ministrante():
             cidade=cidade,
             estado=estado,
             email=email,
-            senha=generate_password_hash(senha)
+            senha=generate_password_hash(senha),
+            cliente_id=current_user.id if current_user.tipo == 'cliente' else None  # ✅ Associa ao Cliente se for Cliente
         )
         
         try:
@@ -1788,7 +1794,7 @@ def cadastro_ministrante():
             db.session.commit()
             print("Ministrante cadastrado com sucesso!")
             flash('Cadastro realizado com sucesso!', 'success')
-            return redirect(url_for('routes.login'))
+            return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
         except Exception as e:
             db.session.rollback()
             logger.error(f"Erro ao cadastrar ministrante: {e}", exc_info=True)
@@ -1919,14 +1925,14 @@ def upload_material(oficina_id):
 @routes.route('/editar_ministrante/<int:ministrante_id>', methods=['GET', 'POST'])
 @login_required
 def editar_ministrante(ministrante_id):
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
     ministrante = Ministrante.query.get_or_404(ministrante_id)
-    
+
+    # ✅ Admin pode editar todos, Cliente só edita os que cadastrou
+    if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
     if request.method == 'POST':
-        # Coleta os dados do formulário
         ministrante.nome = request.form.get('nome')
         ministrante.formacao = request.form.get('formacao')
         ministrante.areas_atuacao = request.form.get('areas')
@@ -1936,49 +1942,46 @@ def editar_ministrante(ministrante_id):
         ministrante.estado = request.form.get('estado')
         ministrante.email = request.form.get('email')
         nova_senha = request.form.get('senha')
+
         if nova_senha:
-            from werkzeug.security import generate_password_hash
             ministrante.senha = generate_password_hash(nova_senha)
-        
-        try:
-            db.session.commit()
-            flash('Ministrante atualizado com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao atualizar ministrante: {str(e)}', 'danger')
-            return redirect(url_for('routes.editar_ministrante', ministrante_id=ministrante_id))
-    
+
+        db.session.commit()
+        flash('Ministrante atualizado com sucesso!', 'success')
+        return redirect(url_for('routes.gerenciar_ministrantes'))
+
     return render_template('editar_ministrante.html', ministrante=ministrante)
 
 @routes.route('/excluir_ministrante/<int:ministrante_id>', methods=['POST'])
 @login_required
 def excluir_ministrante(ministrante_id):
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
     ministrante = Ministrante.query.get_or_404(ministrante_id)
-    try:
-        db.session.delete(ministrante)
-        db.session.commit()
-        flash('Ministrante excluído com sucesso!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao excluir ministrante: {str(e)}', 'danger')
-    return redirect(url_for('routes.dashboard'))
+
+    # ✅ Admin pode excluir todos, Cliente só exclui os seus
+    if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    db.session.delete(ministrante)
+    db.session.commit()
+    flash('Ministrante excluído com sucesso!', 'success')
+    return redirect(url_for('routes.gerenciar_ministrantes'))
+
 
 @routes.route('/gerenciar_ministrantes', methods=['GET'])
 @login_required
 def gerenciar_ministrantes():
-    # Apenas administradores têm acesso a essa rota
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
-    
-    # Busca todos os ministrantes cadastrados
-    ministrantes = Ministrante.query.all()
+
+    if current_user.tipo == 'cliente':
+        ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
+    else:
+        ministrantes = Ministrante.query.all()  # Admin vê todos
+
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
+
 
 
 @routes.route('/admin_scan')
