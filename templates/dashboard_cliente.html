@@ -49,26 +49,27 @@
     <div class="row my-4">
         <h4>Oficinas - Detalhes</h4>
         <div class="table-responsive">
-        <table class="table table-striped table-bordered align-middle">
-            <thead class="table-dark">
-            <tr>
-                <th>Título</th>
-                <th>Vagas</th>
-                <th>Inscrições</th>
-                <th>Ocupação (%)</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for ofst in oficinas_estatisticas %}
-            <tr>
-                <td>{{ ofst.titulo }}</td>
-                <td>{{ ofst.vagas }}</td>
-                <td>{{ ofst.inscritos }}</td>
-                <td>{{ "%.2f"|format(ofst.ocupacao) }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+            <table class="table table-striped table-bordered align-middle">
+                <thead class="table-dark">
+                <tr>
+                    <th>Título</th>
+                    <th>Vagas</th>
+                    <th>Inscrições</th>
+                    <th>Ocupação (%)</th>
+                </tr>
+                </thead>
+                <tbody>
+                    {% for ofst in oficinas %}
+                    <tr>
+                        <td>{{ ofst.titulo }}</td>
+                        <td>{{ ofst.vagas }}</td>
+                        <td>{{ ofst.inscritos|length }}</td>
+                        <td>{{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                    
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -100,7 +101,27 @@
             <i class="bi bi-trash-fill"></i> Excluir Todas as Oficinas</button>
     </form>
 
-    <h3 class="mt-4">Minhas Oficinas</h3>
+    <h3 class="mt-4">Gerenciamento de Oficinas</h3>
+      <!-- Filtro de Estado e Cidade -->
+  <form method="GET" action="{{ url_for('routes.dashboard') }}">
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
+        <select id="estadoSelect" name="estado" class="form-select">
+          <option value="">Todos os Estados</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
+        <select id="cidadeSelect" name="cidade" class="form-select">
+          <option value="">Todas as Cidades</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+      </div>
+    </div>
+  </form>
     <table class="table table-bordered text-center">
         <thead>
             <tr>
@@ -111,27 +132,33 @@
             </tr>
         </thead>
         <tbody>
-            {% for oficina in oficinas %}
-            <tr>
-                <td>{{ oficina.id }}</td>
-                <td>{{ oficina.titulo }}</td>
-                <td>{{ oficina.descricao }}</td>
-                <td>
-                    <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" class="btn btn-warning btn-sm mb-2">Editar</a>
-                    <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" style="display:inline;">
-                        <button type="submit" class="btn btn-danger btn-sm mb-2" onclick="return confirm('Tem certeza que deseja excluir esta oficina?');">Excluir</button>
-                    </form>
-                    <button type="button" class="btn btn-info btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#modalOficina{{ oficina.id }}">
-                        Ver Inscritos
-                    </button>
-                    <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-primary btn-sm mb-2">
-                        Check-ins
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}            
-            
+            {% if oficinas %}
+                {% for oficina in oficinas %}
+                <tr>
+                    <td>{{ oficina.id }}</td>
+                    <td>{{ oficina.titulo }}</td>
+                    <td>{{ oficina.descricao }}</td>
+                    <td>
+                        <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" class="btn btn-warning btn-sm mb-2">Editar</a>
+                        <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn btn-danger btn-sm mb-2" onclick="return confirm('Tem certeza que deseja excluir esta oficina?');">Excluir</button>
+                        </form>
+                        <button type="button" class="btn btn-info btn-sm mb-2" data-bs-toggle="modal" data-bs-target="#modalOficina{{ oficina.id }}">
+                            Ver Inscritos
+                        </button>
+                        <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-primary btn-sm mb-2">
+                            Check-ins
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-primary">Sem oficinas disponíveis</td>
+                </tr>
+            {% endif %}
         </tbody>
+        
     </table>
 </div>
 
@@ -456,6 +483,58 @@
     window.open(url, "_blank");
   }
 </script>
+
+<!-- Script para buscar estados e cidades via API do IBGE -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const estadoSelect = document.getElementById('estadoSelect');
+      const cidadeSelect = document.getElementById('cidadeSelect');
+      const estadoFilter = "{{ estado_filter|default('') }}";
+      const cidadeFilter = "{{ cidade_filter|default('') }}";
+  
+      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+        .then(response => response.json())
+        .then(data => {
+          data.sort((a, b) => a.nome.localeCompare(b.nome));
+          data.forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado.sigla;
+            option.text = estado.nome;
+            if (estado.sigla === estadoFilter) {
+              option.selected = true;
+            }
+            estadoSelect.add(option);
+          });
+          if (estadoSelect.value) {
+            estadoSelect.dispatchEvent(new Event('change'));
+          }
+        })
+        .catch(error => console.error('Erro ao buscar estados:', error));
+  
+      estadoSelect.addEventListener('change', function() {
+        const uf = this.value;
+        cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
+        if (uf) {
+          fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf + '/municipios')
+            .then(response => response.json())
+            .then(data => {
+              data.sort((a, b) => a.nome.localeCompare(b.nome));
+              data.forEach(cidade => {
+                const option = document.createElement('option');
+                option.value = cidade.nome;
+                option.text = cidade.nome;
+                if (cidade.nome === cidadeFilter) {
+                  option.selected = true;
+                }
+                cidadeSelect.add(option);
+              });
+            })
+            .catch(error => console.error('Erro ao buscar cidades:', error));
+        }
+      });
+    });
+  </script>
+
 {% endblock %}
   
 
