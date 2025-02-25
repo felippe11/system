@@ -85,6 +85,9 @@ class Ministrante(db.Model, UserMixin):
     email = db.Column(db.String(255), unique=True, nullable=False)
     senha = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Relacionamento com Cliente
+    cliente = db.relationship("Cliente", backref="ministrantes")  # ✅ Relacionamento reverso
+
 
     @property
     def tipo(self):

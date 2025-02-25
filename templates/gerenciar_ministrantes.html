@@ -4,6 +4,15 @@
 {% block content %}
 <div class="container mt-5">
   <h2 class="text-center mb-4">Gerenciar Ministrantes</h2>
+
+<!-- Botão para cadastrar ministrante (Admin e Cliente) -->
+<div class="text-center mt-4">
+  <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-success">
+      <i class="bi bi-person-plus"></i> Cadastrar Novo Ministrante
+  </a>
+</div>
+  
+
   {% if ministrantes %}
   <div class="table-responsive">
     <table class="table table-striped table-bordered">
@@ -42,6 +51,7 @@
                     data-email="{{ ministrante.email }}">
               Editar
             </button>
+
             <!-- Formulário para exclusão -->
             <form action="{{ url_for('routes.excluir_ministrante', ministrante_id=ministrante.id) }}"
                   method="POST" style="display:inline-block;"
@@ -54,14 +64,11 @@
       </tbody>
     </table>
   </div>
+
+
   {% else %}
     <p class="text-center">Nenhum ministrante cadastrado.</p>
   {% endif %}
-  <div class="text-center mt-4">
-    <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-success">
-      <i class="bi bi-person-plus"></i> Cadastrar Novo Ministrante
-    </a>
-  </div>
 </div>
 
 <!-- Modal de Edição de Ministrante -->
@@ -154,3 +161,4 @@
       modalEditar.querySelector('#formEditarMinistrante').action = baseUrl.replace("0", id);
   });
 </script>
+{% endblock %}
