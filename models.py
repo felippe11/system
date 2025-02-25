@@ -123,6 +123,8 @@ class Oficina(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionado
     cliente = db.relationship("Cliente", back_populates="oficinas")  # ✅ Corrigido para `back_populates`
 
+    dias = db.relationship('OficinaDia', back_populates="oficina", lazy=True, cascade="all, delete-orphan")
+
     def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None):
         self.titulo = titulo
         self.descricao = descricao
@@ -152,7 +154,7 @@ class OficinaDia(db.Model):
     palavra_chave_manha = db.Column(db.String(50), nullable=True)
     palavra_chave_tarde = db.Column(db.String(50), nullable=True)
 
-    oficina = db.relationship('Oficina', backref=db.backref('dias', lazy=True))
+    oficina = db.relationship('Oficina', back_populates="dias")
 
     def __repr__(self):
         return f"<OficinaDia {self.data} {self.horario_inicio}-{self.horario_fim}>"

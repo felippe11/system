@@ -407,7 +407,7 @@ def dashboard():
             'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
-            'dias': dias_formatados,
+            'dias': dias,
             'inscritos': inscritos_info
         })
 
@@ -478,8 +478,7 @@ def dashboard_participante():
             'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
-            'dias': [dia.data.strftime('%d/%m/%Y') for dia in dias],
-            'horarios': [(dia.horario_inicio, dia.horario_fim) for dia in dias]
+            'dias': dias  # Passando os objetos OficinaDia diretamente
         }
         if oficina.id in inscricoes_ids:
             oficinas_inscrito.append(oficina_formatada)
@@ -508,12 +507,7 @@ def criar_oficina():
         return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
-
-    # Cliente vê apenas os ministrantes que ele cadastrou
-    if current_user.tipo == 'cliente':
-        ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all()
-    else:
-        ministrantes_disponiveis = Ministrante.query.all()  # Admin vê todos
+    ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -541,6 +535,23 @@ def criar_oficina():
 
         db.session.add(nova_oficina)
         db.session.commit()
+
+        # ➜ Salvar as datas e horários na tabela `OficinaDia`
+        datas = request.form.getlist('data[]')
+        horarios_inicio = request.form.getlist('horario_inicio[]')
+        horarios_fim = request.form.getlist('horario_fim[]')
+
+        for i in range(len(datas)):
+            novo_dia = OficinaDia(
+                oficina_id=nova_oficina.id,
+                data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
+                horario_inicio=horarios_inicio[i],
+                horario_fim=horarios_fim[i]
+            )
+            db.session.add(novo_dia)
+
+        db.session.commit()
+
         flash('Oficina criada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
@@ -560,7 +571,6 @@ def get_cidades(estado_sigla):
 def editar_oficina(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
 
-    # Cliente só pode editar oficinas que ele criou
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash('Você não tem permissão para editar esta oficina.', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
@@ -578,11 +588,28 @@ def editar_oficina(oficina_id):
         oficina.cidade = request.form.get('cidade')
 
         db.session.commit()
+
+        # ➜ Atualizar os dias e horários
+        datas = request.form.getlist('data[]')
+        horarios_inicio = request.form.getlist('horario_inicio[]')
+        horarios_fim = request.form.getlist('horario_fim[]')
+
+        # Apagar os registros antigos para evitar duplicação
+        OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
+
+        for i in range(len(datas)):
+            novo_dia = OficinaDia(
+                oficina_id=oficina.id,
+                data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
+                horario_inicio=horarios_inicio[i],
+                horario_fim=horarios_fim[i]
+            )
+            db.session.add(novo_dia)
+
+        db.session.commit()
         flash('Oficina editada com sucesso!', 'success')
 
-        if current_user.tipo == 'cliente':
-            return redirect(url_for('routes.dashboard_cliente'))
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
     return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes)
 

@@ -103,9 +103,9 @@
             <p><strong>Datas e Horários:</strong></p>
             <ul class="list-unstyled">
               {% for dia in oficina.dias %}
-                <li>📅 {{ dia }}</li>
+                <li>📅 {{ dia.data.strftime('%d/%m/%Y') }} - 🕒 {{ dia.horario_inicio }} às {{ dia.horario_fim }}</li>
               {% endfor %}
-            </ul>
+            </ul>                               
             <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
             
             <p>
