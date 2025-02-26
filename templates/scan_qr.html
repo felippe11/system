@@ -5,36 +5,88 @@
 {% block content %}
 <div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 80vh;">
     <h2 class="mb-4">Escanear QR Code</h2>
-    <!-- Área ampliada para o scanner -->
-    <div id="qr-video" style="width:600px; height:500px;"></div>
-    <p id="qr-result" class="mt-4"></p>
+    <!-- Video container with responsive aspect ratio -->
+    <div id="qr-video" class="position-relative" style="width: 100%; max-width: 600px; aspect-ratio: 1/1;"></div>
+    <div id="qr-status" class="mt-3 text-muted">Inicializando câmera...</div>
+    <p id="qr-result" class="mt-4 text-center"></p>
     <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>
 </div>
 
-<!-- Biblioteca para leitura de QR Code -->
-<script src="https://unpkg.com/html5-qrcode"></script>
+<!-- Using official CDN for html5-qrcode -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const scanner = new Html5Qrcode("qr-video");
+document.addEventListener("DOMContentLoaded", async function () {
+    const videoContainer = document.getElementById('qr-video');
+    const statusElement = document.getElementById('qr-status');
+    const resultElement = document.getElementById('qr-result');
+    
+    let scanner = null;
+    let isScanning = false;
+
+    try {
+        scanner = new Html5Qrcode('qr-video');
+        
+        // Configure scanner with better defaults
+        const config = {
+            fps: 15,
+            qrbox: { width: 250, height: 250 }, // Better for mobile devices
+            aspectRatio: 1.0,
+            disableFlip: false
+        };
+
+        // Try both front and back cameras
+        const cameraId = await Html5Qrcode.getCameras()
+            .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
+
+        await scanner.start(
+            cameraId || { facingMode: 'environment' },
+            config,
+            onScanSuccess,
+            onScanError
+        );
+        
+        isScanning = true;
+        statusElement.textContent = 'Aponte para o QR Code';
+        
+    } catch (error) {
+        console.error('Camera error:', error);
+        statusElement.textContent = 'Erro ao acessar a câmera. Verifique as permissões.';
+        resultElement.innerHTML = `<div class="text-danger">${error.message}</div>`;
+    }
 
     function onScanSuccess(decodedText) {
-        document.getElementById("qr-result").innerHTML = `<strong>QR Code Lido:</strong> ${decodedText}`;
-        // Redireciona automaticamente para a URL lida
-        window.location.href = decodedText;
+        if (!isScanning) return;
+        
+        // Validate URL before redirecting
+        try {
+            const url = new URL(decodedText);
+            if (['http:', 'https:'].includes(url.protocol)) {
+                scanner.stop();
+                isScanning = false;
+                window.location.href = decodedText;
+                return;
+            }
+        } catch (e) {
+            console.warn('Invalid URL from QR Code:', decodedText);
+        }
+
+        resultElement.innerHTML = `
+            <div class="alert alert-warning">
+                QR Code inválido: ${decodedText.substring(0, 50)}${decodedText.length > 50 ? '...' : ''}
+            </div>
+        `;
     }
 
     function onScanError(errorMessage) {
-        console.warn("Erro ao escanear:", errorMessage);
+        console.warn('Scan error:', errorMessage);
+        statusElement.textContent = 'Erro ao ler QR Code: ' + errorMessage;
     }
 
-    // Inicia o scanner com uma caixa de leitura de 500x500 e 10 FPS
-    scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 500, height: 500 } },
-        onScanSuccess,
-        onScanError
-    ).catch(err => {
-        console.error("Falha ao iniciar o scanner:", err);
+    // Cleanup when leaving page
+    window.addEventListener('beforeunload', () => {
+        if (scanner && isScanning) {
+            scanner.stop();
+        }
     });
 });
 </script>
