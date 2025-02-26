@@ -24,7 +24,7 @@ from models import RespostaFormulario, RespostaCampo
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
-                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina)
+                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente)
 from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf   # Funções auxiliares
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
@@ -449,50 +449,62 @@ def dashboard_participante():
     if current_user.tipo != 'participante':
         return redirect(url_for('routes.dashboard'))
 
-    print(f"🔍 Participante autenticado: {current_user.email}, Cliente ID: {current_user.cliente_id}")
+    # Se o participante está associado a um cliente, buscamos a config desse cliente
+    config_cliente = None
+    if current_user.cliente_id:
+        from models import ConfiguracaoCliente  # certifique-se de importar se não estiver no topo
+        config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
+        # Se não existir ainda, pode criar com valores padrão
+        if not config_cliente:
+            config_cliente = ConfiguracaoCliente(
+                cliente_id=current_user.cliente_id,
+                permitir_checkin_global=False,
+                habilitar_feedback=False,
+                habilitar_certificado_individual=False
+            )
+            db.session.add(config_cliente)
+            db.session.commit()
+    
+    # Agora definimos as variáveis que o template utiliza
+    permitir_checkin = config_cliente.permitir_checkin_global if config_cliente else False
+    habilitar_feedback = config_cliente.habilitar_feedback if config_cliente else False
+    habilitar_certificado = config_cliente.habilitar_certificado_individual if config_cliente else False
 
+    # Busca as oficinas disponíveis
     if current_user.cliente_id:
         oficinas = Oficina.query.filter(
             (Oficina.cliente_id == current_user.cliente_id) | (Oficina.cliente_id == None)
         ).all()
     else:
-        # Participantes sem cliente associado veem apenas oficinas do Admin
+        # Se o participante não tiver cliente_id, exibe apenas oficinas do admin
         oficinas = Oficina.query.filter(Oficina.cliente_id == None).all()
 
-    # Configurações globais
-    configuracao = Configuracao.query.first()
-    permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
-    habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
-    habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
+    # Monte a lista de inscricoes para controlar o que já está inscrito
+    inscricoes_ids = [i.oficina_id for i in current_user.inscricoes]
 
-    inscricoes_ids = [inscricao.oficina_id for inscricao in current_user.inscricoes]
-    oficinas_inscrito = []
-    oficinas_nao_inscrito = []
-
+    # Monte a estrutura que o template “dashboard_participante.html” precisa
+    oficinas_formatadas = []
     for oficina in oficinas:
         dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
-        oficina_formatada = {
+        oficinas_formatadas.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
             'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
-            'dias': dias  # Passando os objetos OficinaDia diretamente
-        }
-        if oficina.id in inscricoes_ids:
-            oficinas_inscrito.append(oficina_formatada)
-        else:
-            oficinas_nao_inscrito.append(oficina_formatada)
+            'dias': dias
+        })
 
-    oficinas_ordenadas = oficinas_inscrito + oficinas_nao_inscrito
-
-    return render_template('dashboard_participante.html', 
-                           usuario=current_user, 
-                           oficinas=oficinas_ordenadas, 
-                           permitir_checkin_global=permitir_checkin_global,
-                           habilitar_feedback=habilitar_feedback,
-                           habilitar_certificado_individual=habilitar_certificado_individual)
+    return render_template(
+        'dashboard_participante.html',
+        usuario=current_user,
+        oficinas=oficinas_formatadas,
+        # Aqui passamos as booleans *do cliente* para o template
+        permitir_checkin_global=permitir_checkin,
+        habilitar_feedback=habilitar_feedback,
+        habilitar_certificado_individual=habilitar_certificado
+    )
 
 
 
@@ -1027,7 +1039,17 @@ def gerar_certificados(oficina_id):
 @routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
 def checkin(oficina_id):
-    oficina = Oficina.query.get_or_404(oficina_id)
+    oficina = Oficina.query.get_or_404(oficina_id)  
+    
+    # Descobre a que cliente pertence essa oficina
+    cliente_id_oficina = oficina.cliente_id
+    
+    # Pega a config do cliente
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id_oficina).first()
+    if not config_cliente or not config_cliente.permitir_checkin_global:
+        # Caso não tenha config ou checkin não habilitado
+        flash("Check-in indisponível para esta oficina!", "danger")
+        return redirect(url_for('routes.dashboard'))
     
     if request.method == 'POST':
         palavra_escolhida = request.form.get('palavra_escolhida')
@@ -1447,21 +1469,97 @@ def importar_usuarios():
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
     return redirect(url_for("routes.dashboard"))
 
-@routes.route("/toggle_checkin_global", methods=["POST"])
+@routes.route("/toggle_checkin_global_cliente", methods=["POST"])
 @login_required
-def toggle_checkin_global():
+def toggle_checkin_global_cliente():
     if current_user.tipo != "admin":
         flash("Acesso negado!", "danger")
         return redirect(url_for("routes.dashboard"))
-    config = Configuracao.query.first()
-    if not config:
-        config = Configuracao(permitir_checkin_global=False, habilitar_feedback=False)
-        db.session.add(config)
-    config.permitir_checkin_global = not config.permitir_checkin_global
+
+    # No HTML, você enviará `cliente_id` via <select name="cliente_id"> ou similar
+    cliente_id = request.form.get('cliente_id', type=int)
+    if not cliente_id:
+        flash("É preciso selecionar um cliente!", "danger")
+        return redirect(url_for("routes.dashboard"))
+
+    from models import ConfiguracaoCliente  # Certifique-se de importar
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config_cliente:
+        # Cria uma nova config para esse cliente, se não existir
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    # Inverte
+    config_cliente.permitir_checkin_global = not config_cliente.permitir_checkin_global
     db.session.commit()
-    status = "ativado" if config.permitir_checkin_global else "desativado"
-    print(f"🔍 Check-in Global está {'Ativado' if config.permitir_checkin_global else 'Desativado'}")
-    return redirect(url_for("routes.dashboard"))
+
+    status = "ativado" if config_cliente.permitir_checkin_global else "desativado"
+    flash(f"Check-in Global para o cliente ID={cliente_id} foi {status}!", "success")
+
+    return redirect(url_for("routes.dashboard"))  # Ou outro lugar
+
+
+
+@routes.route("/toggle_feedback_cliente", methods=["POST"])
+@login_required
+def toggle_feedback_cliente():
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("routes.dashboard"))
+    
+    cliente_id = current_user.id if current_user.tipo == 'cliente' else request.form.get('cliente_id')
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    config_cliente.habilitar_feedback = not config_cliente.habilitar_feedback
+    db.session.commit()
+
+    status = "ativado" if config_cliente.habilitar_feedback else "desativado"
+    flash(f"Feedback foi {status} para suas oficinas!", "success")
+
+    if current_user.tipo == 'cliente':
+        return redirect(url_for("routes.dashboard_cliente"))
+    else:
+        return redirect(url_for("routes.dashboard"))
+
+
+@routes.route("/toggle_certificado_cliente", methods=["POST"])
+@login_required
+def toggle_certificado_cliente():
+    if current_user.tipo not in ["cliente", "admin"]:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("routes.dashboard"))
+    
+    cliente_id = current_user.id if current_user.tipo == 'cliente' else request.form.get('cliente_id')
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    config_cliente.habilitar_certificado_individual = not config_cliente.habilitar_certificado_individual
+    db.session.commit()
+
+    status = "ativado" if config_cliente.habilitar_certificado_individual else "desativado"
+    flash(f"O Certificado Individual foi {status} para suas oficinas!", "success")
+
+    if current_user.tipo == 'cliente':
+        return redirect(url_for("routes.dashboard_cliente"))
+    else:
+        return redirect(url_for("routes.dashboard"))
+
+
 
 
 @routes.route("/toggle_certificado_individual", methods=["POST"])
@@ -2350,6 +2448,19 @@ def dashboard_cliente():
     inscritos = Inscricao.query.join(Oficina).filter(
         (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
     ).all()
+    
+    # Buscar config específica do cliente
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    # Se não existir, cria:
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=current_user.id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config_cliente)
+        db.session.commit()
 
     return render_template(
         'dashboard_cliente.html',
@@ -2360,8 +2471,23 @@ def dashboard_cliente():
         total_inscricoes=total_inscricoes,
         percentual_adesao=percentual_adesao,
         checkins_via_qr=checkins_via_qr,
-        inscritos=inscritos
+        inscritos=inscritos,
+        config_cliente=config_cliente   
     )
+    
+def obter_configuracao_do_cliente(cliente_id):
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config:
+        config = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config)
+        db.session.commit()
+    return config
+
 
 
 
@@ -2681,7 +2807,7 @@ def preencher_formulario(formulario_id):
 def listar_respostas(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
-
+    
     return render_template('listar_respostas.html', formulario=formulario, respostas=respostas)
 
 @routes.route('/formularios_participante', methods=['GET'])
@@ -2763,3 +2889,10 @@ def exportar_csv(formulario_id):
     response = Response(generate(), mimetype="text/csv")
     response.headers["Content-Disposition"] = f"attachment; filename={csv_filename}"
     return response
+
+@routes.route('/respostas/<path:filename>')
+@login_required
+def get_resposta_file(filename):
+    print(">> get_resposta_file foi chamado com:", filename)
+    uploads_folder = os.path.join('uploads', 'respostas')
+    return send_from_directory(uploads_folder, filename)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="container">
     <h2>Detalhes da Resposta</h2>
@@ -19,9 +20,11 @@
                 <td>{{ campo.campo.nome }}</td>
                 <td>
                     {% if campo.campo.tipo == 'file' %}
-                    <a href="{{ campo.valor }}" target="_blank">📂 Ver Arquivo</a>
+                        <a href="{{ url_for('routes.get_resposta_file', filename=campo.valor|replace('uploads/respostas/', '')) }}">
+                            Visualizar Anexo
+                        </a>
                     {% else %}
-                    {{ campo.valor }}
+                        {{ campo.valor }}
                     {% endif %}
                 </td>
             </tr>
@@ -29,6 +32,8 @@
         </tbody>
     </table>
 
-    <a href="{{ url_for('routes.listar_respostas', formulario_id=resposta.formulario.id) }}" class="btn btn-secondary">Voltar</a>
+    <a href="{{ url_for('routes.listar_respostas', formulario_id=resposta.formulario.id) }}" class="btn btn-secondary">
+        Voltar
+    </a>
 </div>
 {% endblock %}
