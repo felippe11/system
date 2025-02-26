@@ -193,7 +193,7 @@
           <div class="mb-2">
             <label for="clienteSelect" class="form-label">Selecione o Cliente</label>
             <select id="clienteSelect" name="cliente_id" class="form-select" required>
-              <option value="">-- Escolha --</option>
+              <option value="">-- Escolha um Cliente --</option>
               {% for c in clientes %}
               <option value="{{ c.id }}">{{ c.nome }} (ID {{ c.id }})</option>
               {% endfor %}
