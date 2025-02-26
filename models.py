@@ -374,3 +374,18 @@ class RespostaCampo(db.Model):
 
     def __repr__(self):
         return f"<RespostaCampo ID {self.id} - Campo {self.campo_id} - Valor {self.valor}>"
+    
+# models.py
+class ConfiguracaoCliente(db.Model):
+    __tablename__ = 'configuracao_cliente'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    
+    permitir_checkin_global = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    
+    # Relacionamento com o cliente (opcional se quiser acessar .cliente)
+    cliente = db.relationship("Cliente", backref="configuracao_cliente")
+

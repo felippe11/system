@@ -80,14 +80,15 @@
     <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
   </div>
 
-      <div class="mb-4">
-          <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
-              📝 Preencher Formulários
-          </a>
-      </div>
-
+  <!-- Exemplo de botão para formulários -->
+  <div class="mb-4">
+      <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
+          📝 Preencher Formulários
+      </a>
+  </div>
   
   <div class="row">
+    <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
     {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
     
     {% if oficinas %}
@@ -116,21 +117,27 @@
               {% endif %}
             </p>
             
-            
+            <!-- Se o participante já estiver inscrito nesta oficina -->
             {% if oficina.id in inscricoes_ids %}
                 <div class="d-flex flex-column gap-2">
+                    <!-- Check-in (só aparece se permitir_checkin_global == True) -->
                     {% if permitir_checkin_global %}
                     <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
                       Realizar Check-in
                     </a>
                     {% endif %}
                 
+                    <!-- Botão para cancelar inscrição -->
                     <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
                         <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
                     </form>
+
+                    <!-- Comprovante de Inscrição -->
                     <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
                         📄 Baixar Comprovante
                     </a>
+
+                    <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
                     {% if habilitar_certificado_individual %}
                     <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
                        class="btn btn-success w-100 mt-2">
@@ -138,24 +145,30 @@
                     </a>
                     {% endif %}
                   
-                  
+                    <!-- Feedback (só aparece se habilitar_feedback == True) -->
                     {% if habilitar_feedback %}
                     <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
                         Enviar Feedback
                     </a>
                     {% endif %}
                 </div>
+
+            <!-- Se não estiver inscrito ainda e houver vagas -->
             {% elif oficina.vagas > 0 %}
                 <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
                     Inscrever-se
                 </button>
+
+            <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
             {% else %}
                 <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
                 {% if oficina.id in inscricoes_ids %}
                     <div class="d-flex flex-column gap-2 mt-2">
+                        {% if permitir_checkin_global %}
                         <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
                             Realizar Check-in
                         </a>
+                        {% endif %}
                         <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
                             <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
                         </form>
@@ -166,11 +179,10 @@
                         <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
                             Enviar Feedback
                         </a>
-                  {% endif %}
+                        {% endif %}
                     </div>
                 {% endif %}
             {% endif %}
-
 
           </div> <!-- Fim card-body -->
         </div> <!-- Fim card -->
@@ -188,7 +200,7 @@
   <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
 </footer>
 
-<!-- Script para inscrição assíncrona -->
+<!-- Script para inscrição assíncrona (se desejar manter) -->
 <script>
   function inscrever(oficinaId) {
     let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
