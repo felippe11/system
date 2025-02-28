@@ -1907,6 +1907,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 from werkzeug.security import generate_password_hash
 from extensions import db
 from models import Ministrante
+from flask_login import login_required
 
 # Configure o logger (isso pode ser configurado globalmente no seu app)
 logging.basicConfig(level=logging.DEBUG)
@@ -1914,10 +1915,20 @@ logger = logging.getLogger(__name__)
 
 @routes.route('/cadastro_ministrante', methods=['GET', 'POST'])
 def cadastro_ministrante():
+    if not current_user.is_authenticated:
+        # Redireciona para login ou mostra uma mensagem de que é necessário logar.
+        flash('Você precisa estar logado para acessar esta página!', 'danger')
+        return redirect(url_for('routes.login'))
+    # Permite apenas admin e cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
         return redirect(url_for('routes.dashboard'))
     
+    # Se for GET, precisamos montar a lista de clientes (somente se admin)
+    clientes = []
+    if current_user.tipo == 'admin':
+        clientes = Cliente.query.all()
+
     if request.method == 'POST':
         print("Iniciando o cadastro de ministrante")
         
@@ -1948,6 +1959,16 @@ def cadastro_ministrante():
             flash('Erro: Este CPF já está cadastrado!', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
         
+        # Define o cliente_id
+        if current_user.tipo == 'admin':
+            # Se for admin, ele selecionou um cliente no formulário
+            cliente_id = request.form.get('cliente_id')
+            # Caso o admin não selecione, você pode validar, exibir erro, etc.
+            # Exemplo: if not cliente_id: flash(...); return ...
+        else:
+            # Se for cliente, vincula automaticamente ao current_user.id
+            cliente_id = current_user.id
+        
         # Criação do novo ministrante
         novo_ministrante = Ministrante(
             nome=nome,
@@ -1959,7 +1980,7 @@ def cadastro_ministrante():
             estado=estado,
             email=email,
             senha=generate_password_hash(senha),
-            cliente_id=current_user.id if current_user.tipo == 'cliente' else None  # ✅ Associa ao Cliente se for Cliente
+            cliente_id=cliente_id  # agora usamos a variável calculada acima
         )
         
         try:
@@ -1975,7 +1996,9 @@ def cadastro_ministrante():
             flash('Erro ao cadastrar ministrante. Tente novamente.', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
     
-    return render_template('cadastro_ministrante.html')
+    # Se for GET, renderizamos a página. Passamos a lista de clientes se for admin.
+    return render_template('cadastro_ministrante.html', clientes=clientes)
+
 
 @routes.route('/dashboard_ministrante')
 @login_required
