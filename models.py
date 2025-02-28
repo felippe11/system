@@ -387,5 +387,5 @@ class ConfiguracaoCliente(db.Model):
     habilitar_certificado_individual = db.Column(db.Boolean, default=False)
     
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
-    cliente = db.relationship("Cliente", backref="configuracao_cliente")
+    cliente = db.relationship("Cliente", backref=db.backref("configuracao_cliente", uselist=False))
 
