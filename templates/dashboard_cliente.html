@@ -148,7 +148,15 @@
                     <td>{{ ofst.vagas }}</td>
                     <td>{{ ofst.inscritos|length }}</td>
                     <td>
-                      {{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}
+                      <!--{{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}-->
+                      <div class="progress" style="height: 20px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}%;" 
+                             aria-valuenow="{{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}" 
+                             aria-valuemin="0" aria-valuemax="100">
+                          {{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}%
+                        </div>
+                      </div>
                     </td>
                   </tr>
                   {% endfor %}
