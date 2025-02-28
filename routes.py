@@ -1648,6 +1648,9 @@ def feedback_oficina(oficina_id):
         flash('Você não tem permissão para visualizar o feedback desta oficina.', 'danger')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
+    # Obtendo clientes para filtro (somente admin pode visualizar)
+    clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
+
     # Cálculo das estatísticas gerais (sem os filtros da query abaixo)
     total_feedbacks_all = Feedback.query.filter_by(oficina_id=oficina_id).all()
     total_count = len(total_feedbacks_all)
@@ -1667,22 +1670,34 @@ def feedback_oficina(oficina_id):
     count_ministrantes = len(feedbacks_ministrantes)
     avg_ministrantes = (sum(fb.rating for fb in feedbacks_ministrantes) / count_ministrantes) if count_ministrantes > 0 else 0
 
-    # Aplicando filtros (tipo e número de estrelas) para a listagem
-    query = Feedback.query.filter(Feedback.oficina_id == oficina_id)
+    # Filtros
     tipo = request.args.get('tipo')
+    estrelas = request.args.get('estrelas')
+    cliente_filter = request.args.get('cliente_id')
+
+    query = Feedback.query.join(Oficina).filter(Feedback.oficina_id == oficina_id)
+
+    # Filtra pelo tipo de feedback (usuário ou ministrante)
     if tipo == 'usuario':
         query = query.filter(Feedback.usuario_id.isnot(None))
     elif tipo == 'ministrante':
         query = query.filter(Feedback.ministrante_id.isnot(None))
-    estrelas = request.args.get('estrelas')
+
+    # Filtra pelo número de estrelas
     if estrelas and estrelas.isdigit():
         query = query.filter(Feedback.rating == int(estrelas))
+
+    # Filtra pelo cliente selecionado (somente admins)
+    if current_user.tipo == 'admin' and cliente_filter and cliente_filter.isdigit():
+        query = query.filter(Oficina.cliente_id == int(cliente_filter))
+
     feedbacks = query.order_by(Feedback.created_at.desc()).all()
+
     
     return render_template('feedback_oficina.html', oficina=oficina, feedbacks=feedbacks,
                            total_count=total_count, total_avg=total_avg,
                            count_ministrantes=count_ministrantes, avg_ministrantes=avg_ministrantes,
-                           count_usuarios=count_usuarios, avg_usuarios=avg_usuarios)
+                           count_usuarios=count_usuarios, avg_usuarios=avg_usuarios,  is_admin=current_user.tipo == 'admin', clientes=clientes, cliente_filter=cliente_filter)
 
 
 
