@@ -541,6 +541,7 @@ def criar_oficina():
 
     estados = obter_estados()
     ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas para admin
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -554,6 +555,12 @@ def criar_oficina():
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
             return redirect(url_for('routes.criar_oficina'))
+        
+        # Definir o cliente da oficina
+        if current_user.tipo == 'admin':
+            cliente_id = request.form.get('cliente_id') or None  # O admin pode escolher um cliente
+        else:
+            cliente_id = current_user.id  # Clientes só podem criar oficinas para si mesmos
 
         nova_oficina = Oficina(
             titulo=titulo,
@@ -563,7 +570,7 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=current_user.id if current_user.tipo == 'cliente' else None
+            cliente_id=cliente_id  # ✅ Adicionando o cliente_id corretamente
         )
 
         db.session.add(nova_oficina)
@@ -588,7 +595,7 @@ def criar_oficina():
         flash('Oficina criada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis)
+    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis, clientes=clientes_disponiveis)
 
 
 
@@ -610,6 +617,8 @@ def editar_oficina(oficina_id):
 
     estados = obter_estados()
     ministrantes = Ministrante.query.all()
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas admin pode ver
+
 
     if request.method == 'POST':
         oficina.titulo = request.form.get('titulo')
@@ -619,6 +628,10 @@ def editar_oficina(oficina_id):
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
+
+        # Permitir que apenas admins alterem o cliente
+        if current_user.tipo == 'admin':
+            oficina.cliente_id = request.form.get('cliente_id') or None
 
         db.session.commit()
 
@@ -644,7 +657,7 @@ def editar_oficina(oficina_id):
 
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes)
+    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes, clientes=clientes_disponiveis)
 
 
 @routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])
