@@ -2,34 +2,220 @@
 {% block title %}Acesso à Plataforma{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-center align-items-center" style="min-height:60vh;">
-  <div class="card shadow" style="max-width: 400px; width: 100%;">
-    <div class="card-header text-white text-center" style="background: var(--gradient-primary);">
-      <h4 class="fw-bold my-2">Acesso ao Sistema</h4>
+<div class="auth-container">
+  <div class="login-card">
+    <div class="card-header">
+      <div class="brand-wrapper">
+        <i class="bi bi-shield-lock"></i>
+        <h1 class="auth-title">Bem-vindo ao AppFiber</h1>
+      </div>
+      <p class="auth-subtitle">Sistema Integrado de Gestão Educacional</p>
     </div>
+    
     <div class="card-body">
       {% with messages = get_flashed_messages(with_categories=True) %}
         {% if messages %}
           {% for category, message in messages %}
-            <div class="alert alert-{{category}}">{{ message }}</div>
+            <div class="alert alert-{{category}} d-flex align-items-center">
+              <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+              {{ message }}
+            </div>
           {% endfor %}
         {% endif %}
       {% endwith %}
       
-      <form action="{{ url_for('routes.login') }}" method="POST">
-        <div class="mb-3">
-          <label for="email" class="form-label">E-mail</label>
-          <input type="text" class="form-control" name="email" id="email" required>
+      <form action="{{ url_for('routes.login') }}" method="POST" class="auth-form">
+        <div class="form-group">
+          <label for="email" class="form-label">E-mail Institucional</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope-at"></i></span>
+            <input type="email" class="form-control" name="email" id="email" 
+                   placeholder="exemplo@instituicao.edu.br" required>
+          </div>
         </div>
-        <div class="mb-3">
-          <label for="senha" class="form-label">Senha</label>
-          <input type="password" class="form-control" name="senha" id="senha" required>
+
+        <div class="form-group">
+          <label for="senha" class="form-label">Senha de Acesso</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-key"></i></span>
+            <input type="password" class="form-control" name="senha" id="senha" 
+                   placeholder="••••••••" required>
+            <button type="button" class="btn btn-eye" data-toggle-password>
+              <i class="bi bi-eye-slash"></i>
+            </button>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100">
-          Entrar
-        </button>
+
+        <div class="d-grid mt-4">
+          <button type="submit" class="btn btn-auth">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Acessar Plataforma
+          </button>
+        </div>
+
+        <div class="text-center mt-4">
+          <a href="#" class="text-muted small link-forgot">Esqueceu sua senha?</a>
+        </div>
       </form>
+    </div>
+
+    <div class="card-footer text-center">
+      <p class="mb-0 small">Novo na plataforma? 
+        <a href="#" class="text-primary">Solicitar credenciais</a>
+      </p>
     </div>
   </div>
 </div>
+
+<style>
+  .auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 2rem;
+  }
+
+  .login-card {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    box-shadow: 0 12px 40px rgba(0, 148, 195, 0.15);
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+  }
+
+  @media (min-width: 768px) {
+    .login-card {
+      max-width: 560px;
+      margin: 2rem;
+    }
+  }
+
+  .card-header {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 3rem 2.5rem;
+    text-align: center;
+  }
+
+  .brand-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .brand-wrapper i {
+    font-size: 2.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.2rem;
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .auth-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+
+  .auth-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    margin: 0.5rem 0 0;
+    font-weight: 400;
+  }
+
+  .card-body {
+    padding: 2.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .card-body {
+      padding: 3rem;
+    }
+    
+    .auth-title {
+      font-size: 2.1rem;
+    }
+    
+    .auth-subtitle {
+      font-size: 1.2rem;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 1.8rem;
+  }
+
+  .form-label {
+    font-weight: 500;
+    color: #2a3547;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+  }
+
+  .input-group {
+    border-radius: 0.75rem;
+    border: 1px solid #e0e5ec;
+    transition: all 0.3s ease;
+  }
+
+  .input-group:focus-within {
+    border-color: #0094c3;
+    box-shadow: 0 0 0 3px rgba(0, 148, 195, 0.1);
+  }
+
+  .input-group-text {
+    background: transparent;
+    border: none;
+    color: #7c8a9d;
+    padding: 0 1rem;
+  }
+
+  .form-control {
+    border: none;
+    padding: 1rem;
+    height: auto;
+    font-size: 1rem;
+  }
+
+  .btn-auth {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 1.1rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .link-forgot:hover {
+    color: #0094c3;
+  }
+</style>
+
+<script>
+  // O mesmo script anterior para toggle de senha
+  document.querySelectorAll('[data-toggle-password]').forEach(button => {
+    button.addEventListener('click', (e) => {
+      const input = button.closest('.input-group').querySelector('input');
+      const icon = button.querySelector('i');
+      
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+      } else {
+        input.type = 'password';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+      }
+    });
+  });
+</script>
 {% endblock %}
