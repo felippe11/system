@@ -307,6 +307,7 @@ def dashboard():
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
     cidade_filter = request.args.get('cidade', '').strip()
+    cliente_filter = request.args.get('cliente_id', '').strip()
 
     # Check-ins via QR
     checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
@@ -349,11 +350,13 @@ def dashboard():
         perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
 
         lista_oficinas_info.append({
+            'id': of.id,  # ✅ Adicionando ID da oficina
             'titulo': of.titulo,
             'vagas': of.vagas,
             'inscritos': num_inscritos,
             'ocupacao': perc_ocupacao
         })
+
 
     # ========== 3) Monta a string do relatório (somente UMA vez) ==========
     msg_relatorio = (
@@ -381,6 +384,23 @@ def dashboard():
     if cidade_filter:
         query = query.filter(Oficina.cidade == cidade_filter)
     oficinas_filtradas = query.all()
+    if is_admin and cliente_filter:
+        query = query.filter(Oficina.cliente_id == cliente_filter)
+    oficinas_filtradas = query.all()
+
+    # Estatísticas de oficinas (aplicando filtro)
+    lista_oficinas_info = []
+    for of in oficinas_filtradas:
+        num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
+        perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
+
+        lista_oficinas_info.append({
+            'id': of.id,
+            'titulo': of.titulo,
+            'vagas': of.vagas,
+            'inscritos': num_inscritos,
+            'ocupacao': perc_ocupacao
+        })
 
     oficinas_com_inscritos = []
     for oficina in oficinas_filtradas:
@@ -440,7 +460,8 @@ def dashboard():
         msg_relatorio=msg_relatorio,
         inscricoes=inscricoes,
         habilitar_certificado_individual=habilitar_certificado_individual,
-        clientes=clientes
+        clientes=clientes,
+        cliente_filter=cliente_filter
     )
 
 @routes.route('/dashboard_participante')

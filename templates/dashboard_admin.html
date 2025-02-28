@@ -116,6 +116,27 @@
                       <i class="bi bi-plus-lg me-2"></i>Nova Oficina
                     </a>
                   </div>
+<!-- Filtro de Cliente (Somente para Administradores) -->
+
+<form method="GET" action="{{ url_for('routes.dashboard') }}" class="mb-3">
+  <div class="row">
+    <div class="col-md-4">
+      <label for="clienteSelect" class="form-label">Filtrar por Cliente</label>
+      <select id="clienteSelect" name="cliente_id" class="form-select">
+        <option value="">Todos os Clientes</option>
+        {% for cliente in clientes %}
+          <option value="{{ cliente.id }}" {% if cliente.id|string == cliente_filter %}selected{% endif %}>
+            {{ cliente.nome }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+    </div>
+  </div>
+</form>
+
                   <div class="table-responsive">
                     <table class="table table-hover align-middle">
                       <thead class="table-light">
@@ -842,26 +863,38 @@
   <!-- Gerenciamento de Oficinas -->
   <h3 class="text-center text-dark mt-5">Gerenciamento de Oficinas</h3>
   <br>
-  <!-- Filtro de Estado e Cidade -->
-  <form method="GET" action="{{ url_for('routes.dashboard') }}">
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
-        <select id="estadoSelect" name="estado" class="form-select">
-          <option value="">Todos os Estados</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
-        <select id="cidadeSelect" name="cidade" class="form-select">
-          <option value="">Todas as Cidades</option>
-        </select>
-      </div>
-      <div class="col-md-4 d-flex align-items-end">
-        <button type="submit" class="btn btn-primary">Filtrar</button>
-      </div>
+<!-- Filtro de Estado, Cidade e Cliente -->
+<form method="GET" action="{{ url_for('routes.dashboard') }}">
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <label for="clienteSelect" class="form-label">Filtrar por Cliente</label>
+      <select id="clienteSelect" name="cliente_id" class="form-select">
+        <option value="">Todos os Clientes</option>
+        {% for cliente in clientes %}
+          <option value="{{ cliente.id }}" {% if cliente.id|string == cliente_filter %}selected{% endif %}>
+            {{ cliente.nome }}
+          </option>
+        {% endfor %}
+      </select>
     </div>
-  </form>
+    <div class="col-md-3">
+      <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
+      <select id="estadoSelect" name="estado" class="form-select">
+        <option value="">Todos os Estados</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
+      <select id="cidadeSelect" name="cidade" class="form-select">
+        <option value="">Todas as Cidades</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+      <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+    </div>
+  </div>
+</form>
+
   
   <div class="row mt-4">
     {% for oficina in oficinas %}
