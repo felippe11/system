@@ -205,6 +205,11 @@
                   <a href="{{ url_for('routes.gerenciar_ministrantes') }}" class="btn btn-primary">
                     <i class="bi bi-person-badge"></i> Gerenciar Ministrantes
                   </a>
+                  <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" 
+                    class="btn btn-success mb-3">
+                    <i class="bi bi-file-earmark-image me-1"></i>
+                    Personalizar Certificado
+                  </a>
 
                   <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
                         onsubmit="return confirm('Tem certeza que deseja excluir todas as oficinas?');">
@@ -217,52 +222,44 @@
             </div>
 
             <!-- 3.2) CONFIGURAÇÕES -->
-            <div class="col-12 col-lg-6">
-              <div class="card h-100 shadow">
-                <div class="card-header bg-info text-white fw-bold">
-                  <i class="bi bi-gear-fill"></i> Configurações do Cliente
-                </div>
-                <div class="card-body">
-                  <!-- Check-in -->
-                  <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="mb-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="toggleCheckinGlobal"
-                             onchange="this.form.submit()"
-                             {% if config_cliente and config_cliente.permitir_checkin_global %}checked{% endif %}>
-                      <label class="form-check-label fw-semibold" for="toggleCheckinGlobal">
-                        Permitir Check-in Global (Somente em minhas oficinas)
-                      </label>
-                    </div>
-                  </form>
+<div class="col-12 col-lg-6">
+  <div class="card h-100 shadow">
+    <div class="card-header bg-info text-white fw-bold">
+      <i class="bi bi-gear-fill"></i> Configurações do Cliente
+    </div>
+    <div class="card-body">
+      <!-- Check-in Global -->
+      <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+          Permitir Check-in Global (Somente em minhas oficinas)
+        </div>
+        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}">
+          {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
+        </button>
+      </form>
 
-                  <!-- Feedback -->
-                  <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="mb-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="toggleFeedback"
-                             onchange="this.form.submit()"
-                             {% if config_cliente and config_cliente.habilitar_feedback %}checked{% endif %}>
-                      <label class="form-check-label fw-semibold" for="toggleFeedback">
-                        Habilitar Envio de Feedback (Somente em minhas oficinas)
-                      </label>
-                    </div>
-                  </form>
+      <!-- Feedback -->
+      <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+          Habilitar Envio de Feedback (Somente em minhas oficinas)
+        </div>
+        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}">
+          {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
+        </button>
+      </form>
 
-                  <!-- Certificado -->
-                  <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="mb-4">
-                    <div class="form-check form-switch">
-                      <input class="form-check-input" type="checkbox" id="toggleCertificado"
-                             onchange="this.form.submit()"
-                             {% if config_cliente and config_cliente.habilitar_certificado_individual %}checked{% endif %}>
-                      <label class="form-check-label fw-semibold" for="toggleCertificado">
-                        Habilitar Baixar Certificado (Somente em minhas oficinas)
-                      </label>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div><!-- /row g-4 -->
-        </div><!-- /tab-pane Ações e Configurações -->
+      <!-- Certificado -->
+      <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+          Habilitar Baixar Certificado (Somente em minhas oficinas)
+        </div>
+        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}">
+          {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
 
         <!-- ABA 4: GERENCIAMENTO DE OFICINAS -->
         <div class="tab-pane fade" id="gerenciarOficinas" role="tabpanel">
@@ -513,9 +510,17 @@
         <p>Nenhum check-in encontrado.</p>
         {% endif %}
       </div>
+      <div class="modal-footer">
+        <!-- Botão para baixar o PDF gerado -->
+        <a href="{{ url_for('routes.gerar_pdf_checkins_qr') }}" class="btn btn-primary" target="_blank">
+          Baixar PDF
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
     </div>
   </div>
 </div>
+
 
 <!-- Modal para gerenciar inscrições -->
 <div class="modal fade" id="modalGerenciarInscricoes" tabindex="-1"
@@ -623,8 +628,6 @@
 </style>
 
 
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   document.getElementById("gerarLinkBtn").addEventListener("click", function() {
     fetch("{{ url_for('routes.gerar_link') }}")

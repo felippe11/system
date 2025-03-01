@@ -2,46 +2,43 @@
 {% block title %}Cadastro de Participante{% endblock %}
 
 {% block content %}
-<!-- Estilos personalizados para o formulário de cadastro -->
 <style>
-  /* Fundo moderno em degradê */
+  /* Estilo de fundo e tipografia */
   body {
     background: linear-gradient(135deg, #74ABE2, #5563DE);
     font-family: "Poppins", sans-serif;
   }
-
-  /* Centraliza o card na tela */
-  .card-register {
-    max-width: 500px;
-    width: 100%;
-    border: none;
-    border-radius: 10px;
-  }
-
-  /* Cabeçalho do card */
-  .card-register .card-header {
-    background: #fff;
-    border-bottom: none;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #007bff;
-    text-align: center;
-    padding: 1.5rem 1rem;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-  }
-
-  /* Corpo do card */
-  .card-register .card-body {
+  /* Container centralizado para o formulário */
+  .register-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 2rem;
   }
-
-  /* Espaçamento para os alertas */
-  .alert-container {
-    margin-bottom: 1rem;
+  /* Card de cadastro */
+  .register-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    max-width: 600px;
+    width: 100%;
+    overflow: hidden;
   }
-
-  /* Link de login */
+  .register-card .card-header {
+    background: #007bff;
+    color: #fff;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+  .register-card .card-body {
+    padding: 2rem;
+  }
+  .form-label {
+    font-weight: 600;
+  }
   .login-link {
     color: #007bff;
     font-weight: 600;
@@ -50,81 +47,74 @@
   .login-link:hover {
     text-decoration: underline;
   }
-  
-  /* Estilos para o bloco de localização */
+  /* Bloco de localização */
   .location-block {
-    border: 1px solid #ccc;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
     padding: 1rem;
     margin-bottom: 1rem;
-    border-radius: 5px;
     position: relative;
   }
   .remove-location-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
+    top: 0.5rem;
+    right: 0.5rem;
   }
 </style>
 
-<div class="d-flex justify-content-center align-items-center vh-100">
-  <div class="card card-register shadow-lg rounded bg-white">
+<div class="register-container">
+  <div class="card register-card">
     <div class="card-header">
       Cadastro de Participante
     </div>
     <div class="card-body">
-      <!-- Exibição de mensagens de alerta -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="alert-container">
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
-      <!-- Formulário de Cadastro -->
       <form method="POST" action="{{ url_for('routes.cadastro_participante', token=token) if token else url_for('routes.cadastro_participante') }}">
-        <div class="mb-3">
-          <label for="nome" class="form-label fw-bold">Nome Completo</label>
-          <input type="text" class="form-control" name="nome" id="nome" placeholder="Digite seu nome completo" required>
+        <!-- Linha 1: Nome e CPF -->
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="nome" class="form-label">Nome Completo</label>
+            <input type="text" class="form-control" name="nome" id="nome" placeholder="Digite seu nome completo" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="cpf" class="form-label">CPF</label>
+            <input type="text" class="form-control" name="cpf" id="cpf" placeholder="000.000.000-00" required>
+          </div>
         </div>
-
-        <div class="mb-3">
-          <label for="cpf" class="form-label fw-bold">CPF</label>
-          <input type="text" class="form-control" name="cpf" id="cpf" placeholder="000.000.000-00" required>
+        <!-- Linha 2: E-mail e Senha -->
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="email" class="form-label">E-mail</label>
+            <input type="email" class="form-control" name="email" id="email" placeholder="Digite seu e-mail" required>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label for="senha" class="form-label">Senha</label>
+            <input type="password" class="form-control" name="senha" id="senha" placeholder="Crie uma senha segura" required>
+          </div>
         </div>
-
-        <div class="mb-3">
-          <label for="email" class="form-label fw-bold">E-mail</label>
-          <input type="email" class="form-control" name="email" id="email" placeholder="Digite seu e-mail" required>
+        <!-- Linha 3: Formação e (opcionalmente) outro campo se necessário -->
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label for="formacao" class="form-label">Formação</label>
+            <input type="text" class="form-control" name="formacao" id="formacao" placeholder="Informe sua formação acadêmica" required>
+          </div>
+          <!-- Se houver outro campo a incluir, descomente e ajuste a seguir:
+          <div class="col-md-6 mb-3">
+            <label for="outro-campo" class="form-label">Outro Campo</label>
+            <input type="text" class="form-control" name="outro_campo" id="outro-campo" placeholder="Informe outro dado">
+          </div>
+          -->
         </div>
-
-        <div class="mb-3">
-          <label for="senha" class="form-label fw-bold">Senha</label>
-          <input type="password" class="form-control" name="senha" id="senha" placeholder="Crie uma senha segura" required>
-        </div>
-
-        <div class="mb-3">
-          <label for="formacao" class="form-label fw-bold">Formação</label>
-          <input type="text" class="form-control" name="formacao" id="formacao" placeholder="Informe sua formação acadêmica" required>
-        </div>
-
         <!-- Seção para Locais de Atuação -->
         <div class="mb-3">
-          <label class="form-label fw-bold">Locais onde atua</label>
+          <label class="form-label">Locais onde atua</label>
           <div id="locations-container">
             <!-- Os blocos de localização serão adicionados aqui dinamicamente -->
           </div>
-          <button type="button" id="add-location-btn" class="btn btn-secondary btn-sm">Adicionar Local</button>
+          <button type="button" id="add-location-btn" class="btn btn-secondary btn-sm mt-2">Adicionar Local</button>
         </div>
-
         <button type="submit" class="btn btn-success w-100 fw-bold">Cadastrar</button>
       </form>
-
       <p class="text-center mt-3">
         Já tem uma conta? <a href="{{ url_for('routes.login') }}" class="login-link">Faça login</a>.
       </p>
@@ -134,31 +124,28 @@
 
 <!-- Script para aplicar máscara ao CPF -->
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    const cpfInput = document.getElementById("cpf");
-    cpfInput.addEventListener("input", function() {
-      let value = cpfInput.value.replace(/\D/g, '');
-      if (value.length > 3) value = value.replace(/^(\d{3})(\d)/, '$1.$2');
-      if (value.length > 6) value = value.replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
-      if (value.length > 9) value = value.replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
-      cpfInput.value = value;
-    });
+document.addEventListener("DOMContentLoaded", function() {
+  const cpfInput = document.getElementById("cpf");
+  cpfInput.addEventListener("input", function() {
+    let value = cpfInput.value.replace(/\D/g, '');
+    if (value.length > 3) value = value.replace(/^(\d{3})(\d)/, '$1.$2');
+    if (value.length > 6) value = value.replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
+    if (value.length > 9) value = value.replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+    cpfInput.value = value;
   });
+});
 </script>
 
 <!-- Script para adicionar e remover blocos de localização e preencher os selects via API do IBGE -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Variável global para armazenar os dados dos estados
     let statesData = [];
 
-    // Busca os estados utilizando a API do IBGE (neste exemplo, a rota v1/localidades/estados)
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
       .then(response => response.json())
       .then(data => {
           data.sort((a, b) => a.nome.localeCompare(b.nome));
           statesData = data;
-          // Adiciona um primeiro bloco de localização assim que os estados forem carregados
           addLocationBlock();
       })
       .catch(error => console.error('Erro ao buscar estados:', error));
@@ -169,11 +156,9 @@ document.addEventListener('DOMContentLoaded', function() {
     addLocationBtn.addEventListener('click', addLocationBlock);
 
     function addLocationBlock() {
-        // Cria um container para o bloco de localização
         const block = document.createElement('div');
         block.classList.add('location-block');
 
-        // Cria o select para Estado
         const stateLabel = document.createElement('label');
         stateLabel.classList.add('form-label', 'fw-bold');
         stateLabel.textContent = "Estado";
@@ -181,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
         stateSelect.name = 'estados[]';
         stateSelect.classList.add('form-select', 'mb-2');
         stateSelect.innerHTML = '<option value="">Selecione o Estado</option>';
-        // Popula o select de estados com os dados obtidos
         statesData.forEach(state => {
             const option = document.createElement('option');
             option.value = state.sigla;
@@ -189,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
             stateSelect.add(option);
         });
 
-        // Cria o select para Cidade
         const cityLabel = document.createElement('label');
         cityLabel.classList.add('form-label', 'fw-bold');
         cityLabel.textContent = "Cidade";
@@ -198,10 +181,8 @@ document.addEventListener('DOMContentLoaded', function() {
         citySelect.classList.add('form-select', 'mb-2');
         citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
 
-        // Quando o estado for selecionado, preenche o select de cidade
         stateSelect.addEventListener('change', function() {
             const uf = this.value;
-            // Limpa as opções atuais do select de cidade
             citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
             if (uf) {
                 fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
@@ -219,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        // Cria o botão para remover o bloco de localização
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.textContent = 'Remover Local';
@@ -228,14 +208,11 @@ document.addEventListener('DOMContentLoaded', function() {
             locationsContainer.removeChild(block);
         });
 
-        // Adiciona os elementos ao bloco
         block.appendChild(removeBtn);
         block.appendChild(stateLabel);
         block.appendChild(stateSelect);
         block.appendChild(cityLabel);
         block.appendChild(citySelect);
-
-        // Adiciona o bloco no container de localizações
         locationsContainer.appendChild(block);
     }
 });

@@ -293,6 +293,11 @@ class Cliente(db.Model, UserMixin):
 
      # Relacionamento com Oficina
     oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`
+    
+    # Novos campos (caminho das imagens):
+    logo_certificado = db.Column(db.String(255), nullable=True)       # Logo
+    fundo_certificado = db.Column(db.String(255), nullable=True)      # Fundo do certificado
+    assinatura_certificado = db.Column(db.String(255), nullable=True) # Assinatura
 
     
     def is_active(self):

@@ -1001,50 +1001,69 @@ def wrap_text(text, font, font_size, max_width, canvas):
 
 def gerar_certificados_pdf(oficina, inscritos, pdf_path):
     c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
-    fundo_path = "static/Certificado IAFAP.png"
+
+    # Identificar o cliente (se houver)
+    cliente = None
+    if oficina.cliente_id:
+        cliente = Cliente.query.get(oficina.cliente_id)
+
+    # Se o cliente tiver fundo personalizado, use-o; senão, use o default
+    if cliente and cliente.fundo_certificado:
+        fundo_path = cliente.fundo_certificado
+    else:
+        fundo_path = "static/Certificado IAFAP.png"  # seu default atual
+
+    # Se o cliente tiver assinatura personalizada, use-a; senão, use o default
+    if cliente and cliente.assinatura_certificado:
+        signature_path = cliente.assinatura_certificado
+    else:
+        signature_path = "static/signature.png"
+
     for inscrito in inscritos:
+        # Tenta desenhar o fundo
         try:
             fundo = ImageReader(fundo_path)
             c.drawImage(fundo, 0, 0, width=A4[1], height=A4[0])
         except Exception as e:
             print("⚠️ Fundo do certificado não encontrado:", e)
-        
-        # Texto da oficina com quebra de linha manual
+
+        # Texto principal
         c.setFont("Helvetica", 16)
-        texto_oficina = (f"{inscrito.usuario.nome}, portador do {inscrito.usuario.cpf}, participou da oficina de tema "
-                          f"{oficina.titulo}, com carga horária total de {oficina.carga_horaria} horas, Este certificado é "
-                          f"concedido como reconhecimento pela dedicação e participação no evento realizado na cidade "
-                          f"{oficina.cidade} nos dias:")
-        max_width = 600  # largura máxima permitida para o texto
+        texto_oficina = (
+            f"{inscrito.usuario.nome}, portador do {inscrito.usuario.cpf}, participou da oficina de tema "
+            f"{oficina.titulo}, com carga horária total de {oficina.carga_horaria} horas. Este certificado é "
+            f"concedido como reconhecimento pela dedicação e participação no evento realizado na cidade "
+            f"{oficina.cidade} nos dias:"
+        )
+        max_width = 600
         lines = wrap_text(texto_oficina, "Helvetica", 16, max_width, c)
         y = 340
         for line in lines:
             c.drawCentredString(420, y, line)
-            y -= 25  # espaçamento entre linhas
-        
+            y -= 25
+
         # Datas da oficina
         if len(oficina.dias) > 1:
             datas_formatadas = ", ".join([dia.data.strftime('%d/%m/%Y') for dia in oficina.dias[:-1]]) + \
-                                " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
+                               " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
         else:
             datas_formatadas = oficina.dias[0].data.strftime('%d/%m/%Y')
         c.drawCentredString(420, y, datas_formatadas)
-        
-        # Adiciona a assinatura como imagem
+
+        # Assinatura (personalizada ou default)
         try:
-            signature_path = "static/signature.png"  # Caminho da imagem da assinatura
-            signature_width = 360  # Largura da assinatura em pontos
-            signature_height = 90  # Altura da assinatura em pontos
-            # Centraliza horizontalmente (considerando que a página em paisagem tem 840 pontos de largura, ex: A4[1])
+            signature_width = 360
+            signature_height = 90
             x_signature = 420 - (signature_width / 2)
-            y_signature = y - 187  # Ajuste vertical; 80 pontos abaixo do último texto (datas)
+            y_signature = y - 187
             c.drawImage(signature_path, x_signature, y_signature,
                         width=signature_width, height=signature_height,
                         preserveAspectRatio=True, mask='auto')
         except Exception as e:
             print("Erro ao adicionar a assinatura:", e)
-        
+
         c.showPage()
+
     c.save()
 
 
@@ -1056,19 +1075,26 @@ def gerar_certificados(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Apenas administradores podem gerar certificados.", "danger")
         return redirect(url_for('routes.dashboard'))
+
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
         return redirect(url_for('routes.dashboard'))
+
     inscritos = oficina.inscritos
     if not inscritos:
         flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
         return redirect(url_for('routes.dashboard'))
+
     pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # Agora chama a função ajustada
     gerar_certificados_pdf(oficina, inscritos, pdf_path)
+
     flash("Certificados gerados com sucesso!", "success")
     return send_file(pdf_path, as_attachment=True)
+
 
 @routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
@@ -1123,6 +1149,8 @@ def checkin(oficina_id):
     # Para o GET: extrai as opções configuradas (supondo que foram salvas como uma string separada por vírgulas)
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
     return render_template('checkin.html', oficina=oficina, opcoes=opcoes)
+
+
 
 
 @routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
@@ -1535,20 +1563,18 @@ def importar_usuarios():
 @routes.route("/toggle_checkin_global_cliente", methods=["POST"])
 @login_required
 def toggle_checkin_global_cliente():
-    if current_user.tipo != "admin":
+    # Permite apenas clientes acessarem esta rota
+    if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
         return redirect(url_for("routes.dashboard"))
+    
+    # Para clientes, já utiliza o próprio ID
+    cliente_id = current_user.id
 
-    # No HTML, você enviará `cliente_id` via <select name="cliente_id"> ou similar
-    cliente_id = request.form.get('cliente_id', type=int)
-    if not cliente_id:
-        flash("É preciso selecionar um cliente!", "danger")
-        return redirect(url_for("routes.dashboard"))
-
-    from models import ConfiguracaoCliente  # Certifique-se de importar
+    from models import ConfiguracaoCliente
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
-        # Cria uma nova config para esse cliente, se não existir
+        # Cria uma nova configuração para esse cliente, se não existir
         config_cliente = ConfiguracaoCliente(
             cliente_id=cliente_id,
             permitir_checkin_global=False,
@@ -1558,29 +1584,32 @@ def toggle_checkin_global_cliente():
         db.session.add(config_cliente)
         db.session.commit()
 
-    # Inverte
+    # Inverte o valor de permitir_checkin_global e persiste
     config_cliente.permitir_checkin_global = not config_cliente.permitir_checkin_global
     db.session.commit()
 
     status = "ativado" if config_cliente.permitir_checkin_global else "desativado"
     flash(f"Check-in Global para o cliente ID={cliente_id} foi {status}!", "success")
-
-    return redirect(url_for("routes.dashboard"))  # Ou outro lugar
-
+    return redirect(url_for("routes.dashboard_cliente"))
 
 
 @routes.route("/toggle_feedback_cliente", methods=["POST"])
 @login_required
 def toggle_feedback_cliente():
-    if current_user.tipo not in ["cliente", "admin"]:
+    # Permite apenas clientes
+    if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
         return redirect(url_for("routes.dashboard"))
     
-    cliente_id = current_user.id if current_user.tipo == 'cliente' else request.form.get('cliente_id')
-
+    cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
-        config_cliente = ConfiguracaoCliente(cliente_id=cliente_id)
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
         db.session.add(config_cliente)
         db.session.commit()
 
@@ -1588,26 +1617,27 @@ def toggle_feedback_cliente():
     db.session.commit()
 
     status = "ativado" if config_cliente.habilitar_feedback else "desativado"
-    flash(f"Feedback foi {status} para suas oficinas!", "success")
-
-    if current_user.tipo == 'cliente':
-        return redirect(url_for("routes.dashboard_cliente"))
-    else:
-        return redirect(url_for("routes.dashboard"))
+    flash(f"Feedback foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
+    return redirect(url_for("routes.dashboard_cliente"))
 
 
 @routes.route("/toggle_certificado_cliente", methods=["POST"])
 @login_required
 def toggle_certificado_cliente():
-    if current_user.tipo not in ["cliente", "admin"]:
+    # Permite apenas clientes
+    if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
         return redirect(url_for("routes.dashboard"))
     
-    cliente_id = current_user.id if current_user.tipo == 'cliente' else request.form.get('cliente_id')
-
+    cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
-        config_cliente = ConfiguracaoCliente(cliente_id=cliente_id)
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
         db.session.add(config_cliente)
         db.session.commit()
 
@@ -1615,40 +1645,33 @@ def toggle_certificado_cliente():
     db.session.commit()
 
     status = "ativado" if config_cliente.habilitar_certificado_individual else "desativado"
-    flash(f"O Certificado Individual foi {status} para suas oficinas!", "success")
-
-    if current_user.tipo == 'cliente':
-        return redirect(url_for("routes.dashboard_cliente"))
-    else:
-        return redirect(url_for("routes.dashboard"))
-
-
+    flash(f"O Certificado Individual foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
+    return redirect(url_for("routes.dashboard_cliente"))
 
 
 @routes.route("/toggle_certificado_individual", methods=["POST"])
 @login_required
 def toggle_certificado_individual():
-    if current_user.tipo != "admin":
+    # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
+    if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
         return redirect(url_for("routes.dashboard"))
-
+    
     config = Configuracao.query.first()
     if not config:
-        # Se não houver registro, cria um
         config = Configuracao(
             permitir_checkin_global=False,
             habilitar_feedback=False,
             habilitar_certificado_individual=False
         )
         db.session.add(config)
-
-    # Inverte o booleano
     config.habilitar_certificado_individual = not config.habilitar_certificado_individual
     db.session.commit()
 
     status = "ativado" if config.habilitar_certificado_individual else "desativado"
     flash(f"Certificado individual {status} com sucesso!", "success")
-    return redirect(url_for("routes.dashboard"))
+    return redirect(url_for("routes.dashboard_cliente"))
+
 
 
 # ===========================
@@ -1997,6 +2020,8 @@ def cadastro_ministrante():
         else:
             # Se for cliente, vincula automaticamente ao current_user.id
             cliente_id = current_user.id
+    
+
         
         # Criação do novo ministrante
         novo_ministrante = Ministrante(
@@ -2250,12 +2275,19 @@ def gerar_pdf_checkins_qr():
         flash("Não há check-ins via QR Code para gerar o PDF.", "warning")
         return redirect(url_for('routes.dashboard'))
 
-    # 2. Define o caminho do PDF (pasta static/comprovantes, por ex.)
+    # 2. Define o caminho do PDF (pasta static/comprovantes, por exemplo)
     pdf_filename = "checkins_via_qr.pdf"
     pdf_path = os.path.join("static", "comprovantes", pdf_filename)
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
 
-    # 3. Configura o Documento
+    # 3. Configura o Documento usando SimpleDocTemplate e LongTable para quebra automática
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle, PageBreak
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import inch
+    from collections import defaultdict
+
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=landscape(A4),
@@ -2266,57 +2298,54 @@ def gerar_pdf_checkins_qr():
     )
     elements = []
     styles = getSampleStyleSheet()
-
-    # 4. Título
     title_style = styles["Title"]
-    title_para = Paragraph("Lista de Check-ins via QR Code", title_style)
-    elements.append(title_para)
+
+    # 4. Título geral do PDF
+    elements.append(Paragraph("Lista de Check-ins via QR Code", title_style))
     elements.append(Spacer(1, 0.3 * inch))
 
-    # 5. Monta a tabela
-    # Cabeçalhos
-    data_table = [["Nome", "E-mail", "Oficina", "Data/Hora Check-in"]]
-
-    # Linhas do corpo
+    # 5. Agrupa os check-ins por oficina
+    grupos = defaultdict(list)
     for ck in checkins_qr:
-        usuario = ck.usuario
-        oficina = ck.oficina
-        data_str = ck.data_hora.strftime('%d/%m/%Y %H:%M') if ck.data_hora else ""
-        data_table.append([
-            usuario.nome if usuario else "",
-            usuario.email if usuario else "",
-            oficina.titulo if oficina else "",
-            data_str
-        ])
+        # Caso a oficina seja None, agrupa como "N/A"
+        oficina_titulo = ck.oficina.titulo if ck.oficina else "N/A"
+        grupos[oficina_titulo].append(ck)
 
-    # 6. Cria o objeto Table (flowable) e estilo
-    table = Table(
-        data_table,
-        colWidths=[2.0 * inch, 2.5 * inch, 2.5 * inch, 1.5 * inch]  # Ajuste conforme necessidade
-    )
+    # 6. Para cada oficina, cria uma tabela com os check-ins
+    for oficina_titulo, checkins in grupos.items():
+        # Cabeçalho do grupo (nome da oficina)
+        elements.append(Paragraph(f"Oficina: {oficina_titulo}", styles["Heading2"]))
+        elements.append(Spacer(1, 0.2 * inch))
 
-    table.setStyle(TableStyle([
-        # Cabeçalho com fundo azul e texto branco
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        # Monta os dados da tabela: cabeçalho e linhas
+        table_data = [["Nome", "E-mail", "Data/Hora Check-in"]]
+        for ck in checkins:
+            usuario = ck.usuario
+            nome = usuario.nome if usuario else ""
+            email = usuario.email if usuario else ""
+            data_str = ck.data_hora.strftime('%d/%m/%Y %H:%M') if ck.data_hora else ""
+            table_data.append([nome, email, data_str])
 
-        # Grid em toda a tabela
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        # Cria a tabela com LongTable (que permite quebra de página e repete o cabeçalho)
+        table = LongTable(table_data, colWidths=[2.0 * inch, 2.5 * inch, 2.0 * inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('REPEATROWS', (0, 0), (-1, 0))
+        ]))
+        elements.append(table)
+        elements.append(Spacer(1, 0.5 * inch))
+        # Se desejar, pode inserir uma quebra de página entre oficinas:
+        # elements.append(PageBreak())
 
-        # Fonte do cabeçalho
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-
-        # Alinhamento vertical
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-
-        # Repete cabeçalho em cada página
-        ('REPEATROWS', (0,0), (-1,0))
-    ]))
-
-    elements.append(table)
-
-    # 7. Constrói o PDF (o ReportLab fará a quebra de página automática)
+    # 7. Constrói o PDF (a quebra de página será automática se os registros ultrapassarem o limite)
     doc.build(elements)
 
     # 8. Retorna para download
@@ -2955,31 +2984,71 @@ from reportlab.pdfgen import canvas
 @routes.route('/formularios/<int:formulario_id>/exportar_pdf')
 @login_required
 def gerar_pdf_respostas(formulario_id):
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet
+
+    # Busca o formulário e as respostas
     formulario = Formulario.query.get_or_404(formulario_id)
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
 
     pdf_filename = f"respostas_{formulario.id}.pdf"
     pdf_path = f"static/{pdf_filename}"
 
-    c = canvas.Canvas(pdf_path, pagesize=letter)
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(100, 750, f"Respostas do Formulário: {formulario.nome}")
+    # Configura o documento com margens adequadas para quebra de página
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=18
+    )
 
-    y = 720
+    styles = getSampleStyleSheet()
+    style_normal = styles["Normal"]
+
+    elements = []
+    # Título do PDF
+    title = Paragraph(f"Respostas do Formulário: {formulario.nome}", styles["Title"])
+    elements.append(title)
+    elements.append(Spacer(1, 12))
+
+    # Cabeçalho da tabela
+    data = []
+    header = ["Usuário", "Data de Envio", "Respostas"]
+    data.append(header)
+
+    # Preenche as linhas da tabela com cada resposta
     for resposta in respostas:
-        c.setFont("Helvetica", 12)
-        c.drawString(100, y, f"Usuário: {resposta.usuario.nome} - Enviado em {resposta.data_submissao.strftime('%d/%m/%Y %H:%M')}")
-        y -= 20
+        usuario = resposta.usuario.nome if resposta.usuario else "N/A"
+        data_envio = resposta.data_submissao.strftime('%d/%m/%Y %H:%M')
+        # Monta uma string com os campos e valores, separando-os por quebras de linha
+        resposta_text = ""
         for campo in resposta.respostas_campos:
-            c.drawString(120, y, f"{campo.campo.nome}: {campo.valor}")
-            y -= 15
-        y -= 10
+            resposta_text += f"<b>{campo.campo.nome}:</b> {campo.valor}<br/>"
+        resposta_paragraph = Paragraph(resposta_text, style_normal)
+        row = [usuario, data_envio, resposta_paragraph]
+        data.append(row)
 
-        if y < 50:  # Se estiver perto do final da página, cria uma nova
-            c.showPage()
-            y = 750
+    # Define a largura de cada coluna (ajuste conforme necessário)
+    col_widths = [150, 100, 250]
+    table = Table(data, colWidths=col_widths)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#007bff")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+    elements.append(table)
 
-    c.save()
+    # Gera o PDF (o SimpleDocTemplate se encarrega da quebra de página se necessário)
+    doc.build(elements)
     return send_file(pdf_path, as_attachment=True)
 
 @routes.route('/formularios/<int:formulario_id>/exportar_csv')
@@ -3013,3 +3082,42 @@ def get_resposta_file(filename):
     print(">> get_resposta_file foi chamado com:", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     return send_from_directory(uploads_folder, filename)
+
+@routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
+@login_required
+def upload_personalizacao_certificado():
+
+    if request.method == 'POST':
+        logo_file = request.files.get('logo_certificado')
+        fundo_file = request.files.get('fundo_certificado')
+        ass_file = request.files.get('assinatura_certificado')
+
+        # Exemplo de pasta
+        pasta_uploads = os.path.join('uploads', 'personalizacao')
+        os.makedirs(pasta_uploads, exist_ok=True)
+
+        # Se o cliente enviar algo, salvamos e atualizamos o path
+        if logo_file and logo_file.filename:
+            filename_logo = secure_filename(logo_file.filename)
+            caminho_logo = os.path.join(pasta_uploads, filename_logo)
+            logo_file.save(caminho_logo)
+            current_user.logo_certificado = caminho_logo  # Salva no banco
+
+        if fundo_file and fundo_file.filename:
+            filename_fundo = secure_filename(fundo_file.filename)
+            caminho_fundo = os.path.join(pasta_uploads, filename_fundo)
+            fundo_file.save(caminho_fundo)
+            current_user.fundo_certificado = caminho_fundo
+
+        if ass_file and ass_file.filename:
+            filename_ass = secure_filename(ass_file.filename)
+            caminho_ass = os.path.join(pasta_uploads, filename_ass)
+            ass_file.save(caminho_ass)
+            current_user.assinatura_certificado = caminho_ass
+
+        db.session.commit()
+        flash("Personalização salva com sucesso!", "success")
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    return render_template('upload_personalizacao_cert.html')
+
