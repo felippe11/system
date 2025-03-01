@@ -1,8 +1,8 @@
-"""Recreating migrations
+"""Recriando estrutura do banco
 
-Revision ID: 01a981839e0c
+Revision ID: caf1b7504a7c
 Revises: 
-Create Date: 2025-02-25 15:51:50.196508
+Create Date: 2025-03-01 12:51:35.841243
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '01a981839e0c'
+revision = 'caf1b7504a7c'
 down_revision = None
 branch_labels = None
 depends_on = None
