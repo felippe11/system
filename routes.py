@@ -44,7 +44,7 @@ from flask_login import login_required, current_user
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, LongTable
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
@@ -1141,6 +1141,12 @@ def lista_checkins(oficina_id):
     } for checkin in checkins]
     return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, TableStyle, LongTable
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from flask import send_file
+
 @routes.route('/gerar_pdf_checkins/<int:oficina_id>', methods=['GET'])
 @login_required
 def gerar_pdf_checkins(oficina_id):
@@ -1159,15 +1165,25 @@ def gerar_pdf_checkins(oficina_id):
     )
     normal_style = styles["Normal"]
     
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    # Aqui definimos a página como paisagem (landscape)
+    # e colocamos margens pequenas (20 points em cada lado).
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=landscape(letter),
+        leftMargin=20,
+        rightMargin=20,
+        topMargin=20,
+        bottomMargin=20
+    )
+    
     elementos = []
     
-    # Corrigido: Acessa ministrante via ministrante_obj
+    # Acessa o nome do ministrante
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
     
     elementos.append(Paragraph(f"Lista de Check-ins - {oficina.titulo}", header_style))
     elementos.append(Spacer(1, 12))
-    elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))  # Linha corrigida
+    elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
     elementos.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
     
     if dias:
@@ -1183,7 +1199,7 @@ def gerar_pdf_checkins(oficina_id):
     
     elementos.append(Spacer(1, 20))
     
-    # Tabela de check-ins
+    # Monta os dados da tabela
     data_table = [["Nome", "CPF", "E-mail", "Data e Hora do Check-in"]]
     for checkin in checkins:
         data_table.append([
@@ -1193,8 +1209,14 @@ def gerar_pdf_checkins(oficina_id):
             checkin.data_hora.strftime("%d/%m/%Y %H:%M"),
         ])
     
-    from reportlab.platypus import Table
-    tabela = Table(data_table, colWidths=[150, 100, 200, 150])
+    # Utiliza LongTable para quebra em múltiplas páginas e repete o cabeçalho
+    # Define colWidths como ['*','*','*','*'] para usar toda a largura do doc
+    tabela = LongTable(
+        data_table,
+        colWidths=['*','*','*','*'],  # cada coluna divide a largura disponível
+        repeatRows=1  # repete o cabeçalho nas próximas páginas
+    )
+    
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1204,11 +1226,18 @@ def gerar_pdf_checkins(oficina_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        
+        # Ativa quebra de linha em todas as células
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+        # Ajusta o alinhamento vertical das células
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     
     elementos.append(tabela)
+    
     doc.build(elementos)
     return send_file(pdf_path, as_attachment=True)
+
 
 @routes.route('/gerar_pdf/<int:oficina_id>')
 def gerar_pdf(oficina_id):
