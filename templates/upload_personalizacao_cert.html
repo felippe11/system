@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-4">
+  <h2>Personalizar Certificado</h2>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label class="form-label">Logo do Certificado</label>
+      <input type="file" name="logo_certificado" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Fundo do Certificado</label>
+      <input type="file" name="fundo_certificado" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Assinatura</label>
+      <input type="file" name="assinatura_certificado" class="form-control">
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+  </form>
+</div>
+{% endblock %}

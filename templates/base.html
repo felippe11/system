@@ -115,6 +115,7 @@
     </style>
 </head>
 
+
 <body class="d-flex flex-column min-vh-100 bg-light">
 
     <!-- NAVBAR -->
@@ -170,6 +171,19 @@
 
     <!-- ESPAÇAMENTO NAVBAR -->
     <div class="navbar-spacer" style="height: 80px;"></div>
+
+    {% with msgs = get_flashed_messages() %}
+  {% if msgs %}
+    <div class="container mt-3">
+      <!-- Pegue só a última mensagem -->
+      <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{ msgs|last }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}
+
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-grow-1">
