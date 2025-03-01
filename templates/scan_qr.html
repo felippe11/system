@@ -5,36 +5,43 @@
 {% block content %}
 <div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 80vh;">
     <h2 class="mb-4">Escanear QR Code</h2>
-    <!-- Video container with responsive aspect ratio -->
+    <!-- Contêiner de vídeo para o scanner -->
     <div id="qr-video" class="position-relative" style="width: 100%; max-width: 600px; aspect-ratio: 1/1;"></div>
     <div id="qr-status" class="mt-3 text-muted">Inicializando câmera...</div>
     <p id="qr-result" class="mt-4 text-center"></p>
+
+    <!-- Lista de participantes escaneados -->
+    <div class="mt-4 w-100">
+      <h4>Check-ins Realizados</h4>
+      <ul id="scanned-list" class="list-group"></ul>
+    </div>
+
     <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>
 </div>
 
-<!-- Using official CDN for html5-qrcode -->
+<!-- CDN do html5-qrcode -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 document.addEventListener("DOMContentLoaded", async function () {
     const videoContainer = document.getElementById('qr-video');
     const statusElement = document.getElementById('qr-status');
     const resultElement = document.getElementById('qr-result');
+    const scannedList = document.getElementById('scanned-list');
     
     let scanner = null;
-    let isScanning = false;
 
     try {
         scanner = new Html5Qrcode('qr-video');
-        
-        // Configure scanner with better defaults
+
+        // Configurações do scanner
         const config = {
             fps: 15,
-            qrbox: { width: 250, height: 250 }, // Better for mobile devices
+            qrbox: { width: 400, height: 400 },
             aspectRatio: 1.0,
             disableFlip: false
         };
 
-        // Try both front and back cameras
+        // Tenta usar a câmera traseira
         const cameraId = await Html5Qrcode.getCameras()
             .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
 
@@ -44,8 +51,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             onScanSuccess,
             onScanError
         );
-        
-        isScanning = true;
+
         statusElement.textContent = 'Aponte para o QR Code';
         
     } catch (error) {
@@ -54,37 +60,85 @@ document.addEventListener("DOMContentLoaded", async function () {
         resultElement.innerHTML = `<div class="text-danger">${error.message}</div>`;
     }
 
-    function onScanSuccess(decodedText) {
-        if (!isScanning) return;
+    /**
+     * Função chamada quando o QR Code é lido com sucesso.
+     */
+    async function onScanSuccess(decodedText) {
+        // Em vez de redirecionar para a URL do QR, verificamos se é um token válido
+        // Se for token do tipo "http(s)://", você pode tratar diferente,
+        // mas aqui vamos assumir que o "decodedText" é o 'token' direto.
         
-        // Validate URL before redirecting
         try {
-            const url = new URL(decodedText);
-            if (['http:', 'https:'].includes(url.protocol)) {
-                scanner.stop();
-                isScanning = false;
-                window.location.href = decodedText;
-                return;
+            // Chama a rota via fetch em JSON
+            const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: decodedText })
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+                // Exibir mensagem de sucesso
+                resultElement.innerHTML = `
+                    <div class="alert alert-success">
+                        ${data.message}
+                    </div>
+                `;
+                
+                // Adiciona participante/oficina na lista
+                addScannedItem(data.participante, data.oficina);
+
+            } else if (data.status === "warning") {
+                // Check-in já realizado
+                resultElement.innerHTML = `
+                    <div class="alert alert-warning">
+                        ${data.message}
+                    </div>
+                `;
+            } else {
+                // Erro
+                resultElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        ${data.message}
+                    </div>
+                `;
             }
-        } catch (e) {
-            console.warn('Invalid URL from QR Code:', decodedText);
+
+        } catch (err) {
+            console.error("Erro no fetch:", err);
+            resultElement.innerHTML = `
+                <div class="alert alert-danger">
+                    Ocorreu um erro ao processar o check-in.
+                </div>
+            `;
         }
 
-        resultElement.innerHTML = `
-            <div class="alert alert-warning">
-                QR Code inválido: ${decodedText.substring(0, 50)}${decodedText.length > 50 ? '...' : ''}
-            </div>
-        `;
+        // Importante: não paramos o scanner, para que possa ler novamente
+        // scanner.stop();  // Não faremos isso
     }
 
+    /**
+     * Função chamada quando há erro na leitura do QR Code
+     */
     function onScanError(errorMessage) {
-        console.warn('Scan error:', errorMessage);
-        statusElement.textContent = 'Erro ao ler QR Code: ' + errorMessage;
+        // Se ficar poluindo muito o console, só deixe um console.debug ou remova
+        console.debug('Erro na leitura:', errorMessage);
     }
 
-    // Cleanup when leaving page
+    /**
+     * Adiciona item na lista de check-ins recentes
+     */
+    function addScannedItem(participante, oficina) {
+        const li = document.createElement('li');
+        li.classList.add('list-group-item');
+        li.textContent = `${participante} fez check-in em "${oficina}"`;
+        scannedList.prepend(li); // prepend para mostrar o mais recente no topo
+    }
+
+    // Cleanup ao sair da página
     window.addEventListener('beforeunload', () => {
-        if (scanner && isScanning) {
+        if (scanner) {
             scanner.stop();
         }
     });
