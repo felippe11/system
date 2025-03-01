@@ -537,7 +537,7 @@ def dashboard_participante():
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        
 
     estados = obter_estados()
     ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
@@ -1074,7 +1074,7 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
 def gerar_certificados(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Apenas administradores podem gerar certificados.", "danger")
-        return redirect(url_for('routes.dashboard'))
+        
 
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
@@ -1158,7 +1158,7 @@ def checkin(oficina_id):
 def lista_checkins(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
     usuarios_checkin = [{
@@ -1316,7 +1316,7 @@ def gerar_pdf(oficina_id):
 def gerar_certificado_individual_admin():
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        
 
     oficina_id = request.form.get('oficina_id')
     usuario_id = request.form.get('usuario_id')
@@ -1475,7 +1475,7 @@ def importar_oficinas():
 def excluir_todas_oficinas():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for("routes.dashboard"))
+        
 
     try:
         if current_user.tipo == 'admin':
@@ -1711,7 +1711,7 @@ def feedback_oficina(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)  # Primeiro
     if current_user.tipo not in ['admin', 'cliente'] or (current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id and oficina.cliente_id is not None):
         flash('Você não tem permissão para visualizar o feedback desta oficina.', 'danger')
-        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+        
 
     # Obtendo clientes para filtro (somente admin pode visualizar)
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
@@ -1974,7 +1974,7 @@ def cadastro_ministrante():
     # Permite apenas admin e cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        
     
     # Se for GET, precisamos montar a lista de clientes (somente se admin)
     clientes = []
@@ -2240,7 +2240,7 @@ def excluir_ministrante(ministrante_id):
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        
 
     if current_user.tipo == 'cliente':
         ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
