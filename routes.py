@@ -2256,7 +2256,7 @@ def gerenciar_ministrantes():
 def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        
     return render_template("scan_qr.html")
 
 @routes.route('/relatorios/<path:filename>')
