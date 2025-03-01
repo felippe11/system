@@ -536,7 +536,7 @@ def dashboard_participante():
 @login_required
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
+        flash('Acesso Autorizado!', 'danger')
         
 
     estados = obter_estados()
@@ -1157,7 +1157,7 @@ def checkin(oficina_id):
 @login_required
 def lista_checkins(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
@@ -1315,7 +1315,7 @@ def gerar_pdf(oficina_id):
 @login_required
 def gerar_certificado_individual_admin():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
 
     oficina_id = request.form.get('oficina_id')
@@ -1474,7 +1474,7 @@ def importar_oficinas():
 @login_required
 def excluir_todas_oficinas():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
+        flash('Acesso Autorizado!', 'danger')
         
 
     try:
@@ -1565,7 +1565,7 @@ def importar_usuarios():
 def toggle_checkin_global_cliente():
     # Permite apenas clientes acessarem esta rota
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     
     # Para clientes, já utiliza o próprio ID
@@ -1598,7 +1598,7 @@ def toggle_checkin_global_cliente():
 def toggle_feedback_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     
     cliente_id = current_user.id
@@ -1626,7 +1626,7 @@ def toggle_feedback_cliente():
 def toggle_certificado_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     
     cliente_id = current_user.id
@@ -1654,7 +1654,7 @@ def toggle_certificado_cliente():
 def toggle_certificado_individual():
     # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     
     config = Configuracao.query.first()
@@ -1848,8 +1848,8 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
 @login_required
 def gerar_pdf_feedback_route(oficina_id):
     if current_user.tipo != 'admin' and current_user.tipo != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        flash('Acesso Autorizado!', 'danger')
+        
     oficina = Oficina.query.get_or_404(oficina_id)
     
     # Replicar a lógica de filtragem usada na rota feedback_oficina
@@ -2180,7 +2180,7 @@ def editar_ministrante(ministrante_id):
 
     # ✅ Admin pode editar todos, Cliente só edita os que cadastrou
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso negado!', 'danger')
+        flash('Acesso Autorizado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
     # Se for admin, buscamos todos os clientes para exibir no select
@@ -2226,8 +2226,8 @@ def excluir_ministrante(ministrante_id):
 
     # ✅ Admin pode excluir todos, Cliente só exclui os seus
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        flash('Acesso Autorizado!', 'danger')
+        
 
     db.session.delete(ministrante)
     db.session.commit()
@@ -2239,7 +2239,7 @@ def excluir_ministrante(ministrante_id):
 @login_required
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
+        flash('Acesso Autorizado!', 'danger')
         
 
     if current_user.tipo == 'cliente':
@@ -2255,7 +2255,7 @@ def gerenciar_ministrantes():
 @login_required
 def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
-        flash("Acesso negado!", "danger")
+        flash("Acesso Autorizado!", "danger")
         
     return render_template("scan_qr.html")
 
