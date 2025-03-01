@@ -67,70 +67,69 @@ document.addEventListener("DOMContentLoaded", async function () {
     // 1. Tentar tratar decodedText como URL
         let scannedToken = null;
         try {
-            try {
-        // Se for uma URL, extrai o parâmetro 'token'
-        const urlObj = new URL(decodedText);
-        scannedToken = urlObj.searchParams.get('token');
-    } catch (e) {
-        // Se não for URL válida, então interpretamos como token cru
-        scannedToken = decodedText;
-    }
+            // Se for uma URL, extrai o parâmetro 'token'
+            const urlObj = new URL(decodedText);
+            scannedToken = urlObj.searchParams.get('token');
+        } catch (e) {
+            // Se não for URL válida, então interpretamos como token cru
+            scannedToken = decodedText;
+        }
 
-    // 2. Se não veio nada no token, mostrar erro (ou apenas sair)
-    if (!scannedToken) {
-        resultElement.innerHTML = `
-            <div class="alert alert-danger">
-                QR Code inválido ou sem token.
-            </div>
-        `;
-        return;
-    }
-
-    // 3. Agora chama a rota AJAX passando apenas o token puro
-    try {
-        const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: scannedToken })
-        });
-
-        const data = await response.json();
-
-        if (data.status === "success") {
-            // Exibir mensagem e adicionar na lista
-            resultElement.innerHTML = `
-                <div class="alert alert-success">
-                    ${data.message}
-                </div>
-            `;
-            addScannedItem(data.participante, data.oficina);
-
-        } else if (data.status === "warning") {
-            resultElement.innerHTML = `
-                <div class="alert alert-warning">
-                    ${data.message}
-                </div>
-            `;
-        } else {
-            // Erro
+        // 2. Se não veio nada no token, mostrar erro (ou apenas sair)
+        if (!scannedToken) {
             resultElement.innerHTML = `
                 <div class="alert alert-danger">
-                    ${data.message}
+                    QR Code inválido ou sem token.
+                </div>
+            `;
+            return;
+        }
+
+        // 3. Agora chama a rota AJAX passando apenas o token puro
+        try {
+            const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: scannedToken })
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+                // Exibir mensagem e adicionar na lista
+                resultElement.innerHTML = `
+                    <div class="alert alert-success">
+                        ${data.message}
+                    </div>
+                `;
+                addScannedItem(data.participante, data.oficina);
+
+            } else if (data.status === "warning") {
+                resultElement.innerHTML = `
+                    <div class="alert alert-warning">
+                        ${data.message}
+                    </div>
+                `;
+            } else {
+                // Erro
+                resultElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        ${data.message}
+                    </div>
+                `;
+            }
+
+        } catch (err) {
+            console.error("Erro no fetch:", err);
+            resultElement.innerHTML = `
+                <div class="alert alert-danger">
+                    Ocorreu um erro ao processar o check-in.
                 </div>
             `;
         }
-
-    } catch (err) {
-        console.error("Erro no fetch:", err);
-        resultElement.innerHTML = `
-            <div class="alert alert-danger">
-                Ocorreu um erro ao processar o check-in.
-            </div>
-        `;
+        
+        // NÂO paramos o scanner, para continuar escaneando
     }
-    
-    // NÂO paramos o scanner, para continuar escaneando
-}
 
     /**
      * Função chamada quando há erro na leitura do QR Code
