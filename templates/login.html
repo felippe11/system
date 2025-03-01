@@ -26,7 +26,7 @@
       
       <form action="{{ url_for('routes.login') }}" method="POST" class="auth-form">
         <div class="form-group">
-          <label for="email" class="form-label">E-mail Institucional</label>
+          <label for="email" class="form-label">E-mail</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-envelope-at"></i></span>
             <input type="email" class="form-control" name="email" id="email" 
@@ -53,8 +53,11 @@
         </div>
 
         <div class="text-center mt-4">
-          <a href="#" class="text-muted small link-forgot">Esqueceu sua senha?</a>
+          <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="text-muted small link-forgot">
+            Esqueceu sua senha?
+          </a>
         </div>
+        
       </form>
     </div>
 
@@ -72,7 +75,7 @@
     justify-content: center;
     align-items: center;
     min-height: 80vh;
-    padding: 2rem;
+    padding: 0rem;
   }
 
   .login-card {

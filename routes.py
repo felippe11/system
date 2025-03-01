@@ -44,7 +44,7 @@ from flask_login import login_required, current_user
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape, A4
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, LongTable
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
@@ -307,6 +307,7 @@ def dashboard():
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
     cidade_filter = request.args.get('cidade', '').strip()
+    cliente_filter = request.args.get('cliente_id', '').strip()
 
     # Check-ins via QR
     checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
@@ -349,11 +350,13 @@ def dashboard():
         perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
 
         lista_oficinas_info.append({
+            'id': of.id,  # ✅ Adicionando ID da oficina
             'titulo': of.titulo,
             'vagas': of.vagas,
             'inscritos': num_inscritos,
             'ocupacao': perc_ocupacao
         })
+
 
     # ========== 3) Monta a string do relatório (somente UMA vez) ==========
     msg_relatorio = (
@@ -381,6 +384,23 @@ def dashboard():
     if cidade_filter:
         query = query.filter(Oficina.cidade == cidade_filter)
     oficinas_filtradas = query.all()
+    if is_admin and cliente_filter:
+        query = query.filter(Oficina.cliente_id == cliente_filter)
+    oficinas_filtradas = query.all()
+
+    # Estatísticas de oficinas (aplicando filtro)
+    lista_oficinas_info = []
+    for of in oficinas_filtradas:
+        num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
+        perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
+
+        lista_oficinas_info.append({
+            'id': of.id,
+            'titulo': of.titulo,
+            'vagas': of.vagas,
+            'inscritos': num_inscritos,
+            'ocupacao': perc_ocupacao
+        })
 
     oficinas_com_inscritos = []
     for oficina in oficinas_filtradas:
@@ -440,7 +460,8 @@ def dashboard():
         msg_relatorio=msg_relatorio,
         inscricoes=inscricoes,
         habilitar_certificado_individual=habilitar_certificado_individual,
-        clientes=clientes
+        clientes=clientes,
+        cliente_filter=cliente_filter
     )
 
 @routes.route('/dashboard_participante')
@@ -520,6 +541,7 @@ def criar_oficina():
 
     estados = obter_estados()
     ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas para admin
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -533,6 +555,12 @@ def criar_oficina():
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
             return redirect(url_for('routes.criar_oficina'))
+        
+        # Definir o cliente da oficina
+        if current_user.tipo == 'admin':
+            cliente_id = request.form.get('cliente_id') or None  # O admin pode escolher um cliente
+        else:
+            cliente_id = current_user.id  # Clientes só podem criar oficinas para si mesmos
 
         nova_oficina = Oficina(
             titulo=titulo,
@@ -542,7 +570,7 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=current_user.id if current_user.tipo == 'cliente' else None
+            cliente_id=cliente_id  # ✅ Adicionando o cliente_id corretamente
         )
 
         db.session.add(nova_oficina)
@@ -567,7 +595,7 @@ def criar_oficina():
         flash('Oficina criada com sucesso!', 'success')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis)
+    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis, clientes=clientes_disponiveis)
 
 
 
@@ -589,6 +617,8 @@ def editar_oficina(oficina_id):
 
     estados = obter_estados()
     ministrantes = Ministrante.query.all()
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas admin pode ver
+
 
     if request.method == 'POST':
         oficina.titulo = request.form.get('titulo')
@@ -598,6 +628,10 @@ def editar_oficina(oficina_id):
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
+
+        # Permitir que apenas admins alterem o cliente
+        if current_user.tipo == 'admin':
+            oficina.cliente_id = request.form.get('cliente_id') or None
 
         db.session.commit()
 
@@ -623,7 +657,7 @@ def editar_oficina(oficina_id):
 
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes)
+    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes, clientes=clientes_disponiveis)
 
 
 @routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])
@@ -1107,6 +1141,12 @@ def lista_checkins(oficina_id):
     } for checkin in checkins]
     return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, TableStyle, LongTable
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from flask import send_file
+
 @routes.route('/gerar_pdf_checkins/<int:oficina_id>', methods=['GET'])
 @login_required
 def gerar_pdf_checkins(oficina_id):
@@ -1125,15 +1165,25 @@ def gerar_pdf_checkins(oficina_id):
     )
     normal_style = styles["Normal"]
     
-    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    # Aqui definimos a página como paisagem (landscape)
+    # e colocamos margens pequenas (20 points em cada lado).
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=landscape(letter),
+        leftMargin=20,
+        rightMargin=20,
+        topMargin=20,
+        bottomMargin=20
+    )
+    
     elementos = []
     
-    # Corrigido: Acessa ministrante via ministrante_obj
+    # Acessa o nome do ministrante
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
     
     elementos.append(Paragraph(f"Lista de Check-ins - {oficina.titulo}", header_style))
     elementos.append(Spacer(1, 12))
-    elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))  # Linha corrigida
+    elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
     elementos.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
     
     if dias:
@@ -1149,7 +1199,7 @@ def gerar_pdf_checkins(oficina_id):
     
     elementos.append(Spacer(1, 20))
     
-    # Tabela de check-ins
+    # Monta os dados da tabela
     data_table = [["Nome", "CPF", "E-mail", "Data e Hora do Check-in"]]
     for checkin in checkins:
         data_table.append([
@@ -1159,8 +1209,14 @@ def gerar_pdf_checkins(oficina_id):
             checkin.data_hora.strftime("%d/%m/%Y %H:%M"),
         ])
     
-    from reportlab.platypus import Table
-    tabela = Table(data_table, colWidths=[150, 100, 200, 150])
+    # Utiliza LongTable para quebra em múltiplas páginas e repete o cabeçalho
+    # Define colWidths como ['*','*','*','*'] para usar toda a largura do doc
+    tabela = LongTable(
+        data_table,
+        colWidths=['*','*','*','*'],  # cada coluna divide a largura disponível
+        repeatRows=1  # repete o cabeçalho nas próximas páginas
+    )
+    
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1170,11 +1226,18 @@ def gerar_pdf_checkins(oficina_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        
+        # Ativa quebra de linha em todas as células
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+        # Ajusta o alinhamento vertical das células
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
     
     elementos.append(tabela)
+    
     doc.build(elementos)
     return send_file(pdf_path, as_attachment=True)
+
 
 @routes.route('/gerar_pdf/<int:oficina_id>')
 def gerar_pdf(oficina_id):
@@ -1627,6 +1690,9 @@ def feedback_oficina(oficina_id):
         flash('Você não tem permissão para visualizar o feedback desta oficina.', 'danger')
         return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
+    # Obtendo clientes para filtro (somente admin pode visualizar)
+    clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
+
     # Cálculo das estatísticas gerais (sem os filtros da query abaixo)
     total_feedbacks_all = Feedback.query.filter_by(oficina_id=oficina_id).all()
     total_count = len(total_feedbacks_all)
@@ -1646,22 +1712,34 @@ def feedback_oficina(oficina_id):
     count_ministrantes = len(feedbacks_ministrantes)
     avg_ministrantes = (sum(fb.rating for fb in feedbacks_ministrantes) / count_ministrantes) if count_ministrantes > 0 else 0
 
-    # Aplicando filtros (tipo e número de estrelas) para a listagem
-    query = Feedback.query.filter(Feedback.oficina_id == oficina_id)
+    # Filtros
     tipo = request.args.get('tipo')
+    estrelas = request.args.get('estrelas')
+    cliente_filter = request.args.get('cliente_id')
+
+    query = Feedback.query.join(Oficina).filter(Feedback.oficina_id == oficina_id)
+
+    # Filtra pelo tipo de feedback (usuário ou ministrante)
     if tipo == 'usuario':
         query = query.filter(Feedback.usuario_id.isnot(None))
     elif tipo == 'ministrante':
         query = query.filter(Feedback.ministrante_id.isnot(None))
-    estrelas = request.args.get('estrelas')
+
+    # Filtra pelo número de estrelas
     if estrelas and estrelas.isdigit():
         query = query.filter(Feedback.rating == int(estrelas))
+
+    # Filtra pelo cliente selecionado (somente admins)
+    if current_user.tipo == 'admin' and cliente_filter and cliente_filter.isdigit():
+        query = query.filter(Oficina.cliente_id == int(cliente_filter))
+
     feedbacks = query.order_by(Feedback.created_at.desc()).all()
+
     
     return render_template('feedback_oficina.html', oficina=oficina, feedbacks=feedbacks,
                            total_count=total_count, total_avg=total_avg,
                            count_ministrantes=count_ministrantes, avg_ministrantes=avg_ministrantes,
-                           count_usuarios=count_usuarios, avg_usuarios=avg_usuarios)
+                           count_usuarios=count_usuarios, avg_usuarios=avg_usuarios,  is_admin=current_user.tipo == 'admin', clientes=clientes, cliente_filter=cliente_filter)
 
 
 
@@ -1858,6 +1936,7 @@ from flask import Flask, render_template, redirect, url_for, flash, request
 from werkzeug.security import generate_password_hash
 from extensions import db
 from models import Ministrante
+from flask_login import login_required
 
 # Configure o logger (isso pode ser configurado globalmente no seu app)
 logging.basicConfig(level=logging.DEBUG)
@@ -1865,10 +1944,20 @@ logger = logging.getLogger(__name__)
 
 @routes.route('/cadastro_ministrante', methods=['GET', 'POST'])
 def cadastro_ministrante():
+    if not current_user.is_authenticated:
+        # Redireciona para login ou mostra uma mensagem de que é necessário logar.
+        flash('Você precisa estar logado para acessar esta página!', 'danger')
+        return redirect(url_for('routes.login'))
+    # Permite apenas admin e cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
         return redirect(url_for('routes.dashboard'))
     
+    # Se for GET, precisamos montar a lista de clientes (somente se admin)
+    clientes = []
+    if current_user.tipo == 'admin':
+        clientes = Cliente.query.all()
+
     if request.method == 'POST':
         print("Iniciando o cadastro de ministrante")
         
@@ -1899,6 +1988,16 @@ def cadastro_ministrante():
             flash('Erro: Este CPF já está cadastrado!', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
         
+        # Define o cliente_id
+        if current_user.tipo == 'admin':
+            # Se for admin, ele selecionou um cliente no formulário
+            cliente_id = request.form.get('cliente_id')
+            # Caso o admin não selecione, você pode validar, exibir erro, etc.
+            # Exemplo: if not cliente_id: flash(...); return ...
+        else:
+            # Se for cliente, vincula automaticamente ao current_user.id
+            cliente_id = current_user.id
+        
         # Criação do novo ministrante
         novo_ministrante = Ministrante(
             nome=nome,
@@ -1910,7 +2009,7 @@ def cadastro_ministrante():
             estado=estado,
             email=email,
             senha=generate_password_hash(senha),
-            cliente_id=current_user.id if current_user.tipo == 'cliente' else None  # ✅ Associa ao Cliente se for Cliente
+            cliente_id=cliente_id  # agora usamos a variável calculada acima
         )
         
         try:
@@ -1926,7 +2025,9 @@ def cadastro_ministrante():
             flash('Erro ao cadastrar ministrante. Tente novamente.', 'danger')
             return redirect(url_for('routes.cadastro_ministrante'))
     
-    return render_template('cadastro_ministrante.html')
+    # Se for GET, renderizamos a página. Passamos a lista de clientes se for admin.
+    return render_template('cadastro_ministrante.html', clientes=clientes)
+
 
 @routes.route('/dashboard_ministrante')
 @login_required
@@ -2057,6 +2158,13 @@ def editar_ministrante(ministrante_id):
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
+    # Se for admin, buscamos todos os clientes para exibir no select
+    # Se não for admin, pode definir `clientes = None` ou simplesmente não o usar
+    if current_user.tipo == 'admin':
+        clientes = Cliente.query.all()
+    else:
+        clientes = None
+
     if request.method == 'POST':
         ministrante.nome = request.form.get('nome')
         ministrante.formacao = request.form.get('formacao')
@@ -2066,16 +2174,25 @@ def editar_ministrante(ministrante_id):
         ministrante.cidade = request.form.get('cidade')
         ministrante.estado = request.form.get('estado')
         ministrante.email = request.form.get('email')
-        nova_senha = request.form.get('senha')
 
+        # Apenas admin pode trocar o cliente_id
+        if current_user.tipo == 'admin':
+            novo_cliente_id = request.form.get('cliente_id')
+            # Se o select vier vazio, decide se mantém ou deixa 'None'
+            ministrante.cliente_id = novo_cliente_id if novo_cliente_id else None
+
+        nova_senha = request.form.get('senha')
         if nova_senha:
             ministrante.senha = generate_password_hash(nova_senha)
 
         db.session.commit()
         flash('Ministrante atualizado com sucesso!', 'success')
-        return redirect(url_for('routes.gerenciar_ministrantes'))
+        return redirect(url_for('routes.dashboard'))
 
-    return render_template('editar_ministrante.html', ministrante=ministrante)
+    return render_template('editar_ministrante.html',
+                           ministrante=ministrante,
+                           clientes=clientes)
+
 
 @routes.route('/excluir_ministrante/<int:ministrante_id>', methods=['POST'])
 @login_required
