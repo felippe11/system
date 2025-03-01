@@ -64,59 +64,73 @@ document.addEventListener("DOMContentLoaded", async function () {
      * Função chamada quando o QR Code é lido com sucesso.
      */
     async function onScanSuccess(decodedText) {
-        // Em vez de redirecionar para a URL do QR, verificamos se é um token válido
-        // Se for token do tipo "http(s)://", você pode tratar diferente,
-        // mas aqui vamos assumir que o "decodedText" é o 'token' direto.
-        
+    // 1. Tentar tratar decodedText como URL
+        let scannedToken = null;
         try {
-            // Chama a rota via fetch em JSON
-            const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: decodedText })
-            });
+            try {
+        // Se for uma URL, extrai o parâmetro 'token'
+        const urlObj = new URL(decodedText);
+        scannedToken = urlObj.searchParams.get('token');
+    } catch (e) {
+        // Se não for URL válida, então interpretamos como token cru
+        scannedToken = decodedText;
+    }
 
-            const data = await response.json();
+    // 2. Se não veio nada no token, mostrar erro (ou apenas sair)
+    if (!scannedToken) {
+        resultElement.innerHTML = `
+            <div class="alert alert-danger">
+                QR Code inválido ou sem token.
+            </div>
+        `;
+        return;
+    }
 
-            if (data.status === "success") {
-                // Exibir mensagem de sucesso
-                resultElement.innerHTML = `
-                    <div class="alert alert-success">
-                        ${data.message}
-                    </div>
-                `;
-                
-                // Adiciona participante/oficina na lista
-                addScannedItem(data.participante, data.oficina);
+    // 3. Agora chama a rota AJAX passando apenas o token puro
+    try {
+        const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: scannedToken })
+        });
 
-            } else if (data.status === "warning") {
-                // Check-in já realizado
-                resultElement.innerHTML = `
-                    <div class="alert alert-warning">
-                        ${data.message}
-                    </div>
-                `;
-            } else {
-                // Erro
-                resultElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        ${data.message}
-                    </div>
-                `;
-            }
+        const data = await response.json();
 
-        } catch (err) {
-            console.error("Erro no fetch:", err);
+        if (data.status === "success") {
+            // Exibir mensagem e adicionar na lista
+            resultElement.innerHTML = `
+                <div class="alert alert-success">
+                    ${data.message}
+                </div>
+            `;
+            addScannedItem(data.participante, data.oficina);
+
+        } else if (data.status === "warning") {
+            resultElement.innerHTML = `
+                <div class="alert alert-warning">
+                    ${data.message}
+                </div>
+            `;
+        } else {
+            // Erro
             resultElement.innerHTML = `
                 <div class="alert alert-danger">
-                    Ocorreu um erro ao processar o check-in.
+                    ${data.message}
                 </div>
             `;
         }
 
-        // Importante: não paramos o scanner, para que possa ler novamente
-        // scanner.stop();  // Não faremos isso
+    } catch (err) {
+        console.error("Erro no fetch:", err);
+        resultElement.innerHTML = `
+            <div class="alert alert-danger">
+                Ocorreu um erro ao processar o check-in.
+            </div>
+        `;
     }
+    
+    // NÂO paramos o scanner, para continuar escaneando
+}
 
     /**
      * Função chamada quando há erro na leitura do QR Code
