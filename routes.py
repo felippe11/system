@@ -536,8 +536,8 @@ def dashboard_participante():
 @login_required
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        flash('Acesso Autorizado!', 'danger')
+        
 
     estados = obter_estados()
     ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
@@ -1074,7 +1074,7 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
 def gerar_certificados(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Apenas administradores podem gerar certificados.", "danger")
-        return redirect(url_for('routes.dashboard'))
+        
 
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
@@ -1157,8 +1157,8 @@ def checkin(oficina_id):
 @login_required
 def lista_checkins(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        flash("Acesso Autorizado!", "danger")
+        
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
     usuarios_checkin = [{
@@ -1315,8 +1315,8 @@ def gerar_pdf(oficina_id):
 @login_required
 def gerar_certificado_individual_admin():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        flash("Acesso Autorizado!", "danger")
+        
 
     oficina_id = request.form.get('oficina_id')
     usuario_id = request.form.get('usuario_id')
@@ -1474,8 +1474,8 @@ def importar_oficinas():
 @login_required
 def excluir_todas_oficinas():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for("routes.dashboard"))
+        flash('Acesso Autorizado!', 'danger')
+        
 
     try:
         if current_user.tipo == 'admin':
@@ -1565,8 +1565,8 @@ def importar_usuarios():
 def toggle_checkin_global_cliente():
     # Permite apenas clientes acessarem esta rota
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        flash("Acesso Autorizado!", "danger")
+        
     
     # Para clientes, já utiliza o próprio ID
     cliente_id = current_user.id
@@ -1598,8 +1598,8 @@ def toggle_checkin_global_cliente():
 def toggle_feedback_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        flash("Acesso Autorizado!", "danger")
+        
     
     cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
@@ -1626,8 +1626,8 @@ def toggle_feedback_cliente():
 def toggle_certificado_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        flash("Acesso Autorizado!", "danger")
+        
     
     cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
@@ -1654,8 +1654,8 @@ def toggle_certificado_cliente():
 def toggle_certificado_individual():
     # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
     if current_user.tipo != "cliente":
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        flash("Acesso Autorizado!", "danger")
+        
     
     config = Configuracao.query.first()
     if not config:
@@ -1711,7 +1711,7 @@ def feedback_oficina(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)  # Primeiro
     if current_user.tipo not in ['admin', 'cliente'] or (current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id and oficina.cliente_id is not None):
         flash('Você não tem permissão para visualizar o feedback desta oficina.', 'danger')
-        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+        
 
     # Obtendo clientes para filtro (somente admin pode visualizar)
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
@@ -1848,8 +1848,8 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
 @login_required
 def gerar_pdf_feedback_route(oficina_id):
     if current_user.tipo != 'admin' and current_user.tipo != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        flash('Acesso Autorizado!', 'danger')
+        
     oficina = Oficina.query.get_or_404(oficina_id)
     
     # Replicar a lógica de filtragem usada na rota feedback_oficina
@@ -1974,7 +1974,7 @@ def cadastro_ministrante():
     # Permite apenas admin e cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        
     
     # Se for GET, precisamos montar a lista de clientes (somente se admin)
     clientes = []
@@ -2180,7 +2180,7 @@ def editar_ministrante(ministrante_id):
 
     # ✅ Admin pode editar todos, Cliente só edita os que cadastrou
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso negado!', 'danger')
+        flash('Acesso Autorizado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
     # Se for admin, buscamos todos os clientes para exibir no select
@@ -2226,8 +2226,8 @@ def excluir_ministrante(ministrante_id):
 
     # ✅ Admin pode excluir todos, Cliente só exclui os seus
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        flash('Acesso Autorizado!', 'danger')
+        
 
     db.session.delete(ministrante)
     db.session.commit()
@@ -2239,8 +2239,8 @@ def excluir_ministrante(ministrante_id):
 @login_required
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        flash('Acesso Autorizado!', 'danger')
+        
 
     if current_user.tipo == 'cliente':
         ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
@@ -2255,8 +2255,8 @@ def gerenciar_ministrantes():
 @login_required
 def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
-        flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        flash("Acesso Autorizado!", "danger")
+        
     return render_template("scan_qr.html")
 
 @routes.route('/relatorios/<path:filename>')
@@ -3120,4 +3120,51 @@ def upload_personalizacao_certificado():
         return redirect(url_for('routes.dashboard_cliente'))
 
     return render_template('upload_personalizacao_cert.html')
+
+@routes.route('/leitor_checkin_json', methods=['POST'])
+@login_required
+def leitor_checkin_json():
+    """
+    Esta rota faz o check-in de forma assíncrona (AJAX) e retorna JSON.
+    """
+    data = request.get_json()  # Lê os dados enviados em JSON
+    token = data.get('token')
+
+    if not token:
+        return jsonify({"status": "error", "message": "Token não fornecido ou inválido."}), 400
+
+    # Busca a inscrição correspondente
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
+
+    # Verifica se o check-in já foi feito anteriormente
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id, 
+        oficina_id=inscricao.oficina_id
+    ).first()
+
+    if checkin_existente:
+        return jsonify({"status": "warning", "message": "Check-in já foi realizado!"}), 200
+
+    # Registra o novo check-in
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO"
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
+
+    # Para retornar o nome do participante e o nome da oficina,
+    # basta acessar as relações: inscricao.usuario e inscricao.oficina (por exemplo)
+    usuario_nome = inscricao.usuario.nome  # Ajuste conforme seu modelo
+    oficina_nome = inscricao.oficina.nome  # Ajuste conforme seu modelo
+
+    return jsonify({
+        "status": "success",
+        "message": "Check-in realizado com sucesso!",
+        "participante": usuario_nome,
+        "oficina": oficina_nome
+    }), 200
 
