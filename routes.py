@@ -3121,3 +3121,50 @@ def upload_personalizacao_certificado():
 
     return render_template('upload_personalizacao_cert.html')
 
+@routes.route('/leitor_checkin_json', methods=['POST'])
+@login_required
+def leitor_checkin_json():
+    """
+    Esta rota faz o check-in de forma assíncrona (AJAX) e retorna JSON.
+    """
+    data = request.get_json()  # Lê os dados enviados em JSON
+    token = data.get('token')
+
+    if not token:
+        return jsonify({"status": "error", "message": "Token não fornecido ou inválido."}), 400
+
+    # Busca a inscrição correspondente
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
+
+    # Verifica se o check-in já foi feito anteriormente
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id, 
+        oficina_id=inscricao.oficina_id
+    ).first()
+
+    if checkin_existente:
+        return jsonify({"status": "warning", "message": "Check-in já foi realizado!"}), 200
+
+    # Registra o novo check-in
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO"
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
+
+    # Para retornar o nome do participante e o nome da oficina,
+    # basta acessar as relações: inscricao.usuario e inscricao.oficina (por exemplo)
+    usuario_nome = inscricao.usuario.nome  # Ajuste conforme seu modelo
+    oficina_nome = inscricao.oficina.nome  # Ajuste conforme seu modelo
+
+    return jsonify({
+        "status": "success",
+        "message": "Check-in realizado com sucesso!",
+        "participante": usuario_nome,
+        "oficina": oficina_nome
+    }), 200
+
