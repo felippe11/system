@@ -2129,6 +2129,13 @@ def editar_ministrante(ministrante_id):
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
+    # Se for admin, buscamos todos os clientes para exibir no select
+    # Se não for admin, pode definir `clientes = None` ou simplesmente não o usar
+    if current_user.tipo == 'admin':
+        clientes = Cliente.query.all()
+    else:
+        clientes = None
+
     if request.method == 'POST':
         ministrante.nome = request.form.get('nome')
         ministrante.formacao = request.form.get('formacao')
@@ -2138,16 +2145,25 @@ def editar_ministrante(ministrante_id):
         ministrante.cidade = request.form.get('cidade')
         ministrante.estado = request.form.get('estado')
         ministrante.email = request.form.get('email')
-        nova_senha = request.form.get('senha')
 
+        # Apenas admin pode trocar o cliente_id
+        if current_user.tipo == 'admin':
+            novo_cliente_id = request.form.get('cliente_id')
+            # Se o select vier vazio, decide se mantém ou deixa 'None'
+            ministrante.cliente_id = novo_cliente_id if novo_cliente_id else None
+
+        nova_senha = request.form.get('senha')
         if nova_senha:
             ministrante.senha = generate_password_hash(nova_senha)
 
         db.session.commit()
         flash('Ministrante atualizado com sucesso!', 'success')
-        return redirect(url_for('routes.gerenciar_ministrantes'))
+        return redirect(url_for('routes.dashboard'))
 
-    return render_template('editar_ministrante.html', ministrante=ministrante)
+    return render_template('editar_ministrante.html',
+                           ministrante=ministrante,
+                           clientes=clientes)
+
 
 @routes.route('/excluir_ministrante/<int:ministrante_id>', methods=['POST'])
 @login_required
