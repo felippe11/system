@@ -4,11 +4,24 @@
 {% block content %}
 <div class="container mt-5">
   <h2 class="text-center mb-4">Feedbacks da Oficina: {{ oficina.titulo }}</h2>
-  
+   
   <!-- Filtros -->
   <form method="get" class="mb-4">
     <div class="row">
+      {% if is_admin %}
       <div class="col-md-4">
+        <label for="clienteSelect">Filtrar por Cliente:</label>
+        <select name="cliente_id" id="clienteSelect" class="form-control">
+          <option value="">Todos os Clientes</option>
+          {% for cliente in clientes %}
+            <option value="{{ cliente.id }}" {% if cliente.id|string == cliente_filter %}selected{% endif %}>
+              {{ cliente.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-md-3">
         <label for="tipo">Tipo:</label>
         <select name="tipo" id="tipo" class="form-control">
           <option value="">Todos</option>
@@ -16,7 +29,7 @@
           <option value="ministrante" {% if request.args.get('tipo') == 'ministrante' %}selected{% endif %}>Ministrante</option>
         </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-3">
         <label for="estrelas">Número de Estrelas:</label>
         <select name="estrelas" id="estrelas" class="form-control">
           <option value="">Todas</option>
@@ -25,7 +38,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-4 align-self-end">
+      <div class="col-md-2 align-self-end">
         <button type="submit" class="btn btn-primary w-100">Filtrar</button>
       </div>
     </div>

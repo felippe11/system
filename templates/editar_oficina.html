@@ -9,6 +9,20 @@
     </div>
     <div class="card-body">
       <form method="POST">
+        {% if current_user.tipo == 'admin' %}
+          <div class="mb-3">
+            <label for="cliente_id" class="form-label">Cliente:</label>
+            <select name="cliente_id" id="cliente_id" class="form-select">
+              <option value="">-- Selecione um Cliente --</option>
+              {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" {% if oficina.cliente_id == cliente.id %} selected {% endif %}>
+                  {{ cliente.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
+
         <div class="mb-3">
           <label for="titulo" class="form-label">Título da Oficina</label>
           <input type="text" class="form-control" id="titulo" name="titulo" value="{{ oficina.titulo }}" required>
