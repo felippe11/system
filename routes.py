@@ -551,6 +551,8 @@ def criar_oficina():
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
         cidade = request.form.get('cidade')
+        opcoes_checkin = request.form.get('opcoes_checkin')
+        palavra_correta = request.form.get('palavra_correta')
 
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
@@ -570,7 +572,9 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=cliente_id  # ✅ Adicionando o cliente_id corretamente
+            cliente_id=cliente_id
+            opcoes_checkin=opcoes_checkin,
+            palavra_correta=palavra_correta 
         )
 
         db.session.add(nova_oficina)
@@ -628,6 +632,8 @@ def editar_oficina(oficina_id):
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
+        oficina.opcoes_checkin = request.form.get('opcoes_checkin')
+        oficina.palavra_correta = request.form.get('palavra_correta')
 
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
