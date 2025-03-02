@@ -1,133 +1,50 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check-ins - {{ oficina.titulo }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(to right, rgba(0, 119, 182, 0.7), rgba(0, 119, 182, 0.6));
-            color: black;
-            font-family: Arial, sans-serif;
-        }
+{% extends "base.html" %}
 
-        .container {
-            margin-top: 50px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
-        }
+{% block title %}Check-ins - {{ oficina.titulo }}{% endblock %}
 
-        h1, h2 {
-            font-weight: bold;
-            text-align: center;
-        }
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Check-ins - {{ oficina.titulo }}</h1>
+    <br>
+    <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A' }}</p>
+    <p class="text-center"><strong>Local:</strong> {{ oficina.cidade }}, {{ oficina.estado }}</p>
 
-        .table-responsive {
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .table th {
-            background-color: #6c5ce7;
-            color: white;
-            text-align: center;
-        }
-
-        .table td {
-            text-align: center;
-        }
-
-        .btn-secondary, .btn-primary {
-            border: none;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary {
-            background-color: #6c5ce7;
-        }
-
-        .btn-secondary:hover {
-            background-color: #5a54d1;
-            transform: scale(1.05);
-        }
-
-        .btn-primary {
-            background-color: #28a745;
-        }
-
-        .btn-primary:hover {
-            background-color: #218838;
-            transform: scale(1.05);
-        }
-
-        .footer {
-            text-align: center;
-            padding: 15px;
-            background-color: rgba(0, 0, 0, 0.2);
-            width: 100%;
-            color: white;
-            font-size: 14px;
-            margin-top: 30px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Check-ins - {{ oficina.titulo }}</h1>
-            <!-- Botão para gerar PDF -->
-            <a href="{{ url_for('routes.gerar_pdf_checkins', oficina_id=oficina.id) }}" class="btn btn-primary">📄 Gerar PDF</a>
-        </div>
-        <p class="text-center"><strong>Ministrante:</strong> {{ oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A' }}</p>
-        <p class="text-center"><strong>Local:</strong> {{ oficina.cidade }}, {{ oficina.estado }}</p>
-
-        <h2 class="mt-4">Usuários que realizaram check-in</h2>
-        <div class="table-responsive">
-            <table class="table table-striped table-hover mt-3">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>CPF</th>
-                        <th>E-mail</th>
-                        <th>Data e Hora do Check-in</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for usuario in usuarios_checkin %}
-                    <tr>
-                        <td>{{ usuario.nome }}</td>
-                        <td>{{ usuario.cpf }}</td>
-                        <td>{{ usuario.email }}</td>
-                        <td>
-                            {% if usuario.data_hora is string %}
-                                {{ usuario.data_hora }}
-                            {% else %}
-                                {{ usuario.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted">Nenhum check-in realizado até o momento.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="text-center mt-4">
-            <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Voltar</a>
-        </div>
+    <h2 class="mt-4">Usuários que realizaram check-in</h2>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover mt-3">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>E-mail</th>
+                    <th>Data e Hora do Check-in</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios_checkin %}
+                <tr>
+                    <td>{{ usuario.nome }}</td>
+                    <td>{{ usuario.cpf }}</td>
+                    <td>{{ usuario.email }}</td>
+                    <td>
+                        {% if usuario.data_hora is string %}
+                            {{ usuario.data_hora }}
+                        {% else %}
+                            {{ usuario.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">Nenhum check-in realizado até o momento.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-
-    <div class="footer">
-        <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
+    <div class="text-center mt-4">
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Voltar</a>
+        <a href="{{ url_for('routes.gerar_pdf_checkins', oficina_id=oficina.id) }}" class="btn btn-primary">📄 Gerar PDF</a>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+</div>
+{% endblock %}
