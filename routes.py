@@ -1115,7 +1115,7 @@ def checkin(oficina_id):
     if not config_cliente or not config_cliente.permitir_checkin_global:
         # Caso não tenha config ou checkin não habilitado
         flash("Check-in indisponível para esta oficina!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_participante'))
     
     if request.method == 'POST':
         palavra_escolhida = request.form.get('palavra_escolhida')
@@ -1132,7 +1132,7 @@ def checkin(oficina_id):
         # Se o usuário já errou duas vezes, bloqueia o check-in
         if inscricao.checkin_attempts >= 2:
             flash("Você excedeu o número de tentativas de check-in.", "danger")
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('routes.dashboard_participante'))
         
         # Verifica se a alternativa escolhida é a correta
         if palavra_escolhida.strip() != oficina.palavra_correta.strip():
@@ -1150,7 +1150,7 @@ def checkin(oficina_id):
         db.session.add(checkin)
         db.session.commit()
         flash("Check-in realizado com sucesso!", "success")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_participante'))
     
     # Para o GET: extrai as opções configuradas (supondo que foram salvas como uma string separada por vírgulas)
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
