@@ -1565,7 +1565,8 @@ def importar_usuarios():
 def toggle_checkin_global_cliente():
     # Permite apenas clientes acessarem esta rota
     if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("routes.dashboard"))
         
     
     # Para clientes, já utiliza o próprio ID
@@ -1598,7 +1599,8 @@ def toggle_checkin_global_cliente():
 def toggle_feedback_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("routes.dashboard"))
         
     
     cliente_id = current_user.id
@@ -1626,7 +1628,8 @@ def toggle_feedback_cliente():
 def toggle_certificado_cliente():
     # Permite apenas clientes
     if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("routes.dashboard"))
         
     
     cliente_id = current_user.id
@@ -1654,7 +1657,8 @@ def toggle_certificado_cliente():
 def toggle_certificado_individual():
     # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
     if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("routes.dashboard"))
         
     
     config = Configuracao.query.first()
@@ -2628,7 +2632,8 @@ def obter_configuracao_do_cliente(cliente_id):
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
+            config_cliente=config_cliente,
         )
         db.session.add(config)
         db.session.commit()
