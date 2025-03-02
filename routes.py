@@ -3181,3 +3181,26 @@ def leitor_checkin_json():
         "oficina": oficina_nome
     }), 200
 
+
+@routes.route("/api/configuracao_cliente_atual", methods=["GET"])
+@login_required
+def configuracao_cliente_atual():
+    """Retorna o estado atual das configurações do cliente logado em JSON."""
+    cliente_id = current_user.id
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "permitir_checkin_global": config_cliente.permitir_checkin_global,
+        "habilitar_feedback": config_cliente.habilitar_feedback,
+        "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual
+    })
