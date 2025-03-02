@@ -61,17 +61,7 @@
   .d-flex.flex-column.gap-2 > * {
     margin-bottom: 0.5rem;
   }
-  
-  /* Rodapé */
-  footer {
-    background: #343a40;
-    color: #fff;
-    padding: 1rem 0;
-    margin-top: 2rem;
-  }
-  footer p {
-    margin: 0;
-  }
+
 </style>
 
 <div class="container">
@@ -196,65 +186,65 @@
   </div> <!-- Fim row -->
 </div> <!-- Fim container -->
 
-<footer class="text-center">
-  <p>&copy; 2025 Sistema de Oficinas - Desenvolvido com Fiber</p>
-</footer>
-
 <!-- Script para inscrição assíncrona (se desejar manter) -->
 <script>
-  function inscrever(oficinaId) {
+function inscrever(oficinaId) {
     let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
     if (!oficinaCard) return;
-    
-    // Atualiza imediatamente o número de vagas (se estiver sendo exibido)
+
+    // Atualiza imediatamente o número de vagas
     let vagasElement = oficinaCard.querySelector(".info-vagas");
     if (vagasElement) {
-      let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-      vagasElement.innerText = vagasAtualizadas;
-      if (vagasAtualizadas === 0) {
-        vagasElement.innerHTML = '0 <span class="text-danger">(Esgotado)</span>';
-      }
+        let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+        vagasElement.innerText = vagasAtualizadas;
+        if (vagasAtualizadas === 0) {
+            vagasElement.innerHTML = '0 <span class="text-danger">(Esgotado)</span>';
+        }
     }
-    
+
     // Remove o botão de inscrição
     let botaoInscrever = oficinaCard.querySelector(".btn-success");
     if (botaoInscrever) {
-      botaoInscrever.remove();
+        botaoInscrever.remove();
     }
-    
+
     // Cria os botões de Cancelar Inscrição e Check-in
     let buttonContainer = oficinaCard.querySelector(".card-body");
     let div = document.createElement("div");
     div.className = "d-flex flex-column gap-2 mt-2";
+
+    let checkinButton = `{% if permitir_checkin_global %} <a href="/checkin/${oficinaId}" class="btn btn-warning btn-block">Realizar Check-in</a> {% endif %}`;
+    
     div.innerHTML = `
       <form action="/remover_inscricao/${oficinaId}" method="post">
         <button type="submit" class="btn btn-danger btn-block">Cancelar Inscrição</button>
       </form>
-      <a href="/checkin/${oficinaId}" class="btn btn-warning btn-block">Realizar Check-in</a>
+      ${checkinButton}
     `;
+
     buttonContainer.appendChild(div);
-    
+
     // Envia requisição ao servidor para registrar a inscrição
     fetch(`/inscrever/${oficinaId}`, {
-      method: 'POST'
+        method: 'POST'
     })
     .then(response => response.json())
     .then(data => {
-      if (data.success) {
-        let comprovanteBtn = document.createElement("a");
-        comprovanteBtn.setAttribute("href", data.pdf_url);
-        comprovanteBtn.className = "btn btn-primary btn-block mt-2";
-        comprovanteBtn.innerHTML = "📄 Baixar Comprovante";
-        buttonContainer.appendChild(comprovanteBtn);
-      } else {
-        alert(data.message);
-        location.reload();
-      }
+        if (data.success) {
+            let comprovanteBtn = document.createElement("a");
+            comprovanteBtn.setAttribute("href", data.pdf_url);
+            comprovanteBtn.className = "btn btn-primary btn-block mt-2";
+            comprovanteBtn.innerHTML = "📄 Baixar Comprovante";
+            buttonContainer.appendChild(comprovanteBtn);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
     })
     .catch(error => {
-      console.error('Erro:', error);
-      location.reload();
+        console.error('Erro:', error);
+        location.reload();
     });
-  }
+}
 </script>
 {% endblock %}
