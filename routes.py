@@ -572,7 +572,7 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=cliente_id
+            cliente_id=cliente_id,
             opcoes_checkin=opcoes_checkin,
             palavra_correta=palavra_correta 
         )
