@@ -150,8 +150,8 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow">
                   {% if current_user.tipo == 'participante' %}
                   <li>
-                    <a class="dropdown-item py-2" href="{{ url_for('routes.editar_participante') }}">
-                      <i class="bi bi-gear me-2"></i>Configurações
+                    <a class="dropdown-item text-primary py-2" href="{{ url_for('routes.editar_participante') }}">
+                      <i class="bi bi-person-badge me-2"></i>Editar Perfil
                     </a>
                   </li>
                   {% endif %}
@@ -187,7 +187,7 @@
 
     <!-- CONTEÚDO PRINCIPAL -->
     <main class="flex-grow-1">
-      <div class="main-container">
+      <div class="main-container px-2">
         {% block content %}{% endblock %}
       </div>
     </main>
