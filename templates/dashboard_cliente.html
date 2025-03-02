@@ -2,6 +2,54 @@
 {% block title %}Dashboard do Cliente{% endblock %}
 
 {% block content %}
+<style>
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 28px;
+    margin: 0 0.5rem;
+  }
+  
+  .switch input {
+    opacity: 0;
+    width: 0; 
+    height: 0;
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; 
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #dc3545; /* 'danger' quando desligado */
+    transition: .4s;
+    border-radius: 28px;
+  }
+  
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #fff;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  
+  /* Quando está "checked", muda a cor e desloca a bolinha */
+  input:checked + .slider {
+    background-color: #198754; /* 'success' quando ligado */
+  }
+  input:checked + .slider:before {
+    transform: translateX(20px);
+  }
+  </style>
+  
 <div class="container-fluid px-4 mt-4">
 
   <!-- TÍTULO -->
@@ -227,68 +275,81 @@
     <div class="card-header bg-info text-white fw-bold">
       <i class="bi bi-gear-fill"></i> Configurações do Cliente
     </div>
-    {% set checkin_global_enabled = config_cliente is defined and config_cliente.permitir_checkin_global %}
-    {% set feedback_enabled = config_cliente is defined and config_cliente.habilitar_feedback %}
-    {% set certificado_enabled = config_cliente is defined and config_cliente.habilitar_certificado_individual %}
-    
-    <div class="card-body">
-    
-      <!-- Check-in Global -->
-      <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div class="fw-semibold">
-          Permitir Check-in Global (Somente em minhas oficinas)
-        </div>
-        <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="m-0">
-          {% if checkin_global_enabled %}
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-toggle-on"></i> Ativo
-            </button>
-          {% else %}
-            <button type="submit" class="btn btn-danger">
-              <i class="bi bi-toggle-off"></i> Desativado
-            </button>
-          {% endif %}
-        </form>
-      </div>
-    
-      <!-- Feedback -->
-      <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div class="fw-semibold">
-          Habilitar Envio de Feedback (Somente em minhas oficinas)
-        </div>
-        <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="m-0">
-          {% if feedback_enabled %}
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-toggle-on"></i> Ativo
-            </button>
-          {% else %}
-            <button type="submit" class="btn btn-danger">
-              <i class="bi bi-toggle-off"></i> Desativado
-            </button>
-          {% endif %}
-        </form>
-      </div>
-    
-      <!-- Certificado -->
-      <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div class="fw-semibold">
-          Habilitar Baixar Certificado (Somente em minhas oficinas)
-        </div>
-        <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="m-0">
-          {% if certificado_enabled %}
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-toggle-on"></i> Ativo
-            </button>
-          {% else %}
-            <button type="submit" class="btn btn-danger">
-              <i class="bi bi-toggle-off"></i> Desativado
-            </button>
-          {% endif %}
-        </form>
-      </div>
-    
-    </div>
-    
+<!-- Check-in Global -->
+<form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" 
+      method="post" class="mb-3 d-flex justify-content-between align-items-center">
+  {{ csrf_token() }}
+  <div class="fw-semibold">
+    Permitir Check-in Global (Somente em minhas oficinas)
+  </div>
+
+  <!-- Toggle switch -->
+  <label class="switch mb-0">
+    <!-- Se estiver permitido, fica marcado -->
+    <input type="checkbox" name="permitir_checkin_global" 
+           onchange="this.form.submit()"
+           {% if config_cliente and config_cliente.permitir_checkin_global %}checked{% endif %}>
+    <span class="slider round"></span>
+  </label>
+
+  <!-- Estado textual à direita (opcional) -->
+  <span class="ms-2 fw-bold">
+    {% if config_cliente and config_cliente.permitir_checkin_global %}
+      Ativo
+    {% else %}
+      Desativado
+    {% endif %}
+  </span>
+</form>
+
+<!-- Feedback -->
+<form action="{{ url_for('routes.toggle_feedback_cliente') }}"
+      method="post" class="mb-3 d-flex justify-content-between align-items-center">
+  {{ csrf_token() }}
+  <div class="fw-semibold">
+    Habilitar Envio de Feedback (Somente em minhas oficinas)
+  </div>
+
+  <label class="switch mb-0">
+    <input type="checkbox" name="habilitar_feedback" 
+           onchange="this.form.submit()"
+           {% if config_cliente and config_cliente.habilitar_feedback %}checked{% endif %}>
+    <span class="slider round"></span>
+  </label>
+
+  <span class="ms-2 fw-bold">
+    {% if config_cliente and config_cliente.habilitar_feedback %}
+      Ativo
+    {% else %}
+      Desativado
+    {% endif %}
+  </span>
+</form>
+
+<!-- Certificado -->
+<form action="{{ url_for('routes.toggle_certificado_cliente') }}"
+      method="post" class="mb-3 d-flex justify-content-between align-items-center">
+  {{ csrf_token() }}
+  <div class="fw-semibold">
+    Habilitar Baixar Certificado (Somente em minhas oficinas)
+  </div>
+
+  <label class="switch mb-0">
+    <input type="checkbox" name="habilitar_certificado" 
+           onchange="this.form.submit()"
+           {% if config_cliente and config_cliente.habilitar_certificado_individual %}checked{% endif %}>
+    <span class="slider round"></span>
+  </label>
+
+  <span class="ms-2 fw-bold">
+    {% if config_cliente and config_cliente.habilitar_certificado_individual %}
+      Ativo
+    {% else %}
+      Desativado
+    {% endif %}
+  </span>
+</form>
+
   </div>
 </div>
 </div><!-- /row g-4 -->
