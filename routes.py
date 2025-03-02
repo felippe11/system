@@ -551,6 +551,8 @@ def criar_oficina():
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
         cidade = request.form.get('cidade')
+        opcoes_checkin = request.form.get('opcoes_checkin')
+        palavra_correta = request.form.get('palavra_correta')
 
         if not estado or not cidade:
             flash("Erro: Estado e cidade são obrigatórios!", "danger")
@@ -570,7 +572,9 @@ def criar_oficina():
             carga_horaria=carga_horaria,
             estado=estado,
             cidade=cidade,
-            cliente_id=cliente_id  # ✅ Adicionando o cliente_id corretamente
+            cliente_id=cliente_id,
+            opcoes_checkin=opcoes_checkin,
+            palavra_correta=palavra_correta 
         )
 
         db.session.add(nova_oficina)
@@ -628,6 +632,8 @@ def editar_oficina(oficina_id):
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
+        oficina.opcoes_checkin = request.form.get('opcoes_checkin')
+        oficina.palavra_correta = request.form.get('palavra_correta')
 
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
@@ -1109,7 +1115,7 @@ def checkin(oficina_id):
     if not config_cliente or not config_cliente.permitir_checkin_global:
         # Caso não tenha config ou checkin não habilitado
         flash("Check-in indisponível para esta oficina!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_participante'))
     
     if request.method == 'POST':
         palavra_escolhida = request.form.get('palavra_escolhida')
@@ -1126,7 +1132,7 @@ def checkin(oficina_id):
         # Se o usuário já errou duas vezes, bloqueia o check-in
         if inscricao.checkin_attempts >= 2:
             flash("Você excedeu o número de tentativas de check-in.", "danger")
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('routes.dashboard_participante'))
         
         # Verifica se a alternativa escolhida é a correta
         if palavra_escolhida.strip() != oficina.palavra_correta.strip():
@@ -1144,7 +1150,7 @@ def checkin(oficina_id):
         db.session.add(checkin)
         db.session.commit()
         flash("Check-in realizado com sucesso!", "success")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.dashboard_participante'))
     
     # Para o GET: extrai as opções configuradas (supondo que foram salvas como uma string separada por vírgulas)
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
@@ -1564,8 +1570,9 @@ def importar_usuarios():
 @login_required
 def toggle_checkin_global_cliente():
     # Permite apenas clientes acessarem esta rota
-    if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+    #if current_user.tipo != "cliente":
+        #flash("Acesso Autorizado!", "danger")
+        
         
     
     # Para clientes, já utiliza o próprio ID
@@ -1588,17 +1595,19 @@ def toggle_checkin_global_cliente():
     config_cliente.permitir_checkin_global = not config_cliente.permitir_checkin_global
     db.session.commit()
 
-    status = "ativado" if config_cliente.permitir_checkin_global else "desativado"
-    flash(f"Check-in Global para o cliente ID={cliente_id} foi {status}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.permitir_checkin_global,  # True ou False
+        "message": "Check-in Global atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_feedback_cliente", methods=["POST"])
 @login_required
 def toggle_feedback_cliente():
     # Permite apenas clientes
-    if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+    #if current_user.tipo != "cliente":
+        #flash("Acesso Autorizado!", "danger")
         
     
     cliente_id = current_user.id
@@ -1616,17 +1625,19 @@ def toggle_feedback_cliente():
     config_cliente.habilitar_feedback = not config_cliente.habilitar_feedback
     db.session.commit()
 
-    status = "ativado" if config_cliente.habilitar_feedback else "desativado"
-    flash(f"Feedback foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_feedback,
+        "message": "Feedback atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_certificado_cliente", methods=["POST"])
 @login_required
 def toggle_certificado_cliente():
     # Permite apenas clientes
-    if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+    #if current_user.tipo != "cliente":
+        #flash("Acesso Autorizado!", "danger")
         
     
     cliente_id = current_user.id
@@ -1644,17 +1655,19 @@ def toggle_certificado_cliente():
     config_cliente.habilitar_certificado_individual = not config_cliente.habilitar_certificado_individual
     db.session.commit()
 
-    status = "ativado" if config_cliente.habilitar_certificado_individual else "desativado"
-    flash(f"O Certificado Individual foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_certificado_individual,
+        "message": "Certificado Individual atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_certificado_individual", methods=["POST"])
 @login_required
 def toggle_certificado_individual():
     # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
-    if current_user.tipo != "cliente":
-        flash("Acesso Autorizado!", "danger")
+    #if current_user.tipo != "cliente":
+        #flash("Acesso Autorizado!", "danger")
         
     
     config = Configuracao.query.first()
@@ -2628,7 +2641,7 @@ def obter_configuracao_do_cliente(cliente_id):
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
         )
         db.session.add(config)
         db.session.commit()
@@ -3168,3 +3181,26 @@ def leitor_checkin_json():
         "oficina": oficina_nome
     }), 200
 
+
+@routes.route("/api/configuracao_cliente_atual", methods=["GET"])
+@login_required
+def configuracao_cliente_atual():
+    """Retorna o estado atual das configurações do cliente logado em JSON."""
+    cliente_id = current_user.id
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=cliente_id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False
+        )
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "permitir_checkin_global": config_cliente.permitir_checkin_global,
+        "habilitar_feedback": config_cliente.habilitar_feedback,
+        "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual
+    })

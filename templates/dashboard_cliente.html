@@ -2,7 +2,7 @@
 {% block title %}Dashboard do Cliente{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 mt-4">
+<div class="container-fluid px-0 mt-0">
 
   <!-- TÍTULO -->
   <div class="d-flex justify-content-between align-items-center mb-4">
@@ -137,8 +137,8 @@
                   <tr>
                     <th>Título</th>
                     <th>Vagas</th>
-                    <th>Inscrições</th>
-                    <th>Ocupação (%)</th>
+                    <th>Inscritos</th>
+                    <th>Ocupação</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -172,7 +172,7 @@
           <div class="row g-4">
 
             <!-- 3.1) AÇÕES (Botões Principais) -->
-            <div class="col-12 col-lg-6">
+            <div class="col-12 col-lg-6 px-0">
               <div class="card h-100 shadow">
                 <div class="card-header bg-primary text-white fw-bold">
                   <i class="bi bi-tools me-2"></i>Ações Principais
@@ -213,7 +213,7 @@
 
                   <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
                         onsubmit="return confirm('Tem certeza que deseja excluir todas as oficinas?');">
-                    <button type="submit" class="btn btn-danger mt-2">
+                    <button type="submit" class="btn btn-danger mb-3">
                       <i class="bi bi-trash-fill"></i> Excluir Todas as Oficinas
                     </button>
                   </form>
@@ -229,34 +229,47 @@
     </div>
     <div class="card-body">
       <!-- Check-in Global -->
-      <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
-          Permitir Check-in Global (Somente em minhas oficinas)
+          Permitir Check-in Global
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}">
+        <button type="button" 
+                id="btnToggleCheckin"
+                class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
+                data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}"
+        >
           {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
         </button>
-      </form>
+      </div>
 
       <!-- Feedback -->
-      <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
-          Habilitar Envio de Feedback (Somente em minhas oficinas)
+          Permitir Envio de Feedback
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}">
+        <button type="button"
+                id="btnToggleFeedback"
+                class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
+                data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}"
+        >
           {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
         </button>
-      </form>
+      </div>
 
       <!-- Certificado -->
-      <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
-          Habilitar Baixar Certificado (Somente em minhas oficinas)
+          Permitir Download de Certificado
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}">
+        <button type="button" 
+                id="btnToggleCertificado"
+                class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
+                data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}"
+        >
           {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
         </button>
-      </form>
+      </div>
+
     </div>
   </div>
 </div>
@@ -270,7 +283,6 @@
             <table class="table table-hover align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>ID</th>
                   <th>Título</th>
                   <th>Descrição</th>
                   <th>Ações</th>
@@ -280,27 +292,23 @@
                 {% if oficinas %}
                   {% for oficina in oficinas %}
                   <tr>
-                    <td>{{ oficina.id }}</td>
                     <td>{{ oficina.titulo }}</td>
                     <td>{{ oficina.descricao }}</td>
                     <td class="d-flex justify-content-center flex-wrap gap-1">
                       <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" 
                          class="btn btn-warning btn-sm">
-                        <i class="bi bi-pencil-square"></i> Editar
+                        <i class="bi bi-pencil-square fs-4"></i>
                       </a>
                       <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST">
                         <button type="submit" class="btn btn-danger btn-sm"
                                 onclick="return confirm('Tem certeza que deseja excluir esta oficina?');">
-                          <i class="bi bi-trash-fill"></i> Excluir
+                          <i class="bi bi-trash-fill fs-4"></i>
                         </button>
                       </form>
                       <button type="button" class="btn btn-info btn-sm"
                               data-bs-toggle="modal" data-bs-target="#modalOficina{{ oficina.id }}">
-                        <i class="bi bi-people-fill"></i> Ver Inscritos
+                        <i class="bi bi-people-fill fs-4"></i>
                       </button>
-                      <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-card-checklist"></i> Check-ins
-                      </a>
                     </td>
                   </tr>
                   {% endfor %}
@@ -321,8 +329,87 @@
 
 </div> <!-- /container-fluid -->
 
-<!-- ============= SCRIPTS E MODALS (iguais ao código original) ============= -->
-
+<!-- ============= SCRIPTS E MODALS ============= -->
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // 1) Ao carregar a página, buscar estado do back-end
+    fetch("{{ url_for('routes.configuracao_cliente_atual') }}")
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          console.warn("Não foi possível obter estado do cliente:", data);
+          return;
+        }
+        // 2) Aplique o estado real nos 3 botões
+        const btnCheckin = document.getElementById('btnToggleCheckin');
+        const btnFeedback = document.getElementById('btnToggleFeedback');
+        const btnCertificado = document.getElementById('btnToggleCertificado');
+  
+        if (btnCheckin) {
+          atualizarBotao(btnCheckin, data.permitir_checkin_global);
+        }
+        if (btnFeedback) {
+          atualizarBotao(btnFeedback, data.habilitar_feedback);
+        }
+        if (btnCertificado) {
+          atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao buscar config do cliente:", err);
+      });
+  
+    // 3) Já existe esse array e função atualizarBotao, só acrescentamos acima
+    const toggleButtons = [
+      document.getElementById('btnToggleCheckin'),
+      document.getElementById('btnToggleFeedback'),
+      document.getElementById('btnToggleCertificado')
+    ];
+  
+    toggleButtons.forEach(button => {
+      if (!button) return;
+      const toggleUrl = button.dataset.toggleUrl;
+  
+      // Ao clicar, faz o POST e inverte
+      button.addEventListener('click', function() {
+        fetch(toggleUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+          },
+          body: JSON.stringify({})
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            atualizarBotao(button, data.value);
+          } else {
+            alert("Falha ao atualizar: " + data.message);
+          }
+        })
+        .catch(err => {
+          alert("Erro na requisição: " + err);
+        });
+      });
+    });
+  
+    // 4) Mesma função para trocar cor e texto
+    function atualizarBotao(btn, valorAtivo) {
+      if (!btn) return;
+      if (valorAtivo) {
+        btn.classList.remove("btn-danger");
+        btn.classList.add("btn-success");
+        btn.textContent = "Ativo";
+      } else {
+        btn.classList.remove("btn-success");
+        btn.classList.add("btn-danger");
+        btn.textContent = "Desativado";
+      }
+    }
+  });
+  </script>  
+  
 <script>
   function carregarRelatorioMensagem() {
     fetch("{{ url_for('routes.gerar_relatorio_mensagem') }}")
@@ -438,6 +525,9 @@
         <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}"
            class="btn btn-outline-info">
           <i class="bi bi-chat-text"></i> Gerar Feedback
+        </a>
+        <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-outline-primary">
+          <i class="bi bi-card-checklist"></i> Check-ins
         </a>
       </div>
 
