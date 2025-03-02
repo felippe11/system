@@ -227,37 +227,68 @@
     <div class="card-header bg-info text-white fw-bold">
       <i class="bi bi-gear-fill"></i> Configurações do Cliente
     </div>
+    {% set checkin_global_enabled = config_cliente is defined and config_cliente.permitir_checkin_global %}
+    {% set feedback_enabled = config_cliente is defined and config_cliente.habilitar_feedback %}
+    {% set certificado_enabled = config_cliente is defined and config_cliente.habilitar_certificado_individual %}
+    
     <div class="card-body">
+    
       <!-- Check-in Global -->
-      <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
           Permitir Check-in Global (Somente em minhas oficinas)
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}">
-          {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
-        </button>
-      </form>
-
+        <form action="{{ url_for('routes.toggle_checkin_global_cliente') }}" method="post" class="m-0">
+          {% if checkin_global_enabled %}
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-toggle-on"></i> Ativo
+            </button>
+          {% else %}
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-toggle-off"></i> Desativado
+            </button>
+          {% endif %}
+        </form>
+      </div>
+    
       <!-- Feedback -->
-      <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
           Habilitar Envio de Feedback (Somente em minhas oficinas)
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}">
-          {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
-        </button>
-      </form>
-
+        <form action="{{ url_for('routes.toggle_feedback_cliente') }}" method="post" class="m-0">
+          {% if feedback_enabled %}
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-toggle-on"></i> Ativo
+            </button>
+          {% else %}
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-toggle-off"></i> Desativado
+            </button>
+          {% endif %}
+        </form>
+      </div>
+    
       <!-- Certificado -->
-      <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="mb-3 d-flex justify-content-between align-items-center">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
         <div class="fw-semibold">
           Habilitar Baixar Certificado (Somente em minhas oficinas)
         </div>
-        <button type="submit" class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}">
-          {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
-        </button>
-      </form>
+        <form action="{{ url_for('routes.toggle_certificado_cliente') }}" method="post" class="m-0">
+          {% if certificado_enabled %}
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-toggle-on"></i> Ativo
+            </button>
+          {% else %}
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-toggle-off"></i> Desativado
+            </button>
+          {% endif %}
+        </form>
+      </div>
+    
     </div>
+    
   </div>
 </div>
 </div><!-- /row g-4 -->
