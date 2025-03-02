@@ -112,6 +112,53 @@
             border-radius: 6px;
             margin: 0.25rem;
         }
+        .animated-text {
+          position: relative;
+          display: inline-block;
+        }
+
+        /* Centraliza verticalmente os spans */
+        .animated-text span {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
+        }
+
+        /* Animações para os textos */
+        .text1 {
+          animation: fadeAppFiber 20s infinite;
+        }
+
+        .text2 {
+          animation: fadeFiber 20s infinite;
+        }
+
+        /* Animação para "AppFiber" */
+        @keyframes fadeAppFiber {
+          0%, 20% {
+            opacity: 1;
+          }
+          40%, 80% {
+            opacity: 0;
+          }
+          100% {
+            opacity: 1;
+          }
+        }
+
+        /* Animação para "</Fiber>" */
+        @keyframes fadeFiber {
+          0%, 20% {
+            opacity: 0;
+          }
+          40%, 80% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
     </style>
 </head>
 
@@ -123,7 +170,11 @@
       <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="{{ url_for('routes.home') }}">
           <i class="bi bi-cpu me-2 fs-4"></i>
-          <span class="gradient-text">AppFiber</span>
+          <!-- Container com os dois spans para animação -->
+          <span class="gradient-text animated-text">
+            <span class="text1">AppFiber</span>
+            <span class="text2">&lt;/Fiber&gt;</span>
+          </span>
         </a>
         
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -168,7 +219,6 @@
         </div>
       </div>
     </nav>
-
     <!-- ESPAÇAMENTO NAVBAR -->
     <div class="navbar-spacer" style="height: 80px;"></div>
 
