@@ -334,10 +334,37 @@
 
 </div> <!-- /container-fluid -->
 
-<!-- ============= SCRIPTS E MODALS (iguais ao código original) ============= -->
+<!-- ============= SCRIPTS E MODALS ============= -->
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // Pegar todos botões que têm data-toggle-url
+  document.addEventListener("DOMContentLoaded", function() {
+    // 1) Ao carregar a página, buscar estado do back-end
+    fetch("{{ url_for('routes.configuracao_cliente_atual') }}")
+      .then(response => response.json())
+      .then(data => {
+        if (!data.success) {
+          console.warn("Não foi possível obter estado do cliente:", data);
+          return;
+        }
+        // 2) Aplique o estado real nos 3 botões
+        const btnCheckin = document.getElementById('btnToggleCheckin');
+        const btnFeedback = document.getElementById('btnToggleFeedback');
+        const btnCertificado = document.getElementById('btnToggleCertificado');
+  
+        if (btnCheckin) {
+          atualizarBotao(btnCheckin, data.permitir_checkin_global);
+        }
+        if (btnFeedback) {
+          atualizarBotao(btnFeedback, data.habilitar_feedback);
+        }
+        if (btnCertificado) {
+          atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
+        }
+      })
+      .catch(err => {
+        console.error("Erro ao buscar config do cliente:", err);
+      });
+  
+    // 3) Já existe esse array e função atualizarBotao, só acrescentamos acima
     const toggleButtons = [
       document.getElementById('btnToggleCheckin'),
       document.getElementById('btnToggleFeedback'),
@@ -348,21 +375,19 @@
       if (!button) return;
       const toggleUrl = button.dataset.toggleUrl;
   
+      // Ao clicar, faz o POST e inverte
       button.addEventListener('click', function() {
-        // Fazer POST via fetch
         fetch(toggleUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "X-Requested-With": "XMLHttpRequest"
-            // Se você usar CSRF, inclua o token aqui também
           },
-          body: JSON.stringify({}) // Caso precise enviar algo; se não, pode ser vazio
+          body: JSON.stringify({})
         })
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            // data.value => true ou false
             atualizarBotao(button, data.value);
           } else {
             alert("Falha ao atualizar: " + data.message);
@@ -374,8 +399,9 @@
       });
     });
   
+    // 4) Mesma função para trocar cor e texto
     function atualizarBotao(btn, valorAtivo) {
-      // Muda cor da classe
+      if (!btn) return;
       if (valorAtivo) {
         btn.classList.remove("btn-danger");
         btn.classList.add("btn-success");
@@ -387,7 +413,7 @@
       }
     }
   });
-  </script>
+  </script>  
   
 <script>
   function carregarRelatorioMensagem() {
