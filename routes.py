@@ -1589,9 +1589,11 @@ def toggle_checkin_global_cliente():
     config_cliente.permitir_checkin_global = not config_cliente.permitir_checkin_global
     db.session.commit()
 
-    status = "ativado" if config_cliente.permitir_checkin_global else "desativado"
-    flash(f"Check-in Global para o cliente ID={cliente_id} foi {status}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.permitir_checkin_global,  # True ou False
+        "message": "Check-in Global atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_feedback_cliente", methods=["POST"])
@@ -1617,9 +1619,11 @@ def toggle_feedback_cliente():
     config_cliente.habilitar_feedback = not config_cliente.habilitar_feedback
     db.session.commit()
 
-    status = "ativado" if config_cliente.habilitar_feedback else "desativado"
-    flash(f"Feedback foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_feedback,
+        "message": "Feedback atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_certificado_cliente", methods=["POST"])
@@ -1645,9 +1649,11 @@ def toggle_certificado_cliente():
     config_cliente.habilitar_certificado_individual = not config_cliente.habilitar_certificado_individual
     db.session.commit()
 
-    status = "ativado" if config_cliente.habilitar_certificado_individual else "desativado"
-    flash(f"O Certificado Individual foi {status} para as oficinas do cliente ID={cliente_id}!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_certificado_individual,
+        "message": "Certificado Individual atualizado com sucesso!"
+    })
 
 
 @routes.route("/toggle_certificado_individual", methods=["POST"])
