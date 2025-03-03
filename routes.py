@@ -25,7 +25,7 @@ from models import RespostaFormulario, RespostaCampo
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
                     Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente)
-from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf   # Funções auxiliares
+from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf, gerar_etiquetas_pdf  # Funções auxiliares
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
 
@@ -837,10 +837,6 @@ def baixar_comprovante(oficina_id):
 # ===========================
 
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
 
     # Configurações do documento
     styles = getSampleStyleSheet()
@@ -1072,9 +1068,6 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
 
     c.save()
 
-
-
-    
 @routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
 @login_required
 def gerar_certificados(oficina_id):
@@ -1174,12 +1167,6 @@ def lista_checkins(oficina_id):
         'data_hora': checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
     } for checkin in checkins]
     return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, TableStyle, LongTable
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from flask import send_file
 
 @routes.route('/gerar_pdf_checkins/<int:oficina_id>', methods=['GET'])
 @login_required
@@ -3204,3 +3191,19 @@ def configuracao_cliente_atual():
         "habilitar_feedback": config_cliente.habilitar_feedback,
         "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual
     })
+    
+@routes.route('/gerar_etiquetas/<int:cliente_id>', methods=['GET'])
+@login_required
+def gerar_etiquetas(cliente_id):
+    """Gera um PDF de etiquetas para o cliente"""
+    if current_user.tipo != 'cliente' or current_user.id != cliente_id:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    pdf_path = gerar_etiquetas_pdf(cliente_id)
+    if not pdf_path:
+        flash("Nenhum usuário encontrado para gerar etiquetas!", "warning")
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    return send_file(pdf_path, as_attachment=True)
+
