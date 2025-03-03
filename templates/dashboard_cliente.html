@@ -269,6 +269,12 @@
           {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
         </button>
       </div>
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <a href="{{ url_for('routes.gerar_etiquetas', cliente_id=current_user.id) }}" class="btn btn-info">
+          <i class="bi bi-printer"></i> Imprimir Etiquetas
+        </a>
+      </div>
+        
 
     </div>
   </div>
