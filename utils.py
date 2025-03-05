@@ -1,10 +1,25 @@
 import requests
 from reportlab.lib.units import inch
 import os
+import base64
+import google.auth
+import google.auth.transport.requests
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from models import Usuario, Cliente, Inscricao
+from flask_mail import Message
+from extensions import mail
+import logging
 
 # ReportLab para PDFs
 from reportlab.pdfgen import canvas
@@ -15,6 +30,16 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+
+# Configuração de logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Escopo necessário para envio de e-mails
+SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+# Caminhos dos arquivos JSON
+CREDENTIALS_FILE = "credentials.json"
+TOKEN_FILE = "token.json"
 
 def gerar_comprovante_pdf(usuario, oficina, inscricao):
     pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
@@ -277,3 +302,62 @@ def gerar_qr_code_inscricao(token):
     os.makedirs(os.path.dirname(img_path), exist_ok=True)
     img.save(img_path)
     return img_path
+
+def obter_credenciais():
+    """Autentica e retorna credenciais OAuth 2.0 para envio de e-mails via API do Gmail"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(google.auth.transport.requests.Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+            creds = flow.run_local_server(port=0)
+
+        with open(TOKEN_FILE, "w") as token:
+            token.write(creds.to_json())
+
+    return creds
+
+def enviar_email(destinatario, assunto, corpo, anexo_path=None):
+    """Envia um e-mail autenticado via API do Gmail usando OAuth 2.0"""
+    creds = obter_credenciais()
+
+    if not creds or not creds.valid:
+        logger.error("❌ Erro ao obter credenciais OAuth 2.0.")
+        return
+
+    try:
+        # Criar o serviço Gmail API
+        service = build("gmail", "v1", credentials=creds)
+
+        remetente = "contato.nexotech@gmail.com"  # Substitua pelo seu e-mail
+
+        msg = MIMEMultipart()
+        msg["From"] = remetente
+        msg["To"] = destinatario
+        msg["Subject"] = assunto
+
+        msg.attach(MIMEText(corpo, "plain"))
+
+        # Adiciona anexo se existir
+        if anexo_path:
+            with open(anexo_path, "rb") as anexo:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(anexo.read())
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(anexo_path)}")
+                msg.attach(part)
+
+        # Converte a mensagem para base64
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        message = {"raw": raw_message}
+
+        # Enviar e-mail via Gmail API
+        enviado = service.users().messages().send(userId="me", body=message).execute()
+        logger.info(f"✅ E-mail enviado com sucesso! ID: {enviado['id']}")
+
+    except HttpError as error:
+        logger.error(f"❌ ERRO ao enviar e-mail: {error}", exc_info=True)

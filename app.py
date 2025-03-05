@@ -4,15 +4,24 @@ from extensions import db, login_manager, migrate
 from datetime import datetime
 import os
 from flask_migrate import upgrade
+from extensions import mail
+import logging
+
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    app.debug = True
+    # Configuração de logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
 
     # Inicializar extensões
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    mail.init_app(app)
 
     login_manager.login_view = "routes.login"
     login_manager.session_protection = "strong"
