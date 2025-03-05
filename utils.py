@@ -16,7 +16,7 @@ from email import encoders
 import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from models import Usuario, Cliente, Inscricao
+from models import Oficina, Usuario, Cliente, Inscricao
 from flask_mail import Message
 from extensions import mail
 import logging
@@ -304,25 +304,35 @@ def gerar_qr_code_inscricao(token):
     return img_path
 
 def obter_credenciais():
-    """Autentica e retorna credenciais OAuth 2.0 para envio de e-mails via API do Gmail"""
+    """Autentica e retorna credenciais OAuth 2.0 para envio de e-mails"""
     creds = None
     if os.path.exists(TOKEN_FILE):
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(google.auth.transport.requests.Request())
+            creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CREDENTIALS_FILE, SCOPES,
+                redirect_uri="https://appfiber.com.br/"
+            )
+
+            # Exibir o link de autenticação manualmente
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            print(f"🔗 Acesse este link para autenticação manual:\n{auth_url}")
+
+            # Executar autenticação manual (esperar código do usuário)
+            creds = flow.run_console()
 
         with open(TOKEN_FILE, "w") as token:
             token.write(creds.to_json())
 
     return creds
 
-def enviar_email(destinatario, assunto, corpo, anexo_path=None):
-    """Envia um e-mail autenticado via API do Gmail usando OAuth 2.0"""
+
+def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
+    """Envia um e-mail personalizado via API do Gmail usando OAuth 2.0"""
     creds = obter_credenciais()
 
     if not creds or not creds.valid:
@@ -333,14 +343,40 @@ def enviar_email(destinatario, assunto, corpo, anexo_path=None):
         # Criar o serviço Gmail API
         service = build("gmail", "v1", credentials=creds)
 
-        remetente = "contato.nexotech@gmail.com"  # Substitua pelo seu e-mail
+        remetente = "seuemail@gmail.com"  # Substitua pelo seu e-mail
+
+        # Criar corpo do e-mail em HTML
+        corpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
+                <p>Olá, <b>{nome_participante}</b>!</p>
+                <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
+                <p>Aguardamos você no evento!</p>
+                
+                <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
+                    <p><b>Detalhes da Oficina:</b></p>
+                    <p><b>Nome:</b> {nome_oficina}</p>
+                </div>
+
+                <p>Caso tenha dúvidas, entre em contato conosco.</p>
+                <p style="text-align: center;">
+                    <b>Equipe Organizadora</b>
+                </p>
+            </div>
+        </body>
+        </html>
+        """
 
         msg = MIMEMultipart()
         msg["From"] = remetente
         msg["To"] = destinatario
         msg["Subject"] = assunto
 
-        msg.attach(MIMEText(corpo, "plain"))
+        # Adiciona corpo em texto puro e HTML
+        msg.attach(MIMEText(corpo_texto, "plain"))
+        msg.attach(MIMEText(corpo_html, "html"))
 
         # Adiciona anexo se existir
         if anexo_path:
@@ -357,7 +393,7 @@ def enviar_email(destinatario, assunto, corpo, anexo_path=None):
 
         # Enviar e-mail via Gmail API
         enviado = service.users().messages().send(userId="me", body=message).execute()
-        logger.info(f"✅ E-mail enviado com sucesso! ID: {enviado['id']}")
+        logger.info(f"✅ E-mail enviado com sucesso para {destinatario}! ID: {enviado['id']}")
 
     except HttpError as error:
         logger.error(f"❌ ERRO ao enviar e-mail: {error}", exc_info=True)

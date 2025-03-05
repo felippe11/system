@@ -9,6 +9,7 @@
             <tr>
                 <th>Usuário</th>
                 <th>Data de Envio</th>
+                <th>Status</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -17,9 +18,62 @@
             <tr>
                 <td>{{ resposta.usuario.nome }}</td>
                 <td>{{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
+
+                <!-- Coluna do STATUS (com form inline) -->
                 <td>
-                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=resposta.id) }}" class="btn btn-info btn-sm">
-                        Ver Detalhes
+                  <form method="POST" action="{{ url_for('routes.definir_status_inline') }}"
+                        class="d-flex align-items-center">
+                    
+                    <!-- O ID da resposta (oculto) -->
+                    <input type="hidden" name="resposta_id" value="{{ resposta.id }}">
+
+                    <!-- Selecione o status -->
+                    <select name="status_avaliacao" class="form-select form-select-sm me-2">
+                      <option value="Não Avaliada"
+                        {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>
+                        Não Avaliada
+                      </option>
+                      <option value="Aprovada"
+                        {% if resposta.status_avaliacao == 'Aprovada' %} selected {% endif %}>
+                        Aprovada
+                      </option>
+                      <option value="Aprovada com ressalvas"
+                        {% if resposta.status_avaliacao == 'Aprovada com ressalvas' %} selected {% endif %}>
+                        Aprovada com ressalvas
+                      </option>
+                      <option value="Aprovada para pôster"
+                        {% if resposta.status_avaliacao == 'Aprovada para pôster' %} selected {% endif %}>
+                        Aprovada para pôster
+                      </option>
+                      <option value="Aprovada para apresentação oral"
+                        {% if resposta.status_avaliacao == 'Aprovada para apresentação oral' %} selected {% endif %}>
+                        Aprovada para apresentação oral
+                      </option>
+                      <option value="Negada"
+                        {% if resposta.status_avaliacao == 'Negada' %} selected {% endif %}>
+                        Negada
+                      </option>
+                    </select>
+
+                    <!-- Botão Salvar -->
+                    <button type="submit" class="btn btn-sm btn-primary">
+                      Salvar
+                    </button>
+                  </form>
+                </td>
+
+                <!-- Ações (Ver Detalhes / Dar Feedback) -->
+                <td>
+                    <!-- Botão: Ver Detalhes -->
+                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=resposta.id) }}"
+                       class="btn btn-info btn-sm mb-1">
+                       Ver Detalhes
+                    </a>
+                    
+                    <!-- Botão: Dar Feedback -->
+                    <a href="{{ url_for('routes.dar_feedback_resposta', resposta_id=resposta.id) }}"
+                       class="btn btn-primary btn-sm">
+                       Ver Respostas / Dar Feedback
                     </a>
                 </td>
             </tr>
@@ -27,15 +81,18 @@
         </tbody>
     </table>
     {% else %}
-    <p class="text-warning">Nenhuma resposta enviada ainda.</p>
+      <p class="text-warning">Nenhuma resposta enviada ainda.</p>
     {% endif %}
 
     <div class="mt-4">
-        <a href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}" class="btn btn-primary">📄 Exportar PDF</a>
-        <a href="{{ url_for('routes.exportar_csv', formulario_id=formulario.id) }}" class="btn btn-success">
-            📊 Exportar CSV
+        <a href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}"
+           class="btn btn-primary">
+           📄 Exportar PDF
         </a>
-             
+        <a href="{{ url_for('routes.exportar_csv', formulario_id=formulario.id) }}"
+           class="btn btn-success">
+           📊 Exportar CSV
+        </a>
     </div>
 
     <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>

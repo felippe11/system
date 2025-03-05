@@ -333,6 +333,7 @@ class Formulario(db.Model):
     
     cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
+    respostas = db.relationship("RespostaFormulario", back_populates="formulario", lazy=True)
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
@@ -359,8 +360,11 @@ class RespostaFormulario(db.Model):
     formulario_id = db.Column(db.Integer, db.ForeignKey('formularios.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # NOVA COLUNA PARA STATUS
+    status_avaliacao = db.Column(db.String(50), nullable=True, default='Não Avaliada')
 
-    formulario = db.relationship('Formulario', backref=db.backref('respostas', lazy=True))
+    formulario = db.relationship("Formulario", back_populates="respostas", lazy=True)
     usuario = db.relationship('Usuario', backref=db.backref('respostas', lazy=True))
 
     def __repr__(self):
@@ -393,4 +397,22 @@ class ConfiguracaoCliente(db.Model):
     
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
     cliente = db.relationship("Cliente", backref=db.backref("configuracao_cliente", uselist=False))
+    
+class FeedbackCampo(db.Model):
+    __tablename__ = 'feedback_campo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    resposta_campo_id = db.Column(db.Integer, db.ForeignKey('respostas_campo.id'), nullable=False)
+    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=False)
+
+    texto_feedback = db.Column(db.Text, nullable=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relacionamentos
+    resposta_campo = db.relationship('RespostaCampo', backref=db.backref('feedbacks_campo', lazy=True))
+    ministrante = db.relationship('Ministrante', backref=db.backref('feedbacks_campo', lazy=True))
+
+    def __repr__(self):
+        return f"<FeedbackCampo id={self.id} resposta_campo={self.resposta_campo_id} ministrante={self.ministrante_id}>"
+
 
