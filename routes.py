@@ -19,6 +19,9 @@ from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import RespostaFormulario, RespostaCampo
+from utils import enviar_email
+from datetime import datetime
+from flask_mail import Message
 
 
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
@@ -746,6 +749,11 @@ def inscrever(oficina_id):
 
     # Gera PDF de comprovante (com QR Code embutido)
     pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+    
+    # Enviar e-mail de confirmação
+    assunto = "Confirmação de Inscrição - " + oficina.titulo
+    corpo = f"Olá, {current_user.nome}!\n\nVocê se inscreveu na oficina {oficina.titulo}.\n\nSegue o comprovante de inscrição em anexo."
+    enviar_email(current_user.email, assunto, corpo, pdf_path)
     
     # Retorna via JSON (pode ficar do mesmo jeito ou redirecionar)
     return jsonify({'success': True, 'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)})
@@ -3206,4 +3214,6 @@ def gerar_etiquetas(cliente_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     return send_file(pdf_path, as_attachment=True)
+
+
 
