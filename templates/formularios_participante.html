@@ -18,9 +18,26 @@
                 <td>{{ formulario.nome }}</td>
                 <td>{{ formulario.descricao or "Sem descrição" }}</td>
                 <td>
-                    <a href="{{ url_for('routes.preencher_formulario', formulario_id=formulario.id) }}" class="btn btn-success btn-sm">
+                    <!-- Botão de preencher -->
+                    <a href="{{ url_for('routes.preencher_formulario', formulario_id=formulario.id) }}"
+                       class="btn btn-success btn-sm">
                         Preencher
                     </a>
+
+                    <!-- Verificar se o usuário já respondeu -->
+                    {% set user_resposta = formulario.respostas
+                        | selectattr("usuario_id", "equalto", current_user.id)
+                        | list
+                        | first 
+                    %}
+
+                    <!-- Se user_resposta existir, exibir botão de "Ver Feedback" -->
+                    {% if user_resposta %}
+                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
+                       class="btn btn-warning btn-sm ms-1">
+                       Ver Feedback
+                    </a>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -30,6 +47,7 @@
     <p class="text-warning">Nenhum formulário disponível no momento.</p>
     {% endif %}
 
-    <a href="{{ url_for('routes.dashboard_participante') }}" class="btn btn-secondary mt-3">Voltar</a>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Voltar</a>
+
 </div>
 {% endblock %}

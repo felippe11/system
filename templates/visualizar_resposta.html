@@ -1,39 +1,76 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container">
-    <h2>Detalhes da Resposta</h2>
 
-    <p><strong>Usuário:</strong> {{ resposta.usuario.nome }}</p>
-    <p><strong>Data de Envio:</strong> {{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</p>
+  <!-- TÍTULO / INFORMAÇÕES DA RESPOSTA -->
+  <h2>Detalhes da Resposta</h2>
+  <p><strong>Usuário:</strong> {{ resposta.usuario.nome }}</p>
+  <p><strong>Data de Envio:</strong> {{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</p>
 
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Campo</th>
-                <th>Valor</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for campo in resposta.respostas_campos %}
-            <tr>
-                <td>{{ campo.campo.nome }}</td>
-                <td>
-                    {% if campo.campo.tipo == 'file' %}
-                        <a href="{{ url_for('routes.get_resposta_file', filename=campo.valor|replace('uploads/respostas/', '')) }}">
-                            Visualizar Anexo
-                        </a>
-                    {% else %}
-                        {{ campo.valor }}
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+  <!-- Definindo uma lógica de cor com dicionário ou if/else -->
+  {% set status_color = {
+    'Não Avaliada': 'secondary',
+    'Aprovada': 'success',
+    'Aprovada com ressalvas': 'warning',
+    'Aprovada para pôster': 'info',
+    'Aprovada para apresentação oral': 'primary',
+    'Negada': 'danger'
+  }.get(resposta.status_avaliacao, 'secondary') %}
 
-    <a href="{{ url_for('routes.listar_respostas', formulario_id=resposta.formulario.id) }}" class="btn btn-secondary">
-        Voltar
-    </a>
+  <p>
+    <strong>Status de Avaliação:</strong>
+    <span class="badge bg-{{ status_color }}">
+      {{ resposta.status_avaliacao }}
+    </span>
+  </p>
+
+  <hr>
+
+  <!-- TÍTULO DO FORMULÁRIO -->
+  <h3>Respostas do Formulário: {{ resposta.formulario.nome }}</h3>
+
+  <!-- LOOP EM CADA CAMPO RESPONDIDO -->
+  {% for rcampo in resposta.respostas_campos %}
+    <div class="card mb-3">
+      <!-- Cabeçalho com o nome do campo -->
+      <div class="card-header bg-secondary text-white">
+        {{ rcampo.campo.nome }}
+      </div>
+      <div class="card-body">
+
+        <!-- Se for um arquivo, exibe link; caso contrário, exibe texto da resposta -->
+        <p><strong>Sua resposta:</strong>
+          {% if rcampo.campo.tipo == 'file' %}
+            <a href="{{ url_for('routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}">
+              Visualizar Anexo
+            </a>
+          {% else %}
+            {{ rcampo.valor }}
+          {% endif %}
+        </p>
+
+        <hr>
+
+        <!-- FEEDBACKS DOS MINISTRANTES PARA ESTE CAMPO -->
+        <h5>Feedback dos Ministrantes:</h5>
+        {% if rcampo.feedbacks_campo %}
+          {% for f in rcampo.feedbacks_campo %}
+            <div class="p-2 border rounded mb-2">
+              <strong>{{ f.ministrante.nome }} ({{ f.criado_em.strftime('%d/%m/%Y %H:%M') }}):</strong>
+              <p class="mb-0">{{ f.texto_feedback }}</p>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted">Ainda não há feedback para este campo.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+
+  <!-- BOTÃO VOLTAR -->
+  <a href="{{ url_for('routes.dashboard_participante', formulario_id=resposta.formulario.id) }}"
+     class="btn btn-secondary">
+    Voltar
+  </a>
 </div>
 {% endblock %}
