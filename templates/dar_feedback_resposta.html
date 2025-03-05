@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+
+  <h3 class="mb-3">
+    Dar Feedback - Formulário: {{ resposta.formulario.nome }}
+  </h3>
+  <p>
+    <strong>Participante:</strong> {{ resposta.usuario.nome }} ({{ resposta.usuario.email }})
+  </p>
+
+  <form method="POST" class="mt-4">
+    <!-- Se você estiver usando Flask-WTF / CSRFProtect -->
+    {% if form is defined %}
+      {{ form.csrf_token() }}
+    {% endif %}
+
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Campo</th>
+            <th>Resposta do Participante</th>
+            <th>Feedback(s) já existente(s)</th>
+            <th>Adicionar Novo Feedback</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rcampo in resposta_campos %}
+          <tr>
+            <td class="fw-bold">
+              {{ rcampo.campo.nome }}
+            </td>
+            <td>
+              <!-- Se for um arquivo, exibe link; caso contrário, exibe valor -->
+              {% if rcampo.campo.tipo == 'file' and rcampo.valor %}
+                <a href="{{ url_for('routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}">
+                  Visualizar Anexo
+                </a>
+              {% else %}
+                {{ rcampo.valor }}
+              {% endif %}
+            </td>
+            <td style="min-width: 200px;">
+              {% if rcampo.feedbacks_campo %}
+                {% for f in rcampo.feedbacks_campo %}
+                <div class="bg-light p-2 mb-2 rounded">
+                  <strong>{{ f.ministrante.nome }}</strong> <br>
+                  <em>{{ f.criado_em.strftime('%d/%m/%Y %H:%M') }}</em><br>
+                  {{ f.texto_feedback }}
+                </div>
+                {% endfor %}
+              {% else %}
+                <span class="text-muted">Nenhum feedback até agora.</span>
+              {% endif %}
+            </td>
+            <td style="min-width: 200px;">
+              <textarea class="form-control" name="feedback_{{ rcampo.id }}" rows="2"></textarea>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- BOTÃO PARA SALVAR O FEEDBACK -->
+    <div class="text-center mt-3">
+      <button type="submit" class="btn btn-primary">
+        Enviar Feedback
+      </button>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

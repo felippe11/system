@@ -28,11 +28,12 @@
                     <a href="{{ url_for('routes.editar_formulario', formulario_id=formulario.id) }}" class="btn btn-warning btn-sm">
                         Editar
                     </a>
-                    <form action="{{ url_for('routes.deletar_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
+                    <form action="{{ url_for('routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
                         <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este formulário?')">
                             Excluir
                         </button>
                     </form>
+                    
                 </td>
             </tr>
             {% endfor %}

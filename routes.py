@@ -27,7 +27,7 @@ from flask_mail import Message
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
-                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente)
+                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente, FeedbackCampo, RespostaFormulario, RespostaCampo)
 from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf, gerar_etiquetas_pdf  # Funções auxiliares
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
@@ -470,6 +470,7 @@ def dashboard():
 @routes.route('/dashboard_participante')
 @login_required
 def dashboard_participante():
+    print("DEBUG -> current_user.tipo =", current_user.tipo)  # <-- ADICIONE
     if current_user.tipo != 'participante':
         return redirect(url_for('routes.dashboard'))
 
@@ -747,14 +748,28 @@ def inscrever(oficina_id):
     db.session.add(inscricao)
     db.session.commit()
 
-    # Gera PDF de comprovante (com QR Code embutido)
-    pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
-    
-    # Enviar e-mail de confirmação
-    assunto = "Confirmação de Inscrição - " + oficina.titulo
-    corpo = f"Olá, {current_user.nome}!\n\nVocê se inscreveu na oficina {oficina.titulo}.\n\nSegue o comprovante de inscrição em anexo."
-    enviar_email(current_user.email, assunto, corpo, pdf_path)
-    
+    try:
+        # Gera o comprovante
+        pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+
+        assunto = f"Confirmação de Inscrição - {oficina.titulo}"
+        corpo_texto = f"Olá {current_user.nome},\n\nVocê se inscreveu na oficina '{oficina.titulo}'.\nSegue o comprovante de inscrição em anexo."
+
+        enviar_email(
+            destinatario=current_user.email,
+            nome_participante=current_user.nome,
+            nome_oficina=oficina.titulo,
+            assunto=assunto,
+            corpo_texto=corpo_texto,
+            anexo_path=pdf_path
+        )
+
+        flash("Inscrição realizada! Um e-mail de confirmação foi enviado.", "success")
+
+    except Exception as e:
+        logger.error(f"❌ ERRO ao enviar e-mail: {e}", exc_info=True)
+        flash("Inscrição realizada, mas houve um erro ao enviar o e-mail.", "warning")
+
     # Retorna via JSON (pode ficar do mesmo jeito ou redirecionar)
     return jsonify({'success': True, 'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)})
 
@@ -2984,7 +2999,14 @@ def listar_formularios_participante():
 @login_required
 def visualizar_resposta(resposta_id):
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Se quiser, confira se o current_user é o dono da resposta
+    if resposta.usuario_id != current_user.id:
+        flash("Você não tem permissão para ver esta resposta.", "danger")
+        return redirect(url_for('routes.dashboard_participante'))
+
     return render_template('visualizar_resposta.html', resposta=resposta)
+
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -3090,6 +3112,28 @@ def get_resposta_file(filename):
     print(">> get_resposta_file foi chamado com:", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     return send_from_directory(uploads_folder, filename)
+
+@routes.route('/excluir_formulario/<int:formulario_id>', methods=['POST'])
+@login_required
+def excluir_formulario(formulario_id):
+    try:
+        formulario = Formulario.query.get(formulario_id)
+
+        if not formulario:
+            flash("Formulário não encontrado!", "danger")
+            return redirect(url_for('routes.dashboard_cliente'))
+
+        db.session.delete(formulario)
+        db.session.commit()
+        flash("Formulário excluído com sucesso!", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"❌ ERRO ao excluir formulário: {e}", exc_info=True)
+        flash("Erro ao excluir formulário!", "danger")
+
+    return redirect(url_for('routes.dashboard_cliente'))
+
 
 @routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
@@ -3214,6 +3258,137 @@ def gerar_etiquetas(cliente_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     return send_file(pdf_path, as_attachment=True)
+
+@routes.route('/formularios/<int:formulario_id>/respostas_ministrante', methods=['GET'])
+@login_required
+def listar_respostas_ministrante(formulario_id):
+    # 1) Verifica se o current_user é ministrante
+    if not isinstance(current_user, Ministrante):
+        flash('Apenas ministrantes têm acesso a esta tela.', 'danger')
+        return redirect(url_for('routes.dashboard_ministrante'))
+
+    formulario = Formulario.query.get_or_404(formulario_id)
+    # 2) Carrega as respostas
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    return render_template(
+        'listar_respostas_ministrante.html',
+        formulario=formulario,
+        respostas=respostas
+    )
+
+@routes.route('/respostas/<int:resposta_id>/feedback', methods=['GET', 'POST'])
+@login_required
+def dar_feedback_resposta(resposta_id):
+    # Apenas ministrante pode dar feedback
+    if not isinstance(current_user, Ministrante):
+        flash('Apenas ministrantes podem dar feedback.', 'danger')
+        return redirect(url_for('routes.dashboard_ministrante'))
+
+    resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Exemplo: poderíamos verificar se a oficina do user bate com a do ministrante, etc.
+    # if <checar se o ministrante atual tem permissão para ver esse form>
+
+    formulario = resposta.formulario
+    lista_campos = formulario.campos  # ou: CampoFormulario.query.filter_by(formulario_id=formulario.id)
+    # carrega as sub-respostas (RespostaCampo) dessa resposta
+    resposta_campos = resposta.respostas_campos  # gera a lista dos campos e os valores
+
+    if request.method == 'POST':
+        # Significa que o ministrante enviou feedback para 1 ou + campos
+        for rcampo in resposta_campos:
+            # Montar o name do textarea = "feedback_<campo.id>"
+            nome_textarea = f"feedback_{rcampo.id}"
+            texto_feedback = request.form.get(nome_textarea, "").strip()
+            if texto_feedback:
+                # criar um registro FeedbackCampo
+                novo_feedback = FeedbackCampo(
+                    resposta_campo_id = rcampo.id,
+                    ministrante_id = current_user.id,
+                    texto_feedback = texto_feedback
+                )
+                db.session.add(novo_feedback)
+        db.session.commit()
+        flash("Feedback registrado!", "success")
+        return redirect(url_for('routes.dar_feedback_resposta', resposta_id=resposta_id))
+
+    return render_template(
+        'dar_feedback_resposta.html',
+        resposta=resposta,
+        resposta_campos=resposta_campos
+    )
+
+@routes.route('/resposta/<int:resposta_id>/definir_status', methods=['GET','POST'])
+@login_required
+def definir_status_resposta(resposta_id):
+    # 1) Garantir que somente ministrantes possam avaliar
+    if not isinstance(current_user, Ministrante):
+        flash("Apenas ministrantes podem definir status de respostas.", "danger")
+        return redirect(url_for('routes.dashboard_ministrante'))  
+
+    # 2) Buscar a resposta no banco
+    resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Exemplo: se quiser garantir que o ministrante só avalie respostas do seu formulário...
+    # ou que pertencem a alguma oficina que ele ministra. 
+    # Adapte conforme sua lógica.
+
+    if request.method == 'POST':
+        novo_status = request.form.get('status_avaliacao')
+        # Exemplo: checa se o valor está na lista de escolhas
+        opcoes_validas = [
+            "Não Avaliada",
+            "Aprovada",
+            "Aprovada com ressalvas",
+            "Aprovada para pôster",
+            "Aprovada para apresentação oral",
+            "Negada"
+        ]
+        if novo_status not in opcoes_validas:
+            flash("Status inválido!", "danger")
+            return redirect(url_for('routes.definir_status_resposta', resposta_id=resposta_id))
+
+        # 3) Atualiza o status
+        resposta.status_avaliacao = novo_status
+        db.session.commit()
+        flash("Status atualizado com sucesso!", "success")
+
+        return redirect(url_for('routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id))
+        # ou para onde você preferir redirecionar
+
+    # Se for GET, renderize a página com um formulário para escolher o status
+    return render_template('definir_status_resposta.html', resposta=resposta)
+
+@routes.route('/definir_status_inline', methods=['POST'])
+@login_required
+def definir_status_inline():
+    # 1) Pega valores do form
+    resposta_id = request.form.get('resposta_id')
+    novo_status = request.form.get('status_avaliacao')
+
+    # 2) Valida
+    if not resposta_id or not novo_status:
+        flash("Dados incompletos!", "danger")
+        return redirect(request.referrer or url_for('routes.dashboard'))
+
+    # 3) Busca a resposta no banco
+    resposta = RespostaFormulario.query.get(resposta_id)
+    if not resposta:
+        flash("Resposta não encontrada!", "warning")
+        return redirect(request.referrer or url_for('routes.dashboard'))
+
+    # 4) Atualiza
+    resposta.status_avaliacao = novo_status
+    db.session.commit()
+
+    flash("Status atualizado com sucesso!", "success")
+
+    # Redireciona para a mesma página (listar_respostas) ou usa request.referrer
+    # Se estiver em /formularios/<id>/respostas_ministrante, podemos redirecionar
+    return redirect(request.referrer or url_for('routes.listar_respostas',
+                                                formulario_id=resposta.formulario_id))
+
 
 
 
