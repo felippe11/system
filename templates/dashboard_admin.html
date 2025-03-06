@@ -298,6 +298,98 @@
                           <i class="bi bi-ui-checks me-2"></i>Gerenciar Formulários
                         </a>
 
+                        <!-- Botão para abrir o modal de mover inscrições -->
+<button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#modalMoverInscricoes">
+  <i class="bi bi-arrow-left-right"></i> Mover Inscrições
+</button>
+
+<!-- Modal para Mover Inscrições -->
+<div class="modal fade" id="modalMoverInscricoes" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">Mover Inscrições em Lote</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('routes.mover_inscricoes_lote') }}">
+          <div class="mb-3">
+            <label class="form-label">Selecionar Inscrições:</label>
+            {% for inscricao in inscricoes %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" 
+                       name="inscricao_ids" value="{{ inscricao.id }}">
+                <label class="form-check-label">
+                  {{ inscricao.usuario.nome }} ({{ inscricao.oficina.titulo }})
+                </label>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Oficina de Destino:</label>
+            <select class="form-select" name="oficina_destino" required>
+              <option value="">-- Selecione a Oficina --</option>
+              {% for oficina in oficinas %}
+                <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-success w-100">
+            Confirmar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Botão para abrir o modal de inscrição em lote -->
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalInscricaoLote">
+  <i class="bi bi-person-plus"></i> Inscrição em Lote
+</button>
+
+<!-- Modal Inscrição em Lote -->
+<div class="modal fade" id="modalInscricaoLote" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">Inscrever Participantes em Lote</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('routes.inscrever_participantes_lote') }}">
+          <div class="mb-3">
+            <label class="form-label">Selecionar Participantes:</label>
+            <div class="form-check">
+              {% for usuario in participantes %}
+                <input class="form-check-input" type="checkbox" name="usuario_ids" value="{{ usuario.id }}" id="usuario{{ usuario.id }}">
+                <label class="form-check-label" for="usuario{{ usuario.id }}">
+                  {{ usuario.nome }} ({{ usuario.email }})
+                </label><br>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Selecionar Oficina:</label>
+            <select class="form-select" name="oficina_id" required>
+              <option value="">-- Escolha a oficina --</option>
+              {% for oficina in oficinas %}
+                <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-success w-100">
+            Confirmar Inscrição
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
                         <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
                               onsubmit="return confirm('Tem certeza que deseja excluir TODAS as oficinas?')">
                           <button type="submit" class="btn btn-danger btn-lg w-100">
