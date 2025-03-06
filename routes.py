@@ -2617,6 +2617,7 @@ def dashboard_cliente():
     inscritos = Inscricao.query.join(Oficina).filter(
         (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
     ).all()
+    print("Sem filtro:", len(inscritos))
     
     # Buscar config específica do cliente
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
