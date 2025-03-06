@@ -70,12 +70,13 @@
     <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
   </div>
 
-  <!-- Exemplo de botão para formulários -->
-  <div class="mb-4">
-      <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
-          📝 Preencher Formulários
-      </a>
-  </div>
+  {% if formularios_disponiveis %}
+    <div class="mb-4">
+        <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
+            📝 Preencher Formulários
+        </a>
+    </div>
+  {% endif %}
   
   <div class="row">
     <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
