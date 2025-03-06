@@ -24,6 +24,7 @@ from datetime import datetime
 from flask_mail import Message
 
 
+
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
@@ -476,6 +477,9 @@ def dashboard_participante():
 
     # Se o participante está associado a um cliente, buscamos a config desse cliente
     config_cliente = None
+    # Verifica se há formulários disponíveis para preenchimento
+    formularios_disponiveis = Formulario.query.count() > 0
+    
     if current_user.cliente_id:
         from models import ConfiguracaoCliente  # certifique-se de importar se não estiver no topo
         config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
@@ -528,7 +532,8 @@ def dashboard_participante():
         # Aqui passamos as booleans *do cliente* para o template
         permitir_checkin_global=permitir_checkin,
         habilitar_feedback=habilitar_feedback,
-        habilitar_certificado_individual=habilitar_certificado
+        habilitar_certificado_individual=habilitar_certificado,
+        formularios_disponiveis=formularios_disponiveis
     )
 
 
@@ -3113,27 +3118,50 @@ def get_resposta_file(filename):
     uploads_folder = os.path.join('uploads', 'respostas')
     return send_from_directory(uploads_folder, filename)
 
-@routes.route('/excluir_formulario/<int:formulario_id>', methods=['POST'])
+from sqlalchemy import text  # Adicione esta importação no topo do arquivo!
+
+from sqlalchemy import text
+
+@routes.route('/formularios/<int:formulario_id>/excluir', methods=['POST'])
 @login_required
 def excluir_formulario(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+
     try:
-        formulario = Formulario.query.get(formulario_id)
+        # 1️⃣ Exclui FeedbackCampo associados às respostas do formulário (SQL textual corrigido)
+        db.session.execute(text('''
+            DELETE FROM feedback_campo
+            WHERE resposta_campo_id IN (
+                SELECT id FROM respostas_campo
+                WHERE resposta_formulario_id IN (
+                    SELECT id FROM respostas_formulario
+                    WHERE formulario_id = :fid
+                )
+            );
+        '''), {'fid': formulario_id})
 
-        if not formulario:
-            flash("Formulário não encontrado!", "danger")
-            return redirect(url_for('routes.dashboard_cliente'))
+        # 2️⃣ Exclui RespostaCampo
+        RespostaCampo.query.filter(
+            RespostaCampo.resposta_formulario_id.in_(
+                db.session.query(RespostaFormulario.id).filter_by(formulario_id=formulario_id)
+            )
+        ).delete(synchronize_session=False)
 
+        # 3️⃣ Exclui RespostaFormulario
+        RespostaFormulario.query.filter_by(formulario_id=formulario_id).delete()
+
+        # 4️⃣ Exclui o Formulário
+        formulario = Formulario.query.get_or_404(formulario_id)
         db.session.delete(formulario)
-        db.session.commit()
-        flash("Formulário excluído com sucesso!", "success")
 
+        db.session.commit()
+
+        flash("Formulário e todos os dados relacionados excluídos com sucesso!", "success")
     except Exception as e:
         db.session.rollback()
-        logger.error(f"❌ ERRO ao excluir formulário: {e}", exc_info=True)
-        flash("Erro ao excluir formulário!", "danger")
+        flash(f"Erro ao excluir formulário: {str(e)}", "danger")
 
-    return redirect(url_for('routes.dashboard_cliente'))
-
+    return redirect(url_for('routes.listar_formularios'))
 
 @routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
@@ -3391,4 +3419,67 @@ def definir_status_inline():
 
 
 
+@routes.route('/inscrever_participantes_lote', methods=['POST'])
+@login_required
+def inscrever_participantes_lote():
+    print("📌 [DEBUG] Iniciando processo de inscrição em lote...")
 
+    oficina_id = request.form.get('oficina_id')
+    usuario_ids = request.form.getlist('usuario_ids')
+
+    print(f"📌 [DEBUG] Oficina selecionada: {oficina_id}")
+    print(f"📌 [DEBUG] Usuários selecionados: {usuario_ids}")
+
+    if not oficina_id or not usuario_ids:
+        flash('Oficina ou participantes não selecionados corretamente.', 'warning')
+        print("❌ [DEBUG] Erro: Oficina ou participantes não foram selecionados corretamente.")
+        return redirect(url_for('routes.dashboard'))
+
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash('Oficina não encontrada!', 'danger')
+        print("❌ [DEBUG] Erro: Oficina não encontrada no banco de dados.")
+        return redirect(url_for('routes.dashboard'))
+
+    inscritos_sucesso = 0
+    erros = 0
+
+    try:
+        for usuario_id in usuario_ids:
+            print(f"🔄 [DEBUG] Tentando inscrever usuário {usuario_id} na oficina {oficina.titulo}...")
+
+            ja_inscrito = Inscricao.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
+
+            if ja_inscrito:
+                print(f"⚠️ [DEBUG] Usuário {usuario_id} já está inscrito na oficina. Pulando...")
+                continue  # Evita duplicação
+
+            # Verifica se há vagas disponíveis
+            if oficina.vagas <= 0:
+                print(f"❌ [DEBUG] Sem vagas para a oficina {oficina.titulo}. Usuário {usuario_id} não pode ser inscrito.")
+                erros += 1
+                continue
+
+            # 🔥 SOLUÇÃO: Passando cliente_id corretamente para a Inscricao
+            nova_inscricao = Inscricao(
+                usuario_id=usuario_id,
+                oficina_id=oficina_id,
+                cliente_id=oficina.cliente_id  # Obtém o cliente_id da própria oficina
+            )
+
+            db.session.add(nova_inscricao)
+            oficina.vagas -= 1  # Reduz a quantidade de vagas disponíveis
+
+            inscritos_sucesso += 1
+            print(f"✅ [DEBUG] Usuário {usuario_id} inscrito com sucesso!")
+
+        db.session.commit()
+        flash(f'{inscritos_sucesso} participantes inscritos com sucesso! {erros} não foram inscritos por falta de vagas.', 'success')
+        print(f"🎯 [DEBUG] {inscritos_sucesso} inscrições concluídas. {erros} falharam.")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao inscrever participantes em lote: {str(e)}", "danger")
+        print(f"❌ [DEBUG] Erro ao inscrever participantes: {e}")
+
+    return redirect(url_for('routes.dashboard'))

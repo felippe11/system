@@ -633,13 +633,13 @@
           <!-- Filtro de Participante -->
           <div class="mb-3">
             <label for="filtroParticipante" class="form-label">Filtrar por Participante:</label>
-            <input type="text" class="form-control whatsapp" id="filtroParticipante" placeholder="Digite o nome do participante">
+            <input type="text" class="form-control whatsapp" id="filtroParticipante" placeholder="Digite o nome do participante" oninput="debugFiltroParticipante()">
           </div>
 
           <!-- Filtro de Oficinas -->
           <div class="mb-3">
             <label for="filtroOficina" class="form-label">Filtrar por Oficina:</label>
-            <select class="form-select" id="filtroOficina">
+            <select class="form-select" id="filtroOficina" onchange="debugFiltroOficina()">
               <option value="">Todas as Oficinas</option>
               {% for oficina in oficinas %}
               <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
@@ -665,7 +665,7 @@
               <td>{{ insc.oficina.titulo }}</td>
               <td>
                 <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}"
-                      method="POST" style="display:inline;">
+                      method="POST" style="display:inline;" onsubmit="debugCancelarInscricao({{ insc.id }})">
                   <button type="submit" class="btn btn-danger btn-sm">
                     Cancelar
                   </button>
@@ -679,6 +679,22 @@
     </div>
   </div>
 </div>
+
+<script>
+  function debugFiltroParticipante() {
+    const filtro = document.getElementById('filtroParticipante').value;
+    console.log(`📌 [DEBUG] Filtro de Participante digitado: ${filtro}`);
+  }
+
+  function debugFiltroOficina() {
+    const filtro = document.getElementById('filtroOficina').value;
+    console.log(`📌 [DEBUG] Oficina selecionada no filtro: ${filtro}`);
+  }
+
+  function debugCancelarInscricao(inscricaoId) {
+    console.log(`❌ [DEBUG] Tentando cancelar inscrição com ID: ${inscricaoId}`);
+  }
+</script>
 
 <!-- Script para filtrar as inscrições por participante e oficina -->
 <script>
