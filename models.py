@@ -125,7 +125,8 @@ class Oficina(db.Model):
 
     dias = db.relationship('OficinaDia', back_populates="oficina", lazy=True, cascade="all, delete-orphan")
 
-    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None):
+    # 🔥 Corrigido o método __init__
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
@@ -134,7 +135,9 @@ class Oficina(db.Model):
         self.estado = estado
         self.cidade = cidade
         self.qr_code = qr_code
-        self.cliente_id = cliente_id  # ✅ Adicionando o cliente_id corretamente
+        self.cliente_id = cliente_id
+        self.opcoes_checkin = opcoes_checkin
+        self.palavra_correta = palavra_correta
 
     def __repr__(self):
         return f"<Oficina {self.titulo}>"
@@ -179,11 +182,10 @@ class Inscricao(db.Model):
     oficina = db.relationship('Oficina', backref='inscritos')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False) 
     
-    def __init__(self, usuario_id, oficina_id):
+    def __init__(self, usuario_id, oficina_id, cliente_id):
         self.usuario_id = usuario_id
         self.oficina_id = oficina_id
-        # Exemplo: usar uuid4
-        self.qr_code_token = str(uuid.uuid4())
+        self.cliente_id = cliente_id
     
     def __repr__(self):
         return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
@@ -333,7 +335,9 @@ class Formulario(db.Model):
     
     cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
-    respostas = db.relationship("RespostaFormulario", back_populates="formulario", lazy=True)
+    # 🔴 POSSÍVEL CAUSA DO ERRO: Renomeie o `backref` para evitar conflito
+    respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
+
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
@@ -363,8 +367,10 @@ class RespostaFormulario(db.Model):
     
     # NOVA COLUNA PARA STATUS
     status_avaliacao = db.Column(db.String(50), nullable=True, default='Não Avaliada')
+    
+    respostas_campos = db.relationship('RespostaCampo', back_populates='resposta_formulario', cascade="all, delete-orphan")
 
-    formulario = db.relationship("Formulario", back_populates="respostas", lazy=True)
+    formulario = db.relationship('Formulario', back_populates='respostas')  # 🔄 Corrigido o back_populates
     usuario = db.relationship('Usuario', backref=db.backref('respostas', lazy=True))
 
     def __repr__(self):
@@ -378,7 +384,7 @@ class RespostaCampo(db.Model):
     campo_id = db.Column(db.Integer, db.ForeignKey('campos_formulario.id'), nullable=False)
     valor = db.Column(db.Text, nullable=False)
 
-    resposta_formulario = db.relationship('RespostaFormulario', backref=db.backref('respostas_campos', lazy=True))
+    resposta_formulario = db.relationship('RespostaFormulario', back_populates='respostas_campos')
     campo = db.relationship('CampoFormulario', backref=db.backref('respostas', lazy=True))
 
     def __repr__(self):
