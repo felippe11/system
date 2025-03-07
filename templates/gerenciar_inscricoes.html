@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Inscrições{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Gerenciar Inscrições</h2>
+  <div>
+    <div class="row mb-4">
+      <!-- Filtro de Participante -->
+      <div class="col-md-6 mb-3">
+        <label for="filtroParticipante" class="form-label">Filtrar por Participante:</label>
+        <input type="text" class="form-control" id="filtroParticipante" placeholder="Digite o nome do participante">
+      </div>
+      <!-- Filtro de Oficinas -->
+      <div class="col-md-6 mb-3">
+        <label for="filtroOficina" class="form-label">Filtrar por Oficina:</label>
+        <select class="form-select" id="filtroOficina">
+          <option value="">Todas as Oficinas</option>
+          {% for oficina in oficinas %}
+          <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Participante</th>
+            <th>Oficina</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaInscricoes">
+          {% for insc in inscritos %}
+          <tr data-oficina-id="{{ insc.oficina.id }}" data-participante-nome="{{ insc.usuario.nome | lower }}">
+            <td>{{ insc.id }}</td>
+            <td>{{ insc.usuario.nome }}</td>
+            <td>{{ insc.oficina.titulo }}</td>
+            <td>
+              <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Deseja cancelar esta inscrição?')">
+                <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+  <script>
+    function debugFiltroParticipante() {
+      const filtro = document.getElementById('filtroParticipante').value;
+      console.log(`📌 [DEBUG] Filtro de Participante digitado: ${filtro}`);
+    }
+  
+    function debugFiltroOficina() {
+      const filtro = document.getElementById('filtroOficina').value;
+      console.log(`📌 [DEBUG] Oficina selecionada no filtro: ${filtro}`);
+    }
+  
+    function debugCancelarInscricao(inscricaoId) {
+      console.log(`❌ [DEBUG] Tentando cancelar inscrição com ID: ${inscricaoId}`);
+    }
+  </script>
+  
+  <!-- Script para filtrar as inscrições por participante e oficina -->
+  <script>
+    document.getElementById('filtroParticipante').addEventListener('input', function() {
+      filtrarInscricoes();
+    });
+  
+    document.getElementById('filtroOficina').addEventListener('change', function() {
+      filtrarInscricoes();
+    });
+  
+    function filtrarInscricoes() {
+      var filtroParticipante = document.getElementById('filtroParticipante').value.toLowerCase();
+      var filtroOficina = document.getElementById('filtroOficina').value;
+      var rows = document.querySelectorAll('#tabelaInscricoes tr');
+  
+      rows.forEach(function(row) {
+        var participanteNome = row.getAttribute('data-participante-nome');
+        var oficinaId = row.getAttribute('data-oficina-id');
+  
+        var correspondeParticipante = participanteNome.includes(filtroParticipante);
+        var correspondeOficina = filtroOficina === "" || oficinaId === filtroOficina;
+  
+        if (correspondeParticipante && correspondeOficina) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+  </script>
+
+{% endblock %}
