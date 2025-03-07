@@ -748,8 +748,7 @@ def inscrever(oficina_id):
 
     # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
-    inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id)
-    inscricao.cliente_id = current_user.cliente_id
+    inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id, cliente_id=current_user.cliente_id)
     db.session.add(inscricao)
     db.session.commit()
 
