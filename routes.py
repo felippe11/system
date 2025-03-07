@@ -2278,6 +2278,23 @@ def gerenciar_ministrantes():
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
 
 
+@routes.route('/gerenciar_inscricoes', methods=['GET'])
+@login_required
+def gerenciar_inscricoes():
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso Autorizado!', 'danger')
+        
+    # Se o usuário for cliente, filtra apenas as oficinas e inscrições associadas a ele
+    if current_user.tipo == 'cliente':
+        oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
+        inscritos = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).all()
+    else:
+        # Se for admin, mostra todos os registros
+        oficinas = Oficina.query.all()
+        inscritos = Inscricao.query.all()
+    return render_template('gerenciar_inscricoes.html', oficinas=oficinas, inscritos=inscritos)
+
+
 
 @routes.route('/admin_scan')
 @login_required
