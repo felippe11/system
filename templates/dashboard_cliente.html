@@ -273,6 +273,10 @@
         <a href="{{ url_for('routes.gerar_etiquetas', cliente_id=current_user.id) }}" class="btn btn-info">
           <i class="bi bi-printer"></i> Imprimir Etiquetas
         </a>
+                <!-- Botão para configurar evento -->
+                <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-primary">
+                  <i class="bi bi-calendar-event"></i> Configurar Evento
+                </a>
       </div>
         
 
@@ -535,7 +539,10 @@
         <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" class="btn btn-outline-primary">
           <i class="bi bi-card-checklist"></i> Check-ins
         </a>
+
       </div>
+
+
 
     </div>
   </div>

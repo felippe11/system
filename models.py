@@ -421,4 +421,19 @@ class FeedbackCampo(db.Model):
     def __repr__(self):
         return f"<FeedbackCampo id={self.id} resposta_campo={self.resposta_campo_id} ministrante={self.ministrante_id}>"
 
+class Evento(db.Model):
+    __tablename__ = 'evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    banner_url = db.Column(db.String(255), nullable=True)  # URL do banner
+    programacao = db.Column(db.Text, nullable=True)
+    localizacao = db.Column(db.String(255), nullable=True)  # Endereço do evento
+    link_mapa = db.Column(db.String(255), nullable=True)  # URL do Google Maps
+
+    cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
+
+
 
