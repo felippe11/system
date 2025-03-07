@@ -22,8 +22,7 @@ from models import RespostaFormulario, RespostaCampo
 from utils import enviar_email
 from datetime import datetime
 from flask_mail import Message
-
-
+from models import Evento
 
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
@@ -42,6 +41,8 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from models import Formulario, CampoFormulario
 from extensions import db
 from flask_login import login_required, current_user
+from collections import defaultdict
+from datetime import datetime
 
 
 # ReportLab para PDFs
@@ -58,6 +59,8 @@ from reportlab.pdfbase import pdfmetrics
 # Registrar a fonte personalizada
 pdfmetrics.registerFont(TTFont("AlexBrush", "AlexBrush-Regular.ttf"))
 
+
+
 # Configurações da aplicação e Blueprint
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "uploads"
@@ -68,6 +71,9 @@ login_manager.init_app(app)
 login_manager.login_view = 'routes.login'  # Essa é a rota que será usada para login
 
 routes = Blueprint("routes", __name__)
+
+
+
 
 def register_routes(app):
     app.register_blueprint(routes)
@@ -87,19 +93,54 @@ def home():
 # ===========================
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 def cadastro_participante():
+    from collections import defaultdict
+    from datetime import datetime
+
     alert = None
     token = request.args.get('token')  # Pega o token da URL se existir
     cliente_id = None
+    evento = None
 
-    # Se houver um token, verifica se é válido
+    # 1) Inicializa variáveis
+    sorted_keys = []
+    grouped_oficinas = {}
+    oficinas = []  # <-- Inicializamos aqui
+
     if token:
         link = LinkCadastro.query.filter_by(token=token).first()
         if not link:
             flash("Erro: Link de cadastro inválido ou expirado!", "danger")
             return redirect(url_for('routes.cadastro_participante'))
-        cliente_id = link.cliente_id  # Associa ao Cliente
+        cliente_id = link.cliente_id
+        evento = Evento.query.filter_by(cliente_id=cliente_id).first()
+
+        # Carrega oficinas do cliente
+        oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
+
+    temp_group = defaultdict(list)
+
+    for oficina in oficinas:
+        for dia in oficina.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            temp_group[data_str].append({
+                'titulo': oficina.titulo,
+                'descricao': oficina.descricao,
+                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else '',
+                'horario_inicio': dia.horario_inicio,  # string ex.: "09:30"
+                'horario_fim': dia.horario_fim
+            })
+
+    # Agora ordenamos, para cada data, as atividades pelo horário de início:
+    for date_str in temp_group:
+        temp_group[date_str].sort(key=lambda x: x['horario_inicio'])
+
+        # Ordena as datas
+        sorted_temp = sorted(temp_group.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+        grouped_oficinas = temp_group
+        sorted_keys = sorted_temp
 
     if request.method == 'POST':
+        # Lógica de cadastro do participante
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
         email = request.form.get('email')
@@ -109,8 +150,6 @@ def cadastro_participante():
         cidades = request.form.getlist('cidades[]')
         estados_str = ','.join(estados) if estados else ''
         cidades_str = ','.join(cidades) if cidades else ''
-
-        print(f"📌 Recebido: Nome={nome}, CPF={cpf}, Email={email}, Formação={formacao}, Estados={estados_str}, Cidades={cidades_str}, Cliente ID={cliente_id}")
 
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
@@ -134,7 +173,7 @@ def cadastro_participante():
                 tipo='participante',
                 estados=estados_str,
                 cidades=cidades_str,
-                cliente_id=cliente_id  # Associa ao Cliente se veio por link
+                cliente_id=cliente_id  # vincula ao cliente, se houver
             )
             try:
                 db.session.add(novo_usuario)
@@ -146,8 +185,15 @@ def cadastro_participante():
                 print(f"Erro ao cadastrar usuário: {e}")
                 alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
 
-    return render_template('cadastro_participante.html', alert=alert, token=token)
-
+    # Ao final, renderiza o template
+    return render_template(
+        'cadastro_participante.html',
+        alert=alert,
+        token=token,
+        evento=evento,
+        sorted_keys=sorted_keys,
+        grouped_oficinas=grouped_oficinas
+    )
 
 # ===========================
 #      EDITAR PARTICIPANTE
@@ -3501,3 +3547,99 @@ def inscrever_participantes_lote():
         print(f"❌ [DEBUG] Erro ao inscrever participantes: {e}")
 
     return redirect(url_for('routes.dashboard'))
+
+@routes.route('/configurar_evento', methods=['GET', 'POST'])
+@login_required
+def configurar_evento():
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    evento = Evento.query.filter_by(cliente_id=current_user.id).first()
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        programacao = request.form.get('programacao')
+        localizacao = request.form.get('localizacao')
+        link_mapa = request.form.get('link_mapa')
+
+        banner = request.files.get('banner')
+        banner_url = evento.banner_url if evento else None
+        
+        if banner:
+            filename = secure_filename(banner.filename)
+            caminho_banner = os.path.join('static/banners', filename)
+            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
+            banner.save(caminho_banner)
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+
+        if evento:
+            evento.nome = nome
+            evento.descricao = descricao
+            evento.programacao = programacao
+            evento.localizacao = localizacao
+            evento.link_mapa = link_mapa
+            evento.banner_url = banner_url
+        else:
+            evento = Evento(
+                cliente_id=current_user.id,
+                nome=nome,
+                descricao=descricao,
+                programacao=programacao,
+                localizacao=localizacao,
+                link_mapa=link_mapa,
+                banner_url=banner_url
+            )
+            db.session.add(evento)
+
+        db.session.commit()
+        flash('Evento atualizado com sucesso!', 'success')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    return render_template('configurar_evento.html', evento=evento)
+
+from collections import defaultdict
+from datetime import datetime
+
+@routes.route('/exibir_evento/<int:evento_id>')
+@login_required
+def exibir_evento(evento_id):
+    # 1) Carrega o evento
+    evento = Evento.query.get_or_404(evento_id)
+
+    # 2) Carrega as oficinas do cliente vinculado ao evento
+    #    (Aqui assumimos que evento.cliente_id é o mesmo que Oficina.cliente_id)
+    oficinas = Oficina.query.filter_by(cliente_id=evento.cliente_id).all()
+
+    # 3) Monta uma estrutura para agrupar por data
+    #    grouped_oficinas[ "DD/MM/AAAA" ] = [ { 'titulo': ..., 'ministrante': ..., 'inicio': ..., 'fim': ... }, ... ]
+    grouped_oficinas = defaultdict(list)
+
+    for oficina in oficinas:
+        # Cada oficina pode ter várias datas em `OficinaDia`
+        for dia in oficina.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+
+            grouped_oficinas[data_str].append({
+                'titulo': oficina.titulo,
+                'ministrante': ministrante_nome,
+                'horario_inicio': dia.horario_inicio,
+                'horario_fim': dia.horario_fim
+            })
+
+    # Ordena as datas no dicionário pela data real (opcional)
+    # Precisamos converter a string "DD/MM/AAAA" para datetime para ordenar:
+    sorted_keys = sorted(
+        grouped_oficinas.keys(), 
+        key=lambda d: datetime.strptime(d, '%d/%m/%Y')
+    )
+
+    # 4) Renderiza o template passando o evento e a programação agrupada
+    return render_template(
+        'exibir_evento.html',
+        evento=evento,
+        sorted_keys=sorted_keys,
+        grouped_oficinas=grouped_oficinas
+    )

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Configurar Evento{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="my-4">Configurar Evento</h2>
+    
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label class="form-label">Nome do Evento</label>
+            <input type="text" name="nome" class="form-control" value="{{ evento.nome if evento else '' }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Descrição</label>
+            <textarea name="descricao" class="form-control">{{ evento.descricao if evento else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Programação</label>
+            <textarea name="programacao" class="form-control">{{ evento.programacao if evento else '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Endereço do Evento</label>
+            <input type="text" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Link do Google Maps</label>
+            <input type="url" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Banner do Evento</label>
+            <input type="file" name="banner" class="form-control">
+            {% if evento and evento.banner_url %}
+            <img src="{{ evento.banner_url }}" alt="Banner" class="img-fluid mt-2" style="max-width: 200px;">
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+    </form>
+</div>
+{% endblock %}
