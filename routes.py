@@ -2619,15 +2619,10 @@ def dashboard_cliente():
         (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
     ).all()
 
-    # Primeiro, teste sem nenhum filtro e veja quantos Inscricao há:
-    inscritos_sem_filtro = Inscricao.query.all()
-    print("Inscritos sem filtro:", len(inscritos_sem_filtro))
-
-    # Depois, teste com o filtro para ver quantos passam:
-    inscritos_com_filtro = Inscricao.query.join(Oficina).filter(
-        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
+    # Se for para filtrar pela coluna Inscricao.cliente_id:
+    inscritos = Inscricao.query.filter(
+        (Inscricao.cliente_id == current_user.id) | (Inscricao.cliente_id.is_(None))
     ).all()
-    print("Inscritos com filtro:", len(inscritos_com_filtro))
 
     
     # Buscar config específica do cliente
