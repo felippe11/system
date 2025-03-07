@@ -1,18 +1,30 @@
 import os
+import psycopg2
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
     SECRET_KEY = os.urandom(24)  # Gera uma chave aleatória
-    SQLALCHEMY_DATABASE_URI = 'postgresql://iafap:tOsydfgBrVx1o57X7oqznlABbwlFek84@dpg-cug5itl6l47c739tgung-a/iafap_database'
-    
-    #SQLALCHEMY_DATABASE_URI = 'postgresql://iafap:iafap@localhost:5432/iafap_database'
-  
-    #'postgresql://iafap:tOsydfgBrVx1o57X7oqznlABbwlFek84@dpg-cug5itl6l47c739tgung-a/iafap_database' render
-    #postgresql://iafap:iafap@localhost:5432/iafap_database  local
+
+    # URLs dos bancos de dados
+    DB_ONLINE = 'postgresql://iafap:tOsydfgBrVx1o57X7oqznlABbwlFek84@dpg-cug5itl6l47c739tgung-a/iafap_database'
+    DB_LOCAL = 'postgresql://iafap:iafap@localhost:5432/iafap_database'
+
+    # Testa a conexão com o banco online
+    def test_db_connection(db_uri):
+        try:
+            conn = psycopg2.connect(db_uri, connect_timeout=3)
+            conn.close()
+            return True
+        except Exception:
+            return False
+
+    # Define qual banco de dados será usado
+    SQLALCHEMY_DATABASE_URI = DB_ONLINE if test_db_connection(DB_ONLINE) else DB_LOCAL
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+
     # Configuração para envio de e-mails via Gmail
     MAIL_SERVER = 'smtp.gmail.com'  # Servidor SMTP do Gmail
     MAIL_PORT = 587  # Porta para envio de e-mails
@@ -20,6 +32,3 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')  # Seu e-mail
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')  # Sua senha
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME')  # O e-mail que enviará as mensagens
-    
-    
-
