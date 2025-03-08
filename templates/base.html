@@ -20,6 +20,13 @@
     <!-- CSS Customizado -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/estilos.css') }}">
 
+    <!-- fiveicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+    
     <style>
         :root {
             --gradient-primary: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
@@ -201,8 +208,35 @@
                 <ul class="dropdown-menu dropdown-menu-end shadow">
                   {% if current_user.tipo == 'participante' %}
                   <li>
-                    <a class="dropdown-item text-primary py-2" href="{{ url_for('routes.editar_participante') }}">
+                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.editar_participante') }}">
                       <i class="bi bi-person-badge me-2"></i>Editar Perfil
+                    </a>
+                  </li>
+                  <li><hr class="dropdown-divider my-1"></li>
+                  <li>
+                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_participante') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    </a>
+                  </li>
+                  {% endif %}
+                  {% if current_user.tipo == 'cliente' %}
+                  <li>
+                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_cliente') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    </a>
+                  </li>
+                  {% endif %}
+                  {% if current_user.tipo == 'ministrante' %}
+                  <li>
+                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_ministrante') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    </a>
+                  </li>
+                  {% endif %}
+                  {% if current_user.tipo == 'admin' %}
+                  <li>
+                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>dashboard
                     </a>
                   </li>
                   {% endif %}
