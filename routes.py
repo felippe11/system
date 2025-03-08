@@ -27,7 +27,7 @@ from models import Evento
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
 from models import (Usuario, Oficina, Inscricao, OficinaDia, Checkin,
-                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente, FeedbackCampo, RespostaFormulario, RespostaCampo)
+                    Configuracao, Feedback, Ministrante, RelatorioOficina, MaterialOficina, ConfiguracaoCliente, FeedbackCampo, RespostaFormulario, RespostaCampo, InscricaoTipo)
 from utils import obter_estados, obter_cidades, gerar_qr_code, gerar_qr_code_inscricao, gerar_comprovante_pdf, gerar_etiquetas_pdf  # Funções auxiliares
 from reportlab.lib.units import inch
 from reportlab.platypus import Image
@@ -602,6 +602,8 @@ def criar_oficina():
         titulo = request.form.get('titulo')
         descricao = request.form.get('descricao')
         ministrante_id = request.form.get('ministrante_id')
+        if ministrante_id == '':
+            ministrante_id = None
         vagas = request.form.get('vagas')
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
@@ -619,6 +621,13 @@ def criar_oficina():
         else:
             cliente_id = current_user.id  # Clientes só podem criar oficinas para si mesmos
 
+        # Verifica se o cliente possui habilitação de pagamento e se a oficina será paga
+        if current_user.habilita_pagamento:
+            # Captura a informação se a inscrição é gratuita ou não:
+            inscricao_gratuita = True if request.form.get('inscricao_gratuita') == 'on' else False
+        else:
+            inscricao_gratuita = True  # Força para gratuita se não houver pagamento
+
         nova_oficina = Oficina(
             titulo=titulo,
             descricao=descricao,
@@ -629,11 +638,24 @@ def criar_oficina():
             cidade=cidade,
             cliente_id=cliente_id,
             opcoes_checkin=opcoes_checkin,
-            palavra_correta=palavra_correta 
+            palavra_correta=palavra_correta
         )
-
+        nova_oficina.inscricao_gratuita = inscricao_gratuita
         db.session.add(nova_oficina)
         db.session.commit()
+
+        if not nova_oficina.inscricao_gratuita:
+            # Supondo que o formulário envia listas com os nomes e preços dos tipos
+            nomes_tipos = request.form.getlist('nome_tipo[]')
+            precos = request.form.getlist('preco_tipo[]')
+            for nome, preco in zip(nomes_tipos, precos):
+                novo_tipo = InscricaoTipo(
+                    oficina_id=nova_oficina.id,
+                    nome=nome,
+                    preco=preco  # Certifique-se de converter para o tipo numérico se necessário
+                )
+                db.session.add(novo_tipo)
+            db.session.commit()
 
         # ➜ Salvar as datas e horários na tabela `OficinaDia`
         datas = request.form.getlist('data[]')
@@ -675,14 +697,21 @@ def editar_oficina(oficina_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     estados = obter_estados()
-    ministrantes = Ministrante.query.all()
+    if current_user.tipo == 'cliente':
+        ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
+    else:
+        ministrantes = Ministrante.query.all()
+
     clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas admin pode ver
 
 
     if request.method == 'POST':
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
-        oficina.ministrante_id = request.form.get('ministrante_id')
+        ministrante_id = request.form.get('ministrante_id')
+        if ministrante_id == '':
+            ministrante_id = None
+        oficina.ministrante_id = ministrante_id
         oficina.vagas = int(request.form.get('vagas'))
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
@@ -794,7 +823,14 @@ def inscrever(oficina_id):
 
     # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
+    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
+    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
     inscricao = Inscricao(usuario_id=current_user.id, oficina_id=oficina.id, cliente_id=current_user.cliente_id)
+    inscricao.cliente_id = current_user.cliente_id
+    if tipo_inscricao_id:
+        inscricao.tipo_inscricao_id = tipo_inscricao_id
+        # Aqui você pode chamar a função que integra com o Mercado Pago
+        # Exemplo: url_pagamento = iniciar_pagamento(inscricao)
     db.session.add(inscricao)
     db.session.commit()
 
@@ -2824,10 +2860,12 @@ def cadastrar_cliente():
             return redirect(url_for('routes.cadastrar_cliente'))
 
         # Cria o cliente
+        habilita_pagamento = True if request.form.get('habilita_pagamento') == 'on' else False
         novo_cliente = Cliente(
             nome=request.form['nome'],
             email=request.form['email'],
-            senha=request.form['senha']  # ✅ CORRETO
+            senha=request.form['senha'],
+            habilita_pagamento=habilita_pagamento
         )
 
 
@@ -2862,17 +2900,33 @@ def editar_cliente(cliente_id):
         cliente.nome = request.form.get('nome')
         cliente.email = request.form.get('email')
         nova_senha = request.form.get('senha')
-        if nova_senha:  # Só atualiza a senha se ela for fornecida
+        if nova_senha:  # Só atualiza a senha se fornecida
             cliente.senha = generate_password_hash(nova_senha)
+        
+        # Debug: exibe o valor recebido do checkbox
+        debug_checkbox = request.form.get('habilita_pagamento')
+        print("DEBUG: Valor recebido do checkbox 'habilita_pagamento':", debug_checkbox)
+        # Se você tiver um logger configurado, pode usar:
+        # logger.debug("Valor recebido do checkbox 'habilita_pagamento': %s", debug_checkbox)
+        
+        cliente.habilita_pagamento = True if debug_checkbox == 'on' else False
+        
+        # Debug: exibe o valor que está sendo salvo
+        print("DEBUG: Valor salvo em cliente.habilita_pagamento:", cliente.habilita_pagamento)
+        # logger.debug("Valor salvo em cliente.habilita_pagamento: %s", cliente.habilita_pagamento)
+
         try:
             db.session.commit()
             flash("Cliente atualizado com sucesso!", "success")
         except Exception as e:
             db.session.rollback()
+            print("DEBUG: Erro ao atualizar cliente:", e)
+            # logger.error("Erro ao atualizar cliente: %s", e, exc_info=True)
             flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
         return redirect(url_for('routes.dashboard'))
     
     return render_template('editar_cliente.html', cliente=cliente)
+
 
 @routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
 @login_required
