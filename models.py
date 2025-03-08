@@ -125,6 +125,9 @@ class Oficina(db.Model):
 
     dias = db.relationship('OficinaDia', back_populates="oficina", lazy=True, cascade="all, delete-orphan")
 
+    # Novo campo: Se True, inscrição gratuita; se False, será necessário realizar pagamento.
+    inscricao_gratuita = db.Column(db.Boolean, default=True)
+
     # 🔥 Corrigido o método __init__
     def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None):
         self.titulo = titulo
@@ -177,6 +180,9 @@ class Inscricao(db.Model):
     qr_code_token = db.Column(db.String(100), unique=True, nullable=True)
 
     checkin_attempts = db.Column(db.Integer, default=0)
+
+    # Novo campo: referência ao tipo de inscrição, se aplicável.
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('inscricao_tipo.id'), nullable=True)
     
     usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))  # Adicionar lazy loading
     oficina = db.relationship('Oficina', backref='inscritos')
@@ -186,11 +192,26 @@ class Inscricao(db.Model):
         self.usuario_id = usuario_id
         self.oficina_id = oficina_id
         self.cliente_id = cliente_id
+        self.qr_code_token = str(uuid.uuid4())
     
     def __repr__(self):
         return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
     
+
+# Novo modelo para tipos de inscrição (caso a oficina seja paga)
+class InscricaoTipo(db.Model):
+    __tablename__ = 'inscricao_tipo'
     
+    id = db.Column(db.Integer, primary_key=True)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)  # Ex: Estudante, Professor
+    preco = db.Column(db.Numeric(10,2), nullable=False)
+    
+    oficina = db.relationship('Oficina', backref=db.backref('tipos_inscricao', lazy=True))
+    
+    def __repr__(self):
+        return f"<InscricaoTipo {self.nome}: R$ {self.preco}>"
+
 
 
 # =================================
@@ -292,6 +313,9 @@ class Cliente(db.Model, UserMixin):
     ativo = db.Column(db.Boolean, default=True)  # Habilitação pelo superusuário
     tipo = db.Column(db.String(20), default='cliente')  # Define o tipo do usuário
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionando relação com Cliente
+
+    # Campo novo para pagamento:
+    habilita_pagamento = db.Column(db.Boolean, default=False)
 
      # Relacionamento com Oficina
     oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`
