@@ -204,9 +204,11 @@
                                       data-bs-target="#modalEditarCliente"
                                       data-id="{{ cliente.id }}"
                                       data-nome="{{ cliente.nome }}"
-                                      data-email="{{ cliente.email }}">
+                                      data-email="{{ cliente.email }}"
+                                      data-habilita-pagamento="{{ cliente.habilita_pagamento }}">
                                 <i class="bi bi-pencil"></i>
                               </button>
+                      
                               <a href="{{ url_for('routes.toggle_cliente', cliente_id=cliente.id) }}" 
                                  class="btn btn-sm btn-outline-{{ 'secondary' if cliente.ativo else 'success' }}">
                                 {{ "Restringir" if cliente.ativo else "Ativar" }}
@@ -998,12 +1000,14 @@
 <div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalEditarClienteLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
+      <!-- Use um placeholder (cliente_id=0) para que o action seja atualizado via JS -->
       <form action="{{ url_for('routes.editar_cliente', cliente_id=0) }}" method="POST" id="formEditarCliente">
         <div class="modal-header">
           <h5 class="modal-title" id="modalEditarClienteLabel">Editar Cliente</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">
+          <input type="hidden" name="cliente_id" id="clienteId" value="">
           <div class="mb-3">
             <label for="clienteNome" class="form-label">Nome</label>
             <input type="text" class="form-control" name="nome" id="clienteNome" required>
@@ -1017,6 +1021,12 @@
             <input type="password" class="form-control" name="senha" id="clienteSenha" placeholder="Deixe em branco para manter a senha atual">
             <small class="form-text text-muted">A senha só será alterada se você preencher este campo.</small>
           </div>
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="habilita_pagamento" name="habilita_pagamento">
+            <label class="form-check-label" for="habilita_pagamento">
+              Habilitar Pagamento
+            </label>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -1026,6 +1036,9 @@
     </div>
   </div>
 </div>
+
+
+
 
 <script>
   document.querySelectorAll('[id^="modalCertificadoIndividual"]').forEach(function(modalElement) {
@@ -1043,20 +1056,28 @@
   var editarClienteBaseUrl = "{{ url_for('routes.editar_cliente', cliente_id=0) }}".replace('/0', '');
 
   var modalEditarCliente = document.getElementById('modalEditarCliente');
-modalEditarCliente.addEventListener('show.bs.modal', function (event) {
-    var button = event.relatedTarget;
-    var clienteId = button.getAttribute('data-id');
-    var nome = button.getAttribute('data-nome');
-    var email = button.getAttribute('data-email');
-    
-    var form = modalEditarCliente.querySelector('#formEditarCliente');
-    form.querySelector('#clienteNome').value = nome;
-    form.querySelector('#clienteEmail').value = email;
-    form.querySelector('#clienteSenha').value = ''; // Mantém em branco
-    
-    form.action = editarClienteBaseUrl + '/' + clienteId;
-});
+  modalEditarCliente.addEventListener('show.bs.modal', function (event) {
+      var button = event.relatedTarget;
+      var clienteId = button.getAttribute('data-id');
+      var nome = button.getAttribute('data-nome');
+      var email = button.getAttribute('data-email');
+      var habilitaPagamento = button.getAttribute('data-habilita-pagamento'); // Novo atributo
+
+      var form = modalEditarCliente.querySelector('#formEditarCliente');
+      form.querySelector('#clienteNome').value = nome;
+      form.querySelector('#clienteEmail').value = email;
+      form.querySelector('#clienteSenha').value = ''; // Mantém em branco
+      
+      // Converte para minúsculas e verifica se é "true"
+      var isPagamentoEnabled = (habilitaPagamento && habilitaPagamento.toLowerCase() === 'true');
+      form.querySelector('#habilita_pagamento').checked = isPagamentoEnabled;
+      
+      form.action = editarClienteBaseUrl + '/' + clienteId;
+  });
 </script>
+
+
+
 
 
 <!-- Script para buscar estados e cidades via API do IBGE -->
