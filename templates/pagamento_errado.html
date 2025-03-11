@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erro no Pagamento</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="confirmation-container">
+        <div class="confirmation-card">
+            <div class="confirmation-header">
+                <h1>❌ Pagamento Não Processado ❌</h1>
+            </div>
+            <div class="confirmation-body">
+                <p>Infelizmente, ocorreu um erro ao processar seu pagamento. Por favor, tente novamente ou escolha outro método de pagamento.</p>
+                <div class="order-details">
+                    <h2>Detalhes do Erro</h2>
+                    <p><strong>Código do Erro:</strong> #ERRO123</p>
+                    <p><strong>Motivo:</strong> Cartão recusado ou dados inválidos.</p>
+                    <p><strong>Valor:</strong> R$ 250,00</p>
+                </div>
+                <div class="confirmation-actions">
+                    <button onclick="window.location.href='/pagamento'">Tentar Novamente</button>
+                    <button onclick="window.location.href='/contato'">Falar com Suporte</button>
+                </div>
+            </div>
+            <div class="confirmation-footer">
+                <p>Em caso de dúvidas, entre em contato conosco: <a href="mailto:suporte@loja.com">suporte@loja.com</a></p>
+            </div>
+        </div>
+    </div>
+
+<style>
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.confirmation-container {
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    text-align: center;
+}
+
+.confirmation-header h1 {
+    color: #ff4d4d; /* Vermelho para indicar erro */
+    font-size: 24px;
+    margin-bottom: 20px;
+}
+
+.confirmation-body {
+    color: #333;
+}
+
+.order-details {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.order-details h2 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.order-details p {
+    margin: 5px 0;
+    font-size: 16px;
+}
+
+.confirmation-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.confirmation-actions button {
+    background-color: #ff4d4d; /* Vermelho para combinar com o tema de erro */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+.confirmation-actions button:hover {
+    background-color: #e60000; /* Tom mais escuro de vermelho */
+}
+
+.confirmation-footer {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #777;
+}
+
+.confirmation-footer a {
+    color: #ff4d4d; /* Vermelho para links */
+    text-decoration: none;
+}
+
+.confirmation-footer a:hover {
+    text-decoration: underline;
+}
+</style>
+</body>
+</html>

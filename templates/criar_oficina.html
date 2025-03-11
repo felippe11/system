@@ -21,6 +21,18 @@
               </select>
             </div>
           {% endif %}
+
+          <!-- Novo campo para selecionar o Evento -->
+          <div class="mb-3">
+            <label for="evento_id" class="form-label">Evento:</label>
+            <select name="evento_id" id="evento_id" class="form-select" required>
+              <option value="">-- Selecione um Evento --</option>
+              {% for evento in eventos %}
+                <option value="{{ evento.id }}">{{ evento.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div class="mb-3 col-md-6">
             <label for="titulo" class="form-label">Título da Oficina:</label>
             <input type="text" class="form-control" id="titulo" name="titulo" required>
@@ -113,26 +125,24 @@
         <div class="mb-3">
           <label class="form-label">Configuração de Inscrição:</label>
           <div class="form-check">
-            <!-- O checkbox inicia desmarcado -->
             <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita">
             <label class="form-check-label" for="inscricao_gratuita">
-               Inscrição Gratuita
+              Inscrição Gratuita
             </label>
           </div>
         </div>
         
-        <!-- Container para Tipos de Inscrição e Preços (visível por padrão) -->
+        <!-- Container para Tipos de Inscrição e Preços -->
         <div id="tipos-inscricao-container">
           <div id="tipos-inscricao-list">
-            <!-- Inicia já com um conjunto de campos para um tipo de inscrição -->
             <div class="row mb-2 align-items-center">
               <div class="col-md-4">
                 <label class="form-label">Tipo de Inscrição:</label>
-                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição" required>
+                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
               </div>
               <div class="col-md-2">
                 <label class="form-label">Preço:</label>
-                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço" required>
+                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
               </div>
               <div class="col-md-2">
                 <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
@@ -150,18 +160,7 @@
   </div>
 </div>
 
-<script>
-  document.getElementById('inscricao_gratuita').addEventListener('change', function(){
-  var container = document.getElementById('tipos-inscricao-container');
-  // Se o checkbox estiver marcado (oficina gratuita), esconde os tipos de inscrição; caso contrário, exibe
-  if(this.checked){
-    container.style.display = 'none';
-  } else {
-    container.style.display = 'block';
-  }
-});
-</script>
-
+<!-- Scripts JavaScript -->
 <script>
   document.getElementById('add-horario').addEventListener('click', function () {
     let container = document.getElementById('horarios-container');
@@ -203,20 +202,25 @@
           cidadeSelect.appendChild(option);
         });
       })
-      .catch(error => console.error("Erro ao buscar cidades:", error));
+      .catch(error => {
+        console.error("Erro ao buscar cidades:", error);
+        cidadeSelect.innerHTML = "<option value=''>Erro ao carregar cidades</option>";
+      });
   });
 
   document.querySelector("form").addEventListener("submit", function(event) {
     var estado = document.getElementById("estado").value;
     var cidade = document.getElementById("cidade").value;
-    if (!estado || !cidade) {
+    var evento = document.getElementById("evento_id").value;
+    if (!estado || !cidade || !evento) {
       event.preventDefault();
-      alert("❌ ERRO: Selecione um estado e uma cidade antes de continuar.");
+      alert("❌ ERRO: Selecione um evento, estado e cidade antes de continuar.");
     }
   });
-  
+
+  </script>
   {% if current_user.habilita_pagamento %}
-  // Toggle exibição dos campos de tipos de inscrição
+  <script>
   document.getElementById('inscricao_gratuita').addEventListener('change', function(){
     var container = document.getElementById('tipos-inscricao-container');
     if(this.checked){
@@ -225,38 +229,36 @@
       container.style.display = 'block';
     }
   });
-  
-  // Adicionar novos campos para tipos de inscrição
+
   document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
     var container = document.getElementById('tipos-inscricao-list');
     var div = document.createElement('div');
-    div.className = 'row mb-2';
+    div.className = 'row mb-2 align-items-center';
     div.innerHTML = `
-            <div class="row mb-2 align-items-center">
-              <div class="col-md-4">
-                <label class="form-label">Tipo de Inscrição:</label>
-                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição" required>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label">Preço:</label>
-                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço" required>
-              </div>
-              <div class="col-md-2">
-                <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-              </div>
-            </div>
+      <div class="col-md-4">
+        <label class="form-label">Tipo de Inscrição:</label>
+        <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Preço:</label>
+        <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+      </div>
     `;
     container.appendChild(div);
   });
-  
-  // Remover um conjunto de campos de tipo de inscrição
+
   document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
     if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
       e.target.parentElement.parentElement.remove();
     }
   });
+  </script>
   {% endif %}
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Incluindo Bootstrap via CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 {% endblock %}

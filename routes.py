@@ -92,33 +92,45 @@ def home():
 #    CADASTRO DE PARTICIPANTE
 # ===========================
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
-def cadastro_participante():
+@routes.route('/inscricao/<path:identifier>', methods=['GET', 'POST'])  # Aceita slug ou token
+def cadastro_participante(identifier=None):
     from collections import defaultdict
     from datetime import datetime
 
     alert = None
-    token = request.args.get('token')  # Pega o token da URL se existir
     cliente_id = None
     evento = None
+    token = request.args.get('token') if not identifier else identifier  # Pega o token da URL ou usa o identifier
 
     # 1) Inicializa variáveis
     sorted_keys = []
     grouped_oficinas = {}
-    oficinas = []  # <-- Inicializamos aqui
+    oficinas = []
 
+    # Busca o link pelo token ou slug
+    link = None
     if token:
-        link = LinkCadastro.query.filter_by(token=token).first()
-        if not link:
-            flash("Erro: Link de cadastro inválido ou expirado!", "danger")
-            return redirect(url_for('routes.cadastro_participante'))
-        cliente_id = link.cliente_id
-        evento = Evento.query.filter_by(cliente_id=cliente_id).first()
+        link = LinkCadastro.query.filter(
+            (LinkCadastro.token == token) | 
+            (LinkCadastro.slug_customizado == token)
+        ).first()
 
-        # Carrega oficinas do cliente
+    if not link:
+        flash("Erro: Link de cadastro inválido ou expirado!", "danger")
+        return redirect(url_for('routes.cadastro_participante'))
+
+    cliente_id = link.cliente_id
+    evento = Evento.query.get(link.evento_id) if link.evento_id else None
+
+    if evento:
+        # Carrega oficinas do evento
+        oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
+    else:
+        # Fallback: carrega oficinas do cliente se não houver evento associado
         oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
 
+    # Agrupa oficinas por data
     temp_group = defaultdict(list)
-
     for oficina in oficinas:
         for dia in oficina.dias:
             data_str = dia.data.strftime('%d/%m/%Y')
@@ -126,18 +138,16 @@ def cadastro_participante():
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else '',
-                'horario_inicio': dia.horario_inicio,  # string ex.: "09:30"
+                'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })
 
-    # Agora ordenamos, para cada data, as atividades pelo horário de início:
+    # Ordena as atividades por horário de início para cada data
     for date_str in temp_group:
         temp_group[date_str].sort(key=lambda x: x['horario_inicio'])
 
-        # Ordena as datas
-        sorted_temp = sorted(temp_group.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
-        grouped_oficinas = temp_group
-        sorted_keys = sorted_temp
+    sorted_keys = sorted(temp_group.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+    grouped_oficinas = temp_group
 
     if request.method == 'POST':
         # Lógica de cadastro do participante
@@ -151,29 +161,46 @@ def cadastro_participante():
         estados_str = ','.join(estados) if estados else ''
         cidades_str = ','.join(cidades) if cidades else ''
 
+        # Verifica se todos os campos obrigatórios foram preenchidos
+        if not all([nome, cpf, email, senha, formacao]):
+            flash('Erro: Todos os campos obrigatórios devem ser preenchidos!', 'danger')
+            return render_template(
+                'cadastro_participante.html',
+                alert={"category": "danger", "message": "Todos os campos obrigatórios devem ser preenchidos!"},
+                token=link.token,
+                evento=evento,
+                sorted_keys=sorted_keys,
+                grouped_oficinas=grouped_oficinas
+            )
+
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
         if usuario_existente:
             flash('Erro: Este e-mail já está cadastrado!', 'danger')
-            return redirect(url_for('routes.cadastro_participante', token=token) if token else url_for('routes.cadastro_participante'))
+            return render_template(
+                'cadastro_participante.html',
+                alert={"category": "danger", "message": "Este e-mail já está cadastrado!"},
+                token=link.token,
+                evento=evento,
+                sorted_keys=sorted_keys,
+                grouped_oficinas=grouped_oficinas
+            )
 
         # Verifica se o CPF já existe
         usuario_existente = Usuario.query.filter_by(cpf=cpf).first()
         if usuario_existente:
             alert = {"category": "danger", "message": "CPF já está sendo usado por outro usuário!"}
-        elif not senha:
-            alert = {"category": "danger", "message": "A senha é obrigatória!"}
         else:
             novo_usuario = Usuario(
                 nome=nome,
                 cpf=cpf,
                 email=email,
-                senha=generate_password_hash(senha),
+                senha=generate_password_hash(senha),  # Usando generate_password_hash diretamente
                 formacao=formacao,
                 tipo='participante',
                 estados=estados_str,
                 cidades=cidades_str,
-                cliente_id=cliente_id  # vincula ao cliente, se houver
+                cliente_id=cliente_id  # Vincula ao cliente do link
             )
             try:
                 db.session.add(novo_usuario)
@@ -185,11 +212,11 @@ def cadastro_participante():
                 print(f"Erro ao cadastrar usuário: {e}")
                 alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
 
-    # Ao final, renderiza o template
+    # Renderiza o template
     return render_template(
         'cadastro_participante.html',
         alert=alert,
-        token=token,
+        token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
         grouped_oficinas=grouped_oficinas
@@ -591,94 +618,138 @@ def dashboard_participante():
 @login_required
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso Autorizado!', 'danger')
-        
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
 
     estados = obter_estados()
-    ministrantes_disponiveis = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
-    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas para admin
+    ministrantes_disponiveis = (
+        Ministrante.query.filter_by(cliente_id=current_user.id).all()
+        if current_user.tipo == 'cliente'
+        else Ministrante.query.all()
+    )
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []
+    eventos_disponiveis = (
+        Evento.query.filter_by(cliente_id=current_user.id).all()
+        if current_user.tipo == 'cliente'
+        else Evento.query.all()
+    )
 
     if request.method == 'POST':
+        print("Dados recebidos do formulário:", request.form)  # Log para depuração
+
+        # Captura os campos do formulário
         titulo = request.form.get('titulo')
         descricao = request.form.get('descricao')
-        ministrante_id = request.form.get('ministrante_id')
-        if ministrante_id == '':
-            ministrante_id = None
+        ministrante_id = request.form.get('ministrante_id') or None
         vagas = request.form.get('vagas')
         carga_horaria = request.form.get('carga_horaria')
         estado = request.form.get('estado')
         cidade = request.form.get('cidade')
         opcoes_checkin = request.form.get('opcoes_checkin')
         palavra_correta = request.form.get('palavra_correta')
+        evento_id = request.form.get('evento_id')
 
-        if not estado or not cidade:
-            flash("Erro: Estado e cidade são obrigatórios!", "danger")
-            return redirect(url_for('routes.criar_oficina'))
-        
-        # Definir o cliente da oficina
-        if current_user.tipo == 'admin':
-            cliente_id = request.form.get('cliente_id') or None  # O admin pode escolher um cliente
-        else:
-            cliente_id = current_user.id  # Clientes só podem criar oficinas para si mesmos
-
-        # Verifica se o cliente possui habilitação de pagamento e se a oficina será paga
-        if current_user.habilita_pagamento:
-            # Captura a informação se a inscrição é gratuita ou não:
-            inscricao_gratuita = True if request.form.get('inscricao_gratuita') == 'on' else False
-        else:
-            inscricao_gratuita = True  # Força para gratuita se não houver pagamento
-
-        nova_oficina = Oficina(
-            titulo=titulo,
-            descricao=descricao,
-            ministrante_id=ministrante_id,
-            vagas=int(vagas),
-            carga_horaria=carga_horaria,
-            estado=estado,
-            cidade=cidade,
-            cliente_id=cliente_id,
-            opcoes_checkin=opcoes_checkin,
-            palavra_correta=palavra_correta
-        )
-        nova_oficina.inscricao_gratuita = inscricao_gratuita
-        db.session.add(nova_oficina)
-        db.session.commit()
-
-        if not nova_oficina.inscricao_gratuita:
-            # Supondo que o formulário envia listas com os nomes e preços dos tipos
-            nomes_tipos = request.form.getlist('nome_tipo[]')
-            precos = request.form.getlist('preco_tipo[]')
-            for nome, preco in zip(nomes_tipos, precos):
-                novo_tipo = InscricaoTipo(
-                    oficina_id=nova_oficina.id,
-                    nome=nome,
-                    preco=preco  # Certifique-se de converter para o tipo numérico se necessário
-                )
-                db.session.add(novo_tipo)
-            db.session.commit()
-
-        # ➜ Salvar as datas e horários na tabela `OficinaDia`
-        datas = request.form.getlist('data[]')
-        horarios_inicio = request.form.getlist('horario_inicio[]')
-        horarios_fim = request.form.getlist('horario_fim[]')
-
-        for i in range(len(datas)):
-            novo_dia = OficinaDia(
-                oficina_id=nova_oficina.id,
-                data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
-                horario_inicio=horarios_inicio[i],
-                horario_fim=horarios_fim[i]
+        # Validação básica dos campos obrigatórios
+        if not all([titulo, descricao, vagas, carga_horaria, estado, cidade, evento_id]):
+            flash("Erro: Todos os campos obrigatórios devem ser preenchidos!", "danger")
+            return render_template(
+                'criar_oficina.html',
+                estados=estados,
+                ministrantes=ministrantes_disponiveis,
+                clientes=clientes_disponiveis,
+                eventos=eventos_disponiveis,
+                datas=request.form.getlist('data[]'),
+                horarios_inicio=request.form.getlist('horario_inicio[]'),
+                horarios_fim=request.form.getlist('horario_fim[]')
             )
-            db.session.add(novo_dia)
 
-        db.session.commit()
+        # Definir o cliente da oficina
+        cliente_id = (
+            request.form.get('cliente_id') if current_user.tipo == 'admin' else current_user.id
+        )
 
-        flash('Oficina criada com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+        # Verifica se o cliente possui habilitação de pagamento
+        inscricao_gratuita = (
+            True if request.form.get('inscricao_gratuita') == 'on' else False
+            if current_user.habilita_pagamento else True
+        )
 
-    return render_template('criar_oficina.html', estados=estados, ministrantes=ministrantes_disponiveis, clientes=clientes_disponiveis)
+        try:
+            # Cria a nova oficina
+            nova_oficina = Oficina(
+                titulo=titulo,
+                descricao=descricao,
+                ministrante_id=ministrante_id,
+                vagas=int(vagas),
+                carga_horaria=carga_horaria,
+                estado=estado,
+                cidade=cidade,
+                cliente_id=cliente_id,
+                evento_id=evento_id,
+                opcoes_checkin=opcoes_checkin,
+                palavra_correta=palavra_correta
+            )
+            nova_oficina.inscricao_gratuita = inscricao_gratuita
+            db.session.add(nova_oficina)
+            db.session.flush()  # Garante que o ID da oficina esteja disponível
 
+            # Adiciona os tipos de inscrição (se não for gratuita)
+            if not inscricao_gratuita:
+                nomes_tipos = request.form.getlist('nome_tipo[]')
+                precos = request.form.getlist('preco_tipo[]')
+                if not nomes_tipos or not precos:
+                    raise ValueError("Tipos de inscrição e preços são obrigatórios para oficinas pagas.")
+                for nome, preco in zip(nomes_tipos, precos):
+                    novo_tipo = InscricaoTipo(
+                        oficina_id=nova_oficina.id,
+                        nome=nome,
+                        preco=float(preco)
+                    )
+                    db.session.add(novo_tipo)
 
+            # Adiciona os dias e horários
+            datas = request.form.getlist('data[]')
+            horarios_inicio = request.form.getlist('horario_inicio[]')
+            horarios_fim = request.form.getlist('horario_fim[]')
+            if not datas or len(datas) != len(horarios_inicio) or len(datas) != len(horarios_fim):
+                raise ValueError("Datas e horários inconsistentes.")
+            for i in range(len(datas)):
+                novo_dia = OficinaDia(
+                    oficina_id=nova_oficina.id,
+                    data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
+                    horario_inicio=horarios_inicio[i],
+                    horario_fim=horarios_fim[i]
+                )
+                db.session.add(novo_dia)
+
+            db.session.commit()
+            flash('Oficina criada com sucesso!', 'success')
+            return redirect(
+                url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard')
+            )
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro ao criar oficina: {str(e)}")  # Log do erro
+            flash(f"Erro ao criar oficina: {str(e)}", "danger")
+            return render_template(
+                'criar_oficina.html',
+                estados=estados,
+                ministrantes=ministrantes_disponiveis,
+                clientes=clientes_disponiveis,
+                eventos=eventos_disponiveis,
+                datas=request.form.getlist('data[]'),
+                horarios_inicio=request.form.getlist('horario_inicio[]'),
+                horarios_fim=request.form.getlist('horario_fim[]')
+            )
+
+    return render_template(
+        'criar_oficina.html',
+        estados=estados,
+        ministrantes=ministrantes_disponiveis,
+        clientes=clientes_disponiveis,
+        eventos=eventos_disponiveis
+    )
 
 @routes.route('/get_cidades/<estado_sigla>')
 def get_cidades(estado_sigla):
@@ -2771,31 +2842,79 @@ def oficinas_disponiveis():
     oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
     return render_template('oficinas.html', oficinas=oficinas)
 
-@routes.route('/gerar_link', methods=['GET'])
+@routes.route('/gerar_link', methods=['GET', 'POST'])
 @login_required
 def gerar_link():
-    if session.get('user_type') not in ['cliente', 'admin']:
+    if current_user.tipo not in ['cliente', 'admin']:
         return "Forbidden", 403
-    
+
     cliente_id = current_user.id
-    novo_token = str(uuid.uuid4())
 
-    # Criar o link de cadastro no banco
-    novo_link = LinkCadastro(cliente_id=cliente_id, token=novo_token)
-    db.session.add(novo_link)
-    db.session.commit()
+    if request.method == 'POST':
+        # Obtém os dados JSON da requisição
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Nenhum dado enviado'}), 400
 
-    # Detecta se está rodando localmente ou no Render
-    if request.host.startswith("127.0.0.1") or "localhost" in request.host:
-        base_url = "http://127.0.0.1:5000"  # URL local
-    else:
-        base_url = "https://appfiber.com.br"  # URL do Render
+        evento_id = data.get('evento_id')
+        slug_customizado = data.get('slug_customizado')
 
-    # Criar o link apontando para /cadastro_participante?token=TOKEN
-    link_gerado = f"{base_url}{url_for('routes.cadastro_participante', token=novo_token)}"
+        if not evento_id:
+            return jsonify({'success': False, 'message': 'Evento não especificado'}), 400
 
-    return link_gerado  # Retorna apenas o link para ser exibido no modal
+        # Verifica se o evento pertence ao cliente
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=cliente_id).first()
+        if not evento and current_user.tipo != 'admin':
+            return jsonify({'success': False, 'message': 'Evento inválido ou não autorizado'}), 403
 
+        # Gera um token único
+        novo_token = str(uuid.uuid4())
+
+        # Valida e limpa o slug personalizado
+        if slug_customizado:
+            slug_customizado = slug_customizado.strip().lower().replace(' ', '-')
+            if LinkCadastro.query.filter_by(slug_customizado=slug_customizado).first():
+                return jsonify({'success': False, 'message': 'Slug já está em uso'}), 400
+        else:
+            slug_customizado = None
+
+        # Cria o link de cadastro no banco
+        novo_link = LinkCadastro(
+            cliente_id=cliente_id,
+            evento_id=evento_id,
+            token=novo_token,
+            slug_customizado=slug_customizado
+        )
+        db.session.add(novo_link)
+        db.session.commit()
+
+        # Define a URL base dependendo do ambiente
+        if request.host.startswith("127.0.0.1") or "localhost" in request.host:
+            base_url = "http://127.0.0.1:5000"  # URL local
+        else:
+            base_url = "https://appfiber.com.br"  # URL de produção
+
+        # Gera o link final
+        if slug_customizado:
+            link_gerado = f"{base_url}/inscricao/{slug_customizado}"
+        else:
+            link_gerado = f"{base_url}{url_for('routes.cadastro_participante', token=novo_token)}"
+
+        return jsonify({'success': True, 'link': link_gerado})
+
+    # Para GET, apenas retorna os eventos disponíveis
+    eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
+    return jsonify({'eventos': [{'id': e.id, 'nome': e.nome} for e in eventos]})
+
+@routes.route('/inscricao/<slug_customizado>', methods=['GET'])
+def inscricao_personalizada(slug_customizado):
+    # Busca o LinkCadastro pelo slug personalizado
+    link = LinkCadastro.query.filter_by(slug_customizado=slug_customizado).first()
+    if not link or not link.evento_id:
+        return "Link inválido ou sem evento associado", 404
+
+    # Redireciona para a rota cadastro_participante com o token
+    return redirect(url_for('routes.cadastro_participante', token=link.token))
 
 
 @app.route('/inscricao/<token>', methods=['GET', 'POST'])
@@ -3609,8 +3728,15 @@ def configurar_evento():
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
-    evento = Evento.query.filter_by(cliente_id=current_user.id).first()
+    # Lista todos os eventos do cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     
+    # Evento selecionado (por padrão, None até que o usuário escolha)
+    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    evento = None
+    if evento_id:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
@@ -3628,14 +3754,15 @@ def configurar_evento():
             banner.save(caminho_banner)
             banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
 
-        if evento:
+        if evento:  # Atualizar evento existente
             evento.nome = nome
             evento.descricao = descricao
             evento.programacao = programacao
             evento.localizacao = localizacao
             evento.link_mapa = link_mapa
-            evento.banner_url = banner_url
-        else:
+            if banner_url:
+                evento.banner_url = banner_url
+        else:  # Criar novo evento se nenhum for selecionado
             evento = Evento(
                 cliente_id=current_user.id,
                 nome=nome,
@@ -3647,12 +3774,15 @@ def configurar_evento():
             )
             db.session.add(evento)
 
-        db.session.commit()
-        flash('Evento atualizado com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard_cliente'))
+        try:
+            db.session.commit()
+            flash('Evento salvo com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao salvar evento: {str(e)}', 'danger')
 
-    return render_template('configurar_evento.html', evento=evento)
-
+    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
 from collections import defaultdict
 from datetime import datetime
 
@@ -3697,3 +3827,48 @@ def exibir_evento(evento_id):
         sorted_keys=sorted_keys,
         grouped_oficinas=grouped_oficinas
     )
+
+@routes.route('/criar_evento', methods=['GET', 'POST'])
+@login_required
+def criar_evento():
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        programacao = request.form.get('programacao')
+        localizacao = request.form.get('localizacao')
+        link_mapa = request.form.get('link_mapa')
+
+        banner = request.files.get('banner')
+        banner_url = None
+        
+        if banner:
+            filename = secure_filename(banner.filename)
+            caminho_banner = os.path.join('static/banners', filename)
+            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
+            banner.save(caminho_banner)
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+
+        novo_evento = Evento(
+            cliente_id=current_user.id,
+            nome=nome,
+            descricao=descricao,
+            programacao=programacao,
+            localizacao=localizacao,
+            link_mapa=link_mapa,
+            banner_url=banner_url
+        )
+        
+        try:
+            db.session.add(novo_evento)
+            db.session.commit()
+            flash('Evento criado com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar evento: {str(e)}', 'danger')
+
+    return render_template('criar_evento.html')
