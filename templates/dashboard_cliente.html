@@ -181,6 +181,9 @@
                   <button id="gerarLinkBtn" class="btn btn-primary">
                     <i class="bi bi-link-45deg"></i> Gerar Link de Inscrição
                   </button>
+                  <a href="{{ url_for('routes.criar_evento') }}" class="btn btn-success" id="btnCriarEvento">
+                    <i class="bi bi-calendar-event"></i> Criar Evento
+                  </a>
                   <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-success" id="btnCriarOficina">
                     <i class="bi bi-plus-circle"></i> Criar Oficina
                   </a>
@@ -631,14 +634,32 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalLinkLabel">Link de Inscrição Gerado</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="modalLinkLabel">Gerar Link de Inscrição Personalizado</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p>Copie o link abaixo e compartilhe:</p>
-        <input type="text" id="linkCadastro" class="form-control" readonly>
-        <button class="btn btn-secondary mt-2" onclick="copiarLink()">Copiar Link</button>
-        <a id="whatsappShare" class="btn btn-success mt-2" target="_blank">Enviar pelo WhatsApp</a>
+        <div class="mb-3">
+          <label for="eventoSelect" class="form-label">Selecionar Evento</label>
+          <select id="eventoSelect" class="form-select" required>
+            <option value="">-- Selecione um Evento --</option>
+            <!-- Opções serão preenchidas via JavaScript -->
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="slugInput" class="form-label">Slug Personalizado (opcional)</label>
+          <input type="text" id="slugInput" class="form-control" placeholder="ex: meu-evento-2023">
+          <small class="form-text text-muted">Use letras, números e hífens. Deixe em branco para um link padrão.</small>
+        </div>
+        <div class="mb-3">
+          <label for="linkCadastro" class="form-label">Link Gerado</label>
+          <input type="text" id="linkCadastro" class="form-control" readonly>
+        </div>
+        <button id="gerarLinkConfirm" class="btn btn-primary">Gerar Link</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="copiarLink()">Copiar Link</button>
+        <a id="whatsappShare" class="btn btn-success" href="#" target="_blank">Enviar pelo WhatsApp</a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
       </div>
     </div>
   </div>
@@ -692,48 +713,93 @@
 
 <script>
   document.getElementById("gerarLinkBtn").addEventListener("click", function() {
-    fetch("{{ url_for('routes.gerar_link') }}")
-      .then(response => response.text())
-      .then(linkGerado => {
-        document.getElementById("linkCadastro").value = linkGerado;
-        
-        // Atualiza o link do WhatsApp
-        const mensagem = "Olá! Cadastre-se através deste link: " + linkGerado;
-        document.getElementById("whatsappShare").href =
-          "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
+    // Abre o modal
+    var modal = new bootstrap.Modal(document.getElementById("modalLinkCadastro"));
+    modal.show();
 
-        // Exibe o modal
-        var modal = new bootstrap.Modal(document.getElementById("modalLinkCadastro"));
-        modal.show();
+    // Carrega os eventos disponíveis
+    fetch("{{ url_for('routes.gerar_link') }}")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Erro ao carregar eventos: ' + response.statusText);
+        }
+        return response.json();
+      })
+      .then(data => {
+        const eventoSelect = document.getElementById("eventoSelect");
+        eventoSelect.options.length = 0; // Limpa as opções existentes
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "-- Selecione um Evento --";
+        eventoSelect.appendChild(defaultOption);
+
+        if (data.eventos && data.eventos.length > 0) {
+          data.eventos.forEach(evento => {
+            const option = document.createElement("option");
+            option.value = evento.id;
+            option.textContent = evento.nome;
+            eventoSelect.appendChild(option);
+          });
+        } else {
+          alert("Nenhum evento disponível para gerar links.");
+        }
       })
       .catch(error => {
-        console.error("Erro ao gerar o link:", error);
-        alert("Erro ao gerar o link. Tente novamente.");
+        console.error("Erro ao carregar eventos:", error);
+        alert("Erro ao carregar os eventos. Tente novamente mais tarde.");
       });
   });
 
+  document.getElementById("gerarLinkConfirm").addEventListener("click", function() {
+    const eventoId = document.getElementById("eventoSelect").value;
+    const slugCustomizado = document.getElementById("slugInput").value;
+
+    if (!eventoId) {
+      alert("Por favor, selecione um evento!");
+      return;
+    }
+
+    fetch("{{ url_for('routes.gerar_link') }}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: JSON.stringify({
+        evento_id: eventoId,
+        slug_customizado: slugCustomizado
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Erro ao gerar o link: ' + response.statusText);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        const linkGerado = data.link;
+        document.getElementById("linkCadastro").value = linkGerado;
+
+        // Atualiza o link do WhatsApp
+        const mensagem = "Olá! Cadastre-se no evento através deste link: " + linkGerado;
+        document.getElementById("whatsappShare").href =
+          "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
+      } else {
+        alert("Erro: " + data.message);
+      }
+    })
+    .catch(error => {
+      console.error("Erro ao gerar o link:", error);
+      alert("Erro ao gerar o link. Tente novamente.");
+    });
+  });
+
   function copiarLink() {
-    let linkInput = document.getElementById("linkCadastro");
+    const linkInput = document.getElementById("linkCadastro");
     linkInput.select();
     document.execCommand("copy");
     alert("Link copiado para a área de transferência!");
-  }
-
-  // Copiar texto do relatório
-  function copiarMensagem() {
-    let texto = document.getElementById("textoRelatorio").value;
-    navigator.clipboard.writeText(texto).then(() => {
-      alert("Mensagem copiada com sucesso!");
-    }).catch(err => {
-      alert("Falha ao copiar: " + err);
-    });
-  }
-
-  // Enviar texto via WhatsApp
-  function enviarWhatsAppRelatorio() {
-    let mensagem = document.getElementById("textoRelatorio").value;
-    let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
-    window.open(url, "_blank");
   }
 </script>
 <!-- Script para buscar estados e cidades via API do IBGE -->
