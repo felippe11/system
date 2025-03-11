@@ -770,18 +770,17 @@ def editar_oficina(oficina_id):
     estados = obter_estados()
     if current_user.tipo == 'cliente':
         ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
+        eventos_disponiveis = Evento.query.filter_by(cliente_id=current_user.id).all()
     else:
         ministrantes = Ministrante.query.all()
+        eventos_disponiveis = Evento.query.all()
 
-    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []  # Apenas admin pode ver
-
+    clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []
 
     if request.method == 'POST':
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
-        ministrante_id = request.form.get('ministrante_id')
-        if ministrante_id == '':
-            ministrante_id = None
+        ministrante_id = request.form.get('ministrante_id') or None
         oficina.ministrante_id = ministrante_id
         oficina.vagas = int(request.form.get('vagas'))
         oficina.carga_horaria = request.form.get('carga_horaria')
@@ -789,37 +788,57 @@ def editar_oficina(oficina_id):
         oficina.cidade = request.form.get('cidade')
         oficina.opcoes_checkin = request.form.get('opcoes_checkin')
         oficina.palavra_correta = request.form.get('palavra_correta')
+        oficina.evento_id = request.form.get('evento_id')  # Atualiza o evento_id
 
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
             oficina.cliente_id = request.form.get('cliente_id') or None
 
-        db.session.commit()
+        try:
+            # Atualizar os dias e horários
+            datas = request.form.getlist('data[]')
+            horarios_inicio = request.form.getlist('horario_inicio[]')
+            horarios_fim = request.form.getlist('horario_fim[]')
 
-        # ➜ Atualizar os dias e horários
-        datas = request.form.getlist('data[]')
-        horarios_inicio = request.form.getlist('horario_inicio[]')
-        horarios_fim = request.form.getlist('horario_fim[]')
+            if not datas or len(datas) != len(horarios_inicio) or len(datas) != len(horarios_fim):
+                raise ValueError("Datas e horários inconsistentes.")
 
-        # Apagar os registros antigos para evitar duplicação
-        OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
+            # Apagar os registros antigos para evitar duplicação
+            OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
 
-        for i in range(len(datas)):
-            novo_dia = OficinaDia(
-                oficina_id=oficina.id,
-                data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
-                horario_inicio=horarios_inicio[i],
-                horario_fim=horarios_fim[i]
+            for i in range(len(datas)):
+                novo_dia = OficinaDia(
+                    oficina_id=oficina.id,
+                    data=datetime.strptime(datas[i], '%Y-%m-%d').date(),
+                    horario_inicio=horarios_inicio[i],
+                    horario_fim=horarios_fim[i]
+                )
+                db.session.add(novo_dia)
+
+            db.session.commit()
+            flash('Oficina editada com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao editar oficina: {str(e)}', 'danger')
+            return render_template(
+                'editar_oficina.html',
+                oficina=oficina,
+                estados=estados,
+                ministrantes=ministrantes,
+                clientes=clientes_disponiveis,
+                eventos=eventos_disponiveis
             )
-            db.session.add(novo_dia)
 
-        db.session.commit()
-        flash('Oficina editada com sucesso!', 'success')
-
-        return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
-
-    return render_template('editar_oficina.html', oficina=oficina, estados=estados, ministrantes=ministrantes, clientes=clientes_disponiveis)
-
+    return render_template(
+        'editar_oficina.html',
+        oficina=oficina,
+        estados=estados,
+        ministrantes=ministrantes,
+        clientes=clientes_disponiveis,
+        eventos=eventos_disponiveis
+    )
 
 @routes.route('/excluir_oficina/<int:oficina_id>', methods=['POST'])
 @login_required

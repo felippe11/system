@@ -23,6 +23,19 @@
           </div>
         {% endif %}
 
+        <!-- Campo para selecionar o Evento -->
+        <div class="mb-3">
+          <label for="evento_id" class="form-label">Evento:</label>
+          <select name="evento_id" id="evento_id" class="form-select" required>
+            <option value="">-- Selecione um Evento --</option>
+            {% for evento in eventos %}
+              <option value="{{ evento.id }}" {% if oficina.evento_id == evento.id %} selected {% endif %}>
+                {{ evento.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div class="mb-3">
           <label for="titulo" class="form-label">Título da Oficina</label>
           <input type="text" class="form-control" id="titulo" name="titulo" value="{{ oficina.titulo }}" required>
@@ -35,12 +48,12 @@
 
         <div class="mb-3">
           <label for="ministrante_id" class="form-label">Ministrante</label>
-          <select name="ministrante_id" id="ministrante_id" class="form-select" required>
+          <select name="ministrante_id" id="ministrante_id" class="form-select">
             <option value="">-- Selecione um Ministrante --</option>
             {% for minist in ministrantes %}
-            <option value="{{ minist.id }}" {% if oficina.ministrante_id == minist.id %} selected {% endif %}>
-              {{ minist.nome }}
-            </option>
+              <option value="{{ minist.id }}" {% if oficina.ministrante_id == minist.id %} selected {% endif %}>
+                {{ minist.nome }}
+              </option>
             {% endfor %}
           </select>
         </div>
@@ -57,15 +70,14 @@
         </div>
 
         <div class="row">
-            <div class="mb-3 col-md-6">
-                <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
-                <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5" required>
-            </div>
-
-            <div class="mb-3 col-md-6">
-                <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
-                <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta" required>
-            </div>
+          <div class="mb-3 col-md-6">
+            <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
+            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5" required>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
+            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta" required>
+          </div>
         </div>
 
         <div class="mb-3">
@@ -73,7 +85,7 @@
           <div id="datas-container">
             {% for dia in oficina.dias %}
             <div class="data-item mb-2">
-              <div class="row g-2 align-items-certer">
+              <div class="row g-2 align-items-center">
                 <div class="col-md-4">
                   <input type="date" name="data[]" class="form-control" value="{{ dia.data.strftime('%Y-%m-%d') }}" required>
                 </div>
@@ -84,7 +96,7 @@
                   <input type="time" name="horario_fim[]" class="form-control" value="{{ dia.horario_fim }}" required>
                 </div>
                 <div class="col-md-1">
-                    <button type="button" class="btn btn-danger btn-sm" onclick="removerData(this)">Remover</button>
+                  <button type="button" class="btn btn-danger btn-sm" onclick="removerData(this)">Remover</button>
                 </div>
               </div>
             </div>
@@ -99,7 +111,7 @@
             <select name="estado" id="estado" class="form-select" required>
               <option value="">Selecione um estado</option>
               {% for sigla, nome in estados %}
-              <option value="{{ sigla }}" {% if oficina.estado == sigla %} selected {% endif %}>{{ nome }}</option>
+                <option value="{{ sigla }}" {% if oficina.estado == sigla %} selected {% endif %}>{{ nome }}</option>
               {% endfor %}
             </select>
           </div>
@@ -169,7 +181,6 @@
 </div>
 
 <script>
-  // Atualização do select de cidades ao mudar o estado
   document.getElementById("estado").addEventListener("change", function() {
     var estado = this.value;
     var cidadeSelect = document.getElementById("cidade");
@@ -200,7 +211,7 @@
 
   document.addEventListener("DOMContentLoaded", function() {
     var estadoAtual = document.getElementById("estado").value;
-    var cidadeAtual = "{{ oficina.cidade }}"; 
+    var cidadeAtual = "{{ oficina.cidade }}";
 
     if (estadoAtual) {
       fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estadoAtual)
@@ -250,7 +261,6 @@
   }
 
   {% if current_user.habilita_pagamento %}
-  // Toggle dos campos de tipos de inscrição ao marcar/desmarcar o checkbox "Inscrição Gratuita"
   document.getElementById('inscricao_gratuita').addEventListener('change', function(){
     var container = document.getElementById('tipos-inscricao-container');
     if(this.checked){
@@ -259,8 +269,7 @@
       container.style.display = 'block';
     }
   });
-  
-  // Adicionar novos campos para tipos de inscrição
+
   document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
     var container = document.getElementById('tipos-inscricao-list');
     var div = document.createElement('div');
@@ -280,14 +289,23 @@
     `;
     container.appendChild(div);
   });
-  
-  // Remover um conjunto de campos de tipo de inscrição
+
   document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
     if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
       e.target.parentElement.parentElement.remove();
     }
   });
   {% endif %}
+
+  document.querySelector("form").addEventListener("submit", function(event) {
+    var estado = document.getElementById("estado").value;
+    var cidade = document.getElementById("cidade").value;
+    var evento = document.getElementById("evento_id").value;
+    if (!estado || !cidade || !evento) {
+      event.preventDefault();
+      alert("❌ ERRO: Selecione um evento, estado e cidade antes de continuar.");
+    }
+  });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 {% endblock %}
