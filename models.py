@@ -122,6 +122,8 @@ class Oficina(db.Model):
     
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionado
     cliente = db.relationship("Cliente", back_populates="oficinas")  # ✅ Corrigido para `back_populates`
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
+    evento = db.relationship("Evento", backref=db.backref('oficinas', lazy=True))
 
     dias = db.relationship('OficinaDia', back_populates="oficina", lazy=True, cascade="all, delete-orphan")
 
@@ -129,7 +131,7 @@ class Oficina(db.Model):
     inscricao_gratuita = db.Column(db.Boolean, default=True)
 
     # 🔥 Corrigido o método __init__
-    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None):
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, evento_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
@@ -139,6 +141,7 @@ class Oficina(db.Model):
         self.cidade = cidade
         self.qr_code = qr_code
         self.cliente_id = cliente_id
+        self.evento_id = evento_id
         self.opcoes_checkin = opcoes_checkin
         self.palavra_correta = palavra_correta
 
@@ -174,7 +177,8 @@ class Inscricao(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'))
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
     
     # Novo campo:
     qr_code_token = db.Column(db.String(100), unique=True, nullable=True)
@@ -186,6 +190,7 @@ class Inscricao(db.Model):
     
     usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))  # Adicionar lazy loading
     oficina = db.relationship('Oficina', backref='inscritos')
+    evento = db.relationship('Evento', backref='inscricoes')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False) 
     
     def __init__(self, usuario_id, oficina_id, cliente_id):
@@ -204,8 +209,8 @@ class InscricaoTipo(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
-    nome = db.Column(db.String(100), nullable=False)  # Ex: Estudante, Professor
-    preco = db.Column(db.Numeric(10,2), nullable=False)
+    nome = db.Column(db.String(100), nullable=True)  # Ex: Estudante, Professor
+    preco = db.Column(db.Numeric(10,2), nullable=True)
     
     oficina = db.relationship('Oficina', backref=db.backref('tipos_inscricao', lazy=True))
     
@@ -338,13 +343,16 @@ class LinkCadastro(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
+    slug_customizado = db.Column(db.String(50), unique=True, nullable=True)
     token = db.Column(db.String(36), unique=True, nullable=False, default=str(uuid.uuid4()))
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     cliente = db.relationship('Cliente', backref=db.backref('links_cadastro', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('links_cadastro', lazy=True))
 
     def __repr__(self):
-        return f"<LinkCadastro cliente_id={self.cliente_id}, token={self.token}>"
+        return f"<LinkCadastro cliente_id={self.cliente_id}, evento_id={self.evento_id}, token={self.token}, slug={self.slug_customizado}>"
     
 
 from extensions import db
@@ -455,7 +463,7 @@ class Evento(db.Model):
     banner_url = db.Column(db.String(255), nullable=True)  # URL do banner
     programacao = db.Column(db.Text, nullable=True)
     localizacao = db.Column(db.String(255), nullable=True)  # Endereço do evento
-    link_mapa = db.Column(db.String(255), nullable=True)  # URL do Google Maps
+    link_mapa = db.Column(db.Text, nullable=True)  # URL do Google Maps
 
     cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
 
