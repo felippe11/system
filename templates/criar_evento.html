@@ -10,37 +10,67 @@
   <div class="card shadow">
     <div class="card-body">
       <form method="POST" enctype="multipart/form-data">
+        <!-- Campos originais -->
         <div class="mb-3">
           <label for="nome" class="form-label fw-semibold">Nome do Evento</label>
           <input type="text" class="form-control" id="nome" name="nome" required>
         </div>
-
         <div class="mb-3">
           <label for="descricao" class="form-label fw-semibold">Descrição</label>
           <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
         </div>
-
         <div class="mb-3">
           <label for="programacao" class="form-label fw-semibold">Programação</label>
           <textarea class="form-control" id="programacao" name="programacao" rows="3"></textarea>
         </div>
-
         <div class="mb-3">
           <label for="localizacao" class="form-label fw-semibold">Localização</label>
           <input type="text" class="form-control" id="localizacao" name="localizacao">
         </div>
-
         <div class="mb-3">
           <label for="link_mapa" class="form-label fw-semibold">Link do Mapa (Google Maps)</label>
           <input type="url" class="form-control" id="link_mapa" name="link_mapa">
         </div>
-
         <div class="mb-3">
           <label for="banner" class="form-label fw-semibold">Banner do Evento</label>
           <input type="file" class="form-control" id="banner" name="banner" accept="image/*">
         </div>
 
-        <div class="d-flex justify-content-end gap-2">
+        <!-- Novo bloco para Inscrição Gratuita e Tipos de Inscrição -->
+        {% if current_user.habilita_pagamento %}
+        <div class="mb-3">
+          <label class="form-label">Configuração de Inscrição:</label>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita">
+            <label class="form-check-label" for="inscricao_gratuita">
+              Inscrição Gratuita
+            </label>
+          </div>
+        </div>
+
+        <div id="tipos-inscricao-container">
+          <div id="tipos-inscricao-list">
+            <div class="row mb-2 align-items-center">
+              <div class="col-md-4">
+                <label class="form-label">Tipo de Inscrição:</label>
+                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Preço:</label>
+                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+              </div>
+            </div>
+          </div>
+          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">
+            + Adicionar Tipo de Inscrição
+          </button>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
           <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-secondary">Cancelar</a>
           <button type="submit" class="btn btn-success">Criar Evento</button>
         </div>
@@ -48,4 +78,40 @@
     </div>
   </div>
 </div>
+
+{% if current_user.habilita_pagamento %}
+<!-- Scripts para controlar a exibição do container e adicionar/remover tipos de inscrição -->
+<script>
+document.getElementById('inscricao_gratuita').addEventListener('change', function() {
+  var container = document.getElementById('tipos-inscricao-container');
+  container.style.display = this.checked ? 'none' : 'block';
+});
+
+document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
+  var container = document.getElementById('tipos-inscricao-list');
+  var div = document.createElement('div');
+  div.className = 'row mb-2 align-items-center';
+  div.innerHTML = `
+    <div class="col-md-4">
+      <label class="form-label">Tipo de Inscrição:</label>
+      <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Preço:</label>
+      <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+    </div>
+    <div class="col-md-2">
+      <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+    </div>
+  `;
+  container.appendChild(div);
+});
+
+document.getElementById('tipos-inscricao-list').addEventListener('click', function(e) {
+  if (e.target && e.target.classList.contains('remover-tipo-inscricao')) {
+    e.target.parentElement.parentElement.remove();
+  }
+});
+</script>
+{% endif %}
 {% endblock %}
