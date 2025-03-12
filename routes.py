@@ -2157,7 +2157,7 @@ import logging
 from flask import Flask, render_template, redirect, url_for, flash, request
 from werkzeug.security import generate_password_hash
 from extensions import db
-from models import Ministrante
+from models import Ministrante, EventoInscricaoTipo
 from flask_login import login_required
 
 # Configure o logger (isso pode ser configurado globalmente no seu app)
@@ -3871,6 +3871,7 @@ def criar_evento():
             banner.save(caminho_banner)
             banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
 
+        # Cria o objeto Evento (modelo) normalmente
         novo_evento = Evento(
             cliente_id=current_user.id,
             nome=nome,
@@ -3880,9 +3881,48 @@ def criar_evento():
             link_mapa=link_mapa,
             banner_url=banner_url
         )
-        
+
         try:
             db.session.add(novo_evento)
+            db.session.flush()  # Precisamos do ID do evento antes de criar tipos de inscrição
+
+            # Se o cliente tiver pagamento habilitado, trata a questão dos tipos de inscrição
+            if current_user.habilita_pagamento:
+                # Verifica se o user marcou "Inscrição Gratuita"
+                inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
+
+                # Se quiser, você pode criar um campo novo no modelo Evento para armazenar essa flag
+                # Exemplo: novo_evento.inscricao_gratuita = inscricao_gratuita
+
+                # Se não for gratuito, criamos os tipos de inscrição
+                if not inscricao_gratuita:
+                    nomes_tipos = request.form.getlist('nome_tipo[]')
+                    precos = request.form.getlist('preco_tipo[]')
+                    for nome, preco in zip(nomes_tipos, precos):
+                        # A classe EventoInscricaoTipo PRECISA estar definida e importada!
+                        novo_tipo = EventoInscricaoTipo(
+                            evento_id=novo_evento.id,
+                            nome=nome,
+                            preco=float(preco)
+                        )
+                        db.session.add(novo_tipo)
+
+                    # Aqui você pode salvar numa tabela "EventoInscricaoTipo" (por exemplo)
+                    # ou adaptar para alguma tabela existente.
+                    if not nomes_tipos or not precos:
+                        raise ValueError(
+                            "Tipos de inscrição e preços são obrigatórios quando o evento não é gratuito."
+                        )
+
+                    for nome, preco in zip(nomes_tipos, precos):
+                        # Exemplo de criação de um novo registro:
+                        novo_tipo = EventoInscricaoTipo(
+                            evento_id=novo_evento.id,
+                            nome=nome,
+                            preco=float(preco)
+                        )
+                        db.session.add(novo_tipo)
+            
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             return redirect(url_for('routes.dashboard_cliente'))
@@ -3891,3 +3931,4 @@ def criar_evento():
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
     return render_template('criar_evento.html')
+

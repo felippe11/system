@@ -218,6 +218,25 @@ class InscricaoTipo(db.Model):
         return f"<InscricaoTipo {self.nome}: R$ {self.preco}>"
 
 
+# Em models.py ou onde você define seus modelos
+
+class EventoInscricaoTipo(db.Model):
+    __tablename__ = 'evento_inscricao_tipo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    preco = db.Column(db.Float, nullable=False)
+
+    # Relação com Evento
+    evento = db.relationship("Evento", backref="tipos_inscricao_evento")
+
+    def __init__(self, evento_id, nome, preco):
+        self.evento_id = evento_id
+        self.nome = nome
+        self.preco = preco
+
+
 
 # =================================
 #            CHECKIN
