@@ -2,38 +2,76 @@
 {% block title %}Configurar Evento{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2 class="my-4">Configurar Evento</h2>
-    
-    <form method="POST" enctype="multipart/form-data">
+<div class="container mt-5">
+  <h2 class="my-4 fw-bold text-primary">
+    <i class="bi bi-calendar-event me-2"></i>Configurar Evento
+  </h2>
+
+  <div class="card shadow">
+    <div class="card-body">
+      <!-- Seleção de Evento -->
+      <div class="mb-4">
+        <label for="evento_id" class="form-label fw-semibold">Selecionar Evento</label>
+        <select id="evento_id" class="form-select" onchange="carregarEvento(this.value)">
+          <option value="">-- Criar Novo Evento --</option>
+          {% for ev in eventos %}
+            <option value="{{ ev.id }}" {% if evento and evento.id == ev.id %}selected{% endif %}>
+              {{ ev.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Formulário -->
+      <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="evento_id" value="{{ evento.id if evento else '' }}">
         <div class="mb-3">
-            <label class="form-label">Nome do Evento</label>
-            <input type="text" name="nome" class="form-control" value="{{ evento.nome if evento else '' }}" required>
+          <label class="form-label fw-semibold">Nome do Evento</label>
+          <input type="text" name="nome" class="form-control" value="{{ evento.nome if evento else '' }}" required>
         </div>
         <div class="mb-3">
-            <label class="form-label">Descrição</label>
-            <textarea name="descricao" class="form-control">{{ evento.descricao if evento else '' }}</textarea>
+          <label class="form-label fw-semibold">Descrição</label>
+          <textarea name="descricao" class="form-control" rows="3">{{ evento.descricao if evento else '' }}</textarea>
         </div>
         <div class="mb-3">
-            <label class="form-label">Programação</label>
-            <textarea name="programacao" class="form-control">{{ evento.programacao if evento else '' }}</textarea>
+          <label class="form-label fw-semibold">Programação</label>
+          <textarea name="programacao" class="form-control" rows="3">{{ evento.programacao if evento else '' }}</textarea>
         </div>
         <div class="mb-3">
-            <label class="form-label">Endereço do Evento</label>
-            <input type="text" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}">
+          <label class="form-label fw-semibold">Endereço do Evento</label>
+          <input type="text" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}">
         </div>
         <div class="mb-3">
-            <label class="form-label">Link do Google Maps</label>
-            <input type="url" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
+          <label class="form-label fw-semibold">Link do Google Maps</label>
+          <input type="url" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
         </div>
         <div class="mb-3">
-            <label class="form-label">Banner do Evento</label>
-            <input type="file" name="banner" class="form-control">
-            {% if evento and evento.banner_url %}
+          <label class="form-label fw-semibold">Banner do Evento</label>
+          <input type="file" name="banner" class="form-control">
+          {% if evento and evento.banner_url %}
             <img src="{{ evento.banner_url }}" alt="Banner" class="img-fluid mt-2" style="max-width: 200px;">
-            {% endif %}
+          {% endif %}
         </div>
-        <button type="submit" class="btn btn-primary">Salvar</button>
-    </form>
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-secondary">Cancelar</a>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
+<!-- Script para redirecionar ao selecionar um evento -->
+<script>
+  function carregarEvento(eventoId) {
+    if (eventoId) {
+      window.location.href = "{{ url_for('routes.configurar_evento') }}?evento_id=" + eventoId;
+    } else {
+      window.location.href = "{{ url_for('routes.configurar_evento') }}";
+    }
+  }
+</script>
+
+<!-- Bootstrap JS (caso não esteja no base.html) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
 {% endblock %}
