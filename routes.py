@@ -3762,6 +3762,9 @@ def configurar_evento():
         programacao = request.form.get('programacao')
         localizacao = request.form.get('localizacao')
         link_mapa = request.form.get('link_mapa')
+        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
+        nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
+        precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
 
         banner = request.files.get('banner')
         banner_url = evento.banner_url if evento else None
@@ -3779,9 +3782,24 @@ def configurar_evento():
             evento.programacao = programacao
             evento.localizacao = localizacao
             evento.link_mapa = link_mapa
+            evento.inscricao_gratuita = inscricao_gratuita
             if banner_url:
                 evento.banner_url = banner_url
-        else:  # Criar novo evento se nenhum for selecionado
+
+            # Atualizar tipos de inscrição
+            if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
+                # Remover tipos existentes
+                EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+                # Adicionar novos tipos
+                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                    if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
+                        tipo = EventoInscricaoTipo(
+                            evento_id=evento.id,
+                            nome=nome_tipo,
+                            preco=float(preco_tipo)
+                        )
+                        db.session.add(tipo)
+        else:  # Criar novo evento
             evento = Evento(
                 cliente_id=current_user.id,
                 nome=nome,
@@ -3789,9 +3807,22 @@ def configurar_evento():
                 programacao=programacao,
                 localizacao=localizacao,
                 link_mapa=link_mapa,
-                banner_url=banner_url
+                banner_url=banner_url,
+                inscricao_gratuita=inscricao_gratuita
             )
             db.session.add(evento)
+            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
+
+            # Adicionar tipos de inscrição se não for gratuita
+            if not inscricao_gratuita:
+                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                    if nome_tipo and preco_tipo:
+                        tipo = EventoInscricaoTipo(
+                            evento_id=evento.id,
+                            nome=nome_tipo,
+                            preco=float(preco_tipo)
+                        )
+                        db.session.add(tipo)
 
         try:
             db.session.commit()
