@@ -480,12 +480,14 @@ class Evento(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
-    banner_url = db.Column(db.String(255), nullable=True)  # URL do banner
+    banner_url = db.Column(db.String(255), nullable=True)
     programacao = db.Column(db.Text, nullable=True)
-    localizacao = db.Column(db.String(255), nullable=True)  # Endereço do evento
-    link_mapa = db.Column(db.Text, nullable=True)  # URL do Google Maps
+    localizacao = db.Column(db.String(255), nullable=True)
+    link_mapa = db.Column(db.Text, nullable=True)
+    inscricao_gratuita = db.Column(db.Boolean, default=False, nullable=False)  # Novo campo
 
     cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
+    # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
 
 
 
