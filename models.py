@@ -77,6 +77,8 @@ class Ministrante(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
     formacao = db.Column(db.String(255), nullable=False)
+    categorias_formacao = db.Column(db.String(512), nullable=True)  # Nova coluna para múltiplas categorias
+    foto = db.Column(db.String(255), nullable=True)  # Nova coluna para armazenar caminho da foto
     areas_atuacao = db.Column(db.String(255), nullable=False)
     cpf = db.Column(db.String(20), unique=True, nullable=False)
     pix = db.Column(db.String(255), nullable=False)
@@ -85,9 +87,8 @@ class Ministrante(db.Model, UserMixin):
     email = db.Column(db.String(255), unique=True, nullable=False)
     senha = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Relacionamento com Cliente
-    cliente = db.relationship("Cliente", backref="ministrantes")  # ✅ Relacionamento reverso
-
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    cliente = db.relationship("Cliente", backref="ministrantes")
 
     @property
     def tipo(self):
