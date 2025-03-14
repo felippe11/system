@@ -1,58 +1,57 @@
 {% extends "base.html" %}
-{% block title %}Cadastro de Ministrante{% endblock %}
+{% block title %}Cadastro de Participante{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
   <div class="card">
-    <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 text-center">Cadastro de Ministrante</h2>
+    <div class="card-header bg-primary text-white text-center">
+      <h2 class="mb-0">Cadastro de Participante</h2>
     </div>
     <div class="card-body">
-      <!-- Exibição de mensagens de alerta -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="alert-container">
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          </div>
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
         {% endif %}
       {% endwith %}
 
-      <!-- Formulário de Cadastro -->
-      <form method="POST">
-        
-        <!-- Se o usuário for admin, exibe o select para escolher o cliente -->
-        {% if current_user.tipo == 'admin' %}
+      <form method="POST" enctype="multipart/form-data">
+
         <div class="mb-3">
-          <label for="cliente_id" class="form-label">Cliente:</label>
-          <select class="form-select" id="cliente_id" name="cliente_id">
-            <option value="">Selecione um Cliente</option>
-            {% for c in clientes %}
-              <option value="{{ c.id }}">{{ c.nome }}</option>
+          <label for="nome" class="form-label">Nome Completo:</label>
+          <input type="text" class="form-control" id="nome" name="nome" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="foto" class="form-label">Foto de Perfil:</label>
+          <input type="file" class="form-control" id="foto" name="foto">
+        </div>
+
+        <div class="mb-3">
+          <label for="categorias_formacao" class="form-label">Categorias de Formação Acadêmica:</label>
+          <select multiple class="form-select" id="categorias_formacao" name="categorias_formacao">
+            {% for categoria in [
+              "Bacharelado", "Licenciatura", "Tecnólogo",
+              "Especialização", "MBA", "Mestrado", "Doutorado",
+              "Curso Técnico", "Curso Profissionalizante", "Curso Sequencial"
+            ] %}
+              <option value="{{ categoria }}">{{ categoria }}</option>
             {% endfor %}
           </select>
         </div>
-        {% endif %}
-        
-        <div class="row">
-          <div class="mb-3 col-md-6">
-            <label for="nome" class="form-label">Nome Completo:</label>
-            <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite seu nome completo" required>
-          </div>
 
-          <div class="mb-3 col-md-6">
-            <label for="formacao" class="form-label">Formação Acadêmica:</label>
-            <input type="text" class="form-control" id="formacao" name="formacao" placeholder="Informe sua formação acadêmica" required>
-          </div>
+        <div class="mb-3">
+          <label for="formacao" class="form-label">Observações da Formação:</label>
+          <input type="text" class="form-control" id="formacao" name="formacao">
         </div>
 
         <div class="mb-3">
           <label for="areas" class="form-label">Áreas de Atuação:</label>
-          <input type="text" class="form-control" id="areas" name="areas" placeholder="Ex.: Tecnologia, Educação, Saúde" required>
+          <input type="text" class="form-control" id="areas" name="areas" required>
         </div>
 
         <div class="row">
@@ -63,33 +62,34 @@
 
           <div class="mb-3 col-md-6">
             <label for="pix" class="form-label">PIX:</label>
-            <input type="text" class="form-control" id="pix" name="pix" placeholder="Digite sua chave PIX" required>
+            <input type="text" class="form-control" id="pix" name="pix" required>
           </div>
         </div>
 
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="estado" class="form-label">Estado:</label>
-            <select class="form-select" name="estado" id="estado" required>
-              <option value="">Carregando estados...</option>
+            <select class="form-select" id="estado" name="estado" required>
+              <option value="">Selecione o Estado</option>
             </select>
           </div>
+
           <div class="mb-3 col-md-6">
             <label for="cidade" class="form-label">Cidade:</label>
-            <select class="form-select" name="cidade" id="cidade" required>
-              <option value="">Selecione um estado primeiro</option>
+            <select class="form-select" id="cidade" name="cidade" required>
+              <option value="">Selecione o Estado primeiro</option>
             </select>
           </div>
         </div>
 
         <div class="mb-3">
           <label for="email" class="form-label">E-mail:</label>
-          <input type="email" class="form-control" id="email" name="email" placeholder="Digite seu e-mail" required>
+          <input type="email" class="form-control" id="email" name="email" required>
         </div>
 
         <div class="mb-3">
           <label for="senha" class="form-label">Senha:</label>
-          <input type="password" class="form-control" id="senha" name="senha" placeholder="Crie uma senha segura" required>
+          <input type="password" class="form-control" id="senha" name="senha" required>
         </div>
 
         <button type="submit" class="btn btn-success w-100">Cadastrar</button>
@@ -99,64 +99,31 @@
   </div>
 </div>
 
-<!-- Script para máscara no CPF e preenchimento de localização via API do IBGE -->
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    // Aplicar máscara no CPF
-    const cpfInput = document.getElementById("cpf");
-    cpfInput.addEventListener("input", function() {
-      let value = cpfInput.value.replace(/\D/g, '');
-      if (value.length > 3) value = value.replace(/^(\d{3})(\d)/, '$1.$2');
-      if (value.length > 6) value = value.replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3');
-      if (value.length > 9) value = value.replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
-      cpfInput.value = value;
-    });
-  
-    // Pegar referências dos selects
-    const estadoSelect = document.getElementById('estado');
-    const cidadeSelect = document.getElementById('cidade');
-  
-    // Buscar estados na API do IBGE
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
       .then(response => response.json())
       .then(data => {
-        // Ordenar por nome do Estado
         data.sort((a, b) => a.nome.localeCompare(b.nome));
-        estadoSelect.innerHTML = '<option value="">Selecione o Estado</option>';
+        const estadoSelect = document.getElementById('estado');
         data.forEach(uf => {
-          const option = document.createElement('option');
-          option.value = uf.sigla;
-          option.text = uf.nome;
-          estadoSelect.add(option);
+          estadoSelect.add(new Option(uf.nome, uf.sigla));
         });
-      })
-      .catch(error => console.error("Erro ao buscar estados:", error));
-  
-    // Ao mudar o estado, buscar as cidades
-    estadoSelect.addEventListener('change', function() {
+      });
+
+    document.getElementById('estado').addEventListener('change', function() {
       const uf = this.value;
-      cidadeSelect.innerHTML = '<option value="">Carregando cidades...</option>';
-      
-      if (!uf) {
-        cidadeSelect.innerHTML = '<option value="">Selecione um estado primeiro</option>';
-        return;
-      }
-  
       fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
         .then(response => response.json())
         .then(cities => {
+          const cidadeSelect = document.getElementById('cidade');
+          cidadeSelect.innerHTML = '';
           cities.sort((a, b) => a.nome.localeCompare(b.nome));
-          cidadeSelect.innerHTML = '<option value="">Selecione a Cidade</option>';
           cities.forEach(city => {
-            const option = document.createElement('option');
-            option.value = city.nome;
-            option.text = city.nome;
-            cidadeSelect.add(option);
+            cidadeSelect.add(new Option(city.nome, city.nome));
           });
-        })
-        .catch(error => console.error("Erro ao buscar cidades:", error));
+        });
     });
   });
 </script>
-  
 {% endblock %}

@@ -8,139 +8,92 @@
       <h2 class="mb-0 text-center">Editar Ministrante</h2>
     </div>
     <div class="card-body">
-      <!-- Exibição de mensagens de alerta -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="alert-container">
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endfor %}
-          </div>
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
         {% endif %}
       {% endwith %}
 
-      <!-- Formulário de Edição -->
-      <form method="POST" action="{{ url_for('routes.editar_ministrante', ministrante_id=ministrante.id) }}">
-        
-        <!-- Se o usuário for admin, exibe o select para escolher o cliente -->
+      <form method="POST" enctype="multipart/form-data" action="{{ url_for('routes.editar_ministrante', ministrante_id=ministrante.id) }}">
+
         {% if current_user.tipo == 'admin' %}
         <div class="mb-3">
           <label for="cliente_id" class="form-label">Cliente:</label>
           <select class="form-select" id="cliente_id" name="cliente_id">
             <option value="">Selecione um Cliente</option>
             {% for c in clientes %}
-              <option value="{{ c.id }}"
-                {% if c.id == ministrante.cliente_id %} selected {% endif %}>
-                {{ c.nome }}
-              </option>
+              <option value="{{ c.id }}" {% if ministrante.cliente_id == c.id %}selected{% endif %}>{{ c.nome }}</option>
             {% endfor %}
           </select>
         </div>
         {% endif %}
-        
+
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="nome" class="form-label">Nome Completo:</label>
-            <input 
-              type="text" 
-              class="form-control" 
-              id="nome" 
-              name="nome" 
-              placeholder="Digite seu nome completo" 
-              value="{{ ministrante.nome }}"
-              required>
+            <input type="text" class="form-control" id="nome" name="nome" value="{{ ministrante.nome }}" required>
           </div>
-
           <div class="mb-3 col-md-6">
-            <label for="formacao" class="form-label">Formação Acadêmica:</label>
-            <input 
-              type="text" 
-              class="form-control" 
-              id="formacao" 
-              name="formacao" 
-              placeholder="Informe sua formação acadêmica"
-              value="{{ ministrante.formacao }}"
-              required>
+            <label for="foto" class="form-label">Foto de Perfil:</label>
+            <input type="file" class="form-control" id="foto" name="foto">
           </div>
         </div>
 
         <div class="mb-3">
+          <label for="categorias_formacao" class="form-label">Categorias de Formação Acadêmica:</label>
+          <select multiple class="form-select" id="categorias_formacao" name="categorias_formacao">
+            {% set categorias_selecionadas = ministrante.categorias_formacao.split(',') %}
+            {% for categoria in ["Bacharelado", "Licenciatura", "Tecnólogo", "Especialização", "MBA", "Mestrado", "Doutorado", "Curso Técnico", "Curso Profissionalizante", "Curso Sequencial"] %}
+              <option value="{{ categoria }}" {% if categoria in categorias_selecionadas %}selected{% endif %}>{{ categoria }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="formacao" class="form-label">Observações da Formação:</label>
+          <input type="text" class="form-control" id="formacao" name="formacao" value="{{ ministrante.formacao }}">
+        </div>
+
+        <div class="mb-3">
           <label for="areas" class="form-label">Áreas de Atuação:</label>
-          <input 
-            type="text" 
-            class="form-control" 
-            id="areas" 
-            name="areas" 
-            placeholder="Ex.: Tecnologia, Educação, Saúde"
-            value="{{ ministrante.areas_atuacao }}"
-            required>
+          <input type="text" class="form-control" id="areas" name="areas" value="{{ ministrante.areas_atuacao }}" required>
         </div>
 
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="cpf" class="form-label">CPF:</label>
-            <input 
-              type="text" 
-              class="form-control" 
-              id="cpf" 
-              name="cpf" 
-              placeholder="000.000.000-00"
-              value="{{ ministrante.cpf }}"
-              required>
+            <input type="text" class="form-control" id="cpf" name="cpf" value="{{ ministrante.cpf }}" required>
           </div>
-
           <div class="mb-3 col-md-6">
             <label for="pix" class="form-label">PIX:</label>
-            <input 
-              type="text" 
-              class="form-control" 
-              id="pix" 
-              name="pix" 
-              placeholder="Digite sua chave PIX"
-              value="{{ ministrante.pix }}"
-              required>
+            <input type="text" class="form-control" id="pix" name="pix" value="{{ ministrante.pix }}" required>
           </div>
         </div>
 
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="estado" class="form-label">Estado:</label>
-            <select class="form-select" name="estado" id="estado" required>
-              <option value="">Carregando estados...</option>
-            </select>
+            <select class="form-select" id="estado" name="estado" required></select>
           </div>
           <div class="mb-3 col-md-6">
             <label for="cidade" class="form-label">Cidade:</label>
-            <select class="form-select" name="cidade" id="cidade" required>
-              <option value="">Selecione um estado primeiro</option>
-            </select>
+            <select class="form-select" id="cidade" name="cidade" required></select>
           </div>
         </div>
 
         <div class="mb-3">
           <label for="email" class="form-label">E-mail:</label>
-          <input 
-            type="email" 
-            class="form-control" 
-            id="email" 
-            name="email" 
-            placeholder="Digite seu e-mail"
-            value="{{ ministrante.email }}"
-            required>
+          <input type="email" class="form-control" id="email" name="email" value="{{ ministrante.email }}" required>
         </div>
 
-        <!-- Nova senha, deixa em branco para não alterar -->
         <div class="mb-3">
           <label for="senha" class="form-label">Nova Senha (deixe em branco para não alterar):</label>
-          <input 
-            type="password" 
-            class="form-control" 
-            id="senha" 
-            name="senha" 
-            placeholder="Crie uma senha segura (ou deixe em branco)">
+          <input type="password" class="form-control" id="senha" name="senha">
         </div>
 
         <button type="submit" class="btn btn-success w-100">Salvar Alterações</button>

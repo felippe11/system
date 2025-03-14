@@ -23,6 +23,8 @@ from utils import enviar_email
 from datetime import datetime
 from flask_mail import Message
 from models import Evento
+from flask import current_app
+
 
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
 from extensions import db, login_manager
@@ -2164,93 +2166,83 @@ from flask_login import login_required
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+from flask import current_app, flash, redirect, request, url_for, render_template
+from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+import os, uuid
+
 @routes.route('/cadastro_ministrante', methods=['GET', 'POST'])
+@login_required
 def cadastro_ministrante():
-    if not current_user.is_authenticated:
-        # Redireciona para login ou mostra uma mensagem de que é necessário logar.
-        flash('Você precisa estar logado para acessar esta página!', 'danger')
-        return redirect(url_for('routes.login'))
-    # Permite apenas admin e cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
-        
-    
-    # Se for GET, precisamos montar a lista de clientes (somente se admin)
-    clientes = []
-    if current_user.tipo == 'admin':
-        clientes = Cliente.query.all()
+        return redirect(url_for('routes.dashboard'))
+
+    clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
 
     if request.method == 'POST':
-        print("Iniciando o cadastro de ministrante")
-        
-        # Coleta dos dados do formulário
         nome = request.form.get('nome')
         formacao = request.form.get('formacao')
+        categorias_formacao = request.form.getlist('categorias_formacao')
+        categorias_str = ','.join(categorias_formacao)  # Transforma lista em string
+        foto = request.files.get('foto')
         areas = request.form.get('areas')
         cpf = request.form.get('cpf')
         pix = request.form.get('pix')
         cidade = request.form.get('cidade')
         estado = request.form.get('estado')
         email = request.form.get('email')
-        senha = request.form.get('senha')
-        
-        print(f"Dados recebidos - Nome: {nome}, Email: {email}, CPF: {cpf}")
-        
-        # Verifica se já existe um ministrante com o mesmo email
-        existing_email = Ministrante.query.filter_by(email=email).first()
-        if existing_email:
-            logger.warning(f"E-mail já cadastrado: {email}")
-            flash('Erro: Este e-mail já está cadastrado!', 'danger')
-            return redirect(url_for('routes.cadastro_ministrante'))
-        
-        # Verifica se já existe um ministrante com o mesmo CPF
-        existing_cpf = Ministrante.query.filter_by(cpf=cpf).first()
-        if existing_cpf:
-            logger.warning(f"CPF já cadastrado: {cpf}")
-            flash('Erro: Este CPF já está cadastrado!', 'danger')
-            return redirect(url_for('routes.cadastro_ministrante'))
-        
-        # Define o cliente_id
-        if current_user.tipo == 'admin':
-            # Se for admin, ele selecionou um cliente no formulário
-            cliente_id = request.form.get('cliente_id')
-            # Caso o admin não selecione, você pode validar, exibir erro, etc.
-            # Exemplo: if not cliente_id: flash(...); return ...
-        else:
-            # Se for cliente, vincula automaticamente ao current_user.id
-            cliente_id = current_user.id
-    
+        senha = generate_password_hash(request.form.get('senha'))
 
-        
-        # Criação do novo ministrante
+        # Se for admin, pega o cliente_id do form
+        # Se for cliente, assume o id do current_user
+        cliente_id = request.form.get('cliente_id') if current_user.tipo == 'admin' else current_user.id
+
+        # Gera caminho único para foto
+        foto_path = None
+        if foto and foto.filename:
+            original_filename = secure_filename(foto.filename)   # ex.: foto.jpg
+            ext = original_filename.rsplit('.', 1)[1].lower()    # pega a extensão ex.: jpg
+            unique_name = f"{uuid.uuid4()}.{ext}"                # ex.: 123e4567-e89b-12d3-a456-426614174000.jpg
+            caminho_foto = os.path.join(
+                current_app.root_path, 
+                'static', 
+                'uploads', 
+                'ministrantes', 
+                unique_name
+            )
+            os.makedirs(os.path.dirname(caminho_foto), exist_ok=True)
+            foto.save(caminho_foto) 
+            foto_path = f'uploads/ministrantes/{unique_name}'    # caminho relativo à pasta static
+
+        # Agora criamos o objeto Ministrante, passando foto_path
         novo_ministrante = Ministrante(
             nome=nome,
             formacao=formacao,
+            categorias_formacao=categorias_str,
+            foto=foto_path,  # Passamos o caminho aqui (ou None se não houve upload)
             areas_atuacao=areas,
             cpf=cpf,
             pix=pix,
             cidade=cidade,
             estado=estado,
             email=email,
-            senha=generate_password_hash(senha),
-            cliente_id=cliente_id  # agora usamos a variável calculada acima
+            senha=senha,
+            cliente_id=cliente_id
         )
-        
+
         try:
-            print("Adicionando novo ministrante no banco de dados")
             db.session.add(novo_ministrante)
             db.session.commit()
-            print("Ministrante cadastrado com sucesso!")
             flash('Cadastro realizado com sucesso!', 'success')
+            # Redireciona para o dashboard adequado (admin / cliente)
             return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Erro ao cadastrar ministrante: {e}", exc_info=True)
-            flash('Erro ao cadastrar ministrante. Tente novamente.', 'danger')
-            return redirect(url_for('routes.cadastro_ministrante'))
-    
-    # Se for GET, renderizamos a página. Passamos a lista de clientes se for admin.
+            flash(f'Erro ao cadastrar ministrante: {str(e)}', 'danger')
+
     return render_template('cadastro_ministrante.html', clientes=clientes)
+
 
 
 @routes.route('/dashboard_ministrante')
@@ -2377,21 +2369,18 @@ def upload_material(oficina_id):
 def editar_ministrante(ministrante_id):
     ministrante = Ministrante.query.get_or_404(ministrante_id)
 
-    # ✅ Admin pode editar todos, Cliente só edita os que cadastrou
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso Autorizado!', 'danger')
+        flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
-    # Se for admin, buscamos todos os clientes para exibir no select
-    # Se não for admin, pode definir `clientes = None` ou simplesmente não o usar
-    if current_user.tipo == 'admin':
-        clientes = Cliente.query.all()
-    else:
-        clientes = None
+    clientes = Cliente.query.all() if current_user.tipo == 'admin' else None
 
     if request.method == 'POST':
         ministrante.nome = request.form.get('nome')
         ministrante.formacao = request.form.get('formacao')
+        categorias_formacao = request.form.getlist('categorias_formacao')
+        ministrante.categorias_formacao = ','.join(categorias_formacao)
+
         ministrante.areas_atuacao = request.form.get('areas')
         ministrante.cpf = request.form.get('cpf')
         ministrante.pix = request.form.get('pix')
@@ -2399,34 +2388,36 @@ def editar_ministrante(ministrante_id):
         ministrante.estado = request.form.get('estado')
         ministrante.email = request.form.get('email')
 
-        # Apenas admin pode trocar o cliente_id
         if current_user.tipo == 'admin':
             novo_cliente_id = request.form.get('cliente_id')
-            # Se o select vier vazio, decide se mantém ou deixa 'None'
             ministrante.cliente_id = novo_cliente_id if novo_cliente_id else None
 
         nova_senha = request.form.get('senha')
         if nova_senha:
             ministrante.senha = generate_password_hash(nova_senha)
 
+        foto = request.files.get('foto')
+        if foto and foto.filename:
+            filename = secure_filename(foto.filename)
+            caminho_foto = os.path.join(current_app.root_path, 'static/uploads/ministrantes', filename)
+            os.makedirs(os.path.dirname(caminho_foto), exist_ok=True)
+            foto.save(caminho_foto)
+            ministrante.foto = f'uploads/ministrantes/{filename}'
+
         db.session.commit()
         flash('Ministrante atualizado com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('routes.gerenciar_ministrantes'))
 
-    return render_template('editar_ministrante.html',
-                           ministrante=ministrante,
-                           clientes=clientes)
-
+    return render_template('editar_ministrante.html', ministrante=ministrante, clientes=clientes)
 
 @routes.route('/excluir_ministrante/<int:ministrante_id>', methods=['POST'])
 @login_required
 def excluir_ministrante(ministrante_id):
     ministrante = Ministrante.query.get_or_404(ministrante_id)
 
-    # ✅ Admin pode excluir todos, Cliente só exclui os seus
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
-        flash('Acesso Autorizado!', 'danger')
-        
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
 
     db.session.delete(ministrante)
     db.session.commit()
@@ -2438,15 +2429,13 @@ def excluir_ministrante(ministrante_id):
 @login_required
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso Autorizado!', 'danger')
-        
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
 
-    if current_user.tipo == 'cliente':
-        ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all()
-    else:
-        ministrantes = Ministrante.query.all()  # Admin vê todos
+    ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
 
     return render_template('gerenciar_ministrantes.html', ministrantes=ministrantes)
+
 
 
 @routes.route('/gerenciar_inscricoes', methods=['GET'])
@@ -3932,3 +3921,32 @@ def criar_evento():
 
     return render_template('criar_evento.html')
 
+@routes.route('/evento/<identifier>')
+def pagina_evento(identifier):
+    evento = Evento.query.filter_by(token=identifier).first_or_404()
+
+    oficinas = Oficina.query.filter_by(evento_id=evento.id).order_by(Oficina.data, Oficina.horario_inicio).all()
+
+    # Agrupando oficinas por data
+    from collections import defaultdict
+    grouped_oficinas = defaultdict(list)
+    ministrantes_set = set()
+
+    for oficina in oficinas:
+        data_str = oficina.data.strftime('%d/%m/%Y')
+        grouped_oficinas[data_str].append(oficina)
+        if oficina.ministrante:
+            ministrantes_set.add(oficina.ministrante)
+
+    sorted_keys = sorted(grouped_oficinas.keys(), key=lambda date: datetime.strptime(date, '%d/%m/%Y'))
+
+    # Garante que estamos enviando uma lista e não um conjunto
+    ministrantes = list(ministrantes_set)
+
+    return render_template(
+        'pagina_evento.html',
+        evento=evento,
+        grouped_oficinas=grouped_oficinas,
+        sorted_keys=sorted_keys,
+        ministrantes=ministrantes  # Passa os ministrantes para o template
+    )

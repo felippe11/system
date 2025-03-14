@@ -166,6 +166,149 @@
             opacity: 0;
           }
         }
+
+        /* Reset e Estilos Gerais */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Logo no Topo */
+.logo-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+}
+
+.logo-container img {
+  max-width: 150px;
+}
+
+/* Hero Section com Imagem e Texto */
+.hero-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #e0f7e9; /* Verde claro */
+  padding: 0 20px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.hero-image img {
+  width: 100%;
+  border-radius: 15px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  color: #000; /* Preto */
+  margin-bottom: 20px;
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 30px;
+}
+
+.hero-btn {
+  background: #28a745; /* Verde escuro */
+  color: #fff; /* Branco */
+  padding: 15px 40px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.hero-btn:hover {
+  background: #218838; /* Verde mais escuro ao hover */
+}
+
+/* Seção de Depoimentos */
+.testimonial-section {
+  padding: 100px 0;
+  background: #f4f4f4;
+}
+
+.section-title {
+  text-align: center;
+  font-size: 2.5rem;
+  color: #000; /* Preto */
+  margin-bottom: 50px;
+}
+
+.testimonial-grid {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.testimonial-card {
+  background: #fff; /* Branco */
+  padding: 30px;
+  border-radius: 15px;
+  max-width: 350px;
+  text-align: center;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.testimonial-card p {
+  font-size: 1.2rem;
+  color: #000; /* Preto */
+  margin-bottom: 20px;
+}
+
+.testimonial-card h4 {
+  font-size: 1.5rem;
+  color: #000; /* Preto */
+  margin-bottom: 5px;
+}
+
+.testimonial-card small {
+  font-size: 1rem;
+  color: #666;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .hero-image {
+    display: none; /* Esconde a imagem em telas menores */
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem;
+  }
+}
     </style>
 </head>
 
