@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Criar Novo Template de Formulário</h2>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Template</label>
+            <input type="text" id="nome" name="nome" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea id="descricao" name="descricao" class="form-control"></textarea>
+        </div>
+        <div class="mb-3">
+            <label for="categoria" class="form-label">Categoria</label>
+            <select id="categoria" name="categoria" class="form-select">
+                <option value="workshop">Workshop</option>
+                <option value="evento">Evento</option>
+                <option value="curso">Curso</option>
+                <option value="pesquisa">Pesquisa</option>
+                <option value="outro">Outro</option>
+            </select>
+        </div>
+        {% if current_user.tipo == 'admin' %}
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="is_default" name="is_default">
+            <label class="form-check-label" for="is_default">Template Padrão (disponível para todos os clientes)</label>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-success">Criar Template</button>
+        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

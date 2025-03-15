@@ -81,19 +81,22 @@
           <label class="form-label">Datas e Horários:</label>
           <div id="horarios-container">
             {% for i in range(datas|length if datas is defined else 1) %}
-            <div class="mb-3 p-3 border rounded">
+            <div class="data-item mb-3 p-3 border rounded">
               <div class="row g-2 align-items-end">
                 <div class="col-md-4">
                   <label>Data:</label>
                   <input type="date" class="form-control" name="data[]" value="{{ datas[i] if datas is defined else '' }}" required>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                   <label>Horário de Início:</label>
                   <input type="time" class="form-control" name="horario_inicio[]" value="{{ horarios_inicio[i] if horarios_inicio is defined else '' }}" required>
                 </div>
                 <div class="col-md-3">
                   <label>Horário de Fim:</label>
                   <input type="time" class="form-control" name="horario_fim[]" value="{{ horarios_fim[i] if horarios_fim is defined else '' }}" required>
+                </div>
+                <div class="col-md-2">
+                  <button type="button" class="btn btn-danger btn-sm remover-data w-100">Remover</button>
                 </div>
               </div>
             </div>
@@ -118,6 +121,15 @@
               <option value="">Selecione um estado primeiro</option>
             </select>
           </div>
+        </div>
+
+        <!-- Locais de Atuação -->
+        <div class="mb-3">
+          <label class="form-label">Locais de Atuação:</label>
+          <div id="locations-container">
+            <!-- Os blocos de localização serão adicionados aqui dinamicamente -->
+          </div>
+          <button type="button" id="add-location-btn" class="btn btn-secondary w-100 mb-3">+ Adicionar Local de Atuação</button>
         </div>
 
         {% if current_user.habilita_pagamento %}
@@ -153,7 +165,7 @@
         </div>
         {% endif %}
 
-        <button type="submit" class="btn btn-success w-100">Criar Oficina</button>
+        <button type="submit" class="btn btn-success w-100 mt-4">Criar Oficina</button>
         <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Voltar</a>
       </form>
     </div>
@@ -162,101 +174,211 @@
 
 <!-- Scripts JavaScript -->
 <script>
-  document.getElementById('add-horario').addEventListener('click', function () {
-    let container = document.getElementById('horarios-container');
-    let newGroup = document.createElement('div');
-    newGroup.classList.add('mb-3', 'p-3', 'border', 'rounded');
-    newGroup.innerHTML = `
-      <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <label>Data:</label>
-          <input type="date" class="form-control" name="data[]" required>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Adição de novo horário
+    document.getElementById('add-horario').addEventListener('click', function () {
+      let container = document.getElementById('horarios-container');
+      let newGroup = document.createElement('div');
+      newGroup.classList.add('data-item', 'mb-3', 'p-3', 'border', 'rounded');
+      newGroup.innerHTML = `
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label>Data:</label>
+            <input type="date" class="form-control" name="data[]" required>
+          </div>
+          <div class="col-md-3">
+            <label>Horário de Início:</label>
+            <input type="time" class="form-control" name="horario_inicio[]" required>
+          </div>
+          <div class="col-md-3">
+            <label>Horário de Fim:</label>
+            <input type="time" class="form-control" name="horario_fim[]" required>
+          </div>
+          <div class="col-md-2">
+            <button type="button" class="btn btn-danger btn-sm remover-data w-100">Remover</button>
+          </div>
         </div>
-        <div class="col-md-4">
-          <label>Horário de Início:</label>
-          <input type="time" class="form-control" name="horario_inicio[]" required>
-        </div>
-        <div class="col-md-3">
-          <label>Horário de Fim:</label>
-          <input type="time" class="form-control" name="horario_fim[]" required>
-        </div>
-      </div>
-    `;
-    container.appendChild(newGroup);
-  });
+      `;
+      container.appendChild(newGroup);
+    });
 
-  document.getElementById("estado").addEventListener("change", function() {
-    var estado = this.value;
-    var cidadeSelect = document.getElementById("cidade");
+    // Delegação de eventos para remover data
+    document.getElementById('horarios-container').addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('remover-data')) {
+        // Verifica se há mais de um elemento antes de remover
+        const dataItems = document.querySelectorAll('.data-item');
+        if (dataItems.length > 1) {
+          e.target.closest('.data-item').remove();
+        } else {
+          alert('É necessário pelo menos um dia para a oficina!');
+        }
+      }
+    });
 
-    cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
+    // Carregamento de cidades após selecionar o estado
+    document.getElementById("estado").addEventListener("change", function() {
+      var estado = this.value;
+      var cidadeSelect = document.getElementById("cidade");
 
-    fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estado)
+      cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
+
+      fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estado)
+        .then(response => response.json())
+        .then(data => {
+          cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
+          data.forEach(cidade => {
+            var option = document.createElement("option");
+            option.value = cidade;
+            option.textContent = cidade;
+            cidadeSelect.appendChild(option);
+          });
+        })
+        .catch(error => {
+          console.error("Erro ao buscar cidades:", error);
+          cidadeSelect.innerHTML = "<option value=''>Erro ao carregar cidades</option>";
+        });
+    });
+
+    // Validação do formulário antes de enviar
+    document.querySelector("form").addEventListener("submit", function(event) {
+      var estado = document.getElementById("estado").value;
+      var cidade = document.getElementById("cidade").value;
+      var evento = document.getElementById("evento_id").value;
+      if (!estado || !cidade || !evento) {
+        event.preventDefault();
+        alert("❌ ERRO: Selecione um evento, estado e cidade antes de continuar.");
+      }
+    });
+
+    // Locais de Atuação
+    const locationsContainer = document.getElementById('locations-container');
+    const addLocationBtn = document.getElementById('add-location-btn');
+
+    // Busca os estados do Brasil via API do IBGE
+    let statesData = [];
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
       .then(response => response.json())
       .then(data => {
-        cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
-        data.forEach(cidade => {
-          var option = document.createElement("option");
-          option.value = cidade;
-          option.textContent = cidade;
-          cidadeSelect.appendChild(option);
-        });
+        statesData = data.sort((a, b) => a.nome.localeCompare(b.nome));
+        // Adiciona um local inicial
+        addLocationBlock();
       })
-      .catch(error => {
-        console.error("Erro ao buscar cidades:", error);
-        cidadeSelect.innerHTML = "<option value=''>Erro ao carregar cidades</option>";
+      .catch(error => console.error('Erro ao buscar estados:', error));
+
+    // Função para adicionar um novo bloco de localização
+    function addLocationBlock() {
+      const block = document.createElement('div');
+      block.classList.add('location-block', 'mb-3', 'p-3', 'border', 'rounded');
+      
+      let statesOptions = `<option value="">Selecione o Estado</option>`;
+      statesData.forEach(state => {
+        statesOptions += `<option value="${state.sigla}">${state.nome}</option>`;
       });
-  });
 
-  document.querySelector("form").addEventListener("submit", function(event) {
-    var estado = document.getElementById("estado").value;
-    var cidade = document.getElementById("cidade").value;
-    var evento = document.getElementById("evento_id").value;
-    if (!estado || !cidade || !evento) {
-      event.preventDefault();
-      alert("❌ ERRO: Selecione um evento, estado e cidade antes de continuar.");
+      block.innerHTML = `
+        <div class="row g-2">
+          <div class="col-md-5">
+            <label class="form-label">Estado</label>
+            <select name="estados[]" class="form-select estado-select">
+              ${statesOptions}
+            </select>
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Cidade</label>
+            <select name="cidades[]" class="form-select cidade-select">
+              <option value="">Selecione o Estado primeiro</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label d-block">&nbsp;</label>
+            <button type="button" class="btn btn-danger btn-sm remover-location w-100">Remover</button>
+          </div>
+        </div>
+      `;
+
+      // Adicionar ouvinte de evento para o select de estados
+      const estadoSelect = block.querySelector('.estado-select');
+      const cidadeSelect = block.querySelector('.cidade-select');
+
+      estadoSelect.addEventListener('change', function() {
+        const siglaUF = this.value;
+        cidadeSelect.innerHTML = '<option value="">Selecione a cidade</option>';
+
+        if (siglaUF) {
+          fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${siglaUF}/municipios`)
+            .then(response => response.json())
+            .then(cidades => {
+              cidades.sort((a, b) => a.nome.localeCompare(b.nome));
+              cidades.forEach(cidade => {
+                const option = document.createElement('option');
+                option.value = cidade.nome;
+                option.textContent = cidade.nome;
+                cidadeSelect.appendChild(option);
+              });
+            })
+            .catch(error => console.error('Erro ao buscar cidades:', error));
+        }
+      });
+
+      locationsContainer.appendChild(block);
     }
-  });
 
-  </script>
-  {% if current_user.habilita_pagamento %}
-  <script>
-  document.getElementById('inscricao_gratuita').addEventListener('change', function(){
-    var container = document.getElementById('tipos-inscricao-container');
-    if(this.checked){
-      container.style.display = 'none';
-    } else {
-      container.style.display = 'block';
-    }
-  });
+    // Delegação de eventos para remover locais
+    locationsContainer.addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('remover-location')) {
+        // Verifica se há mais de um elemento antes de remover
+        const locationBlocks = document.querySelectorAll('.location-block');
+        if (locationBlocks.length > 1) {
+          e.target.closest('.location-block').remove();
+        } else {
+          alert('É necessário pelo menos um local de atuação!');
+        }
+      }
+    });
 
-  document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
-    var container = document.getElementById('tipos-inscricao-list');
-    var div = document.createElement('div');
-    div.className = 'row mb-2 align-items-center';
-    div.innerHTML = `
-      <div class="col-md-4">
-        <label class="form-label">Tipo de Inscrição:</label>
-        <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
-      </div>
-      <div class="col-md-2">
-        <label class="form-label">Preço:</label>
-        <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
-      </div>
-      <div class="col-md-2">
-        <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-      </div>
-    `;
-    container.appendChild(div);
-  });
+    // Adicionar evento no botão para adicionar mais locais
+    addLocationBtn.addEventListener('click', addLocationBlock);
 
-  document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
-    if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
-      e.target.parentElement.parentElement.remove();
-    }
+    {% if current_user.habilita_pagamento %}
+    // Controle de exibição para tipos de inscrição
+    document.getElementById('inscricao_gratuita').addEventListener('change', function(){
+      var container = document.getElementById('tipos-inscricao-container');
+      if(this.checked){
+        container.style.display = 'none';
+      } else {
+        container.style.display = 'block';
+      }
+    });
+
+    // Adicionar novo tipo de inscrição
+    document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
+      var container = document.getElementById('tipos-inscricao-list');
+      var div = document.createElement('div');
+      div.className = 'row mb-2 align-items-center';
+      div.innerHTML = `
+        <div class="col-md-4">
+          <label class="form-label">Tipo de Inscrição:</label>
+          <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Preço:</label>
+          <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+        </div>
+        <div class="col-md-2">
+          <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    // Remover tipo de inscrição
+    document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
+      if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
+        e.target.closest('.row').remove();
+      }
+    });
+    {% endif %}
   });
-  </script>
-  {% endif %}
 </script>
 
 <!-- Incluindo Bootstrap via CDN -->
