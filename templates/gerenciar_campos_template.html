@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Gerenciar Campos do Template - {{ template.nome }}</h2>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Campo</label>
+            <input type="text" id="nome" name="nome" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="tipo" class="form-label">Tipo</label>
+            <select id="tipo" name="tipo" class="form-select" required>
+                <option value="text">Texto Curto</option>
+                <option value="textarea">Texto Longo</option>
+                <option value="number">Número</option>
+                <option value="rating">Avaliação (Estrelas)</option>
+                <option value="dropdown">Dropdown</option>
+                <option value="checkbox">Checkbox</option>
+                <option value="radio">Botões de Opção</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="opcoes" class="form-label">Opções (separadas por vírgula)</label>
+            <input type="text" id="opcoes" name="opcoes" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="ordem" class="form-label">Ordem</label>
+            <input type="number" id="ordem" name="ordem" class="form-control" value="0">
+        </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" id="obrigatorio" name="obrigatorio" class="form-check-input">
+            <label for="obrigatorio" class="form-check-label">Campo Obrigatório</label>
+        </div>
+        <button type="submit" class="btn btn-success">Adicionar Campo</button>
+    </form>
+
+    <h3 class="mt-4">Campos Existentes</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Ordem</th>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Obrigatório</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campo in template.campos|sort(attribute='ordem') %}
+            <tr>
+                <td>{{ campo.ordem }}</td>
+                <td>{{ campo.nome }}</td>
+                <td>{{ campo.tipo }}</td>
+                <td>{% if campo.obrigatorio %}Sim{% else %}Não{% endif %}</td>
+                <td>
+                    <a href="#" class="btn btn-sm btn-warning">Editar</a>
+                    <form action="#" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-danger">Remover</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-primary">Voltar para Templates</a>
+    </div>
+</div>
+{% endblock %}

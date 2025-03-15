@@ -24,6 +24,10 @@ from datetime import datetime
 from flask_mail import Message
 from models import Evento
 from flask import current_app
+from models import FormularioTemplate
+from models import CampoFormulario
+from models import Formulario
+from models import CampoFormularioTemplate
 
 
 # Extensões e modelos (utilize sempre o mesmo ponto de importação para o db)
@@ -3839,15 +3843,14 @@ def exibir_evento(evento_id):
     #    grouped_oficinas[ "DD/MM/AAAA" ] = [ { 'titulo': ..., 'ministrante': ..., 'inicio': ..., 'fim': ... }, ... ]
     grouped_oficinas = defaultdict(list)
 
+   # No trecho onde você monta grouped_oficinas
     for oficina in oficinas:
-        # Cada oficina pode ter várias datas em `OficinaDia`
         for dia in oficina.dias:
             data_str = dia.data.strftime('%d/%m/%Y')
-            ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-
-            grouped_oficinas[data_str].append({
+            temp_group[data_str].append({
                 'titulo': oficina.titulo,
-                'ministrante': ministrante_nome,
+                'descricao': oficina.descricao,
+                'ministrante': oficina.ministrante_obj,  # Objeto ministrante completo em vez de só o nome
                 'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })
@@ -3981,3 +3984,123 @@ def pagina_evento(identifier):
         sorted_keys=sorted_keys,
         ministrantes=ministrantes  # Passa os ministrantes para o template
     )
+
+@routes.route('/formulario_templates', methods=['GET'])
+@login_required
+def listar_templates():
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Filter by cliente if not admin
+    if current_user.tipo == 'cliente':
+        templates = FormularioTemplate.query.filter(
+            (FormularioTemplate.cliente_id == current_user.id) | 
+            (FormularioTemplate.is_default == True)
+        ).all()
+    else:  # Admin sees all templates
+        templates = FormularioTemplate.query.all()
+        
+    return render_template('templates_formulario.html', templates=templates)
+
+@routes.route('/formulario_templates/novo', methods=['GET', 'POST'])
+@login_required
+def criar_template():
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        categoria = request.form.get('categoria')
+        is_default = request.form.get('is_default') == 'on'
+        
+        # Only admin can create default templates
+        if current_user.tipo != 'admin' and is_default:
+            is_default = False
+        
+        novo_template = FormularioTemplate(
+            nome=nome,
+            descricao=descricao,
+            categoria=categoria,
+            is_default=is_default,
+            cliente_id=None if is_default else current_user.id
+        )
+        
+        db.session.add(novo_template)
+        db.session.commit()
+        
+        flash('Template criado com sucesso!', 'success')
+        return redirect(url_for('routes.gerenciar_campos_template', template_id=novo_template.id))
+    
+    return render_template('criar_template.html')
+
+@routes.route('/formulario_templates/<int:template_id>/campos', methods=['GET', 'POST'])
+@login_required
+def gerenciar_campos_template(template_id):
+    template = FormularioTemplate.query.get_or_404(template_id)
+    
+    # Check permissions
+    if current_user.tipo != 'admin' and template.cliente_id != current_user.id and not template.is_default:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.listar_templates'))
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        tipo = request.form.get('tipo')
+        opcoes = request.form.get('opcoes', '').strip()
+        obrigatorio = request.form.get('obrigatorio') == 'on'
+        ordem = request.form.get('ordem', 0)
+        
+        novo_campo = CampoFormularioTemplate(
+            template_id=template.id,
+            nome=nome,
+            tipo=tipo,
+            opcoes=opcoes if tipo in ['dropdown', 'checkbox', 'radio'] else None,
+            obrigatorio=obrigatorio,
+            ordem=ordem
+        )
+        
+        db.session.add(novo_campo)
+        db.session.commit()
+        
+        flash('Campo adicionado com sucesso!', 'success')
+        return redirect(url_for('routes.gerenciar_campos_template', template_id=template.id))
+    
+    return render_template('gerenciar_campos_template.html', template=template)
+
+@routes.route('/formulario_templates/<int:template_id>/usar', methods=['GET', 'POST'])
+@login_required
+def usar_template(template_id):
+    template = FormularioTemplate.query.get_or_404(template_id)
+    
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        
+        # Create new form from template
+        novo_formulario = Formulario(
+            nome=nome,
+            descricao=descricao,
+            cliente_id=current_user.id
+        )
+        db.session.add(novo_formulario)
+        db.session.flush()  # Get ID before committing
+        
+        # Copy fields from template
+        for campo_template in sorted(template.campos, key=lambda x: x.ordem):
+            novo_campo = CampoFormulario(
+                formulario_id=novo_formulario.id,
+                nome=campo_template.nome,
+                tipo=campo_template.tipo,
+                opcoes=campo_template.opcoes,
+                obrigatorio=campo_template.obrigatorio
+            )
+            db.session.add(novo_campo)
+        
+        db.session.commit()
+        flash('Formulário criado com sucesso a partir do template!', 'success')
+        return redirect(url_for('routes.listar_formularios'))
+    
+    return render_template('usar_template.html', template=template)

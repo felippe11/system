@@ -50,22 +50,22 @@
                                 {{ item.descricao }}
                             </div>
                             <div class="atividade-ministrante">
-                                {% if item.ministrante and item.ministrante.foto %}
-                                <!-- Foto customizada do ministrante -->
-                                <img 
-                                  src="{{ url_for('static', filename=item.ministrante.foto) }}" 
-                                  alt="Foto do ministrante" 
-                                  class="ministrante-foto-pequena"
-                                >
-                            {% else %}
-                                <!-- Foto default (não salva no banco) -->
-                                <img 
-                                  src="{{ url_for('static', filename='uploads/ministrantes/default-profile.png') }}"
-                                  alt="Foto padrão"
-                                  class="ministrante-foto-pequena"
-                                >
-                            {% endif %}
-
+                                {% if item.ministrante %}
+                                    {% if item.ministrante.foto %}
+                                        <!-- Foto customizada do ministrante -->
+                                        <img src="{{ url_for('static', filename=item.ministrante.foto) }}" 
+                                             alt="Foto do ministrante" 
+                                             class="ministrante-foto-pequena">
+                                    {% else %}
+                                        <!-- Foto default -->
+                                        <img src="{{ url_for('static', filename='uploads/ministrantes/default-profile.png') }}"
+                                             alt="Foto padrão"
+                                             class="ministrante-foto-pequena">
+                                    {% endif %}
+                                    <span>{{ item.ministrante.nome }}</span>
+                                {% else %}
+                                    <span>Ministrante não definido</span>
+                                {% endif %}
                             </div>
                         </div>
                     </li>
