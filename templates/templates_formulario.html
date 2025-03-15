@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Templates de Formulários</h2>
+
+    <a href="{{ url_for('routes.criar_template') }}" class="btn btn-success mb-3">
+        + Criar Novo Template
+    </a>
+
+    {% if templates %}
+    <div class="row">
+        {% for template in templates %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header {% if template.is_default %}bg-primary text-white{% endif %}">
+                    <h5 class="mb-0">{{ template.nome }}</h5>
+                    {% if template.is_default %}<span class="badge bg-warning">Padrão</span>{% endif %}
+                </div>
+                <div class="card-body">
+                    <p>{{ template.descricao }}</p>
+                    <p><strong>Categoria:</strong> {{ template.categoria or "N/A" }}</p>
+                    <p><strong>Campos:</strong> {{ template.campos|length }}</p>
+                </div>
+                <div class="card-footer">
+                    <div class="btn-group w-100">
+                        <a href="{{ url_for('routes.gerenciar_campos_template', template_id=template.id) }}" class="btn btn-sm btn-outline-primary">
+                            Gerenciar Campos
+                        </a>
+                        <a href="{{ url_for('routes.usar_template', template_id=template.id) }}" class="btn btn-sm btn-outline-success">
+                            Usar Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Nenhum template disponível. Crie um novo template ou use os templates padrão.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

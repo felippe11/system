@@ -173,6 +173,8 @@ class OficinaDia(db.Model):
 # =================================
 #           INSCRIÇÃO
 # =================================
+
+
 class Inscricao(db.Model):
     __tablename__ = 'inscricao'
 
@@ -189,19 +191,27 @@ class Inscricao(db.Model):
     # Novo campo: referência ao tipo de inscrição, se aplicável.
     tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('inscricao_tipo.id'), nullable=True)
     
-    usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))  # Adicionar lazy loading
+    usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))
     oficina = db.relationship('Oficina', backref='inscritos')
     evento = db.relationship('Evento', backref='inscricoes')
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False) 
-    
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+
     def __init__(self, usuario_id, oficina_id, cliente_id):
         self.usuario_id = usuario_id
         self.oficina_id = oficina_id
         self.cliente_id = cliente_id
-        self.qr_code_token = str(uuid.uuid4())
-    
+
+        # Gera um token único garantido
+        while True:
+            token = str(uuid.uuid4())
+            existing = Inscricao.query.filter_by(qr_code_token=token).first()
+            if not existing:
+                self.qr_code_token = token
+                break
+
     def __repr__(self):
         return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
+
     
 
 # Novo modelo para tipos de inscrição (caso a oficina seja paga)
@@ -488,6 +498,36 @@ class Evento(db.Model):
 
     cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
     # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
+
+class FormularioTemplate(db.Model):
+    __tablename__ = 'formulario_templates'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    categoria = db.Column(db.String(100), nullable=True)  # e.g., "workshop", "event", "course"
+    is_default = db.Column(db.Boolean, default=False)
+    
+    cliente = db.relationship('Cliente', backref=db.backref('templates_formulario', lazy=True))
+    campos = db.relationship('CampoFormularioTemplate', backref='template', lazy=True, cascade="all, delete-orphan")
+    
+    def __repr__(self):
+        return f"<FormularioTemplate {self.nome}>"
+
+class CampoFormularioTemplate(db.Model):
+    __tablename__ = 'campos_formulario_template'
+
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('formulario_templates.id'), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)
+    opcoes = db.Column(db.Text, nullable=True)
+    obrigatorio = db.Column(db.Boolean, default=False)
+    ordem = db.Column(db.Integer, default=0)  # For ordering fields
+    
+    def __repr__(self):
+        return f"<CampoFormularioTemplate {self.nome} ({self.tipo})>"
 
 
 
