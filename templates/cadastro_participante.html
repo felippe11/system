@@ -55,12 +55,12 @@
                                         <!-- Foto customizada do ministrante -->
                                         <img src="{{ url_for('static', filename=item.ministrante.foto) }}" 
                                              alt="Foto do ministrante" 
-                                             class="ministrante-foto-pequena">
+                                             class="ministrante-foto">
                                     {% else %}
                                         <!-- Foto default -->
                                         <img src="{{ url_for('static', filename='uploads/ministrantes/default-profile.png') }}"
                                              alt="Foto padrão"
-                                             class="ministrante-foto-pequena">
+                                             class="ministrante-foto">
                                     {% endif %}
                                     <span>{{ item.ministrante.nome }}</span>
                                 {% else %}
@@ -81,14 +81,29 @@
         <i class="fas fa-chalkboard-teacher"></i> Ministrantes Presentes no Evento
     </h2>
 
+    <!-- Add this HTML right before the closing body tag -->
+
+    <div id="photoModal" class="photo-modal">
+        <span class="photo-modal-close">&times;</span>
+        <div class="photo-modal-wrapper">
+            <img class="photo-modal-content" id="photoModalImg">
+            <div class="photo-modal-info">
+                <h3 id="photoModalName" class="photo-modal-name"></h3>
+                <p id="photoModalFormacao" class="photo-modal-formacao"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this CSS to your existing style section -->
+
     {% if ministrantes %}
         <div class="ministrantes-grid">
             {% for ministrante in ministrantes %}
                 <div class="ministrante-card">
                     {% if ministrante.foto %}
-                        <img src="{{ url_for('static', filename=ministrante.foto) }}" alt="Foto do ministrante" class="ministrante-foto">
+                        <img src="{{ url_for('static', filename=ministrante.foto) }}" alt="Foto do ministrante" class="ministrante-foto-pequena">
                     {% else %}
-                        <img src="{{ url_for('static', filename='default-profile.png') }}" alt="Foto padrão" class="ministrante-foto">
+                        <img src="{{ url_for('static', filename='default-profile.png') }}" alt="Foto padrão" class="ministrante-foto-pequena">
                     {% endif %}
                     <div class="ministrante-info">
                         <h3 class="ministrante-nome">{{ ministrante.nome }}</h3>
@@ -529,18 +544,112 @@
     
     .ministrantes-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         gap: 20px;
     }
     
     .ministrante-card {
         background: #f8f9fa;
-        padding: 15px;
+        padding: 8px;
         border-radius: 12px;
-        text-align: center;
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     
+    .ministrante-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .photo-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        padding-top: 100px;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        overflow: auto;
+    }
+
+    .photo-modal-content {
+        margin: auto;
+        display: block;
+        width: 80%;
+        max-width: 400px;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        animation: zoom 0.3s ease;
+    }
+
+    .photo-modal-wrapper {
+        position: relative;
+        margin: auto;
+        max-width: 400px;
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        animation: zoom 0.3s ease;
+    }    
+
+    .photo-modal-close {
+        position: absolute;
+        right: 35px;
+        top: 15px;
+        color: #f1f1f1;
+        font-size: 40px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .photo-modal-content {
+        width: 100%;
+        display: block;
+        object-fit: cover;
+    }
+
+    .photo-modal-info {
+        padding: 20px;
+        background: white;
+        text-align: center;
+    }
+
+    .photo-modal-name {
+        color: var(--text-primary);
+        font-size: 1.2em;
+        margin-bottom: 8px;
+    }
+
+    .photo-modal-formacao {
+        color: var(--text-secondary);
+        font-size: 0.9em;
+        line-height: 1.5;
+    }
+
+    .photo-modal-close:hover {
+        color: #bbb;
+        text-decoration: none;
+    }
+
+    @keyframes zoom {
+        from {transform:scale(0); opacity: 0;}
+        to {transform:scale(1); opacity: 1;}
+    }
+
+    @media only screen and (max-width: 700px) {
+        .photo-modal-content {
+            width: 90%;
+        }
+    }
+
     .ministrante-foto {
         width: 100%;
         height: 180px;
@@ -559,30 +668,56 @@
     }
     
     .ministrante-foto-pequena {
-        width: 40px;
-        height: 40px;
+        width: 60px;
+        height: 60px;
+        min-width: 60px;
         object-fit: cover;
-        border-radius: 50%;
+        border-radius: 20%;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: transform 0.3s ease;
+    }
+
+    .ministrante-foto {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        object-fit: cover;
+        border-radius: 20%;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .ministrante-foto-pequena:hover {
+        transform: scale(1.1);
     }
     
     .ministrante-info {
         color: #34495e;
+        flex: 1;
     }
     
     .ministrante-nome {
-        font-size: 1.2em;
-        margin-bottom: 5px;
+        font-size: 0.80em;
+        margin-bottom: 4px;
         font-weight: 600;
+        color: var(--text-primary);
     }
     
     .ministrante-formacao {
         color: #7f8c8d;
-        font-size: 0.95em;
+        font-size: 0.70em;
+        line-height: 1.4;
     }
     
     @media (max-width: 768px) {
         .ministrantes-grid {
             grid-template-columns: 1fr;
+        }
+        
+        .ministrante-card {
+            padding: 12px;
         }
     }
 
@@ -706,6 +841,49 @@
         });
 
         locationsContainer.appendChild(locationBlock);
+    });
+</script>
+
+<script>
+    // Add this JavaScript to your existing script section
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('photoModal');
+        const modalImg = document.getElementById('photoModalImg');
+        const modalName = document.getElementById('photoModalName');
+        const modalFormacao = document.getElementById('photoModalFormacao');
+        const closeBtn = document.getElementsByClassName('photo-modal-close')[0];
+
+        document.querySelectorAll('.ministrante-foto-pequena').forEach(img => {
+            img.addEventListener('click', function() {
+                const card = this.closest('.ministrante-card');
+                const name = card.querySelector('.ministrante-nome').textContent;
+                const formacao = card.querySelector('.ministrante-formacao').textContent;
+
+                modal.style.display = "block";
+                modalImg.src = this.src;
+                modalName.textContent = name;
+                modalFormacao.textContent = formacao;
+            });
+        });
+
+        // Close modal when clicking (X)
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = "none";
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === "block") {
+                modal.style.display = "none";
+            }
+        });
     });
 </script>
 
