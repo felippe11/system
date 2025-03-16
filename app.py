@@ -6,6 +6,7 @@ import os
 from flask_migrate import upgrade
 from extensions import mail
 import logging
+import pytz
 
 
 def create_app():
@@ -46,6 +47,31 @@ def create_app():
 
 # Criar a aplicação
 app = create_app()
+
+# Função que converte um datetime para o horário de Brasília
+def convert_to_brasilia(dt):
+    # Se a data não for "aware", considere que está em UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    return dt.astimezone(brasilia_tz)
+
+# Registro do filtro de template no Flask
+@app.template_filter('brasilia')
+def brasilia_filter(dt):
+    # Se o datetime não tiver informação de fuso (naive), assumimos que está em UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    dt_brasilia = dt.astimezone(brasilia_tz)
+    return dt_brasilia.strftime("%d/%m/%Y %H:%M:%S")
+
+# Exemplo de rota que utiliza o filtro no template
+@app.route("/")
+def index():
+    now = datetime.utcnow()  # Data em UTC
+    # Em um template você utilizaria: {{ now|brasilia }}
+    return f"Horário de Brasília: {brasilia_filter(now)}"
 
 # Executar apenas se rodar diretamente
 if __name__ == '__main__':

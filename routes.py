@@ -1,6 +1,7 @@
 import os
 import uuid
 import csv
+import pytz
 from flask import Response
 from datetime import datetime
 import logging
@@ -92,6 +93,7 @@ def register_routes(app):
 @routes.route('/')
 def home():
     return render_template('index.html')
+
 
 
 # ===========================
@@ -1375,7 +1377,7 @@ def lista_checkins(oficina_id):
         'nome': checkin.usuario.nome,
         'cpf': checkin.usuario.cpf,
         'email': checkin.usuario.email,
-        'data_hora': checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        'data_hora': checkin.data_hora
     } for checkin in checkins]
     return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
 
@@ -1386,7 +1388,15 @@ def gerar_pdf_checkins(oficina_id):
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
     dias = OficinaDia.query.filter_by(oficina_id=oficina_id).all()
     pdf_path = f"static/checkins_oficina_{oficina.id}.pdf"
-    
+
+    # Definindo a timezone de Brasília
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    def convert_to_brasilia(dt):
+        # Se o datetime não for "aware", assumimos que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+
     styles = getSampleStyleSheet()
     header_style = ParagraphStyle(
         name="Header",
@@ -1396,9 +1406,8 @@ def gerar_pdf_checkins(oficina_id):
         spaceAfter=12,
     )
     normal_style = styles["Normal"]
-    
-    # Aqui definimos a página como paisagem (landscape)
-    # e colocamos margens pequenas (20 points em cada lado).
+
+    # Configura o documento PDF em modo paisagem com margens reduzidas
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=landscape(letter),
@@ -1407,48 +1416,48 @@ def gerar_pdf_checkins(oficina_id):
         topMargin=20,
         bottomMargin=20
     )
-    
+
     elementos = []
-    
+
     # Acessa o nome do ministrante
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-    
+
     elementos.append(Paragraph(f"Lista de Check-ins - {oficina.titulo}", header_style))
     elementos.append(Spacer(1, 12))
     elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
     elementos.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
-    
+
     if dias:
         elementos.append(Paragraph("<b>Datas:</b>", normal_style))
         for dia in dias:
             data_formatada = dia.data.strftime('%d/%m/%Y')
             elementos.append(Paragraph(
-                f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})", 
+                f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})",
                 normal_style
             ))
     else:
         elementos.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", normal_style))
-    
+
     elementos.append(Spacer(1, 20))
-    
-    # Monta os dados da tabela
+
+    # Monta os dados da tabela e converte os horários de check-in para o fuso de Brasília
     data_table = [["Nome", "CPF", "E-mail", "Data e Hora do Check-in"]]
     for checkin in checkins:
+        dt_brasilia = convert_to_brasilia(checkin.data_hora)
         data_table.append([
             checkin.usuario.nome,
             checkin.usuario.cpf,
             checkin.usuario.email,
-            checkin.data_hora.strftime("%d/%m/%Y %H:%M"),
+            dt_brasilia.strftime("%d/%m/%Y %H:%M"),
         ])
-    
-    # Utiliza LongTable para quebra em múltiplas páginas e repete o cabeçalho
-    # Define colWidths como ['*','*','*','*'] para usar toda a largura do doc
+
+    # Utiliza LongTable para permitir a quebra de página e repetir o cabeçalho
     tabela = LongTable(
         data_table,
-        colWidths=['*','*','*','*'],  # cada coluna divide a largura disponível
-        repeatRows=1  # repete o cabeçalho nas próximas páginas
+        colWidths=['*','*','*','*'],
+        repeatRows=1
     )
-    
+
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1458,17 +1467,15 @@ def gerar_pdf_checkins(oficina_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        
-        # Ativa quebra de linha em todas as células
         ('WORDWRAP', (0, 0), (-1, -1), True),
-        # Ajusta o alinhamento vertical das células
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
-    
+
     elementos.append(tabela)
-    
+
     doc.build(elementos)
     return send_file(pdf_path, as_attachment=True)
+
 
 
 @routes.route('/gerar_pdf/<int:oficina_id>')
