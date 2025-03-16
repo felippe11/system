@@ -72,9 +72,10 @@
 
   {% if formularios_disponiveis %}
     <div class="mb-4">
-        <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary w-100 fw-bold">
-            📝 Preencher Formulários
-        </a>
+        <p><strong>Formulários Disponíveis: <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary">
+          📝 Formulários
+      </a></strong></p>
+
     </div>
   {% endif %}
   
