@@ -112,6 +112,7 @@ def cadastro_participante(identifier=None):
     sorted_keys = []
     grouped_oficinas = {}
     oficinas = []
+    ministrantes = []
 
     # Busca o link pelo token ou slug
     link = None
@@ -131,6 +132,8 @@ def cadastro_participante(identifier=None):
     if evento:
         # Carrega oficinas do evento
         oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
+        # Carrega ministrantes do evento
+        ministrantes = Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all()
     else:
         # Fallback: carrega oficinas do cliente se não houver evento associado
         oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
@@ -143,7 +146,7 @@ def cadastro_participante(identifier=None):
             temp_group[data_str].append({
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
-                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else '',
+                'ministrante': oficina.ministrante_obj,
                 'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })
@@ -176,8 +179,10 @@ def cadastro_participante(identifier=None):
                 token=link.token,
                 evento=evento,
                 sorted_keys=sorted_keys,
+                ministrantes=ministrantes,
                 grouped_oficinas=grouped_oficinas
             )
+
 
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
@@ -225,6 +230,7 @@ def cadastro_participante(identifier=None):
         token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
+        ministrantes=ministrantes,
         grouped_oficinas=grouped_oficinas
     )
 
