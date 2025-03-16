@@ -26,13 +26,7 @@
                     <td>{{ usuario.nome }}</td>
                     <td>{{ usuario.cpf }}</td>
                     <td>{{ usuario.email }}</td>
-                    <td>
-                        {% if usuario.data_hora is string %}
-                            {{ usuario.data_hora }}
-                        {% else %}
-                            {{ usuario.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
-                        {% endif %}
-                    </td>
+                    <td>{{ usuario.data_hora|brasilia }}</td>
                 </tr>
                 {% else %}
                 <tr>
