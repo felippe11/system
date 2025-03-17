@@ -3635,37 +3635,30 @@ def listar_respostas_ministrante(formulario_id):
 @routes.route('/respostas/<int:resposta_id>/feedback', methods=['GET', 'POST'])
 @login_required
 def dar_feedback_resposta(resposta_id):
-    # Apenas ministrante pode dar feedback
-    if not isinstance(current_user, Ministrante):
-        flash('Apenas ministrantes podem dar feedback.', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+    if not (isinstance(current_user, Ministrante) or current_user.tipo == 'cliente'):
+        flash('Apenas clientes e ministrantes podem dar feedback.', 'danger')
+        return redirect(url_for('routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
-
-    # Exemplo: poderíamos verificar se a oficina do user bate com a do ministrante, etc.
-    # if <checar se o ministrante atual tem permissão para ver esse form>
-
     formulario = resposta.formulario
-    lista_campos = formulario.campos  # ou: CampoFormulario.query.filter_by(formulario_id=formulario.id)
-    # carrega as sub-respostas (RespostaCampo) dessa resposta
-    resposta_campos = resposta.respostas_campos  # gera a lista dos campos e os valores
+    lista_campos = formulario.campos
+    resposta_campos = resposta.respostas_campos
 
     if request.method == 'POST':
-        # Significa que o ministrante enviou feedback para 1 ou + campos
         for rcampo in resposta_campos:
-            # Montar o name do textarea = "feedback_<campo.id>"
             nome_textarea = f"feedback_{rcampo.id}"
             texto_feedback = request.form.get(nome_textarea, "").strip()
             if texto_feedback:
-                # criar um registro FeedbackCampo
                 novo_feedback = FeedbackCampo(
-                    resposta_campo_id = rcampo.id,
-                    ministrante_id = current_user.id,
-                    texto_feedback = texto_feedback
+                    resposta_campo_id=rcampo.id,
+                    ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
+                    cliente_id=current_user.id if current_user.tipo == 'cliente' else None,
+                    texto_feedback=texto_feedback
                 )
                 db.session.add(novo_feedback)
+        
         db.session.commit()
-        flash("Feedback registrado!", "success")
+        flash("Feedback registrado com sucesso!", "success")
         return redirect(url_for('routes.dar_feedback_resposta', resposta_id=resposta_id))
 
     return render_template(
