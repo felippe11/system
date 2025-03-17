@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Criar Evento para Agendamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 mt-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-primary mb-0">
+      <i class="bi bi-calendar-plus me-2"></i>Criar Evento para Agendamento
+    </h1>
+    <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+    </a>
+  </div>
+
+  <div class="card shadow">
+    <div class="card-body">
+      {% if form_erro %}
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ form_erro }}
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('routes.criar_evento_agendamento') }}" enctype="multipart/form-data">
+        <div class="row">
+          <!-- Coluna 1: Informações Básicas -->
+          <div class="col-md-6">
+            <h5 class="mb-3 border-bottom pb-2">Informações Básicas</h5>
+            
+            <!-- Nome do Evento -->
+            <div class="mb-3">
+              <label for="nome" class="form-label">Nome do Evento <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="nome" name="nome" required>
+            </div>
+            
+            <!-- Descrição -->
+            <div class="mb-3">
+              <label for="descricao" class="form-label">Descrição</label>
+              <textarea class="form-control" id="descricao" name="descricao" rows="4"></textarea>
+              <div class="form-text">Descreva o evento, informações importantes para os visitantes, etc.</div>
+            </div>
+            
+            <!-- Local -->
+            <div class="mb-3">
+              <label for="local" class="form-label">Local</label>
+              <input type="text" class="form-control" id="local" name="local">
+            </div>
+            
+            <!-- Imagem do Evento -->
+            <div class="mb-3">
+              <label for="imagem" class="form-label">Imagem do Evento</label>
+              <input type="file" class="form-control" id="imagem" name="imagem" accept="image/*">
+              <div class="form-text">Imagem que será exibida na página de agendamento. (Opcional)</div>
+            </div>
+          </div>
+          
+          <!-- Coluna 2: Configurações -->
+          <div class="col-md-6">
+            <h5 class="mb-3 border-bottom pb-2">Configurações</h5>
+            
+            <!-- Período do Evento -->
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="data_inicio" class="form-label">Data de Início <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" id="data_inicio" name="data_inicio" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="data_fim" class="form-label">Data de Fim <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control" id="data_fim" name="data_fim" required>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Capacidade Padrão -->
+            <div class="mb-3">
+              <label for="capacidade_padrao" class="form-label">Capacidade Padrão <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="capacidade_padrao" name="capacidade_padrao" min="1" required>
+              <div class="form-text">Número padrão de pessoas por horário. Você poderá personalizar por horário depois.</div>
+            </div>
+            
+            <!-- Opções -->
+            <div class="mb-3">
+              <label class="form-label">Opções</label>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="requer_aprovacao" name="requer_aprovacao">
+                <label class="form-check-label" for="requer_aprovacao">
+                  Requer aprovação manual de agendamentos
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="publico" name="publico" checked>
+                <label class="form-check-label" for="publico">
+                  Evento público (visível para agendamento externo)
+                </label>
+              </div>
+            </div>
+            
+            <!-- Formulário de Inscrição -->
+            <div class="mb-3">
+              <label for="formulario_id" class="form-label">Formulário de Inscrição</label>
+              <select class="form-select" id="formulario_id" name="formulario_id">
+                <option value="">Sem formulário adicional</option>
+                <option value="1">Formulário Básico</option>
+                <option value="2">Formulário Completo</option>
+                <option value="3">Formulário para Escolas</option>
+              </select>
+              <div class="form-text">Formulário adicional a ser preenchido durante o agendamento. (Opcional)</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="row mt-4">
+          <div class="col-12 d-flex justify-content-between">
+            <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-calendar-plus me-2"></i>Criar Evento
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript para validar formulários -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Validar datas
+  const dataInicioInput = document.getElementById('data_inicio');
+  const dataFimInput = document.getElementById('data_fim');
+  
+  if (dataInicioInput && dataFimInput) {
+    dataFimInput.addEventListener('change', function() {
+      if (dataInicioInput.value && dataFimInput.value) {
+        if (new Date(dataFimInput.value) < new Date(dataInicioInput.value)) {
+          alert('A data de fim não pode ser anterior à data de início!');
+          dataFimInput.value = '';
+        }
+      }
+    });
+  }
+  
+  // Validar tamanho da imagem
+  const imagemInput = document.getElementById('imagem');
+  if (imagemInput) {
+    imagemInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        const file = this.files[0];
+        // Verificar tamanho do arquivo (limite de 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('A imagem deve ter menos de 5MB.');
+          this.value = '';
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
