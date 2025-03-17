@@ -1,0 +1,1085 @@
+{% extends "base.html" %}
+{% block title %}Dashboard de Agendamentos{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 mt-0">
+
+  <!-- TÍTULO -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-primary mb-0">
+      <i class="bi bi-calendar2-week me-2"></i>Dashboard de Agendamentos
+    </h1>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard Principal
+    </a>
+  </div>
+
+  <!-- Card Principal que contém as abas -->
+  <div class="card shadow">
+    <div class="card-body p-0">
+      <!-- Abas (Nav Tabs) -->
+      <ul class="nav nav-tabs nav-justified" id="agendamentoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="resumo-tab" data-bs-toggle="tab"
+                  data-bs-target="#resumo" type="button">
+            <i class="bi bi-bar-chart-fill me-1"></i> Resumo
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="agendamentos-tab" data-bs-toggle="tab"
+                  data-bs-target="#agendamentos" type="button">
+            <i class="bi bi-calendar-check me-1"></i> Agendamentos
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="criar-tab" data-bs-toggle="tab"
+                  data-bs-target="#criar" type="button">
+            <i class="bi bi-plus-circle me-1"></i> Criar
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab"
+                  data-bs-target="#configuracoes" type="button">
+            <i class="bi bi-gear-fill me-1"></i> Configurações
+          </button>
+        </li>
+      </ul>
+
+      <!-- Conteúdo das Abas -->
+      <div class="tab-content p-4">
+
+        <!-- ABA 1: RESUMO -->
+        <div class="tab-pane fade show active" id="resumo" role="tabpanel">
+          <!-- Painel de estatísticas em cards -->
+          <div class="row g-4 mb-4">
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="card stat-card bg-primary-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Total de Eventos</h5>
+                      <h2 class="card-title mb-0">{{ eventos_ativos|length }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-event fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="card stat-card bg-info-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Agendamentos</h5>
+                      <h2 class="card-title mb-0">{{ agendamentos_totais }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-check fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="card stat-card bg-warning-gradient text-dark">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Visitantes</h5>
+                      <h2 class="card-title mb-0">{{ total_visitantes }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="card stat-card bg-success-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Ocupação Média</h5>
+                      <h2 class="card-title mb-0">{{ ocupacao_media|round(1) if ocupacao_media is defined else 0 }}%</h2>
+                    </div>
+                    <i class="bi bi-graph-up fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-8">
+              <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                  <i class="bi bi-calendar2-week"></i> Visão Geral de Agendamentos
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <!-- Agendamentos Hoje -->
+                    <div class="col-md-6 mb-3">
+                      <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                          <i class="bi bi-calendar-day"></i> Agendamentos Hoje
+                        </div>
+                        <div class="card-body">
+                          {% if agendamentos_hoje %}
+                            <div class="list-group">
+                              {% for agendamento in agendamentos_hoje %}
+                                <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                                  <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
+                                    <small>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</small>
+                                  </div>
+                                  <p class="mb-1">{{ agendamento.turma }} - {{ agendamento.quantidade_alunos }} alunos</p>
+                                  <small>
+                                    {% if agendamento.checkin_realizado %}
+                                      <span class="badge bg-success">Check-in realizado</span>
+                                    {% else %}
+                                      <span class="badge bg-warning text-dark">Aguardando check-in</span>
+                                    {% endif %}
+                                  </small>
+                                </a>
+                              {% endfor %}
+                            </div>
+                          {% else %}
+                            <div class="alert alert-info">
+                              <i class="bi bi-info-circle"></i> Não há agendamentos para hoje.
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Próximos Agendamentos -->
+                    <div class="col-md-6 mb-3">
+                      <div class="card h-100">
+                        <div class="card-header bg-success text-white">
+                          <i class="bi bi-calendar-week"></i> Próximos Agendamentos
+                        </div>
+                        <div class="card-body">
+                          {% if proximos_agendamentos %}
+                            <div class="list-group">
+                              {% for agendamento in proximos_agendamentos %}
+                                <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                                  <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
+                                    <small>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</small>
+                                  </div>
+                                  <p class="mb-1">{{ agendamento.turma }} - {{ agendamento.quantidade_alunos }} alunos</p>
+                                  <small>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario.evento.nome }}</small>
+                                </a>
+                              {% endfor %}
+                            </div>
+                          {% else %}
+                            <div class="alert alert-info">
+                              <i class="bi bi-info-circle"></i> Não há agendamentos programados para os próximos dias.
+                            </div>
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <!-- Sistema de Agendamentos -->
+              <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                  <i class="bi bi-calendar-event"></i> Sistema de Agendamentos
+                </div>
+                <div class="card-body">
+                  <div class="list-group mb-4">
+                    <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="list-group-item list-group-item-action">
+                      <div class="d-flex align-items-center">
+                        <i class="bi bi-qrcode fs-4 me-3 text-primary"></i>
+                        <div>
+                          <h5 class="mb-1">Check-in QR Code</h5>
+                          <small>Realize check-in rápido via QR Code</small>
+                        </div>
+                      </div>
+                    </a>
+                    
+                    <a href="{{ url_for('routes.eventos_agendamento') }}" class="list-group-item list-group-item-action">
+                      <div class="d-flex align-items-center">
+                        <i class="bi bi-calendar-plus fs-4 me-3 text-success"></i>
+                        <div>
+                          <h5 class="mb-1">Gerenciar Agendamentos</h5>
+                          <small>Configurar e visualizar agendamentos de todos os eventos</small>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                  
+                  {% if eventos_ativos %}
+                    <h5>Eventos com Agendamento</h5>
+                    <div class="list-group">
+                      {% for evento in eventos_ativos %}
+                        <div class="list-group-item">
+                          <h6>{{ evento.nome }}</h6>
+                          <div class="btn-group btn-group-sm w-100 mt-2">
+                            <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-primary">
+                              <i class="bi bi-gear"></i> Configurar
+                            </a>
+                            <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-outline-info">
+                              <i class="bi bi-clock"></i> Horários
+                            </a>
+                            <a href="{{ url_for('routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-success">
+                              <i class="bi bi-list-check"></i> Agendamentos
+                            </a>
+                          </div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="card-footer">
+                  <a href="{{ url_for('routes.eventos_agendamento') }}" class="btn btn-primary w-100">
+                    <i class="bi bi-gear"></i> Gerenciar Sistema de Agendamento
+                  </a>
+                </div>
+              </div>
+              
+              <!-- Estatísticas Rápidas -->
+              <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-dark">
+                  <i class="bi bi-graph-up"></i> Estatísticas Rápidas
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <h6>Agendamentos por Status</h6>
+                    <div class="progress" style="height: 25px;">
+                      {% if agendamentos_totais > 0 %}
+                        {% set porcentagem_confirmados = (agendamentos_confirmados / agendamentos_totais) * 100 %}
+                        {% set porcentagem_realizados = (agendamentos_realizados / agendamentos_totais) * 100 %}
+                        {% set porcentagem_cancelados = (agendamentos_cancelados / agendamentos_totais) * 100 %}
+                        
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentagem_confirmados }}%;" title="Confirmados: {{ agendamentos_confirmados }}">
+                          {{ agendamentos_confirmados }}
+                        </div>
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentagem_realizados }}%;" title="Realizados: {{ agendamentos_realizados }}">
+                          {{ agendamentos_realizados }}
+                        </div>
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentagem_cancelados }}%;" title="Cancelados: {{ agendamentos_cancelados }}">
+                          {{ agendamentos_cancelados }}
+                        </div>
+                      {% else %}
+                        <div class="progress-bar" role="progressbar" style="width: 0%;">
+                          Sem dados
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-between mt-1 small">
+                      <span class="text-primary">Confirmados</span>
+                      <span class="text-success">Realizados</span>
+                      <span class="text-danger">Cancelados</span>
+                    </div>
+                  </div>
+                  
+                  {% if ocupacao_media is defined %}
+                    <div class="mb-3">
+                      <h6>Ocupação Média</h6>
+                      <div class="progress" style="height: 25px;">
+                        <div class="progress-bar {% if ocupacao_media < 50 %}bg-warning{% elif ocupacao_media < 80 %}bg-success{% else %}bg-danger{% endif %}" 
+                             role="progressbar" style="width: {{ ocupacao_media }}%;">
+                          {{ ocupacao_media|round(1) }}%
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                  
+                  <a href="{{ url_for('routes.relatorio_geral_agendamentos') }}" class="btn btn-outline-primary w-100 mt-2">
+                    <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Relatório
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /ABA 1: RESUMO -->
+
+        <!-- ABA 2: AGENDAMENTOS -->
+        <div class="tab-pane fade" id="agendamentos" role="tabpanel">
+          <div class="card shadow">
+            <div class="card-header bg-info text-white">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="m-0"><i class="bi bi-list-check"></i> Todos os Agendamentos</h5>
+                <div class="input-group input-group-sm w-50">
+                  <input type="text" id="filtroAgendamentos" class="form-control" placeholder="Filtrar agendamentos..." onkeyup="filtrarAgendamentos()">
+                  <button class="btn btn-light" type="button">
+                    <i class="bi bi-search"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tabelaAgendamentos">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Data</th>
+                      <th>Horário</th>
+                      <th>Escola</th>
+                      <th>Turma</th>
+                      <th>Alunos</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if todos_agendamentos %}
+                      {% for agendamento in todos_agendamentos %}
+                      <tr>
+                        <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</td>
+                        <td>{{ agendamento.escola_nome }}</td>
+                        <td>{{ agendamento.turma }}</td>
+                        <td>{{ agendamento.quantidade_alunos }}</td>
+                        <td>
+                          {% if agendamento.status == 'confirmado' %}
+                            <span class="badge bg-primary">Confirmado</span>
+                          {% elif agendamento.status == 'realizado' %}
+                            <span class="badge bg-success">Realizado</span>
+                          {% elif agendamento.status == 'cancelado' %}
+                            <span class="badge bg-danger">Cancelado</span>
+                          {% else %}
+                            <span class="badge bg-secondary">Pendente</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          <div class="btn-group btn-group-sm">
+                            <button class="btn btn-info btn-detalhes-agendamento" data-agendamento-id="{{ agendamento.id }}">
+                              <i class="bi bi-eye"></i>
+                            </button>
+                            <a href="{{ url_for('routes.editar_agendamento', agendamento_id=agendamento.id) }}" 
+                               class="btn btn-warning">
+                              <i class="bi bi-pencil"></i>
+                            </a>
+                            {% if not agendamento.checkin_realizado and agendamento.status != 'cancelado' %}
+                            <a href="{{ url_for('routes.fazer_checkin', agendamento_id=agendamento.id) }}" 
+                               class="btn btn-success">
+                              <i class="bi bi-check-circle"></i>
+                            </a>
+                            {% endif %}
+                          </div>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="7" class="text-center text-muted">
+                          Nenhum agendamento encontrado.
+                        </td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card-footer">
+              <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalRelatorioAgendamentos">
+                  <i class="bi bi-file-earmark-text me-1"></i> Gerar Relatório
+                </button>
+                <a href="{{ url_for('routes.criar_agendamento') }}" class="btn btn-success">
+                  <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
+                </a>
+              </div>
+            </div>
+          </div>
+        </div><!-- /ABA 2: AGENDAMENTOS -->
+
+        <!-- ABA 3: CRIAR -->
+        <div class="tab-pane fade" id="criar" role="tabpanel">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-plus-circle me-2"></i>Criar Novo</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-grid gap-3">
+                    <a href="{{ url_for('routes.criar_agendamento') }}" class="btn btn-primary btn-lg">
+                      <i class="bi bi-calendar-plus me-2"></i> Criar Novo Agendamento
+                    </a>
+                    
+                    <a href="{{ url_for('routes.configurar_horarios_agendamento') }}" class="btn btn-info btn-lg">
+                      <i class="bi bi-clock me-2"></i> Configurar Horários
+                    </a>
+                    
+                    <a href="{{ url_for('routes.criar_evento_agendamento') }}" class="btn btn-success btn-lg">
+                      <i class="bi bi-calendar-event me-2"></i> Criar Evento para Agendamento
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-tools me-2"></i>Ferramentas</h5>
+                </div>
+                <div class="card-body">
+                  <div class="d-grid gap-3">
+                    <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="btn btn-dark btn-lg">
+                      <i class="bi bi-qr-code-scan me-2"></i> Check-in com QR Code
+                    </a>
+                    
+                    <a href="{{ url_for('routes.importar_agendamentos') }}" class="btn btn-primary btn-lg">
+                      <i class="bi bi-upload me-2"></i> Importar Agendamentos
+                    </a>
+                    
+                    <div class="card bg-light">
+                      <div class="card-body small">
+                        <p class="mb-1"><i class="bi bi-info-circle me-2"></i><strong>Dica:</strong></p>
+                        <p class="mb-0 text-muted">Configure horários antes de criar novos agendamentos para facilitar o processo.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /ABA 3: CRIAR -->
+
+        <!-- ABA 4: CONFIGURAÇÕES -->
+        <div class="tab-pane fade" id="configuracoes" role="tabpanel">
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Configurações do Sistema</h5>
+                </div>
+                <div class="card-body">
+                  <div class="list-group mb-4">
+                    <!-- Agendamento Público -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Agendamento Público</h6>
+                        <p class="text-muted small mb-0">Permitir que visitantes agendem visitas pelo site</p>
+                      </div>
+                      <button type="button" 
+                              id="btnToggleAgendamentoPublico"
+                              class="btn btn-{{ 'success' if config_agendamento and config_agendamento.agendamento_publico else 'danger' }}"
+                              data-toggle-url="{{ url_for('routes.toggle_agendamento_publico') }}"
+                      >
+                        {{ 'Ativo' if config_agendamento and config_agendamento.agendamento_publico else 'Desativado' }}
+                      </button>
+                    </div>
+
+                    <!-- Aprovação Manual -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Aprovação Manual</h6>
+                        <p class="text-muted small mb-0">Exigir aprovação manual de agendamentos</p>
+                      </div>
+                      <button type="button"
+                              id="btnToggleAprovacaoManual"
+                              class="btn btn-{{ 'success' if config_agendamento and config_agendamento.aprovacao_manual else 'danger' }}"
+                              data-toggle-url="{{ url_for('routes.toggle_aprovacao_manual') }}"
+                      >
+                        {{ 'Ativo' if config_agendamento and config_agendamento.aprovacao_manual else 'Desativado' }}
+                      </button>
+                    </div>
+
+                    <!-- Limite de Capacidade -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Limite de Capacidade</h6>
+                        <p class="text-muted small mb-0">Aplicar limite máximo de pessoas por agendamento</p>
+                      </div>
+                      <button type="button" 
+                              id="btnToggleLimiteCapacidade"
+                              class="btn btn-{{ 'success' if config_agendamento and config_agendamento.aplicar_limite_capacidade else 'danger' }}"
+                              data-toggle-url="{{ url_for('routes.toggle_limite_capacidade') }}"
+                      >
+                        {{ 'Ativo' if config_agendamento and config_agendamento.aplicar_limite_capacidade else 'Desativado' }}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="card bg-light mb-4">
+                    <div class="card-body">
+                      <h6 class="mb-3">Configurações Adicionais</h6>
+                      <form action="{{ url_for('routes.salvar_config_agendamento') }}" method="POST">
+                        <div class="mb-3">
+                          <label for="capacidadeMaxima" class="form-label">Capacidade Máxima por Horário</label>
+                          <input type="number" class="form-control" id="capacidadeMaxima" name="capacidade_maxima" value="{{ config_agendamento.capacidade_maxima if config_agendamento else 30 }}" min="1">
+                          <div class="form-text">Número máximo de visitantes por horário.</div>
+                        </div>
+                        <div class="mb-3">
+                          <label for="diasAntecedencia" class="form-label">Dias de Antecedência</label>
+                          <input type="number" class="form-control" id="diasAntecedencia" name="dias_antecedencia" value="{{ config_agendamento.dias_antecedencia if config_agendamento else 30 }}" min="1">
+                          <div class="form-text">Com quantos dias de antecedência visitantes podem agendar.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Salvar Configurações</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-calendar-week me-2"></i>Gerenciar Períodos</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive mb-3">
+                    <table class="table table-hover align-middle">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Evento</th>
+                          <th>Período</th>
+                          <th>Status</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% if periodos_agendamento %}
+                          {% for periodo in periodos_agendamento %}
+                            <tr>
+                              <td>{{ periodo.evento.nome }}</td>
+                              <td>{{ periodo.data_inicio.strftime('%d/%m/%Y') }} - {{ periodo.data_fim.strftime('%d/%m/%Y') }}</td>
+                              <td>
+                                {% if periodo.ativo %}
+                                  <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                  <span class="badge bg-danger">Inativo</span>
+                                {% endif %}
+                              </td>
+                              <td>
+                                <div class="btn-group btn-group-sm">
+                                  <a href="{{ url_for('routes.editar_periodo', periodo_id=periodo.id) }}" class="btn btn-warning">
+                                    <i class="bi bi-pencil"></i>
+                                  </a>
+                                  <button type="button" class="btn btn-{{ 'danger' if periodo.ativo else 'success' }}" onclick="togglePeriodoStatus({{ periodo.id }})">
+                                    <i class="bi bi-{{ 'x-circle' if periodo.ativo else 'check-circle' }}"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        {% else %}
+                          <tr>
+                            <td colspan="4" class="text-center text-muted">
+                              Nenhum período configurado.
+                            </td>
+                          </tr>
+                        {% endif %}
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <a href="{{ url_for('routes.criar_periodo_agendamento') }}" class="btn btn-primary w-100 mb-3">
+                    <i class="bi bi-calendar-plus me-2"></i> Adicionar Novo Período
+                  </a>
+                  
+                  <div class="card bg-light">
+                    <div class="card-body small">
+                      <p class="mb-1"><i class="bi bi-info-circle me-2"></i><strong>Dica:</strong></p>
+                      <p class="mb-0 text-muted">Configure períodos de agendamento para controlar quando os visitantes podem agendar. Cada período pode ter horários específicos.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Manutenção -->
+              <div class="card shadow mt-4">
+                <div class="card-header bg-danger text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-tools me-2"></i>Manutenção</h5>
+                </div>
+                <div class="card-body">
+                  <div class="alert alert-warning">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Atenção!</h6>
+                    <p class="mb-0">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
+                  </div>
+                  
+                  <div class="d-grid gap-3 mt-3">
+                    <form action="{{ url_for('routes.excluir_todos_agendamentos') }}" method="post"
+                          onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODOS os agendamentos e não pode ser desfeita! Tem certeza que deseja continuar?');">
+                      <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-trash-fill me-2"></i> Excluir Todos os Agendamentos
+                      </button>
+                    </form>
+                    
+                    <form action="{{ url_for('routes.resetar_configuracoes_agendamento') }}" method="post"
+                          onsubmit="return confirm('Tem certeza que deseja restaurar as configurações padrão?');">
+                      <button type="submit" class="btn btn-warning w-100">
+                        <i class="bi bi-arrow-repeat me-2"></i> Restaurar Configurações Padrão
+                      </button>
+                    </form>
+                    
+                    <a href="{{ url_for('routes.exportar_agendamentos') }}" class="btn btn-info w-100">
+                      <i class="bi bi-download me-2"></i> Exportar Agendamentos
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /ABA 4: CONFIGURAÇÕES -->
+      </div><!-- /tab-content -->
+    </div><!-- /card-body -->
+  </div><!-- /card shadow -->
+</div> <!-- /container-fluid -->
+
+<!-- Modal de Agendamentos Detalhes -->
+<div class="modal fade" id="modalAgendamentoDetalhes" tabindex="-1" aria-labelledby="modalAgendamentoDetalhesLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="modalAgendamentoDetalhesLabel">
+          <i class="bi bi-calendar-check me-2"></i>Detalhes do Agendamento
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="conteudoDetalhesAgendamento">
+        <!-- Conteúdo carregado via AJAX -->
+        <div class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+          </div>
+          <p class="mt-2">Carregando detalhes do agendamento...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <div class="btn-group" id="botoesGerenciarAgendamento">
+          <button type="button" class="btn btn-success" id="btnConfirmarAgendamento">
+            <i class="bi bi-check-circle me-1"></i> Confirmar
+          </button>
+          <button type="button" class="btn btn-danger" id="btnCancelarAgendamento">
+            <i class="bi bi-x-circle me-1"></i> Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" id="btnCheckinAgendamento">
+            <i class="bi bi-door-open me-1"></i> Check-in
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Relatório de Agendamentos -->
+<div class="modal fade" id="modalRelatorioAgendamentos" tabindex="-1" aria-labelledby="modalRelatorioAgendamentosLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="modalRelatorioAgendamentosLabel">
+          <i class="bi bi-file-earmark-text me-2"></i>Relatório de Agendamentos
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="eventoRelatorioSelect" class="form-label">Evento (opcional)</label>
+          <select id="eventoRelatorioSelect" class="form-select">
+            <option value="">Todos os Eventos</option>
+            {% for evento in eventos_ativos %}
+              <option value="{{ evento.id }}">{{ evento.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="dataInicioRelatorio" class="form-label">Data Início</label>
+              <input type="date" id="dataInicioRelatorio" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="dataFimRelatorio" class="form-label">Data Fim</label>
+              <input type="date" id="dataFimRelatorio" class="form-control" required>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="exportarRelatorioAgendamentos('pdf')">
+          <i class="bi bi-file-pdf me-1"></i> Exportar PDF
+        </button>
+        <button type="button" class="btn btn-success" onclick="exportarRelatorioAgendamentos('excel')">
+          <i class="bi bi-file-excel me-1"></i> Exportar Excel
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Estilos CSS -->
+<style>
+.stat-card {
+  border: none;
+  border-radius: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
+}
+
+.bg-info-gradient {
+  background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+}
+
+.bg-warning-gradient {
+  background: linear-gradient(135deg, #ffd60a 0%, #ffc300 100%);
+}
+
+.bg-danger-gradient {
+  background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
+}
+
+.bg-success-gradient {
+  background: linear-gradient(135deg, #38b000 0%, #70e000 100%);
+}
+
+.nav-tabs .nav-link {
+  font-weight: 500;
+  border: none;
+  color: #6c757d;
+  padding: 1rem 2rem;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0094c3;
+  border-bottom: 3px solid #0094c3;
+  background: transparent;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 148, 195, 0.05);
+}
+</style>
+
+<!-- Scripts -->
+<script>
+// Inicializar as tabs programaticamente
+document.addEventListener("DOMContentLoaded", function() {
+  // Verificar se há um hash na URL
+  if (window.location.hash) {
+    // Se houver, ativar a tab correspondente
+    const hash = window.location.hash;
+    const tabId = hash.substring(1); // Remover o caractere '#'
+    const tab = document.querySelector(`#agendamentoTabs button[data-bs-target="#${tabId}"]`);
+    if (tab) {
+      new bootstrap.Tab(tab).show();
+    }
+  }
+  
+  // Adicionar evento para atualizar URL quando tab é alterada
+  const tabs = document.querySelectorAll('#agendamentoTabs button');
+  tabs.forEach(tab => {
+    tab.addEventListener('shown.bs.tab', function(event) {
+      const targetId = event.target.getAttribute('data-bs-target').substring(1);
+      history.replaceState(null, null, `#${targetId}`);
+    });
+  });
+
+  // Configurar botões de toggle
+  const toggleButtons = [
+    document.getElementById('btnToggleAgendamentoPublico'),
+    document.getElementById('btnToggleAprovacaoManual'),
+    document.getElementById('btnToggleLimiteCapacidade')
+  ];
+
+  toggleButtons.forEach(button => {
+    if (!button) return;
+    const toggleUrl = button.dataset.toggleUrl;
+
+    button.addEventListener('click', function() {
+      fetch(toggleUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify({})
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          atualizarBotao(button, data.value);
+        } else {
+          alert("Falha ao atualizar: " + data.message);
+        }
+      })
+      .catch(err => {
+        alert("Erro na requisição: " + err);
+      });
+    });
+  });
+
+  // Configurar detalhes do agendamento nos modais
+  const botoesDetalhesAgendamento = document.querySelectorAll('.btn-detalhes-agendamento');
+  if (botoesDetalhesAgendamento.length > 0) {
+    botoesDetalhesAgendamento.forEach(botao => {
+      botao.addEventListener('click', function() {
+        const agendamentoId = this.dataset.agendamentoId;
+        const modalDetalhes = new bootstrap.Modal(document.getElementById('modalAgendamentoDetalhes'));
+        
+        // Resetar conteúdo e mostrar loading
+        document.getElementById('conteudoDetalhesAgendamento').innerHTML = `
+          <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Carregando detalhes do agendamento...</p>
+          </div>
+        `;
+        
+        modalDetalhes.show();
+        
+        // Carregar detalhes via AJAX
+        fetch(`/api/agendamentos/${agendamentoId}/detalhes`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              const agendamento = data.agendamento;
+              
+              // Atualizar título do modal
+              document.getElementById('modalAgendamentoDetalhesLabel').innerHTML = `
+                <i class="bi bi-calendar-check me-2"></i>Agendamento: ${agendamento.escola_nome}
+              `;
+              
+              // Atualizar conteúdo
+              document.getElementById('conteudoDetalhesAgendamento').innerHTML = `
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6 class="mb-3">Informações da Escola</h6>
+                    <ul class="list-group mb-3">
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Escola:</strong></span>
+                        <span>${agendamento.escola_nome}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Telefone:</strong></span>
+                        <span>${agendamento.telefone_escola || '-'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Email:</strong></span>
+                        <span>${agendamento.email_responsavel || '-'}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Responsável:</strong></span>
+                        <span>${agendamento.nome_responsavel || '-'}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6 class="mb-3">Detalhes do Agendamento</h6>
+                    <ul class="list-group mb-3">
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Evento:</strong></span>
+                        <span>${agendamento.evento_nome}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Data:</strong></span>
+                        <span>${agendamento.data}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Horário:</strong></span>
+                        <span>${agendamento.horario_inicio} - ${agendamento.horario_fim}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Status:</strong></span>
+                        <span class="badge bg-${agendamento.status === 'confirmado' ? 'primary' : agendamento.status === 'realizado' ? 'success' : agendamento.status === 'cancelado' ? 'danger' : 'secondary'}">${agendamento.status}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-12">
+                    <h6 class="mb-3">Informações da Turma</h6>
+                    <ul class="list-group">
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Turma:</strong></span>
+                        <span>${agendamento.turma}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Qtd. Alunos:</strong></span>
+                        <span>${agendamento.quantidade_alunos}</span>
+                      </li>
+                      <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>Faixa Etária:</strong></span>
+                        <span>${agendamento.faixa_etaria || '-'}</span>
+                      </li>
+                      <li class="list-group-item">
+                        <strong>Observações:</strong>
+                        <p class="mt-1 mb-0 text-muted">${agendamento.observacoes || 'Nenhuma observação'}</p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              `;
+              
+              // Configurar botões de ação baseado no status
+              const btnConfirmar = document.getElementById('btnConfirmarAgendamento');
+              const btnCancelar = document.getElementById('btnCancelarAgendamento');
+              const btnCheckin = document.getElementById('btnCheckinAgendamento');
+              
+              // Configurar IDs e ações
+              btnConfirmar.dataset.agendamentoId = agendamentoId;
+              btnCancelar.dataset.agendamentoId = agendamentoId;
+              btnCheckin.dataset.agendamentoId = agendamentoId;
+              
+              btnConfirmar.addEventListener('click', function() {
+                atualizarStatusAgendamento(this.dataset.agendamentoId, 'confirmado');
+              });
+              
+              btnCancelar.addEventListener('click', function() {
+                if (confirm('Tem certeza que deseja cancelar este agendamento?')) {
+                  atualizarStatusAgendamento(this.dataset.agendamentoId, 'cancelado');
+                }
+              });
+              
+              btnCheckin.addEventListener('click', function() {
+                window.location.href = `/admin/agendamentos/${this.dataset.agendamentoId}/checkin`;
+              });
+              
+              // Habilitar/desabilitar botões com base no status
+              if (agendamento.status === 'confirmado') {
+                btnConfirmar.disabled = true;
+                btnCancelar.disabled = false;
+                btnCheckin.disabled = false;
+              } else if (agendamento.status === 'realizado') {
+                btnConfirmar.disabled = true;
+                btnCancelar.disabled = true;
+                btnCheckin.disabled = true;
+              } else if (agendamento.status === 'cancelado') {
+                btnConfirmar.disabled = false;
+                btnCancelar.disabled = true;
+                btnCheckin.disabled = true;
+              } else {
+                btnConfirmar.disabled = false;
+                btnCancelar.disabled = false;
+                btnCheckin.disabled = false;
+              }
+            } else {
+              document.getElementById('conteudoDetalhesAgendamento').innerHTML = `
+                <div class="alert alert-danger">
+                  <i class="bi bi-exclamation-triangle me-2"></i>Erro ao carregar detalhes: ${data.message}
+                </div>
+              `;
+            }
+          })
+          .catch(error => {
+            document.getElementById('conteudoDetalhesAgendamento').innerHTML = `
+              <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>Erro de conexão. Tente novamente.
+              </div>
+            `;
+            console.error('Erro ao carregar detalhes:', error);
+          });
+      });
+    });
+  }
+});
+
+// Funções auxiliares
+function atualizarBotao(btn, valorAtivo) {
+  if (!btn) return;
+  if (valorAtivo) {
+    btn.classList.remove("btn-danger");
+    btn.classList.add("btn-success");
+    btn.textContent = "Ativo";
+  } else {
+    btn.classList.remove("btn-success");
+    btn.classList.add("btn-danger");
+    btn.textContent = "Desativado";
+  }
+}
+
+// Funções para agendamentos
+function atualizarStatusAgendamento(agendamentoId, novoStatus) {
+  fetch(`/api/agendamentos/${agendamentoId}/status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: JSON.stringify({
+      status: novoStatus
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Status atualizado com sucesso para: ${novoStatus}`);
+      location.reload();
+    } else {
+      alert("Falha ao atualizar o status: " + data.message);
+    }
+  })
+  .catch(error => {
+    console.error("Erro ao atualizar status:", error);
+    alert("Erro na requisição. Tente novamente.");
+  });
+}
+
+// Função para exportar relatório de agendamentos
+function exportarRelatorioAgendamentos(formato) {
+  const eventoId = document.getElementById("eventoRelatorioSelect").value;
+  const dataInicio = document.getElementById("dataInicioRelatorio").value;
+  const dataFim = document.getElementById("dataFimRelatorio").value;
+  
+  if (!dataInicio || !dataFim) {
+    alert("Por favor, selecione o período para o relatório.");
+    return;
+  }
+  
+  let url = `/admin/relatorio-agendamentos?formato=${formato}&data_inicio=${dataInicio}&data_fim=${dataFim}`;
+  if (eventoId) {
+    url += `&evento_id=${eventoId}`;
+  }
+  
+  window.open(url, "_blank");
+}
+
+// Função para filtrar agendamentos na tabela
+function filtrarAgendamentos() {
+  const filtroTexto = document.getElementById("filtroAgendamentos").value.toLowerCase();
+  const linhas = document.querySelectorAll("#tabelaAgendamentos tbody tr");
+  
+  linhas.forEach(linha => {
+    const conteudo = linha.textContent.toLowerCase();
+    if (conteudo.includes(filtroTexto)) {
+      linha.style.display = "";
+    } else {
+      linha.style.display = "none";
+    }
+  });
+}
+
+// Função para alternar o status do período de agendamento
+function togglePeriodoStatus(periodoId) {
+  fetch(`/api/periodos/${periodoId}/toggle`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert("Falha ao atualizar o status: " + data.message);
+    }
+  })
+  .catch(error => {
+    console.error("Erro ao alternar status:", error);
+    alert("Erro na requisição. Tente novamente.");
+  });
+}
+</script>
+{% endblock %}
