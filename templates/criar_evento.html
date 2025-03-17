@@ -75,6 +75,26 @@
             </div>
           </div>
 
+          <div class="mb-3">
+            <label for="data_inicio" class="form-label">Data de Início</label>
+            <input type="date" class="form-control" id="data_inicio" name="data_inicio" value="{{ evento.data_inicio.strftime('%Y-%m-%d') if evento.data_inicio else '' }}">
+          </div>
+          
+          <div class="mb-3">
+            <label for="data_fim" class="form-label">Data de Término</label>
+            <input type="date" class="form-control" id="data_fim" name="data_fim" value="{{ evento.data_fim.strftime('%Y-%m-%d') if evento.data_fim else '' }}">
+          </div>
+          
+          <div class="mb-3">
+            <label for="hora_inicio" class="form-label">Hora de Início</label>
+            <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" value="{{ evento.hora_inicio.strftime('%H:%M') if evento.hora_inicio else '' }}">
+          </div>
+          
+          <div class="mb-3">
+            <label for="hora_fim" class="form-label">Hora de Término</label>
+            <input type="time" class="form-control" id="hora_fim" name="hora_fim" value="{{ evento.hora_fim.strftime('%H:%M') if evento.hora_fim else '' }}">
+          </div>
+
           <!-- Registration Options Section -->
           {% if current_user.habilita_pagamento %}
           <div class="col-12">

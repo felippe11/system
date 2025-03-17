@@ -57,14 +57,12 @@
                                              alt="Foto do ministrante" 
                                              class="ministrante-foto">
                                     {% else %}
-                                        <!-- Foto default -->
+                                        <!-- Foto default (não salva no banco) -->
                                         <img src="{{ url_for('static', filename='uploads/ministrantes/default-profile.png') }}"
                                              alt="Foto padrão"
                                              class="ministrante-foto">
                                     {% endif %}
                                     <span>{{ item.ministrante.nome }}</span>
-                                {% else %}
-                                    <span>Ministrante não definido</span>
                                 {% endif %}
                             </div>
                         </div>
