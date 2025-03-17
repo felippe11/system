@@ -129,7 +129,7 @@
             {% endfor %}
           </td>
           <td>{{ fb.comentario }}</td>
-          <td>{{ fb.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td>{{ fb.created_at|brasilia }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -141,10 +141,10 @@
       <p class="text-muted small mt-2">
         Observação: Os filtros aplicados (Tipo e Número de Estrelas) influenciarão o PDF gerado.
       </p>
-    </div>    
-    
+    </div>
   {% else %}
     <p class="text-center">Nenhum feedback enviado para essa oficina.</p>
   {% endif %}
+
 </div>
 {% endblock %}
