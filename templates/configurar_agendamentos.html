@@ -1,0 +1,482 @@
+<!-- Template: configurar_agendamentos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Configurar Agendamentos - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-gear"></i> Configurar Agendamentos - {{ evento.nome }}</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-info-circle"></i> Informações do Evento
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Local:</strong> {{ evento.local }}</p>
+              <p><strong>Período:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }} a {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Status:</strong> {{ evento.status }}</p>
+              <p><strong>Tipo:</strong> {{ evento.tipo }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <i class="bi bi-calendar-check"></i> Regras de Agendamento
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="prazo_cancelamento" class="form-label">Prazo para Cancelamento (horas)</label>
+                <input type="number" class="form-control" id="prazo_cancelamento" name="prazo_cancelamento" min="1" max="72" value="{{ config.prazo_cancelamento if config else 24 }}" required>
+                <div class="form-text">Tempo mínimo antes do evento para cancelar sem penalidade.</div>
+              </div>
+              
+              <div class="col-md-6">
+                <label for="tempo_bloqueio" class="form-label">Tempo de Bloqueio (dias)</label>
+                <input type="number" class="form-control" id="tempo_bloqueio" name="tempo_bloqueio" min="1" max="90" value="{{ config.tempo_bloqueio if config else 7 }}" required>
+                <div class="form-text">Dias de bloqueio para professores que violarem as regras.</div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="capacidade_padrao" class="form-label">Capacidade Padrão</label>
+                <input type="number" class="form-control" id="capacidade_padrao" name="capacidade_padrao" min="1" max="200" value="{{ config.capacidade_padrao if config else 30 }}" required>
+                <div class="form-text">Número máximo de alunos por horário de visitação.</div>
+              </div>
+              
+              <div class="col-md-6">
+                <label for="intervalo_minutos" class="form-label">Intervalo entre Visitas (minutos)</label>
+                <select class="form-select" id="intervalo_minutos" name="intervalo_minutos" required>
+                  <option value="30" {% if config and config.intervalo_minutos == 30 %}selected{% endif %}>30 minutos</option>
+                  <option value="60" {% if not config or config.intervalo_minutos == 60 %}selected{% endif %}>1 hora</option>
+                  <option value="90" {% if config and config.intervalo_minutos == 90 %}selected{% endif %}>1 hora e 30 minutos</option>
+                  <option value="120" {% if config and config.intervalo_minutos == 120 %}selected{% endif %}>2 horas</option>
+                  <option value="180" {% if config and config.intervalo_minutos == 180 %}selected{% endif %}>3 horas</option>
+                </select>
+                <div class="form-text">Duração de cada sessão de visitação.</div>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="horario_inicio" class="form-label">Horário de Início</label>
+                <input type="time" class="form-control" id="horario_inicio" name="horario_inicio" value="{{ config.horario_inicio.strftime('%H:%M') if config and config.horario_inicio else '08:00' }}" required>
+                <div class="form-text">Horário de início das visitações.</div>
+              </div>
+              
+              <div class="col-md-6">
+                <label for="horario_fim" class="form-label">Horário de Fim</label>
+                <input type="time" class="form-control" id="horario_fim" name="horario_fim" value="{{ config.horario_fim.strftime('%H:%M') if config and config.horario_fim else '17:00' }}" required>
+                <div class="form-text">Horário de término das visitações.</div>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Dias da Semana Disponíveis</label>
+              <div class="card">
+                <div class="card-body">
+                  {% set dias_semana = config.dias_semana.split(',') if config and config.dias_semana else ['1', '2', '3', '4', '5'] %}
+                  <div class="row">
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="0" id="dom" {% if '0' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="dom">Domingo</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="1" id="seg" {% if '1' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="seg">Segunda</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="2" id="ter" {% if '2' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="ter">Terça</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="3" id="qua" {% if '3' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="qua">Quarta</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="4" id="qui" {% if '4' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="qui">Quinta</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="5" id="sex" {% if '5' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="sex">Sexta</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="dias_semana" value="6" id="sab" {% if '6' in dias_semana %}checked{% endif %}>
+                        <label class="form-check-label" for="sab">Sábado</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-text">Selecione os dias da semana em que o evento estará aberto para visitação.</div>
+            </div>
+            
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Após salvar as configurações, você será redirecionado para gerar os horários de visitação.
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> Salvar Configurações
+              </button>
+              <a href="{{ url_for('routes.eventos_agendamento') }}" class="btn btn-secondary">
+                <i class="bi bi-x"></i> Cancelar
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+<!-- Template: gerar_horarios_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Gerar Horários - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-clock"></i> Gerar Horários de Visitação - {{ evento.nome }}</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-info-circle"></i> Configurações de Agendamento
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Prazo para Cancelamento:</strong> {{ config.prazo_cancelamento }} horas</p>
+              <p><strong>Capacidade por Horário:</strong> {{ config.capacidade_padrao }} alunos</p>
+              <p><strong>Intervalo entre Visitas:</strong> {{ config.intervalo_minutos }} minutos</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Horário de Funcionamento:</strong> {{ config.horario_inicio.strftime('%H:%M') }} às {{ config.horario_fim.strftime('%H:%M') }}</p>
+              <p><strong>Dias da Semana:</strong> 
+                {% set dias_map = {'0': 'Domingo', '1': 'Segunda', '2': 'Terça', '3': 'Quarta', '4': 'Quinta', '5': 'Sexta', '6': 'Sábado'} %}
+                {% set dias_lista = [] %}
+                {% for dia in config.dias_semana.split(',') %}
+                  {% do dias_lista.append(dias_map[dia]) %}
+                {% endfor %}
+                {{ dias_lista|join(', ') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header bg-info text-white">
+          <i class="bi bi-calendar-plus"></i> Gerar Novos Horários
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('routes.gerar_horarios_agendamento', evento_id=evento.id) }}">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="data_inicial" class="form-label">Data Inicial</label>
+                <input type="date" class="form-control" id="data_inicial" name="data_inicial" required>
+                <div class="form-text">Data de início para geração dos horários.</div>
+              </div>
+              
+              <div class="col-md-6">
+                <label for="data_final" class="form-label">Data Final</label>
+                <input type="date" class="form-control" id="data_final" name="data_final" required>
+                <div class="form-text">Data final para geração dos horários.</div>
+              </div>
+            </div>
+            
+            <div class="alert alert-warning">
+              <i class="bi bi-exclamation-triangle"></i> Atenção: 
+              <ul>
+                <li>Serão gerados horários apenas para os dias da semana selecionados nas configurações.</li>
+                <li>Horários já existentes não serão duplicados.</li>
+                <li>Recomenda-se gerar horários para períodos curtos (1-2 meses) para facilitar o gerenciamento.</li>
+              </ul>
+            </div>
+            
+            <div class="d-grid gap-2 d-md-flex">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-calendar-plus"></i> Gerar Horários
+              </button>
+              <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-info">
+                <i class="bi bi-clock-history"></i> Ver Horários Existentes
+              </a>
+              <a href="{{ url_for('routes.eventos_agendamento') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Definir valores padrão para as datas
+    const hoje = new Date();
+    const dataInicial = document.getElementById('data_inicial');
+    const dataFinal = document.getElementById('data_final');
+    
+    // Data inicial: próximo dia útil
+    let dataInicialValue = new Date(hoje);
+    dataInicialValue.setDate(dataInicialValue.getDate() + 1);
+    // Garantir que não seja fim de semana (0 = domingo, 6 = sábado)
+    while(dataInicialValue.getDay() === 0 || dataInicialValue.getDay() === 6) {
+      dataInicialValue.setDate(dataInicialValue.getDate() + 1);
+    }
+    
+    // Data final: 30 dias após a data inicial
+    let dataFinalValue = new Date(dataInicialValue);
+    dataFinalValue.setDate(dataFinalValue.getDate() + 30);
+    
+    // Formatar datas para o input (YYYY-MM-DD)
+    dataInicial.value = dataInicialValue.toISOString().split('T')[0];
+    dataFinal.value = dataFinalValue.toISOString().split('T')[0];
+    
+    // Validação: data final deve ser posterior à data inicial
+    dataInicial.addEventListener('change', function() {
+      const minDataFinal = new Date(this.value);
+      minDataFinal.setDate(minDataFinal.getDate() + 1);
+      dataFinal.min = minDataFinal.toISOString().split('T')[0];
+      
+      if (new Date(dataFinal.value) <= new Date(this.value)) {
+        dataFinal.value = minDataFinal.toISOString().split('T')[0];
+      }
+    });
+    
+    // Definir data mínima como hoje
+    dataInicial.min = hoje.toISOString().split('T')[0];
+    dataFinal.min = dataInicialValue.toISOString().split('T')[0];
+    
+    // Limite máximo de 3 meses (90 dias) para facilitar o gerenciamento
+    const maxDate = new Date(hoje);
+    maxDate.setDate(maxDate.getDate() + 90);
+    dataFinal.max = maxDate.toISOString().split('T')[0];
+  });
+</script>
+{% endblock %}
+{% endblock %}
+
+<!-- Template: salas_visitacao.html -->
+{% extends 'base.html' %}
+
+{% block title %}Salas de Visitação - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-door-open"></i> Salas de Visitação - {{ evento.nome }}</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+          <i class="bi bi-plus-circle"></i> Adicionar Nova Sala
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('routes.salas_visitacao', evento_id=evento.id) }}">
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="nome" class="form-label">Nome da Sala *</label>
+                <input type="text" class="form-control" id="nome" name="nome" required>
+              </div>
+              
+              <div class="col-md-4 mb-3">
+                <label for="capacidade" class="form-label">Capacidade *</label>
+                <input type="number" class="form-control" id="capacidade" name="capacidade" min="1" max="200" value="30" required>
+              </div>
+              
+              <div class="col-md-4 mb-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-success w-100">
+                  <i class="bi bi-plus-circle"></i> Adicionar Sala
+                </button>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="descricao" class="form-label">Descrição</label>
+              <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+              <div class="form-text">Descreva o que os visitantes encontrarão nesta sala.</div>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-list-check"></i> Salas Cadastradas
+        </div>
+        <div class="card-body">
+          {% if salas %}
+            <div class="table-responsive">
+              <table class="table table-striped table-hover">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Capacidade</th>
+                    <th>Descrição</th>
+                    <th class="text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for sala in salas %}
+                    <tr>
+                      <td>{{ sala.nome }}</td>
+                      <td>{{ sala.capacidade }} pessoas</td>
+                      <td>{{ sala.descricao }}</td>
+                      <td class="text-center">
+                        <div class="btn-group">
+                          <a href="{{ url_for('routes.editar_sala_visitacao', sala_id=sala.id) }}" class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                          <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#excluirSalaModal" data-sala-id="{{ sala.id }}" data-sala-nome="{{ sala.nome }}">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Nenhuma sala cadastrada para este evento. Adicione salas para que os professores possam selecioná-las ao realizar agendamentos.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <div class="mt-4">
+        <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-info">
+          <i class="bi bi-clock-history"></i> Gerenciar Horários
+        </a>
+        <a href="{{ url_for('routes.eventos_agendamento') }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Exclusão de Sala -->
+<div class="modal fade" id="excluirSalaModal" tabindex="-1" aria-labelledby="excluirSalaModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="excluirSalaModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir a sala <strong id="nomeSala"></strong>?</p>
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle"></i> A exclusão de uma sala pode afetar agendamentos existentes.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <form id="excluirSalaForm" method="POST" action="">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Configurar modal de exclusão
+    var excluirSalaModal = document.getElementById('excluirSalaModal');
+    excluirSalaModal.addEventListener('show.bs.modal', function (event) {
+      var button = event.relatedTarget;
+      var salaId = button.getAttribute('data-sala-id');
+      var salaNome = button.getAttribute('data-sala-nome');
+      
+      document.getElementById('nomeSala').textContent = salaNome;
+      document.getElementById('excluirSalaForm').action = "{{ url_for('routes.excluir_sala_visitacao', sala_id=0) }}".replace('0', salaId);
+    });
+  });
+</script>
+{% endblock %}
+{% endblock %}
+
+<!-- Template: editar_sala_visitacao.html -->
+{% extends 'base.html' %}
+
+{% block title %}Editar Sala de Visitação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-pencil"></i> Editar Sala de Visitação</h2>
+      
+      <div class="card">
+        <div class="card-header bg-warning text-dark">
+          <i class="bi bi-door-open"></i> Dados da Sala
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('routes.editar_sala_visitacao', sala_id=sala.id) }}">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="nome" class="form-label">Nome da Sala *</label>
+                <input type="text" class="form-control" id="nome" name="nome" value="{{ sala.nome }}" required>
+              </div>
+              
+              <div class="col-md-6">
+                <label for="capacidade" class="form-label">Capacidade *</label>
+                <input type="number" class="form-control" id="capacidade" name="capacidade" min="1" max="200" value="{{ sala.capacidade }}" required>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="descricao" class="form-label">Descrição</label>
+              <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ sala.descricao }}</textarea>
+              <div class="form-text">Descreva o que os visitantes encontrarão nesta sala.</div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+              <a href="{{ url_for('routes.salas_visitacao', evento_id=evento.id) }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Cancelar
+              </a>
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-save"></i> Salvar Alterações
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
