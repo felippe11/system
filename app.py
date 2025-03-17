@@ -1,16 +1,14 @@
 from flask import Flask
 from config import Config
-from extensions import db, login_manager, migrate
+from extensions import db, login_manager, migrate, mail
 from datetime import datetime
 import os
-from flask_migrate import upgrade
-from extensions import mail
 import logging
-
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.jinja_env.add_extension('jinja2.ext.do')
     
     app.debug = True
     # Configuração de logging
@@ -20,8 +18,11 @@ def create_app():
     # Inicializar extensões
     db.init_app(app)
     login_manager.init_app(app)
-    migrate.init_app(app, db)
+    migrate.init_app(app, db)  # Já inicializa o migrate importado de extensions
     mail.init_app(app)
+    
+    # REMOVA ESTA LINHA - você já está inicializando o migrate acima
+    # migrate = Migrate(app, db)  <- Este é o problema
 
     login_manager.login_view = "routes.login"
     login_manager.session_protection = "strong"
@@ -50,5 +51,3 @@ app = create_app()
 # Executar apenas se rodar diretamente
 if __name__ == '__main__':
     app.run(debug=True)
-    
-

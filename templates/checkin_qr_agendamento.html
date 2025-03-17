@@ -1,0 +1,302 @@
+<!-- Template: checkin_qr_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Check-in via QR Code{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-qrcode"></i> Check-in via QR Code</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-camera"></i> Scanner QR Code
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> Posicione o QR Code do agendamento na frente da câmera para realizar o check-in.
+              </div>
+              
+              <div id="qr-reader" class="mb-3"></div>
+              
+              <div class="d-flex gap-2 mb-3">
+                <button id="start-scanner" class="btn btn-success">
+                  <i class="bi bi-play"></i> Iniciar Scanner
+                </button>
+                <button id="stop-scanner" class="btn btn-danger" style="display: none;">
+                  <i class="bi bi-stop"></i> Parar Scanner
+                </button>
+              </div>
+              
+              <div id="scan-result" class="alert alert-info" style="display: none;">
+                <div class="spinner-border spinner-border-sm" role="status">
+                  <span class="visually-hidden">Processando...</span>
+                </div>
+                <span id="scan-message">Processando QR Code...</span>
+              </div>
+            </div>
+            
+            <div class="col-md-6">
+              <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                  <i class="bi bi-info-circle"></i> Instruções
+                </div>
+                <div class="card-body">
+                  <h5>Como fazer o check-in:</h5>
+                  <ol>
+                    <li>Clique no botão "Iniciar Scanner"</li>
+                    <li>Permita o acesso à câmera quando solicitado</li>
+                    <li>Posicione o QR Code do comprovante de agendamento na frente da câmera</li>
+                    <li>Aguarde a leitura e processamento</li>
+                    <li>Confirme os dados na próxima tela</li>
+                  </ol>
+                  
+                  <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle"></i> Se preferir, você pode realizar o check-in manualmente através da opção abaixo.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+          <i class="bi bi-keyboard"></i> Check-in Manual
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('routes.checkin_qr_agendamento') }}" method="GET">
+            <div class="input-group">
+              <input type="text" name="token" class="form-control" placeholder="Insira o token ou ID do agendamento">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Buscar
+              </button>
+            </div>
+            <div class="form-text">
+              O token está impresso no comprovante de agendamento ou pode ser informado pelo professor.
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <div class="mt-4">
+        <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-secondary">
+          <i class="bi bi-arrow-left"></i> Voltar para Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    let html5QrcodeScanner = null;
+    const resultContainer = document.getElementById('scan-result');
+    const resultMessage = document.getElementById('scan-message');
+    
+    document.getElementById('start-scanner').addEventListener('click', function() {
+      this.style.display = 'none';
+      document.getElementById('stop-scanner').style.display = 'inline-block';
+      
+      html5QrcodeScanner = new Html5Qrcode("qr-reader");
+      const config = { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
+      
+      html5QrcodeScanner.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess
+      );
+    });
+    
+    document.getElementById('stop-scanner').addEventListener('click', function() {
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+          html5QrcodeScanner = null;
+          this.style.display = 'none';
+          document.getElementById('start-scanner').style.display = 'inline-block';
+          resultContainer.style.display = 'none';
+        });
+      }
+    });
+    
+    function onScanSuccess(decodedText) {
+      // Mostrar mensagem de processamento
+      resultContainer.style.display = 'block';
+      resultMessage.textContent = 'Processando QR Code...';
+      
+      // Parar o scanner para evitar múltiplas leituras
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop();
+        document.getElementById('stop-scanner').style.display = 'none';
+        document.getElementById('start-scanner').style.display = 'inline-block';
+      }
+      
+      // Processar o código QR
+      fetch('/processar_qrcode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ token: decodedText })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          resultContainer.className = 'alert alert-success';
+          resultMessage.textContent = data.message + ' Redirecionando...';
+          setTimeout(() => {
+            window.location.href = data.redirect;
+          }, 1000);
+        } else {
+          resultContainer.className = 'alert alert-danger';
+          resultMessage.textContent = data.message;
+          
+          // Se houver redirecionamento, redirecionar
+          if (data.redirect) {
+            setTimeout(() => {
+              window.location.href = data.redirect;
+            }, 2000);
+          }
+        }
+      })
+      .catch(error => {
+        resultContainer.className = 'alert alert-danger';
+        resultMessage.textContent = 'Erro ao processar QR Code: ' + error;
+      });
+    }
+  });
+</script>
+{% endblock %}
+{% endblock %}
+
+
+<!-- Template: confirmar_checkin.html -->
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Check-in{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <h2 class="mb-4"><i class="bi bi-check-circle"></i> Confirmar Check-in</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <i class="bi bi-info-circle"></i> Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h5>Informações do Evento</h5>
+              <p><strong>Evento:</strong> {{ evento.nome }}</p>
+              <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
+              <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
+              <p><strong>Status:</strong> <span class="badge bg-primary">{{ agendamento.status|capitalize }}</span></p>
+            </div>
+            
+            <div class="col-md-6">
+              <h5>Informações da Escola</h5>
+              <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+              <p><strong>Professor:</strong> {{ agendamento.professor.nome }}</p>
+              <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+              <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <form method="POST" action="{{ url_for('routes.confirmar_checkin', agendamento_id=agendamento.id) }}">
+        <div class="card mb-4">
+          <div class="card-header bg-success text-white">
+            <i class="bi bi-person-check"></i> Lista de Presença
+          </div>
+          <div class="card-body">
+            {% if agendamento.alunos %}
+              <div class="alert alert-info mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="marcar-todos">
+                  <label class="form-check-label" for="marcar-todos">
+                    <strong>Marcar todos os alunos como presentes</strong>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th style="width: 50px">#</th>
+                      <th>Nome</th>
+                      <th style="width: 120px">Presente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for aluno in agendamento.alunos %}
+                      <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ aluno.nome }}</td>
+                        <td>
+                          <div class="form-check">
+                            <input class="form-check-input aluno-checkbox" type="checkbox" name="alunos_presentes" value="{{ aluno.id }}" id="aluno-{{ aluno.id }}" checked>
+                            <label class="form-check-label" for="aluno-{{ aluno.id }}">
+                              Presente
+                            </label>
+                          </div>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> Não há alunos cadastrados para este agendamento.
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-between mb-4">
+          <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+          </a>
+          
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle"></i> Confirmar Check-in
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const marcarTodos = document.getElementById('marcar-todos');
+    const checkboxes = document.querySelectorAll('.aluno-checkbox');
+    
+    if (marcarTodos) {
+      marcarTodos.addEventListener('change', function() {
+        const isChecked = this.checked;
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}
+{% endblock %}

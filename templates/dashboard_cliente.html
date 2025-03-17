@@ -342,6 +342,11 @@
                     <button id="gerarLinkBtn" class="btn btn-warning btn-lg">
                       <i class="bi bi-link-45deg me-2"></i> Gerar Link de Inscrição
                     </button>
+
+                    <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-primary btn-lg">
+                      <i class="bi bi-speedometer2 me-2"></i> Acessar Dashboard de Agendamentos
+                    </a>
+                    
                   </div>
                 </div>
               </div>
@@ -662,6 +667,11 @@
 </div>
 </div>
 
+    
+    
+  </div>
+</div>
+
 <!-- Modal de Certificado Individual -->
 <div class="modal fade" id="modalCertificadoIndividual{{ oficina.id }}" tabindex="-1"
    aria-hidden="true">
@@ -694,6 +704,7 @@
 </div>
 </div>
 {% endfor %}
+
 
 <!-- Estilos CSS -->
 <style>

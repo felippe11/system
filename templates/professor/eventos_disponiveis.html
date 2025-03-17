@@ -1,0 +1,819 @@
+<!-- Template: professor/eventos_disponiveis.html -->
+{% extends 'base.html' %}
+
+{% block title %}Eventos Disponíveis para Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Eventos Disponíveis para Agendamento</h2>
+    
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Selecione um evento para visualizar os horários disponíveis e realizar um agendamento.
+    </div>
+    
+    {% if eventos %}
+        <div class="row">
+            {% for evento in eventos %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-primary text-white">
+                            {{ evento.nome }}
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Local:</strong> {{ evento.local }}</p>
+                            <p><strong>Período:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }} a {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+                            <p><strong>Descrição:</strong> {{ evento.descricao }}</p>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100">
+                                <a href="{{ url_for('routes.detalhes_evento_professor', evento_id=evento.id) }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-info-circle"></i> Detalhes
+                                </a>
+                                <a href="{{ url_for('routes.horarios_disponiveis_professor', evento_id=evento.id) }}" class="btn btn-success">
+                                    <i class="fas fa-calendar-check"></i> Agendar Visita
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Você ainda não possui agendamentos.
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('routes.eventos_disponiveis_professor') }}" class="btn btn-success">
+            <i class="fas fa-calendar-plus"></i> Novo Agendamento
+        </a>
+        <a href="{{ url_for('routes.dashboard_participante') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/cancelar_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Cancelar Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Cancelar Agendamento</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% set config = horario.evento.configuracoes_agendamento[0] if horario.evento.configuracoes_agendamento else None %}
+    {% if config %}
+        {% set data_hora_visita = horario.data|string + ' ' + horario.horario_inicio|string %}
+        {% set data_hora_visita = data_hora_visita|to_datetime %}
+        {% set prazo_limite = data_hora_visita - config.prazo_cancelamento|timedelta(hours=true) %}
+        {% set agora = now() %}
+        
+        {% if agora > prazo_limite %}
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Atenção!</strong> Você está cancelando fora do prazo estabelecido ({{ config.prazo_cancelamento }} horas antes).
+                <p>De acordo com as regras do evento, você ficará bloqueado para novos agendamentos neste evento por {{ config.tempo_bloqueio }} dias.</p>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Você está dentro do prazo para cancelamento sem penalidades.
+                <p>O prazo limite para cancelamento sem bloqueio é {{ prazo_limite|format_datetime }}.</p>
+            </div>
+        {% endif %}
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle"></i> Confirmação de Cancelamento
+        </div>
+        <div class="card-body">
+            <p>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</p>
+            
+            <form method="POST" action="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}">
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times"></i> Confirmar Cancelamento
+                    </button>
+                    <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i> Voltar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/qrcode_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}QR Code do Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>QR Code do Agendamento</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} às {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
+                    <p><strong>Código:</strong> #{{ agendamento.id }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+                    <p><strong>Status:</strong> {{ agendamento.status|capitalize }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-qrcode"></i> QR Code para Check-in
+        </div>
+        <div class="card-body text-center">
+            <div class="mb-3">
+                <img src="{{ url_for('routes.gerar_qrcode_token', token=token) }}" class="img-fluid" alt="QR Code">
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Apresente este QR Code no momento do check-in na visita.
+            </div>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
+            <i class="fas fa-print"></i> Imprimir Comprovante
+        </a>
+        <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %} else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> Não há eventos disponíveis para agendamento no momento.
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-primary">
+            <i class="fas fa-calendar-alt"></i> Meus Agendamentos
+        </a>
+        <a href="{{ url_for('routes.dashboard_participante') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/detalhes_evento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Detalhes do Evento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ evento.nome }}</h2>
+    
+    {% if bloqueio %}
+        <div class="alert alert-danger">
+            <i class="fas fa-ban"></i> Você está temporariamente bloqueado para este evento até {{ bloqueio.data_final.strftime('%d/%m/%Y') }}.
+            <p><strong>Motivo:</strong> {{ bloqueio.motivo }}</p>
+        </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Informações do Evento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Local:</strong> {{ evento.local }}</p>
+                    <p><strong>Período:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }} a {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Organizado por:</strong> {{ evento.cliente.nome }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Status:</strong> {{ evento.status }}</p>
+                    <p><strong>Tipo:</strong> {{ evento.tipo }}</p>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <h5>Descrição</h5>
+                <p>{{ evento.descricao }}</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if salas %}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                Salas de Visitação Disponíveis
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for sala in salas %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    {{ sala.nome }}
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Capacidade:</strong> {{ sala.capacidade }} pessoas</p>
+                                    <p>{{ sala.descricao }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-header bg-warning">
+            Regras de Agendamento
+        </div>
+        <div class="card-body">
+            {% set config = evento.configuracoes_agendamento[0] if evento.configuracoes_agendamento else None %}
+            {% if config %}
+                <ul>
+                    <li><strong>Prazo para cancelamento:</strong> {{ config.prazo_cancelamento }} horas antes da visita</li>
+                    <li><strong>Bloqueio por violação de regras:</strong> {{ config.tempo_bloqueio }} dias</li>
+                    <li><strong>Capacidade padrão por horário:</strong> {{ config.capacidade_padrao }} alunos</li>
+                </ul>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Atenção:</strong> O cancelamento fora do prazo ({{ config.prazo_cancelamento }} horas antes) resultará em bloqueio temporário para novos agendamentos neste evento.
+                </div>
+            {% else %}
+                <p>Não há regras específicas definidas para este evento.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        {% if not bloqueio %}
+            <a href="{{ url_for('routes.horarios_disponiveis_professor', evento_id=evento.id) }}" class="btn btn-success">
+                <i class="fas fa-calendar-check"></i> Agendar Visita
+            </a>
+        {% endif %}
+        <a href="{{ url_for('routes.eventos_disponiveis_professor') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/horarios_disponiveis.html -->
+{% extends 'base.html' %}
+
+{% block title %}Horários Disponíveis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Horários Disponíveis - {{ evento.nome }}</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Filtrar Horários
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('routes.horarios_disponiveis_professor', evento_id=evento.id) }}">
+                <div class="form-group">
+                    <label for="data">Selecione uma data específica:</label>
+                    <input type="date" class="form-control" id="data" name="data" value="{{ data_filtro }}">
+                </div>
+                <button type="submit" class="btn btn-primary mt-2">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+                {% if data_filtro %}
+                    <a href="{{ url_for('routes.horarios_disponiveis_professor', evento_id=evento.id) }}" class="btn btn-outline-secondary mt-2">
+                        <i class="fas fa-times"></i> Limpar Filtro
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    {% if horarios_por_data %}
+        {% for data_str, horarios in horarios_por_data.items() %}
+            {% set data = horarios[0].data %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data.strftime('%A')|capitalize }})
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th class="text-center">Vagas Disponíveis</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for horario in horarios %}
+                                <tr>
+                                    <td>{{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</td>
+                                    <td class="text-center">
+                                        {% if horario.vagas_disponiveis > 10 %}
+                                            <span class="badge bg-success">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% elif horario.vagas_disponiveis > 5 %}
+                                            <span class="badge bg-warning text-dark">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('routes.criar_agendamento_professor', horario_id=horario.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-calendar-plus"></i> Agendar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> Não há horários disponíveis para os critérios selecionados.
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{{ url_for('routes.eventos_disponiveis_professor') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar para Eventos
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/criar_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Criar Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Criar Agendamento</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Horário Selecionado
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Vagas disponíveis:</strong> {{ horario.vagas_disponiveis }}</p>
+                    <p><strong>Local:</strong> {{ evento.local }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            Informações da Visita
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('routes.criar_agendamento_professor', horario_id=horario.id) }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="escola_nome" class="form-label">Nome da Escola *</label>
+                        <input type="text" class="form-control" id="escola_nome" name="escola_nome" required>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="escola_codigo_inep" class="form-label">Código INEP (opcional)</label>
+                        <input type="text" class="form-control" id="escola_codigo_inep" name="escola_codigo_inep">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="turma" class="form-label">Turma *</label>
+                        <input type="text" class="form-control" id="turma" name="turma" required>
+                        <small class="text-muted">Ex: 9º Ano B, 2º Ano EM</small>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="nivel_ensino" class="form-label">Nível de Ensino *</label>
+                        <select class="form-select" id="nivel_ensino" name="nivel_ensino" required>
+                            <option value="">Selecione...</option>
+                            <option value="Educação Infantil">Educação Infantil</option>
+                            <option value="Ensino Fundamental - Anos Iniciais">Ensino Fundamental - Anos Iniciais</option>
+                            <option value="Ensino Fundamental - Anos Finais">Ensino Fundamental - Anos Finais</option>
+                            <option value="Ensino Médio">Ensino Médio</option>
+                            <option value="Educação de Jovens e Adultos">Educação de Jovens e Adultos</option>
+                            <option value="Ensino Técnico">Ensino Técnico</option>
+                            <option value="Ensino Superior">Ensino Superior</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="quantidade_alunos" class="form-label">Quantidade de Alunos *</label>
+                    <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" max="{{ horario.vagas_disponiveis }}" required>
+                    <small class="text-muted">Máximo permitido: {{ horario.vagas_disponiveis }} alunos</small>
+                </div>
+                
+                {% if salas %}
+                    <div class="mb-3">
+                        <label class="form-label">Salas de Interesse *</label>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    {% for sala in salas %}
+                                        <div class="col-md-6 mb-2">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="salas_selecionadas" value="{{ sala.id }}" id="sala-{{ sala.id }}">
+                                                <label class="form-check-label" for="sala-{{ sala.id }}">
+                                                    {{ sala.nome }} ({{ sala.descricao }})
+                                                </label>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i> Após confirmar o agendamento, você poderá adicionar a lista de alunos participantes.
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Confirmar Agendamento
+                    </button>
+                    <a href="{{ url_for('routes.horarios_disponiveis_professor', evento_id=evento.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/adicionar_alunos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Adicionar Alunos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Adicionar Alunos ao Agendamento</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} às {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Quantidade de Alunos:</strong> {{ total_adicionados }} / {{ agendamento.quantidade_alunos }}</p>
+                </div>
+            </div>
+            
+            <div class="progress mt-3">
+                {% set porcentagem = (total_adicionados / agendamento.quantidade_alunos) * 100 %}
+                <div class="progress-bar {% if porcentagem < 50 %}bg-danger{% elif porcentagem < 100 %}bg-warning{% else %}bg-success{% endif %}" 
+                     role="progressbar" style="width: {{ porcentagem }}%;" 
+                     aria-valuenow="{{ total_adicionados }}" aria-valuemin="0" aria-valuemax="{{ agendamento.quantidade_alunos }}">
+                    {{ total_adicionados }} / {{ agendamento.quantidade_alunos }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-user-plus"></i> Adicionar Aluno
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome do Aluno *</label>
+                            <input type="text" class="form-control" id="nome" name="nome" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="cpf" class="form-label">CPF (opcional)</label>
+                            <input type="text" class="form-control" id="cpf" name="cpf" placeholder="Apenas números">
+                            <small class="text-muted">Opcional para menores de idade</small>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus-circle"></i> Adicionar Aluno
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-file-import"></i> Importar Lista de Alunos
+                </div>
+                <div class="card-body">
+                    <p>Você pode importar uma lista de alunos a partir de um arquivo CSV.</p>
+                    <p>O arquivo deve conter uma linha por aluno, no formato:</p>
+                    <pre>Nome do Aluno,CPF</pre>
+                    <p>O CPF é opcional e pode ser deixado em branco.</p>
+                    
+                    <div class="d-grid">
+                        <a href="{{ url_for('routes.importar_alunos_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-info">
+                            <i class="fas fa-file-import"></i> Importar Alunos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista de alunos -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-list"></i> Alunos Adicionados ({{ total_adicionados }} / {{ agendamento.quantidade_alunos }})
+        </div>
+        <div class="card-body">
+            {% if alunos %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for aluno in alunos %}
+                                <tr>
+                                    <td>{{ aluno.nome }}</td>
+                                    <td>{{ aluno.cpf or '-' }}</td>
+                                    <td class="text-end">
+                                        <form method="POST" action="{{ url_for('routes.remover_aluno_agendamento', aluno_id=aluno.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja remover este aluno?')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Nenhum aluno adicionado ainda.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="mt-4 d-flex gap-2">
+        {% if total_adicionados >= agendamento.quantidade_alunos %}
+            <div class="alert alert-success flex-grow-1">
+                <i class="fas fa-check-circle"></i> Você adicionou todos os alunos! Seu agendamento está completo.
+            </div>
+        {% endif %}
+        
+        <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
+            <i class="fas fa-print"></i> Imprimir Comprovante
+        </a>
+        
+        <a href="{{ url_for('routes.qrcode_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-info">
+            <i class="fas fa-qrcode"></i> Ver QR Code
+        </a>
+        
+        <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/importar_alunos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Importar Alunos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Importar Lista de Alunos</h2>
+    
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle"></i> Você pode importar uma lista de alunos a partir de um arquivo CSV.
+        <p class="mb-0">
+            O arquivo deve conter uma linha por aluno, no formato: <code>Nome do Aluno,CPF</code><br>
+            O CPF é opcional e pode ser deixado em branco.
+        </p>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} às {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Total de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-file-import"></i> Upload do Arquivo
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('routes.importar_alunos_agendamento', agendamento_id=agendamento.id) }}">
+                <div class="mb-3">
+                    <label for="arquivo_csv" class="form-label">Selecione o arquivo CSV:</label>
+                    <input class="form-control" type="file" id="arquivo_csv" name="arquivo_csv" accept=".csv" required>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Exemplo de formato:</h5>
+                    <pre>João da Silva,12345678900
+Maria Oliveira,
+Pedro Santos,98765432100</pre>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Importar Alunos
+                    </button>
+                    <a href="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i> Voltar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Template: professor/meus_agendamentos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Meus Agendamentos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Meus Agendamentos</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-filter"></i> Filtrar por Status
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('routes.meus_agendamentos') }}" class="d-flex gap-2">
+                <select name="status" class="form-select">
+                    <option value="">Todos os status</option>
+                    <option value="confirmado" {% if status_filtro == 'confirmado' %}selected{% endif %}>Confirmados</option>
+                    <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelados</option>
+                    <option value="realizado" {% if status_filtro == 'realizado' %}selected{% endif %}>Realizados</option>
+                </select>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                {% if status_filtro %}
+                    <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-outline-secondary">Limpar</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    
+    {% if agendamentos %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Evento</th>
+                        <th>Data</th>
+                        <th>Horário</th>
+                        <th>Escola</th>
+                        <th>Turma</th>
+                        <th>Alunos</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agendamento in agendamentos %}
+                        {% set horario = agendamento.horario %}
+                        {% set hoje = hoje or today() %}
+                        <tr class="
+                            {% if agendamento.status == 'cancelado' %}table-danger{% endif %}
+                            {% if agendamento.status == 'realizado' %}table-success{% endif %}
+                            {% if horario.data < hoje and agendamento.status == 'confirmado' %}table-warning{% endif %}
+                        ">
+                            <td>{{ horario.evento.nome }}</td>
+                            <td>{{ horario.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
+                            <td>{{ agendamento.escola_nome }}</td>
+                            <td>{{ agendamento.turma }}</td>
+                            <td>{{ agendamento.quantidade_alunos }}</td>
+                            <td>
+                                {% if agendamento.status == 'confirmado' %}
+                                    <span class="badge bg-primary">Confirmado</span>
+                                {% elif agendamento.status == 'cancelado' %}
+                                    <span class="badge bg-danger">Cancelado</span>
+                                {% elif agendamento.status == 'realizado' %}
+                                    <span class="badge bg-success">Realizado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </a>
+                                    
+                                    {% if agendamento.status == 'confirmado' %}
+                                        <a href="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-user-plus"></i>
+                                        </a>
+                                        
+                                        <a href="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> Não há agendamentos para exibir.
+        </div>
+    {% endif %}
+    
