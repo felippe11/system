@@ -484,20 +484,25 @@ class FeedbackCampo(db.Model):
         return f"<FeedbackCampo id={self.id} resposta_campo={self.resposta_campo_id} ministrante={self.ministrante_id}>"
 
 class Evento(db.Model):
-    __tablename__ = 'evento'
+        __tablename__ = 'evento'
 
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
-    nome = db.Column(db.String(255), nullable=False)
-    descricao = db.Column(db.Text, nullable=True)
-    banner_url = db.Column(db.String(255), nullable=True)
-    programacao = db.Column(db.Text, nullable=True)
-    localizacao = db.Column(db.String(255), nullable=True)
-    link_mapa = db.Column(db.Text, nullable=True)
-    inscricao_gratuita = db.Column(db.Boolean, default=False, nullable=False)  # Novo campo
+        id = db.Column(db.Integer, primary_key=True)
+        cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+        nome = db.Column(db.String(255), nullable=False)
+        descricao = db.Column(db.Text, nullable=True)
+        banner_url = db.Column(db.String(255), nullable=True)
+        programacao = db.Column(db.Text, nullable=True)
+        localizacao = db.Column(db.String(255), nullable=True)
+        link_mapa = db.Column(db.Text, nullable=True)
+        inscricao_gratuita = db.Column(db.Boolean, default=False, nullable=False)  # Novo campo
+        # Novos campos de data
+        data_inicio = db.Column(db.DateTime, nullable=True)
+        data_fim = db.Column(db.DateTime, nullable=True)
+        hora_inicio = db.Column(db.Time, nullable=True)
+        hora_fim = db.Column(db.Time, nullable=True)
 
-    cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
-    # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
+        cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
+        # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
 
 class FormularioTemplate(db.Model):
     __tablename__ = 'formulario_templates'
@@ -528,6 +533,148 @@ class CampoFormularioTemplate(db.Model):
     
     def __repr__(self):
         return f"<CampoFormularioTemplate {self.nome} ({self.tipo})>"
+    
+from datetime import datetime, timedelta
+from extensions import db
+
+class ConfiguracaoAgendamento(db.Model):
+    """Configuração de regras para agendamentos de visitas por cliente."""
+    __tablename__ = 'configuracao_agendamento'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    
+    # Regras de agendamento
+    prazo_cancelamento = db.Column(db.Integer, nullable=False, default=24)  # Horas antes do evento
+    tempo_bloqueio = db.Column(db.Integer, nullable=False, default=7)  # Dias de bloqueio por violação
+    capacidade_padrao = db.Column(db.Integer, nullable=False, default=30)  # Quantidade padrão de alunos por horário
+    intervalo_minutos = db.Column(db.Integer, nullable=False, default=60)  # Minutos entre agendamentos
+    
+    # Horários de disponibilidade
+    horario_inicio = db.Column(db.Time, nullable=False)
+    horario_fim = db.Column(db.Time, nullable=False)
+    dias_semana = db.Column(db.String(20), nullable=False, default="1,2,3,4,5")  # 0=Dom, 1=Seg, ..., 6=Sáb
+    
+    # Relações
+    cliente = db.relationship('Cliente', backref=db.backref('configuracoes_agendamento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('configuracoes_agendamento', lazy=True))
+    
+    def __repr__(self):
+        return f"<ConfiguracaoAgendamento {self.id} - Evento {self.evento_id}>"
+
+
+class SalaVisitacao(db.Model):
+    """Salas disponíveis para visitação em um evento."""
+    __tablename__ = 'sala_visitacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    capacidade = db.Column(db.Integer, nullable=False, default=30)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    
+    # Relações
+    evento = db.relationship('Evento', backref=db.backref('salas_visitacao', lazy=True))
+    
+    def __repr__(self):
+        return f"<SalaVisitacao {self.nome} - Evento {self.evento_id}>"
+
+
+class HorarioVisitacao(db.Model):
+    """Slots de horários disponíveis para agendamento."""
+    __tablename__ = 'horario_visitacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    horario_inicio = db.Column(db.Time, nullable=False)
+    horario_fim = db.Column(db.Time, nullable=False)
+    capacidade_total = db.Column(db.Integer, nullable=False)
+    vagas_disponiveis = db.Column(db.Integer, nullable=False)
+    
+    # Relações
+    evento = db.relationship('Evento', backref=db.backref('horarios_visitacao', lazy=True))
+    
+    def __repr__(self):
+        return f"<HorarioVisitacao {self.data} {self.horario_inicio}-{self.horario_fim} ({self.vagas_disponiveis} vagas)>"
+
+
+class AgendamentoVisita(db.Model):
+    """Agendamento realizado por um professor para uma turma."""
+    __tablename__ = 'agendamento_visita'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    horario_id = db.Column(db.Integer, db.ForeignKey('horario_visitacao.id'), nullable=False)
+    professor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
+    # Informações da escola e turma
+    escola_nome = db.Column(db.String(200), nullable=False)
+    escola_codigo_inep = db.Column(db.String(20), nullable=True)
+    turma = db.Column(db.String(50), nullable=False)
+    nivel_ensino = db.Column(db.String(50), nullable=False)  # Anos iniciais, finais, etc.
+    quantidade_alunos = db.Column(db.Integer, nullable=False)
+    
+    # Status do agendamento
+    data_agendamento = db.Column(db.DateTime, default=datetime.utcnow)
+    data_cancelamento = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='confirmado')  # confirmado, cancelado, realizado
+    checkin_realizado = db.Column(db.Boolean, default=False)
+    data_checkin = db.Column(db.DateTime, nullable=True)
+    
+    # QR Code para check-in
+    qr_code_token = db.Column(db.String(100), unique=True, nullable=False)
+    
+    # Salas selecionadas para visitação
+    salas_selecionadas = db.Column(db.String(200), nullable=True)  # IDs separados por vírgula
+    
+    # Relações
+    horario = db.relationship('HorarioVisitacao', backref=db.backref('agendamentos', lazy=True))
+    professor = db.relationship('Usuario', backref=db.backref('agendamentos_visitas', lazy=True))
+    
+    def __init__(self, **kwargs):
+        super(AgendamentoVisita, self).__init__(**kwargs)
+        import uuid
+        self.qr_code_token = str(uuid.uuid4())
+    
+    def __repr__(self):
+        return f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - {self.escola_nome}>"
+
+
+class AlunoVisitante(db.Model):
+    """Alunos participantes de uma visita agendada."""
+    __tablename__ = 'aluno_visitante'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey('agendamento_visita.id'), nullable=False)
+    nome = db.Column(db.String(150), nullable=False)
+    cpf = db.Column(db.String(14), nullable=True)  # Opcional para menores
+    presente = db.Column(db.Boolean, default=False)
+    
+    # Relações
+    agendamento = db.relationship('AgendamentoVisita', backref=db.backref('alunos', lazy=True))
+    
+    def __repr__(self):
+        return f"<AlunoVisitante {self.nome} - Agendamento {self.agendamento_id}>"
+
+
+class ProfessorBloqueado(db.Model):
+    """Registro de professores bloqueados por violação de regras."""
+    __tablename__ = 'professor_bloqueado'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    professor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    data_inicial = db.Column(db.DateTime, default=datetime.utcnow)
+    data_final = db.Column(db.DateTime, nullable=False)
+    motivo = db.Column(db.Text, nullable=False)
+    
+    # Relações
+    professor = db.relationship('Usuario', backref=db.backref('bloqueios', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('professores_bloqueados', lazy=True))
+    
+    def __repr__(self):
+        return f"<ProfessorBloqueado {self.professor_id} até {self.data_final.strftime('%d/%m/%Y')}>"
 
 
 
