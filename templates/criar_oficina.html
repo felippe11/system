@@ -123,14 +123,6 @@
           </div>
         </div>
 
-        <!-- Locais de Atuação -->
-        <div class="mb-3">
-          <label class="form-label">Locais de Atuação:</label>
-          <div id="locations-container">
-            <!-- Os blocos de localização serão adicionados aqui dinamicamente -->
-          </div>
-          <button type="button" id="add-location-btn" class="btn btn-secondary w-100 mb-3">+ Adicionar Local de Atuação</button>
-        </div>
 
         {% if current_user.habilita_pagamento %}
         <!-- Configuração de Inscrição para Clientes com Pagamento Habilitado -->
@@ -145,23 +137,44 @@
         </div>
         
         <!-- Container para Tipos de Inscrição e Preços -->
-        <div id="tipos-inscricao-container">
+        <div id="tipos-inscricao-container" class="{% if evento and evento.inscricao_gratuita %}d-none{% else %}d-block{% endif %}">
           <div id="tipos-inscricao-list">
-            <div class="row mb-2 align-items-center">
-              <div class="col-md-4">
-                <label class="form-label">Tipo de Inscrição:</label>
-                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+            {% if evento and evento.tipos_inscricao_evento and not evento.inscricao_gratuita %}
+              {% for tipo in evento.tipos_inscricao_evento %}
+              <div class="row mb-2 align-items-center">
+                <div class="col-md-4">
+                  <label class="form-label">Tipo de Inscrição:</label>
+                  <input type="text" class="form-control" name="nome_tipo[]" value="{{ tipo.nome }}" placeholder="Nome do Tipo de Inscrição">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Preço:</label>
+                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" value="{{ tipo.preco }}" placeholder="Preço">
+                </div>
+                <div class="col-md-2">
+                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+                </div>
               </div>
-              <div class="col-md-2">
-                <label class="form-label">Preço:</label>
-                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+              {% endfor %}
+            {% else %}
+              <!-- Caso não haja tipos de inscrição ou seja gratuito, exibe um campo vazio como padrão -->
+              <div class="row mb-2 align-items-center">
+                <div class="col-md-4">
+                  <label class="form-label">Tipo de Inscrição:</label>
+                  <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label">Preço:</label>
+                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+                </div>
+                <div class="col-md-2">
+                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+                </div>
               </div>
-              <div class="col-md-2">
-                <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-              </div>
-            </div>
+            {% endif %}
           </div>
-          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">+ Adicionar Tipo de Inscrição</button>
+          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">
+            + Adicionar Tipo de Inscrição
+          </button>
         </div>
         {% endif %}
 
@@ -250,10 +263,6 @@
       }
     });
 
-    // Locais de Atuação
-    const locationsContainer = document.getElementById('locations-container');
-    const addLocationBtn = document.getElementById('add-location-btn');
-
     // Busca os estados do Brasil via API do IBGE
     let statesData = [];
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
@@ -339,47 +348,42 @@
     // Adicionar evento no botão para adicionar mais locais
     addLocationBtn.addEventListener('click', addLocationBlock);
 
-    {% if current_user.habilita_pagamento %}
-    // Controle de exibição para tipos de inscrição
-    document.getElementById('inscricao_gratuita').addEventListener('change', function(){
-      var container = document.getElementById('tipos-inscricao-container');
-      if(this.checked){
-        container.style.display = 'none';
-      } else {
-        container.style.display = 'block';
-      }
-    });
-
-    // Adicionar novo tipo de inscrição
-    document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
-      var container = document.getElementById('tipos-inscricao-list');
-      var div = document.createElement('div');
-      div.className = 'row mb-2 align-items-center';
-      div.innerHTML = `
-        <div class="col-md-4">
-          <label class="form-label">Tipo de Inscrição:</label>
-          <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Preço:</label>
-          <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
-        </div>
-        <div class="col-md-2">
-          <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-        </div>
-      `;
-      container.appendChild(div);
-    });
-
-    // Remover tipo de inscrição
-    document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
-      if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
-        e.target.closest('.row').remove();
-      }
-    });
-    {% endif %}
   });
 </script>
+{% if current_user.habilita_pagamento %}
+<script>
+document.getElementById('inscricao_gratuita').addEventListener('change', function() {
+  var container = document.getElementById('tipos-inscricao-container');
+  container.style.display = this.checked ? 'none' : 'block';
+});
+
+document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
+  var container = document.getElementById('tipos-inscricao-list');
+  var div = document.createElement('div');
+  div.className = 'row mb-2 align-items-center';
+  div.innerHTML = `
+    <div class="col-md-4">
+      <label class="form-label">Tipo de Inscrição:</label>
+      <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Preço:</label>
+      <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+    </div>
+    <div class="col-md-2">
+      <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+    </div>
+  `;
+  container.appendChild(div);
+});
+
+document.getElementById('tipos-inscricao-list').addEventListener('click', function(e) {
+  if (e.target && e.target.classList.contains('remover-tipo-inscricao')) {
+    e.target.parentElement.parentElement.remove();
+  }
+});
+</script>
+{% endif %}
 
 <!-- Incluindo Bootstrap via CDN -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>

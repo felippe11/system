@@ -1,6 +1,7 @@
 import os
 import uuid
 import csv
+import pytz
 from flask import Response
 from datetime import datetime
 import logging
@@ -111,6 +112,7 @@ def home():
     return render_template('index.html')
 
 
+
 # ===========================
 #    CADASTRO DE PARTICIPANTE
 # ===========================
@@ -129,6 +131,7 @@ def cadastro_participante(identifier=None):
     sorted_keys = []
     grouped_oficinas = {}
     oficinas = []
+    ministrantes = []
 
     # Busca o link pelo token ou slug
     link = None
@@ -148,6 +151,8 @@ def cadastro_participante(identifier=None):
     if evento:
         # Carrega oficinas do evento
         oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
+        # Carrega ministrantes do evento
+        ministrantes = Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all()
     else:
         # Fallback: carrega oficinas do cliente se não houver evento associado
         oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
@@ -168,7 +173,7 @@ def cadastro_participante(identifier=None):
             grouped_oficinas[data_str].append({
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
-                'ministrante': ministrante_info,  # Agora incluindo um objeto com infos do ministrante
+                'ministrante': oficina.ministrante_obj,
                 'horario_inicio': dia.horario_inicio,
                 'horario_fim': dia.horario_fim
             })
@@ -201,8 +206,10 @@ def cadastro_participante(identifier=None):
                 token=link.token,
                 evento=evento,
                 sorted_keys=sorted_keys,
+                ministrantes=ministrantes,
                 grouped_oficinas=grouped_oficinas
             )
+
 
         # Verifica se o e-mail já existe
         usuario_existente = Usuario.query.filter_by(email=email).first()
@@ -250,6 +257,7 @@ def cadastro_participante(identifier=None):
         token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
+        ministrantes=ministrantes,
         grouped_oficinas=grouped_oficinas
     )
 
@@ -1394,7 +1402,7 @@ def lista_checkins(oficina_id):
         'nome': checkin.usuario.nome,
         'cpf': checkin.usuario.cpf,
         'email': checkin.usuario.email,
-        'data_hora': checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        'data_hora': checkin.data_hora
     } for checkin in checkins]
     return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
 
@@ -1405,7 +1413,15 @@ def gerar_pdf_checkins(oficina_id):
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
     dias = OficinaDia.query.filter_by(oficina_id=oficina_id).all()
     pdf_path = f"static/checkins_oficina_{oficina.id}.pdf"
-    
+
+    # Definindo a timezone de Brasília
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    def convert_to_brasilia(dt):
+        # Se o datetime não for "aware", assumimos que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+
     styles = getSampleStyleSheet()
     header_style = ParagraphStyle(
         name="Header",
@@ -1415,9 +1431,8 @@ def gerar_pdf_checkins(oficina_id):
         spaceAfter=12,
     )
     normal_style = styles["Normal"]
-    
-    # Aqui definimos a página como paisagem (landscape)
-    # e colocamos margens pequenas (20 points em cada lado).
+
+    # Configura o documento PDF em modo paisagem com margens reduzidas
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=landscape(letter),
@@ -1426,48 +1441,48 @@ def gerar_pdf_checkins(oficina_id):
         topMargin=20,
         bottomMargin=20
     )
-    
+
     elementos = []
-    
+
     # Acessa o nome do ministrante
     ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
-    
+
     elementos.append(Paragraph(f"Lista de Check-ins - {oficina.titulo}", header_style))
     elementos.append(Spacer(1, 12))
     elementos.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
     elementos.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
-    
+
     if dias:
         elementos.append(Paragraph("<b>Datas:</b>", normal_style))
         for dia in dias:
             data_formatada = dia.data.strftime('%d/%m/%Y')
             elementos.append(Paragraph(
-                f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})", 
+                f" - {data_formatada} ({dia.horario_inicio} às {dia.horario_fim})",
                 normal_style
             ))
     else:
         elementos.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", normal_style))
-    
+
     elementos.append(Spacer(1, 20))
-    
-    # Monta os dados da tabela
+
+    # Monta os dados da tabela e converte os horários de check-in para o fuso de Brasília
     data_table = [["Nome", "CPF", "E-mail", "Data e Hora do Check-in"]]
     for checkin in checkins:
+        dt_brasilia = convert_to_brasilia(checkin.data_hora)
         data_table.append([
             checkin.usuario.nome,
             checkin.usuario.cpf,
             checkin.usuario.email,
-            checkin.data_hora.strftime("%d/%m/%Y %H:%M"),
+            dt_brasilia.strftime("%d/%m/%Y %H:%M"),
         ])
-    
-    # Utiliza LongTable para quebra em múltiplas páginas e repete o cabeçalho
-    # Define colWidths como ['*','*','*','*'] para usar toda a largura do doc
+
+    # Utiliza LongTable para permitir a quebra de página e repetir o cabeçalho
     tabela = LongTable(
         data_table,
-        colWidths=['*','*','*','*'],  # cada coluna divide a largura disponível
-        repeatRows=1  # repete o cabeçalho nas próximas páginas
+        colWidths=['*','*','*','*'],
+        repeatRows=1
     )
-    
+
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1477,17 +1492,15 @@ def gerar_pdf_checkins(oficina_id):
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
         ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        
-        # Ativa quebra de linha em todas as células
         ('WORDWRAP', (0, 0), (-1, -1), True),
-        # Ajusta o alinhamento vertical das células
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
     ]))
-    
+
     elementos.append(tabela)
-    
+
     doc.build(elementos)
     return send_file(pdf_path, as_attachment=True)
+
 
 
 @routes.route('/gerar_pdf/<int:oficina_id>')
@@ -1997,11 +2010,20 @@ def feedback_oficina(oficina_id):
 
 
 def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
-    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, SimpleDocTemplate
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, SimpleDocTemplate, PageBreak
     from reportlab.lib.pagesizes import letter, landscape
     from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from datetime import datetime
+    import pytz
+
+    # Função para converter um datetime para o fuso de Brasília
+    def convert_to_brasilia(dt):
+        brasilia_tz = pytz.timezone("America/Sao_Paulo")
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
 
     styles = getSampleStyleSheet()
     normal_style = styles['Normal']
@@ -2017,7 +2039,7 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
     elements.append(title)
     elements.append(Spacer(1, 12))
     
-    # Cria a linha de cabeçalho utilizando Paragraph para melhor formatação
+    # Cabeçalho da tabela com Paragraph para melhor formatação
     header = [
         Paragraph("Usuário", heading_style),
         Paragraph("Avaliação", heading_style),
@@ -2026,13 +2048,14 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
     ]
     table_data = [header]
     
-    # Prepara os dados da tabela (usando Paragraph para células com texto possivelmente longo)
+    # Prepara os dados da tabela convertendo os horários para o fuso local
     for fb in feedbacks:
         rating_str = '★' * fb.rating + '☆' * (5 - fb.rating)
-        data_str = fb.created_at.strftime('%d/%m/%Y %H:%M')
+        dt_local = convert_to_brasilia(fb.created_at)
+        data_str = dt_local.strftime('%d/%m/%Y %H:%M')
         nome_autor = fb.usuario.nome if fb.usuario is not None else (
                      fb.ministrante.nome if fb.ministrante is not None else "Desconhecido")
-        # Cria um Paragraph para o comentário para permitir quebra de linha
+        # Utiliza Paragraph para permitir quebra de linha em comentários longos
         comentario_paragraph = Paragraph(fb.comentario or "", normal_style)
         row = [
             Paragraph(nome_autor, normal_style),
@@ -2042,11 +2065,11 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
         ]
         table_data.append(row)
     
-    # Cria o documento em modo paisagem com margens pequenas
+    # Cria o documento em modo paisagem com margens definidas
     doc = SimpleDocTemplate(pdf_path, pagesize=landscape(letter), leftMargin=36, rightMargin=36)
     available_width = doc.width  # largura disponível após as margens
 
-    # Define as larguras das colunas (porcentagem da largura disponível)
+    # Define as larguras das colunas em porcentagem da largura disponível
     col_widths = [
         available_width * 0.2,  # Usuário
         available_width * 0.15, # Avaliação
@@ -2067,11 +2090,17 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
     ]))
     elements.append(table)
     elements.append(Spacer(1, 12))
-    footer = Paragraph("Feedbacks gerados em " + datetime.utcnow().strftime('%d/%m/%Y %H:%M'), normal_style)
+    
+    # Footer com horário local (convertido a partir de UTC)
+    footer = Paragraph(
+        "Feedbacks gerados em " + convert_to_brasilia(datetime.utcnow()).strftime('%d/%m/%Y %H:%M'),
+        normal_style
+    )
     elements.append(footer)
     elements.append(PageBreak())
     
     doc.build(elements)
+
 
 
 @routes.route('/gerar_pdf_feedback/<int:oficina_id>')
@@ -2514,14 +2543,26 @@ def gerar_pdf_checkins_qr():
     pdf_path = os.path.join("static", "comprovantes", pdf_filename)
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
 
-    # 3. Configura o Documento usando SimpleDocTemplate e LongTable para quebra automática
+    # 3. Importa as dependências do ReportLab e outras necessárias
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle, PageBreak
     from reportlab.lib.pagesizes import landscape, A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
     from collections import defaultdict
+    import pytz
 
+    # Função para converter datetime para o horário de Brasília
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    def convert_to_brasilia(dt):
+        if dt is None:
+            return None
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+
+    # 4. Configura o documento PDF em modo paisagem com margens reduzidas
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=landscape(A4),
@@ -2534,20 +2575,18 @@ def gerar_pdf_checkins_qr():
     styles = getSampleStyleSheet()
     title_style = styles["Title"]
 
-    # 4. Título geral do PDF
+    # 5. Título geral do PDF
     elements.append(Paragraph("Lista de Check-ins via QR Code", title_style))
     elements.append(Spacer(1, 0.3 * inch))
 
-    # 5. Agrupa os check-ins por oficina
+    # 6. Agrupa os check-ins por oficina
     grupos = defaultdict(list)
     for ck in checkins_qr:
-        # Caso a oficina seja None, agrupa como "N/A"
         oficina_titulo = ck.oficina.titulo if ck.oficina else "N/A"
         grupos[oficina_titulo].append(ck)
 
-    # 6. Para cada oficina, cria uma tabela com os check-ins
+    # 7. Para cada oficina, cria uma tabela com os check-ins
     for oficina_titulo, checkins in grupos.items():
-        # Cabeçalho do grupo (nome da oficina)
         elements.append(Paragraph(f"Oficina: {oficina_titulo}", styles["Heading2"]))
         elements.append(Spacer(1, 0.2 * inch))
 
@@ -2557,10 +2596,11 @@ def gerar_pdf_checkins_qr():
             usuario = ck.usuario
             nome = usuario.nome if usuario else ""
             email = usuario.email if usuario else ""
-            data_str = ck.data_hora.strftime('%d/%m/%Y %H:%M') if ck.data_hora else ""
+            dt_local = convert_to_brasilia(ck.data_hora)
+            data_str = dt_local.strftime('%d/%m/%Y %H:%M') if dt_local else ""
             table_data.append([nome, email, data_str])
 
-        # Cria a tabela com LongTable (que permite quebra de página e repete o cabeçalho)
+        # Cria a tabela com LongTable para quebra de página e cabeçalho repetido
         table = LongTable(table_data, colWidths=[2.0 * inch, 2.5 * inch, 2.0 * inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
@@ -2579,11 +2619,12 @@ def gerar_pdf_checkins_qr():
         # Se desejar, pode inserir uma quebra de página entre oficinas:
         # elements.append(PageBreak())
 
-    # 7. Constrói o PDF (a quebra de página será automática se os registros ultrapassarem o limite)
+    # 8. Constrói o PDF com quebra de página automática se necessário
     doc.build(elements)
 
-    # 8. Retorna para download
+    # 9. Retorna o arquivo para download
     return send_file(pdf_path, as_attachment=True)
+
 
 @routes.route('/gerenciar_participantes', methods=['GET'])
 @login_required
@@ -3400,6 +3441,7 @@ def gerar_pdf_respostas(formulario_id):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
+    import pytz
 
     # Busca o formulário e as respostas
     formulario = Formulario.query.get_or_404(formulario_id)
@@ -3432,10 +3474,19 @@ def gerar_pdf_respostas(formulario_id):
     header = ["Usuário", "Data de Envio", "Respostas"]
     data.append(header)
 
+    # Função para converter datetime para o horário de Brasília
+    def convert_to_brasilia(dt):
+        brasilia_tz = pytz.timezone("America/Sao_Paulo")
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+
     # Preenche as linhas da tabela com cada resposta
     for resposta in respostas:
         usuario = resposta.usuario.nome if resposta.usuario else "N/A"
-        data_envio = resposta.data_submissao.strftime('%d/%m/%Y %H:%M')
+        dt_local = convert_to_brasilia(resposta.data_submissao)
+        data_envio = dt_local.strftime('%d/%m/%Y %H:%M')
         # Monta uma string com os campos e valores, separando-os por quebras de linha
         resposta_text = ""
         for campo in resposta.respostas_campos:
@@ -3466,27 +3517,54 @@ def gerar_pdf_respostas(formulario_id):
 @routes.route('/formularios/<int:formulario_id>/exportar_csv')
 @login_required
 def exportar_csv(formulario_id):
+    import csv
+    import io
+    import pytz
+    from flask import Response, stream_with_context
+
     formulario = Formulario.query.get_or_404(formulario_id)
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
 
     csv_filename = f"respostas_{formulario.id}.csv"
     
-    def generate():
-        data = csv.writer(Response(), delimiter=',')
-        data.writerow(["Usuário", "Data de Envio"] + [campo.nome for campo in formulario.campos])
+    # Função para converter datetime para o fuso de Brasília
+    def convert_to_brasilia(dt):
+        brasilia_tz = pytz.timezone("America/Sao_Paulo")
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
 
+    # Função geradora que cria o CSV linha a linha
+    def generate():
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=',')
+        
+        # Cabeçalho do CSV: Usuário, Data de Envio e os nomes dos campos do formulário
+        header = ["Usuário", "Data de Envio"] + [campo.nome for campo in formulario.campos]
+        writer.writerow(header)
+        yield output.getvalue()
+        output.seek(0)
+        output.truncate(0)
+        
+        # Preenche as linhas com as respostas
         for resposta in respostas:
-            row = [resposta.usuario.nome, resposta.data_submissao.strftime('%d/%m/%Y %H:%M')]
+            usuario_nome = resposta.usuario.nome if resposta.usuario else "N/A"
+            data_envio = convert_to_brasilia(resposta.data_submissao).strftime('%d/%m/%Y %H:%M')
+            row = [usuario_nome, data_envio]
             for campo in formulario.campos:
                 valor = next((resp.valor for resp in resposta.respostas_campos if resp.campo_id == campo.id), "")
                 row.append(valor)
-            data.writerow(row)
-        
-        return data
+            writer.writerow(row)
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
 
-    response = Response(generate(), mimetype="text/csv")
-    response.headers["Content-Disposition"] = f"attachment; filename={csv_filename}"
-    return response
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={csv_filename}"}
+    )
+
 
 @routes.route('/respostas/<path:filename>')
 @login_required
