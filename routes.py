@@ -111,6 +111,55 @@ def register_routes(app):
 def home():
     return render_template('index.html')
 
+class Proposta(db.Model):
+    __tablename__ = 'proposta'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150))
+    email = db.Column(db.String(150), nullable=False)
+    tipo_evento = db.Column(db.String(50), nullable=False)
+    descricao = db.Column(db.Text, nullable=False)
+    data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='Pendente')
+
+    def __repr__(self):
+        return f"<Proposta {self.tipo_evento} - {self.email}>"
+
+
+@routes.route('/enviar_proposta', methods=['POST'])
+def enviar_proposta():
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    tipo_evento = request.form.get('tipo_evento')
+    descricao = request.form.get('descricao')
+
+    if not all([nome, email, tipo_evento, descricao]):
+        flash('Por favor, preencha todos os campos.', 'danger')
+        return redirect(url_for('routes.home'))
+
+    nova_proposta = Proposta(
+        nome=nome,
+        email=email,
+        tipo_evento=tipo_evento,
+        descricao=descricao
+    )
+
+    try:
+        db.session.add(nova_proposta)
+        db.session.commit()
+        flash('Proposta enviada com sucesso! Entraremos em contato em breve.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao enviar proposta. Por favor, tente novamente.', 'danger')
+
+    return render_template(
+        'index.html',
+        nome=nome,
+        email=email,
+        tipo_evento=tipo_evento,
+        descricao=descricao
+    )
+
 
 
 # ===========================
@@ -407,6 +456,8 @@ def logout():
 def dashboard():
     from sqlalchemy import func
 
+    propostas = Proposta.query.all()
+
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
     cidade_filter = request.args.get('cidade', '').strip()
@@ -436,6 +487,7 @@ def dashboard():
         total_oficinas = Oficina.query.count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
         total_inscricoes = Inscricao.query.count()
+        total_eventos = Evento.query.count()  # Count all events for admin
     else:  # Cliente vê apenas suas oficinas
         total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
@@ -547,6 +599,7 @@ def dashboard():
         'dashboard_admin.html' if is_admin else 'dashboard_cliente.html',
         participantes=participantes,
         usuario=current_user,
+        total_eventos=total_eventos if is_admin else None,
         oficinas=oficinas_com_inscritos,
         ministrantes=ministrantes,
         relatorios=relatorios,
@@ -555,6 +608,7 @@ def dashboard():
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
         checkins_via_qr=checkins_via_qr,
+        propostas=propostas,
         total_oficinas=total_oficinas,
         total_vagas=total_vagas,
         total_inscricoes=total_inscricoes,
@@ -2866,7 +2920,8 @@ def dashboard_cliente():
     ).all()
     
      # Buscar eventos ativos
-    eventos_ativos = Evento.query.all() 
+    eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    total_eventos = len(eventos_ativos)
     
     # Dados para cards
     agendamentos_totais = db.session.query(func.count(AgendamentoVisita.id)).join(
@@ -2992,7 +3047,8 @@ def dashboard_cliente():
         total_visitantes=total_visitantes,
         agendamentos_hoje=agendamentos_hoje,
         proximos_agendamentos=proximos_agendamentos,
-        ocupacao_media=ocupacao_media 
+        ocupacao_media=ocupacao_media,
+        total_eventos=total_eventos
     )
     
 def obter_configuracao_do_cliente(cliente_id):
@@ -3757,37 +3813,30 @@ def listar_respostas_ministrante(formulario_id):
 @routes.route('/respostas/<int:resposta_id>/feedback', methods=['GET', 'POST'])
 @login_required
 def dar_feedback_resposta(resposta_id):
-    # Apenas ministrante pode dar feedback
-    if not isinstance(current_user, Ministrante):
-        flash('Apenas ministrantes podem dar feedback.', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+    if not (isinstance(current_user, Ministrante) or current_user.tipo == 'cliente'):
+        flash('Apenas clientes e ministrantes podem dar feedback.', 'danger')
+        return redirect(url_for('routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
-
-    # Exemplo: poderíamos verificar se a oficina do user bate com a do ministrante, etc.
-    # if <checar se o ministrante atual tem permissão para ver esse form>
-
     formulario = resposta.formulario
-    lista_campos = formulario.campos  # ou: CampoFormulario.query.filter_by(formulario_id=formulario.id)
-    # carrega as sub-respostas (RespostaCampo) dessa resposta
-    resposta_campos = resposta.respostas_campos  # gera a lista dos campos e os valores
+    lista_campos = formulario.campos
+    resposta_campos = resposta.respostas_campos
 
     if request.method == 'POST':
-        # Significa que o ministrante enviou feedback para 1 ou + campos
         for rcampo in resposta_campos:
-            # Montar o name do textarea = "feedback_<campo.id>"
             nome_textarea = f"feedback_{rcampo.id}"
             texto_feedback = request.form.get(nome_textarea, "").strip()
             if texto_feedback:
-                # criar um registro FeedbackCampo
                 novo_feedback = FeedbackCampo(
-                    resposta_campo_id = rcampo.id,
-                    ministrante_id = current_user.id,
-                    texto_feedback = texto_feedback
+                    resposta_campo_id=rcampo.id,
+                    ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
+                    cliente_id=current_user.id if current_user.tipo == 'cliente' else None,
+                    texto_feedback=texto_feedback
                 )
                 db.session.add(novo_feedback)
+        
         db.session.commit()
-        flash("Feedback registrado!", "success")
+        flash("Feedback registrado com sucesso!", "success")
         return redirect(url_for('routes.dar_feedback_resposta', resposta_id=resposta_id))
 
     return render_template(
