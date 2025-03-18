@@ -42,86 +42,184 @@ CREDENTIALS_FILE = "credentials.json"
 TOKEN_FILE = "token.json"
 
 def gerar_comprovante_pdf(usuario, oficina, inscricao):
+    """
+    Gera um comprovante de inscrição em PDF com design moderno e organizado.
+    """
+    # Configurar nomes e caminhos de arquivo
     pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
     pdf_path = os.path.join("static/comprovantes", pdf_filename)
     os.makedirs("static/comprovantes", exist_ok=True)
 
-    # Gera o QR Code da inscrição (certifique-se de ter a função gerar_qr_code_inscricao importada)
+    # Gera o QR Code da inscrição
     qr_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
     
-    # Configura o PDF
+    # Inicializa o PDF com a página em portrait
     c = canvas.Canvas(pdf_path, pagesize=letter)
     width, height = letter
-
-    #
-    # 1) Faixa colorida no topo (Ex.: cor azul)
-    #
-    c.setFillColor(colors.HexColor("#023E8A"))
-    c.rect(0, height - 80, width, 80, fill=True, stroke=False)
-
-    # Título em destaque
+    
+    # ----- DESIGN DO CABEÇALHO -----
+    
+    # Gradiente de fundo do cabeçalho (de azul escuro para azul médio)
+    # Método manual para criar um efeito de gradiente
+    header_height = 120
+    gradient_steps = 40
+    step_height = header_height / gradient_steps
+    
+    for i in range(gradient_steps):
+        # Interpolação de cores: de #023E8A (azul escuro) para #0077B6 (azul médio)
+        r1, g1, b1 = 0.01, 0.24, 0.54  # #023E8A
+        r2, g2, b2 = 0.00, 0.47, 0.71  # #0077B6
+        
+        # Calcular cor intermediária
+        ratio = i / gradient_steps
+        r = r1 + (r2 - r1) * ratio
+        g = g1 + (g2 - g1) * ratio
+        b = b1 + (b2 - b1) * ratio
+        
+        y_pos = height - (i * step_height)
+        c.setFillColorRGB(r, g, b)
+        c.rect(0, y_pos - step_height, width, step_height, fill=True, stroke=False)
+    
+    # Logo ou texto estilizado (lado esquerdo)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(1 * inch, height - 40, "AppFiber")
+    
+    # Linha fina decorativa 
+    c.setStrokeColor(colors.white)
+    c.setLineWidth(1)
+    c.line(1 * inch, height - 45, 2 * inch, height - 45)
+    
+    # Título centralizado
     c.setFont("Helvetica-Bold", 24)
+    c.drawCentredString(width / 2, height - 70, "Comprovante de Inscrição")
+    
+    # Data no cabeçalho (lado direito)
+    from datetime import datetime
+    data_atual = datetime.now().strftime("%d/%m/%Y")
+    c.setFont("Helvetica", 10)
+    c.drawRightString(width - 1 * inch, height - 40, f"Emitido em: {data_atual}")
+    
+    # ----- CORPO DO DOCUMENTO -----
+    
+    # Fundo do corpo com cor suave
     c.setFillColor(colors.white)
-    c.drawCentredString(width / 2, height - 50, "Comprovante de Inscrição")
-
-    #
-    # 2) Área principal (cor clara, p.ex. cinza-claro)
-    #
+    c.rect(0, 0, width, height - header_height, fill=True, stroke=False)
+    
+    # Área de informações principais com borda arredondada
+    info_box_y = height - 200
+    info_box_height = 150
+    
+    # Borda e fundo do box de informações
     c.setFillColor(colors.whitesmoke)
-    c.rect(0, 0, width, height - 80, fill=True, stroke=False)
-
-    #
-    # 3) Informações do participante e da oficina
-    #
+    c.setStrokeColor(colors.lightgrey)
+    c.roundRect(0.8 * inch, info_box_y - info_box_height, width - 1.6 * inch, 
+               info_box_height, 10, fill=1, stroke=1)
+    
+    # Título da seção
+    c.setFillColor(colors.HexColor("#0077B6"))
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(1 * inch, info_box_y - 25, "Informações do Participante")
+    
+    # Linhas de informação com ícones simulados
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 14)
-
-    # Posição inicial do texto
-    y_position = height - 120
-    linhas_info = [
-        f"Nome: {usuario.nome}",
-        f"CPF: {usuario.cpf}",
-        f"E-mail: {usuario.email}",
-        f"Oficina: {oficina.titulo}"
-    ]
-    for linha in linhas_info:
-        c.drawString(1 * inch, y_position, linha)
-        y_position -= 20
-
-    #
-    # 4) Destaque para o QR Code
-    #
-    # Criar um box (retângulo) branco para destacar
-    box_width = 120
-    box_height = 120
-    box_x = width - (box_width + 1 * inch)
-    box_y = y_position - 10
-
-    c.setFillColor(colors.white)
-    c.rect(box_x, box_y, box_width, box_height, fill=True, stroke=False)
-
-    # Desenha o QR Code dentro do retângulo
-    qr_img = ImageReader(qr_path)
-    # Margem de 10 px para o QR dentro do box
-    c.drawImage(qr_img, box_x + 10, box_y + 10, width=box_width - 20, height=box_height - 20)
-
-    #
-    # 5) Espaço para assinatura
-    #
-    y_position -= 60
     c.setFont("Helvetica", 12)
-    c.setStrokeColor(colors.gray)
-    c.line(1 * inch, y_position, 4 * inch, y_position)
-    c.drawString(1 * inch, y_position - 15, "Assinatura / Carimbo")
-
-    #
-    # Finaliza
-    #
-    c.showPage()
+    
+    # Posição inicial do texto
+    y_position = info_box_y - 50
+    line_spacing = 22
+    
+    # Informações com pequenos marcadores
+    infos = [
+        (f"Nome: {usuario.nome}", "👤"),
+        (f"CPF: {usuario.cpf}", "🆔"),
+        (f"E-mail: {usuario.email}", "✉️"),
+        (f"Oficina: {oficina.titulo}", "📚")
+    ]
+    
+    for texto, icone in infos:
+        c.drawString(1.1 * inch, y_position, f"{icone} {texto}")
+        y_position -= line_spacing
+    
+    # ----- SEÇÃO DE DETALHES DA OFICINA -----
+    
+    details_y = info_box_y - info_box_height - 20
+    
+    # Título da seção de detalhes
+    c.setFillColor(colors.HexColor("#0077B6"))
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(1 * inch, details_y, "Detalhes da Oficina")
+    
+    # Detalhes da oficina
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 12)
+    
+    # Verifica se existem dias associados à oficina
+    if hasattr(oficina, 'dias') and oficina.dias:
+        y_position = details_y - 25
+        c.drawString(1.1 * inch, y_position, "📅 Datas e Horários:")
+        
+        # Lista cada dia da oficina
+        for i, dia in enumerate(oficina.dias):
+            if i < 3:  # Limita para mostrar apenas 3 datas para não sobrecarregar
+                data_formatada = dia.data.strftime('%d/%m/%Y')
+                c.drawString(1.3 * inch, y_position - ((i+1) * line_spacing), 
+                           f"{data_formatada} | {dia.horario_inicio} às {dia.horario_fim}")
+            elif i == 3:
+                c.drawString(1.3 * inch, y_position - ((i+1) * line_spacing), "...")
+                break
+    
+    # ----- QR CODE -----
+    
+    # Box para QR Code com sombra suave
+    qr_size = 120
+    qr_x = width - qr_size - 1.2 * inch
+    qr_y = height - 220
+    
+    # Sombra (um retângulo cinza levemente deslocado)
+    c.setFillColor(colors.grey)
+    c.setFillAlpha(0.3)  # Transparência
+    c.roundRect(qr_x + 3, qr_y - 3, qr_size, qr_size, 5, fill=True, stroke=False)
+    
+    # Restaura a transparência
+    c.setFillAlpha(1)
+    
+    # Fundo branco para o QR
+    c.setFillColor(colors.white)
+    c.roundRect(qr_x, qr_y, qr_size, qr_size, 5, fill=True, stroke=False)
+    
+    # Desenhando o QR Code
+    qr_img = ImageReader(qr_path)
+    c.drawImage(qr_img, qr_x + 10, qr_y + 10, width=qr_size - 20, height=qr_size - 20)
+    
+    # Legenda do QR
+    c.setFillColor(colors.dimgrey)
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(qr_x + qr_size/2, qr_y - 15, "Escaneie para check-in")
+    
+    # ----- RODAPÉ -----
+    
+    # Linha divisória
+    c.setStrokeColor(colors.lightgrey)
+    c.setLineWidth(1)
+    c.line(1 * inch, 1.2 * inch, width - 1 * inch, 1.2 * inch)
+    
+    # Texto de validação
+    c.setFillColor(colors.grey)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(width / 2, 1 * inch, 
+                      f"Este comprovante é válido para a oficina '{oficina.titulo}'")
+    c.drawCentredString(width / 2, 0.8 * inch, 
+                      f"ID do Participante: {usuario.id} | ID da Inscrição: {inscricao.id}")
+    
+    # Rodapé com informações do sistema
+    c.setFillColor(colors.dimgrey)
+    c.drawCentredString(width / 2, 0.5 * inch, "AppFiber - Sistema Integrado de Gerenciamento de Eventos")
+    
+    # Finaliza o PDF
     c.save()
-
+    
     return pdf_path
-
 
 def gerar_qr_code_inscricao(qr_code_token):
     """Gera o QR Code para a inscrição com base no token único."""
@@ -181,108 +279,182 @@ def gerar_qr_code(oficina_id):
 
 
 def gerar_etiquetas_pdf(cliente_id):
-    """Gera um PDF com etiquetas em preto e branco para os usuários vinculados a um cliente."""
+    """Gera um PDF com etiquetas elegantes para os usuários vinculados a um cliente."""
     
     # Configurações de layout
-    etiqueta_largura = 90 * mm
-    etiqueta_altura = 50 * mm
-    margem_esquerda = 10 * mm
-    margem_superior = 15 * mm
-    margem_inferior = 10 * mm
-    espacamento_x = 5 * mm
-    espacamento_y = 5 * mm
-
-    # Cores preto e branco
-    cor_header = colors.black
-    cor_fundo = colors.whitesmoke
-    cor_texto = colors.black
-
+    etiqueta_largura = 85 * mm  # Ligeiramente menor para melhor espaçamento
+    etiqueta_altura = 54 * mm   # Proporção mais agradável
+    margem_esquerda = 15 * mm   # Margens maiores para melhor espaço em branco
+    margem_superior = 20 * mm
+    margem_inferior = 15 * mm
+    espacamento_x = 10 * mm     # Mais espaço entre as etiquetas
+    espacamento_y = 8 * mm
+    
+    # Esquema de cores suave
+    cor_header = colors.HexColor("#2C3E50")  # Azul escuro elegante
+    cor_fundo = colors.white                 # Fundo branco para clareza
+    cor_texto = colors.HexColor("#34495E")   # Texto escuro mas não preto
+    cor_borda = colors.HexColor("#BDC3C7")   # Borda cinza claro
+    
     pdf_filename = f"etiquetas_cliente_{cliente_id}.pdf"
     pdf_path = os.path.join("static", "etiquetas", pdf_filename)
     os.makedirs("static/etiquetas", exist_ok=True)
-
+    
     # Configurar documento em landscape
     c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
     largura_pagina, altura_pagina = landscape(A4)
-
+    
     # Calcular quantidade máxima de etiquetas por página
     max_colunas = int((largura_pagina - margem_esquerda * 2) // (etiqueta_largura + espacamento_x))
     espaco_vertical = altura_pagina - margem_superior - margem_inferior
     max_linhas = int(espaco_vertical // (etiqueta_altura + espacamento_y))
-
+    
     # Buscar usuários do cliente
     usuarios = Usuario.query.filter_by(cliente_id=cliente_id).all()
-
+    
     if not usuarios:
         return None
-
+    
     linha = 0
     coluna = 0
-
+    
+    # Adicionar informações do documento
+    c.setFont("Helvetica-Bold", 10)
+    c.setFillColor(colors.HexColor("#7F8C8D"))
+    c.drawString(margem_esquerda, altura_pagina - 10*mm, f"Etiquetas - Cliente: {cliente_id}")
+    c.drawRightString(largura_pagina - margem_esquerda, altura_pagina - 10*mm, f"Gerado em: {datetime.utcnow().strftime('%d/%m/%Y')}")
+    
     for usuario in usuarios:
         if coluna >= max_colunas:
             coluna = 0
             linha += 1
-
+        
         if linha >= max_linhas:
             c.showPage()
+            # Repetir cabeçalho em cada página
+            c.setFont("Helvetica-Bold", 10)
+            c.setFillColor(colors.HexColor("#7F8C8D"))
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"Etiquetas - Cliente: {cliente_id}")
+            c.drawRightString(largura_pagina - margem_esquerda, altura_pagina - 10*mm, f"Gerado em: {datetime.utcnow().strftime('%d/%m/%Y')}")
             linha = 0
             coluna = 0
-
+        
         # Calcular posição
         x = margem_esquerda + coluna * (etiqueta_largura + espacamento_x)
         y = altura_pagina - margem_superior - linha * (etiqueta_altura + espacamento_y)
-
-        # Fundo da etiqueta
+        
+        # Fundo da etiqueta com sombra sutil
+        # Primeiro desenha uma sombra cinza claro
+        c.setFillColor(colors.HexColor("#EAEAEA"))
+        c.roundRect(x + 1.5*mm, y - etiqueta_altura - 1.5*mm, 
+                    etiqueta_largura, etiqueta_altura, 4*mm, fill=1, stroke=0)
+        
+        # Depois desenha a etiqueta principal
         c.setFillColor(cor_fundo)
-        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, 5*mm, fill=1, stroke=0)
-
-        # Header da etiqueta (fundo preto)
-        header_height = 15 * mm
+        c.roundRect(x, y - etiqueta_altura, 
+                    etiqueta_largura, etiqueta_altura, 4*mm, fill=1, stroke=0)
+        
+        # Header da etiqueta com gradiente
+        header_height = 18 * mm
+        
+        # Desenhar a barra superior em azul
         c.setFillColor(cor_header)
-        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, header_height, 5*mm, fill=1, stroke=0)
-
-        # Texto do header (branco para contraste)
+        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, header_height, 
+                   4*mm, fill=1, stroke=0)
+        
+        # Arredondar apenas cantos superiores do header
+        c.setFillColor(cor_header)
+        c.roundRect(x, y - etiqueta_altura + header_height - 4*mm, 
+                    etiqueta_largura, 4*mm, 0, fill=1, stroke=0)
+        
+        # Nome e cargo no header
         c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 12)
-
-        # Nome alinhado à esquerda
-        nome = usuario.nome[:22] + '...' if len(usuario.nome) > 25 else usuario.nome
-        c.drawString(x + 5*mm, y - etiqueta_altura + header_height - 12*mm, nome)
-
-        # Tipo de usuário alinhado à direita
+        c.setFont("Helvetica-Bold", 14)
+        
+        # Limitar nome para caber
+        nome = usuario.nome
+        if len(nome) > 20:
+            nome = nome[:18] + '...'
+            
+        # Centralizar nome
+        nome_width = c.stringWidth(nome, "Helvetica-Bold", 14)
+        nome_x = x + (etiqueta_largura - nome_width) / 2
+        c.drawString(nome_x, y - etiqueta_altura + header_height - 8*mm, nome)
+        
+        # Tipo de usuário abaixo do nome
         tipo_usuario = usuario.tipo.capitalize()
         c.setFont("Helvetica", 10)
-        c.drawRightString(x + etiqueta_largura - 5*mm, y - etiqueta_altura + header_height - 12*mm, tipo_usuario)
-
+        tipo_width = c.stringWidth(tipo_usuario, "Helvetica", 10)
+        tipo_x = x + (etiqueta_largura - tipo_width) / 2
+        c.drawString(tipo_x, y - etiqueta_altura + header_height - 12*mm, tipo_usuario)
+        
         # Corpo da etiqueta
         corpo_y = y - etiqueta_altura + header_height
         
-        # Cidade (agora em tamanho maior)
+        # Ícone e localização centralizada
         c.setFillColor(cor_texto)
-        c.setFont("Helvetica-Bold", 13)  # **Maior para melhor leitura**
-        cidade = usuario.cidades if usuario.cidades else "N/A"
-        c.drawString(x + 5*mm, corpo_y + 20*mm, f"📍 {cidade[:25]}")
-
-        # QR Code menor e melhor alinhado
+        c.setFont("Helvetica-Bold", 12)
+        
+        cidade = "N/A"
+        estado = "N/A"
+        
+        if usuario.cidades and usuario.estados:
+            cidades_list = usuario.cidades.split(",")
+            estados_list = usuario.estados.split(",")
+            
+            if cidades_list and len(cidades_list) > 0:
+                cidade = cidades_list[0].strip()
+            if estados_list and len(estados_list) > 0:
+                estado = estados_list[0].strip()
+        
+        local_text = f"{cidade}, {estado}"
+        if len(local_text) > 25:
+            local_text = local_text[:23] + "..."
+            
+        local_width = c.stringWidth(local_text, "Helvetica-Bold", 12)
+        local_x = x + (etiqueta_largura - local_width) / 2
+        
+        # Ícone de localização
+        c.setFont("Helvetica", 12)
+        c.drawString(local_x - 5*mm, corpo_y + 15*mm, "📍")
+        
+        # Texto de localização
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(local_x, corpo_y + 15*mm, local_text)
+        
+        # QR Code centralizado
         inscricao = Inscricao.query.filter_by(usuario_id=usuario.id).first()
         if inscricao and inscricao.qr_code_token:
-            qr_size = 28 * mm  # **Ajustei o tamanho**
+            qr_size = 26 * mm  # Tamanho ideal
             qr_code_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
-            qr_image = ImageReader(qr_code_path)
-            c.drawImage(qr_image, 
-                        x + etiqueta_largura - qr_size - 10*mm,  # **Melhor alinhamento**
-                        corpo_y + 5*mm,  # **Agora mais centralizado**
-                        qr_size,
-                        qr_size)
-
-        # Borda externa fina
-        c.setStrokeColor(cor_header)
-        c.setLineWidth(0.4*mm)
-        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, 5*mm, stroke=1, fill=0)
-
+            
+            try:
+                qr_image = ImageReader(qr_code_path)
+                c.drawImage(qr_image, 
+                            x + (etiqueta_largura - qr_size) / 2,  # Centralizar
+                            corpo_y - 7*mm - qr_size,  # Posicionado na parte inferior
+                            qr_size, qr_size)
+            except Exception as e:
+                # Fallback se houver problema com a imagem
+                c.setFont("Helvetica", 8)
+                c.setFillColor(colors.gray)
+                c.drawCentredString(x + etiqueta_largura/2, 
+                                   corpo_y - 10*mm,
+                                   f"QR Code: {inscricao.qr_code_token[:10]}...")
+        
+        # Borda elegante
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(0.5*mm)
+        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, 
+                    4*mm, stroke=1, fill=0)
+        
+        # Adiciona ID da pessoa em fonte pequena na parte inferior
+        c.setFont("Helvetica", 7)
+        c.setFillColor(colors.gray)
+        c.drawCentredString(x + etiqueta_largura/2, y - etiqueta_altura + 3*mm, f"ID: {usuario.id}")
+        
         coluna += 1
-
+    
     c.save()
     return pdf_path
 
