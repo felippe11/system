@@ -487,6 +487,7 @@ def dashboard():
         total_oficinas = Oficina.query.count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
         total_inscricoes = Inscricao.query.count()
+        total_eventos = Evento.query.count()  # Count all events for admin
     else:  # Cliente vê apenas suas oficinas
         total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
@@ -598,6 +599,7 @@ def dashboard():
         'dashboard_admin.html' if is_admin else 'dashboard_cliente.html',
         participantes=participantes,
         usuario=current_user,
+        total_eventos=total_eventos if is_admin else None,
         oficinas=oficinas_com_inscritos,
         ministrantes=ministrantes,
         relatorios=relatorios,
