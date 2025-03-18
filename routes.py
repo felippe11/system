@@ -361,6 +361,11 @@ def login():
                     print(f"Usuário encontrado na tabela Cliente: {usuario.email}, senha salva: {usuario.senha}")
                 else:
                     print("Usuário não encontrado em nenhuma tabela.")
+        if usuario:
+            if check_password_hash(usuario.senha, senha):
+             login_user(usuario)
+            if usuario.tipo == 'professor':
+                return redirect(url_for('routes.dashboard_professor'))
 
         # Verifica a senha
         if usuario:
@@ -402,6 +407,14 @@ def login():
         flash('E-mail ou senha incorretos!', 'danger')
 
     return render_template('login.html')
+
+@routes.route('/dashboard_professor')
+@login_required
+def dashboard_professor():
+    if current_user.tipo != 'professor':
+        return redirect(url_for('routes.dashboard'))
+    
+    return render_template('dashboard_professor.html')
 
 
 @routes.route('/logout')
@@ -622,6 +635,12 @@ def dashboard_participante():
 
     # Monte a lista de inscricoes para controlar o que já está inscrito
     inscricoes_ids = [i.oficina_id for i in current_user.inscricoes]
+    
+    # Lógica para professores verem horários disponíveis
+    horarios_disponiveis = HorarioVisitacao.query.filter(
+        HorarioVisitacao.vagas_disponiveis > 0,
+        HorarioVisitacao.data >= datetime.now().date()
+    ).all()
 
     # Monte a estrutura que o template “dashboard_participante.html” precisa
     oficinas_formatadas = []
@@ -645,7 +664,8 @@ def dashboard_participante():
         permitir_checkin_global=permitir_checkin,
         habilitar_feedback=habilitar_feedback,
         habilitar_certificado_individual=habilitar_certificado,
-        formularios_disponiveis=formularios_disponiveis
+        formularios_disponiveis=formularios_disponiveis,
+        horarios_disponiveis=horarios_disponiveis
     )
 
 
@@ -4175,6 +4195,7 @@ def criar_evento():
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             return redirect(url_for('routes.dashboard_cliente'))
+        
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
@@ -6260,46 +6281,6 @@ def set_dashboard_agendamentos_data():
         'ocupacao_media': ocupacao_media
     }
 
-@routes.route('/checkin_qr_agendamento')
-@login_required
-def checkin_qr_agendamento():
-    """
-    Página para realizar check-in de agendamentos via QR Code.
-    Fornece uma interface com leitor de QR Code e campo para input manual.
-    """
-    # Verificar se é um cliente
-    if current_user.tipo != 'cliente':
-        flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
-    # Processar token se fornecido na URL
-    token = request.args.get('token')
-    
-    if token:
-        # Buscar agendamento pelo token
-        agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
-        
-        if not agendamento:
-            flash('Token inválido ou agendamento não encontrado!', 'danger')
-            return redirect(url_for('routes.checkin_qr_agendamento'))
-        
-        # Verificar se o agendamento pertence a um evento do cliente
-        evento = agendamento.horario.evento
-        if evento.cliente_id != current_user.id:
-            flash('Este agendamento não pertence a um evento seu!', 'danger')
-            return redirect(url_for('routes.checkin_qr_agendamento'))
-        
-        # Verificar se já foi feito check-in
-        if agendamento.checkin_realizado:
-            flash('Check-in já foi realizado para este agendamento!', 'warning')
-            return redirect(url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id))
-        
-        # Redirecionar para tela de confirmação de check-in
-        return redirect(url_for('routes.confirmar_checkin', agendamento_id=agendamento.id))
-    
-    return render_template('checkin_qr_agendamento.html')
-
-
 @routes.route('/confirmar_checkin/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def confirmar_checkin(agendamento_id):
@@ -6647,104 +6628,6 @@ def salas_visitacao(evento_id):
         salas=salas
     )
 
-# Rota para listar agendamentos de um evento
-@routes.route('/listar_agendamentos/<int:evento_id>')
-@login_required
-def listar_agendamentos(evento_id):
-    """
-    Página para listar e filtrar todos os agendamentos de um evento.
-    """
-    if current_user.tipo != 'cliente':
-        flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
-    evento = Evento.query.get_or_404(evento_id)
-    
-    # Verificar se o evento pertence ao cliente
-    if evento.cliente_id != current_user.id:
-        flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
-    
-    # Filtros
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    status = request.args.get('status')
-    escola = request.args.get('escola')
-    
-    # Base da consulta
-    query = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).filter(HorarioVisitacao.evento_id == evento_id)
-    
-    # Aplicar filtros
-    if data_inicio:
-        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-        query = query.filter(HorarioVisitacao.data >= data_inicio)
-    
-    if data_fim:
-        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-        query = query.filter(HorarioVisitacao.data <= data_fim)
-    
-    if status:
-        query = query.filter(AgendamentoVisita.status == status)
-    
-    if escola:
-        query = query.filter(AgendamentoVisita.escola_nome.ilike(f'%{escola}%'))
-    
-    # Ordenar por data/horário
-    agendamentos = query.order_by(
-        HorarioVisitacao.data,
-        HorarioVisitacao.horario_inicio
-    ).all()
-    
-    # Estatísticas para o painel
-    total_agendamentos = len(agendamentos)
-    confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
-    realizados = sum(1 for a in agendamentos if a.status == 'realizado')
-    cancelados = sum(1 for a in agendamentos if a.status == 'cancelado')
-    
-    total_alunos = sum(a.quantidade_alunos for a in agendamentos if a.status in ['confirmado', 'realizado'])
-    presentes = 0
-    for a in agendamentos:
-        if a.status == 'realizado':
-            presentes += sum(1 for aluno in a.alunos if aluno.presente)
-    
-    # Calcular taxa de presença se houver agendamentos realizados
-    taxa_presenca = 0
-    if presentes > 0 and total_alunos > 0:
-        taxa_presenca = (presentes / total_alunos) * 100
-    
-    # Organizar agendamentos por data para facilitar a visualização
-    agendamentos_por_data = {}
-    for agendamento in agendamentos:
-        data_str = agendamento.horario.data.strftime('%Y-%m-%d')
-        if data_str not in agendamentos_por_data:
-            agendamentos_por_data[data_str] = []
-        agendamentos_por_data[data_str].append(agendamento)
-    
-    return render_template(
-        'listar_agendamentos.html',
-        evento=evento,
-        agendamentos=agendamentos,
-        agendamentos_por_data=agendamentos_por_data,
-        filtros={
-            'data_inicio': data_inicio,
-            'data_fim': data_fim,
-            'status': status,
-            'escola': escola
-        },
-        estatisticas={
-            'total': total_agendamentos,
-            'confirmados': confirmados,
-            'realizados': realizados,
-            'cancelados': cancelados,
-            'total_alunos': total_alunos,
-            'presentes': presentes,
-            'taxa_presenca': taxa_presenca
-        }
-    )
-
-
 @routes.route('/gerar_relatorio_agendamentos/<int:evento_id>')
 @login_required
 def gerar_relatorio_agendamentos(evento_id):
@@ -6973,34 +6856,20 @@ def configurar_horarios_agendamento():
         if evento_id:
             evento_selecionado = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
             
-            # Simulamos alguns horários para o evento selecionado (em uma implementação real, você buscaria do banco)
+            # Buscar horários existentes para o evento selecionado
             if evento_selecionado:
-                # Dados de exemplo - substituir pela consulta real ao seu banco
+                horarios_existentes = HorarioVisitacao.query.filter_by(evento_id=evento_id).all()
+                
+                # Transformar os horários do banco em dicionários para facilitar o uso no template
                 horarios_existentes = [
                     {
-                        'id': 1,
-                        'data': '2025-03-20',
-                        'horario_inicio': '08:00',
-                        'horario_fim': '10:00',
-                        'capacidade': 30,
-                        'agendamentos': 5
-                    },
-                    {
-                        'id': 2,
-                        'data': '2025-03-20',
-                        'horario_inicio': '14:00',
-                        'horario_fim': '16:00',
-                        'capacidade': 30,
-                        'agendamentos': 12
-                    },
-                    {
-                        'id': 3,
-                        'data': '2025-03-21',
-                        'horario_inicio': '09:00',
-                        'horario_fim': '11:00',
-                        'capacidade': 25,
-                        'agendamentos': 0
-                    }
+                        'id': h.id,
+                        'data': h.data.strftime('%Y-%m-%d'),
+                        'horario_inicio': h.horario_inicio.strftime('%H:%M'),
+                        'horario_fim': h.horario_fim.strftime('%H:%M'),
+                        'capacidade': h.capacidade_total,
+                        'agendamentos': h.capacidade_total - h.vagas_disponiveis
+                    } for h in horarios_existentes
                 ]
     except Exception as e:
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
@@ -7014,7 +6883,6 @@ def configurar_horarios_agendamento():
             if acao == 'adicionar':
                 # Obter dados do formulário para adicionar novo horário
                 evento_id = request.form.get('evento_id')
-                eventos = []
                 data = request.form.get('data')
                 horario_inicio = request.form.get('horario_inicio')
                 horario_fim = request.form.get('horario_fim')
@@ -7025,11 +6893,25 @@ def configurar_horarios_agendamento():
                     form_erro = "Preencha todos os campos obrigatórios."
                     flash(form_erro, "danger")
                 else:
-                    # Aqui você adicionaria o código para criar um novo horário
-                    # baseado nos modelos que você tem disponíveis
+                    # Converte string para data e hora
+                    data_obj = datetime.strptime(data, '%Y-%m-%d').date()
+                    horario_inicio_obj = datetime.strptime(horario_inicio, '%H:%M').time()
+                    horario_fim_obj = datetime.strptime(horario_fim, '%H:%M').time()
+                    capacidade_int = int(capacidade)
                     
-                    # Como não sabemos a estrutura exata do seu modelo,
-                    # vamos apenas exibir uma mensagem de sucesso
+                    # Criar novo horário de visitação
+                    novo_horario = HorarioVisitacao(
+                        evento_id=evento_id,
+                        data=data_obj,
+                        horario_inicio=horario_inicio_obj,
+                        horario_fim=horario_fim_obj,
+                        capacidade_total=capacidade_int,
+                        vagas_disponiveis=capacidade_int
+                    )
+                    
+                    db.session.add(novo_horario)
+                    db.session.commit()
+                    
                     flash(f"Horário adicionado com sucesso para o dia {data} das {horario_inicio} às {horario_fim}!", "success")
                     
                     # Redirecionar para a mesma página com o evento selecionado
@@ -7043,10 +6925,21 @@ def configurar_horarios_agendamento():
                 if not horario_id:
                     flash("ID do horário não fornecido.", "danger")
                 else:
-                    # Aqui você adicionaria o código para excluir o horário
-                    # baseado nos modelos que você tem disponíveis
+                    # Verificar se existem agendamentos para este horário
+                    horario = HorarioVisitacao.query.get(horario_id)
                     
-                    flash("Horário excluído com sucesso!", "success")
+                    if horario:
+                        # Verificar se há agendamentos para este horário
+                        agendamentos = AgendamentoVisita.query.filter_by(horario_id=horario_id).first()
+                        
+                        if agendamentos:
+                            flash("Não é possível excluir um horário que possui agendamentos.", "danger")
+                        else:
+                            db.session.delete(horario)
+                            db.session.commit()
+                            flash("Horário excluído com sucesso!", "success")
+                    else:
+                        flash("Horário não encontrado.", "danger")
                     
                     # Redirecionar para a mesma página com o evento selecionado
                     return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
@@ -7066,10 +6959,50 @@ def configurar_horarios_agendamento():
                     form_erro = "Preencha todos os campos obrigatórios."
                     flash(form_erro, "danger")
                 else:
-                    # Aqui você adicionaria o código para criar vários horários
-                    # em um período, baseado nos modelos que você tem disponíveis
+                    # Converter strings para objetos de data
+                    data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+                    data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
+                    horario_inicio_obj = datetime.strptime(horario_inicio, '%H:%M').time()
+                    horario_fim_obj = datetime.strptime(horario_fim, '%H:%M').time()
+                    capacidade_int = int(capacidade)
                     
-                    flash(f"Horários configurados com sucesso no período de {data_inicio} a {data_fim}!", "success")
+                    # Converter dias da semana para inteiros (0=Segunda, 6=Domingo)
+                    dias = [int(dia) for dia in dias_semana]
+                    
+                    # Criar horários para todas as datas no período que correspondem aos dias da semana selecionados
+                    delta = data_fim_obj - data_inicio_obj
+                    horarios_criados = 0
+                    
+                    for i in range(delta.days + 1):
+                        data_atual = data_inicio_obj + timedelta(days=i)
+                        # weekday() retorna 0 para segunda e 6 para domingo
+                        if data_atual.weekday() in dias:
+                            # Verificar se já existe um horário para esta data e período
+                            horario_existente = HorarioVisitacao.query.filter_by(
+                                evento_id=evento_id,
+                                data=data_atual,
+                                horario_inicio=horario_inicio_obj,
+                                horario_fim=horario_fim_obj
+                            ).first()
+                            
+                            if not horario_existente:
+                                novo_horario = HorarioVisitacao(
+                                    evento_id=evento_id,
+                                    data=data_atual,
+                                    horario_inicio=horario_inicio_obj,
+                                    horario_fim=horario_fim_obj,
+                                    capacidade_total=capacidade_int,
+                                    vagas_disponiveis=capacidade_int
+                                )
+                                
+                                db.session.add(novo_horario)
+                                horarios_criados += 1
+                    
+                    if horarios_criados > 0:
+                        db.session.commit()
+                        flash(f"{horarios_criados} horários configurados com sucesso no período de {data_inicio} a {data_fim}!", "success")
+                    else:
+                        flash("Nenhum horário novo foi criado. Verifique se já existem horários para as datas selecionadas.", "warning")
                     
                     # Redirecionar para a mesma página com o evento selecionado
                     return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
@@ -7077,9 +7010,18 @@ def configurar_horarios_agendamento():
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
             flash(form_erro, "danger")
+            db.session.rollback()
     
     # Adicione esta linha para verificar se a função editar_horario existe
-    has_editar_horario = 'editar_horario' in dir(routes)
+    has_editar_horario = hasattr(routes, 'editar_horario')
+    
+    # Obter configuração de agendamento se existir
+    configuracao = None
+    if evento_selecionado:
+        configuracao = ConfiguracaoAgendamento.query.filter_by(
+            cliente_id=current_user.id,
+            evento_id=evento_selecionado.id
+        ).first()
     
     # Renderizar o template com o formulário
     return render_template('configurar_horarios_agendamento.html', 
@@ -7087,7 +7029,8 @@ def configurar_horarios_agendamento():
                           evento_selecionado=evento_selecionado,
                           horarios_existentes=horarios_existentes,
                           form_erro=form_erro,
-                            has_editar_horario=has_editar_horario)
+                          has_editar_horario=has_editar_horario,
+                          configuracao=configuracao)
 
 @routes.route('/criar-evento-agendamento', methods=['GET', 'POST'])
 @login_required
@@ -7095,6 +7038,11 @@ def criar_evento_agendamento():
     """
     Rota para criação de um novo evento para agendamentos.
     """
+    # Verificação de permissão
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+    
     # Inicialização de variáveis
     form_erro = None
     
@@ -7104,9 +7052,13 @@ def criar_evento_agendamento():
             # Obter dados do formulário
             nome = request.form.get('nome')
             descricao = request.form.get('descricao')
-            local = request.form.get('local')
+            programacao = request.form.get('programacao')
+            localizacao = request.form.get('local')
+            link_mapa = request.form.get('link_mapa')
             data_inicio = request.form.get('data_inicio')
             data_fim = request.form.get('data_fim')
+            hora_inicio = request.form.get('hora_inicio')
+            hora_fim = request.form.get('hora_fim')
             capacidade_padrao = request.form.get('capacidade_padrao')
             requer_aprovacao = 'requer_aprovacao' in request.form
             publico = 'publico' in request.form
@@ -7115,33 +7067,89 @@ def criar_evento_agendamento():
             if not nome or not data_inicio or not data_fim or not capacidade_padrao:
                 form_erro = "Preencha todos os campos obrigatórios."
                 flash(form_erro, "danger")
+            elif data_fim < data_inicio:
+                form_erro = "A data de fim deve ser posterior à data de início."
+                flash(form_erro, "danger")
             else:
-                # Verificar se data de fim é posterior à data de início
-                if data_fim < data_inicio:
-                    form_erro = "A data de fim deve ser posterior à data de início."
-                    flash(form_erro, "danger")
-                else:
-                    # Aqui você adicionaria o código para criar um novo evento
-                    # baseado nos modelos que você tem disponíveis
-                    
-                    # Como não sabemos a estrutura exata do seu modelo,
-                    # vamos apenas exibir uma mensagem de sucesso
-                    flash(f"Evento '{nome}' criado com sucesso! Você pode agora configurar os horários.", "success")
-                    
-                    # Em uma implementação real, você criaria o evento no banco de dados
-                    # e redirecionaria para a página de configuração de horários
-                    # com o ID do evento recém-criado
-                    
-                    # Por enquanto, vamos apenas redirecionar para o dashboard
-                    return redirect(url_for('routes.dashboard_agendamentos'))
+                # Processar upload de banner, se houver
+                banner = request.files.get('banner')
+                banner_url = None
                 
+                if banner and banner.filename:
+                    filename = secure_filename(banner.filename)
+                    caminho_banner = os.path.join('static/banners', filename)
+                    os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
+                    banner.save(caminho_banner)
+                    banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+                
+                # Converter strings para objetos de data/hora
+                data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d') if data_inicio else None
+                data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d') if data_fim else None
+                
+                # Processar hora (se necessário)
+                from datetime import time
+                hora_inicio_obj = time.fromisoformat(hora_inicio) if hora_inicio else None
+                hora_fim_obj = time.fromisoformat(hora_fim) if hora_fim else None
+                
+                # Criar o objeto Evento
+                novo_evento = Evento(
+                    cliente_id=current_user.id,
+                    nome=nome,
+                    descricao=descricao,
+                    programacao=programacao,
+                    localizacao=localizacao,
+                    link_mapa=link_mapa,
+                    banner_url=banner_url,
+                    data_inicio=data_inicio_obj,
+                    data_fim=data_fim_obj,
+                    hora_inicio=hora_inicio_obj,
+                    hora_fim=hora_fim_obj,
+                    capacidade_padrao=int(capacidade_padrao),
+                    requer_aprovacao=requer_aprovacao,
+                    publico=publico
+                )
+                
+                try:
+                    db.session.add(novo_evento)
+                    db.session.flush()  # Obter o ID do evento antes de criar tipos de inscrição
+                    
+                    # Processar tipos de inscrição se o cliente tiver pagamento habilitado
+                    if current_user.habilita_pagamento:
+                        inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
+                        novo_evento.inscricao_gratuita = inscricao_gratuita
+                        
+                        # Adicionar tipos de inscrição se não for gratuito
+                        if not inscricao_gratuita:
+                            nomes_tipos = request.form.getlist('nome_tipo[]')
+                            precos = request.form.getlist('preco_tipo[]')
+                            
+                            if not nomes_tipos or not precos:
+                                raise ValueError("Tipos de inscrição e preços são obrigatórios quando o evento não é gratuito.")
+                            
+                            for nome, preco in zip(nomes_tipos, precos):
+                                if nome and preco:
+                                    novo_tipo = EventoInscricaoTipo(
+                                        evento_id=novo_evento.id,
+                                        nome=nome,
+                                        preco=float(preco)
+                                    )
+                                    db.session.add(novo_tipo)
+                    
+                    db.session.commit()
+                    flash(f"Evento '{nome}' criado com sucesso! Você pode agora configurar os horários.", "success")
+                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=novo_evento.id))
+                
+                except Exception as e:
+                    db.session.rollback()
+                    form_erro = f"Erro ao salvar evento: {str(e)}"
+                    flash(form_erro, "danger")
+        
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
             flash(form_erro, "danger")
     
     # Renderizar o template com o formulário
-    return render_template('criar_evento_agendamento.html', 
-                          form_erro=form_erro)
+    return render_template('criar_evento_agendamento.html', form_erro=form_erro)
     
 @routes.route('/importar-agendamentos', methods=['GET', 'POST'])
 @login_required
@@ -7968,3 +7976,999 @@ def exportar_agendamentos():
         
         # Redirecionar para o dashboard
         return redirect(url_for('routes.dashboard_agendamentos'))
+
+@routes.route('/sala_visitacao/<int:sala_id>/excluir', methods=['POST'])
+@login_required
+def excluir_sala_visitacao(sala_id):
+    """
+    Excluir uma sala de visitação existente.
+    
+    Args:
+        sala_id (int): ID da sala de visitação a ser excluída
+        
+    Returns:
+        Redirecionamento para a página de listagem de salas
+    """
+    # Verificar permissões do usuário (apenas administradores)
+    if current_user.perfil.lower() != 'administrador':
+        flash('Você não tem permissão para excluir salas de visitação.', 'danger')
+        return redirect(url_for('routes.index'))
+    
+    # Buscar a sala pelo ID
+    sala = SalaVisitacao.query.get_or_404(sala_id)
+    
+    # Verificar se existem agendamentos relacionados
+    agendamentos = Agendamento.query.filter_by(sala_id=sala_id).count()
+    if agendamentos > 0:
+        flash(f'Não é possível excluir esta sala pois existem {agendamentos} agendamentos associados a ela.', 'warning')
+        return redirect(url_for('routes.salas_visitacao', evento_id=sala.evento_id))
+    
+    # Guardar o evento_id para usar no redirecionamento
+    evento_id = sala.evento_id
+    
+    # Excluir a sala
+    try:
+        db.session.delete(sala)
+        db.session.commit()
+        flash(f'Sala "{sala.nome}" excluída com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir sala: {str(e)}', 'danger')
+    
+    # Redirecionar para a lista de salas do evento
+    return redirect(url_for('routes.salas_visitacao', evento_id=evento_id))
+
+
+@routes.route('/agendamentos/exportar/pdf', methods=['GET'])
+@login_required
+def exportar_agendamentos_pdf():
+    """Exporta a lista de agendamentos em PDF"""
+    # Implementar lógica para gerar PDF
+    # Pode usar bibliotecas como ReportLab, WeasyPrint, etc.
+    
+    # Exemplo simples com ReportLab
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    from io import BytesIO
+    
+    # Criar o buffer de memória para o PDF
+    buffer = BytesIO()
+    
+    # Configurar o documento
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    
+    # Título
+    styles = getSampleStyleSheet()
+    elements.append(Paragraph("Relatório de Agendamentos", styles['Title']))
+    elements.append(Spacer(1, 12))
+    
+    # Filtrar agendamentos (usar mesma lógica de filtragem da view)
+    # Adaptar conforme necessário
+    if current_user.tipo == 'admin':
+        agendamentos = AgendamentoVisita.query.all()
+    else:
+        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+    
+    # Dados da tabela
+    data = [['ID', 'Escola', 'Professor', 'Data', 'Horário', 'Turma', 'Status']]
+    
+    for agendamento in agendamentos:
+        data.append([
+            str(agendamento.id),
+            agendamento.escola_nome,
+            agendamento.professor.nome,
+            agendamento.horario.data.strftime('%d/%m/%Y'),
+            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            agendamento.turma,
+            agendamento.status.capitalize()
+        ])
+    
+    # Criar tabela
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(table)
+    
+    # Construir PDF
+    doc.build(elements)
+    
+    # Preparar o response
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="agendamentos.pdf",
+        mimetype="application/pdf"
+    )
+
+@routes.route('/agendamentos/exportar/csv', methods=['GET'])
+@login_required
+def exportar_agendamentos_csv():
+    """Exporta a lista de agendamentos em CSV"""
+    import csv
+    from io import StringIO
+    
+    # Filtrar agendamentos (usar mesma lógica de filtragem da view)
+    if current_user.tipo == 'admin':
+        agendamentos = AgendamentoVisita.query.all()
+    else:
+        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+    
+    # Criar o buffer de memória para o CSV
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Escrever cabeçalho
+    writer.writerow(['ID', 'Escola', 'Professor', 'Data', 'Horário', 'Turma', 'Nível de Ensino', 
+                    'Quantidade de Alunos', 'Status', 'Data do Agendamento'])
+    
+    # Escrever dados
+    for agendamento in agendamentos:
+        writer.writerow([
+            agendamento.id,
+            agendamento.escola_nome,
+            agendamento.professor.nome,
+            agendamento.horario.data.strftime('%d/%m/%Y'),
+            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            agendamento.turma,
+            agendamento.nivel_ensino,
+            agendamento.quantidade_alunos,
+            agendamento.status,
+            agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M')
+        ])
+    
+    # Preparar o response
+    output.seek(0)
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=agendamentos.csv"}
+    )
+
+@routes.route('/visualizar/<int:agendamento_id>', methods=['GET'])
+@login_required
+def visualizar_agendamento(agendamento_id):
+    """
+    Rota para visualizar os detalhes de um agendamento específico.
+    
+    :param agendamento_id: ID do agendamento a ser visualizado
+    :return: Template renderizado com os detalhes do agendamento ou resposta JSON
+    """
+    # Buscar o agendamento pelo ID
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+    
+    # Verificar permissões (somente o professor que criou ou um administrador pode ver)
+    if current_user.id != agendamento.professor_id and not current_user.is_admin:
+        abort(403, "Você não tem permissão para visualizar este agendamento")
+    
+    # Buscar informações adicionais
+    # Se as salas estiverem armazenadas como IDs separados por vírgula
+    salas_ids = []
+    if agendamento.salas_selecionadas:
+        salas_ids = [int(sala_id.strip()) for sala_id in agendamento.salas_selecionadas.split(',')]
+        
+    # Determinar o formato de resposta (HTML ou JSON)
+    if request.headers.get('Accept') == 'application/json':
+        # Resposta JSON para API
+        return jsonify({
+            'id': agendamento.id,
+            'horario': {
+                'id': agendamento.horario.id,
+                'data': agendamento.horario.data.strftime('%d/%m/%Y'),
+                'hora_inicio': agendamento.horario.hora_inicio.strftime('%H:%M'),
+                'hora_fim': agendamento.horario.hora_fim.strftime('%H:%M')
+            },
+            'professor': {
+                'id': agendamento.professor.id,
+                'nome': agendamento.professor.nome,
+                'email': agendamento.professor.email
+            },
+            'escola': {
+                'nome': agendamento.escola_nome,
+                'codigo_inep': agendamento.escola_codigo_inep
+            },
+            'turma': agendamento.turma,
+            'nivel_ensino': agendamento.nivel_ensino,
+            'quantidade_alunos': agendamento.quantidade_alunos,
+            'status': agendamento.status,
+            'checkin_realizado': agendamento.checkin_realizado,
+            'data_agendamento': agendamento.data_agendamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_agendamento else None,
+            'data_cancelamento': agendamento.data_cancelamento.strftime('%d/%m/%Y %H:%M') if agendamento.data_cancelamento else None,
+            'data_checkin': agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else None,
+            'qr_code_token': agendamento.qr_code_token,
+            'salas_selecionadas': salas_ids
+        })
+    
+    # Resposta HTML para interface web
+    return render_template(
+        'agendamento/visualizar.html',
+        agendamento=agendamento,
+        salas_ids=salas_ids
+    )
+    
+@routes.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def editar_agendamento(agendamento_id):
+    # Busca o agendamento no banco de dados
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+    
+    # Verifica permissões (apenas o próprio professor, administradores ou clientes podem editar)
+    if current_user.tipo not in ['admin', 'cliente'] and current_user.id != agendamento.professor_id:
+        flash('Você não tem permissão para editar este agendamento.', 'danger')
+        return redirect(url_for('routes.listar_agendamentos'))
+    
+    # Busca horários disponíveis para edição
+    horarios_disponiveis = HorarioVisitacao.query.filter_by(disponivel=True).all()
+    # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
+    if agendamento.horario not in horarios_disponiveis:
+        horarios_disponiveis.append(agendamento.horario)
+    
+    # Carrega as possíveis salas para visitação
+    from models import Sala  # Importa o modelo Sala (assumindo que existe)
+    salas = Sala.query.all()
+    
+    # Pega as salas já selecionadas
+    salas_selecionadas = []
+    if agendamento.salas_selecionadas:
+        salas_selecionadas = [int(sala_id) for sala_id in agendamento.salas_selecionadas.split(',')]
+    
+    if request.method == 'POST':
+        # Captura os dados do formulário
+        horario_id = request.form.get('horario_id')
+        escola_nome = request.form.get('escola_nome')
+        escola_codigo_inep = request.form.get('escola_codigo_inep')
+        turma = request.form.get('turma')
+        nivel_ensino = request.form.get('nivel_ensino')
+        quantidade_alunos = request.form.get('quantidade_alunos')
+        salas_ids = request.form.getlist('salas')
+        
+        # Validação básica
+        if not all([horario_id, escola_nome, turma, nivel_ensino, quantidade_alunos]):
+            flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
+            return render_template(
+                'editar_agendamento.html',
+                agendamento=agendamento,
+                horarios=horarios_disponiveis,
+                salas=salas,
+                salas_selecionadas=salas_selecionadas
+            )
+        
+        try:
+            # Atualiza os dados do agendamento
+            agendamento.horario_id = horario_id
+            agendamento.escola_nome = escola_nome
+            agendamento.escola_codigo_inep = escola_codigo_inep
+            agendamento.turma = turma
+            agendamento.nivel_ensino = nivel_ensino
+            agendamento.quantidade_alunos = int(quantidade_alunos)
+            
+            # Atualiza as salas selecionadas
+            agendamento.salas_selecionadas = ','.join(salas_ids) if salas_ids else None
+            
+            db.session.commit()
+            flash('Agendamento atualizado com sucesso!', 'success')
+            return redirect(url_for('routes.listar_agendamentos'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar agendamento: {str(e)}', 'danger')
+    
+    # Renderiza o template com os dados do agendamento
+    return render_template(
+        'editar_agendamento.html',
+        agendamento=agendamento,
+        horarios=horarios_disponiveis,
+        salas=salas,
+        salas_selecionadas=salas_selecionadas
+    )
+    
+@routes.route('/atualizar_status/<int:agendamento_id>', methods=['PUT'])
+@login_required
+def atualizar_status_agendamento(agendamento_id):
+    """
+    Atualiza o status de um agendamento de visita.
+    
+    Parâmetros:
+    - agendamento_id: ID do agendamento a ser atualizado
+    
+    Corpo da requisição:
+    {
+        "status": "confirmado|cancelado|realizado",
+        "checkin_realizado": true|false  (opcional)
+    }
+    
+    Retorna:
+    - 200: Agendamento atualizado com sucesso
+    - 400: Dados inválidos
+    - 403: Usuário não tem permissão
+    - 404: Agendamento não encontrado
+    """
+    # Buscar o agendamento pelo ID
+    agendamento = AgendamentoVisita.query.get(agendamento_id)
+    
+    # Verificar se o agendamento existe
+    if not agendamento:
+        return jsonify({"erro": "Agendamento não encontrado"}), 404
+    
+    # Verificar permissões: apenas o professor que criou ou um administrador pode alterar
+    if current_user.id != agendamento.professor_id and not current_user.is_admin:
+        return jsonify({"erro": "Você não tem permissão para alterar este agendamento"}), 403
+    
+    # Obter os dados do request
+    dados = request.get_json()
+    
+    if not dados:
+        return jsonify({"erro": "Nenhum dado fornecido"}), 400
+    
+    # Validar o status
+    novo_status = dados.get('status')
+    if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado']:
+        return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado' ou 'realizado'"}), 400
+    
+    # Atualizar o status
+    if novo_status:
+        agendamento.status = novo_status
+        
+        # Se for cancelado, registrar a data de cancelamento
+        if novo_status == 'cancelado' and not agendamento.data_cancelamento:
+            agendamento.data_cancelamento = datetime.utcnow()
+    
+    # Verificar se houve alteração no check-in
+    if 'checkin_realizado' in dados:
+        checkin = dados.get('checkin_realizado')
+        
+        # Se check-in está sendo realizado agora
+        if checkin and not agendamento.checkin_realizado:
+            agendamento.checkin_realizado = True
+            agendamento.data_checkin = datetime.utcnow()
+            # Se houve check-in e o status não foi alterado, atualizar para 'realizado'
+            if not novo_status:
+                agendamento.status = 'realizado'
+        # Se check-in está sendo desfeito
+        elif not checkin and agendamento.checkin_realizado:
+            agendamento.checkin_realizado = False
+            agendamento.data_checkin = None
+    
+    try:
+        # Salvar as alterações no banco de dados
+        db.session.commit()
+        
+        # Formatar resposta
+        resposta = {
+            "mensagem": "Agendamento atualizado com sucesso",
+            "agendamento": {
+                "id": agendamento.id,
+                "status": agendamento.status,
+                "checkin_realizado": agendamento.checkin_realizado,
+                "data_checkin": agendamento.data_checkin.isoformat() if agendamento.data_checkin else None,
+                "data_cancelamento": agendamento.data_cancelamento.isoformat() if agendamento.data_cancelamento else None
+            }
+        }
+        
+        return jsonify(resposta), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"erro": f"Erro ao atualizar agendamento: {str(e)}"}), 500
+
+# Rota para realizar check-in via QR Code
+@routes.route('/checkin/<string:qr_code_token>', methods=['POST'])
+@login_required
+def checkin_agendamento(qr_code_token):
+    """
+    Realiza o check-in de um agendamento através do token QR Code.
+    
+    Parâmetros:
+    - qr_code_token: Token único do QR Code do agendamento
+    
+    Retorna:
+    - 200: Check-in realizado com sucesso
+    - 403: Usuário não tem permissão
+    - 404: Agendamento não encontrado
+    - 409: Check-in já realizado
+    """
+    # Buscar o agendamento pelo token do QR Code
+    agendamento = AgendamentoVisita.query.filter_by(qr_code_token=qr_code_token).first()
+    
+    # Verificar se o agendamento existe
+    if not agendamento:
+        return jsonify({"erro": "Agendamento não encontrado"}), 404
+    
+    # Verificar se o check-in já foi realizado
+    if agendamento.checkin_realizado:
+        return jsonify({"erro": "Check-in já foi realizado para este agendamento"}), 409
+    
+    # Verificar permissões: apenas o professor que criou ou um administrador pode realizar check-in
+    if current_user.id != agendamento.professor_id and not current_user.is_admin:
+        return jsonify({"erro": "Você não tem permissão para realizar check-in neste agendamento"}), 403
+    
+    # Realizar o check-in
+    agendamento.checkin_realizado = True
+    agendamento.data_checkin = datetime.utcnow()
+    agendamento.status = 'realizado'
+    
+    try:
+        # Salvar as alterações no banco de dados
+        db.session.commit()
+        
+        # Formatar resposta
+        resposta = {
+            "mensagem": "Check-in realizado com sucesso",
+            "agendamento": {
+                "id": agendamento.id,
+                "status": agendamento.status,
+                "checkin_realizado": agendamento.checkin_realizado,
+                "data_checkin": agendamento.data_checkin.isoformat()
+            }
+        }
+        
+        return jsonify(resposta), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"erro": f"Erro ao realizar check-in: {str(e)}"}), 500
+
+@routes.route('/agendamentos', methods=['GET'])
+@login_required
+def listar_agendamentos():
+    """
+    Lista os agendamentos de visitas com opções de filtro.
+    Administradores veem todos os agendamentos, professores veem apenas os próprios.
+    """
+    # Definir os parâmetros de filtro
+    page = request.args.get('page', 1, type=int)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    status = request.args.get('status')
+    participante_id = request.args.get('participante_id')
+    oficina_id = request.args.get('oficina_id')
+    cliente_id = request.args.get('cliente_id')
+
+    # Base da query
+    query = AgendamentoVisita.query
+
+    # Filtrar por tipo de usuário
+    if current_user.tipo == 'participante' or current_user.tipo == 'professor':
+        # Professores/participantes só veem seus próprios agendamentos
+        query = query.filter(AgendamentoVisita.professor_id == current_user.id)
+    elif current_user.tipo == 'cliente':
+        # Clientes veem agendamentos relacionados a eles
+        # Aqui precisaria de uma lógica para filtrar por cliente, se aplicável
+        if current_user.id:
+            # Filtrar agendamentos relacionados ao cliente
+            # Esta lógica depende da sua estrutura de dados
+            pass
+    
+    # Filtros dos parâmetros da URL
+    if data_inicio:
+        data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(AgendamentoVisita.horario.has(data_agendamento >= data_inicio_dt))
+    
+    if data_fim:
+        data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+        query = query.filter(AgendamentoVisita.horario.has(data_agendamento <= data_fim_dt))
+    
+    if status:
+        query = query.filter(AgendamentoVisita.status == status)
+    
+    if participante_id:
+        query = query.filter(AgendamentoVisita.professor_id == participante_id)
+    
+    if oficina_id:
+        # Se você relacionar agendamentos com oficinas
+        # query = query.filter(AgendamentoVisita.oficina_id == oficina_id)
+        pass
+    
+    if cliente_id and current_user.tipo == 'admin':
+        # Se você relacionar agendamentos com clientes
+        # query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
+        pass
+    
+    # Ordenação
+    query = query.order_by(AgendamentoVisita.data_agendamento.desc())
+    
+    # Paginação
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    agendamentos = pagination.items
+    
+    # Dados para os filtros de formulário
+    oficinas = Oficina.query.all()
+    participantes = Usuario.query.filter_by(tipo='participante').all()
+    clientes = []
+    if current_user.tipo == 'admin':
+        clientes = Cliente.query.all()
+    
+    return render_template(
+        'listar_agendamentos.html',
+        agendamentos=agendamentos,
+        pagination=pagination,
+        oficinas=oficinas,
+        participantes=participantes,
+        clientes=clientes
+    )
+    
+@routes.route('/processar_qrcode_agendamento', methods=['POST'])
+@login_required
+def processar_qrcode_agendamento():
+    """
+    Processa o QR Code lido e retorna informações sobre o agendamento.
+    """
+    if not request.is_json:
+        return jsonify({
+            'success': False,
+            'message': 'Formato de requisição inválido. Envie um JSON.'
+        }), 400
+    
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({
+            'success': False,
+            'message': 'Token não fornecido.'
+        }), 400
+    
+    try:
+        # Busca o agendamento pelo token do QR Code
+        agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
+        
+        if not agendamento:
+            return jsonify({
+                'success': False,
+                'message': 'Agendamento não encontrado. Verifique o QR Code e tente novamente.'
+            }), 404
+        
+        # Verifica se o agendamento foi cancelado
+        if agendamento.status == 'cancelado':
+            return jsonify({
+                'success': False,
+                'message': 'Este agendamento foi cancelado.'
+            }), 400
+        
+        # Verifica se o check-in já foi realizado
+        if agendamento.checkin_realizado:
+            return jsonify({
+                'success': False,
+                'message': 'Check-in já realizado para este agendamento.',
+                'redirect': url_for('routes.confirmar_checkin_agendamento', token=token)
+            }), 200
+        
+        # Redireciona para a página de confirmação de check-in
+        return jsonify({
+            'success': True,
+            'message': 'Agendamento encontrado!',
+            'redirect': url_for('routes.confirmar_checkin_agendamento', token=token)
+        }), 200
+    
+    except Exception as e:
+        print(f"Erro ao processar QR code: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao processar o QR Code: {str(e)}'
+        }), 500
+
+      
+@routes.route('/confirmar_checkin_agendamento/<token>', methods=['GET', 'POST'])
+@login_required
+def confirmar_checkin_agendamento(token):
+    """
+    Exibe página de confirmação e processa o check-in de um agendamento via QR code.
+    """
+    # Busca o agendamento pelo token
+    agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
+    
+    if not agendamento:
+        flash('Agendamento não encontrado. Verifique o QR Code e tente novamente.', 'danger')
+        return redirect(url_for('routes.checkin_qr_agendamento'))
+    
+    # Busca informações relacionadas
+    evento = Evento.query.get(agendamento.horario.evento_id)
+    horario = agendamento.horario
+    
+    # Se for POST, realiza o check-in
+    if request.method == 'POST':
+        try:
+            # Atualiza o status do agendamento
+            if not agendamento.checkin_realizado:
+                agendamento.checkin_realizado = True
+                agendamento.data_checkin = datetime.utcnow()
+                agendamento.status = 'realizado'
+                
+                # Processa os alunos presentes
+                alunos_presentes = request.form.getlist('alunos_presentes')
+                for aluno in agendamento.alunos:
+                    aluno.presente = str(aluno.id) in alunos_presentes
+                
+                db.session.commit()
+                
+                flash('Check-in realizado com sucesso!', 'success')
+            else:
+                flash('Este agendamento já teve check-in realizado anteriormente.', 'warning')
+            
+            return redirect(url_for('routes.dashboard_cliente'))
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao processar check-in: {str(e)}', 'danger')
+    
+    # Renderiza a página de confirmação
+    return render_template('confirmar_checkin.html', 
+                          agendamento=agendamento,
+                          evento=evento,
+                          horario=horario)
+
+
+@routes.route('/checkin_qr_agendamento', methods=['GET'])
+@login_required
+def checkin_qr_agendamento():
+    """
+    Página para escanear QR code para check-in de agendamentos.
+    """
+    token = request.args.get('token')
+    
+    # Se um token foi fornecido via parâmetro de URL, redireciona para a confirmação
+    if token:
+        agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
+        if agendamento:
+            return redirect(url_for('routes.confirmar_checkin_agendamento', token=token))
+        else:
+            flash('Agendamento não encontrado. Verifique o token e tente novamente.', 'danger')
+    
+    # Renderiza a página do scanner QR Code
+    return render_template('checkin_qr_agendamento.html')
+
+# Adicione isto ao seu arquivo routes.py
+@routes.route('/professor/eventos_disponiveis')
+def professor_eventos_disponiveis():
+    
+    # Buscar eventos disponíveis para o professor
+    eventos = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
+    
+    # Renderizar o template com os eventos
+    return render_template('professor/eventos_disponiveis.html', eventos=eventos)
+
+@routes.route('/cadastro_professor', methods=['GET', 'POST'])
+def cadastro_professor():
+    if request.method == 'POST':
+        # Coletar dados do formulário
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        cpf = request.form.get('cpf')
+        senha = request.form.get('senha')
+        formacao = request.form.get('formacao')
+
+        # Verificar se email ou CPF já existem
+        usuario_existente = Usuario.query.filter(
+            (Usuario.email == email) | (Usuario.cpf == cpf)
+        ).first()
+
+        if usuario_existente:
+            flash('Email ou CPF já cadastrado!', 'danger')
+            return render_template('cadastro_professor.html')
+
+        # Criar novo usuário professor
+        novo_professor = Usuario(
+            nome=nome,
+            email=email,
+            cpf=cpf,
+            senha=generate_password_hash(senha),
+            formacao=formacao,
+            tipo='professor'
+        )
+
+        try:
+            db.session.add(novo_professor)
+            db.session.commit()
+            flash('Cadastro realizado com sucesso!', 'success')
+            return redirect(url_for('routes.login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar: {str(e)}', 'danger')
+
+    return render_template('cadastro_professor.html')
+
+@routes.route('/agendar_visita/<int:horario_id>', methods=['GET', 'POST'])
+@login_required
+def agendar_visita(horario_id):
+    if not current_user.is_professor():
+        flash('Apenas professores podem fazer agendamentos.', 'danger')
+        return redirect(url_for('routes.dashboard_participante'))
+
+    horario = HorarioVisitacao.query.get_or_404(horario_id)
+
+    if request.method == 'POST':
+        # Coletar detalhes do agendamento
+        escola_nome = request.form.get('escola_nome')
+        turma = request.form.get('turma')
+        nivel_ensino = request.form.get('nivel_ensino')
+        quantidade_alunos = int(request.form.get('quantidade_alunos'))
+
+        # Validar vagas disponíveis
+        if quantidade_alunos > horario.vagas_disponiveis:
+            flash('Quantidade de alunos excede vagas disponíveis.', 'danger')
+            return redirect(url_for('routes.agendar_visita', horario_id=horario_id))
+
+        # Criar agendamento
+        novo_agendamento = AgendamentoVisita(
+            horario_id=horario.id,
+            professor_id=current_user.id,
+            escola_nome=escola_nome,
+            turma=turma,
+            nivel_ensino=nivel_ensino,
+            quantidade_alunos=quantidade_alunos
+        )
+
+        # Reduzir vagas disponíveis
+        horario.vagas_disponiveis -= quantidade_alunos
+
+        try:
+            db.session.add(novo_agendamento)
+            db.session.commit()
+            flash('Agendamento realizado com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_participante'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao agendar: {str(e)}', 'danger')
+
+    return render_template('agendar_visita.html', horario=horario)
+
+@routes.route('/adicionar_alunos', methods=['GET', 'POST'])
+@login_required
+def adicionar_alunos():
+    """
+    Rota para adicionar alunos (participantes) em lote ou individualmente.
+    Suporta upload de arquivo CSV/Excel e também entrada manual de dados.
+    """
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Você não tem permissão para adicionar alunos.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    if request.method == 'POST':
+        # Verifica se há upload de arquivo
+        arquivo = request.files.get('arquivo')
+        
+        # Verifica se há entrada manual
+        nome = request.form.get('nome')
+        cpf = request.form.get('cpf')
+        email = request.form.get('email')
+        formacao = request.form.get('formacao')
+        estados = request.form.getlist('estados[]')
+        cidades = request.form.getlist('cidades[]')
+
+        # Processamento de upload de arquivo
+        if arquivo and arquivo.filename:
+            try:
+                # Usa Pandas para ler o arquivo de upload
+                df = pd.read_excel(arquivo, dtype={'cpf': str})
+                
+                # Verificar colunas obrigatórias
+                colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
+                if not all(col in df.columns for col in colunas_obrigatorias):
+                    flash(f"Erro: O arquivo deve conter as colunas: {', '.join(colunas_obrigatorias)}", "danger")
+                    return redirect(url_for('routes.adicionar_alunos'))
+
+                # Processamento em lote
+                alunos_adicionados = 0
+                for _, row in df.iterrows():
+                    cpf_str = str(row['cpf']).strip()
+                    
+                    # Verifica se o usuário já existe
+                    usuario_existente = Usuario.query.filter(
+                        (Usuario.cpf == cpf_str) | (Usuario.email == row['email'])
+                    ).first()
+
+                    if usuario_existente:
+                        print(f"⚠️ Usuário {row['nome']} já existe. Pulando...")
+                        continue
+
+                    novo_usuario = Usuario(
+                        nome=row['nome'],
+                        cpf=cpf_str,
+                        email=row['email'],
+                        senha=generate_password_hash(str(row['cpf'])),  # Senha inicial como CPF
+                        formacao=row.get('formacao', 'Não informada'),
+                        tipo='participante',
+                        cliente_id=current_user.id  # Vincula ao cliente logado
+                    )
+                    
+                    # Tratamento de estados e cidades do arquivo, se existirem
+                    if 'estados' in df.columns and 'cidades' in df.columns:
+                        novo_usuario.estados = str(row.get('estados', ''))
+                        novo_usuario.cidades = str(row.get('cidades', ''))
+
+                    db.session.add(novo_usuario)
+                    alunos_adicionados += 1
+
+                db.session.commit()
+                flash(f"✅ {alunos_adicionados} alunos importados com sucesso!", "success")
+                return redirect(url_for('routes.dashboard'))
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Erro ao processar arquivo: {str(e)}", "danger")
+                print(f"❌ Erro na importação: {e}")
+                return redirect(url_for('routes.adicionar_alunos'))
+
+        # Processamento de entrada manual
+        elif nome and cpf and email and formacao:
+            try:
+                # Verifica se o usuário já existe
+                usuario_existente = Usuario.query.filter(
+                    (Usuario.cpf == cpf) | (Usuario.email == email)
+                ).first()
+
+                if usuario_existente:
+                    flash(f"Usuário com CPF {cpf} ou email {email} já existe.", "warning")
+                    return redirect(url_for('routes.adicionar_alunos'))
+
+                novo_usuario = Usuario(
+                    nome=nome,
+                    cpf=cpf,
+                    email=email,
+                    senha=generate_password_hash(cpf),  # Senha inicial como CPF
+                    formacao=formacao,
+                    tipo='participante',
+                    cliente_id=current_user.id,  # Vincula ao cliente logado
+                    estados=','.join(estados) if estados else None,
+                    cidades=','.join(cidades) if cidades else None
+                )
+
+                db.session.add(novo_usuario)
+                db.session.commit()
+                flash("Aluno adicionado com sucesso!", "success")
+                return redirect(url_for('routes.dashboard'))
+
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Erro ao adicionar aluno: {str(e)}", "danger")
+                print(f"❌ Erro na adição manual: {e}")
+                return redirect(url_for('routes.adicionar_alunos'))
+
+        else:
+            flash("Dados insuficientes para adicionar aluno.", "warning")
+            return redirect(url_for('routes.adicionar_alunos'))
+
+    # GET: Renderiza o formulário
+    estados = obter_estados()
+    return render_template('adicionar_alunos.html', estados=estados)
+
+@routes.route('/importar_alunos', methods=['GET', 'POST'])
+@login_required
+def importar_alunos():
+    """
+    Rota específica para importação em lote de alunos (participantes).
+    Suporta upload de arquivos Excel e CSV.
+    """
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Você não tem permissão para importar alunos.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    if request.method == 'POST':
+        # Verifica se há upload de arquivo
+        arquivo = request.files.get('arquivo')
+        
+        if not arquivo or not arquivo.filename:
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(url_for('routes.importar_alunos'))
+
+        try:
+            # Determina o tipo de arquivo e usa a biblioteca correta
+            if arquivo.filename.endswith(('.xlsx', '.xls')):
+                df = pd.read_excel(arquivo, dtype={'cpf': str})
+            elif arquivo.filename.endswith('.csv'):
+                df = pd.read_csv(arquivo, dtype={'cpf': str})
+            else:
+                flash('Formato de arquivo não suportado. Use .xlsx, .xls ou .csv', 'danger')
+                return redirect(url_for('routes.importar_alunos'))
+            
+            # Verificar colunas obrigatórias
+            colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
+            colunas_faltantes = [col for col in colunas_obrigatorias if col not in df.columns]
+            
+            if colunas_faltantes:
+                flash(f"Erro: Colunas faltantes no arquivo: {', '.join(colunas_faltantes)}", "danger")
+                return redirect(url_for('routes.importar_alunos'))
+
+            # Processamento em lote
+            alunos_adicionados = 0
+            alunos_duplicados = 0
+            alunos_invalidos = 0
+
+            # Criar log de importação
+            log_importacao = []
+
+            for index, row in df.iterrows():
+                try:
+                    # Limpeza e validação de dados
+                    nome = str(row['nome']).strip()
+                    cpf = str(row['cpf']).strip()
+                    email = str(row['email']).strip().lower()
+                    formacao = str(row.get('formacao', 'Não informada')).strip()
+
+                    # Validações básicas
+                    if not nome or not cpf or not email:
+                        log_importacao.append(f"Linha {index + 2}: Dados incompletos")
+                        alunos_invalidos += 1
+                        continue
+
+                    # Verifica se o usuário já existe
+                    usuario_existente = Usuario.query.filter(
+                        (Usuario.cpf == cpf) | (Usuario.email == email)
+                    ).first()
+
+                    if usuario_existente:
+                        log_importacao.append(f"Linha {index + 2}: Usuário já existe (CPF ou email duplicado)")
+                        alunos_duplicados += 1
+                        continue
+
+                    # Tratamento de estados e cidades (se existirem no arquivo)
+                    estados = row.get('estados', '') if 'estados' in df.columns else ''
+                    cidades = row.get('cidades', '') if 'cidades' in df.columns else ''
+
+                    # Cria novo usuário
+                    novo_usuario = Usuario(
+                        nome=nome,
+                        cpf=cpf,
+                        email=email,
+                        senha=generate_password_hash(cpf),  # Senha inicial como CPF
+                        formacao=formacao,
+                        tipo='participante',
+                        cliente_id=current_user.id,  # Vincula ao cliente logado
+                        estados=str(estados),
+                        cidades=str(cidades)
+                    )
+                    
+                    db.session.add(novo_usuario)
+                    alunos_adicionados += 1
+                    log_importacao.append(f"Linha {index + 2}: Usuário {nome} importado com sucesso")
+
+                except Exception as e:
+                    log_importacao.append(f"Linha {index + 2}: Erro - {str(e)}")
+                    alunos_invalidos += 1
+
+            # Commit final
+            db.session.commit()
+
+            # Criar arquivo de log
+            log_filename = f"log_importacao_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            log_path = os.path.join('static', 'logs', log_filename)
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            
+            with open(log_path, 'w', encoding='utf-8') as log_file:
+                log_file.write("\n".join(log_importacao))
+
+            # Mensagem resumo
+            flash(f"""
+                Importação concluída:
+                ✅ Alunos adicionados: {alunos_adicionados}
+                ⚠️ Alunos duplicados: {alunos_duplicados}
+                ❌ Alunos inválidos: {alunos_invalidos}
+                📄 Log de importação salvo.
+            """, "info")
+
+            # Redireciona com o log
+            return render_template('resultado_importacao.html', 
+                                   adicionados=alunos_adicionados, 
+                                   duplicados=alunos_duplicados, 
+                                   invalidos=alunos_invalidos,
+                                   log_filename=log_filename)
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erro ao processar arquivo: {str(e)}", "danger")
+            print(f"❌ Erro na importação: {e}")
+            return redirect(url_for('routes.importar_alunos'))
+
+    # GET: Renderiza o formulário de importação
+    return render_template('importar_alunos.html')
