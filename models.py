@@ -50,6 +50,9 @@ class Usuario(db.Model, UserMixin):
 
     def is_cliente(self):
         return self.tipo == "cliente"
+    
+    def is_professor(self):
+         return self.tipo == 'professor'
 
 
 
@@ -504,9 +507,17 @@ class Evento(db.Model):
         data_fim = db.Column(db.DateTime, nullable=True)
         hora_inicio = db.Column(db.Time, nullable=True)
         hora_fim = db.Column(db.Time, nullable=True)
+        
+        # Adicione aqui a coluna status
+        status = db.Column(db.String(50), default='ativo')
+        
+        capacidade_padrao = db.Column(db.Integer, nullable=False, default=0)
+        requer_aprovacao = db.Column(db.Boolean, default=False)
+        publico = db.Column(db.Boolean, default=True)
 
         cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
         # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
+        
 
 class FormularioTemplate(db.Model):
     __tablename__ = 'formulario_templates'
@@ -679,6 +690,7 @@ class ProfessorBloqueado(db.Model):
     
     def __repr__(self):
         return f"<ProfessorBloqueado {self.professor_id} até {self.data_final.strftime('%d/%m/%Y')}>"
+
 
 
 
