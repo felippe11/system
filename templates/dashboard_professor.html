@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Dashboard do Professor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4"><i class="bi bi-mortarboard-fill me-2"></i>Painel do Professor</h2>
+  
+  <div class="row g-4">
+    <!-- Gerenciamento de Alunos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h5 class="card-title mb-0"><i class="bi bi-people-fill me-2"></i>Alunos</h5>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <div class="list-group">
+            <a href="{{ url_for('routes.adicionar_alunos') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-person-plus-fill me-2"></i>Adicionar Alunos
+            </a>
+            <a href="{{ url_for('routes.importar_alunos') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Alunos
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gerenciamento de Agendamentos -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="card-title mb-0"><i class="bi bi-calendar-check-fill me-2"></i>Agendamentos</h5>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <div class="list-group">
+            <a href="{{ url_for('routes.criar_agendamento') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-calendar-plus me-2"></i>Criar Agendamento
+            </a>
+            <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-calendar-week me-2"></i>Meus Agendamentos
+            </a>
+            <a href="{{ url_for('routes.cancelar_agendamento') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-calendar-x me-2"></i>Cancelar Agendamento
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eventos e Horários -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-info text-white">
+          <h5 class="card-title mb-0"><i class="bi bi-calendar-event me-2"></i>Eventos e Horários</h5>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <div class="list-group">
+            <a href="{{ url_for('routes.eventos_disponiveis') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-calendar2-event me-2"></i>Eventos Disponíveis
+            </a>
+            <a href="{{ url_for('routes.horarios_disponiveis') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-clock me-2"></i>Horários Disponíveis
+            </a>
+            <a href="{{ url_for('routes.detalhes_evento') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-info-circle me-2"></i>Detalhes do Evento
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QR Code -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>QR Code</h5>
+        </div>
+        <div class="card-body d-flex flex-column">
+          <div class="list-group">
+            <a href="{{ url_for('routes.qrcode_agendamento') }}" class="list-group-item list-group-item-action">
+              <i class="bi bi-qr-code-scan me-2"></i>QR Code de Agendamento
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
