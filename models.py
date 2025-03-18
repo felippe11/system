@@ -483,6 +483,10 @@ class FeedbackCampo(db.Model):
     def __repr__(self):
         return f"<FeedbackCampo id={self.id} resposta_campo={self.resposta_campo_id} ministrante={self.ministrante_id}>"
 
+# =================================
+#            PROPOSTA
+# =================================
+
 class Evento(db.Model):
         __tablename__ = 'evento'
 

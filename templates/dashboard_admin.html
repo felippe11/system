@@ -87,6 +87,10 @@
                       data-bs-target="#clientes" type="button">Clientes</button>
             </li>
             <li class="nav-item" role="presentation">
+              <button class="nav-link" id="propostas-tab" data-bs-toggle="tab" 
+                      data-bs-target="#propostas" type="button">Propostas</button>
+            </li>
+            <li class="nav-item" role="presentation">
               <button class="nav-link" id="ferramentas-tab" data-bs-toggle="tab" 
                       data-bs-target="#ferramentas" type="button">Ferramentas</button>
             </li>
@@ -223,6 +227,48 @@
                 </div>
               </div>
             </div>
+
+            <!-- Propostas Tab -->
+            <div class="tab-pane fade" id="propostas">
+              <div class="card">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0"><i class="bi bi-envelope me-2"></i>Propostas Recebidas</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Nome</th>
+                          <th>E-mail</th>
+                          <th>Tipo de Evento</th>
+                          <th>Descrição</th>
+                          <th>Data</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for proposta in propostas %}
+                        <tr>
+                          <td>{{ proposta.nome }}</td>
+                          <td>{{ proposta.email }}</td>
+                          <td>{{ proposta.tipo_evento }}</td>
+                          <td>{{ proposta.descricao }}</td>
+                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
+                          <td>
+                            <span class="badge bg-{{ 'warning' if proposta.status == 'Pendente' else 'success' }}">
+                              {{ proposta.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
             <!-- Ferramentas Tab -->
             <div class="tab-pane fade" id="ferramentas">
