@@ -30,95 +30,178 @@
     
     <style>
         :root {
-            --gradient-primary: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
-            --gradient-hover: linear-gradient(135deg, #0082aa 0%, #3caf64 100%);
+            --primary-color: #2A2D72;
+            --secondary-color: #FF6B6B;
+            --accent-color: #4ECDC4;
+            --gradient-primary: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            --gradient-hover: linear-gradient(135deg, #232660 0%, #3eb3ab 100%);
             --text-light: rgba(255, 255, 255, 0.95);
+            --shadow-sm: 0 2px 15px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+            --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
         * {
             font-family: 'Poppins', sans-serif;
             line-height: 1.6;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: var(--transition-smooth);
         }
 
         /* NAVBAR ESTILIZADA */
         .navbar {
-            background: var(--gradient-primary);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 30px rgba(0, 148, 195, 0.15);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(42, 45, 114, 0.1);
+            box-shadow: var(--shadow-sm);
         }
 
         .navbar-brand {
             letter-spacing: -0.5px;
             font-weight: 700;
+            color: var(--primary-color) !important;
+            font-size: 1.8rem;
+        }
+
+        .nav-link {
+            color: var(--primary-color) !important;
+            font-weight: 500;
+            margin: 0 15px;
+            position: relative;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: var(--transition-smooth);
+        }
+
+        .nav-link:hover {
+            background: rgba(42, 45, 114, 0.05);
+            transform: translateY(-1px);
         }
 
         /* CONTEÚDO PRINCIPAL */
         main {
             padding: 2rem 0;
-            background: #ffffff;
+            background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
         }
 
         .main-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 2.5rem;
             background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            box-shadow: var(--shadow-md);
         }
 
         /* FOOTER SOFISTICADO */
         .footer {
-            background: #161616;
+            background: var(--primary-color);
             color: var(--text-light);
             border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 2rem;
         }
 
         .footer h5 {
             font-weight: 600;
             margin-bottom: 1.5rem;
             color: #ffffff;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
         }
 
         .footer a {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             position: relative;
+            transition: var(--transition-smooth);
+            font-size: 0.95rem;
         }
 
         .footer a:hover {
-            color: #ffffff;
+            color: var(--accent-color);
             transform: translateX(5px);
         }
 
         .social-links a {
             font-size: 1.4rem;
             margin-right: 1.2rem;
-            transition: all 0.3s ease;
+            opacity: 0.9;
+            transition: var(--transition-smooth);
+        }
+
+        .social-links a:hover {
+            opacity: 1;
+            color: var(--accent-color);
+            transform: translateY(-3px);
         }
 
         /* EFEITOS DE HOVER */
         .nav-link.btn-outline-light {
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color) !important;
             border-radius: 8px;
             padding: 0.5rem 1.5rem;
+            font-weight: 600;
         }
 
         .nav-link.btn-outline-light:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.4);
+            background: var(--primary-color);
+            color: #ffffff !important;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
         }
 
         .dropdown-menu {
             border: none;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-lg);
             margin-top: 0.5rem;
+            border-radius: 12px;
+            padding: 0.5rem;
         }
 
         .dropdown-item {
-            border-radius: 6px;
+            border-radius: 8px;
             margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            transition: var(--transition-smooth);
+        }
+
+        .dropdown-item:hover {
+            background: rgba(42, 45, 114, 0.05);
+            color: var(--primary-color) !important;
+        }
+
+        /* Alert Styling */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .alert-info {
+            background: rgba(78, 205, 196, 0.1);
+            color: var(--primary-color);
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.5rem;
+            }
+
+            .main-container {
+                padding: 1.5rem;
+            }
+
+            .footer {
+                text-align: center;
+            }
+
+            .social-links {
+                justify-content: center;
+                display: flex;
+                margin-bottom: 2rem;
+            }
         }
         .animated-text {
           position: relative;
@@ -320,7 +403,6 @@
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top py-2">
       <div class="container">
         <a class="navbar-brand d-flex align-items-center" href="{{ url_for('routes.dashboard') }}">
-          <i class="bi bi-cpu me-2 fs-4"></i>
           <!-- Container com os dois spans para animação -->
           <span class="gradient-text animated-text">
             <span class="text1">AppFiber</span>
@@ -342,45 +424,44 @@
               </li>
             {% else %}
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                <a class="nav-link dropdown-toggle d-flex align-items-center btn btn-outline-light" href="#" role="button" data-bs-toggle="dropdown">
                   <i class="bi bi-person-circle me-2 fs-5"></i>
                   <div>
                     <div class="fw-500">{{ current_user.nome }}</div>
-                    <small class="text-white-50">{{ current_user.tipo|title }}</small>
                   </div>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end shadow">
                   {% if current_user.tipo == 'participante' %}
                   <li>
-                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.editar_participante') }}">
+                    <a class="dropdown-item text-navy py-2" href="{{ url_for('routes.editar_participante') }}">
                       <i class="bi bi-person-badge me-2"></i>Editar Perfil
                     </a>
                   </li>
                   <li><hr class="dropdown-divider my-1"></li>
                   <li>
-                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_participante') }}">
-                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    <a class="dropdown-item text-navy py-2" href="{{ url_for('routes.dashboard_participante') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>Dashboard
                     </a>
                   </li>
                   {% endif %}
                   {% if current_user.tipo == 'cliente' %}
                   <li>
-                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_cliente') }}">
-                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    <a class="dropdown-item text-navy py-2" href="{{ url_for('routes.dashboard_cliente') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>Dashboard
                     </a>
                   </li>
                   {% endif %}
                   {% if current_user.tipo == 'ministrante' %}
                   <li>
-                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard_ministrante') }}">
-                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    <a class="dropdown-item text-navy py-2" href="{{ url_for('routes.dashboard_ministrante') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>Dashboard
                     </a>
                   </li>
                   {% endif %}
                   {% if current_user.tipo == 'admin' %}
                   <li>
-                    <a class="dropdown-item text-dark py-2" href="{{ url_for('routes.dashboard') }}">
-                      <i class="bi bi-speedometer2 me-2"></i>dashboard
+                    <a class="dropdown-item text-navy py-2" href="{{ url_for('routes.dashboard') }}">
+                      <i class="bi bi-speedometer2 me-2"></i>Dashboard
                     </a>
                   </li>
                   {% endif %}

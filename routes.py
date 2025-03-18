@@ -111,6 +111,55 @@ def register_routes(app):
 def home():
     return render_template('index.html')
 
+class Proposta(db.Model):
+    __tablename__ = 'proposta'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150))
+    email = db.Column(db.String(150), nullable=False)
+    tipo_evento = db.Column(db.String(50), nullable=False)
+    descricao = db.Column(db.Text, nullable=False)
+    data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='Pendente')
+
+    def __repr__(self):
+        return f"<Proposta {self.tipo_evento} - {self.email}>"
+
+
+@routes.route('/enviar_proposta', methods=['POST'])
+def enviar_proposta():
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    tipo_evento = request.form.get('tipo_evento')
+    descricao = request.form.get('descricao')
+
+    if not all([nome, email, tipo_evento, descricao]):
+        flash('Por favor, preencha todos os campos.', 'danger')
+        return redirect(url_for('routes.home'))
+
+    nova_proposta = Proposta(
+        nome=nome,
+        email=email,
+        tipo_evento=tipo_evento,
+        descricao=descricao
+    )
+
+    try:
+        db.session.add(nova_proposta)
+        db.session.commit()
+        flash('Proposta enviada com sucesso! Entraremos em contato em breve.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao enviar proposta. Por favor, tente novamente.', 'danger')
+
+    return render_template(
+        'index.html',
+        nome=nome,
+        email=email,
+        tipo_evento=tipo_evento,
+        descricao=descricao
+    )
+
 
 
 # ===========================
@@ -420,6 +469,8 @@ def logout():
 def dashboard():
     from sqlalchemy import func
 
+    propostas = Proposta.query.all()
+
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
     cidade_filter = request.args.get('cidade', '').strip()
@@ -568,6 +619,7 @@ def dashboard():
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
         checkins_via_qr=checkins_via_qr,
+        propostas=propostas,
         total_oficinas=total_oficinas,
         total_vagas=total_vagas,
         total_inscricoes=total_inscricoes,
@@ -2872,7 +2924,8 @@ def dashboard_cliente():
     ).all()
     
      # Buscar eventos ativos
-    eventos_ativos = Evento.query.all() 
+    eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    total_eventos = len(eventos_ativos)
     
     # Dados para cards
     agendamentos_totais = db.session.query(func.count(AgendamentoVisita.id)).join(
@@ -2998,7 +3051,8 @@ def dashboard_cliente():
         total_visitantes=total_visitantes,
         agendamentos_hoje=agendamentos_hoje,
         proximos_agendamentos=proximos_agendamentos,
-        ocupacao_media=ocupacao_media 
+        ocupacao_media=ocupacao_media,
+        total_eventos=total_eventos
     )
     
 def obter_configuracao_do_cliente(cliente_id):
