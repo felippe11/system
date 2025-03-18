@@ -73,6 +73,33 @@
       </div>
     </div>
 
+    <div class="container mt-4">
+      <h2 class="mb-4"><i class="bi bi-calendar"></i> Agenda de Agendamentos</h2>
+      <div id="calendar"></div>
+  </div>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.js"></script>
+  <script>
+      document.addEventListener('DOMContentLoaded', function() {
+          var calendarEl = document.getElementById('calendar');
+          var calendar = new FullCalendar.Calendar(calendarEl, {
+              initialView: 'dayGridMonth',
+              headerToolbar: {
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,timeGridDay'
+              },
+              events: '/api/horarios_disponiveis',
+              eventClick: function(info) {
+                  window.location.href = info.event.url;
+              }
+          });
+          calendar.render();
+      });
+  </script>
+  
+
     <!-- QR Code -->
     <div class="col-md-6 col-lg-4">
       <div class="card h-100 shadow-sm">
