@@ -511,7 +511,7 @@ class Evento(db.Model):
         # Adicione aqui a coluna status
         status = db.Column(db.String(50), default='ativo')
         
-        capacidade_padrao = db.Column(db.Integer, nullable=False, default=0)
+        capacidade_padrao = db.Column(db.Integer, nullable=True, default=0)
         requer_aprovacao = db.Column(db.Boolean, default=False)
         publico = db.Column(db.Boolean, default=True)
 
