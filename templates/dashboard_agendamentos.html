@@ -207,6 +207,7 @@
                           <h5 class="mb-1">Gerenciar Agendamentos</h5>
                           <small>Configurar e visualizar agendamentos de todos os eventos</small>
                         </div>
+                        
                       </div>
                     </a>
                   </div>
@@ -428,6 +429,10 @@
                     <a href="{{ url_for('routes.importar_agendamentos') }}" class="btn btn-primary btn-lg">
                       <i class="bi bi-upload me-2"></i> Importar Agendamentos
                     </a>
+
+                    <a href="{{ url_for('routes.professor_eventos_disponiveis') }}" class="btn btn-primary">
+                      <i class="bi bi-calendar-event me-2"></i> Ver Eventos Disponíveis
+                  </a>
                     
                     <div class="card bg-light">
                       <div class="card-body small">
