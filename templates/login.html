@@ -6,14 +6,12 @@
   <div class="login-card">
     <div class="card-header">
       <div class="brand-wrapper">
-        <i class="bi bi-shield-lock"></i>
         <h1 class="auth-title">Bem-vindo ao AppFiber</h1>
       </div>
       <p class="auth-subtitle">Sistema Integrado de Gestão Educacional</p>
     </div>
     
     <div class="card-body">
-     
       <form action="{{ url_for('routes.login') }}" method="POST" class="auth-form">
         <div class="form-group">
           <label for="email" class="form-label">E-mail</label>
@@ -42,53 +40,85 @@
           </button>
         </div>
 
-        <div class="text-center mt-4">
+        <div class="text-center mt-4 mb-2">
           <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="text-muted small link-forgot">
             Esqueceu sua senha?
           </a>
         </div>
-        
       </form>
     </div>
 
-    <div class="card-footer text-center">
-      <p class="mb-0 small">Novo na plataforma? 
-        <a href="#" class="text-primary">Solicitar credenciais</a>
+    <div class="card-footer">
+      <p class="mb-0">Novo na plataforma? 
+        <a href="{{ url_for('routes.cadastro_professor') }}" class="text-primary">Cadastrar-se como Professor</a>
       </p>
     </div>
-
-    <div class="card-footer text-center">
-      <p class="mb-0 small">Novo na plataforma? 
-          <a href="{{ url_for('routes.cadastro_professor') }}" class="text-primary">Cadastrar-se como Professor</a>
-      </p>
-  </div>
   </div>
 </div>
 
 <style>
+  :root {
+    --primary-color: #0094c3;
+    --primary-light: #e6f7fc;
+    --primary-dark: #006d91;
+    --gradient-primary: linear-gradient(135deg, #0094c3, #006d91);
+    --text-dark: #2a3547;
+    --text-muted: #7c8a9d;
+    --border-radius: 16px;
+    --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  }
+
   .auth-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 80vh;
-    padding: 0rem;
+    min-height: 90vh;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #e6f7fc, #f9fafb);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .auth-container::before {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(0, 148, 195, 0.2), transparent 70%);
+    top: -250px;
+    right: -250px;
+    border-radius: 50%;
+    z-index: 0;
+  }
+  
+  .auth-container::after {
+    content: "";
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 109, 145, 0.15), transparent 70%);
+    bottom: -300px;
+    left: -300px;
+    border-radius: 50%;
+    z-index: 0;
   }
 
   .login-card {
-    background: #ffffff;
-    border-radius: 1.5rem;
-    box-shadow: 0 12px 40px rgba(0, 148, 195, 0.15);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
     width: 100%;
     max-width: 480px;
     overflow: hidden;
-    transition: transform 0.3s ease;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
-  @media (min-width: 768px) {
-    .login-card {
-      max-width: 560px;
-      margin: 2rem;
-    }
+  .login-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
   }
 
   .card-header {
@@ -96,6 +126,19 @@
     color: white;
     padding: 3rem 2.5rem;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    pointer-events: none;
   }
 
   .brand-wrapper {
@@ -103,19 +146,11 @@
     flex-direction: column;
     align-items: center;
     gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
   }
 
-  .brand-wrapper i {
-    font-size: 2.5rem;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1.2rem;
-    border-radius: 50%;
-    width: 70px;
-    height: 70px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .brand-wrapper {
+    margin-bottom: 1rem;
   }
 
   .auth-title {
@@ -123,6 +158,7 @@
     font-weight: 700;
     margin: 0;
     letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .auth-subtitle {
@@ -130,24 +166,14 @@
     font-size: 1.1rem;
     margin: 0.5rem 0 0;
     font-weight: 400;
+    opacity: 0.9;
   }
 
   .card-body {
-    padding: 2.5rem;
-  }
-
-  @media (min-width: 768px) {
-    .card-body {
-      padding: 3rem;
-    }
-    
-    .auth-title {
-      font-size: 2.1rem;
-    }
-    
-    .auth-subtitle {
-      font-size: 1.2rem;
-    }
+    padding: 2.8rem 2.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
   }
 
   .form-group {
@@ -156,52 +182,159 @@
 
   .form-label {
     font-weight: 500;
-    color: #2a3547;
+    color: var(--text-dark);
     margin-bottom: 0.75rem;
-    font-size: 1rem;
+    font-size: 0.95rem;
+    display: block;
   }
 
   .input-group {
-    border-radius: 0.75rem;
-    border: 1px solid #e0e5ec;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    background-color: #f8fafc;
     transition: all 0.3s ease;
+    overflow: hidden;
   }
 
   .input-group:focus-within {
-    border-color: #0094c3;
-    box-shadow: 0 0 0 3px rgba(0, 148, 195, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(0, 148, 195, 0.1);
+    background-color: #ffffff;
   }
 
   .input-group-text {
     background: transparent;
     border: none;
-    color: #7c8a9d;
+    color: var(--text-muted);
     padding: 0 1rem;
   }
 
   .form-control {
     border: none;
-    padding: 1rem;
+    padding: 1rem 0.75rem;
     height: auto;
     font-size: 1rem;
+    background: transparent;
+    color: var(--text-dark);
+  }
+
+  .form-control::placeholder {
+    color: #a0aec0;
+    font-weight: 400;
+  }
+
+  .form-control:focus {
+    box-shadow: none;
+    outline: none;
+  }
+
+  .btn-eye {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 0 1rem;
+    transition: color 0.2s ease;
+  }
+
+  .btn-eye:hover {
+    color: var(--primary-color);
   }
 
   .btn-auth {
     background: var(--gradient-primary);
     color: white;
-    padding: 1.1rem;
-    border-radius: 0.75rem;
+    padding: 1rem;
+    border-radius: 12px;
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .btn-auth::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.7s ease;
+    z-index: -1;
+  }
+
+  .btn-auth:hover {
+    box-shadow: 0 8px 15px rgba(0, 148, 195, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .btn-auth:hover::before {
+    left: 100%;
+  }
+
+  .btn-auth:active {
+    transform: translateY(0);
+  }
+
+  .link-forgot {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s ease;
+    font-size: 0.9rem;
   }
 
   .link-forgot:hover {
-    color: #0094c3;
+    color: var(--primary-color);
+  }
+
+  .card-footer {
+    padding: 1.5rem;
+    background: rgba(248, 250, 252, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+  }
+
+  .card-footer p {
+    font-size: 0.95rem;
+    color: var(--text-dark);
+  }
+
+  .card-footer a {
+    font-weight: 500;
+    transition: color 0.2s ease;
+    text-decoration: none;
+  }
+
+  .card-footer a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+  }
+
+  @media (min-width: 768px) {
+    .login-card {
+      max-width: 500px;
+    }
+    
+    .card-body {
+      padding: 3rem;
+    }
+    
+    .auth-title {
+      font-size: 2rem;
+    }
+    
+    .auth-subtitle {
+      font-size: 1.15rem;
+    }
   }
 </style>
 
 <script>
-  // O mesmo script anterior para toggle de senha
   document.querySelectorAll('[data-toggle-password]').forEach(button => {
     button.addEventListener('click', (e) => {
       const input = button.closest('.input-group').querySelector('input');
@@ -215,6 +348,28 @@
         icon.classList.replace('bi-eye', 'bi-eye-slash');
       }
     });
+  });
+
+  // Efeito de foco nos inputs
+  const inputs = document.querySelectorAll('.form-control');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      input.closest('.input-group').classList.add('focused');
+    });
+    
+    input.addEventListener('blur', () => {
+      input.closest('.input-group').classList.remove('focused');
+    });
+  });
+
+  // Animação no botão de login
+  const loginBtn = document.querySelector('.btn-auth');
+  loginBtn.addEventListener('mouseenter', () => {
+    loginBtn.querySelector('i').classList.add('animate-pulse');
+  });
+  
+  loginBtn.addEventListener('mouseleave', () => {
+    loginBtn.querySelector('i').classList.remove('animate-pulse');
   });
 </script>
 {% endblock %}

@@ -39,9 +39,11 @@
             <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action">
               <i class="bi bi-calendar-week me-2"></i>Meus Agendamentos
             </a>
-            <a href="{{ url_for('routes.cancelar_agendamento') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-calendar-x me-2"></i>Cancelar Agendamento
-            </a>
+            {% for agendamento in agendamentos %}
+                <a href="{{ url_for('routes.cancelar_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                    Cancelar Agendamento - {{ agendamento.escola_nome }} ({{ agendamento.turma }})
+                </a>
+            {% endfor %}
           </div>
         </div>
       </div>
@@ -55,15 +57,17 @@
         </div>
         <div class="card-body d-flex flex-column">
           <div class="list-group">
-            <a href="{{ url_for('routes.eventos_disponiveis') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-calendar2-event me-2"></i>Eventos Disponíveis
-            </a>
+            <a href="{{ url_for('routes.listar_eventos_disponiveis') }}">Eventos Disponíveis</a>
+
             <a href="{{ url_for('routes.horarios_disponiveis') }}" class="list-group-item list-group-item-action">
               <i class="bi bi-clock me-2"></i>Horários Disponíveis
             </a>
-            <a href="{{ url_for('routes.detalhes_evento') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-info-circle me-2"></i>Detalhes do Evento
-            </a>
+            {% for evento in eventos %}
+                <a href="{{ url_for('routes.detalhes_evento', evento_id=evento.id) }}" class="list-group-item list-group-item-action">
+                    {{ evento.nome }}
+                </a>
+            {% endfor %}
+
           </div>
         </div>
       </div>
@@ -77,9 +81,11 @@
         </div>
         <div class="card-body d-flex flex-column">
           <div class="list-group">
-            <a href="{{ url_for('routes.qrcode_agendamento') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-qr-code-scan me-2"></i>QR Code de Agendamento
-            </a>
+            {% for agendamento in agendamentos %}
+                <a href="{{ url_for('routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                    Ver QR Code - Agendamento #{{ agendamento.id }}
+                </a>
+            {% endfor %}
           </div>
         </div>
       </div>
