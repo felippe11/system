@@ -334,77 +334,46 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         senha = request.form['senha']
-        print(f"Tentativa de login para o email: {email}, senha: {senha}")
 
-        # Busca o usuário no banco de dados
         usuario = Usuario.query.filter_by(email=email).first()
-        if usuario:
-            print(f"Usuário encontrado na tabela Usuario: {usuario.email}, tipo: {getattr(usuario, 'tipo', 'N/A')}, senha salva: {usuario.senha}")
-        else:
-            print("Não encontrado na tabela Usuario, buscando em Ministrante...")
+        if not usuario:
             usuario = Ministrante.query.filter_by(email=email).first()
-            if usuario:
-                print(f"Usuário encontrado na tabela Ministrante: {usuario.email}, senha salva: {usuario.senha}")
+        if not usuario:
+            usuario = Cliente.query.filter_by(email=email).first()
+
+        if not usuario:
+            flash('E-mail ou senha incorretos!', 'danger')
+            return render_template('login.html')
+
+        # Verificação correta e simplificada da senha
+        senha_correta = check_password_hash(usuario.senha, senha)
+
+        if senha_correta:
+            login_user(usuario)
+
+            # Definir corretamente o tipo de usuário na sessão
+            if isinstance(usuario, Cliente):
+                session['user_type'] = 'cliente'
+            elif isinstance(usuario, Ministrante):
+                session['user_type'] = 'ministrante'
             else:
-                print("Não encontrado na tabela Ministrante, buscando em Cliente...")
-                usuario = Cliente.query.filter_by(email=email).first()
-                if usuario:
-                    if not usuario.is_active():
-                        flash('Sua conta está desativada. Contate o administrador.', 'danger')
-                        return render_template('login.html')
-                    if check_password_hash(usuario.senha, senha):
-                        session['user_type'] = 'cliente'
-                        login_user(usuario)
-                        flash('Login realizado com sucesso!', 'success')
-                        return redirect(url_for('routes.dashboard_cliente'))
-                    flash('E-mail ou senha incorretos!', 'danger')
-                    print(f"Usuário encontrado na tabela Cliente: {usuario.email}, senha salva: {usuario.senha}")
-                else:
-                    print("Usuário não encontrado em nenhuma tabela.")
-        if usuario:
-            if check_password_hash(usuario.senha, senha):
-             login_user(usuario)
-            if usuario.tipo == 'professor':
-                return redirect(url_for('routes.dashboard_professor'))
+                session['user_type'] = usuario.tipo
 
-        # Verifica a senha
-        if usuario:
-            print(f"Comparando senha digitada ({senha}) com senha salva ({usuario.senha})")
+            flash('Login realizado com sucesso!', 'success')
 
-            # Verifica se a senha está em texto puro ou se é um hash
-            if usuario.senha.startswith("scrypt:") or usuario.senha.startswith("pbkdf2:") or usuario.senha.startswith("sha256$"):
-                senha_correta = check_password_hash(usuario.senha, senha)
-            else:
-                senha_correta = usuario.senha == senha
+            # Redirecionamento correto e simplificado
+            destino = {
+                'admin': 'routes.dashboard',
+                'cliente': 'routes.dashboard_cliente',
+                'participante': 'routes.dashboard_participante',
+                'ministrante': 'routes.dashboard_ministrante',
+                'professor': 'routes.dashboard_professor'
+            }.get(session.get('user_type'), 'routes.dashboard')
 
-            if senha_correta:
-                print("Senha verificada com sucesso!")
-                
-                session['user_type'] = (
-                    'ministrante' if isinstance(usuario, Ministrante) else
-                    'cliente' if isinstance(usuario, Cliente) else
-                    usuario.tipo if hasattr(usuario, 'tipo') else 'usuario'
-                )
+            return redirect(url_for(destino))
 
-                login_user(usuario)
-                flash('Login realizado com sucesso!', 'success')
-
-                # Redirecionamento conforme o tipo de usuário
-                redirecionamentos = {
-                    'admin': 'routes.dashboard',
-                    'cliente': 'routes.dashboard_cliente',
-                    'participante': 'routes.dashboard_participante',
-                    'ministrante': 'routes.dashboard_ministrante'
-                }
-                destino = redirecionamentos.get(session.get('user_type'), 'routes.dashboard_ministrante')
-                print(f"Redirecionando para {destino}")
-                return redirect(url_for(destino))
-            else:
-                print("Senha incorreta.")
         else:
-            print("Usuário não encontrado.")
-
-        flash('E-mail ou senha incorretos!', 'danger')
+            flash('E-mail ou senha incorretos!', 'danger')
 
     return render_template('login.html')
 
@@ -414,8 +383,13 @@ def dashboard_professor():
     if current_user.tipo != 'professor':
         return redirect(url_for('routes.dashboard'))
     
-    return render_template('dashboard_professor.html')
+    # Buscando os agendamentos do professor logado
+    agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
 
+    return render_template(
+        'dashboard_professor.html', 
+        agendamentos=agendamentos_professor
+    )
 
 @routes.route('/logout')
 @login_required
@@ -8972,3 +8946,86 @@ def importar_alunos():
 
     # GET: Renderiza o formulário de importação
     return render_template('importar_alunos.html')
+
+@routes.route('/cancelar_agendamento/<int:agendamento_id>', methods=['POST'])
+@login_required
+def cancelar_agendamento(agendamento_id):
+    # Busca o agendamento no banco de dados
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verifica se o usuário é o professor que fez o agendamento ou admin
+    if current_user.tipo != 'admin' and current_user.id != agendamento.professor_id:
+        flash("Você não tem permissão para cancelar este agendamento!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Atualiza o status do agendamento para cancelado e a data do cancelamento
+    agendamento.status = 'cancelado'
+    agendamento.data_cancelamento = datetime.utcnow()
+
+    # Atualiza a capacidade do horário, devolvendo as vagas
+    horario = agendamento.horario
+    horario.vagas_disponiveis += agendamento.quantidade_alunos
+
+    try:
+        db.session.commit()
+        flash("Agendamento cancelado com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao cancelar agendamento: {str(e)}", "danger")
+
+    return redirect(url_for('routes.dashboard_professor' if current_user.tipo == 'participante' else 'routes.dashboard'))
+
+@routes.route('/eventos_disponiveis', methods=['GET'])
+@login_required
+def eventos_disponiveis():
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    eventos = Evento.query.filter(Evento.data_inicio >= datetime.utcnow()).order_by(Evento.data_inicio).all()
+
+    return render_template('eventos_disponiveis.html', eventos=eventos)
+
+@routes.route('/listar_eventos_disponiveis', methods=['GET'])
+@login_required
+def listar_eventos_disponiveis():
+    if current_user.tipo != 'participante':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    eventos = Evento.query.all()
+    return render_template('eventos_disponiveis.html', eventos=eventos)
+
+
+
+@routes.route('/detalhes_evento/<int:evento_id>', methods=['GET'])
+@login_required
+def detalhes_evento(evento_id):
+    evento = Evento.query.get_or_404(evento_id)
+
+    # Carrega as oficinas associadas ao evento
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo).all()
+
+    return render_template('detalhes_evento.html', evento=evento, oficinas=oficinas)
+
+
+@routes.route('/qrcode_agendamento/<int:agendamento_id>', methods=['GET'])
+@login_required
+def qrcode_agendamento(agendamento_id):
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Dados que estarão no QR Code
+    qr_data = f"Agendamento ID: {agendamento.id}, Evento: {agendamento.horario.evento.nome}, Data: {agendamento.horario.data.strftime('%d/%m/%Y')}"
+
+    # Gerando QR Code
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+
+    # Envia o QR Code como imagem
+    buf = io.BytesIO()
+    img.save(buf, 'PNG')
+    buf.seek(0)
+
+    return send_file(buf, mimetype='image/png', as_attachment=False, download_name=f'qrcode_agendamento_{agendamento.id}.png')
