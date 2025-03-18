@@ -15,12 +15,26 @@
 
   <!-- Statistics Cards -->
   <div class="row g-4 mb-4">
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="row g-4 mb-4">
+      <div class="col">
+        <div class="card stat-card bg-success-gradient text-white">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-subtitle mb-2">Eventos</h5>
+                <h2 class="card-title mb-0">{{ total_eventos }}</h2>
+              </div>
+              <i class="bi bi-calendar-event fs-1 opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    <div class="col">
       <div class="card stat-card bg-primary-gradient text-white">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h5 class="card-subtitle mb-2">Oficinas Ativas</h5>
+              <h5 class="card-subtitle mb-2">Oficinas</h5>
               <h2 class="card-title mb-0">{{ total_oficinas }}</h2>
             </div>
             <i class="bi bi-journal-bookmark fs-1 opacity-25"></i>
@@ -29,12 +43,12 @@
       </div>
     </div>
     
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col">
       <div class="card stat-card bg-info-gradient text-white">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h5 class="card-subtitle mb-2">Vagas Preenchidas</h5>
+              <h5 class="card-subtitle mb-2">Vagas</h5>
               <h2 class="card-title mb-0">{{ total_inscricoes }}</h2>
             </div>
             <i class="bi bi-people fs-1 opacity-25"></i>
@@ -43,12 +57,12 @@
       </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col">
       <div class="card stat-card bg-warning-gradient text-dark">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <h5 class="card-subtitle mb-2">Taxa de Adesão</h5>
+              <h5 class="card-subtitle mb-2">Adesão</h5>
               <h2 class="card-title mb-0">{{ "%.2f"|format(percentual_adesao) }}%</h2>
             </div>
             <i class="bi bi-graph-up fs-1 opacity-25"></i>
@@ -57,7 +71,7 @@
       </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col">
       <div class="card stat-card bg-danger-gradient text-white">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
@@ -85,6 +99,10 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" 
                       data-bs-target="#clientes" type="button">Clientes</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="propostas-tab" data-bs-toggle="tab" 
+                      data-bs-target="#propostas" type="button">Propostas</button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="ferramentas-tab" data-bs-toggle="tab" 
@@ -223,6 +241,48 @@
                 </div>
               </div>
             </div>
+
+            <!-- Propostas Tab -->
+            <div class="tab-pane fade" id="propostas">
+              <div class="card">
+                <div class="card-header bg-primary text-white">
+                  <h5 class="mb-0"><i class="bi bi-envelope me-2"></i>Propostas Recebidas</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Nome</th>
+                          <th>E-mail</th>
+                          <th>Tipo de Evento</th>
+                          <th>Descrição</th>
+                          <th>Data</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for proposta in propostas %}
+                        <tr>
+                          <td>{{ proposta.nome }}</td>
+                          <td>{{ proposta.email }}</td>
+                          <td>{{ proposta.tipo_evento }}</td>
+                          <td>{{ proposta.descricao }}</td>
+                          <td>{{ proposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
+                          <td>
+                            <span class="badge bg-{{ 'warning' if proposta.status == 'Pendente' else 'success' }}">
+                              {{ proposta.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
             <!-- Ferramentas Tab -->
             <div class="tab-pane fade" id="ferramentas">
@@ -1144,6 +1204,10 @@
 
   .bg-primary-gradient {
     background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
+  }
+
+  .bg-success-gradient {
+    background: linear-gradient(135deg, #00b4d8 0%, #0094c3 100%);
   }
 
   .bg-info-gradient {
