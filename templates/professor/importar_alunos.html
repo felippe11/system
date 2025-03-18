@@ -1,0 +1,68 @@
+<!-- Template: professor/importar_alunos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Importar Alunos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Importar Lista de Alunos</h2>
+    
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle"></i> Você pode importar uma lista de alunos a partir de um arquivo CSV.
+        <p class="mb-0">
+            O arquivo deve conter uma linha por aluno, no formato: <code>Nome do Aluno,CPF</code><br>
+            O CPF é opcional e pode ser deixado em branco.
+        </p>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} às {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Total de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-file-import"></i> Upload do Arquivo
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('routes.importar_alunos_agendamento', agendamento_id=agendamento.id) }}">
+                <div class="mb-3">
+                    <label for="arquivo_csv" class="form-label">Selecione o arquivo CSV:</label>
+                    <input class="form-control" type="file" id="arquivo_csv" name="arquivo_csv" accept=".csv" required>
+                </div>
+                
+                <div class="mb-3">
+                    <h5>Exemplo de formato:</h5>
+                    <pre>João da Silva,12345678900
+Maria Oliveira,
+Pedro Santos,98765432100</pre>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Importar Alunos
+                    </button>
+                    <a href="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i> Voltar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
