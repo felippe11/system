@@ -2,48 +2,45 @@
 {% block title %}Dashboard do Professor{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2 class="mb-4"><i class="bi bi-mortarboard-fill me-2"></i>Painel do Professor</h2>
-  
-  <div class="row g-4">
-    <!-- Gerenciamento de Alunos -->
-    <div class="col-md-6 col-lg-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h5 class="card-title mb-0"><i class="bi bi-people-fill me-2"></i>Alunos</h5>
-        </div>
-        <div class="card-body d-flex flex-column">
-          <div class="list-group">
-            <a href="{{ url_for('routes.adicionar_alunos') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-person-plus-fill me-2"></i>Adicionar Alunos
-            </a>
-            <a href="{{ url_for('routes.importar_alunos') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-file-earmark-arrow-up me-2"></i>Importar Alunos
-            </a>
-          </div>
-        </div>
+<div class="container py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="bg-primary text-white rounded-3 shadow p-4">
+        <h2 class="mb-0 d-flex align-items-center">
+          <i class="bi bi-mortarboard-fill me-3 fs-1"></i>
+          <span>Painel do Professor</span>
+        </h2>
       </div>
     </div>
+  </div>
 
+  <div class="row g-4">
     <!-- Gerenciamento de Agendamentos -->
     <div class="col-md-6 col-lg-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header bg-success text-white">
-          <h5 class="card-title mb-0"><i class="bi bi-calendar-check-fill me-2"></i>Agendamentos</h5>
+      <div class="card h-100 shadow border-0 rounded-3 overflow-hidden">
+        <div class="card-header bg-success text-white py-3">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-calendar-check-fill me-2"></i>Agendamentos
+          </h5>
         </div>
-        <div class="card-body d-flex flex-column">
-          <div class="list-group">
-            <a href="{{ url_for('routes.criar_agendamento') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-calendar-plus me-2"></i>Criar Agendamento
+        <div class="card-body">
+          <div class="list-group list-group-flush border-0">
+            <a href="{{ url_for('routes.criar_agendamento') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+              <i class="bi bi-calendar-plus me-3 fs-5 text-success"></i>
+              <span>Criar Agendamento</span>
             </a>
-            <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-calendar-week me-2"></i>Meus Agendamentos
+            <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+              <i class="bi bi-calendar-week me-3 fs-5 text-success"></i>
+              <span>Meus Agendamentos</span>
             </a>
             {% for agendamento in agendamentos %}
-                <a href="{{ url_for('routes.cancelar_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
-                    Cancelar Agendamento - {{ agendamento.escola_nome }} ({{ agendamento.turma }})
-                </a>
+              <form action="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" method="POST" style="display:inline;">
+                <button class="btn btn-danger btn-sm" type="submit">
+                  Cancelar Agendamento (#{{ agendamento.id }})
+                </button>
+              </form>
             {% endfor %}
+
           </div>
         </div>
       </div>
@@ -51,72 +48,89 @@
 
     <!-- Eventos e Horários -->
     <div class="col-md-6 col-lg-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header bg-info text-white">
-          <h5 class="card-title mb-0"><i class="bi bi-calendar-event me-2"></i>Eventos e Horários</h5>
+      <div class="card h-100 shadow border-0 rounded-3 overflow-hidden">
+        <div class="card-header bg-info text-white py-3">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-calendar-event me-2"></i>Eventos e Horários
+          </h5>
         </div>
-        <div class="card-body d-flex flex-column">
-          <div class="list-group">
-            <a href="{{ url_for('routes.listar_eventos_disponiveis') }}">Eventos Disponíveis</a>
-
-            <a href="{{ url_for('routes.horarios_disponiveis') }}" class="list-group-item list-group-item-action">
-              <i class="bi bi-clock me-2"></i>Horários Disponíveis
+        <div class="card-body">
+          <div class="list-group list-group-flush border-0">
+            <a href="{{ url_for('routes.listar_eventos_disponiveis') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+              <i class="bi bi-calendar-event me-3 fs-5 text-info"></i>
+              <span>Eventos Disponíveis</span>
             </a>
             {% for evento in eventos %}
-                <a href="{{ url_for('routes.detalhes_evento', evento_id=evento.id) }}" class="list-group-item list-group-item-action">
-                    {{ evento.nome }}
-                </a>
+              <a href="{{ url_for('routes.detalhes_evento', evento_id=evento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+                <i class="bi bi-stars me-3 fs-5 text-info"></i>
+                <span>{{ evento.nome }}</span>
+              </a>
             {% endfor %}
-
           </div>
         </div>
       </div>
     </div>
-
-    <div class="container mt-4">
-      <h2 class="mb-4"><i class="bi bi-calendar"></i> Agenda de Agendamentos</h2>
-      <div id="calendar"></div>
-  </div>
-  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.js"></script>
-  <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          var calendarEl = document.getElementById('calendar');
-          var calendar = new FullCalendar.Calendar(calendarEl, {
-              initialView: 'dayGridMonth',
-              headerToolbar: {
-                  left: 'prev,next today',
-                  center: 'title',
-                  right: 'dayGridMonth,timeGridWeek,timeGridDay'
-              },
-              events: '/api/horarios_disponiveis',
-              eventClick: function(info) {
-                  window.location.href = info.event.url;
-              }
-          });
-          calendar.render();
-      });
-  </script>
-  
 
     <!-- QR Code -->
     <div class="col-md-6 col-lg-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header bg-warning text-dark">
-          <h5 class="card-title mb-0"><i class="bi bi-qr-code me-2"></i>QR Code</h5>
+      <div class="card h-100 shadow border-0 rounded-3 overflow-hidden">
+        <div class="card-header bg-warning text-dark py-3">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-qr-code me-2"></i>QR Code
+          </h5>
         </div>
-        <div class="card-body d-flex flex-column">
-          <div class="list-group">
+        <div class="card-body">
+          <div class="list-group list-group-flush border-0">
             {% for agendamento in agendamentos %}
-                <a href="{{ url_for('routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
-                    Ver QR Code - Agendamento #{{ agendamento.id }}
-                </a>
+              <a href="{{ url_for('routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+                <i class="bi bi-qr-code-scan me-3 fs-5 text-warning"></i>
+                <span>Ver QR Code - Agendamento #{{ agendamento.id }}</span>
+              </a>
             {% endfor %}
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+
+
+<!-- Adicione este código ao final do seu bloco de conteúdo para o calendário funcionar melhor -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'pt-br',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      buttonText: {
+        today: 'Hoje',
+        month: 'Mês',
+        week: 'Semana',
+        day: 'Dia'
+      },
+      events: [
+        {% for agendamento in agendamentos %}
+        {
+          id: '{{ agendamento.id }}',
+          title: '{{ agendamento.escola_nome }} ({{ agendamento.turma }})',
+          start: '{{ agendamento.data_inicio }}',
+          end: '{{ agendamento.data_fim }}',
+          url: '{{ url_for("routes.detalhes_agendamento", agendamento_id=agendamento.id) }}'
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ],
+      eventClick: function(info) {
+        if (info.event.url) {
+          info.jsEvent.preventDefault();
+          window.location.href = info.event.url;
+        }
+      }
+    });
+    calendar.render();
+  });
+</script>
 {% endblock %}
