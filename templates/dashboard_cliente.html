@@ -455,6 +455,56 @@
               </div>
             </div>
 
+                <!-- Import Section -->
+                <div class="col-12 col-lg-6">
+                  <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                      <i class="bi bi-upload me-2"></i>Importação de Dados
+                    </div>
+                    <div class="card-body">
+                      <div class="mb-4">
+                        <h5 class="mb-3">Importar Oficinas</h5>
+                        <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" 
+                              enctype="multipart/form-data" class="mb-4">
+                          <div class="input-group">
+                            <input type="file" name="arquivo" accept=".xlsx" 
+                                   class="form-control" required>
+                            <button type="submit" class="btn btn-success">
+                              <i class="bi bi-upload me-2"></i>Importar
+                            </button>
+                          </div>
+                          <small class="text-muted mt-2 d-block">
+                            <a href="{{ url_for('static', filename='modelo_oficinas.xlsx') }}" 
+                               class="text-decoration-none">
+                              <i class="bi bi-download me-1"></i>Baixar modelo
+                            </a>
+                          </small>
+                        </form>
+                      </div>
+
+                      <div>
+                        <h5 class="mb-3">Importar Usuários</h5>
+                        <form action="{{ url_for('routes.importar_usuarios') }}" method="POST" 
+                              enctype="multipart/form-data">
+                          <div class="input-group">
+                            <input type="file" name="arquivo" accept=".xlsx" 
+                                   class="form-control" required>
+                            <button type="submit" class="btn btn-success">
+                              <i class="bi bi-upload me-2"></i>Importar
+                            </button>
+                          </div>
+                          <small class="text-muted mt-2 d-block">
+                            <a href="{{ url_for('static', filename='modelo_usuarios.xlsx') }}" 
+                               class="text-decoration-none">
+                              <i class="bi bi-download me-1"></i>Baixar modelo
+                            </a>
+                          </small>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
             <!-- Manutenção do Sistema -->
             <div class="col-md-6">
               <div class="card shadow">
