@@ -1,260 +1,203 @@
 {% extends "base.html" %}
-{% block title %}Acesso à Plataforma{% endblock %}
+{% block title %}Login AppFiber{% endblock %}
 
 {% block content %}
-<div class="auth-container">
+<div class="login-container">
   <div class="login-card">
-    <div class="card-header">
-      <div class="brand-wrapper">
-        <h1 class="auth-title">Bem-vindo ao AppFiber</h1>
-      </div>
-      <p class="auth-subtitle">Sistema Integrado de Gestão Educacional</p>
+    <div class="login-header">
+      <h1 class="login-title">AppFiber</h1>
+      <p class="login-subtitle">Sistema Integrado de Gestão Educacional</p>
     </div>
     
-    <div class="card-body">
-      <form action="{{ url_for('routes.login') }}" method="POST" class="auth-form">
-        <div class="form-group">
-          <label for="email" class="form-label">E-mail</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-envelope-at"></i></span>
-            <input type="email" class="form-control" name="email" id="email" 
-                   placeholder="Insira o E-mail" required>
-          </div>
+    <form action="{{ url_for('routes.login') }}" method="POST" class="login-form">
+      <div class="form-group">
+        <div class="input-wrapper">
+          <i class="bi bi-envelope-at"></i>
+          <input type="email" name="email" id="email" placeholder="E-mail" required>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="senha" class="form-label">Senha de Acesso</label>
-          <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-key"></i></span>
-            <input type="password" class="form-control" name="senha" id="senha" 
-                   placeholder="Insira a Senha" required>
-            <button type="button" class="btn btn-eye" data-toggle-password>
-              <i class="bi bi-eye-slash"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="d-grid mt-4">
-          <button type="submit" class="btn btn-auth">
-            <i class="bi bi-box-arrow-in-right me-2"></i>Acessar Plataforma
+      <div class="form-group">
+        <div class="input-wrapper">
+          <i class="bi bi-key"></i>
+          <input type="password" name="senha" id="senha" placeholder="Senha" required>
+          <button type="button" class="btn-toggle" id="togglePassword">
+            <i class="bi bi-eye-slash"></i>
           </button>
         </div>
+      </div>
 
-        <div class="text-center mt-4 mb-2">
-          <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="text-muted small link-forgot">
-            Esqueceu sua senha?
-          </a>
-        </div>
-      </form>
-    </div>
-
-    <div class="card-footer">
-      <p class="mb-0">Novo na plataforma? 
-        <a href="{{ url_for('routes.cadastro_professor') }}" class="text-primary">Cadastrar-se como Professor</a>
-      </p>
-    </div>
+      <button type="submit" class="btn-login">
+        <span>Entrar</span>
+        <i class="bi bi-arrow-right-circle"></i>
+      </button>
+      
+      <div class="links">
+        <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="link">Esqueceu sua senha?</a>
+        <a href="{{ url_for('routes.cadastro_professor') }}" class="link register-link">Cadastrar-se <i class="bi bi-person-plus"></i></a>
+      </div>
+    </form>
   </div>
 </div>
 
 <style>
   :root {
-    --primary-color: #0094c3;
-    --primary-light: #e6f7fc;
+    --primary: #0094c3;
     --primary-dark: #006d91;
-    --gradient-primary: linear-gradient(135deg, #0094c3, #006d91);
-    --text-dark: #2a3547;
-    --text-muted: #7c8a9d;
-    --border-radius: 16px;
-    --box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    --primary-light: #e6f7fc;
+    --background: #f5f7fa;
+    --card-bg: #ffffff;
+    --input-bg: #f2f5f9;
+    --text: #2a3547;
+    --text-light: #7c8a9d;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    --accent: #34d399;
   }
 
-  .auth-container {
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--background);
+    color: var(--text);
+  }
+
+  .login-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 90vh;
-    padding: 1.5rem;
-    background: linear-gradient(135deg, #e6f7fc, #f9fafb);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .auth-container::before {
-    content: "";
-    position: absolute;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(0, 148, 195, 0.2), transparent 70%);
-    top: -250px;
-    right: -250px;
-    border-radius: 50%;
-    z-index: 0;
-  }
-  
-  .auth-container::after {
-    content: "";
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(0, 109, 145, 0.15), transparent 70%);
-    bottom: -300px;
-    left: -300px;
-    border-radius: 50%;
-    z-index: 0;
+    min-height: 100vh;
+    padding: 20px;
+    background: var(--background);
   }
 
   .login-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
+    background: var(--card-bg);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
     width: 100%;
-    max-width: 480px;
+    max-width: 420px;
+    padding: 0;
     overflow: hidden;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.08);
   }
 
-  .login-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.12);
-  }
-
-  .card-header {
-    background: var(--gradient-primary);
-    color: white;
-    padding: 3rem 2.5rem;
+  .login-header {
+    background: linear-gradient(to right, #006d91, #0094c3);
+    padding: 40px;
     text-align: center;
     position: relative;
     overflow: hidden;
   }
 
-  .card-header::before {
+  .login-header::after {
     content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    pointer-events: none;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+    top: -50%;
+    left: -50%;
   }
 
-  .brand-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .brand-wrapper {
-    margin-bottom: 1rem;
-  }
-
-  .auth-title {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin: 0;
-    letter-spacing: -0.5px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .auth-subtitle {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 1.1rem;
-    margin: 0.5rem 0 0;
-    font-weight: 400;
-    opacity: 0.9;
-  }
-
-  .card-body {
-    padding: 2.8rem 2.5rem;
-    background: rgba(255, 255, 255, 0.5);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-  }
-
-  .form-group {
-    margin-bottom: 1.8rem;
-  }
-
-  .form-label {
-    font-weight: 500;
-    color: var(--text-dark);
-    margin-bottom: 0.75rem;
-    font-size: 0.95rem;
-    display: block;
-  }
-
-  .input-group {
-    border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background-color: #f8fafc;
-    transition: all 0.3s ease;
-    overflow: hidden;
-  }
-
-  .input-group:focus-within {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 4px rgba(0, 148, 195, 0.1);
-    background-color: #ffffff;
-  }
-
-  .input-group-text {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    padding: 0 1rem;
-  }
-
-  .form-control {
-    border: none;
-    padding: 1rem 0.75rem;
-    height: auto;
-    font-size: 1rem;
-    background: transparent;
-    color: var(--text-dark);
-  }
-
-  .form-control::placeholder {
-    color: #a0aec0;
-    font-weight: 400;
-  }
-
-  .form-control:focus {
-    box-shadow: none;
-    outline: none;
-  }
-
-  .btn-eye {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    padding: 0 1rem;
-    transition: color 0.2s ease;
-  }
-
-  .btn-eye:hover {
-    color: var(--primary-color);
-  }
-
-  .btn-auth {
-    background: var(--gradient-primary);
+  .login-title {
     color: white;
-    padding: 1rem;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    border: none;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin: 0 0 8px 0;
     position: relative;
-    overflow: hidden;
     z-index: 1;
   }
 
-  .btn-auth::before {
+  .login-subtitle {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1rem;
+    margin: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 40px;
+  }
+
+  .form-group {
+    text-align: left;
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: var(--input-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .input-wrapper:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 148, 195, 0.25);
+  }
+
+  .input-wrapper i {
+    color: var(--text-light);
+    font-size: 1.1rem;
+    padding: 0 16px;
+  }
+
+  .input-wrapper input {
+    width: 100%;
+    padding: 16px 16px 16px 0;
+    border: none;
+    background: transparent;
+    font-size: 1rem;
+    color: var(--text);
+    outline: none;
+  }
+
+  .input-wrapper input::placeholder {
+    color: var(--text-light);
+    opacity: 0.7;
+  }
+
+  .btn-toggle {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0 16px;
+    font-size: 1.1rem;
+    transition: color 0.2s;
+  }
+
+  .btn-toggle:hover {
+    color: var(--accent);
+  }
+
+  .btn-login {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-login::before {
     content: '';
     position: absolute;
     top: 0;
@@ -262,114 +205,88 @@
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.7s ease;
-    z-index: -1;
+    transition: left 0.5s ease;
   }
 
-  .btn-auth:hover {
-    box-shadow: 0 8px 15px rgba(0, 148, 195, 0.25);
+  .btn-login:hover {
+    background: var(--primary-dark);
     transform: translateY(-2px);
   }
-
-  .btn-auth:hover::before {
+  
+  .btn-login:hover::before {
     left: 100%;
   }
 
-  .btn-auth:active {
-    transform: translateY(0);
+  .btn-login i {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+  }
+  
+  .btn-login:hover i {
+    transform: translateX(5px);
   }
 
-  .link-forgot {
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: color 0.2s ease;
+  .links {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 0.9rem;
   }
 
-  .link-forgot:hover {
-    color: var(--primary-color);
-  }
-
-  .card-footer {
-    padding: 1.5rem;
-    background: rgba(248, 250, 252, 0.5);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    text-align: center;
-  }
-
-  .card-footer p {
-    font-size: 0.95rem;
-    color: var(--text-dark);
-  }
-
-  .card-footer a {
-    font-weight: 500;
-    transition: color 0.2s ease;
+  .link {
+    color: var(--text-light);
     text-decoration: none;
+    transition: all 0.2s;
+    padding: 6px 0;
   }
 
-  .card-footer a:hover {
-    color: var(--primary-dark);
-    text-decoration: underline;
+  .link:hover {
+    color: var(--primary);
+  }
+  
+  .register-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--accent);
+  }
+  
+  .register-link:hover {
+    color: #2dd590;
   }
 
-  @media (min-width: 768px) {
+  @media (max-width: 480px) {
     .login-card {
-      max-width: 500px;
+      border-radius: 20px;
     }
     
-    .card-body {
-      padding: 3rem;
+    .login-header {
+      padding: 30px 20px;
     }
     
-    .auth-title {
-      font-size: 2rem;
+    .login-form {
+      padding: 30px 24px;
     }
     
-    .auth-subtitle {
-      font-size: 1.15rem;
+    .login-title {
+      font-size: 1.8rem;
     }
   }
 </style>
 
 <script>
-  document.querySelectorAll('[data-toggle-password]').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const input = button.closest('.input-group').querySelector('input');
-      const icon = button.querySelector('i');
-      
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.classList.replace('bi-eye-slash', 'bi-eye');
-      } else {
-        input.type = 'password';
-        icon.classList.replace('bi-eye', 'bi-eye-slash');
-      }
-    });
-  });
-
-  // Efeito de foco nos inputs
-  const inputs = document.querySelectorAll('.form-control');
-  inputs.forEach(input => {
-    input.addEventListener('focus', () => {
-      input.closest('.input-group').classList.add('focused');
-    });
+  // Toggle password visibility
+  document.getElementById('togglePassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('senha');
+    const icon = this.querySelector('i');
     
-    input.addEventListener('blur', () => {
-      input.closest('.input-group').classList.remove('focused');
-    });
-  });
-
-  // Animação no botão de login
-  const loginBtn = document.querySelector('.btn-auth');
-  loginBtn.addEventListener('mouseenter', () => {
-    loginBtn.querySelector('i').classList.add('animate-pulse');
-  });
-  
-  loginBtn.addEventListener('mouseleave', () => {
-    loginBtn.querySelector('i').classList.remove('animate-pulse');
+    if (passwordInput.type === 'password') {
+      passwordInput.type = 'text';
+      icon.classList.replace('bi-eye-slash', 'bi-eye');
+    } else {
+      passwordInput.type = 'password';
+      icon.classList.replace('bi-eye', 'bi-eye-slash');
+    }
   });
 </script>
 {% endblock %}
