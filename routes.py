@@ -466,6 +466,8 @@ def dashboard():
     from sqlalchemy import func
 
     propostas = Proposta.query.all()
+     # Buscando os agendamentos do professor logado
+    agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
 
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
@@ -651,7 +653,8 @@ def dashboard():
         inscricoes=inscricoes,
         habilitar_certificado_individual=habilitar_certificado_individual,
         clientes=clientes,
-        cliente_filter=cliente_filter
+        cliente_filter=cliente_filter,
+        agendamentos_professor=agendamentos_professor
     )
 
 @routes.route('/dashboard_participante')
@@ -10208,3 +10211,4 @@ def horarios_disponiveis_api():
         })
 
     return jsonify(eventos)
+
