@@ -10212,3 +10212,20 @@ def horarios_disponiveis_api():
 
     return jsonify(eventos)
 
+@routes.route('/formularios/<int:formulario_id>/respostas', methods=['GET'])
+@login_required
+def listar_respostas_formularios(formulario_id):
+    """
+    Lista todas as respostas de um formulário específico.
+    """
+    # 1) Verifica se o formulário existe:
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    # 2) Carrega todas as respostas enviadas para este formulário:
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    # 3) Renderiza um template que exiba essas respostas
+    return render_template('listar_respostas.html',
+                           formulario=formulario,
+                           respostas=respostas)
+
