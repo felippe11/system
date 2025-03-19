@@ -22,7 +22,17 @@
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>Local:</strong> {{ evento.local }}</p>
-                    <p><strong>Período:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }} a {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+                    {% if evento.data_inicio %}
+                        <p><strong>Data de Início:</strong> {{ evento.data_inicio.strftime('%d/%m/%Y') }}</p>
+                        {% else %}
+                            <p><strong>Data de Início:</strong> N/D</p>
+                        {% endif %}
+
+                        {% if evento.data_fim %}
+                            <p><strong>Data de Fim:</strong> {{ evento.data_fim.strftime('%d/%m/%Y') }}</p>
+                        {% else %}
+                            <p><strong>Data de Fim:</strong> N/D</p>
+                    {% endif %}
                     <p><strong>Organizado por:</strong> {{ evento.cliente.nome }}</p>
                 </div>
                 <div class="col-md-6">
@@ -90,7 +100,7 @@
                 <i class="fas fa-calendar-check"></i> Agendar Visita
             </a>
         {% endif %}
-        <a href="{{ url_for('routes.eventos_disponiveis_professor') }}" class="btn btn-secondary">
+        <a href="{{ url_for('routes.listar_eventos_disponiveis') }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
     </div>

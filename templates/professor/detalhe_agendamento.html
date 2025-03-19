@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Detalhes do Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-3">Detalhes do Agendamento #{{ agendamento.id }}</h2>
+
+  <div class="row mb-3">
+    <div class="col-md-6 col-lg-4">
+      <p><strong>Evento:</strong> 
+        {{ agendamento.horario.evento.nome if agendamento.horario and agendamento.horario.evento else '—' }}
+      </p>
+      <p><strong>Data:</strong>
+        {{ agendamento.horario.data.strftime('%d/%m/%Y') if agendamento.horario and agendamento.horario.data else '—' }}
+      </p>
+      <p><strong>Horário:</strong>
+        {% if agendamento.horario %}
+          {{ agendamento.horario.horario_inicio }} - {{ agendamento.horario.horario_fim }}
+        {% else %}
+          —
+        {% endif %}
+      </p>
+      <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+      <p><strong>Escola / Instituição:</strong> {{ agendamento.escola_nome }}</p>
+      <p><strong>Código INEP (se houver):</strong> {{ agendamento.escola_codigo_inep or '—' }}</p>
+      <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+      <p><strong>Nível de Ensino:</strong> {{ agendamento.nivel_ensino }}</p>
+      <p><strong>Status do Agendamento:</strong> {{ agendamento.status }}</p>
+      
+      {% if agendamento.salas_selecionadas %}
+        <p><strong>Salas Selecionadas:</strong> {{ agendamento.salas_selecionadas }}</p>
+      {% endif %}
+      
+      <hr>
+      <!-- Botão de Cancelar, chamando a rota cancelar_agendamento -->
+      {% if agendamento.status != 'cancelado' and agendamento.status != 'realizado' %}
+        <form method="POST" action="{{ url_for('routes.cancelar_agendamento', agendamento_id=agendamento.id) }}">
+          <button class="btn btn-danger">
+            <i class="bi bi-x-octagon"></i> Cancelar Agendamento
+          </button>
+        </form>
+      {% else %}
+        <div class="alert alert-warning">
+          <strong>Observação:</strong> Este agendamento já está {{ agendamento.status }}.
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Exibir lista de alunos -->
+    <div class="col-md-6 col-lg-8">
+      <h5>Lista de Alunos</h5>
+      {% if agendamento.alunos %}
+        <ul class="list-group">
+          {% for aluno in agendamento.alunos %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              {{ aluno.nome }} 
+              {% if aluno.cpf %} (CPF: {{ aluno.cpf }}) {% endif %}
+              <span class="badge bg-{{ 'success' if aluno.presente else 'secondary' }}">
+                {{ 'Presente' if aluno.presente else 'Ausente' }}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Nenhum aluno cadastrado neste agendamento.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Exibir QR Code, se desejar -->
+  <div class="mt-4">
+    <h5>QR Code para Check-in</h5>
+    <p>Caso seu sistema gere QR Code para check-in, você pode exibi-lo abaixo:</p>
+    <img src="{{ url_for('routes.gerar_qrcode_agendamento', agendamento_id=agendamento.id) }}" 
+         alt="QR Code do Agendamento" style="max-width: 200px;">
+  </div>
+</div>
+{% endblock %}
