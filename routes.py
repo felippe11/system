@@ -178,7 +178,7 @@ def cadastro_participante(identifier=None):
 
     # 1) Inicializa variáveis
     sorted_keys = []
-    grouped_oficinas = {}
+    grouped_oficinas = defaultdict(list)  # Using defaultdict to avoid KeyError
     oficinas = []
     ministrantes = []
 
@@ -219,7 +219,7 @@ def cadastro_participante(identifier=None):
                 'foto': oficina.ministrante_obj.foto if oficina.ministrante_obj and oficina.ministrante_obj.foto else None
             }
 
-            grouped_oficinas[data_str].append({
+            temp_group[data_str].append({
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj,
@@ -474,6 +474,10 @@ def dashboard():
     cidade_filter = request.args.get('cidade', '').strip()
     cliente_filter = request.args.get('cliente_id', '').strip()
 
+    # Buscar eventos ativos
+    eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    total_eventos = len(eventos_ativos)
+
     # Check-ins via QR
     checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
 
@@ -490,7 +494,7 @@ def dashboard():
     
     # Se for admin, busca também os clientes
     clientes = []
-    total_eventos = None
+    total_eventos = total_eventos
     if is_admin:
         clientes = Cliente.query.all()
 
@@ -3937,10 +3941,68 @@ def gerar_link():
 
         return jsonify({'success': True, 'link': link_gerado})
 
-    # Para GET, apenas retorna os eventos disponíveis
+    # Para GET, verificamos se é uma solicitação para listar links de um evento específico
+    evento_id = request.args.get('evento_id')
+    if evento_id:
+        # Verificar se o evento pertence ao cliente atual
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=cliente_id).first()
+        if not evento and current_user.tipo != 'admin':
+            return jsonify({'success': False, 'links': [], 'message': 'Evento não autorizado'}), 403
+        
+        # Buscar todos os links para este evento
+        links = LinkCadastro.query.filter_by(evento_id=evento_id, cliente_id=cliente_id).all()
+        
+        # Montar a lista de links com URLs completas
+        links_list = []
+        for link in links:
+            if request.host.startswith("127.0.0.1") or "localhost" in request.host:
+                base_url = "http://127.0.0.1:5000"
+            else:
+                base_url = "https://appfiber.com.br"
+                
+            if link.slug_customizado:
+                url = f"{base_url}/inscricao/{link.slug_customizado}"
+            else:
+                url = f"{base_url}{url_for('routes.cadastro_participante', token=link.token)}"
+                
+            links_list.append({
+                'id': link.id,
+                'token': link.token,
+                'slug': link.slug_customizado,
+                'url': url,
+                'criado_em': link.criado_em.isoformat()
+            })
+            
+        return jsonify({'success': True, 'links': links_list})
+        
+    # Para GET sem evento_id, apenas retorna os eventos disponíveis
     eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
     return jsonify({'eventos': [{'id': e.id, 'nome': e.nome} for e in eventos]})
 
+@routes.route('/excluir_link', methods=['POST'])
+@login_required
+def excluir_link():
+    if current_user.tipo not in ['cliente', 'admin']:
+        return jsonify({'success': False, 'message': 'Não autorizado'}), 403
+        
+    data = request.get_json()
+    if not data or 'link_id' not in data:
+        return jsonify({'success': False, 'message': 'ID do link não fornecido'}), 400
+        
+    link_id = data['link_id']
+    link = LinkCadastro.query.get(link_id)
+    
+    if not link:
+        return jsonify({'success': False, 'message': 'Link não encontrado'}), 404
+        
+    if link.cliente_id != current_user.id and current_user.tipo != 'admin':
+        return jsonify({'success': False, 'message': 'Não autorizado a excluir este link'}), 403
+        
+    db.session.delete(link)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Link excluído com sucesso'})
+    
 @routes.route('/inscricao/<slug_customizado>', methods=['GET'])
 def inscricao_personalizada(slug_customizado):
     # Busca o LinkCadastro pelo slug personalizado
