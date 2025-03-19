@@ -2,291 +2,282 @@
 {% block title %}Login AppFiber{% endblock %}
 
 {% block content %}
-<div class="login-container">
-  <div class="login-card">
-    <div class="login-header">
-      <h1 class="login-title">AppFiber</h1>
-      <p class="login-subtitle">Sistema Integrado de Gestão Educacional</p>
-    </div>
-    
-    <form action="{{ url_for('routes.login') }}" method="POST" class="login-form">
-      <div class="form-group">
-        <div class="input-wrapper">
-          <i class="bi bi-envelope-at"></i>
-          <input type="email" name="email" id="email" placeholder="E-mail" required>
-        </div>
+<div>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="login-title">AppFiber</h1>
+        <p class="login-subtitle">Sistema Integrado de Gestão Educacional</p>
       </div>
-
-      <div class="form-group">
-        <div class="input-wrapper">
-          <i class="bi bi-key"></i>
-          <input type="password" name="senha" id="senha" placeholder="Senha" required>
-          <button type="button" class="btn-toggle" id="togglePassword">
-            <i class="bi bi-eye-slash"></i>
-          </button>
-        </div>
-      </div>
-
-      <button type="submit" class="btn-login">
-        <span>Entrar</span>
-        <i class="bi bi-arrow-right-circle"></i>
-      </button>
       
-      <div class="links">
-        <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="link">Esqueceu sua senha?</a>
-        <a href="{{ url_for('routes.cadastro_professor') }}" class="link register-link">Cadastrar-se <i class="bi bi-person-plus"></i></a>
-      </div>
-    </form>
+      <form action="{{ url_for('routes.login') }}" method="POST" class="login-form">
+        <div class="form-group">
+          <div class="input-wrapper">
+            <i class="bi bi-envelope-at"></i>
+            <input type="email" name="email" id="email" placeholder="E-mail" required>
+          </div>
+        </div>
+    
+        <div class="form-group">
+          <div class="input-wrapper">
+            <i class="bi bi-key"></i>
+            <input type="password" name="senha" id="senha" placeholder="Senha" required>
+            <button type="button" class="btn-toggle" id="togglePassword">
+              <i class="bi bi-eye-slash"></i>
+            </button>
+          </div>
+        </div>
+    
+        <button type="submit" class="btn-login">
+          <span>Entrar</span>
+          <i class="bi bi-arrow-right-circle"></i>
+        </button>
+        
+        <div class="links">
+          <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="link">Esqueceu sua senha?</a>
+          <a href="{{ url_for('routes.cadastro_professor') }}" class="link register-link">Cadastrar-se <i class="bi bi-person-plus"></i></a>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
-<style>
-  :root {
-    --primary: #0094c3;
-    --primary-dark: #006d91;
-    --primary-light: #e6f7fc;
-    --background: #f5f7fa;
-    --card-bg: #ffffff;
-    --input-bg: #f2f5f9;
-    --text: #2a3547;
-    --text-light: #7c8a9d;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    --accent: #34d399;
-  }
-
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--background);
-    color: var(--text);
-  }
-
-  .login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-    background: var(--background);
-  }
-
-  .login-card {
-    background: var(--card-bg);
-    border-radius: 24px;
-    box-shadow: var(--shadow);
-    width: 100%;
-    max-width: 420px;
-    padding: 0;
-    overflow: hidden;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .login-header {
-    background: linear-gradient(to right, #006d91, #0094c3);
-    padding: 40px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .login-header::after {
-    content: "";
-    position: absolute;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
-    top: -50%;
-    left: -50%;
-  }
-
-  .login-title {
-    color: white;
-    font-size: 2.2rem;
-    font-weight: 700;
-    margin: 0 0 8px 0;
-    position: relative;
-    z-index: 1;
-  }
-
-  .login-subtitle {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 1rem;
-    margin: 0;
-    position: relative;
-    z-index: 1;
-  }
-
-  .login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 40px;
-  }
-
-  .form-group {
-    text-align: left;
-  }
-
-  .input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    background-color: var(--input-bg);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-  }
-
-  .input-wrapper:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0, 148, 195, 0.25);
-  }
-
-  .input-wrapper i {
-    color: var(--text-light);
-    font-size: 1.1rem;
-    padding: 0 16px;
-  }
-
-  .input-wrapper input {
-    width: 100%;
-    padding: 16px 16px 16px 0;
-    border: none;
-    background: transparent;
-    font-size: 1rem;
-    color: var(--text);
-    outline: none;
-  }
-
-  .input-wrapper input::placeholder {
-    color: var(--text-light);
-    opacity: 0.7;
-  }
-
-  .btn-toggle {
-    background: none;
-    border: none;
-    color: var(--text-light);
-    cursor: pointer;
-    padding: 0 16px;
-    font-size: 1.1rem;
-    transition: color 0.2s;
-  }
-
-  .btn-toggle:hover {
-    color: var(--accent);
-  }
-
-  .btn-login {
-    background: var(--primary);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    padding: 16px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .btn-login::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
-  }
-
-  .btn-login:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-  }
+  <style>
+    :root {
+      --primary: #0094c3;
+      --primary-dark: #006d91;
+      --primary-light: #e6f7fc;
+      --card-bg: #ffffff;
+      --input-bg: #ebf0fd;
+      --text: #2a3547;
+      --text-light: #7c8a9d;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      --accent: #34d399;
+    }
   
-  .btn-login:hover::before {
-    left: 100%;
-  }
-
-  .btn-login i {
-    font-size: 1.2rem;
-    transition: transform 0.3s ease;
-  }
+    .login-container {
+      min-height: 10vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
   
-  .btn-login:hover i {
-    transform: translateX(5px);
-  }
-
-  .links {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-  }
-
-  .link {
-    color: var(--text-light);
-    text-decoration: none;
-    transition: all 0.2s;
-    padding: 6px 0;
-  }
-
-  .link:hover {
-    color: var(--primary);
-  }
-  
-  .register-link {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: var(--accent);
-  }
-  
-  .register-link:hover {
-    color: #2dd590;
-  }
-
-  @media (max-width: 480px) {
     .login-card {
-      border-radius: 20px;
+      background: var(--card-bg);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 430px;
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.08);
     }
-    
+  
     .login-header {
-      padding: 30px 20px;
+      background: linear-gradient(to right, #006d91, #0094c3);
+      padding: 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
     }
-    
-    .login-form {
-      padding: 30px 24px;
+  
+    .login-header::after {
+      content: "";
+      position: absolute;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+      top: -50%;
+      left: -50%;
     }
-    
+  
     .login-title {
-      font-size: 1.8rem;
+      color: white;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      position: relative;
+      z-index: 1;
     }
-  }
-</style>
-
-<script>
-  // Toggle password visibility
-  document.getElementById('togglePassword').addEventListener('click', function() {
-    const passwordInput = document.getElementById('senha');
-    const icon = this.querySelector('i');
+  
+    .login-subtitle {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 1rem;
+      margin: 0;
+      position: relative;
+      z-index: 1;
+    }
+  
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 40px;
+    }
+  
+    .form-group {
+      text-align: left;
+    }
+  
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: var(--input-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+  
+    .input-wrapper:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 148, 195, 0.25);
+    }
+  
+    .input-wrapper i {
+      color: var(--text-light);
+      font-size: 1.1rem;
+      padding: 0 16px;
+    }
+  
+    .input-wrapper input {
+      width: 100%;
+      padding: 16px 16px 16px 0;
+      border: none;
+      background: transparent;
+      font-size: 1rem;
+      color: var(--text);
+      outline: none;
+    }
+  
+    .input-wrapper input::placeholder {
+      color: var(--text-light);
+      opacity: 0.7;
+    }
+  
+    .btn-toggle {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      cursor: pointer;
+      padding: 0 16px;
+      font-size: 1.1rem;
+      transition: color 0.2s;
+    }
+  
+    .btn-toggle:hover {
+      color: var(--accent);
+    }
+  
+    .btn-login {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+  
+    .btn-login::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+  
+    .btn-login:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+    }
     
-    if (passwordInput.type === 'password') {
-      passwordInput.type = 'text';
-      icon.classList.replace('bi-eye-slash', 'bi-eye');
-    } else {
-      passwordInput.type = 'password';
-      icon.classList.replace('bi-eye', 'bi-eye-slash');
+    .btn-login:hover::before {
+      left: 100%;
     }
-  });
-</script>
+  
+    .btn-login i {
+      font-size: 1.2rem;
+      transition: transform 0.3s ease;
+    }
+    
+    .btn-login:hover i {
+      transform: translateX(5px);
+    }
+  
+    .links {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+  
+    .link {
+      color: var(--text-light);
+      text-decoration: none;
+      transition: all 0.2s;
+      padding: 6px 0;
+    }
+  
+    .link:hover {
+      color: var(--primary);
+    }
+    
+    .register-link {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--accent);
+    }
+    
+    .register-link:hover {
+      color: #2dd590;
+    }
+  
+    @media (max-width: 480px) {
+      .login-card {
+        border-radius: 20px;
+      }
+      
+      .login-header {
+        padding: 30px 20px;
+      }
+      
+      .login-form {
+        padding: 30px 24px;
+      }
+      
+      .login-title {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+
+  <script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+      const passwordInput = document.getElementById('senha');
+      const icon = this.querySelector('i');
+      
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+      } else {
+        passwordInput.type = 'password';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+      }
+    });
+  </script>
 {% endblock %}
