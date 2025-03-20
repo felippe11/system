@@ -1244,14 +1244,14 @@ def gerar_lista_frequencia_pdf(oficina, pdf_path):
     current_date = datetime.now().strftime("%d/%m/%Y")
     elements.append(Paragraph(f"LISTA DE FREQUÊNCIA", title_style))
     elements.append(Paragraph(f"<i>Gerado em {current_date}</i>", ParagraphStyle(
-        parent=normal_style, alignment=TA_CENTER, fontSize=8, textColor=colors.gray
+        name='date_style', parent=normal_style, alignment=TA_CENTER, fontSize=8, textColor=colors.gray
     )))
     elements.append(Spacer(1, 10 * mm))
     
     # Workshop information in a visually appealing box
     workshop_info = [
         [Paragraph("<b>INFORMAÇÕES DA OFICINA</b>", ParagraphStyle(
-            parent=heading_style, textColor=colors.white, alignment=TA_CENTER
+            name='workshop_header_style', parent=heading_style, textColor=colors.white, alignment=TA_CENTER
         ))]
     ]
     
@@ -1386,14 +1386,14 @@ def gerar_lista_frequencia_pdf(oficina, pdf_path):
     # Create signature lines
     signature_data = [
         [
-            Paragraph("_______________________________", ParagraphStyle(parent=normal_style, alignment=TA_CENTER)),
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER)),
             "",
-            Paragraph("_______________________________", ParagraphStyle(parent=normal_style, alignment=TA_CENTER))
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER))
         ],
         [
-            Paragraph("Ministrante", ParagraphStyle(parent=normal_style, alignment=TA_CENTER)),
+            Paragraph("Ministrante", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER)),
             "",
-            Paragraph("Coordenador", ParagraphStyle(parent=normal_style, alignment=TA_CENTER))
+            Paragraph("Coordenador", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER))
         ]
     ]
     
@@ -3556,38 +3556,58 @@ def gerar_relatorio_mensagem():
         total_oficinas = Oficina.query.count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
         total_inscricoes = Inscricao.query.count()
-        oficinas_list = Oficina.query.all()
+        eventos = Evento.query.all()
     else:
         total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
         total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
         total_inscricoes = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).count()
-        oficinas_list = Oficina.query.filter_by(cliente_id=current_user.id).all()
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     
     # Cálculo de adesão
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
 
     # Monta a mensagem com emojis e loop
+    total_eventos = len(eventos)
     mensagem = (
         "📊 *Relatório do Sistema*\n\n"
+        f"✅ *Total de Eventos:* {total_eventos}\n"
         f"✅ *Total de Oficinas:* {total_oficinas}\n"
         f"✅ *Vagas Ofertadas:* {total_vagas}\n"
         f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
         f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
         "----------------------------------------\n"
-        "📌 *DADOS POR OFICINA:*\n"
     )
-
-    for oficina in oficinas_list:
-        # Conta inscritos
-        num_inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).count()
-        ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+    
+    # Agrupar oficinas por evento
+    for evento in eventos:
+        # Buscar oficinas deste evento
+        if is_admin:
+            oficinas_evento = Oficina.query.filter_by(evento_id=evento.id).all()
+        else:
+            oficinas_evento = Oficina.query.filter_by(evento_id=evento.id, cliente_id=current_user.id).all()
         
-        mensagem += (
-            f"\n🎓 *Oficina:* {oficina.titulo}\n"
-            f"🔹 *Vagas:* {oficina.vagas}\n"
-            f"🔹 *Inscritos:* {num_inscritos}\n"
-            f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
-        )
+        # Se não houver oficinas neste evento, pular
+        if not oficinas_evento:
+            continue
+            
+        # Adicionar cabeçalho do evento
+        mensagem += f"\n🎪 *EVENTO: {evento.nome}*\n"
+        mensagem += f"📌 *Total de Oficinas no Evento:* {len(oficinas_evento)}\n"
+        
+        # Adicionar dados de cada oficina do evento
+        for oficina in oficinas_evento:
+            # Conta inscritos
+            num_inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).count()
+            ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+            
+            mensagem += (
+                f"\n🎓 *Oficina:* {oficina.titulo}\n"
+                f"🔹 *Vagas:* {oficina.vagas}\n"
+                f"🔹 *Inscritos:* {num_inscritos}\n"
+                f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+            )
+        
+        mensagem += "----------------------------------------\n"
 
     return mensagem
 
@@ -4314,13 +4334,6 @@ def preencher_formulario(formulario_id):
 
     return render_template('preencher_formulario.html', formulario=formulario)
 
-@routes.route('/formularios/<int:formulario_id>/respostas', methods=['GET'])
-@login_required
-def listar_respostas(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
-    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
-    
-    return render_template('listar_respostas.html', formulario=formulario, respostas=respostas)
 
 @routes.route('/formularios_participante', methods=['GET'])
 @login_required
@@ -4848,6 +4861,31 @@ def gerar_etiquetas(cliente_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     return send_file(pdf_path, as_attachment=True)
+
+@routes.route('/respostas', methods=['GET'])
+@login_required
+def listar_respostas():
+    # Verifica se o usuário é cliente ou ministrante
+    if current_user.tipo not in ['cliente', 'ministrante']:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Carrega todas as respostas ordenadas por data
+    respostas = RespostaFormulario.query.order_by(RespostaFormulario.data_submissao.desc()).all()
+    
+    # Se não houver respostas, redireciona para o dashboard com uma mensagem
+    if not respostas:
+        flash('Não há respostas disponíveis no momento.', 'info')
+        return redirect(url_for('routes.dashboard'))
+        
+    # Pega o primeiro formulário para manter compatibilidade com o template
+    formulario = respostas[0].formulario
+
+    return render_template(
+        'listar_respostas.html',
+        formulario=formulario,
+        respostas=respostas
+    )
 
 @routes.route('/formularios/<int:formulario_id>/respostas_ministrante', methods=['GET'])
 @login_required
@@ -10274,20 +10312,5 @@ def horarios_disponiveis_api():
 
     return jsonify(eventos)
 
-@routes.route('/formularios/<int:formulario_id>/respostas', methods=['GET'])
-@login_required
-def listar_respostas_formularios(formulario_id):
-    """
-    Lista todas as respostas de um formulário específico.
-    """
-    # 1) Verifica se o formulário existe:
-    formulario = Formulario.query.get_or_404(formulario_id)
 
-    # 2) Carrega todas as respostas enviadas para este formulário:
-    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
-
-    # 3) Renderiza um template que exiba essas respostas
-    return render_template('listar_respostas.html',
-                           formulario=formulario,
-                           respostas=respostas)
 
