@@ -249,13 +249,15 @@
                       <i class="bi bi-person-badge me-2"></i> Ministrantes
                     </a>
                     
+
                     <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-info">
                       <i class="bi bi-ui-checks me-2"></i> Formulários
                     </a>
                     
-                    <a href="{{ url_for('routes.listar_respostas_formularios', formulario_id=1) }}" class="btn btn-secondary">
-                      <i class="bi bi-file-earmark-text me-2"></i> Respostas
+                    <a href="{{ url_for('routes.listar_respostas') }}" class="btn btn-primary">
+                      <i class="bi bi-chat-square-text me-2"></i> Respostas
                     </a>
+                    
                     
                     <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-primary">
                       <i class="bi bi-file-earmark-ruled me-2"></i> Templates de Formulários
@@ -357,7 +359,7 @@
                     </button>
 
                     <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-primary btn-lg">
-                      <i class="bi bi-speedometer2 me-2"></i> Acessar Dashboard de Agendamentos
+                      <i class="bi bi-speedometer2 me-2"></i> Dashboard de Agendamentos
                     </a>
                     
                   </div>
@@ -675,9 +677,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Modal Link de Inscrição -->
+<!-- Modal Link de Inscrição (Otimizado) -->
 <div class="modal fade" id="modalLinkCadastro" tabindex="-1" aria-labelledby="modalLinkLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header bg-warning text-dark">
         <h5 class="modal-title" id="modalLinkLabel">
@@ -686,6 +688,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <!-- Seleção de Evento -->
         <div class="mb-3">
           <label for="eventoSelect" class="form-label">Selecionar Evento</label>
           <select id="eventoSelect" class="form-select" required>
@@ -693,34 +696,73 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- Opções serão preenchidas via JavaScript -->
           </select>
         </div>
-        <div class="mb-3">
-          <label for="slugInput" class="form-label">URL Personalizada (opcional)</label>
-          <div class="input-group">
-            <span class="input-group-text">https://appfiber.com.br/inscricao/</span>
-            <input type="text" id="slugInput" class="form-control" placeholder="meu-evento-2025">
+        
+        <!-- Seção de links existentes -->
+        <div id="linksExistentesContainer" class="mb-4" style="display: none;">
+          <h6 class="border-bottom pb-2 mb-3">Links Existentes</h6>
+          <div id="linksExistentesLoader" class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Carregando...</span>
+            </div>
           </div>
-          <small class="form-text text-muted">Use letras, números e hífens. Deixe em branco para um link aleatório.</small>
+          <div id="linksExistentesEmpty" class="alert alert-info" style="display: none;">
+            <i class="bi bi-info-circle me-2"></i>Nenhum link foi gerado para este evento.
+          </div>
+          <div class="table-responsive">
+            <table id="linksExistentesTable" class="table table-sm table-hover align-middle" style="display: none;">
+              <thead class="table-light">
+                <tr>
+                  <th>Identificador</th>
+                  <th>Data de Criação</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="linksExistentesList">
+                <!-- Links serão inseridos aqui via JavaScript -->
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="mb-3">
-          <label for="linkCadastro" class="form-label">Link Gerado</label>
-          <div class="input-group">
-            <input type="text" id="linkCadastro" class="form-control" readonly>
-            <button class="btn btn-outline-secondary" type="button" onclick="copiarLink()">
-              <i class="bi bi-clipboard"></i>
+        
+        <!-- Formulário para novo link -->
+        <div class="card mb-3">
+          <div class="card-header bg-light">
+            <h6 class="m-0"><i class="bi bi-plus-circle me-2"></i>Criar Novo Link</h6>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label for="slugInput" class="form-label">URL Personalizada (opcional)</label>
+              <div class="mb-2 small text-muted">
+                <code>https://appfiber.com.br/inscricao/</code><span class="text-dark fw-bold">seu-evento-aqui</span>
+              </div>
+              <input type="text" id="slugInput" class="form-control">
+              <small class="form-text text-muted">Use letras, números e hífens. Deixe em branco para um link aleatório.</small>
+            </div>
+            
+            <div class="mb-3" id="linkGeradoContainer" style="display: none;">
+              <label for="linkCadastro" class="form-label">Link Gerado</label>
+              <div class="input-group">
+                <input type="text" id="linkCadastro" class="form-control" readonly>
+                <button class="btn btn-outline-secondary" type="button" onclick="copiarLink()">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </div>
+            
+            <button id="gerarLinkConfirm" class="btn btn-primary w-100">
+              <i class="bi bi-magic me-2"></i>Gerar Link
             </button>
           </div>
         </div>
-        <button id="gerarLinkConfirm" class="btn btn-primary w-100">
-          <i class="bi bi-magic me-2"></i>Gerar Link
-        </button>
       </div>
-      <a id="whatsappShare" class="btn btn-success" href="#" target="_blank">
-        <i class="bi bi-whatsapp me-2"></i>Enviar pelo WhatsApp
-      </a>
-      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      <div class="modal-footer">
+        <a id="whatsappShare" class="btn btn-success" href="#" target="_blank">
+          <i class="bi bi-whatsapp me-2"></i>Enviar pelo WhatsApp
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
     </div>
   </div>
-</div>
 </div>
 
 <!-- Modais de cada oficina (detalhes, inscritos, etc) -->
@@ -836,6 +878,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Estilos CSS -->
 <style>
+  .table-responsive {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+
+@media (min-width: 576px) {
+  .w-sm-auto {
+    width: auto !important;
+  }
+}
+
+#linksExistentesList td {
+  vertical-align: middle;
+}
+
+.action-buttons .btn {
+  padding: 0.25rem 0.5rem;
+}
 .stat-card {
   border: none;
   border-radius: 1rem;
@@ -1039,6 +1100,11 @@ document.getElementById("gerarLinkBtn").addEventListener("click", function() {
   var modal = new bootstrap.Modal(document.getElementById("modalLinkCadastro"));
   modal.show();
 
+  // Limpar campos e seleções atuais
+  document.getElementById("slugInput").value = "";
+  document.getElementById("linkCadastro").value = "";
+  document.getElementById("linksExistentesContainer").style.display = "none";
+  
   fetch("{{ url_for('routes.gerar_link') }}")
     .then(response => {
       if (!response.ok) {
@@ -1068,6 +1134,149 @@ document.getElementById("gerarLinkBtn").addEventListener("click", function() {
     .catch(error => {
       console.error("Erro ao carregar eventos:", error);
       alert("Erro ao carregar os eventos. Tente novamente mais tarde.");
+    });
+});
+
+// Função para carregar links existentes quando um evento é selecionado
+document.getElementById("eventoSelect").addEventListener("change", function() {
+  const eventoId = this.value;
+  const linksContainer = document.getElementById("linksExistentesContainer");
+  const linksTable = document.getElementById("linksExistentesTable");
+  const linksLoader = document.getElementById("linksExistentesLoader");
+  const linksEmpty = document.getElementById("linksExistentesEmpty");
+  
+  if (!eventoId) {
+    linksContainer.style.display = "none";
+    return;
+  }
+  
+  // Mostrar container e loader
+  linksContainer.style.display = "block";
+  linksLoader.style.display = "block";
+  linksTable.style.display = "none";
+  linksEmpty.style.display = "none";
+  
+  // Buscar links existentes para o evento selecionado
+  fetch(`{{ url_for('routes.gerar_link') }}?evento_id=${eventoId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Erro ao carregar links: ' + response.statusText);
+      }
+      return response.json();
+    })
+    .then(data => {
+      linksLoader.style.display = "none";
+      
+      if (data.links && data.links.length > 0) {
+        // Temos links para mostrar
+        const linksList = document.getElementById("linksExistentesList");
+        linksList.innerHTML = ""; // Limpar lista atual
+        
+        data.links.forEach(link => {
+          const row = document.createElement("tr");
+          
+          // Coluna Identificador
+          const slugCell = document.createElement("td");
+          const slugSpan = document.createElement("span");
+          slugSpan.className = "d-inline-block text-truncate";
+          slugSpan.style.maxWidth = "300px";
+          slugSpan.textContent = link.slug || "Token: " + link.token.substring(0, 8) + "...";
+          slugSpan.title = link.slug || link.token;
+          slugCell.appendChild(slugSpan);
+          
+          // Coluna data
+          const dataCell = document.createElement("td");
+          const data = new Date(link.criado_em);
+          dataCell.textContent = data.toLocaleDateString('pt-BR');
+          
+          // Coluna ações
+          const acoesCell = document.createElement("td");
+          acoesCell.className = "d-flex gap-1";
+          
+          // Botão copiar
+          const btnCopiar = document.createElement("button");
+          btnCopiar.className = "btn btn-sm btn-outline-primary";
+          btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
+          btnCopiar.title = "Copiar link";
+          btnCopiar.addEventListener("click", function() {
+            navigator.clipboard.writeText(link.url)
+              .then(() => {
+                btnCopiar.innerHTML = '<i class="bi bi-check"></i>';
+                setTimeout(() => {
+                  btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
+                }, 1500);
+              });
+          });
+          
+          // Botão WhatsApp
+          const btnWhatsapp = document.createElement("a");
+          btnWhatsapp.className = "btn btn-sm btn-outline-success";
+          btnWhatsapp.innerHTML = '<i class="bi bi-whatsapp"></i>';
+          btnWhatsapp.title = "Compartilhar via WhatsApp";
+          btnWhatsapp.href = `https://api.whatsapp.com/send?text=${encodeURIComponent("Olá! Cadastre-se no evento através deste link: " + link.url)}`;
+          btnWhatsapp.target = "_blank";
+          
+          // Botão excluir
+          const btnExcluir = document.createElement("button");
+          btnExcluir.className = "btn btn-sm btn-outline-danger";
+          btnExcluir.innerHTML = '<i class="bi bi-trash"></i>';
+          btnExcluir.title = "Excluir link";
+          btnExcluir.addEventListener("click", function() {
+            if (confirm("Tem certeza que deseja excluir este link?")) {
+              fetch("{{ url_for('routes.excluir_link') }}", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Requested-With": "XMLHttpRequest"
+                },
+                body: JSON.stringify({
+                  link_id: link.id
+                })
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  row.remove();
+                  if (linksList.children.length === 0) {
+                    linksTable.style.display = "none";
+                    linksEmpty.style.display = "block";
+                  }
+                } else {
+                  alert("Erro ao excluir: " + data.message);
+                }
+              })
+              .catch(error => {
+                console.error("Erro ao excluir link:", error);
+                alert("Erro ao excluir link. Tente novamente.");
+              });
+            }
+          });
+          
+          // Adicionar botões à célula
+          acoesCell.appendChild(btnCopiar);
+          acoesCell.appendChild(btnWhatsapp);
+          acoesCell.appendChild(btnExcluir);
+          
+          // Montar linha
+          row.appendChild(slugCell);
+          row.appendChild(dataCell);
+          row.appendChild(acoesCell);
+          
+          // Adicionar à tabela
+          linksList.appendChild(row);
+        });
+        
+        linksTable.style.display = "table";
+      } else {
+        // Sem links para mostrar
+        linksEmpty.style.display = "block";
+      }
+    })
+    .catch(error => {
+      console.error("Erro ao carregar links existentes:", error);
+      linksLoader.style.display = "none";
+      linksEmpty.textContent = "Erro ao carregar links. Tente novamente.";
+      linksEmpty.style.display = "block";
     });
 });
 
@@ -1105,6 +1314,9 @@ document.getElementById("gerarLinkConfirm").addEventListener("click", function()
       const mensagem = "Olá! Cadastre-se no evento através deste link: " + linkGerado;
       document.getElementById("whatsappShare").href =
         "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
+      
+      // Atualizar a lista de links existentes
+      document.getElementById("eventoSelect").dispatchEvent(new Event('change'));
     } else {
       alert("Erro: " + data.message);
     }
@@ -1119,7 +1331,14 @@ function copiarLink() {
   const linkInput = document.getElementById("linkCadastro");
   linkInput.select();
   document.execCommand("copy");
-  alert("Link copiado para a área de transferência!");
+  
+  // Feedback visual
+  const btnCopy = linkInput.nextElementSibling;
+  const originalHTML = btnCopy.innerHTML;
+  btnCopy.innerHTML = '<i class="bi bi-check"></i>';
+  setTimeout(() => {
+    btnCopy.innerHTML = originalHTML;
+  }, 1500);
 }
 </script>
 {% endblock %}
