@@ -30,8 +30,9 @@
     {% set config = horario.evento.configuracoes_agendamento[0] if horario.evento.configuracoes_agendamento else None %}
     {% if config %}
         {% set data_hora_visita = horario.data|string + ' ' + horario.horario_inicio|string %}
-        {% set data_hora_visita = data_hora_visita|to_datetime %}
-        {% set prazo_limite = data_hora_visita - config.prazo_cancelamento|timedelta(hours=true) %}
+        <p>Data: {{ data_hora_visita }}</p>
+        <!-- Se quiser formatar a data/hora -->
+        <p>Prazo limite formatado: {{ prazo_limite.strftime('%d/%m/%Y %H:%M') }}</p>
         {% set agora = now() %}
         
         {% if agora > prazo_limite %}
