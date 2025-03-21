@@ -2070,13 +2070,8 @@ def gerar_pdf_checkins(oficina_id):
             ('ALIGN', (3, 1), (3, -1), 'CENTER'), # Data centralizada
             ('ALIGN', (4, 1), (4, -1), 'CENTER'), # Método centralizado
             
-            # Alternar cores das linhas
-            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-            ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor("#f8f9fa")),
-            ('BACKGROUND', (0, 4), (-1, 4), colors.HexColor("#f8f9fa")),
-            ('BACKGROUND', (0, 6), (-1, 6), colors.HexColor("#f8f9fa")),
-            ('BACKGROUND', (0, 8), (-1, 8), colors.HexColor("#f8f9fa")),
-            ('BACKGROUND', (0, 10), (-1, 10), colors.HexColor("#f8f9fa")),
+            # Alternar cores das linhas (usando ROWBACKGROUNDS para aplicar automaticamente)
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f9fa")]),
             
             # Bordas e formatação
             ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
