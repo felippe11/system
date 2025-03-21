@@ -1483,6 +1483,16 @@ def gerar_pdf_inscritos_pdf(oficina_id):
         fontName='Helvetica'
     )
     
+    # Estilo para texto em tabelas (para permitir quebra de linha)
+    table_text_style = ParagraphStyle(
+        name='TableText',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica',
+        leading=12,
+        wordWrap='CJK'
+    )
+    
     # Estilo para rodapé
     footer_style = ParagraphStyle(
         name='Footer',
@@ -1554,7 +1564,12 @@ def gerar_pdf_inscritos_pdf(oficina_id):
         date_data = [["Data", "Início", "Término"]]
         for dia in oficina.dias:
             data_formatada = dia.data.strftime('%d/%m/%Y')
-            date_data.append([data_formatada, dia.horario_inicio, dia.horario_fim])
+            # Convertendo os valores para Paragraph para permitir quebra de linha
+            date_data.append([
+                Paragraph(data_formatada, table_text_style),
+                Paragraph(dia.horario_inicio, table_text_style),
+                Paragraph(dia.horario_fim, table_text_style)
+            ])
         
         date_table = Table(date_data, colWidths=[doc.width * 0.4, doc.width * 0.3, doc.width * 0.3])
         date_table.setStyle(TableStyle([
@@ -1566,6 +1581,12 @@ def gerar_pdf_inscritos_pdf(oficina_id):
             ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            # Define que o texto pode quebrar dentro das células
+            ('WORDWRAP', (0, 0), (-1, -1), True),
         ]))
         elements.append(date_table)
     else:
@@ -1598,8 +1619,14 @@ def gerar_pdf_inscritos_pdf(oficina_id):
             # Formatação de CPF se necessário (adicionar pontos e traço)
             if cpf and len(cpf) == 11 and cpf.isdigit():
                 cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-                
-            table_data.append([str(idx), nome, cpf, email])
+            
+            # Usando Paragraph para permitir quebra de linha em cada coluna
+            table_data.append([
+                Paragraph(str(idx), table_text_style),
+                Paragraph(nome, table_text_style),
+                Paragraph(cpf, table_text_style),
+                Paragraph(email, table_text_style)
+            ])
         
         # Definir larguras das colunas para melhor distribuição
         col_widths = [doc.width * 0.05, doc.width * 0.35, doc.width * 0.25, doc.width * 0.35]
@@ -1625,6 +1652,10 @@ def gerar_pdf_inscritos_pdf(oficina_id):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('TOPPADDING', (0, 1), (-1, -1), 6),
             ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            # Configuração para permitir quebra de linha
+            ('WORDWRAP', (0, 0), (-1, -1), True),
         ]))
         elements.append(table)
     else:
@@ -1647,105 +1678,116 @@ def gerar_pdf_inscritos_pdf(oficina_id):
     
     # Retorna o arquivo para download
     return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
     
 @routes.route('/gerar_lista_frequencia/<int:oficina_id>')
 @login_required
-def gerar_lista_frequencia(oficina_id):
+def gerar_lista_frequencia(oficina_id, pdf_path=None):
+    """
+    Generates a modern and professional attendance list PDF for a workshop.
+    
+    Args:
+        oficina_id: The ID of the workshop
+        pdf_path: The file path where the PDF will be saved (optional)
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    import os
+    from datetime import datetime
+    from flask import send_file
+    from models import Oficina, Inscricao
+
+    # Obter a oficina real pelo ID
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
-        flash('Oficina não encontrada!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    pdf_filename = f"lista_frequencia_{oficina.id}.pdf"
-    pdf_path = os.path.join("static/comprovantes", pdf_filename)
-    gerar_lista_frequencia_pdf(oficina, pdf_path)
-    return send_file(pdf_path, as_attachment=True)
+        raise ValueError("Oficina não encontrada!")
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib import colors
-from reportlab.lib.utils import ImageReader
+    # Se pdf_path não for fornecido, gere um caminho padrão
+    if pdf_path is None:
+        import tempfile
+        pdf_path = os.path.join(tempfile.gettempdir(), f"lista_frequencia_{oficina_id}.pdf")
 
-def wrap_text(text, font, font_size, max_width, canvas):
-    words = text.split()
-    lines = []
-    current_line = ""
-    for word in words:
-        test_line = current_line + " " + word if current_line else word
-        if canvas.stringWidth(test_line, font, font_size) <= max_width:
-            current_line = test_line
-        else:
-            lines.append(current_line)
-            current_line = word
-    if current_line:
-        lines.append(current_line)
-    return lines
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
 
-def gerar_certificados_pdf(oficina, inscritos, pdf_path):
-    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements = []
 
-    # Identificar o cliente (se houver)
-    cliente = None
-    if oficina.cliente_id:
-        cliente = Cliente.query.get(oficina.cliente_id)
+    # Cabeçalho
+    elements.append(Paragraph("LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>{oficina.titulo}</i>", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    # Se o cliente tiver fundo personalizado, use-o; senão, use o default
-    if cliente and cliente.fundo_certificado:
-        fundo_path = cliente.fundo_certificado
-    else:
-        fundo_path = "static/Certificado IAFAP.png"  # seu default atual
+    # Dados da oficina
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", styles['Normal']))
+    elements.append(Spacer(1, 12))
 
-    # Se o cliente tiver assinatura personalizada, use-a; senão, use o default
-    if cliente and cliente.assinatura_certificado:
-        signature_path = cliente.assinatura_certificado
-    else:
-        signature_path = "static/signature.png"
+    # Tabela de frequência
+    table_data = [["Nº", "Nome Completo", "Assinatura"]]
 
-    for inscrito in inscritos:
-        # Tenta desenhar o fundo
-        try:
-            fundo = ImageReader(fundo_path)
-            c.drawImage(fundo, 0, 0, width=A4[1], height=A4[0])
-        except Exception as e:
-            print("⚠️ Fundo do certificado não encontrado:", e)
+    # Buscando participantes reais inscritos
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
 
-        # Texto principal
-        c.setFont("Helvetica", 16)
-        texto_oficina = (
-            f"{inscrito.usuario.nome}, portador do {inscrito.usuario.cpf}, participou da oficina de tema "
-            f"{oficina.titulo}, com carga horária total de {oficina.carga_horaria} horas. Este certificado é "
-            f"concedido como reconhecimento pela dedicação e participação no evento realizado na cidade "
-            f"{oficina.cidade} nos dias:"
-        )
-        max_width = 600
-        lines = wrap_text(texto_oficina, "Helvetica", 16, max_width, c)
-        y = 340
-        for line in lines:
-            c.drawCentredString(420, y, line)
-            y -= 25
+    for i, inscricao in enumerate(inscricoes, 1):
+        nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
+        # Observe que usamos Paragraph para permitir a quebra de linha no nome
+        table_data.append([
+            Paragraph(str(i), styles['Normal']),
+            Paragraph(nome_participante, styles['Normal']),
+            ""
+        ])
 
-        # Datas da oficina
-        if len(oficina.dias) > 1:
-            datas_formatadas = ", ".join([dia.data.strftime('%d/%m/%Y') for dia in oficina.dias[:-1]]) + \
-                               " e " + oficina.dias[-1].data.strftime('%d/%m/%Y') + "."
-        else:
-            datas_formatadas = oficina.dias[0].data.strftime('%d/%m/%Y')
-        c.drawCentredString(420, y, datas_formatadas)
+    table = Table(table_data, colWidths=[30*mm, 100*mm, 60*mm])
 
-        # Assinatura (personalizada ou default)
-        try:
-            signature_width = 360
-            signature_height = 90
-            x_signature = 420 - (signature_width / 2)
-            y_signature = y - 187
-            c.drawImage(signature_path, x_signature, y_signature,
-                        width=signature_width, height=signature_height,
-                        preserveAspectRatio=True, mask='auto')
-        except Exception as e:
-            print("Erro ao adicionar a assinatura:", e)
+    # Aplica estilos, incluindo WORDWRAP
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+    ]))
 
-        c.showPage()
+    elements.append(table)
+    elements.append(Spacer(1, 12))
 
-    c.save()
+    # Rodapé para assinaturas
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Ministrante", styles['Normal']))
+
+    elements.append(Spacer(1, 48))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Coordenador", styles['Normal']))
+
+    # Gera PDF
+    doc.build(elements)
+
+    return send_file(pdf_path)
+
 
 @routes.route('/gerar_certificados/<int:oficina_id>', methods=['GET'])
 @login_required
@@ -3224,17 +3266,21 @@ def gerar_pdf_checkins_qr():
     Gera um relatório em PDF dos check-ins realizados via QR Code.
     O relatório é agrupado por oficina e inclui dados do participante e horário do check-in.
     """
-    # Importações necessárias
+    import os
+    import pytz
+    from datetime import datetime
+    from collections import defaultdict
+
+    from flask import flash, redirect, url_for, send_file
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle, PageBreak
     from reportlab.lib.pagesizes import landscape, A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch, mm
+    from reportlab.lib.units import mm
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT
-    from collections import defaultdict
-    import pytz
-    from datetime import datetime
-
+    from models import Checkin
+    from extensions import db
+    
     # 1. Busca os Check-ins com palavra_chave="QR-AUTO"
     checkins_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').order_by(Checkin.data_hora.desc()).all()
     
@@ -3285,7 +3331,6 @@ def gerar_pdf_checkins_qr():
         alignment=TA_RIGHT
     )
 
-    # 4. Configuração do documento PDF
     doc = SimpleDocTemplate(
         pdf_path,
         pagesize=landscape(A4),
@@ -3315,7 +3360,6 @@ def gerar_pdf_checkins_qr():
 
     # 7. Agrupamento dos check-ins por oficina
     oficinas_grupos = defaultdict(list)
-    
     for checkin in checkins_qr:
         oficina_titulo = checkin.oficina.titulo if checkin.oficina else "Oficina não especificada"
         oficinas_grupos[oficina_titulo].append(checkin)
@@ -3323,7 +3367,7 @@ def gerar_pdf_checkins_qr():
     # 8. Definição do estilo de tabela
     table_style = TableStyle([
         # Cabeçalho
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#8ecde6")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -3336,7 +3380,7 @@ def gerar_pdf_checkins_qr():
         ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
         ('FONTSIZE', (0, 1), (-1, -1), 10),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         
         # Linhas zebradas
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
@@ -3346,7 +3390,10 @@ def gerar_pdf_checkins_qr():
         ('BOX', (0, 0), (-1, -1), 1, colors.grey),
         
         # Repetir cabeçalho em novas páginas
-        ('REPEATROWS', (0, 0), (0, 0))
+        ('REPEATROWS', (0, 0), (0, 0)),
+        
+        # Habilitar quebra de linha
+        ('WORDWRAP', (0, 0), (-1, -1), True),
     ])
 
     # 9. Gerar tabelas para cada oficina
@@ -3360,7 +3407,12 @@ def gerar_pdf_checkins_qr():
         elements.append(Paragraph(f"Oficina: {oficina_titulo} ({total_oficina} check-ins)", subtitle_style))
         
         # Preparar dados da tabela
-        table_data = [["Nome do Participante", "E-mail", "Data/Hora do Check-in"]]
+        # Usamos Paragraph para cada célula, o que permite o WORDWRAP aplicado acima.
+        table_data = [[
+            Paragraph("Nome do Participante", styles["Normal"]),
+            Paragraph("E-mail", styles["Normal"]),
+            Paragraph("Data/Hora do Check-in", styles["Normal"])
+        ]]
         
         for ck in checkins:
             usuario = ck.usuario
@@ -3371,10 +3423,19 @@ def gerar_pdf_checkins_qr():
             dt_local = convert_to_brasilia(ck.data_hora)
             data_str = dt_local.strftime('%d/%m/%Y %H:%M') if dt_local else "N/A"
             
-            table_data.append([nome, email, data_str])
+            table_data.append([
+                Paragraph(nome, styles["Normal"]),
+                Paragraph(email, styles["Normal"]),
+                Paragraph(data_str, styles["Normal"])
+            ])
         
-        # Criar e adicionar tabela
-        col_widths = [doc.width * 0.35, doc.width * 0.35, doc.width * 0.3]
+        # Definir larguras das colunas
+        col_widths = [
+            doc.width * 0.35,
+            doc.width * 0.35,
+            doc.width * 0.3
+        ]
+        
         table = LongTable(table_data, colWidths=col_widths)
         table.setStyle(table_style)
         elements.append(table)
