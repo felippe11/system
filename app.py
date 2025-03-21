@@ -10,6 +10,8 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.jinja_env.add_extension('jinja2.ext.do')
+    app.config["UPLOAD_FOLDER"] = "uploads" # Pasta para salvar os arquivos
+
     
     app.debug = True
     # Configuração de logging
