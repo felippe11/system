@@ -8,12 +8,12 @@
   <div>
     <div class="row mb-4">
       <!-- Filtro de Participante -->
-      <div class="col-md-6 mb-3">
+      <div class="col-md-4 mb-3">
         <label for="filtroParticipante" class="form-label">Filtrar por Participante:</label>
         <input type="text" class="form-control" id="filtroParticipante" placeholder="Digite o nome do participante">
       </div>
       <!-- Filtro de Oficinas -->
-      <div class="col-md-6 mb-3">
+      <div class="col-md-4 mb-3">
         <label for="filtroOficina" class="form-label">Filtrar por Oficina:</label>
         <select class="form-select" id="filtroOficina">
           <option value="">Todas as Oficinas</option>
@@ -22,36 +22,92 @@
           {% endfor %}
         </select>
       </div>
+      <!-- Ações em Lote -->
+      <div class="col-md-4 mb-3 d-flex align-items-end">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
+          <i class="bi bi-arrow-right-circle"></i> Mover Selecionados
+        </button>
+      </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>ID</th>
-            <th>Participante</th>
-            <th>Oficina</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaInscricoes">
-          {% for insc in inscritos %}
-          <tr data-oficina-id="{{ insc.oficina.id }}" data-participante-nome="{{ insc.usuario.nome | lower }}">
-            <td>{{ insc.id }}</td>
-            <td>{{ insc.usuario.nome }}</td>
-            <td>{{ insc.oficina.titulo }}</td>
-            <td>
-              <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Deseja cancelar esta inscrição?')">
-                <button type="submit" class="btn btn-danger btn-sm">Cancelar</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <form id="formGerenciarInscricoes" method="POST">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="selecionarTodos">
+                </div>
+              </th>
+              <th>ID</th>
+              <th>Participante</th>
+              <th>Oficina</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaInscricoes">
+            {% for insc in inscritos %}
+            <tr data-oficina-id="{{ insc.oficina.id }}" data-event-id="{{ insc.oficina.evento_id }}" data-participante-nome="{{ insc.usuario.nome | lower }}">
+              <td>
+                <div class="form-check">
+                  <input class="form-check-input selecao-inscricao" type="checkbox" name="inscricao_ids" value="{{ insc.id }}" data-oficina-id="{{ insc.oficina.id }}">
+                </div>
+              </td>
+              <td>{{ insc.id }}</td>
+              <td>{{ insc.usuario.nome }}</td>
+              <td>{{ insc.oficina.titulo }}</td>
+              <td>
+                <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja cancelar esta inscrição?')">
+                  <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
 
   </div>
+
+  <!-- Modal para Mover Inscrições -->
+  <div class="modal fade" id="moverInscricoesModal" tabindex="-1" aria-labelledby="moverInscricoesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="moverInscricoesModalLabel">Mover Inscrições</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formMoverInscricoes" action="{{ url_for('routes.mover_inscricoes_lote') }}" method="POST">
+            <div class="mb-3">
+              <label for="oficina_destino" class="form-label">Selecione a Oficina de Destino:</label>
+              <select class="form-select" id="oficina_destino" name="oficina_destino" required>
+                <option value="">-- Selecione uma Oficina --</option>
+              </select>
+            </div>
+            <div id="inscricoes_selecionadas_container" class="d-none">
+              <!-- Aqui serão inseridos os inputs hidden com os IDs das inscrições selecionadas -->
+            </div>
+            <div class="alert alert-info">
+              <span id="num_selecionados">0</span> participante(s) selecionado(s) para transferência.
+            </div>
+            <div id="alerta_vagas" class="alert alert-danger d-none">
+              Não há vagas suficientes na oficina selecionada.
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" form="formMoverInscricoes" class="btn btn-primary" id="btnConfirmarMover" disabled>Confirmar Transferência</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     function debugFiltroParticipante() {
       const filtro = document.getElementById('filtroParticipante').value;
@@ -66,6 +122,131 @@
     function debugCancelarInscricao(inscricaoId) {
       console.log(`❌ [DEBUG] Tentando cancelar inscrição com ID: ${inscricaoId}`);
     }
+
+    // Função para atualizar o botão de mover inscrições
+    function atualizarBotaoMover() {
+      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
+      const btnMover = document.getElementById('btnMoverInscricoes');
+      btnMover.disabled = checkboxes.length === 0;
+      
+      // Atualiza o contador no modal
+      document.getElementById('num_selecionados').textContent = checkboxes.length;
+    }
+
+    // Função para verificar disponibilidade de vagas
+    function verificarVagas() {
+      const oficinaDestino = document.getElementById('oficina_destino');
+      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
+      const btnConfirmar = document.getElementById('btnConfirmarMover');
+      const alertaVagas = document.getElementById('alerta_vagas');
+      
+      if (oficinaDestino.value === '') {
+        btnConfirmar.disabled = true;
+        alertaVagas.classList.add('d-none');
+        return;
+      }
+      
+      const vagasDisponiveis = parseInt(oficinaDestino.options[oficinaDestino.selectedIndex].dataset.vagas);
+      const numSelecionados = checkboxes.length;
+      
+      // Verifica se há vagas suficientes
+      if (vagasDisponiveis < numSelecionados) {
+        btnConfirmar.disabled = true;
+        alertaVagas.textContent = `Não há vagas suficientes. Disponíveis: ${vagasDisponiveis}, Necessárias: ${numSelecionados}`;
+        alertaVagas.classList.remove('d-none');
+      } else {
+        btnConfirmar.disabled = false;
+        alertaVagas.classList.add('d-none');
+      }
+    }
+
+    // Função para preparar o formulário antes do envio
+    function prepararFormulario() {
+      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
+      const container = document.getElementById('inscricoes_selecionadas_container');
+      
+      // Limpa o container
+      container.innerHTML = '';
+      
+      // Adiciona inputs hidden para cada inscrição selecionada
+      checkboxes.forEach(checkbox => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'inscricao_ids';
+        input.value = checkbox.value;
+        container.appendChild(input);
+      });
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      // Selecionar/Deselecionar todos
+      const selecionarTodos = document.getElementById('selecionarTodos');
+      selecionarTodos.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.selecao-inscricao');
+        checkboxes.forEach(checkbox => {
+          checkbox.checked = selecionarTodos.checked;
+        });
+        atualizarBotaoMover();
+      });
+      
+      // Atualizar botão quando uma inscrição é selecionada/deseleccionada
+      document.querySelectorAll('.selecao-inscricao').forEach(checkbox => {
+        checkbox.addEventListener('change', atualizarBotaoMover);
+      });
+      
+      // Verificar vagas quando a oficina de destino é alterada
+      document.getElementById('oficina_destino').addEventListener('change', verificarVagas);
+      
+      // Preparar formulário antes do envio
+      document.getElementById('formMoverInscricoes').addEventListener('submit', function(e) {
+        prepararFormulario();
+      });
+      
+      // Quando o modal é aberto
+      const moverModal = document.getElementById('moverInscricoesModal');
+      moverModal.addEventListener('show.bs.modal', function() {
+        // Resetar o select de oficina
+        document.getElementById('oficina_destino').value = '';
+        // Atualizar contador
+        atualizarBotaoMover();
+        // Desabilitar botão de confirmar
+        document.getElementById('btnConfirmarMover').disabled = true;
+        // Esconder alerta de vagas
+        document.getElementById('alerta_vagas').classList.add('d-none');
+      });
+    });
+
+    // Quando o modal é aberto, buscar oficinas do mesmo evento
+    document.getElementById('moverInscricoesModal').addEventListener('show.bs.modal', function () {
+      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
+      if (checkboxes.length === 0) return;
+
+      // Pega o atributo data-event-id da primeira inscrição selecionada
+      const firstRow = checkboxes[0].closest('tr');
+      const oficinaId = firstRow.getAttribute('data-oficina-id');
+
+      // Buscar oficinas do mesmo evento via fetch
+      fetch(`/api/oficinas_mesmo_evento/${oficinaId}`)
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('oficina_destino');
+          select.innerHTML = '<option value="">-- Selecione uma Oficina --</option>';
+          data.oficinas.forEach(oficina => {
+            const option = document.createElement('option');
+            option.value = oficina.id;
+            option.dataset.vagas = oficina.vagas;
+            option.textContent = `${oficina.titulo} (${oficina.vagas} vagas)`;
+            select.appendChild(option);
+          });
+        })
+        .catch(error => console.error('Erro ao buscar oficinas:', error));
+
+      // Resetar botão de confirmar e alertas
+      document.getElementById('btnConfirmarMover').disabled = true;
+      document.getElementById('alerta_vagas').classList.add('d-none');
+      atualizarBotaoMover();
+    });
   </script>
   
   <!-- Script para filtrar as inscrições por participante e oficina -->
