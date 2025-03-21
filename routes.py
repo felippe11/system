@@ -3566,7 +3566,76 @@ def cancelar_inscricoes_lote():
 @routes.route('/mover_inscricoes_lote', methods=['POST'])
 @login_required
 def mover_inscricoes_lote():
-    if current_user.tipo != 'admin':
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    inscricao_ids = request.form.getlist('inscricao_ids')
+    if not inscricao_ids:
+        flash("Nenhuma inscrição selecionada!", "warning")
+        return redirect(url_for('routes.dashboard'))
+    
+    oficina_destino_id = request.form.get('oficina_destino')
+    if not oficina_destino_id:
+        flash("Nenhuma oficina de destino selecionada!", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    inscricao_ids = list(map(int, inscricao_ids))
+    oficina_destino_id = int(oficina_destino_id)
+
+    try:
+        primeira_inscricao = Inscricao.query.get(inscricao_ids[0])
+        if not primeira_inscricao:
+            raise ValueError("Inscrição não encontrada")
+
+        evento_origem_id = primeira_inscricao.oficina.evento_id
+        if not evento_origem_id:
+            flash("A oficina de origem não pertence a nenhum evento!", "danger")
+            return redirect(url_for('routes.dashboard'))
+
+        oficina_destino = Oficina.query.get(oficina_destino_id)
+        if not oficina_destino or oficina_destino.evento_id != evento_origem_id:
+            flash("A oficina de destino deve pertencer ao mesmo evento!", "danger")
+            return redirect(url_for('routes.dashboard'))
+
+        inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+        for insc in inscricoes:
+            if insc.oficina.evento_id != evento_origem_id:
+                flash("Todas as inscrições devem pertencer ao mesmo evento!", "danger")
+                return redirect(url_for('routes.dashboard'))
+
+        if oficina_destino.vagas < len(inscricoes):
+            flash(f"Não há vagas suficientes na oficina de destino! (Disponível: {oficina_destino.vagas}, Necessário: {len(inscricoes)})", "danger")
+            return redirect(url_for('routes.dashboard'))
+
+        for insc in inscricoes:
+            insc.oficina.vagas += 1
+            oficina_destino.vagas -= 1
+            insc.oficina_id = oficina_destino_id
+
+        db.session.commit()
+        flash(f"Foram movidas {len(inscricoes)} inscrições para a oficina {oficina_destino.titulo}!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao mover inscrições: {e}", "danger")
+
+    return redirect(url_for('routes.dashboard'))
+
+@routes.route('/api/oficinas_mesmo_evento/<int:oficina_id>')
+@login_required
+def get_oficinas_mesmo_evento(oficina_id):
+    oficina = Oficina.query.get_or_404(oficina_id)
+    if not oficina.evento_id:
+        return jsonify({'oficinas': []})
+    oficinas = Oficina.query.filter_by(evento_id=oficina.evento_id).all()
+    return jsonify({
+        'oficinas': [{
+            'id': ofc.id,
+            'titulo': ofc.titulo,
+            'vagas': ofc.vagas
+        } for ofc in oficinas if ofc.id != oficina_id]
+    })
+    if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
 
@@ -3622,10 +3691,21 @@ def mover_inscricoes_lote():
 @routes.route('/cancelar_inscricao/<int:inscricao_id>', methods=['GET','POST'])
 @login_required
 def cancelar_inscricao(inscricao_id):
-    if current_user.tipo != 'admin':
+    # Allow both admin and client access
+    if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
+
+    # Get inscription
     insc = Inscricao.query.get_or_404(inscricao_id)
+    
+    # For clients, verify they own the workshop/event
+    if current_user.tipo == 'cliente':
+        oficina = Oficina.query.get(insc.oficina_id)
+        if oficina.cliente_id != current_user.id:
+            flash("Você não tem permissão para cancelar esta inscrição!", "danger")
+            return redirect(url_for('routes.dashboard_cliente'))
+
     try:
         db.session.delete(insc)
         db.session.commit()
@@ -3634,7 +3714,13 @@ def cancelar_inscricao(inscricao_id):
         db.session.rollback()
         flash(f"Erro ao cancelar inscrição: {e}", "danger")
 
-    return redirect(url_for('routes.dashboard'))
+    # Redirect to appropriate dashboard based on user type
+    if current_user.tipo == 'admin':
+        return redirect(url_for('routes.dashboard'))
+    else:
+        return redirect(url_for('routes.dashboard_cliente'))
+    
+
 
 @routes.route('/dashboard_cliente')
 @login_required
