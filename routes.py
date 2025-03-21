@@ -45,6 +45,7 @@ from flask import request, jsonify, flash, redirect, url_for
 from flask import Response, send_file, request
 from io import StringIO, BytesIO
 import csv
+from openpyxl import Workbook
 
 
 
@@ -2232,89 +2233,6 @@ def reset_senha_cpf():
         flash('Senha redefinida com sucesso! Faça login novamente.', 'success')
         return redirect(url_for('routes.login'))
     return render_template('reset_senha_cpf.html', usuario=usuario)
-
-
-# ===========================
-#       IMPORTAÇÃO DE ARQUIVOS
-# ===========================
-def arquivo_permitido(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@routes.route("/importar_oficinas", methods=["POST"])
-@login_required
-def importar_oficinas():
-    if "arquivo" not in request.files:
-        flash("Nenhum arquivo enviado!", "danger")
-        return redirect(url_for("routes.dashboard"))
-    arquivo = request.files["arquivo"]
-    if arquivo.filename == "":
-        flash("Nenhum arquivo selecionado.", "danger")
-        return redirect(url_for("routes.dashboard"))
-    if arquivo and arquivo_permitido(arquivo.filename):
-        filename = secure_filename(arquivo.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        arquivo.save(filepath)
-        try:
-            print("📌 [DEBUG] Lendo o arquivo Excel...")
-            df = pd.read_excel(filepath)
-            df.columns = df.columns.str.strip()
-            print("📌 [DEBUG] Colunas encontradas:", df.columns.tolist())
-            colunas_obrigatorias = [
-                "titulo", "descricao", "ministrante", "vagas", "carga_horaria",
-                "estado", "cidade", "datas", "horarios_inicio", "horarios_fim",
-                "palavras_chave_manha", "palavras_chave_tarde"
-            ]
-            if not all(col in df.columns for col in colunas_obrigatorias):
-                flash(f"Erro: O arquivo deve conter as colunas: {', '.join(colunas_obrigatorias)}", "danger")
-                return redirect(url_for("routes.dashboard"))
-            oficinas_criadas = 0
-            for index, row in df.iterrows():
-                print(f"\n📌 [DEBUG] Processando linha {index+1}...")
-                nova_oficina = Oficina(
-                    titulo=row["titulo"],
-                    descricao=row["descricao"],
-                    ministrante=row["ministrante"],
-                    vagas=int(row["vagas"]),
-                    carga_horaria=str(row["carga_horaria"]),
-                    estado=row["estado"].upper(),
-                    cidade=row["cidade"]
-                )
-                db.session.add(nova_oficina)
-                db.session.commit()
-                print(f"✅ [DEBUG] Oficina '{nova_oficina.titulo}' cadastrada com sucesso!")
-                datas = row["datas"].split(",")
-                horarios_inicio = row["horarios_inicio"].split(",")
-                horarios_fim = row["horarios_fim"].split(",")
-                palavras_chave_manha = row["palavras_chave_manha"].split(",") if isinstance(row["palavras_chave_manha"], str) else []
-                palavras_chave_tarde = row["palavras_chave_tarde"].split(",") if isinstance(row["palavras_chave_tarde"], str) else []
-                for i in range(len(datas)):
-                    try:
-                        data_formatada = datetime.strptime(datas[i].strip(), "%d/%m/%Y").date()
-                        print(f"📌 [DEBUG] Adicionando data: {data_formatada}, {horarios_inicio[i]} - {horarios_fim[i]}")
-                    except ValueError as e:
-                        print(f"❌ [ERRO] Data inválida na linha {index+1}: {datas[i]} - {str(e)}")
-                        continue  
-                    novo_dia = OficinaDia(
-                        oficina_id=nova_oficina.id,
-                        data=data_formatada,
-                        horario_inicio=horarios_inicio[i].strip(),
-                        horario_fim=horarios_fim[i].strip(),
-                        palavra_chave_manha=palavras_chave_manha[i].strip() if i < len(palavras_chave_manha) else None,
-                        palavra_chave_tarde=palavras_chave_tarde[i].strip() if i < len(palavras_chave_tarde) else None
-                    )
-                    db.session.add(novo_dia)
-                    db.session.commit()
-                    oficinas_criadas += 1
-            flash(f"{oficinas_criadas} oficinas importadas com sucesso!", "success")
-            print(f"✅ [DEBUG] {oficinas_criadas} oficinas foram importadas com sucesso!")
-        except Exception as e:
-            db.session.rollback()
-            print(f"❌ [ERRO] Erro ao processar o arquivo: {str(e)}")
-            flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
-        os.remove(filepath)
-    else:
-        flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
-    return redirect(url_for("routes.dashboard"))
 
 @routes.route("/excluir_todas_oficinas", methods=["POST"])
 @login_required
@@ -5939,10 +5857,13 @@ def cancelar_agendamento_professor(agendamento_id):
             db.session.rollback()
             flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
     
+    prazo_limite = data_hora_visita - timedelta(hours=config.prazo_cancelamento)
+    
     return render_template(
         'professor/cancelar_agendamento.html',
         agendamento=agendamento,
-        horario=horario
+        horario=horario,
+        prazo_limite=prazo_limite
     )
 
 
@@ -10312,5 +10233,246 @@ def horarios_disponiveis_api():
 
     return jsonify(eventos)
 
+@routes.route("/importar_oficinas", methods=["POST"])
+@login_required
+def importar_oficinas():
+    """
+    Exemplo de rota para importar oficinas de um arquivo Excel (.xlsx).
+    Inclui o cadastro da própria oficina e também das datas (OficinaDia).
+    """
+    # 1. Verificar se foi enviado um arquivo
+    if "arquivo" not in request.files:
+        flash("Nenhum arquivo enviado!", "danger")
+        return redirect(url_for("routes.dashboard_cliente"))
+    
+    arquivo = request.files["arquivo"]
+    if arquivo.filename == "":
+        flash("Nenhum arquivo selecionado.", "danger")
+        return redirect(url_for("routes.dashboard_cliente"))
+
+    # Verifica se a extensão é permitida (.xlsx)
+    ALLOWED_EXTENSIONS = {"xlsx"}
+    def arquivo_permitido(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+    if not arquivo_permitido(arquivo.filename):
+        flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
+        return redirect(url_for("routes.dashboard_cliente"))
+
+    # 2. Salvar o arquivo em local temporário
+    from werkzeug.utils import secure_filename
+    import os
+    filename = secure_filename(arquivo.filename)
+    filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+    arquivo.save(filepath)
+
+    import pandas as pd
+    from datetime import datetime
+    from models import Oficina, OficinaDia
+    from sqlalchemy.exc import IntegrityError
+
+    try:
+        # 3. Ler o arquivo Excel
+        df = pd.read_excel(filepath)
+        df.columns = df.columns.str.strip()  # tirar espaços extras do nome das colunas
+
+        # Exemplo de colunas que esperamos:
+        #   titulo, descricao, ministrante_id, vagas, carga_horaria,
+        #   estado, cidade, datas, horarios_inicio, horarios_fim
+        #
+        # Onde:
+        #   - "datas" pode ser uma string com várias datas separadas por vírgula, ex: "01/05/2025,02/05/2025"
+        #   - "horarios_inicio" idem, ex: "08:00,09:00"
+        #   - "horarios_fim" idem, ex: "12:00,13:00"
+        #   - O número de datas deve bater com o número de horários_inicio e horários_fim
+        
+        colunas_obrigatorias = [
+            "titulo", "descricao", "ministrante_id",
+            "vagas", "carga_horaria", "estado", "cidade",
+            "datas", "horarios_inicio", "horarios_fim"
+        ]
+        for col in colunas_obrigatorias:
+            if col not in df.columns:
+                flash(f"Erro: Coluna '{col}' não encontrada no arquivo Excel!", "danger")
+                os.remove(filepath)
+                return redirect(url_for("routes.dashboard_cliente"))
+
+        # 4. Percorrer cada linha do DataFrame e criar as oficinas
+        total_oficinas_criadas = 0
+        for index, row in df.iterrows():
+            try:
+                # Converter alguns campos para o tipo adequado
+                 # Tratar ministrante_id
+                raw_m_id = row["ministrante_id"]
+                if pd.isna(raw_m_id) or raw_m_id == '':
+                    # Se estiver vazio, defina None ou crie lógica de fallback
+                    ministrante_id = None
+                else:
+                    ministrante_id = int(raw_m_id)  # aqui converte para int, se tiver valor
+                
+                 # Tratar vagas
+                raw_vagas = row["vagas"]
+                if pd.isna(raw_vagas) or raw_vagas == '':
+                    vagas = 0
+                else:
+                    vagas = int(raw_vagas)
+                    
+                carga_horaria = str(row["carga_horaria"])
+                estado = str(row["estado"]).upper().strip()  # ex: "SP"
+                cidade = str(row["cidade"]).strip()
+
+                # Criar a oficina principal
+                nova_oficina = Oficina(
+                    titulo=row["titulo"],
+                    descricao=row["descricao"],
+                    ministrante_id=ministrante_id,
+                    vagas=vagas,
+                    carga_horaria=carga_horaria,
+                    estado=estado,
+                    cidade=cidade
+                )
+
+                # Se quiser vincular a um cliente específico:
+                # nova_oficina.cliente_id = current_user.id
+
+                db.session.add(nova_oficina)
+                db.session.flush()  # para garantir que nova_oficina.id exista
+
+                # Lendo as datas e horários
+                # Supondo que cada coluna seja uma string com valores separados por vírgula
+                datas_str = str(row["datas"]).strip()                # ex.: "01/05/2025,02/05/2025"
+                horarios_inicio_str = str(row["horarios_inicio"]).strip()  # ex.: "08:00,09:00"
+                horarios_fim_str = str(row["horarios_fim"]).strip()        # ex.: "12:00,13:00"
+
+                datas_list = datas_str.split(",")
+                hi_list = horarios_inicio_str.split(",")
+                hf_list = horarios_fim_str.split(",")
+
+                # Checa se todos os arrays têm mesmo tamanho
+                if not (len(datas_list) == len(hi_list) == len(hf_list)):
+                    raise ValueError(f"As colunas 'datas', 'horarios_inicio' e 'horarios_fim' devem ter a mesma quantidade de itens na linha {index+1}.")
+
+                # 5. Para cada data, criar um registro OficinaDia
+                for i in range(len(datas_list)):
+                    data_str = datas_list[i].strip()
+                    hi_str = hi_list[i].strip()
+                    hf_str = hf_list[i].strip()
+
+                    # Converter data_str para datetime.date (formato padrão dd/mm/yyyy)
+                    try:
+                        data_formatada = datetime.strptime(data_str, "%d/%m/%Y").date()
+                    except ValueError:
+                        raise ValueError(f"Data inválida na linha {index+1}: '{data_str}'. Formato esperado: DD/MM/YYYY.")
+
+                    novo_dia = OficinaDia(
+                        oficina_id=nova_oficina.id,
+                        data=data_formatada,
+                        horario_inicio=hi_str,
+                        horario_fim=hf_str
+                    )
+                    db.session.add(novo_dia)
+
+                db.session.commit()
+                total_oficinas_criadas += 1
+            
+            except IntegrityError as e:
+                db.session.rollback()
+                current_app.logger.error(f"[Linha {index+1}] Erro de integridade: {e}")
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"[Linha {index+1}] Erro ao criar oficina: {e}")
+
+        flash(f"Foram importadas {total_oficinas_criadas} oficinas com sucesso, incluindo as datas!", "success")
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
+
+    # Remover o arquivo temporário e redirecionar de volta
+    os.remove(filepath)
+    return redirect(url_for("routes.dashboard_cliente"))
 
 
+@routes.route('/gerar_modelo/<string:tipo>', methods=['GET'])
+@login_required
+def gerar_modelo(tipo):
+    """
+    Gera um arquivo Excel (XLSX) em memória com colunas obrigatórias
+    para importação de Usuários ou Oficinas. Retorna o arquivo para download.
+    
+    Use:
+      /gerar_modelo/usuarios  -> para Modelo de Usuários
+      /gerar_modelo/oficinas  -> para Modelo de Oficinas
+    """
+    # 1. Cria o Workbook em memória
+    wb = Workbook()
+    ws = wb.active
+
+    if tipo.lower() == 'usuarios':
+        ws.title = "ModeloUsuarios"
+
+        # Exemplo de colunas do model Usuario:
+        #   nome, cpf, email, senha, formacao, tipo
+        colunas = [
+            "nome", "cpf", "email", "senha", "formacao", "tipo"
+        ]
+        ws.append(colunas)
+
+        # Exemplo de linha de demonstração
+        ws.append([
+            "Fulano de Tal",     # nome
+            "123.456.789-00",    # cpf
+            "fulano@email.com",  # email
+            "senha123",          # senha
+            "Graduado em X",     # formacao
+            "participante"       # tipo: pode ser admin, cliente, participante, etc.
+        ])
+
+        # Nome do arquivo para download
+        nome_arquivo = "modelo_usuarios.xlsx"
+
+    elif tipo.lower() == 'oficinas':
+        ws.title = "ModeloOficinas"
+
+        # Exemplo de colunas do model Oficina (e OficinaDia):
+        #   titulo, descricao, ministrante_id, vagas, carga_horaria,
+        #   estado, cidade, datas, horarios_inicio, horarios_fim
+        colunas = [
+            "titulo", "descricao", "ministrante_id",
+            "vagas", "carga_horaria", "estado", "cidade",
+            "datas", "horarios_inicio", "horarios_fim"
+        ]
+        ws.append(colunas)
+
+        # Exemplo de linha de demonstração
+        ws.append([
+            "Oficina Exemplo",              # titulo
+            "Descricao da oficina",         # descricao
+            1,                              # ministrante_id
+            30,                             # vagas
+            "4h",                           # carga_horaria
+            "SP",                           # estado
+            "São Paulo",                    # cidade
+            "01/09/2025,02/09/2025",        # datas (separado por vírgula)
+            "08:00,08:00",                  # horarios_inicio (mesma quantidade de itens de datas)
+            "12:00,12:00"                   # horarios_fim
+        ])
+
+        nome_arquivo = "modelo_oficinas.xlsx"
+
+    else:
+        # Se não for "usuarios" nem "oficinas", retorna 400 (Bad Request)
+        abort(400, "Tipo inválido. Use 'usuarios' ou 'oficinas'.")
+
+    # 2. Salva o Workbook em um buffer de memória
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)  # Volta para o início do buffer
+
+    # 3. Retorna o arquivo
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=nome_arquivo,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
