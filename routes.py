@@ -2667,6 +2667,18 @@ def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
         spaceAfter=3
     )
     
+    # Cria o documento em modo paisagem com margens aprimoradas
+    doc = SimpleDocTemplate(
+        pdf_path, 
+        pagesize=landscape(letter), 
+        leftMargin=0.75*inch, 
+        rightMargin=0.75*inch,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch
+    )
+    
+    available_width = doc.width  # largura disponível após as margens
+    
     elements = []
     
     # Adicionar logotipo ou imagem header (opcional)
