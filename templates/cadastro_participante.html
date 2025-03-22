@@ -142,6 +142,27 @@
     </div>
     {% endif %}
 
+    <!-- Exemplo de Seção de Patrocinadores -->
+{% if patrocinadores and patrocinadores|length > 0 %}
+<div class="patrocinadores-section">
+  <h2 class="section-title">Patrocinadores</h2>
+
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+    {% for p in patrocinadores %}
+    <div class="col">
+      <div class="card h-100 shadow-sm">
+        <img src="{{ url_for('static', filename=p.logo_path) }}" 
+             class="card-img-top" alt="Logo do Patrocinador" />
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<p class="text-muted">Nenhum patrocinador cadastrado.</p>
+{% endif %}
+</div>
+
     <!-- Modal de Cadastro -->
     <div id="cadastroModal" class="modal">
         <div class="modal-conteudo">
