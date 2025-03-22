@@ -665,7 +665,7 @@ def dashboard():
 @routes.route('/dashboard_participante')
 @login_required
 def dashboard_participante():
-    print("DEBUG -> current_user.tipo =", current_user.tipo)  # <-- ADICIONE
+    print("DEBUG -> current_user.tipo =", current_user.tipo)
     if current_user.tipo != 'participante':
         return redirect(url_for('routes.dashboard'))
 
@@ -675,7 +675,7 @@ def dashboard_participante():
     formularios_disponiveis = Formulario.query.count() > 0
     
     if current_user.cliente_id:
-        from models import ConfiguracaoCliente  # certifique-se de importar se não estiver no topo
+        from models import ConfiguracaoCliente
         config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
         # Se não existir ainda, pode criar com valores padrão
         if not config_cliente:
@@ -693,8 +693,24 @@ def dashboard_participante():
     habilitar_feedback = config_cliente.habilitar_feedback if config_cliente else False
     habilitar_certificado = config_cliente.habilitar_certificado_individual if config_cliente else False
 
-    # Busca as oficinas disponíveis
-    if current_user.cliente_id:
+    # Obter os eventos em que o participante está inscrito
+    eventos_inscritos = []
+    for inscricao in current_user.inscricoes:
+        if inscricao.oficina and inscricao.oficina.evento_id:
+            eventos_inscritos.append(inscricao.oficina.evento_id)
+    
+    # Remover duplicatas
+    eventos_inscritos = list(set(eventos_inscritos))
+    
+    # Busca as oficinas disponíveis que pertencem aos mesmos eventos
+    oficinas = []
+    if eventos_inscritos:
+        # Oficinas dos mesmos eventos em que o usuário está inscrito
+        oficinas = Oficina.query.filter(
+            Oficina.evento_id.in_(eventos_inscritos)
+        ).all()
+    elif current_user.cliente_id:
+        # Fallback: se não estiver inscrito em nenhum evento, mostra oficinas do cliente
         oficinas = Oficina.query.filter(
             (Oficina.cliente_id == current_user.cliente_id) | (Oficina.cliente_id == None)
         ).all()
@@ -711,7 +727,7 @@ def dashboard_participante():
         HorarioVisitacao.data >= datetime.now().date()
     ).all()
 
-    # Monte a estrutura que o template “dashboard_participante.html” precisa
+    # Monte a estrutura que o template "dashboard_participante.html" precisa
     oficinas_formatadas = []
     for oficina in oficinas:
         dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
@@ -722,13 +738,16 @@ def dashboard_participante():
             'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
-            'dias': dias
+            'dias': dias,
+            'evento_id': oficina.evento_id,  # Adicionado para agrupar por evento
+            'evento_nome': oficina.evento.nome if oficina.evento else 'Sem evento'  # Nome do evento
         })
 
     return render_template(
         'dashboard_participante.html',
         usuario=current_user,
         oficinas=oficinas_formatadas,
+        eventos_inscritos=eventos_inscritos,
         # Aqui passamos as booleans *do cliente* para o template
         permitir_checkin_global=permitir_checkin,
         habilitar_feedback=habilitar_feedback,
