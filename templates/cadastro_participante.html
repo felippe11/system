@@ -29,7 +29,7 @@
                 </div>
                 {% endif %}
 
-                <!-- ABA PROGRAMAÇÃO COM MINISTRANTE -->
+               <!-- ABA PROGRAMAÇÃO COM MINISTRANTE -->
 <div class="programacao-section">
     <h2 class="programacao-titulo">
         <i class="fas fa-calendar-alt"></i> Programação do Evento
@@ -49,22 +49,30 @@
                             <div class="atividade-descricao">
                                 {{ item.descricao }}
                             </div>
-                            <div class="atividade-ministrante">
-                                {% if item.ministrante %}
-                                    {% if item.ministrante.foto %}
-                                        <!-- Foto customizada do ministrante -->
-                                        <img src="{{ url_for('static', filename=item.ministrante.foto) }}" 
-                                             alt="Foto do ministrante" 
-                                             class="ministrante-foto">
-                                    {% else %}
-                                        <!-- Foto default (não salva no banco) -->
-                                        <img src="{{ url_for('static', filename='uploads/ministrantes/default-profile.png') }}"
-                                             alt="Foto padrão"
-                                             class="ministrante-foto">
-                                    {% endif %}
-                                    <span>{{ item.ministrante.nome }}</span>
-                                {% endif %}
-                            </div>
+
+                            {# Junta o ministrante principal e os extras numa mesma lista #}
+                            {% set todos_ministrantes = [] %}
+                            {% if item.ministrante %}
+                                {% set _ = todos_ministrantes.append(item.ministrante) %}
+                            {% endif %}
+                            {% if item.oficina and item.oficina.ministrantes_associados %}
+                                {% for m in item.oficina.ministrantes_associados %}
+                                    {% set _ = todos_ministrantes.append(m) %}
+                                {% endfor %}
+                            {% endif %}
+
+                            {% if todos_ministrantes %}
+                                <div class="todos-ministrantes">
+                                    {% for m in todos_ministrantes %}
+                                        <div class="ministrante-card">
+                                            <img src="{{ url_for('static', filename=m.foto or 'uploads/ministrantes/default-profile.png') }}"
+                                                 alt="Foto do ministrante"
+                                                 class="ministrante-foto" />
+                                            <span class="ministrante-nome">{{ m.nome }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     </li>
                 {% endfor %}
@@ -73,47 +81,6 @@
     {% endfor %}
 </div>
 
-               <!-- ABA MINISTRANTES PRESENTES NO EVENTO -->
-<div class="ministrantes-section">
-    <h2 class="ministrantes-titulo">
-        <i class="fas fa-chalkboard-teacher"></i> Ministrantes Presentes no Evento
-    </h2>
-
-    <!-- Add this HTML right before the closing body tag -->
-
-    <div id="photoModal" class="photo-modal">
-        <span class="photo-modal-close">&times;</span>
-        <div class="photo-modal-wrapper">
-            <img class="photo-modal-content" id="photoModalImg">
-            <div class="photo-modal-info">
-                <h3 id="photoModalName" class="photo-modal-name"></h3>
-                <p id="photoModalFormacao" class="photo-modal-formacao"></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add this CSS to your existing style section -->
-
-    {% if ministrantes %}
-        <div class="ministrantes-grid">
-            {% for ministrante in ministrantes %}
-                <div class="ministrante-card">
-                    {% if ministrante.foto %}
-                        <img src="{{ url_for('static', filename=ministrante.foto) }}" alt="Foto do ministrante" class="ministrante-foto-pequena">
-                    {% else %}
-                        <img src="{{ url_for('static', filename='default-profile.png') }}" alt="Foto padrão" class="ministrante-foto-pequena">
-                    {% endif %}
-                    <div class="ministrante-info">
-                        <h3 class="ministrante-nome">{{ ministrante.nome }}</h3>
-                        <p class="ministrante-formacao">{{ ministrante.formacao }}</p>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p class="text-center">Nenhum ministrante cadastrado para este evento.</p>
-    {% endif %}
-</div>
 
 
                 {% if evento.localizacao %}
@@ -757,6 +724,40 @@
         padding: 8px 16px;
         font-size: 14px;
     }
+
+    .todos-ministrantes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        /* ou, se quiser limitar explicitamente a 4 colunas fixas em telas grandes:
+           grid-template-columns: repeat(4, 1fr);
+        */
+        gap: 1rem; /* espaço entre cards */
+        margin-top: 1rem;
+      }
+      
+      .ministrante-card {
+        background-color: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+      }
+      
+      .ministrante-foto {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 50%;
+      }
+      
+      .ministrante-nome {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #333;
+      }
+      
 </style>
 
 <!-- Scripts -->

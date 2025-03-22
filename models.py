@@ -77,6 +77,15 @@ class Configuracao(db.Model):
 # =================================
 #          MINISTRANTE
 # =================================
+
+# Tabela de associação N:N
+oficina_ministrantes_association = db.Table(
+    'oficina_ministrantes_association',
+    db.Column('oficina_id', db.Integer, db.ForeignKey('oficina.id'), primary_key=True),
+    db.Column('ministrante_id', db.Integer, db.ForeignKey('ministrante.id'), primary_key=True)
+)
+
+
 class Ministrante(db.Model, UserMixin):
     __tablename__ = 'ministrante'
     id = db.Column(db.Integer, primary_key=True)
@@ -130,6 +139,13 @@ class Oficina(db.Model):
     cliente = db.relationship("Cliente", back_populates="oficinas")  # ✅ Corrigido para `back_populates`
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
     evento = db.relationship("Evento", backref=db.backref('oficinas', lazy=True))
+    
+    ministrantes_associados = db.relationship(
+        "Ministrante",
+        secondary="oficina_ministrantes_association",  # nome da tabela que criamos
+        backref="oficinas_relacionadas",
+        lazy='dynamic'  # ou 'select', 'joined', etc. conforme sua preferência
+    )
 
     dias = db.relationship('OficinaDia', back_populates="oficina", lazy=True, cascade="all, delete-orphan")
 
