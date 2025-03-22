@@ -32,9 +32,11 @@ class Usuario(db.Model, UserMixin):
     formacao = db.Column(db.String(255), nullable=False)
     tipo = db.Column(db.String(20), nullable=False, default='participante')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Alterado para permitir NULL
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)  # Novo campo para associar usuário ao evento
 
     
     cliente = db.relationship('Cliente', backref=db.backref('usuarios', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('usuarios', lazy=True))
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
     cidades = db.Column(db.String(255), nullable=True)   # Ex.: "São Paulo,Rio de Janeiro,Belo Horizonte"
