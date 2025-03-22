@@ -692,6 +692,22 @@ class ProfessorBloqueado(db.Model):
     
     def __repr__(self):
         return f"<ProfessorBloqueado {self.professor_id} até {self.data_final.strftime('%d/%m/%Y')}>"
+    
+
+# models.py
+class Patrocinador(db.Model):
+    __tablename__ = 'patrocinador'
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
+    logo_path = db.Column(db.String(255), nullable=True)  # Caminho do arquivo no servidor
+    
+    # Relacionamento com Evento (caso deseje vincular a um evento específico)
+    evento = db.relationship('Evento', backref=db.backref('patrocinadores', lazy=True))
+    
+    def __init__(self, evento_id, logo_path):
+        self.evento_id = evento_id
+        self.logo_path = logo_path
+
 
 
 

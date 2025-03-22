@@ -46,6 +46,7 @@ from flask import Response, send_file, request
 from io import StringIO, BytesIO
 import csv
 from openpyxl import Workbook
+from models import Patrocinador
 
 
 
@@ -176,6 +177,8 @@ def cadastro_participante(identifier=None):
     cliente_id = None
     evento = None
     token = request.args.get('token') if not identifier else identifier  # Pega o token da URL ou usa o identifier
+    
+    
 
     # 1) Inicializa variáveis
     sorted_keys = []
@@ -299,6 +302,10 @@ def cadastro_participante(identifier=None):
                 db.session.rollback()
                 print(f"Erro ao cadastrar usuário: {e}")
                 alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
+    
+    patrocinadores = []
+    if evento:
+        patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all()
 
     # Renderiza o template
     return render_template(
@@ -308,7 +315,8 @@ def cadastro_participante(identifier=None):
         evento=evento,
         sorted_keys=sorted_keys,
         ministrantes=ministrantes,
-        grouped_oficinas=grouped_oficinas
+        grouped_oficinas=grouped_oficinas,
+        patrocinadores=patrocinadores
     )
 
 # ===========================
@@ -10649,3 +10657,52 @@ def gerar_modelo(tipo):
         download_name=nome_arquivo,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+    
+@routes.route('/adicionar_patrocinadores', methods=['POST'])
+@login_required
+def adicionar_patrocinadores():
+    # Verifica se é cliente ou admin (se for o caso)
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    evento_id = request.form.get('evento_id')  # se você estiver usando evento no form
+    qtd = int(request.form.get('qtdPatrocinadores', 0))
+    
+    # Garante que não é zero
+    if qtd <= 0:
+        flash("Quantidade inválida de patrocinadores!", "danger")
+        return redirect(url_for('routes.dashboard_cliente'))
+    
+    # Processa cada logo
+    uploaded_count = 0
+    for i in range(qtd):
+        file_key = f'logo_{i}'
+        if file_key in request.files:
+            file = request.files[file_key]
+            if file and file.filename.strip():
+                filename = secure_filename(file.filename)
+                
+                # Ajuste o caminho onde você quer salvar
+                # Exemplo: "static/uploads/patrocinadores"
+                # Certifique-se de criar esse diretório se não existir.
+                upload_folder = os.path.join('static', 'uploads', 'patrocinadores')
+                os.makedirs(upload_folder, exist_ok=True)
+                
+                file_path = os.path.join(upload_folder, filename)
+                file.save(file_path)
+                
+                # Caminho relativo para salvar no banco
+                logo_path = os.path.join('uploads', 'patrocinadores', filename)
+                
+                # Cria registro no banco
+                patrocinador = Patrocinador(
+                    evento_id=evento_id,
+                    logo_path=logo_path
+                )
+                db.session.add(patrocinador)
+                uploaded_count += 1
+    
+    db.session.commit()
+    flash(f"{uploaded_count} patrocinador(es) cadastrados com sucesso!", "success")
+    return redirect(url_for('routes.dashboard_cliente'))
