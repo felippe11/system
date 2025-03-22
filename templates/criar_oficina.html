@@ -53,6 +53,21 @@
           </select>
         </div>
 
+        <!-- NOVO CAMPO: múltiplos ministrantes extras -->
+  <div class="mb-3">
+    <label for="ministrantes_ids" class="form-label">
+      Ministrantes (múltiplos):
+    </label>
+    <select name="ministrantes_ids[]" id="ministrantes_ids" class="form-select" multiple>
+      {% for minist in ministrantes %}
+      <option value="{{ minist.id }}">{{ minist.nome }}</option>
+      {% endfor %}
+    </select>
+    <small class="text-muted">
+      Segure CTRL (ou SHIFT) para selecionar vários
+    </small>
+  </div>
+
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="vagas" class="form-label">Número de Vagas:</label>
