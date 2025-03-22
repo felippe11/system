@@ -178,7 +178,6 @@ def cadastro_participante(identifier=None):
     evento = None
     token = request.args.get('token') if not identifier else identifier  # Pega o token da URL ou usa o identifier
     
-    
 
     # 1) Inicializa variáveis
     sorted_keys = []
@@ -307,6 +306,19 @@ def cadastro_participante(identifier=None):
     patrocinadores = []
     if evento:
         patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all()
+        
+    all_ministrantes = set()  # set() para evitar duplicados
+    for of in oficinas:
+        # Adiciona o ministrante "principal" (campo officiant) se existir
+        if of.ministrante_obj:
+            all_ministrantes.add(of.ministrante_obj)
+
+        # Adiciona os ministrantes extras (many-to-many)
+        for m in of.ministrantes_associados:
+            all_ministrantes.add(m)
+
+    # Converte para lista para passar ao template
+    ministrantes = list(all_ministrantes)
 
     # Renderiza o template
     return render_template(
@@ -3211,7 +3223,6 @@ def editar_ministrante(ministrante_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else None
-    oficina.ministrantes_associados.clear()
     ids_extras = request.form.getlist('ministrantes_ids[]')
     
     for mid in ids_extras:
@@ -10675,51 +10686,54 @@ def gerar_modelo(tipo):
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     
-@routes.route('/adicionar_patrocinadores', methods=['POST'])
+@routes.route('/adicionar_patrocinadores_categorizados', methods=['POST'])
 @login_required
-def adicionar_patrocinadores():
-    # Verifica se é cliente ou admin (se for o caso)
+def adicionar_patrocinadores_categorizados():
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
 
-    evento_id = request.form.get('evento_id')  # se você estiver usando evento no form
-    qtd = int(request.form.get('qtdPatrocinadores', 0))
-    
-    # Garante que não é zero
-    if qtd <= 0:
-        flash("Quantidade inválida de patrocinadores!", "danger")
+    evento_id = request.form.get('evento_id')
+    if not evento_id:
+        flash("Evento não selecionado!", "danger")
         return redirect(url_for('routes.dashboard_cliente'))
-    
-    # Processa cada logo
-    uploaded_count = 0
-    for i in range(qtd):
-        file_key = f'logo_{i}'
-        if file_key in request.files:
-            file = request.files[file_key]
-            if file and file.filename.strip():
-                filename = secure_filename(file.filename)
-                
-                # Ajuste o caminho onde você quer salvar
-                # Exemplo: "static/uploads/patrocinadores"
-                # Certifique-se de criar esse diretório se não existir.
-                upload_folder = os.path.join('static', 'uploads', 'patrocinadores')
-                os.makedirs(upload_folder, exist_ok=True)
-                
-                file_path = os.path.join(upload_folder, filename)
-                file.save(file_path)
-                
-                # Caminho relativo para salvar no banco
-                logo_path = os.path.join('uploads', 'patrocinadores', filename)
-                
-                # Cria registro no banco
-                patrocinador = Patrocinador(
-                    evento_id=evento_id,
-                    logo_path=logo_path
-                )
-                db.session.add(patrocinador)
-                uploaded_count += 1
-    
+
+    qtd_realizacao = int(request.form.get('qtd_realizacao', 0))
+    qtd_patrocinio = int(request.form.get('qtd_patrocinio', 0))
+    qtd_organizacao = int(request.form.get('qtd_organizacao', 0))
+    qtd_apoio = int(request.form.get('qtd_apoio', 0))
+
+    def salvar_uploads(categoria_label, qtd):
+        imported_count = 0
+        for i in range(qtd):
+            key = f'{categoria_label.lower()}_{i}'
+            if key in request.files:
+                file = request.files[key]
+                if file and file.filename.strip():
+                    filename = secure_filename(file.filename)
+                    upload_folder = os.path.join('static', 'uploads', 'patrocinadores')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    file.save(os.path.join(upload_folder, filename))
+
+                    logo_path = os.path.join('uploads', 'patrocinadores', filename)
+
+                    # Ajuste aqui para categoria com inicial maiúscula
+                    novo_pat = Patrocinador(
+                        evento_id=evento_id,
+                        logo_path=logo_path,
+                        categoria=categoria_label.capitalize()  # Realizacao, Patrocinio, Organizacao, Apoio
+                    )
+                    db.session.add(novo_pat)
+                    imported_count += 1
+        return imported_count
+
+    total_importados = 0
+    total_importados += salvar_uploads('realizacao', qtd_realizacao)
+    total_importados += salvar_uploads('patrocinio', qtd_patrocinio)
+    total_importados += salvar_uploads('organizacao', qtd_organizacao)
+    total_importados += salvar_uploads('apoio', qtd_apoio)
+
     db.session.commit()
-    flash(f"{uploaded_count} patrocinador(es) cadastrados com sucesso!", "success")
+
+    flash(f"Patrocinadores adicionados com sucesso! Total: {total_importados}", "success")
     return redirect(url_for('routes.dashboard_cliente'))
