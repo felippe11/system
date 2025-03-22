@@ -58,6 +58,21 @@
           </select>
         </div>
 
+              <!-- editar_oficina.html -->
+      <!-- Múltiplos ministrantes -->
+      <div class="mb-3">
+        <label>Ministrantes Extras (múltiplos)</label>
+        <select name="ministrantes_ids[]" class="form-select" multiple>
+          {% for minist in ministrantes %}
+          <option value="{{ minist.id }}"
+            {% if minist in oficina.ministrantes_associados %}
+              selected
+            {% endif %}
+          >{{ minist.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="vagas" class="form-label">Número de Vagas</label>

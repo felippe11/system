@@ -224,6 +224,7 @@ def cadastro_participante(identifier=None):
             }
 
             temp_group[data_str].append({
+                'oficina': oficina, 
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj,
@@ -847,6 +848,8 @@ def criar_oficina():
             nova_oficina.inscricao_gratuita = inscricao_gratuita
             db.session.add(nova_oficina)
             db.session.flush()  # Garante que o ID da oficina esteja disponível
+            
+       
 
             # Adiciona os tipos de inscrição (se não for gratuita)
             if not inscricao_gratuita:
@@ -876,6 +879,13 @@ def criar_oficina():
                     horario_fim=horarios_fim[i]
                 )
                 db.session.add(novo_dia)
+            
+                # 3) Captura lista de IDs de ministrantes extras
+            ids_extras = request.form.getlist('ministrantes_ids[]')  # array
+            for mid in ids_extras:
+                m = Ministrante.query.get(int(mid))
+                if m:
+                    nova_oficina.ministrantes_associados.append(m)
 
             db.session.commit()
             flash('Oficina criada com sucesso!', 'success')
@@ -3201,6 +3211,13 @@ def editar_ministrante(ministrante_id):
         return redirect(url_for('routes.dashboard_cliente'))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else None
+    oficina.ministrantes_associados.clear()
+    ids_extras = request.form.getlist('ministrantes_ids[]')
+    
+    for mid in ids_extras:
+        m = Ministrante.query.get(int(mid))
+        if m:
+            oficina.ministrantes_associados.append(m)
 
     if request.method == 'POST':
         ministrante.nome = request.form.get('nome')
