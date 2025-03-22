@@ -514,71 +514,119 @@
       </div>
     </div>
 
-    <!-- Exemplo de Card ou Seção para Adicionar Patrocinadores -->
-<div class="card shadow mt-4">
-  <div class="card-header bg-secondary text-white">
-    <h5 class="m-0 fw-bold">Adicionar Patrocinadores</h5>
-  </div>
-  <div class="card-body">
-    <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores') }}"
-          enctype="multipart/form-data">
-      
-      <!-- Exemplo: Se você quiser vincular ao EVENTO específico -->
-      <div class="mb-3">
-        <label for="evento" class="form-label">Selecionar Evento</label>
-        <select name="evento_id" id="evento" class="form-select" required>
-          <option value="">-- Selecione --</option>
-          {% for ev in usuario.eventos %}
-          <option value="{{ ev.id }}">{{ ev.nome }}</option>
-          {% endfor %}
+    <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores_categorizados') }}"
+      enctype="multipart/form-data"
+      class="card shadow p-4 my-5">
+
+    <div class="card-header bg-primary text-white rounded mb-4">
+        <h4 class="mb-0"><i class="fas fa-upload me-2"></i>Adicionar Patrocinadores por Categoria</h4>
+    </div>
+
+    <!-- Selecionar evento -->
+    <div class="mb-4">
+        <label for="evento_id" class="form-label fw-bold">Selecione o Evento:</label>
+        <select name="evento_id" id="evento_id" class="form-select" required>
+            <option value="">-- Selecione --</option>
+            {% for ev in usuario.eventos %}
+                <option value="{{ ev.id }}">{{ ev.nome }}</option>
+            {% endfor %}
         </select>
-      </div>
+    </div>
 
-      <div class="mb-3">
-        <label for="qtdPatrocinadores" class="form-label">Quantidade de Patrocinadores</label>
-        <input type="number" id="qtdPatrocinadores" name="qtdPatrocinadores" class="form-control"
-               min="1" value="1" required />
-      </div>
+    <!-- Escolha da quantidade por categoria -->
+    <div class="card border-0 bg-light mb-4">
+        <div class="card-body row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-star text-primary me-1"></i> Realização
+                </label>
+                <input type="number" class="form-control" id="qtd_realizacao" name="qtd_realizacao" min="0" value="0">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-handshake text-success me-1"></i> Patrocínio
+                </label>
+                <input type="number" class="form-control" id="qtd_patrocinio" name="qtd_patrocinio" min="0" value="0">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-users-cog text-info me-1"></i> Organização
+                </label>
+                <input type="number" class="form-control" id="qtd_organizacao" name="qtd_organizacao" min="0" value="0">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">
+                    <i class="fas fa-thumbs-up text-secondary me-1"></i> Apoio
+                </label>
+                <input type="number" class="form-control" id="qtd_apoio" name="qtd_apoio" min="0" value="0">
+            </div>
+        </div>
+    </div>
 
-      <div class="mb-3">
-        <button type="button" class="btn btn-primary" onclick="gerarCamposUploads()">
-          Gerar Uploads
-        </button>
-      </div>
-      
-      <!-- Aqui serão injetados dinamicamente os campos de upload das logos -->
-      <div id="containerPatrocinadores" class="mb-3"></div>
+    <!-- Botão para gerar inputs -->
+    <button type="button" class="btn btn-outline-primary mb-4" onclick="gerarCamposUploads()">
+        <i class="fas fa-plus-circle me-2"></i>Gerar Campos para Upload
+    </button>
 
-      <button type="submit" class="btn btn-success">
-        <i class="bi bi-cloud-upload"></i> Enviar Patrocinadores
-      </button>
-    </form>
-  </div>
-</div>
+    <!-- Área onde aparecem os campos de upload -->
+    <div id="containerPatrocinadores" class="mb-3"></div>
 
+    <button type="submit" class="btn btn-success btn-lg">
+        <i class="fas fa-save me-2"></i>Salvar Patrocinadores
+    </button>
+</form>
+
+<!-- Javascript com ícones e labels melhorados -->
 <script>
-  function gerarCamposUploads() {
+function gerarCamposUploads() {
     const container = document.getElementById('containerPatrocinadores');
-    container.innerHTML = ''; // Limpa o conteúdo anterior
-    
-    const qtd = parseInt(document.getElementById('qtdPatrocinadores').value, 10);
-    
-    for (let i = 0; i < qtd; i++) {
-      const label = document.createElement('label');
-      label.classList.add('form-label', 'mt-2');
-      label.innerText = `Logo do patrocinador ${i + 1}`;
-      
-      const inputFile = document.createElement('input');
-      inputFile.type = 'file';
-      inputFile.name = `logo_${i}`;
-      inputFile.classList.add('form-control', 'mb-2');
-      inputFile.accept = 'image/*'; // se quiser aceitar apenas imagens
+    container.innerHTML = '';
 
-      container.appendChild(label);
-      container.appendChild(inputFile);
-    }
-  }
+    const categorias = [
+        {id: 'realizacao', label: 'Realização', icon: 'fa-star', color: 'text-primary'},
+        {id: 'patrocinio', label: 'Patrocínio', icon: 'fa-handshake', color: 'text-success'},
+        {id: 'organizacao', label: 'Organização', icon: 'fa-users-cog', color: 'text-info'},
+        {id: 'apoio', label: 'Apoio', icon: 'fa-thumbs-up', color: 'text-secondary'},
+    ];
+
+    categorias.forEach(cat => {
+        const qtd = parseInt(document.getElementById(`qtd_${cat.id}`).value) || 0;
+        if (qtd > 0) {
+            const divCategoria = document.createElement('div');
+            divCategoria.className = 'card shadow-sm mb-3';
+
+            const headerCategoria = document.createElement('div');
+            headerCategoria.className = 'card-header d-flex align-items-center';
+
+            headerCategoria.innerHTML = `<i class="fas ${cat.icon} ${cat.color} me-2"></i>
+                                         <strong>${cat.label}</strong>`;
+
+            const bodyCategoria = document.createElement('div');
+            bodyCategoria.className = 'card-body';
+
+            for (let i = 0; i < qtd; i++) {
+                const label = document.createElement('label');
+                label.className = 'form-label';
+                label.innerText = `Logo ${cat.label} ${i + 1}`;
+
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.name = `${cat.id}_${i}`;
+                input.className = 'form-control mb-3';
+                input.accept = 'image/*';
+
+                bodyCategoria.appendChild(label);
+                bodyCategoria.appendChild(input);
+            }
+
+            divCategoria.appendChild(headerCategoria);
+            divCategoria.appendChild(bodyCategoria);
+            container.appendChild(divCategoria);
+        }
+    });
+}
 </script>
+
 
 
     <!-- CARD: Manutenção do Sistema -->
