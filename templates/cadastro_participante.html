@@ -67,7 +67,7 @@
                                         <div class="ministrante-card">
                                             <img src="{{ url_for('static', filename=m.foto or 'uploads/ministrantes/default-profile.png') }}"
                                                  alt="Foto do ministrante"
-                                                 class="ministrante-foto" />
+                                                 class="ministrante-foto">
                                             <span class="ministrante-nome">{{ m.nome }}</span>
                                         </div>
                                     {% endfor %}
@@ -80,6 +80,48 @@
         </div>
     {% endfor %}
 </div>
+
+               <!-- ABA MINISTRANTES PRESENTES NO EVENTO -->
+               <div class="ministrantes-section">
+                <h2 class="ministrantes-titulo">
+                    <i class="fas fa-chalkboard-teacher"></i> Ministrantes Presentes no Evento
+                </h2>
+            
+                <!-- Add this HTML right before the closing body tag -->
+            
+                <div id="photoModal" class="photo-modal">
+                    <span class="photo-modal-close">&times;</span>
+                    <div class="photo-modal-wrapper">
+                        <img class="photo-modal-content" id="photoModalImg">
+                        <div class="photo-modal-info">
+                            <h3 id="photoModalName" class="photo-modal-name"></h3>
+                            <p id="photoModalFormacao" class="photo-modal-formacao"></p>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Add this CSS to your existing style section -->
+            
+                {% if ministrantes %}
+                    <div class="ministrantes-grid">
+                        {% for ministrante in ministrantes %}
+                            <div class="ministrante-card">
+                                {% if ministrante.foto %}
+                                    <img src="{{ url_for('static', filename=ministrante.foto) }}" alt="Foto do ministrante" class="ministrante-foto-pequena">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='default-profile.png') }}" alt="Foto padrão" class="ministrante-foto-pequena">
+                                {% endif %}
+                                <div class="ministrante-info">
+                                    <h3 class="ministrante-nome">{{ ministrante.nome }}</h3>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-center">Nenhum ministrante cadastrado para este evento.</p>
+                {% endif %}
+            </div>
+            
 
 
 
@@ -636,13 +678,6 @@
         }
     }
 
-    .ministrante-foto {
-        width: 100%;
-        height: 180px;
-        object-fit: cover;
-        border-radius: 8px;
-        margin-bottom: 15px;
-    }
     
     .atividade-ministrante {
         display: flex;
@@ -670,7 +705,7 @@
         height: 50px;
         min-width: 50px;
         object-fit: cover;
-        border-radius: 20%;
+        border-radius: 100%;
         border: 2px solid #fff;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
@@ -745,12 +780,6 @@
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
       }
       
-      .ministrante-foto {
-        width: 40px;
-        height: 40px;
-        object-fit: cover;
-        border-radius: 50%;
-      }
       
       .ministrante-nome {
         font-size: 0.95rem;
