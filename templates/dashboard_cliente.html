@@ -514,6 +514,73 @@
       </div>
     </div>
 
+    <!-- Exemplo de Card ou Seção para Adicionar Patrocinadores -->
+<div class="card shadow mt-4">
+  <div class="card-header bg-secondary text-white">
+    <h5 class="m-0 fw-bold">Adicionar Patrocinadores</h5>
+  </div>
+  <div class="card-body">
+    <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores') }}"
+          enctype="multipart/form-data">
+      
+      <!-- Exemplo: Se você quiser vincular ao EVENTO específico -->
+      <div class="mb-3">
+        <label for="evento" class="form-label">Selecionar Evento</label>
+        <select name="evento_id" id="evento" class="form-select" required>
+          <option value="">-- Selecione --</option>
+          {% for ev in usuario.eventos %}
+          <option value="{{ ev.id }}">{{ ev.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label for="qtdPatrocinadores" class="form-label">Quantidade de Patrocinadores</label>
+        <input type="number" id="qtdPatrocinadores" name="qtdPatrocinadores" class="form-control"
+               min="1" value="1" required />
+      </div>
+
+      <div class="mb-3">
+        <button type="button" class="btn btn-primary" onclick="gerarCamposUploads()">
+          Gerar Uploads
+        </button>
+      </div>
+      
+      <!-- Aqui serão injetados dinamicamente os campos de upload das logos -->
+      <div id="containerPatrocinadores" class="mb-3"></div>
+
+      <button type="submit" class="btn btn-success">
+        <i class="bi bi-cloud-upload"></i> Enviar Patrocinadores
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  function gerarCamposUploads() {
+    const container = document.getElementById('containerPatrocinadores');
+    container.innerHTML = ''; // Limpa o conteúdo anterior
+    
+    const qtd = parseInt(document.getElementById('qtdPatrocinadores').value, 10);
+    
+    for (let i = 0; i < qtd; i++) {
+      const label = document.createElement('label');
+      label.classList.add('form-label', 'mt-2');
+      label.innerText = `Logo do patrocinador ${i + 1}`;
+      
+      const inputFile = document.createElement('input');
+      inputFile.type = 'file';
+      inputFile.name = `logo_${i}`;
+      inputFile.classList.add('form-control', 'mb-2');
+      inputFile.accept = 'image/*'; // se quiser aceitar apenas imagens
+
+      container.appendChild(label);
+      container.appendChild(inputFile);
+    }
+  }
+</script>
+
+
     <!-- CARD: Manutenção do Sistema -->
     <div class="card shadow mb-4">
       <div class="card-header bg-danger text-white">
