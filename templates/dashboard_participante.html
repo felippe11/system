@@ -61,7 +61,20 @@
   .d-flex.flex-column.gap-2 > * {
     margin-bottom: 0.5rem;
   }
-
+  
+  /* Estilo para seções de evento */
+  .evento-section {
+    margin-bottom: 2rem;
+  }
+  .evento-titulo {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: #343a40;
+    font-weight: 600;
+    border-left: 5px solid #007bff;
+  }
 </style>
 
 <div class="container">
@@ -75,117 +88,131 @@
         <p><strong>Formulários Disponíveis: <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary">
           📝 Formulários
       </a></strong></p>
-
     </div>
   {% endif %}
   
-  <div class="row">
-    <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
-    {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
-    
-    {% if oficinas %}
-      {% for oficina in oficinas %}
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card shadow-sm" data-oficina-id="{{ oficina.id }}">
-          <div class="card-header">
-            {{ oficina.titulo }}
-          </div>
-          <div class="card-body">
-            <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
-            <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
-            <p><strong>Datas e Horários:</strong></p>
-            <ul class="list-unstyled">
-              {% for dia in oficina.dias %}
-                <li>📅 {{ dia.data.strftime('%d/%m/%Y') }} - 🕒 {{ dia.horario_inicio }} às {{ dia.horario_fim }}</li>
-              {% endfor %}
-            </ul>                               
-            <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
-            
-            <p>
-              <strong>Vagas:</strong>
-              <span class="info-vagas">{{ oficina.vagas }}</span>
-              {% if oficina.vagas == 0 %}
-                <span class="text-danger">(Esgotado)</span>
-              {% endif %}
-            </p>
-            
-            <!-- Se o participante já estiver inscrito nesta oficina -->
-            {% if oficina.id in inscricoes_ids %}
-                <div class="d-flex flex-column gap-2">
-                    <!-- Check-in (só aparece se permitir_checkin_global == True) -->
-                    {% if permitir_checkin_global %}
-                    <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                      Realizar Check-in
-                    </a>
-                    {% endif %}
+  <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
+  {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
+  
+  <!-- Agrupa oficinas por evento -->
+  {% set eventos = {} %}
+  {% for oficina in oficinas %}
+    {% if oficina.evento_id not in eventos %}
+      {% if eventos.update({oficina.evento_id: {'nome': oficina.evento_nome, 'oficinas': []}}) %}{% endif %}
+    {% endif %}
+    {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
+  {% endfor %}
+  
+  <!-- Itera sobre cada evento -->
+  {% for evento_id, evento_info in eventos.items() %}
+    <div class="evento-section">
+      <h3 class="evento-titulo">{{ evento_info.nome }}</h3>
+      
+      <div class="row">
+        {% for oficina in evento_info.oficinas %}
+          <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm" data-oficina-id="{{ oficina.id }}">
+              <div class="card-header">
+                {{ oficina.titulo }}
+              </div>
+              <div class="card-body">
+                <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
+                <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+                <p><strong>Datas e Horários:</strong></p>
+                <ul class="list-unstyled">
+                  {% for dia in oficina.dias %}
+                    <li>📅 {{ dia.data.strftime('%d/%m/%Y') }} - 🕒 {{ dia.horario_inicio }} às {{ dia.horario_fim }}</li>
+                  {% endfor %}
+                </ul>                               
+                <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
                 
-                    <!-- Botão para cancelar inscrição -->
-                    <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                        <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
-                    </form>
-
-                    <!-- Comprovante de Inscrição -->
-                    <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
-                        📄 Baixar Comprovante
-                    </a>
-
-                    <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
-                    {% if habilitar_certificado_individual %}
-                    <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
-                       class="btn btn-success w-100 mt-2">
-                       🎓 Baixar Certificado
-                    </a>
-                    {% endif %}
-                  
-                    <!-- Feedback (só aparece se habilitar_feedback == True) -->
-                    {% if habilitar_feedback %}
-                    <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
-                        Enviar Feedback
-                    </a>
-                    {% endif %}
-                </div>
-
-            <!-- Se não estiver inscrito ainda e houver vagas -->
-            {% elif oficina.vagas > 0 %}
-                <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                    Inscrever-se
-                </button>
-
-            <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
-            {% else %}
-                <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
+                <p>
+                  <strong>Vagas:</strong>
+                  <span class="info-vagas">{{ oficina.vagas }}</span>
+                  {% if oficina.vagas == 0 %}
+                    <span class="text-danger">(Esgotado)</span>
+                  {% endif %}
+                </p>
+                
+                <!-- Se o participante já estiver inscrito nesta oficina -->
                 {% if oficina.id in inscricoes_ids %}
-                    <div class="d-flex flex-column gap-2 mt-2">
+                    <div class="d-flex flex-column gap-2">
+                        <!-- Check-in (só aparece se permitir_checkin_global == True) -->
                         {% if permitir_checkin_global %}
                         <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                            Realizar Check-in
+                          Realizar Check-in
                         </a>
                         {% endif %}
+                    
+                        <!-- Botão para cancelar inscrição -->
                         <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
                             <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
                         </form>
+
+                        <!-- Comprovante de Inscrição -->
                         <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
                             📄 Baixar Comprovante
                         </a>
+
+                        <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
+                        {% if habilitar_certificado_individual %}
+                        <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
+                          class="btn btn-success w-100 mt-2">
+                          🎓 Baixar Certificado
+                        </a>
+                        {% endif %}
+                      
+                        <!-- Feedback (só aparece se habilitar_feedback == True) -->
                         {% if habilitar_feedback %}
                         <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
                             Enviar Feedback
                         </a>
                         {% endif %}
                     </div>
-                {% endif %}
-            {% endif %}
 
-          </div> <!-- Fim card-body -->
-        </div> <!-- Fim card -->
-      </div> <!-- Fim col -->
-      {% endfor %}
-    {% else %}
-      <div class="col-12">
-        <p class="text-center text-warning">Nenhuma oficina disponível no momento.</p>
-      </div>
-    {% endif %}
-  </div> <!-- Fim row -->
+                <!-- Se não estiver inscrito ainda e houver vagas -->
+                {% elif oficina.vagas > 0 %}
+                    <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
+                        Inscrever-se
+                    </button>
+
+                <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
+                {% else %}
+                    <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
+                    {% if oficina.id in inscricoes_ids %}
+                        <div class="d-flex flex-column gap-2 mt-2">
+                            {% if permitir_checkin_global %}
+                            <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
+                                Realizar Check-in
+                            </a>
+                            {% endif %}
+                            <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                                <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
+                            </form>
+                            <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
+                                📄 Baixar Comprovante
+                            </a>
+                            {% if habilitar_feedback %}
+                            <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
+                                Enviar Feedback
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+              </div> <!-- Fim card-body -->
+            </div> <!-- Fim card -->
+          </div> <!-- Fim col -->
+        {% endfor %}
+      </div> <!-- Fim row -->
+    </div> <!-- Fim evento-section -->
+  {% else %}
+    <div class="col-12">
+      <p class="text-center text-warning">Nenhuma oficina disponível no momento.</p>
+    </div>
+  {% endfor %}
+  
 </div> <!-- Fim container -->
 
 <!-- Script para inscrição assíncrona (se desejar manter) -->
