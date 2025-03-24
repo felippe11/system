@@ -523,21 +523,43 @@ def dashboard():
     # ========== 1) Dados gerais ==========    
     if is_admin:
         total_oficinas = Oficina.query.count()
-        total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+        # Buscar todas as oficinas para calcular o total de vagas considerando o tipo_inscricao
+        oficinas_all = Oficina.query.all()
+        # Novo cálculo do total_vagas considerando o tipo_inscricao
+        total_vagas = 0
+        for of in oficinas_all:
+            if of.tipo_inscricao == 'com_inscricao_com_limite':
+                total_vagas += of.vagas
+            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
+                total_vagas += len(of.inscritos)
         total_inscricoes = Inscricao.query.count()
         total_eventos = Evento.query.count()  # Count all events for admin
     elif is_cliente:
         total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
-        total_vagas = db.session.query(func.sum(Oficina.vagas))\
-                                .filter(Oficina.cliente_id == current_user.id)\
-                                .scalar() or 0
+        # Buscar oficinas do cliente para calcular o total de vagas considerando o tipo_inscricao
+        oficinas_cliente = Oficina.query.filter_by(cliente_id=current_user.id).all()
+        # Novo cálculo do total_vagas considerando o tipo_inscricao
+        total_vagas = 0
+        for of in oficinas_cliente:
+            if of.tipo_inscricao == 'com_inscricao_com_limite':
+                total_vagas += of.vagas
+            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
+                total_vagas += len(of.inscritos)
         total_inscricoes = Inscricao.query.join(Oficina)\
                                           .filter(Oficina.cliente_id == current_user.id)\
                                           .count()
     else:
         # Se for professor ou qualquer outro tipo, e você quiser fazer algo específico
         total_oficinas = Oficina.query.count()
-        total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+        # Buscar todas as oficinas para calcular o total de vagas considerando o tipo_inscricao
+        oficinas_all = Oficina.query.all()
+        # Novo cálculo do total_vagas considerando o tipo_inscricao
+        total_vagas = 0
+        for of in oficinas_all:
+            if of.tipo_inscricao == 'com_inscricao_com_limite':
+                total_vagas += of.vagas
+            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
+                total_vagas += len(of.inscritos)
         total_inscricoes = Inscricao.query.count()
 
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
@@ -3641,14 +3663,26 @@ def gerar_relatorio_mensagem():
     is_admin = (current_user.tipo == 'admin')
     if is_admin:
         total_oficinas = Oficina.query.count()
-        total_vagas = db.session.query(func.sum(Oficina.vagas)).scalar() or 0
+        # Buscar todas as oficinas para calcular o total de vagas considerando o tipo_inscricao
+        oficinas = Oficina.query.options(db.joinedload(Oficina.inscritos)).all()
         total_inscricoes = Inscricao.query.count()
         eventos = Evento.query.all()
     else:
         total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
-        total_vagas = db.session.query(func.sum(Oficina.vagas)).filter(Oficina.cliente_id == current_user.id).scalar() or 0
+        # Buscar oficinas do cliente para calcular o total de vagas considerando o tipo_inscricao
+        oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(db.joinedload(Oficina.inscritos)).all()
         total_inscricoes = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).count()
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    # Novo cálculo do total_vagas conforme solicitado:
+    # 1. Soma as vagas das oficinas com tipo_inscricao 'com_inscricao_com_limite'
+    # 2. Soma o número de inscritos nas oficinas com tipo_inscricao 'com_inscricao_sem_limite'
+    total_vagas = 0
+    for of in oficinas:
+        if of.tipo_inscricao == 'com_inscricao_com_limite':
+            total_vagas += of.vagas
+        elif of.tipo_inscricao == 'com_inscricao_sem_limite':
+            total_vagas += len(of.inscritos)
     
     # Cálculo de adesão
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
@@ -3685,11 +3719,22 @@ def gerar_relatorio_mensagem():
         for oficina in oficinas_evento:
             # Conta inscritos
             num_inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).count()
-            ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+            
+            # Calcula ocupação considerando o tipo de inscrição
+            if oficina.tipo_inscricao == 'sem_inscricao':
+                ocupacao = 0  # Não é relevante calcular ocupação
+                vagas_texto = "N/A (sem inscrição)"
+            elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
+                ocupacao = 100  # Sempre 100% pois aceita qualquer número de inscritos
+                vagas_texto = "Ilimitadas"
+            else:  # com_inscricao_com_limite
+                ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
+                vagas_texto = str(oficina.vagas)
             
             mensagem += (
                 f"\n🎓 *Oficina:* {oficina.titulo}\n"
-                f"🔹 *Vagas:* {oficina.vagas}\n"
+                f"🔹 *Tipo de Inscrição:* {oficina.tipo_inscricao}\n"
+                f"🔹 *Vagas:* {vagas_texto}\n"
                 f"🔹 *Inscritos:* {num_inscritos}\n"
                 f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
             )
@@ -3905,7 +3950,17 @@ def dashboard_cliente():
     ).all()
     # Cálculo das estatísticas
     total_oficinas = len(oficinas)
-    total_vagas = sum(of.vagas for of in oficinas)
+    
+    # Novo cálculo do total_vagas conforme solicitado:
+    # 1. Soma as vagas das oficinas com tipo_inscricao 'com_inscricao_com_limite'
+    # 2. Soma o número de inscritos nas oficinas com tipo_inscricao 'com_inscricao_sem_limite'
+    total_vagas = 0
+    for of in oficinas:
+        if of.tipo_inscricao == 'com_inscricao_com_limite':
+            total_vagas += of.vagas
+        elif of.tipo_inscricao == 'com_inscricao_sem_limite':
+            total_vagas += len(of.inscritos)
+    
     total_inscricoes = Inscricao.query.join(Oficina).filter(
         (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
     ).count()
