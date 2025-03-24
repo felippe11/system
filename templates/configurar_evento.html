@@ -58,12 +58,6 @@
         <input type="hidden" id="latitude" name="latitude" value="{{ evento.latitude if evento else '' }}">
         <input type="hidden" id="longitude" name="longitude" value="{{ evento.longitude if evento else '' }}">
         
-{% comment %}
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Link do Google Maps</label>
-            <input type="url" id="link_mapa" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
-          </div>
-{% endcomment %}
         <div class="mb-3">
           <label class="form-label fw-semibold">Banner do Evento</label>
           <input type="file" name="banner" class="form-control">
