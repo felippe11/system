@@ -46,6 +46,13 @@
                     <li class="atividade-item">
                         <div class="atividade-horario">
                             {{ item.horario_inicio }} - {{ item.horario_fim }}
+                            {% if item.oficina %}
+                                {% if item.oficina.tipo_oficina and item.oficina.tipo_oficina != 'outros' %}
+                                    <div class="tipo-oficina">{{ item.oficina.tipo_oficina }}</div>
+                                {% elif item.oficina.tipo_oficina_outro %}
+                                    <div class="tipo-oficina">{{ item.oficina.tipo_oficina_outro }}</div>
+                                {% endif %}
+                            {% endif %}
                         </div>
                         <div class="atividade-detalhes">
                             <span class="atividade-titulo">{{ item.titulo }}</span>
@@ -424,6 +431,15 @@
         font-size: 0.95em;
         padding-right: 15px;
         position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .tipo-oficina {
+        font-size: 0.85em;
+        color: #3498db;
+        margin-top: 5px;
+        font-style: italic;
     }
 
     .atividade-horario::after {
