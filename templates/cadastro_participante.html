@@ -1,7 +1,10 @@
+<!-- Dependências -->
+
 {% extends "base.html" %}
 {% block title %}{% if evento %}{{ evento.nome }} - {% endif %}Cadastro de Participante{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <div class="main-container">
     <!-- Seção do Evento -->
     {% if evento %}
@@ -131,24 +134,15 @@
   
 </div>
 
-
-
-
                 {% if evento.localizacao %}
                 <div class="info-block">
                     <h3><i class="fas fa-map-marker-alt"></i> Localização</h3>
                     <p>{{ evento.localizacao }}</p>
-                </div>
-                {% endif %}
-
-                {% if evento.link_mapa %}
-                <div class="map-container">
-                    <iframe src="{{ evento.link_mapa }}"
-                            class="google-map"
-                            allowfullscreen=""
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
+                    
+                    <!-- Container para o mapa OpenStreetMap -->
+                    <div id="map-container" class="map-container" style="height: 400px; margin-top: 15px; border-radius: 10px; overflow: hidden;">
+                        <!-- O mapa será carregado aqui via JavaScript -->
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -854,8 +848,21 @@
         font-weight: 600;
         color: #333;
       }
+
+    /* Estilo para o mapa */
+    .map-container {
+        width: 100%;
+        height: 400px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
       
 </style>
+
+<!-- Link para o Leaflet -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
 <!-- Scripts -->
 <script>
@@ -885,125 +892,219 @@
 
     // Máscara de CPF
     const cpfField = document.getElementById('cpf');
-    cpfField.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2')
+    if (cpfField) {
+        cpfField.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2')
                      .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
                      .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
-        e.target.value = value.slice(0, 14);
-    });
+            e.target.value = value.slice(0, 14);
+        });
+    }
 
     // Gerenciamento de Locais
     const locationsContainer = document.getElementById('locations-container');
     let estados = [];
 
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
-        .then(response => response.json())
-        .then(data => {
-            estados = data.sort((a, b) => a.nome.localeCompare(b.nome));
-            document.getElementById('add-location').click();
-        });
-
-    document.getElementById('add-location').addEventListener('click', function() {
-        const locationBlock = document.createElement('div');
-        locationBlock.className = 'location-block';
-
-        locationBlock.innerHTML = `
-            <div class="location-body">
-                <div class="form-group">
-                    <label>Estado</label>
-                    <select class="estado-select mb-2">
-                        <option value="">Selecione o estado</option>
-                        ${estados.map(estado => `
-                            <option value="${estado.sigla}">${estado.nome}</option>
-                        `).join('')}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Cidade</label>
-                    <select class="cidade-select mb-2" name="cidades[]">
-                        <option value="">Selecione a cidade</option>
-                    </select>
-                </div>
-            </div>
-            <div class="location-header">
-                <button type="button" class="remove-location btn btn-danger">Excluir</button>
-            </div>
-        `;
-
-        const estadoSelect = locationBlock.querySelector('.estado-select');
-        const cidadeSelect = locationBlock.querySelector('.cidade-select');
-
-        estadoSelect.addEventListener('change', function() {
-            const siglaUF = this.value;
-            cidadeSelect.innerHTML = '<option value="">Selecione a cidade</option>';
-
-            if (siglaUF) {
-                fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${siglaUF}/municipios`)
-                    .then(response => response.json())
-                    .then(cidades => {
-                        cidades.sort((a, b) => a.nome.localeCompare(b.nome))
-                            .forEach(cidade => {
-                                const option = document.createElement('option');
-                                option.value = cidade.nome;
-                                option.textContent = cidade.nome;
-                                cidadeSelect.appendChild(option);
-                            });
-                    });
-            }
-        });
-
-        locationBlock.querySelector('.remove-location').addEventListener('click', () => {
-            locationsContainer.removeChild(locationBlock);
-        });
-
-        locationsContainer.appendChild(locationBlock);
-    });
-</script>
-
-<script>
-    // Add this JavaScript to your existing script section
-    document.addEventListener('DOMContentLoaded', function() {
-        const modal = document.getElementById('photoModal');
-        const modalImg = document.getElementById('photoModalImg');
-        const modalName = document.getElementById('photoModalName');
-        const modalFormacao = document.getElementById('photoModalFormacao');
-        const closeBtn = document.getElementsByClassName('photo-modal-close')[0];
-
-        document.querySelectorAll('.ministrante-foto-pequena').forEach(img => {
-            img.addEventListener('click', function() {
-                const card = this.closest('.ministrante-card');
-                const name = card.querySelector('.ministrante-nome').textContent;
-                const formacao = card.querySelector('.ministrante-formacao').textContent;
-
-                modal.style.display = "block";
-                modalImg.src = this.src;
-                modalName.textContent = name;
-                modalFormacao.textContent = formacao;
+    if (locationsContainer) {
+        fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+            .then(response => response.json())
+            .then(data => {
+                estados = data.sort((a, b) => a.nome.localeCompare(b.nome));
+                document.getElementById('add-location').click();
             });
-        });
 
-        // Close modal when clicking (X)
-        closeBtn.addEventListener('click', function() {
-            modal.style.display = "none";
-        });
+        document.getElementById('add-location').addEventListener('click', function() {
+            const locationBlock = document.createElement('div');
+            locationBlock.className = 'location-block';
 
-        // Close modal when clicking outside
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                modal.style.display = "none";
+            locationBlock.innerHTML = `
+                <div class="location-body">
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select class="estado-select mb-2">
+                            <option value="">Selecione o estado</option>
+                            ${estados.map(estado => `
+                                <option value="${estado.sigla}">${estado.nome}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cidade</label>
+                        <select class="cidade-select mb-2" name="cidades[]">
+                            <option value="">Selecione a cidade</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="location-header">
+                    <button type="button" class="remove-location btn btn-danger">Excluir</button>
+                </div>
+            `;
+
+            const estadoSelect = locationBlock.querySelector('.estado-select');
+            const cidadeSelect = locationBlock.querySelector('.cidade-select');
+
+            estadoSelect.addEventListener('change', function() {
+                const siglaUF = this.value;
+                cidadeSelect.innerHTML = '<option value="">Selecione a cidade</option>';
+
+                if (siglaUF) {
+                    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${siglaUF}/municipios`)
+                        .then(response => response.json())
+                        .then(cidades => {
+                            cidades.sort((a, b) => a.nome.localeCompare(b.nome))
+                                .forEach(cidade => {
+                                    const option = document.createElement('option');
+                                    option.value = cidade.nome;
+                                    option.textContent = cidade.nome;
+                                    cidadeSelect.appendChild(option);
+                                });
+                        });
+                }
+            });
+
+            locationBlock.querySelector('.remove-location').addEventListener('click', () => {
+                locationsContainer.removeChild(locationBlock);
+            });
+
+            locationsContainer.appendChild(locationBlock);
+        });
+    }
+
+    // OpenStreetMap para localização do evento
+    document.addEventListener('DOMContentLoaded', function() {
+        // Verificar se existe um contêiner de mapa
+        const mapContainer = document.getElementById('map-container');
+        if (!mapContainer) return;
+
+        {% if evento and evento.latitude and evento.longitude %}
+            // Se o evento tem coordenadas definidas
+            const latitude = {{ evento.latitude }};
+            const longitude = {{ evento.longitude }};
+            
+            // Inicializar o mapa com as coordenadas do evento
+            const map = L.map('map-container').setView([latitude, longitude], 15);
+            
+            // Adicionar camada do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Adicionar marcador no local do evento
+            const marker = L.marker([latitude, longitude]).addTo(map);
+            
+            // Adicionar popup com o nome do evento
+            marker.bindPopup("<b>{{ evento.nome|e }}</b><br>{{ evento.localizacao|e }}").openPopup();
+        {% elif evento and evento.link_mapa %}
+            // Se não tem coordenadas mas tem link do mapa, extrair coordenadas do link
+            try {
+                // Tentar extrair coordenadas do link do Google Maps
+                const mapLink = "{{ evento.link_mapa }}";
+                let latitude, longitude;
+                
+                // Procurar por padrões comuns em URLs do Google Maps
+                if (mapLink.includes("q=")) {
+                    // Formato: ?q=lat,lng
+                    const match = mapLink.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                    if (match) {
+                        latitude = parseFloat(match[1]);
+                        longitude = parseFloat(match[2]);
+                    }
+                } else if (mapLink.includes("/@")) {
+                    // Formato: /@lat,lng,zoom
+                    const match = mapLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                    if (match) {
+                        latitude = parseFloat(match[1]);
+                        longitude = parseFloat(match[2]);
+                    }
+                }
+                
+                if (latitude && longitude) {
+                    // Inicializar o mapa com as coordenadas extraídas
+                    const map = L.map('map-container').setView([latitude, longitude], 15);
+                    
+                    // Adicionar camada do OpenStreetMap
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }).addTo(map);
+                    
+                    // Adicionar marcador
+                    const marker = L.marker([latitude, longitude]).addTo(map);
+                    
+                    // Adicionar popup com o nome do evento
+                    marker.bindPopup("<b>{{ evento.nome|e }}</b><br>{{ evento.localizacao|e }}").openPopup();
+                } else {
+                    // Se não conseguir extrair coordenadas, usar geocodificação com o endereço
+                    geocodeAddress();
+                }
+            } catch (error) {
+                console.error("Erro ao processar link do mapa:", error);
+                geocodeAddress();
             }
-        });
-
-        // Close modal with ESC key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modal.style.display === "block") {
-                modal.style.display = "none";
+        {% else %}
+            // Se não tem coordenadas nem link, usar geocodificação com o endereço
+            geocodeAddress();
+        {% endif %}
+        
+        // Função para geocodificar o endereço usando Nominatim
+        function geocodeAddress() {
+            const endereco = "{{ evento.localizacao|e if evento and evento.localizacao else '' }}";
+            
+            if (!endereco) {
+                // Se não houver endereço, mostrar um mapa genérico do Brasil
+                const map = L.map('map-container').setView([-15.77972, -47.92972], 4);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                return;
             }
-        });
+            
+            // Fazer a geocodificação usando a API Nominatim
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        // Pegar o primeiro resultado
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lon = parseFloat(result.lon);
+                        
+                        // Inicializar o mapa
+                        const map = L.map('map-container').setView([lat, lon], 15);
+                        
+                        // Adicionar camada do OpenStreetMap
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                            maxZoom: 19
+                        }).addTo(map);
+                        
+                        // Adicionar marcador
+                        const marker = L.marker([lat, lon]).addTo(map);
+                        
+                        // Adicionar popup com o nome do evento
+                        marker.bindPopup("<b>{{ evento.nome|e }}</b><br>{{ evento.localizacao|e }}").openPopup();
+                    } else {
+                        // Se não encontrar o endereço, mostrar um mapa genérico do Brasil
+                        const map = L.map('map-container').setView([-15.77972, -47.92972], 4);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                            maxZoom: 19
+                        }).addTo(map);
+                    }
+                })
+                .catch(error => {
+                    console.error("Erro na geocodificação:", error);
+                    // Em caso de erro, mostrar um mapa genérico do Brasil
+                    const map = L.map('map-container').setView([-15.77972, -47.92972], 4);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19
+                    }).addTo(map);
+                });
+        }
     });
 </script>
-
-<!-- Dependências -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 {% endblock %}

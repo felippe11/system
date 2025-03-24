@@ -39,14 +39,31 @@
           <label class="form-label fw-semibold">Programação</label>
           <textarea name="programacao" class="form-control" rows="3">{{ evento.programacao if evento else '' }}</textarea>
         </div>
+        
+        <!-- Campo de Endereço com Localizador -->
         <div class="mb-3">
           <label class="form-label fw-semibold">Endereço do Evento</label>
-          <input type="text" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}">
+          <div class="input-group">
+            <input type="text" id="localizacao-input" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}" autocomplete="off">
+            <button type="button" class="btn btn-outline-secondary" id="btn-mostrar-mapa" data-bs-toggle="modal" data-bs-target="#mapaModal">
+              <i class="bi bi-geo-alt"></i> Buscar no Mapa
+            </button>
+          </div>
+          <div class="suggestions-container position-relative">
+            <div id="suggestions" class="position-absolute w-100 bg-white border rounded shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Link do Google Maps</label>
-          <input type="url" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
-        </div>
+        
+        <!-- Campos de coordenadas ocultos -->
+        <input type="hidden" id="latitude" name="latitude" value="{{ evento.latitude if evento else '' }}">
+        <input type="hidden" id="longitude" name="longitude" value="{{ evento.longitude if evento else '' }}">
+        
+{% comment %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Link do Google Maps</label>
+            <input type="url" id="link_mapa" name="link_mapa" class="form-control" value="{{ evento.link_mapa if evento else '' }}">
+          </div>
+{% endcomment %}
         <div class="mb-3">
           <label class="form-label fw-semibold">Banner do Evento</label>
           <input type="file" name="banner" class="form-control">
@@ -119,12 +136,54 @@
   </div>
 </div>
 
+<!-- Modal para o Mapa -->
+<div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mapaModalLabel">Localizar Endereço</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" id="modal-search-input" class="form-control" placeholder="Digite um lugar para pesquisar...">
+          <button id="modal-search-btn" class="btn btn-primary" type="button">Buscar</button>
+        </div>
+        <div id="mapa-container" style="height: 400px;"></div>
+        <div id="endereco-detalhes" class="mt-3 p-3 bg-light rounded d-none">
+          <h6 class="fw-bold">Detalhes do Local:</h6>
+          <p id="endereco-completo" class="mb-1"></p>
+          <p class="mb-1">Latitude: <span id="info-latitude"></span></p>
+          <p class="mb-1">Longitude: <span id="info-longitude"></span></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-selecionar-local" data-bs-dismiss="modal">Selecionar Este Local</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSS para Sugestões -->
+<style>
+.suggestion-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.suggestion-item:hover {
+  background-color: #f0f7ff;
+}
+</style>
+
 <!-- Scripts -->
 {% if current_user.habilita_pagamento %}
 <script>
 document.getElementById('inscricao_gratuita').addEventListener('change', function() {
   var container = document.getElementById('tipos-inscricao-container');
-  container.style.display = this.checked ? 'none' : 'block';
+  container.classList.toggle('d-none', this.checked);
+  container.classList.toggle('d-block', !this.checked);
 });
 
 document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
@@ -163,6 +222,239 @@ document.getElementById('tipos-inscricao-list').addEventListener('click', functi
       window.location.href = "{{ url_for('routes.configurar_evento') }}";
     }
   }
+</script>
+
+<!-- Link para o Leaflet - Mapa Gratuito -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+<!-- Script do Localizador de Lugares -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Variáveis globais
+    let map;
+    let marker;
+    let currentLocation = {
+      lat: {{ evento.latitude|default(-15.77972, true) }},
+      lng: {{ evento.longitude|default(-47.92972, true) }}
+    };
+    let suggestionTimeout;
+
+    // Configuração de sugestões para o campo de localização
+    const localizacaoInput = document.getElementById('localizacao-input');
+    const suggestionsContainer = document.getElementById('suggestions');
+    
+    // Configurar o mapa quando o modal for aberto
+    document.getElementById('mapaModal').addEventListener('shown.bs.modal', function () {
+      if (!map) {
+        initMap();
+      }
+      
+      // Centralize no local salvo, se existir
+      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        map.setView([lat, lng], 15);
+        
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+        
+        // Mostrar detalhes do local
+        showLocationDetails(lat, lng);
+      }
+    });
+    
+    // Inicializar o mapa
+    function initMap() {
+      map = L.map('mapa-container').setView([currentLocation.lat, currentLocation.lng], 13);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+      
+      // Adicionar marker no mapa se já existir localização
+      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        marker = L.marker([lat, lng]).addTo(map);
+      }
+      
+      // Permitir clicar no mapa para selecionar local
+      map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        
+        // Atualizar ou criar marcador
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+        
+        showLocationDetails(lat, lng);
+      });
+    }
+    
+    // Mostrar detalhes do local selecionado
+    function showLocationDetails(lat, lng) {
+      document.getElementById('endereco-detalhes').classList.remove('d-none');
+      document.getElementById('info-latitude').textContent = lat.toFixed(6);
+      document.getElementById('info-longitude').textContent = lng.toFixed(6);
+      
+      // Fazer geocoding reverso para obter o endereço
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.display_name) {
+            document.getElementById('endereco-completo').textContent = data.display_name;
+            // Guardar temporariamente
+            currentLocation = {
+              lat: lat,
+              lng: lng,
+              address: data.display_name
+            };
+          }
+        })
+        .catch(error => {
+          console.error('Erro ao obter endereço:', error);
+          document.getElementById('endereco-completo').textContent = 'Endereço não disponível';
+        });
+    }
+    
+    // Buscar locais com base no texto digitado
+    function searchPlaces(query, modalSearch = false) {
+      const searchInput = modalSearch ? document.getElementById('modal-search-input') : localizacaoInput;
+      
+      if (query.length < 3) return;
+      
+      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
+        .then(response => response.json())
+        .then(data => {
+          if (modalSearch) {
+            // Se for busca no modal, centraliza o primeiro resultado no mapa
+            if (data.features && data.features.length > 0) {
+              const feature = data.features[0];
+              const coords = feature.geometry.coordinates;
+              const lat = coords[1];
+              const lng = coords[0];
+              
+              map.setView([lat, lng], 15);
+              
+              if (marker) {
+                marker.setLatLng([lat, lng]);
+              } else {
+                marker = L.marker([lat, lng]).addTo(map);
+              }
+              
+              showLocationDetails(lat, lng);
+            }
+          } else {
+            // Se for busca no campo, mostra sugestões
+            suggestionsContainer.innerHTML = '';
+            
+            if (data.features && data.features.length > 0) {
+              data.features.forEach(feature => {
+                const properties = feature.properties;
+                const coords = feature.geometry.coordinates;
+                
+                // Criar texto para exibição
+                let displayText = [];
+                if (properties.name) displayText.push(properties.name);
+                if (properties.street) displayText.push(properties.street);
+                if (properties.city) displayText.push(properties.city);
+                if (properties.state) displayText.push(properties.state);
+                
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.textContent = displayText.join(', ');
+                item.addEventListener('click', function() {
+                  // Preencher o campo de localização
+                  localizacaoInput.value = displayText.join(', ');
+                  
+                  // Guardar coordenadas
+                  document.getElementById('latitude').value = coords[1];
+                  document.getElementById('longitude').value = coords[0];
+                  
+                  // Gerar link do Google Maps
+                  document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
+                  
+                  // Esconder sugestões
+                  suggestionsContainer.style.display = 'none';
+                });
+                
+                suggestionsContainer.appendChild(item);
+              });
+              
+              suggestionsContainer.style.display = 'block';
+            } else {
+              suggestionsContainer.style.display = 'none';
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Erro na busca:', error);
+        });
+    }
+    
+    // Event listener para o campo de localização
+    localizacaoInput.addEventListener('input', function() {
+      const query = this.value.trim();
+      
+      // Limpar timeout anterior
+      if (suggestionTimeout) {
+        clearTimeout(suggestionTimeout);
+      }
+      
+      // Esperar um pouco antes de buscar para evitar muitas requisições
+      suggestionTimeout = setTimeout(() => {
+        if (query.length >= 3) {
+          searchPlaces(query);
+        } else {
+          suggestionsContainer.style.display = 'none';
+        }
+      }, 300);
+    });
+    
+    // Esconder sugestões ao clicar fora
+    document.addEventListener('click', function(e) {
+      if (e.target !== localizacaoInput && !suggestionsContainer.contains(e.target)) {
+        suggestionsContainer.style.display = 'none';
+      }
+    });
+    
+    // Buscar no modal
+    document.getElementById('modal-search-btn').addEventListener('click', function() {
+      const query = document.getElementById('modal-search-input').value.trim();
+      if (query.length >= 3) {
+        searchPlaces(query, true);
+      }
+    });
+    
+    // Tecla Enter no campo de busca do modal
+    document.getElementById('modal-search-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('modal-search-btn').click();
+      }
+    });
+    
+    // Selecionar local do mapa
+    document.getElementById('btn-selecionar-local').addEventListener('click', function() {
+      if (currentLocation) {
+        // Preencher campos com informações do local selecionado
+        document.getElementById('latitude').value = currentLocation.lat;
+        document.getElementById('longitude').value = currentLocation.lng;
+        document.getElementById('localizacao-input').value = currentLocation.address || '';
+        
+        // Gerar link do Google Maps
+        document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${currentLocation.lat},${currentLocation.lng}`;
+      }
+    });
+  });
 </script>
 
 <!-- Bootstrap JS (caso não esteja no base.html) -->
