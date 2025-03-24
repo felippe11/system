@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Criar Oficina{% endblock %}
+{% block title %}Criar Atividade{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
   <div class="card">
     <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 text-center">Criar Nova Oficina</h2>
+      <h2 class="mb-0 text-center">Criar Nova Atividade</h2>
     </div>
     <div class="card-body">
       <form action="{{ url_for('routes.criar_oficina') }}" method="POST">
@@ -34,7 +34,7 @@
           </div>
 
           <div class="mb-3 col-md-6">
-            <label for="titulo" class="form-label">Título da Oficina:</label>
+            <label for="titulo" class="form-label">Título da atividade:</label>
             <input type="text" class="form-control" id="titulo" name="titulo" required>
           </div>
           <div class="mb-3 col-md-6">
@@ -68,8 +68,40 @@
     </small>
   </div>
 
+        <div class="mb-3">
+          <label for="tipo_oficina" class="form-label">Tipo de Atividade:</label>
+          <select class="form-select" id="tipo_oficina" name="tipo_oficina" required onchange="toggleOutroTipo()">
+            <option value="Oficina" selected>Oficina</option>
+            <option value="Palestra">Palestra</option>
+            <option value="Conferência">Conferência</option>
+            <option value="Mesa-redonda">Mesa-redonda</option>
+            <option value="Apresentação de trabalho">Apresentação de trabalho</option>
+            <option value="Minicurso">Minicurso</option>
+            <option value="Painéis">Painéis</option>
+            <option value="Exposição">Exposição</option>
+            <option value="Atividade cultural">Atividade cultural</option>
+            <option value="Sessão plenária">Sessão plenária</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        
+        <div class="mb-3" id="outro_tipo_div" style="display: none;">
+          <label for="tipo_oficina_outro" class="form-label">Especifique o tipo:</label>
+          <input type="text" class="form-control" id="tipo_oficina_outro" name="tipo_oficina_outro">
+        </div>
+
+        <div class="mb-3">
+          <label for="tipo_inscricao" class="form-label">Inscrição:</label>
+          <select class="form-select" id="tipo_inscricao" name="tipo_inscricao" required>
+            <option value="sem_inscricao">Não é necessário se inscrever</option>
+            <option value="com_inscricao_sem_limite">Sem limite de vagas</option>
+            <option value="com_inscricao_com_limite" selected>Com limite de vagas</option>
+          </select>
+          <small class="text-muted"> Atenção, os certificados ficam disponiveis apenas para as opções com inscrição.</small>
+        </div>
+        
         <div class="row">
-          <div class="mb-3 col-md-6">
+          <div class="mb-3 col-md-6" id="vagas-container">
             <label for="vagas" class="form-label">Número de Vagas:</label>
             <input type="number" class="form-control" id="vagas" name="vagas" required>
           </div>
@@ -193,7 +225,7 @@
         </div>
         {% endif %}
 
-        <button type="submit" class="btn btn-success w-100 mt-4">Criar Oficina</button>
+        <button type="submit" class="btn btn-success w-100 mt-4">Criar Atividade</button>
         <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Voltar</a>
       </form>
     </div>
@@ -202,7 +234,37 @@
 
 <!-- Scripts JavaScript -->
 <script>
+  function toggleOutroTipo() {
+    const tipoSelect = document.getElementById('tipo_oficina');
+    const outroTipoDiv = document.getElementById('outro_tipo_div');
+    
+    if (tipoSelect.value === 'outros') {
+      outroTipoDiv.style.display = 'block';
+    } else {
+      outroTipoDiv.style.display = 'none';
+    }
+  }
+  
   document.addEventListener('DOMContentLoaded', function() {
+      // Controle de exibição do campo de vagas baseado no tipo de inscrição
+      const tipoInscricaoSelect = document.getElementById('tipo_inscricao');
+      const vagasContainer = document.getElementById('vagas-container');
+      const vagasInput = document.getElementById('vagas');
+      
+      tipoInscricaoSelect.addEventListener('change', function() {
+        if (this.value === 'com_inscricao_com_limite') {
+          vagasContainer.style.display = 'block';
+          vagasInput.required = true;
+        } else {
+          vagasContainer.style.display = 'none';
+          vagasInput.required = false;
+          if (this.value === 'com_inscricao_sem_limite') {
+            vagasInput.value = '9999'; // Um valor alto para representar "sem limite"
+          } else {
+            vagasInput.value = '0'; // Para 'sem_inscricao'
+          }
+        }
+      });
     // Adição de novo horário
     document.getElementById('add-horario').addEventListener('click', function () {
       let container = document.getElementById('horarios-container');
@@ -238,7 +300,7 @@
         if (dataItems.length > 1) {
           e.target.closest('.data-item').remove();
         } else {
-          alert('É necessário pelo menos um dia para a oficina!');
+          alert('É necessário pelo menos um dia para a atividade!');
         }
       }
     });

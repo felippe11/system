@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Editar Oficina{% endblock %}
+{% block title %}Editar Atividade{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
   <div class="card">
     <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 text-center">Editar Oficina</h2>
+      <h2 class="mb-0 text-center">Editar Atividade</h2>
     </div>
     <div class="card-body">
       <form method="POST">
@@ -37,7 +37,7 @@
         </div>
 
         <div class="mb-3">
-          <label for="titulo" class="form-label">Título da Oficina</label>
+          <label for="titulo" class="form-label">Título da Atividade</label>
           <input type="text" class="form-control" id="titulo" name="titulo" value="{{ oficina.titulo }}" required>
         </div>
 
@@ -73,9 +73,41 @@
         </select>
       </div>
 
+        <div class="mb-3">
+          <label for="tipo_oficina" class="form-label">Tipo de Atividade:</label>
+          <select class="form-select" id="tipo_oficina" name="tipo_oficina" required onchange="toggleOutroTipo()">
+            <option value="Oficina" {% if oficina.tipo_oficina == 'Oficina' %}selected{% endif %}>Oficina</option>
+            <option value="Palestra" {% if oficina.tipo_oficina == 'Palestra' %}selected{% endif %}>Palestra</option>
+            <option value="Conferência" {% if oficina.tipo_oficina == 'Conferência' %}selected{% endif %}>Conferência</option>
+            <option value="Mesa-redonda" {% if oficina.tipo_oficina == 'Mesa-redonda' %}selected{% endif %}>Mesa-redonda</option>
+            <option value="Apresentação de trabalho" {% if oficina.tipo_oficina == 'Apresentação de trabalho' %}selected{% endif %}>Apresentação de trabalho</option>
+            <option value="Minicurso" {% if oficina.tipo_oficina == 'Minicurso' %}selected{% endif %}>Minicurso</option>
+            <option value="Painéis" {% if oficina.tipo_oficina == 'Painéis' %}selected{% endif %}>Painéis</option>
+            <option value="Exposição" {% if oficina.tipo_oficina == 'Exposição' %}selected{% endif %}>Exposição</option>
+            <option value="Atividade cultural" {% if oficina.tipo_oficina == 'Atividade cultural' %}selected{% endif %}>Atividade cultural</option>
+            <option value="Sessão plenária" {% if oficina.tipo_oficina == 'Sessão plenária' %}selected{% endif %}>Sessão plenária</option>
+            <option value="outros" {% if oficina.tipo_oficina == 'outros' %}selected{% endif %}>Outros</option>
+          </select>
+        </div>
+        
+        <div class="mb-3" id="outro_tipo_div" style="display: {% if oficina.tipo_oficina == 'outros' %}block{% else %}none{% endif %};">
+          <label for="tipo_oficina_outro" class="form-label">Especifique o tipo:</label>
+          <input type="text" class="form-control" id="tipo_oficina_outro" name="tipo_oficina_outro" value="{{ oficina.tipo_oficina_outro }}">
+        </div>
+
+        <div class="mb-3">
+          <label for="tipo_inscricao" class="form-label">Inscrição:</label>
+          <select class="form-select" id="tipo_inscricao" name="tipo_inscricao" required>
+            <option value="sem_inscricao" {% if oficina.tipo_inscricao == 'sem_inscricao' %}selected{% endif %}>Não é necessário se inscrever</option>
+            <option value="com_inscricao_sem_limite" {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}selected{% endif %}>Sem limite de vagas</option>
+            <option value="com_inscricao_com_limite" {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}selected{% endif %}>Com limite de vagas</option>
+          </select>
+          <small class="text-muted"> Atenção, os certificados ficam disponiveis apenas para as opções com inscrição.</small>
+        </div>
+        
         <div class="row">
-          <div class="mb-3 col-md-6">
-            <label for="vagas" class="form-label">Número de Vagas</label>
+          <div class="mb-3 col-md-6" id="vagas-container" {% if oficina.tipo_inscricao != 'com_inscricao_com_limite' %}style="display: none;"{% endif %}>
+            <label for="vagas" class="form-label">Número de Vagas:</label>
             <input type="number" class="form-control" id="vagas" name="vagas" value="{{ oficina.vagas }}" min="0" required>
           </div>
           <div class="mb-3 col-md-6">
@@ -196,6 +228,25 @@
 </div>
 
 <script>
+  // Controle de exibição do campo de vagas baseado no tipo de inscrição
+  document.getElementById('tipo_inscricao').addEventListener('change', function() {
+    const vagasContainer = document.getElementById('vagas-container');
+    const vagasInput = document.getElementById('vagas');
+    
+    if (this.value === 'com_inscricao_com_limite') {
+      vagasContainer.style.display = 'block';
+      vagasInput.required = true;
+    } else {
+      vagasContainer.style.display = 'none';
+      vagasInput.required = false;
+      if (this.value === 'com_inscricao_sem_limite') {
+        vagasInput.value = '9999'; // Um valor alto para representar "sem limite"
+      } else {
+        vagasInput.value = '0'; // Para 'sem_inscricao'
+      }
+    }
+  });
+
   document.getElementById("estado").addEventListener("change", function() {
     var estado = this.value;
     var cidadeSelect = document.getElementById("cidade");
@@ -248,6 +299,18 @@
     }
   });
 
+  // Função para mostrar/ocultar o campo de tipo personalizado
+  function toggleOutroTipo() {
+    const tipoSelect = document.getElementById('tipo_oficina');
+    const outroTipoDiv = document.getElementById('outro_tipo_div');
+    
+    if (tipoSelect.value === 'outros') {
+      outroTipoDiv.style.display = 'block';
+    } else {
+      outroTipoDiv.style.display = 'none';
+    }
+  }
+  
   function adicionarData() {
     const container = document.getElementById("datas-container");
     const div = document.createElement("div");
