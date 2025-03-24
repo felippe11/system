@@ -1,21 +1,197 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% block title %}Personalização de Certificados{% endblock %}
+
 {% block content %}
-<div class="container my-4">
-  <h2>Personalizar Certificado</h2>
-  <form method="POST" enctype="multipart/form-data">
-    <div class="mb-3">
-      <label class="form-label">Logo do Certificado</label>
-      <input type="file" name="logo_certificado" class="form-control">
+<div class="container py-4">
+
+  <h2 class="text-primary fw-bold mb-4 d-flex align-items-center">
+    <i class="bi bi-award-fill me-2"></i> Personalização de Certificados
+  </h2>
+
+  <div class="row g-4">
+
+    <!-- Coluna Esquerda (Upload de imagens e texto) -->
+    <div class="col-md-5">
+      <div class="card shadow h-100">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0 d-flex align-items-center">
+            <i class="bi bi-upload me-2"></i>Imagens e Textos
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('routes.salvar_personalizacao_certificado') }}" method="POST" enctype="multipart/form-data">
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Logo do Certificado</label>
+              <input type="file" name="logo_certificado" class="form-control">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Assinatura Digital</label>
+              <input type="file" name="assinatura_certificado" class="form-control">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Fundo Personalizado</label>
+              <input type="file" name="fundo_certificado" class="form-control">
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Texto Padrão para Certificados</label>
+              <textarea name="texto_personalizado" class="form-control" rows="5" placeholder="Insira o texto padrão aqui...">{{ cliente.texto_personalizado or '' }}</textarea>
+
+
+              <small class="text-muted mt-1 d-block">
+                <i class="bi bi-info-circle me-1"></i>Não altere placeholders: {NOME_PARTICIPANTE}, {CARGA_HORARIA}, {LISTA_OFICINAS}, {DATAS_OFICINAS}
+              </small>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">
+              <i class="bi bi-save me-1"></i> Salvar Personalizações
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      <label class="form-label">Fundo do Certificado</label>
-      <input type="file" name="fundo_certificado" class="form-control">
+
+    <!-- Coluna Direita (Gerenciamento Templates) -->
+    <div class="col-md-7">
+      <div class="card shadow h-100">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 d-flex align-items-center">
+            <i class="bi bi-file-earmark-text-fill me-2"></i> Templates de Certificados
+          </h5>
+          <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#novoTemplateModal">
+            <i class="bi bi-plus-lg me-1"></i>Novo Template
+          </button>
+        </div>
+        <div class="card-body">
+          {% if templates %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Título</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for template in templates %}
+                <tr>
+                  <td class="fw-medium">{{ template.titulo }}</td>
+                  <td>
+                    <span class="badge {{ 'bg-success' if template.ativo else 'bg-secondary' }}">
+                      {{ 'Ativo' if template.ativo else 'Inativo' }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="btn-group">
+                      {% if not template.ativo %}
+                      <form action="{{ url_for('routes.set_template_ativo', template_id=template.id) }}" method="post" class="me-1">
+                        <button class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-check-circle me-1"></i>Ativar
+                        </button>
+                      </form>
+                      {% else %}
+                      <form action="{{ url_for('routes.desativar_template_certificado', template_id=template.id) }}" method="post" class="me-1">
+                        <button class="btn btn-outline-secondary btn-sm">
+                          <i class="bi bi-x-circle me-1"></i>Desativar
+                        </button>
+                      </form>
+                      {% endif %}
+                      <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editarTemplate{{ template.id }}">
+                        <i class="bi bi-pencil me-1"></i>Editar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+            <div class="text-center py-4">
+              <i class="bi bi-clipboard-x text-muted" style="font-size: 2rem;"></i>
+              <p class="text-muted mt-2">Nenhum template cadastrado.</p>
+              <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#novoTemplateModal">
+                <i class="bi bi-plus-lg me-1"></i>Criar Primeiro Template
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
-    <div class="mb-3">
-      <label class="form-label">Assinatura</label>
-      <input type="file" name="assinatura_certificado" class="form-control">
+  </div>
+
+  <!-- Modais de Edição -->
+  {% for template in templates %}
+  <div class="modal fade" id="editarTemplate{{ template.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-warning">
+          <h5 class="modal-title text-white">
+            <i class="bi bi-pencil-square me-1"></i>Editar Template
+          </h5>
+          <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="{{ url_for('routes.editar_template_certificado', template_id=template.id) }}" method="POST">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Título do Template</label>
+              <input type="text" class="form-control" name="titulo" value="{{ template.titulo }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Conteúdo do Template</label>
+              <textarea class="form-control" name="conteudo" rows="7" required>{{ template.conteudo }}</textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning">
+              <i class="bi bi-save me-1"></i>Salvar Alterações
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-  </form>
+  </div>
+  {% endfor %}
+
+  <!-- Modal Novo Template -->
+  <div class="modal fade" id="novoTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">
+            <i class="bi bi-plus-circle me-1"></i>Novo Template
+          </h5>
+          <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="POST" action="{{ url_for('routes.templates_certificado') }}">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Título do Template</label>
+              <input type="text" class="form-control" name="titulo" placeholder="Ex: Certificado Padrão" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Conteúdo do Template</label>
+              <textarea class="form-control" name="conteudo" rows="7" placeholder="Insira o conteúdo do certificado aqui..." required></textarea>
+              <small class="text-muted mt-1 d-block">
+                <i class="bi bi-info-circle me-1"></i>Use os placeholders: {NOME_PARTICIPANTE}, {CARGA_HORARIA}, {LISTA_OFICINAS}
+              </small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-save me-1"></i>Salvar Template
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

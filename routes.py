@@ -21,6 +21,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import RespostaFormulario, RespostaCampo
 from utils import enviar_email
+from utils import gerar_certificado_personalizado
 from datetime import datetime
 from flask_mail import Message
 from models import Evento
@@ -29,6 +30,9 @@ from models import FormularioTemplate
 from models import CampoFormulario
 from models import Formulario
 from models import CampoFormularioTemplate
+from models import CertificadoTemplate
+from utils import gerar_certificados_pdf
+
 # Adicione esta linha na seção de importações no topo do arquivo routes.py
 from sqlalchemy import and_, func, or_
 from models import (
@@ -4969,6 +4973,9 @@ def excluir_formulario(formulario_id):
 @routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
 def upload_personalizacao_certificado():
+    
+    cliente = Cliente.query.get(current_user.id)
+    templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
 
     if request.method == 'POST':
         logo_file = request.files.get('logo_certificado')
@@ -5002,7 +5009,7 @@ def upload_personalizacao_certificado():
         flash("Personalização salva com sucesso!", "success")
         return redirect(url_for('routes.dashboard_cliente'))
 
-    return render_template('upload_personalizacao_cert.html')
+    return render_template('upload_personalizacao_cert.html', templates=templates, cliente=cliente)
 
 @routes.route('/leitor_checkin_json', methods=['POST'])
 @login_required
@@ -10838,3 +10845,114 @@ def adicionar_patrocinadores_categorizados():
 
     flash(f"Patrocinadores adicionados com sucesso! Total: {total_importados}", "success")
     return redirect(url_for('routes.dashboard_cliente'))
+
+@routes.route('/templates_certificado', methods=['GET', 'POST'])
+@login_required
+def templates_certificado():
+    if request.method == 'POST':
+        titulo = request.form['titulo']
+        conteudo = request.form['conteudo']
+        novo_template = CertificadoTemplate(cliente_id=current_user.id, titulo=titulo, conteudo=conteudo)
+        db.session.add(novo_template)
+        db.session.commit()
+        flash('Template cadastrado com sucesso!', 'success')
+
+    templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('templates_certificado.html', templates=templates)
+
+@routes.route('/set_template_ativo/<int:template_id>', methods=['POST'])
+@login_required
+def set_template_ativo(template_id):
+    CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
+    template = CertificadoTemplate.query.get(template_id)
+    template.ativo = True
+    db.session.commit()
+    flash('Template definido como ativo com sucesso!', 'success')
+    return redirect(url_for('routes.templates_certificado'))
+
+@routes.route('/gerar_certificado_evento', methods=['POST'])
+@login_required
+def gerar_certificado_evento():
+    texto_personalizado = request.form.get('texto_personalizado', '')
+    oficinas_ids = request.form.getlist('oficinas_selecionadas')
+
+    oficinas = Oficina.query.filter(Oficina.id.in_(oficinas_ids)).all()
+    total_horas = sum(int(of.carga_horaria) for of in oficinas)
+
+    # Capturar template ativo
+    template = CertificadoTemplate.query.filter_by(cliente_id=current_user.id, ativo=True).first()
+    if not template:
+        flash('Nenhum template ativo encontrado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    pdf_path = gerar_certificado_personalizado(current_user, oficinas, total_horas, texto_personalizado, template.conteudo)
+    return send_file(pdf_path, as_attachment=True)
+
+@routes.route('/salvar_personalizacao_certificado', methods=['POST'])
+@login_required
+def salvar_personalizacao_certificado():
+    cliente = Cliente.query.get(current_user.id)
+
+    for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
+        arquivo = request.files.get(campo)
+        if arquivo:
+            filename = secure_filename(arquivo.filename)
+            path = os.path.join('static/uploads/certificados', filename)
+            arquivo.save(path)
+            setattr(cliente, campo, path)
+
+    cliente.texto_personalizado = request.form.get('texto_personalizado')
+    db.session.commit()
+
+    flash('Personalizações salvas com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+@routes.route('/ativar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def ativar_template_certificado(template_id):
+    CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
+    template = CertificadoTemplate.query.get_or_404(template_id)
+    template.ativo = True
+    db.session.commit()
+
+    flash('Template ativado com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+
+@routes.route('/editar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def editar_template_certificado(template_id):
+    template = CertificadoTemplate.query.get_or_404(template_id)
+
+    if template.cliente_id != current_user.id:
+        flash('Você não tem permissão para editar este template.', 'danger')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    novo_titulo = request.form.get('titulo')
+    novo_conteudo = request.form.get('conteudo')
+
+    if not novo_titulo or not novo_conteudo:
+        flash('Todos os campos são obrigatórios.', 'warning')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    template.titulo = novo_titulo
+    template.conteudo = novo_conteudo
+
+    db.session.commit()
+    flash('Template atualizado com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+@routes.route('/desativar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def desativar_template_certificado(template_id):
+    template = CertificadoTemplate.query.get_or_404(template_id)
+
+    if template.cliente_id != current_user.id:
+        flash('Você não tem permissão para alterar esse template.', 'danger')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    template.ativo = False
+    db.session.commit()
+    flash('Template desativado com sucesso!', 'info')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+

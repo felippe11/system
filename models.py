@@ -396,6 +396,7 @@ class Cliente(db.Model, UserMixin):
     logo_certificado = db.Column(db.String(255), nullable=True)       # Logo
     fundo_certificado = db.Column(db.String(255), nullable=True)      # Fundo do certificado
     assinatura_certificado = db.Column(db.String(255), nullable=True) # Assinatura
+    texto_personalizado = db.Column(db.Text)
 
     
     def is_active(self):
@@ -740,6 +741,16 @@ class Patrocinador(db.Model):
         self.logo_path = logo_path
         self.categoria = categoria
 
+class CertificadoTemplate(db.Model):
+    __tablename__ = 'certificado_template'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    titulo = db.Column(db.String(100), nullable=False)
+    conteudo = db.Column(db.Text, nullable=False)  # HTML ou texto estruturado
+    ativo = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship("Cliente", backref="certificados_templates")
 
 
 
