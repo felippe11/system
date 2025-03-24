@@ -17,10 +17,12 @@ from datetime import datetime
 import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from models import Oficina, Usuario, Cliente, Inscricao
+from models import CertificadoTemplate, Oficina, Usuario, Cliente, Inscricao
 from flask_mail import Message
 from extensions import mail
 import logging
+from models import CertificadoTemplate
+
 
 # ReportLab para PDFs
 from reportlab.pdfgen import canvas
@@ -526,3 +528,277 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
 
     except HttpError as error:
         logger.error(f"❌ ERRO ao enviar e-mail: {error}", exc_info=True)
+        
+
+def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_personalizado, template_conteudo, cliente):
+    """
+    Gera um certificado personalizado em PDF para o usuário.
+
+    Args:
+        usuario: Objeto usuário com atributos id e nome
+        oficinas: Lista de objetos oficina com atributo titulo e datas
+        total_horas: Total de horas do evento
+        texto_personalizado: Texto adicional personalizado 
+        template_conteudo: Template com placeholders para o conteúdo
+        cliente: Objeto cliente com atributos para imagens do certificado
+
+    Returns:
+        str: Caminho do arquivo PDF gerado
+    """
+    import os
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+
+    # Configuração do arquivo de saída
+    pdf_filename = f"certificado_evento_{usuario.id}.pdf"
+    pdf_path = os.path.join("static/certificados", pdf_filename)
+
+    # Criação do canvas com tamanho A4 paisagem
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    # Determinar o conteúdo do certificado
+    if template_conteudo:
+        conteudo_final = template_conteudo
+    elif cliente and cliente.texto_personalizado:
+        conteudo_final = cliente.texto_personalizado
+    else:
+        conteudo_final = (
+            "Certificamos que {NOME_PARTICIPANTE} participou das atividades {LISTA_OFICINAS}, "
+            "com carga horária total de {CARGA_HORARIA} horas nas datas {DATAS_OFICINAS}. {TEXTO_PERSONALIZADO}"
+        )
+
+    # Extração das datas das oficinas
+    datas_oficinas = ', '.join(
+        ', '.join(data.strftime('%d/%m/%Y') for data in of.datas) if hasattr(of, 'datas') else ''
+        for of in oficinas
+    )
+
+    # Substituição das variáveis no template
+    conteudo_final = conteudo_final.replace("{NOME_PARTICIPANTE}", usuario.nome)\
+                                   .replace("{CARGA_HORARIA}", str(total_horas))\
+                                   .replace("{LISTA_OFICINAS}", ', '.join(of.titulo for of in oficinas))\
+                                   .replace("{TEXTO_PERSONALIZADO}", texto_personalizado)\
+                                   .replace("{DATAS_OFICINAS}", datas_oficinas)
+
+    # ===== RENDERIZAÇÃO DO CERTIFICADO =====
+
+    # 1. Imagem de fundo (ocupa toda a página)
+    fundo_path = caminho_absoluto_arquivo(cliente.fundo_certificado)
+    if fundo_path:
+        fundo = ImageReader(fundo_path)
+        c.drawImage(fundo, 0, 0, width=width, height=height)
+
+    # 2. Título
+    c.setFont("Helvetica-Bold", 24)
+    titulo = "CERTIFICADO"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
+    c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
+
+    # 3. Texto principal (centralizado e justificado no meio da página)
+    styles = getSampleStyleSheet()
+    estilo_paragrafo = ParagraphStyle(
+        'EstiloCertificado',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12
+    )
+
+    # Processando quebras de linha explícitas
+    paragrafos = conteudo_final.split('\n')
+    texto_formatado = '<br/>'.join(paragrafos)
+    p = Paragraph(texto_formatado, estilo_paragrafo)
+
+    margem_lateral = width * 0.15
+    largura_texto = width - 2 * margem_lateral
+    altura_texto = height * 0.3
+    posicao_y_texto = height * 0.4
+
+    frame = Frame(margem_lateral, posicao_y_texto, largura_texto, altura_texto, showBoundary=0)
+    frame.addFromList([p], c)
+
+    # 4. Logo (posicionada na parte inferior da página)
+    logo_path = caminho_absoluto_arquivo(cliente.logo_certificado)
+    if logo_path:
+        logo_largura = 180
+        logo_altura = 100
+        margem_inferior = 50
+
+        logo = ImageReader(logo_path)
+        c.drawImage(logo, 
+                   (width - logo_largura) / 2,
+                   margem_inferior,
+                   width=logo_largura, 
+                   height=logo_altura,
+                   preserveAspectRatio=True)
+
+    # 5. Assinatura (posicionada acima da logo na parte inferior)
+    assinatura_path = caminho_absoluto_arquivo(cliente.assinatura_certificado)
+    if assinatura_path:
+        assinatura_largura = 200
+        assinatura_altura = 60
+
+        if logo_path:
+            assinatura_posicao_y = margem_inferior + logo_altura + 20
+        else:
+            assinatura_posicao_y = 30
+
+        assinatura = ImageReader(assinatura_path)
+        c.drawImage(
+            assinatura,
+            (width - assinatura_largura) / 2,
+            assinatura_posicao_y,
+            width=assinatura_largura,
+            height=assinatura_altura,
+            preserveAspectRatio=True,
+            mask='auto'
+        )
+
+    c.save()
+    return pdf_path
+
+
+
+def gerar_certificados_pdf(oficina, inscritos, pdf_path):
+    """
+    Gera certificados em PDF para múltiplos inscritos de uma oficina.
+
+    Args:
+        oficina: Objeto oficina com atributos titulo, carga_horaria e cliente
+        inscritos: Lista de objetos inscricao com atributo usuario
+        pdf_path: Caminho onde o arquivo PDF será salvo
+
+    Returns:
+        str: Caminho do arquivo PDF gerado
+    """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+
+    # Obter o template de certificado
+    template = CertificadoTemplate.query.filter_by(cliente_id=oficina.cliente_id, ativo=True).first()
+    cliente = oficina.cliente
+
+    # Determinar o conteúdo do certificado
+    if template and template.conteudo:
+        texto_certificado = template.conteudo
+    elif cliente and cliente.texto_personalizado:
+        texto_certificado = cliente.texto_personalizado
+    else:
+        texto_certificado = (
+            "Certificamos que {NOME_PARTICIPANTE} participou da oficina {LISTA_OFICINAS}, "
+            "com uma carga horária total de {CARGA_HORARIA} horas nas datas {DATAS_OFICINAS}."
+        )
+    
+    datas_oficina = ', '.join(dia.data.strftime('%d/%m/%Y') for dia in sorted(oficina.dias, key=lambda x: x.data)) if hasattr(oficina, 'dias') and oficina.dias else ''
+
+    # Inicializar o canvas
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    # Criar estilos de parágrafo para texto formatado
+    styles = getSampleStyleSheet()
+    estilo_paragrafo = ParagraphStyle(
+        'EstiloCertificado',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=18,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+
+    # Gerar um certificado para cada inscrito
+    for inscricao in inscritos:
+        # Substituir as variáveis no template
+        texto_final = (
+            texto_certificado.replace("{NOME_PARTICIPANTE}", inscricao.usuario.nome)
+                             .replace("{CARGA_HORARIA}", str(oficina.carga_horaria))
+                             .replace("{LISTA_OFICINAS}", oficina.titulo)
+                             .replace("{DATAS_OFICINAS}", datas_oficina)
+        )
+
+        # 1. Desenhar a imagem de fundo
+        fundo_path = caminho_absoluto_arquivo(cliente.fundo_certificado)
+        if fundo_path:
+            fundo = ImageReader(fundo_path)
+            c.drawImage(fundo, 0, 0, width=width, height=height)
+
+        # 2. Adicionar título
+        c.setFont("Helvetica-Bold", 24)
+        titulo = "CERTIFICADO"
+        titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
+        c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
+
+        # 3. Texto principal do certificado (centralizado e formatado)
+        paragrafos = texto_final.split('\n')
+        texto_formatado = '<br/>'.join(paragrafos)
+        p = Paragraph(texto_formatado, estilo_paragrafo)
+
+        margem_lateral = width * 0.15
+        largura_texto = width - 2 * margem_lateral
+        altura_texto = height * 0.3
+        posicao_y_texto = height * 0.4
+
+        frame = Frame(margem_lateral, posicao_y_texto, largura_texto, altura_texto, showBoundary=0)
+        frame.addFromList([p], c)
+
+        # 4. Logo (posicionada na parte inferior da página)
+        logo_path = caminho_absoluto_arquivo(cliente.logo_certificado)
+        if logo_path:
+            logo_largura = 180
+            logo_altura = 100
+            margem_inferior = 50
+
+            logo = ImageReader(logo_path)
+            c.drawImage(logo,
+                      (width - logo_largura) / 2,
+                      margem_inferior,
+                      width=logo_largura,
+                      height=logo_altura,
+                      preserveAspectRatio=True)
+
+        # 5. Assinatura
+        assinatura_path = caminho_absoluto_arquivo(cliente.assinatura_certificado)
+        if assinatura_path:
+            assinatura_largura = 200
+            assinatura_altura = 60
+
+            if logo_path:
+                assinatura_posicao_y = margem_inferior + logo_altura + 20
+            else:
+                assinatura_posicao_y = 30
+
+            assinatura = ImageReader(assinatura_path)
+            c.drawImage(
+                assinatura,
+                (width - assinatura_largura) / 2,
+                assinatura_posicao_y,
+                width=assinatura_largura,
+                height=assinatura_altura,
+                preserveAspectRatio=True,
+                mask='auto'
+            )
+
+        c.showPage()
+
+    c.save()
+    return pdf_path
+
+def caminho_absoluto_arquivo(imagem_relativa):
+    """Retorna o caminho absoluto corrigido para leitura de imagem"""
+    if not imagem_relativa:
+        return None
+
+    # Evita duplicar 'static/static/...'
+    if imagem_relativa.startswith('static/'):
+        return imagem_relativa
+    return os.path.join('static', imagem_relativa)
