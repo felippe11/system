@@ -159,16 +159,25 @@
                     {% for ofst in oficinas %}
                     <tr>
                       <td>{{ ofst.titulo }}</td>
-                      <td>{{ ofst.vagas }}</td>
+                      <td>{% if ofst.vagas == 9999 %} ∞ {% else %}{{ ofst.vagas }}{% endif %}</td>
                       <td>{{ ofst.inscritos|length }}</td>
                       <td>
                         <div class="progress" style="height: 20px;">
+                          {% if ofst.vagas == 9999 %}
+                          <div class="progress-bar bg-info" role="progressbar" 
+                               style="width: 100%;" 
+                               aria-valuenow="100" 
+                               aria-valuemin="0" aria-valuemax="100">
+                            Ilimitado
+                          </div>
+                          {% else %}
                           <div class="progress-bar" role="progressbar" 
                                style="width: {{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}%;" 
                                aria-valuenow="{{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}" 
                                aria-valuemin="0" aria-valuemax="100">
                             {{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}%
                           </div>
+                          {% endif %}
                         </div>
                       </td>
                     </tr>
@@ -1432,6 +1441,9 @@ document.getElementById("gerarLinkConfirm").addEventListener("click", function()
     if (data.success) {
       const linkGerado = data.link;
       document.getElementById("linkCadastro").value = linkGerado;
+      
+      // Mostrar o container do link gerado
+      document.getElementById("linkGeradoContainer").style.display = "block";
 
       const mensagem = "Olá! Cadastre-se no evento através deste link: " + linkGerado;
       document.getElementById("whatsappShare").href =
