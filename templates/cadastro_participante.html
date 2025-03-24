@@ -49,30 +49,39 @@
                             <div class="atividade-descricao">
                                 {{ item.descricao }}
                             </div>
-
-                            {# Junta o ministrante principal e os extras numa mesma lista #}
-                            {% set todos_ministrantes = [] %}
-                            {% if item.ministrante %}
-                                {% set _ = todos_ministrantes.append(item.ministrante) %}
-                            {% endif %}
-                            {% if item.oficina and item.oficina.ministrantes_associados %}
-                                {% for m in item.oficina.ministrantes_associados %}
-                                    {% set _ = todos_ministrantes.append(m) %}
-                                {% endfor %}
-                            {% endif %}
-
-                            {% if todos_ministrantes %}
-                                <div class="todos-ministrantes">
-                                    {% for m in todos_ministrantes %}
+                            
+                            <!-- Seção unificada dos ministrantes (principal + extras) -->
+                            <div class="ministrantes-grid">
+                                {% if item.ministrante %}
+                                    <div class="ministrante-card">
+                                        <img 
+                                            src="{{ url_for('static', filename=item.ministrante.foto or 'uploads/ministrantes/default-profile.png') }}" 
+                                            alt="Foto do ministrante" 
+                                            class="ministrante-foto-pequena"
+                                        >
+                                        <div class="ministrante-info">
+                                            <span class="ministrante-nome">{{ item.ministrante.nome }}</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if item.oficina and item.oficina.ministrantes_associados %}
+                                    {% for m in item.oficina.ministrantes_associados %}
                                         <div class="ministrante-card">
-                                            <img src="{{ url_for('static', filename=m.foto or 'uploads/ministrantes/default-profile.png') }}"
-                                                 alt="Foto do ministrante"
-                                                 class="ministrante-foto">
-                                            <span class="ministrante-nome">{{ m.nome }}</span>
+                                            <img 
+                                                src="{{ url_for('static', filename=m.foto or 'uploads/ministrantes/default-profile.png') }}"
+                                                alt="Foto do ministrante"
+                                                class="ministrante-foto-pequena"
+                                            >
+                                            <div class="ministrante-info">
+                                                <span class="ministrante-nome">{{ m.nome }}</span>
+                                            </div>
                                         </div>
                                     {% endfor %}
-                                </div>
-                            {% endif %}
+                                {% endif %}
+                            </div>
+                            <!-- Fim seção ministrantes -->
+                            
                         </div>
                     </li>
                 {% endfor %}
@@ -81,47 +90,47 @@
     {% endfor %}
 </div>
 
-               <!-- ABA MINISTRANTES PRESENTES NO EVENTO -->
-               <div class="ministrantes-section">
-                <h2 class="ministrantes-titulo">
-                    <i class="fas fa-chalkboard-teacher"></i> Ministrantes Presentes no Evento
-                </h2>
-            
-                <!-- Add this HTML right before the closing body tag -->
-            
-                <div id="photoModal" class="photo-modal">
-                    <span class="photo-modal-close">&times;</span>
-                    <div class="photo-modal-wrapper">
-                        <img class="photo-modal-content" id="photoModalImg">
-                        <div class="photo-modal-info">
-                            <h3 id="photoModalName" class="photo-modal-name"></h3>
-                            <p id="photoModalFormacao" class="photo-modal-formacao"></p>
-                        </div>
-                    </div>
-                </div>
-            
-                <!-- Add this CSS to your existing style section -->
-            
-                {% if ministrantes %}
-                    <div class="ministrantes-grid">
-                        {% for ministrante in ministrantes %}
-                            <div class="ministrante-card">
-                                {% if ministrante.foto %}
-                                    <img src="{{ url_for('static', filename=ministrante.foto) }}" alt="Foto do ministrante" class="ministrante-foto-pequena">
-                                {% else %}
-                                    <img src="{{ url_for('static', filename='default-profile.png') }}" alt="Foto padrão" class="ministrante-foto-pequena">
-                                {% endif %}
-                                <div class="ministrante-info">
-                                    <h3 class="ministrante-nome">{{ ministrante.nome }}</h3>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-center">Nenhum ministrante cadastrado para este evento.</p>
-                {% endif %}
+
+<!-- ABA MINISTRANTES PRESENTES NO EVENTO -->
+<div class="ministrantes-section">
+    <h2 class="ministrantes-titulo">
+        <i class="fas fa-chalkboard-teacher"></i> Ministrantes Presentes no Evento
+    </h2>
+
+    <div id="photoModal" class="photo-modal">
+        <span class="photo-modal-close">&times;</span>
+        <div class="photo-modal-wrapper">
+            <img class="photo-modal-content" id="photoModalImg">
+            <div class="photo-modal-info">
+                <h3 id="photoModalName" class="photo-modal-name"></h3>
+                <p id="photoModalFormacao" class="photo-modal-formacao"></p>
             </div>
-            
+        </div>
+    </div>
+
+    {% if ministrantes %}
+    <div class="ministrantes-grid">
+      {% for ministrante in ministrantes %}
+        <!-- Exibir a foto, nome, formação, etc. -->
+        <div class="ministrante-card">
+          <img 
+            src="{{ url_for('static', filename=ministrante.foto or 'default-profile.png') }}"
+            alt="Foto do ministrante" 
+            class="ministrante-foto-pequena"
+          >
+          <div class="ministrante-info">
+            <h3 class="ministrante-nome">{{ ministrante.nome }}</h3>
+            <p class="ministrante-formacao">{{ ministrante.formacao }}</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-center">Nenhum ministrante cadastrado para este evento.</p>
+  {% endif %}
+  
+</div>
+
 
 
 
@@ -150,27 +159,86 @@
         Nenhum evento associado a este link.
     </div>
     {% endif %}
-
-    <!-- Exemplo de Seção de Patrocinadores -->
-{% if patrocinadores and patrocinadores|length > 0 %}
-<div class="patrocinadores-section">
-  <h2 class="section-title">Patrocinadores</h2>
-
-  <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
-    {% for p in patrocinadores %}
-    <div class="col">
-      <div class="card h-100 shadow-sm">
-        <img src="{{ url_for('static', filename=p.logo_path) }}" 
-             class="card-img-top" alt="Logo do Patrocinador" />
+    {% if evento and evento.patrocinadores %}
+    <!-- Realização -->
+    {% set realizacoes = evento.patrocinadores|selectattr("categoria", "equalto", "Realizacao")|list %}
+    {% if realizacoes %}
+    <div class="mt-4">
+      <h3 class="mb-3">Realização</h3>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+        {% for pat in realizacoes %}
+        <div class="col">
+          <div class="card h-100 border-0">
+            <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+                 class="card-img-top" 
+                 alt="Logo Realização">
+          </div>
+        </div>
+        {% endfor %}
       </div>
     </div>
-    {% endfor %}
-  </div>
-</div>
-{% else %}
-<p class="text-muted">Nenhum patrocinador cadastrado.</p>
-{% endif %}
-</div>
+    {% endif %}
+    
+    <!-- Patrocínio -->
+    {% set patrocinios = evento.patrocinadores|selectattr("categoria", "equalto", "Patrocinio")|list %}
+    {% if patrocinios %}
+    <div class="mt-4">
+      <h3 class="mb-3">Patrocínio</h3>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+        {% for pat in patrocinios %}
+        <div class="col">
+          <div class="card h-100 border-0">
+            <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+                 class="card-img-top" 
+                 alt="Logo Patrocínio">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    
+    <!-- Organização -->
+    {% set organizacoes = evento.patrocinadores|selectattr("categoria", "equalto", "Organizacao")|list %}
+    {% if organizacoes %}
+    <div class="mt-4">
+      <h3 class="mb-3">Organização</h3>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+        {% for pat in organizacoes %}
+        <div class="col">
+          <div class="card h-100 border-0">
+            <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+                 class="card-img-top" 
+                 alt="Logo Organização">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    
+    <!-- Apoio -->
+    {% set apoios = evento.patrocinadores|selectattr("categoria", "equalto", "Apoio")|list %}
+    {% if apoios %}
+    <div class="mt-4">
+      <h3 class="mb-3">Apoio</h3>
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4">
+        {% for pat in apoios %}
+        <div class="col">
+          <div class="card h-100 border-0">
+            <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+                 class="card-img-top" 
+                 alt="Logo Apoio">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-muted text-center">Nenhum patrocinador cadastrado.</p>
+    {% endif %}
+          
 
     <!-- Modal de Cadastro -->
     <div id="cadastroModal" class="modal">
