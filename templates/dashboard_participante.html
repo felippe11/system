@@ -178,8 +178,8 @@
                         <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
                     </div>
 
-                <!-- Se não estiver inscrito ainda e houver vagas -->
-                {% elif oficina.vagas > 0 %}
+                <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
+                {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
                     <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
                         Inscrever-se
                     </button>
