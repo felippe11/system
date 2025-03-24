@@ -126,6 +126,7 @@
                 </ul>                               
                 <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
                 
+                {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
                 <p>
                   <strong>Vagas:</strong>
                   <span class="info-vagas">{{ oficina.vagas }}</span>
@@ -133,6 +134,7 @@
                     <span class="text-danger">(Esgotado)</span>
                   {% endif %}
                 </p>
+                {% endif %}
                 
                 <!-- Se o participante já estiver inscrito nesta oficina -->
                 {% if oficina.id in inscricoes_ids %}
@@ -170,6 +172,12 @@
                         {% endif %}
                     </div>
 
+                <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
+                {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
+                    <div class="alert alert-info text-center mt-2 mb-0">
+                        <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
+                    </div>
+
                 <!-- Se não estiver inscrito ainda e houver vagas -->
                 {% elif oficina.vagas > 0 %}
                     <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
@@ -178,7 +186,9 @@
 
                 <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
                 {% else %}
-                    <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
+                    {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}
+                        <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
+                    {% endif %}
                     {% if oficina.id in inscricoes_ids %}
                         <div class="d-flex flex-column gap-2 mt-2">
                             {% if permitir_checkin_global %}

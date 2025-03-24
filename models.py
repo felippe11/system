@@ -126,6 +126,12 @@ class Oficina(db.Model):
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     ministrante_obj = db.relationship("Ministrante", backref="oficinas", lazy=True)
   
+    # Tipo de inscrição: 'sem_inscricao', 'com_inscricao_sem_limite', 'com_inscricao_com_limite'
+    tipo_inscricao = db.Column(db.String(30), nullable=True, default='com_inscricao_com_limite')
+    # Tipo de oficina: 'Oficina', 'Palestra', 'Conferência', etc.
+    tipo_oficina = db.Column(db.String(50), nullable=True)
+    # Campo para quando o tipo_oficina for 'outros'
+    tipo_oficina_outro = db.Column(db.String(100), nullable=True)
     vagas = db.Column(db.Integer, nullable=False)
     carga_horaria = db.Column(db.String(10), nullable=False)
     estado = db.Column(db.String(2), nullable=False)
@@ -153,11 +159,10 @@ class Oficina(db.Model):
     inscricao_gratuita = db.Column(db.Boolean, default=True)
 
     # 🔥 Corrigido o método __init__
-    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, evento_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None):
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, evento_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None, tipo_inscricao='com_inscricao_com_limite', tipo_oficina='Oficina', tipo_oficina_outro=None):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
-        self.vagas = vagas
         self.carga_horaria = carga_horaria
         self.estado = estado
         self.cidade = cidade
@@ -166,6 +171,17 @@ class Oficina(db.Model):
         self.evento_id = evento_id
         self.opcoes_checkin = opcoes_checkin
         self.palavra_correta = palavra_correta
+        self.tipo_inscricao = tipo_inscricao
+        self.tipo_oficina = tipo_oficina
+        self.tipo_oficina_outro = tipo_oficina_outro
+        
+        # Define o valor de vagas com base no tipo de inscrição
+        if tipo_inscricao == 'sem_inscricao':
+            self.vagas = 0  # Não é necessário controlar vagas
+        elif tipo_inscricao == 'com_inscricao_sem_limite':
+            self.vagas = 9999  # Um valor alto para representar "sem limite"
+        else:  # com_inscricao_com_limite
+            self.vagas = vagas
 
     def __repr__(self):
         return f"<Oficina {self.titulo}>"
