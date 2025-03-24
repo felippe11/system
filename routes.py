@@ -749,7 +749,8 @@ def dashboard_participante():
             'carga_horaria': oficina.carga_horaria,
             'dias': dias,
             'evento_id': oficina.evento_id,  # Adicionado para agrupar por evento
-            'evento_nome': oficina.evento.nome if oficina.evento else 'Sem evento'  # Nome do evento
+            'evento_nome': oficina.evento.nome if oficina.evento else 'Sem evento',  # Nome do evento
+            'tipo_inscricao': oficina.tipo_inscricao  # Adicionado o tipo de inscrição
         })
 
     return render_template(
@@ -832,18 +833,30 @@ def criar_oficina():
 
         try:
             # Cria a nova oficina
+            # Determina o tipo de inscrição com base nos dados do formulário
+            tipo_inscricao = request.form.get('tipo_inscricao', 'com_inscricao_com_limite')
+            
+            # Obtém os valores dos novos campos tipo_oficina e tipo_oficina_outro
+            tipo_oficina = request.form.get('tipo_oficina', 'Oficina')
+            tipo_oficina_outro = None
+            if tipo_oficina == 'outros':
+                tipo_oficina_outro = request.form.get('tipo_oficina_outro')
+                
             nova_oficina = Oficina(
                 titulo=titulo,
                 descricao=descricao,
                 ministrante_id=ministrante_id,
-                vagas=int(vagas),
+                vagas=int(vagas),  # Este valor será ajustado no __init__ conforme o tipo_inscricao
                 carga_horaria=carga_horaria,
                 estado=estado,
                 cidade=cidade,
                 cliente_id=cliente_id,
                 evento_id=evento_id,
                 opcoes_checkin=opcoes_checkin,
-                palavra_correta=palavra_correta
+                palavra_correta=palavra_correta,
+                tipo_inscricao=tipo_inscricao,
+                tipo_oficina=tipo_oficina,
+                tipo_oficina_outro=tipo_oficina_outro
             )
             nova_oficina.inscricao_gratuita = inscricao_gratuita
             db.session.add(nova_oficina)
@@ -888,7 +901,7 @@ def criar_oficina():
                     nova_oficina.ministrantes_associados.append(m)
 
             db.session.commit()
-            flash('Oficina criada com sucesso!', 'success')
+            flash('Atividade criada com sucesso!', 'success')
             return redirect(
                 url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard')
             )
@@ -929,7 +942,7 @@ def editar_oficina(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
 
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
-        flash('Você não tem permissão para editar esta oficina.', 'danger')
+        flash('Você não tem permissão para editar esta atividade.', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
 
     estados = obter_estados()
@@ -947,13 +960,32 @@ def editar_oficina(oficina_id):
         oficina.descricao = request.form.get('descricao')
         ministrante_id = request.form.get('ministrante_id') or None
         oficina.ministrante_id = ministrante_id
-        oficina.vagas = int(request.form.get('vagas'))
         oficina.carga_horaria = request.form.get('carga_horaria')
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
         oficina.opcoes_checkin = request.form.get('opcoes_checkin')
         oficina.palavra_correta = request.form.get('palavra_correta')
         oficina.evento_id = request.form.get('evento_id')  # Atualiza o evento_id
+        
+        # Atualiza os campos tipo_oficina e tipo_oficina_outro
+        tipo_oficina = request.form.get('tipo_oficina', 'Oficina')
+        oficina.tipo_oficina = tipo_oficina
+        if tipo_oficina == 'outros':
+            oficina.tipo_oficina_outro = request.form.get('tipo_oficina_outro')
+        else:
+            oficina.tipo_oficina_outro = None
+        
+        # Atualiza o tipo de inscrição e ajusta as vagas conforme necessário
+        tipo_inscricao = request.form.get('tipo_inscricao', 'com_inscricao_com_limite')
+        oficina.tipo_inscricao = tipo_inscricao
+        
+        # Define o valor de vagas com base no tipo de inscrição
+        if tipo_inscricao == 'sem_inscricao':
+            oficina.vagas = 0  # Não é necessário controlar vagas
+        elif tipo_inscricao == 'com_inscricao_sem_limite':
+            oficina.vagas = 9999  # Um valor alto para representar "sem limite"
+        else:  # com_inscricao_com_limite
+            oficina.vagas = int(request.form.get('vagas'))
 
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
@@ -1038,7 +1070,14 @@ def excluir_oficina(oficina_id):
         db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Relatórios da oficina removidos.")
 
-        # 6️⃣ **Excluir a própria oficina**
+        # 6️⃣ **Excluir associações com ministrantes na tabela de associação**
+        db.session.execute(
+            'DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id',
+            {'oficina_id': oficina.id}
+        )
+        print("✅ [DEBUG] Associações com ministrantes removidas.")
+
+        # 7️⃣ **Excluir a própria oficina**
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
@@ -1067,7 +1106,14 @@ def inscrever(oficina_id):
         flash('Oficina não encontrada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
 
-    if oficina.vagas <= 0:
+    # Verifica disponibilidade de vagas com base no tipo de inscrição
+    if oficina.tipo_inscricao == 'sem_inscricao':
+        # Não é necessário verificar vagas para oficinas sem inscrição
+        pass
+    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
+        # Não há limite de vagas
+        pass
+    elif oficina.vagas <= 0:
         flash('Esta oficina está lotada!', 'danger')
         return redirect(url_for('routes.dashboard_participante'))
 
