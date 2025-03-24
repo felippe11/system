@@ -127,7 +127,7 @@ class Oficina(db.Model):
     ministrante_obj = db.relationship("Ministrante", backref="oficinas", lazy=True)
   
     # Tipo de inscrição: 'sem_inscricao', 'com_inscricao_sem_limite', 'com_inscricao_com_limite'
-    tipo_inscricao = db.Column(db.String(30), nullable=True, default='com_inscricao_com_limite')
+    tipo_inscricao = db.Column(db.String(30), nullable=False, default='com_inscricao_com_limite')
     # Tipo de oficina: 'Oficina', 'Palestra', 'Conferência', etc.
     tipo_oficina = db.Column(db.String(50), nullable=True)
     # Campo para quando o tipo_oficina for 'outros'

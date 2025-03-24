@@ -1028,6 +1028,12 @@ def editar_oficina(oficina_id):
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
             oficina.cliente_id = request.form.get('cliente_id') or None
+            
+        # Atualiza o campo inscricao_gratuita
+        if current_user.habilita_pagamento:
+            oficina.inscricao_gratuita = True if request.form.get('inscricao_gratuita') == 'on' else False
+        else:
+            oficina.inscricao_gratuita = True
 
         try:
             # Atualizar os dias e horários
@@ -1049,6 +1055,24 @@ def editar_oficina(oficina_id):
                     horario_fim=horarios_fim[i]
                 )
                 db.session.add(novo_dia)
+                
+            # Atualiza os tipos de inscrição (se não for gratuita)
+            if not oficina.inscricao_gratuita:
+                # Remove os tipos de inscrição antigos
+                InscricaoTipo.query.filter_by(oficina_id=oficina.id).delete()
+                
+                # Adiciona os novos tipos de inscrição
+                nomes_tipos = request.form.getlist('nome_tipo[]')
+                precos = request.form.getlist('preco_tipo[]')
+                if not nomes_tipos or not precos:
+                    raise ValueError("Tipos de inscrição e preços são obrigatórios para oficinas pagas.")
+                for nome, preco in zip(nomes_tipos, precos):
+                    novo_tipo = InscricaoTipo(
+                        oficina_id=oficina.id,
+                        nome=nome,
+                        preco=float(preco)
+                    )
+                    db.session.add(novo_tipo)
 
             db.session.commit()
             flash('Oficina editada com sucesso!', 'success')
@@ -3735,9 +3759,16 @@ def gerar_relatorio_mensagem():
                 ocupacao = (num_inscritos / oficina.vagas)*100 if oficina.vagas else 0
                 vagas_texto = str(oficina.vagas)
             
+            # Determina o texto amigável para o tipo de inscrição
+            tipo_inscricao_texto = "Sem inscrição"
+            if oficina.tipo_inscricao == "com_inscricao_sem_limite":
+                tipo_inscricao_texto = "Inscrição sem limite de vagas"
+            elif oficina.tipo_inscricao == "com_inscricao_com_limite":
+                tipo_inscricao_texto = "Inscrição com vagas limitadas"
+                
             mensagem += (
                 f"\n🎓 *Oficina:* {oficina.titulo}\n"
-                f"🔹 *Tipo de Inscrição:* {oficina.tipo_inscricao}\n"
+                f"🔹 *Tipo de Inscrição:* {tipo_inscricao_texto}\n"
                 f"🔹 *Vagas:* {vagas_texto}\n"
                 f"🔹 *Inscritos:* {num_inscritos}\n"
                 f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
@@ -5553,7 +5584,7 @@ def criar_evento():
             db.session.rollback()
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
-    return render_template('criar_evento_agendamento.html')
+    return render_template('configurar_evento.html')
 
 @routes.route('/evento/<identifier>')
 def pagina_evento(identifier):
