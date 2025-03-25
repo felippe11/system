@@ -739,8 +739,10 @@ def dashboard_participante():
 
     # Se o participante está associado a um cliente, buscamos a config desse cliente
     config_cliente = None
-    # Verifica se há formulários disponíveis para preenchimento
-    formularios_disponiveis = Formulario.query.count() > 0
+    # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
+    formularios_disponiveis = False
+    if current_user.cliente_id:
+        formularios_disponiveis = Formulario.query.filter_by(cliente_id=current_user.cliente_id).count() > 0
     
     if current_user.cliente_id:
         from models import ConfiguracaoCliente
@@ -1061,6 +1063,14 @@ def editar_oficina(oficina_id):
             datas = request.form.getlist('data[]')
             horarios_inicio = request.form.getlist('horario_inicio[]')
             horarios_fim = request.form.getlist('horario_fim[]')
+            oficina.ministrantes_associados = []  # Limpa os ministrantes associados
+
+            # Capturar IDs dos ministrantes selecionados
+            ministrantes_ids = request.form.getlist('ministrantes_ids[]')
+            for mid in ministrantes_ids:
+                m = Ministrante.query.get(int(mid))
+                if m:
+                    oficina.ministrantes_associados.append(m)
 
             if not datas or len(datas) != len(horarios_inicio) or len(datas) != len(horarios_fim):
                 raise ValueError("Datas e horários inconsistentes.")
@@ -1154,8 +1164,9 @@ def excluir_oficina(oficina_id):
         print("✅ [DEBUG] Relatórios da oficina removidos.")
 
         # 6️⃣ **Excluir associações com ministrantes na tabela de associação**
+        from sqlalchemy import text
         db.session.execute(
-            'DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id',
+            text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
             {'oficina_id': oficina.id}
         )
         print("✅ [DEBUG] Associações com ministrantes removidas.")
@@ -4628,7 +4639,18 @@ def listar_formularios_participante():
         return redirect(url_for('routes.dashboard'))
 
     # Busca apenas formulários disponíveis para o participante
-    formularios = Formulario.query.all()
+    # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
+    cliente_id = current_user.cliente_id
+    
+    if not cliente_id:
+        flash("Você não está associado a nenhum cliente.", "warning")
+        return redirect(url_for('routes.dashboard_participante'))
+        
+    # Busca formulários criados pelo cliente do participante
+    formularios = Formulario.query.filter_by(cliente_id=cliente_id).all()
+    
+    # Não há relação direta entre formulários e ministrantes no modelo atual,
+    # então estamos filtrando apenas pelo cliente_id do participante
 
     if not formularios:
         flash("Nenhum formulário disponível no momento.", "warning")
@@ -11123,3 +11145,385 @@ def remover_campo_personalizado(campo_id):
     flash('Campo personalizado removido com sucesso!', 'success')
     return redirect(url_for('routes.dashboard_cliente'))
 
+@routes.route('/gerar_folder_evento/<int:evento_id>')
+def gerar_folder_evento(evento_id):
+    """
+    Gera um PDF contendo a programação do evento como um folder acadêmico para download.
+    
+    Args:
+        evento_id: ID do evento para obter a programação
+        
+    Returns:
+        Arquivo PDF para download
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm, cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    import os
+    from datetime import datetime
+    from flask import current_app
+    
+    # Busca o evento no banco de dados
+    evento = Evento.query.get_or_404(evento_id)
+    
+    # Preparar dados para o PDF
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
+    
+    # Agrupar oficinas por data
+    from collections import defaultdict
+    grouped_oficinas = defaultdict(list)
+    
+    for oficina in oficinas:
+        for dia in oficina.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            
+            # Obter nome do ministrante principal
+            ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+            
+            # Obter foto do ministrante principal
+            ministrante_foto = None
+            if oficina.ministrante_obj and hasattr(oficina.ministrante_obj, 'foto') and oficina.ministrante_obj.foto:
+                ministrante_foto = oficina.ministrante_obj.foto
+            
+            # Obter lista de ministrantes associados
+            ministrantes_associados = []
+            if hasattr(oficina, 'ministrantes_associados'):
+                for m in oficina.ministrantes_associados:
+                    ministrantes_associados.append({
+                        'nome': m.nome,
+                        'foto': m.foto if hasattr(m, 'foto') else None
+                    })
+            
+            grouped_oficinas[data_str].append({
+                'titulo': oficina.titulo,
+                'descricao': oficina.descricao,
+                'ministrante': ministrante_nome,
+                'ministrante_foto': ministrante_foto,
+                'ministrantes_associados': ministrantes_associados,
+                'horario_inicio': dia.horario_inicio,
+                'horario_fim': dia.horario_fim,
+                'tipo_oficina': oficina.tipo_oficina if hasattr(oficina, 'tipo_oficina') and oficina.tipo_oficina != 'outros' else 
+                               (oficina.tipo_oficina_outro if hasattr(oficina, 'tipo_oficina_outro') else 'Oficina')
+            })
+    
+    # Ordenar datas
+    from datetime import datetime
+    sorted_keys = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+    
+    # Preparar o diretório para salvar o PDF
+    pdf_filename = f"folder_evento_{evento_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    folder_dir = os.path.join("static", "folders")
+    os.makedirs(folder_dir, exist_ok=True)
+    pdf_path = os.path.join(folder_dir, pdf_filename)
+    
+    # Configuração de estilos personalizados
+    styles = getSampleStyleSheet()
+    
+    # Estilo para título principal
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=28,
+        alignment=TA_CENTER,
+        spaceAfter=6 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#023E8A')
+    )
+    
+    # Estilo para subtítulos
+    subtitle_style = ParagraphStyle(
+        name='CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=20,
+        alignment=TA_CENTER,
+        spaceAfter=5 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#0077B6'),
+        borderPadding=10,
+        borderWidth=1,
+        borderRadius=5,
+        borderColor=colors.HexColor('#E9ECEF')
+    )
+    
+    # Estilo para dias da semana
+    day_style = ParagraphStyle(
+        name='DayStyle',
+        parent=styles['Heading3'],
+        fontSize=18,
+        alignment=TA_LEFT,
+        spaceBefore=8 * mm,
+        spaceAfter=5 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.white,
+        borderPadding=10,
+        borderWidth=0,
+        borderRadius=5,
+        borderColor=colors.HexColor('#023E8A'),
+        backColor=colors.HexColor('#023E8A')
+    )
+    
+    # Estilo para atividades
+    activity_title_style = ParagraphStyle(
+        name='ActivityTitle',
+        parent=styles['Heading4'],
+        fontSize=14,
+        alignment=TA_LEFT,
+        spaceAfter=2 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#023E8A')
+    )
+    
+    # Estilo para descrições
+    description_style = ParagraphStyle(
+        name='Description',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        spaceAfter=3 * mm,
+        leading=14
+    )
+    
+    # Estilo para ministrante
+    ministrante_style = ParagraphStyle(
+        name='Ministrante',
+        parent=styles['Italic'],
+        fontSize=11,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor('#0077B6'),
+        spaceAfter=3 * mm
+    )
+    
+    # Estilo para tipo de atividade
+    tipo_style = ParagraphStyle(
+        name='TipoOficina',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor('#0096C7'),
+        fontName='Helvetica-Oblique'
+    )
+    
+    # Estilo para horário
+    horario_style = ParagraphStyle(
+        name='Horario',
+        parent=styles['Normal'],
+        fontSize=12,
+        alignment=TA_LEFT,
+        textColor=colors.white,
+        fontName='Helvetica-Bold',
+        spaceAfter=2 * mm,
+        borderPadding=5,
+        borderWidth=0,
+        borderRadius=3,
+        backColor=colors.HexColor('#0096C7')
+    )
+    
+    # Estilo para info do evento
+    info_style = ParagraphStyle(
+        name='InfoEvent',
+        parent=styles['Normal'],
+        fontSize=11,
+        alignment=TA_CENTER,
+        spaceAfter=2 * mm
+    )
+    
+    # Estilo para rodapé
+    footer_style = ParagraphStyle(
+        name='Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=colors.gray,
+        alignment=TA_CENTER
+    )
+    
+    # Criar o documento PDF
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=A4,
+        rightMargin=25,
+        leftMargin=25,
+        topMargin=30,
+        bottomMargin=30
+    )
+    
+    # Lista para elementos do PDF
+    elements = []
+    
+    # Adicionar logo se disponível
+    if evento.banner_url:
+        try:
+            # Tentar construir caminho correto da imagem
+            img_path = None
+            if evento.banner_url.startswith('http'):
+                # URL externo
+                img_path = evento.banner_url
+            elif evento.banner_url.startswith('/static/'):
+                # Caminho relativo a /static/
+                img_path = os.path.join(current_app.root_path, 'static', evento.banner_url.replace('/static/', ''))
+            else:
+                # Caminho simples
+                img_path = os.path.join(current_app.root_path, 'static', evento.banner_url)
+                
+            if img_path and (img_path.startswith('http') or os.path.exists(img_path)):
+                img = Image(img_path)
+                img_width = doc.width * 0.8
+                img_height = img_width / 3  # Proporção da imagem
+                img.drawWidth = img_width
+                img.drawHeight = img_height
+                elements.append(img)
+                elements.append(Spacer(1, 8 * mm))
+        except Exception as e:
+            print(f"Erro ao carregar imagem: {str(e)}")
+    
+    # Título do evento
+    elements.append(Paragraph(f"{evento.nome}", title_style))
+    
+    # Box com informações do evento
+    info_box_content = []
+    
+    # Datas
+    if hasattr(evento, 'data_inicio') and evento.data_inicio and hasattr(evento, 'data_fim') and evento.data_fim:
+        data_evento = f"De {evento.data_inicio.strftime('%d/%m/%Y')} a {evento.data_fim.strftime('%d/%m/%Y')}"
+        info_box_content.append(Paragraph(data_evento, info_style))
+    
+    # Local
+    if evento.localizacao:
+        info_box_content.append(Paragraph(f"Local: {evento.localizacao}", info_style))
+    
+    # Criar tabela para info box
+    if info_box_content:
+        elements.append(Spacer(1, 5 * mm))
+        info_table = Table([
+            [content] for content in info_box_content
+        ], colWidths=[doc.width * 0.9])
+        
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8F9FA')),
+            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(info_table)
+    
+    elements.append(Spacer(1, 12 * mm))
+    
+    # Título da programação
+    elements.append(Paragraph("PROGRAMAÇÃO DO EVENTO", subtitle_style))
+    elements.append(Spacer(1, 8 * mm))
+    
+    # Adicionar programação por dia
+    for data_str in sorted_keys:
+        # Título do dia
+        elements.append(Paragraph(f"Dia: {data_str}", day_style))
+        
+        # Ordenar atividades pelo horário
+        sorted_atividades = sorted(grouped_oficinas[data_str], key=lambda x: x['horario_inicio'])
+        
+        # Atividades do dia
+        for atividade in sorted_atividades:
+            # Box da atividade
+            atividade_box = []
+            
+            # Criar tabela para o horário e título
+            header_data = [
+                [
+                    Paragraph(f"{atividade['horario_inicio']} - {atividade['horario_fim']}", horario_style),
+                    Paragraph(f"{atividade['titulo']}", activity_title_style)
+                ]
+            ]
+            
+            header_table = Table(header_data, colWidths=[doc.width * 0.25, doc.width * 0.65])
+            header_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#0096C7')),
+                ('BACKGROUND', (1, 0), (1, 0), colors.white),
+                ('LEFTPADDING', (0, 0), (0, 0), 10),
+                ('LEFTPADDING', (1, 0), (1, 0), 15),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ROUNDEDCORNERS', [5, 5, 0, 0]),
+            ]))
+            
+            atividade_box.append(header_table)
+            
+            # Tipo de atividade
+            atividade_box.append(Paragraph(f"<i>{atividade['tipo_oficina']}</i>", tipo_style))
+            
+            # Descrição
+            atividade_box.append(Paragraph(f"{atividade['descricao']}", description_style))
+            
+            # Ministrante
+            if atividade['ministrante'] != 'N/A':
+                if atividade['ministrante_foto']:
+                    try:
+                        # Tentar exibir foto do ministrante com nome ao lado
+                        foto_path = os.path.join(current_app.root_path, 'static', atividade['ministrante_foto'])
+                        if os.path.exists(foto_path):
+                            ministrante_data = [
+                                [
+                                    Image(foto_path, width=25*mm, height=25*mm),
+                                    Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
+                                ]
+                            ]
+                            
+                            ministrante_table = Table(ministrante_data, colWidths=[30*mm, doc.width - 40*mm])
+                            ministrante_table.setStyle(TableStyle([
+                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                ('LEFTPADDING', (1, 0), (1, 0), 10),
+                            ]))
+                            
+                            atividade_box.append(ministrante_table)
+                        else:
+                            atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                    except Exception as e:
+                        print(f"Erro ao carregar foto do ministrante: {str(e)}")
+                        atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                else:
+                    atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+            
+            # Ministrantes associados
+            if atividade['ministrantes_associados']:
+                ministrantes_extras = ", ".join([m['nome'] for m in atividade['ministrantes_associados']])
+                if ministrantes_extras:
+                    atividade_box.append(Paragraph(f"<b>Ministrantes adicionais:</b> {ministrantes_extras}", ministrante_style))
+            
+            # Espaçamento entre atividades
+            atividade_box.append(Spacer(1, 5 * mm))
+            
+            # Criar tabela para toda a atividade
+            atividade_table = Table([
+                [content] for content in atividade_box
+            ], colWidths=[doc.width * 0.95])
+            
+            atividade_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            
+            elements.append(atividade_table)
+            elements.append(Spacer(1, 5 * mm))
+    
+    # Adicionar rodapé com data de geração
+    elements.append(Spacer(1, 15 * mm))
+    current_date = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    elements.append(Paragraph(f"Folder de programação gerado em {current_date}", footer_style))
+    
+    # Gerar o PDF
+    doc.build(elements)
+    
+    # Retornar o arquivo para download
+    return send_file(pdf_path, as_attachment=True, download_name=f"Programacao_{evento.nome.replace(' ', '_')}.pdf")
