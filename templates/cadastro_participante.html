@@ -242,74 +242,96 @@
           
 
     <!-- Modal de Cadastro -->
-    <div id="cadastroModal" class="modal">
-        <div class="modal-conteudo">
-            <div class="modal-header">
-                <h2 class="modal-titulo">
-                    <i class="fas fa-user-plus"></i> Cadastro de Participante
-                </h2>
-                <span class="modal-fechar" onclick="fecharModal()">×</span>
-            </div>
+<div id="cadastroModal" class="modal">
+    <div class="modal-conteudo">
+        <div class="modal-header">
+            <h2 class="modal-titulo">
+                <i class="fas fa-user-plus"></i> Cadastro de Participante
+            </h2>
+            <span class="modal-fechar" onclick="fecharModal()">×</span>
+        </div>
 
-            <div class="modal-corpo">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-                <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}">
-                    <div class="form-grid-modal">
-                        <!-- Linha 1 -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="nome">Nome Completo</label>
-                                <input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '') }}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="cpf">CPF</label>
-                                <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" value="{{ request.form.get('cpf', '') }}" required>
-                            </div>
+        <div class="modal-corpo">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% elif category == 'danger' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle"></i>
+                            {% endif %}
+                            {{ message }}
                         </div>
-
-                        <!-- Linha 2 -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="email">E-mail</label>
-                                <input type="email" id="email" name="email" value="{{ request.form.get('email', '') }}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="senha">Senha</label>
-                                <input type="password" id="senha" name="senha" required>
-                            </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}">
+                <div class="form-grid-modal">
+                    <!-- Linha 1 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nome">Nome Completo</label>
+                            <input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '') }}" placeholder="Digite seu nome completo" required>
                         </div>
-
-                        <!-- Campos full-width -->
-                        <div class="form-group full-width">
-                            <label for="formacao">Formação Acadêmica</label>
-                            <input type="text" id="formacao" name="formacao" value="{{ request.form.get('formacao', '') }}" required>
-                        </div>
-
-                        <div class="form-group full-width locations-group">
-                            <label>Locais de Atuação</label>
-                            <div id="locations-container"></div>
-                            <button type="button" id="add-location" class="add-button">
-                                <i class="fas fa-plus-circle"></i> Adicionar Local
-                            </button>
-                        </div>
-
-                        <div class="form-group full-width">
-                            <button type="submit" class="submit-button">
-                                <i class="fas fa-user-check"></i> Completar Cadastro
-                            </button>
+                        <div class="form-group">
+                            <label for="cpf">CPF</label>
+                            <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" value="{{ request.form.get('cpf', '') }}" required>
                         </div>
                     </div>
-                </form>
 
-                <div class="login-link">
-                    Já possui conta? <a href="{{ url_for('routes.login') }}">Faça login aqui</a>
+                    <!-- Linha 2 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="email">E-mail</label>
+                            <input type="email" id="email" name="email" value="{{ request.form.get('email', '') }}" placeholder="seu.email@exemplo.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="senha">Senha</label>
+                            <input type="password" id="senha" name="senha" placeholder="Crie uma senha segura" required>
+                        </div>
+                    </div>
+
+                    <!-- Campos full-width -->
+                    <div class="form-group full-width">
+                        <label for="formacao">Formação Acadêmica</label>
+                        <input type="text" id="formacao" name="formacao" value="{{ request.form.get('formacao', '') }}" placeholder="Ex: Bacharel em Engenharia" required>
+                    </div>
+
+                    {% for campo in evento.cliente.campos_personalizados %}
+                        <div class="form-group">
+                            <label>{{ campo.nome }}</label>
+                            <input type="{{ campo.tipo }}" 
+                                name="campo_{{ campo.id }}" 
+                                class="form-control"
+                                placeholder="Digite aqui"
+                                {% if campo.obrigatorio %}required{% endif %}>
+                        </div>
+                    {% endfor %}    
+
+                    <div class="form-group full-width locations-group">
+                        <label>Locais de Atuação</label>
+                        <div id="locations-container"></div>
+                        <button type="button" id="add-location" class="add-button">
+                            <i class="fas fa-plus-circle"></i> Adicionar Local
+                        </button>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <button type="submit" class="submit-button">
+                            <i class="fas fa-user-check"></i> Completar Cadastro
+                        </button>
+                    </div>
                 </div>
+            </form>
+
+            <div class="login-link">
+                Já possui conta? <a href="{{ url_for('routes.login') }}">Faça login aqui</a>
             </div>
         </div>
     </div>
@@ -873,6 +895,344 @@
         overflow: hidden;
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
     }
+
+    /* Estilos para o Modal de Cadastro */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    overflow-y: auto;
+    padding-top: 60px;
+    padding-bottom: 60px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.modal-conteudo {
+    background: white;
+    margin: 0 auto;
+    width: 90%;
+    max-width: 750px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    position: relative;
+    margin-bottom: 40px;
+    overflow: hidden;
+    animation: modalFadeIn 0.4s ease-out;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    padding: 24px 30px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+}
+
+.modal-titulo {
+    font-size: 1.6em;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.modal-titulo i {
+    color: #3498db;
+    font-size: 0.9em;
+}
+
+.modal-fechar {
+    font-size: 28px;
+    cursor: pointer;
+    color: #94a3b8;
+    transition: all 0.2s;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.modal-fechar:hover {
+    color: #e74c3c;
+    background-color: #f1f5f9;
+}
+
+.modal-corpo {
+    padding: 30px;
+}
+
+/* Formulário */
+.form-grid-modal {
+    display: grid;
+    gap: 24px;
+    padding: 10px 0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.form-group {
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+label {
+    display: block;
+    margin-bottom: 10px;
+    color: #475569;
+    font-weight: 500;
+    font-size: 0.95em;
+    letter-spacing: 0.02em;
+}
+
+input, select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: all 0.3s;
+    background-color: #f8fafc;
+    color: #334155;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+    background-color: #fff;
+}
+
+input::placeholder {
+    color: #94a3b8;
+}
+
+.submit-button {
+    background: linear-gradient(to right, #3498db, #2980b9);
+    color: white;
+    padding: 16px 30px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    box-shadow: 0 4px 10px rgba(41, 128, 185, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.submit-button:hover {
+    background: linear-gradient(to right, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(41, 128, 185, 0.3);
+}
+
+.submit-button:active {
+    transform: translateY(0);
+}
+
+.submit-button i {
+    font-size: 1.1em;
+}
+
+.add-button {
+    background: #f1f5f9;
+    color: #3498db;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 12px;
+    transition: all 0.3s;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.add-button:hover {
+    background: #e0f2fe;
+    color: #2563eb;
+}
+
+.add-button i {
+    color: #3498db;
+}
+
+.login-link {
+    text-align: center;
+    margin-top: 28px;
+    color: #64748b;
+    font-size: 0.95em;
+    padding: 16px;
+    background-color: #f8fafc;
+    border-radius: 10px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.login-link a {
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.login-link a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.alert {
+    padding: 16px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    color: #166534;
+    border-left: 4px solid #16a34a;
+}
+
+.alert-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-left: 4px solid #ef4444;
+}
+
+.alert-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+}
+
+.alert-info {
+    background-color: #e0f2fe;
+    color: #0c4a6e;
+    border-left: 4px solid #0ea5e9;
+}
+
+.location-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 18px;
+    background-color: #f8fafc;
+    transition: all 0.3s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.location-block:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.07);
+}
+
+.location-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.remove-location {
+    padding: 8px 16px;
+    font-size: 14px;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.remove-location:hover {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.locations-group {
+    background-color: #f8fafc;
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .modal {
+        padding-top: 40px;
+    }
+
+    .modal-conteudo {
+        width: 95%;
+        margin: 10px auto;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-corpo {
+        padding: 20px;
+    }
+
+    .form-group.full-width {
+        grid-column: 1;
+    }
+
+    .full-width {
+        grid-column: span 1;
+    }
+    
+    .modal-header {
+        padding: 20px;
+    }
+}
       
 </style>
 
