@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Templates de Certificados{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary"><i class="bi bi-file-earmark-text me-2"></i>Templates de Certificados</h2>
+    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoTemplate">
+      <i class="bi bi-plus-lg me-1"></i>Novo Template
+    </button>
+  </div>
+
+  <!-- Lista de Templates -->
+  <div class="card shadow">
+    <div class="card-body">
+      {% if templates %}
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for template in templates %}
+            <tr>
+              <td>{{ template.titulo }}</td>
+              <td>
+                {% if template.ativo %}
+                  <span class="badge bg-success">Ativo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inativo</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if not template.ativo %}
+                <form action="{{ url_for('routes.set_template_ativo', template_id=template.id) }}" method="post" class="d-inline">
+                  <button class="btn btn-sm btn-outline-primary">Definir como ativo</button>
+                </form>
+                {% endif %}
+                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#editarTemplate{{template.id}}">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+              </td>
+            </tr>
+
+            <!-- Modal Editar Template -->
+            <div class="modal fade" id="editarTemplate{{template.id}}" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title">Editar Template: {{ template.titulo }}</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form method="POST" action="{{ url_for('routes.editar_template_certificado', template_id=template.id) }}">
+                    <div class="modal-body">
+                      <div class="form-group mb-3">
+                        <label>Título do Template</label>
+                        <input type="text" class="form-control" name="titulo" value="{{ template.titulo }}" required>
+                      </div>
+                      <div class="form-group">
+                        <label>Conteúdo do Certificado</label>
+                        <textarea class="form-control" name="conteudo" rows="8" required>{{ template.conteudo }}</textarea>
+                        <small class="text-muted">Use placeholders como {NOME_PARTICIPANTE}, {CARGA_HORARIA}, {LISTA_OFICINAS}, {TEXTO_PERSONALIZADO}</small>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                      <button type="submit" class="btn btn-warning">Salvar Alterações</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="text-center">Nenhum template cadastrado ainda.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Modal Novo Template -->
+  <div class="modal fade" id="modalNovoTemplate" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">Novo Template de Certificado</h5>
+          <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" action="{{ url_for('routes.templates_certificado') }}">
+          <div class="modal-body">
+            <div class="form-group mb-3">
+              <label>Título do Template</label>
+              <input type="text" class="form-control" name="titulo" required>
+            </div>
+            <div class="form-group">
+              <label>Conteúdo do Certificado</label>
+              <textarea class="form-control" name="conteudo" rows="8" required></textarea>
+              <small class="text-muted">Use placeholders como {NOME_PARTICIPANTE}, {CARGA_HORARIA}, {LISTA_OFICINAS}, {TEXTO_PERSONALIZADO}</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success">Salvar Template</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
