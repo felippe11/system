@@ -4,90 +4,321 @@
 {% block content %}
 <!-- CSS customizado para o Dashboard -->
 <style>
-  /* Cabeçalho do Dashboard */
-  .dashboard-header {
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+  :root {
+    --primary-color: #3a86ff;
+    --secondary-color: #8338ec;
+    --success-color: #38b000;
+    --warning-color: #ffbe0b;
+    --danger-color: #ff006e;
+    --info-color: #3a86ff;
+    --light-bg: #f8f9fa;
+    --dark-text: #212529;
+    --gray-text: #6c757d;
   }
-  .dashboard-header h2 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #343a40;
-  }
-  .dashboard-header h3 {
-    font-size: 1.25rem;
-    color: #6c757d;
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f8fafc;
   }
   
-  /* Cartões de oficina */
+  /* Cabeçalho do Dashboard */
+  .dashboard-header {
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+    padding: 1rem;
+    text-align: center;
+    position: relative;
+  }
+  
+  .dashboard-header h2 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--dark-text);
+    margin-bottom: 0.75rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .dashboard-header h3 {
+    font-size: 1.25rem;
+    color: var(--gray-text);
+    font-weight: 400;
+  }
+  
+  /* Seções de evento */
+  .evento-section {
+    margin-bottom: 3rem;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .evento-titulo {
+    background: linear-gradient(to right, #ffffff, #f8f9fa);
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    color: var(--dark-text);
+    font-weight: 700;
+    font-size: 1.5rem;
+    border-left: 5px solid var(--primary-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .evento-titulo::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(to left, rgba(58, 134, 255, 0.1), transparent);
+    border-radius: 0 1rem 1rem 0;
+  }
+  
+  /* Cards de oficina */
   .card {
     border: none;
-    border-radius: 0.5rem;
+    border-radius: 1rem;
     overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: white;
   }
+  
   .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
   }
+  
   .card-header {
-    background-color: #007bff;
-    color: #fff;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 700;
     text-align: center;
-    padding: 0.75rem 1rem;
+    padding: 1.25rem 1rem;
+    position: relative;
+    overflow: hidden;
   }
+  
+  .card-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
+    opacity: 0.3;
+  }
+  
   .card-body {
-    padding: 1rem;
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
   }
+  
   .card-body p {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     color: #495057;
+    font-size: 0.95rem;
   }
+  
+  .card-body p strong {
+    color: var(--dark-text);
+    font-weight: 600;
+  }
+  
   .card-body ul {
-    padding-left: 1.25rem;
-    margin-bottom: 0.5rem;
+    padding-left: 0;
+    margin-bottom: 1rem;
+    list-style-type: none;
   }
+  
   .card-body li {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    background-color: rgba(248, 249, 250, 0.7);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .card-footer {
+    margin-top: auto;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 1rem;
+  }
+  
+  /* Badges e status */
+  .status-badge {
+    display: inline-block;
+    padding: 0.25em 0.75em;
+    font-size: 0.85em;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 50rem;
+    margin-left: 0.5rem;
+  }
+  
+  .badge-vagas {
+    background-color: var(--light-bg);
+    color: var(--dark-text);
+  }
+  
+  .badge-esgotado {
+    background-color: rgba(255, 0, 110, 0.1);
+    color: var(--danger-color);
   }
   
   /* Botões customizados */
-  .btn-block {
-    width: 100%;
-    margin-bottom: 0.5rem;
-  }
-  .d-flex.flex-column.gap-2 > * {
-    margin-bottom: 0.5rem;
+  .btn {
+    border-radius: 0.75rem;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
   }
   
-  /* Estilo para seções de evento */
-  .evento-section {
-    margin-bottom: 2rem;
+  .btn i, .btn svg {
+    font-size: 1rem;
   }
-  .evento-titulo {
-    background-color: #f8f9fa;
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1.5rem;
-    color: #343a40;
-    font-weight: 600;
-    border-left: 5px solid #007bff;
+  
+  .btn-primary {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+  
+  .btn-primary:hover {
+    background: #2a75ee;
+    border-color: #2a75ee;
+    box-shadow: 0 4px 8px rgba(58, 134, 255, 0.3);
+  }
+  
+  .btn-success {
+    background: var(--success-color);
+    border-color: var(--success-color);
+  }
+  
+  .btn-success:hover {
+    background: #2b9c00;
+    border-color: #2b9c00;
+    box-shadow: 0 4px 8px rgba(56, 176, 0, 0.3);
+  }
+  
+  .btn-danger {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+  }
+  
+  .btn-danger:hover {
+    background: #e0005e;
+    border-color: #e0005e;
+    box-shadow: 0 4px 8px rgba(255, 0, 110, 0.3);
+  }
+  
+  .btn-warning {
+    background: var(--warning-color);
+    border-color: var(--warning-color);
+    color: #212529;
+  }
+  
+  .btn-warning:hover {
+    background: #e0a800;
+    border-color: #e0a800;
+    box-shadow: 0 4px 8px rgba(255, 190, 11, 0.3);
+    color: #212529;
+  }
+  
+  .btn-info {
+    background: var(--info-color);
+    border-color: var(--info-color);
+    color: white;
+  }
+  
+  .btn-info:hover {
+    background: #2a75ee;
+    border-color: #2a75ee;
+    box-shadow: 0 4px 8px rgba(58, 134, 255, 0.3);
+    color: white;
+  }
+  
+  /* Alertas customizados */
+  .alert {
+    border-radius: 0.75rem;
+    padding: 1rem;
+    border: none;
+    margin-bottom: 1rem;
+  }
+  
+  .alert-info {
+    background-color: rgba(58, 134, 255, 0.1);
+    color: var(--primary-color);
+  }
+  
+  /* Formulários disponíveis */
+  .formularios-card {
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .formularios-card strong {
+    font-size: 1.1rem;
+    color: var(--dark-text);
+  }
+  
+  /* Animações */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Media queries */
+  @media (max-width: 768px) {
+    .card {
+      margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-header h2 {
+      font-size: 1.75rem;
+    }
   }
 </style>
 
 <div class="container">
-  <div class="dashboard-header text-center">
-    <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
-    <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
+  <div class="dashboard-header">
+    <h2>Bem-vindo(a), {{ usuario.nome }}</h2>
+    <h3>Confira as oficinas disponíveis para inscrição</h3>
   </div>
 
   {% if formularios_disponiveis %}
-    <div class="mb-4">
-        <p><strong>Formulários Disponíveis: <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary">
-          📝 Formulários
-      </a></strong></p>
+    <div class="formularios-card">
+      <strong>Formulários Disponíveis</strong>
+      <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary">
+        <i class="fas fa-clipboard-list"></i> Acessar Formulários
+      </a>
     </div>
   {% endif %}
   
@@ -111,7 +342,7 @@
       <div class="row">
         {% for oficina in evento_info.oficinas %}
           <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm" data-oficina-id="{{ oficina.id }}">
+            <div class="card" data-oficina-id="{{ oficina.id }}">
               <div class="card-header">
                 {{ oficina.titulo }}
               </div>
@@ -119,11 +350,14 @@
                 <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
                 <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
                 <p><strong>Datas e Horários:</strong></p>
-                <ul class="list-unstyled">
+                <ul>
                   {% for dia in oficina.dias %}
-                    <li>📅 {{ dia.data.strftime('%d/%m/%Y') }} - 🕒 {{ dia.horario_inicio }} às {{ dia.horario_fim }}</li>
+                    <li>
+                      <i class="far fa-calendar-alt"></i> {{ dia.data.strftime('%d/%m/%Y') }} 
+                      <i class="far fa-clock"></i> {{ dia.horario_inicio }} às {{ dia.horario_fim }}
+                    </li>
                   {% endfor %}
-                </ul>                               
+                </ul>
                 <p><strong>Carga Horária:</strong> {{ oficina.carga_horaria }} horas</p>
                 
                 {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
@@ -131,86 +365,95 @@
                   <strong>Vagas:</strong>
                   <span class="info-vagas">{{ oficina.vagas }}</span>
                   {% if oficina.vagas == 0 %}
-                    <span class="text-danger">(Esgotado)</span>
+                    <span class="status-badge badge-esgotado">Esgotado</span>
+                  {% else %}
+                    <span class="status-badge badge-vagas">{{ oficina.vagas }} disponíveis</span>
                   {% endif %}
                 </p>
                 {% endif %}
                 
-                <!-- Se o participante já estiver inscrito nesta oficina -->
-                {% if oficina.id in inscricoes_ids %}
-                    <div class="d-flex flex-column gap-2">
-                        <!-- Check-in (só aparece se permitir_checkin_global == True) -->
-                        {% if permitir_checkin_global %}
-                        <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                          Realizar Check-in
-                        </a>
-                        {% endif %}
-                    
-                        <!-- Botão para cancelar inscrição -->
-                        <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                            <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
-                        </form>
-
-                        <!-- Comprovante de Inscrição -->
-                        <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
-                            📄 Baixar Comprovante
-                        </a>
-
-                        <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
-                        {% if habilitar_certificado_individual %}
-                        <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
-                          class="btn btn-success w-100 mt-2">
-                          🎓 Baixar Certificado
-                        </a>
-                        {% endif %}
+                <div class="card-footer">
+                  <!-- Se o participante já estiver inscrito nesta oficina -->
+                  {% if oficina.id in inscricoes_ids %}
+                      <div class="d-flex flex-column gap-2">
+                          <!-- Check-in (só aparece se permitir_checkin_global == True) -->
+                          {% if permitir_checkin_global %}
+                          <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
+                            <i class="fas fa-clipboard-check"></i> Realizar Check-in
+                          </a>
+                          {% endif %}
                       
-                        <!-- Feedback (só aparece se habilitar_feedback == True) -->
-                        {% if habilitar_feedback %}
-                        <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
-                            Enviar Feedback
-                        </a>
-                        {% endif %}
-                    </div>
+                          <!-- Botão para cancelar inscrição -->
+                          <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                              <button type="submit" class="btn btn-danger w-100">
+                                <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                              </button>
+                          </form>
 
-                <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
-                {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
-                    <div class="alert alert-info text-center mt-2 mb-0">
-                        <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
-                    </div>
+                          <!-- Comprovante de Inscrição -->
+                          <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
+                              <i class="fas fa-file-download"></i> Baixar Comprovante
+                          </a>
 
-                <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
-                {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
-                    <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                        Inscrever-se
-                    </button>
+                          <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
+                          {% if habilitar_certificado_individual %}
+                          <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
+                            class="btn btn-success w-100">
+                            <i class="fas fa-graduation-cap"></i> Baixar Certificado
+                          </a>
+                          {% endif %}
+                        
+                          <!-- Feedback (só aparece se habilitar_feedback == True) -->
+                          {% if habilitar_feedback %}
+                          <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
+                              <i class="fas fa-comment-dots"></i> Enviar Feedback
+                          </a>
+                          {% endif %}
+                      </div>
 
-                <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
-                {% else %}
-                    {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}
-                        <span class="text-danger d-block text-center mt-2">Vagas esgotadas</span>
-                    {% endif %}
-                    {% if oficina.id in inscricoes_ids %}
-                        <div class="d-flex flex-column gap-2 mt-2">
-                            {% if permitir_checkin_global %}
-                            <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                                Realizar Check-in
-                            </a>
-                            {% endif %}
-                            <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                                <button type="submit" class="btn btn-danger w-100">Cancelar Inscrição</button>
-                            </form>
-                            <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
-                                📄 Baixar Comprovante
-                            </a>
-                            {% if habilitar_feedback %}
-                            <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100 mt-2">
-                                Enviar Feedback
-                            </a>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                {% endif %}
+                  <!-- Se for do tipo sem_inscricao, exibe mensagem informativa -->
+                  {% elif oficina.tipo_inscricao == 'sem_inscricao' %}
+                      <div class="alert alert-info text-center mb-0">
+                          <i class="fas fa-info-circle"></i> Não é necessário inscrição para esta atividade.
+                      </div>
 
+                  <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
+                  {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
+                      <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
+                          <i class="fas fa-check-circle"></i> Inscrever-se
+                      </button>
+
+                  <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
+                  {% else %}
+                      {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' or oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}
+                          <div class="alert alert-danger text-center mb-3">
+                            <i class="fas fa-exclamation-triangle"></i> Vagas esgotadas
+                          </div>
+                      {% endif %}
+                      {% if oficina.id in inscricoes_ids %}
+                          <div class="d-flex flex-column gap-2">
+                              {% if permitir_checkin_global %}
+                              <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
+                                  <i class="fas fa-clipboard-check"></i> Realizar Check-in
+                              </a>
+                              {% endif %}
+                              <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                                  <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                                  </button>
+                              </form>
+                              <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
+                                  <i class="fas fa-file-download"></i> Baixar Comprovante
+                              </a>
+                              {% if habilitar_feedback %}
+                              <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
+                                  <i class="fas fa-comment-dots"></i> Enviar Feedback
+                              </a>
+                              {% endif %}
+                          </div>
+                      {% endif %}
+                  {% endif %}
+                </div> <!-- Fim card-footer -->
               </div> <!-- Fim card-body -->
             </div> <!-- Fim card -->
           </div> <!-- Fim col -->
@@ -218,8 +461,13 @@
       </div> <!-- Fim row -->
     </div> <!-- Fim evento-section -->
   {% else %}
-    <div class="col-12">
-      <p class="text-center text-warning">Nenhuma oficina disponível no momento.</p>
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="alert alert-warning text-center p-4">
+          <i class="fas fa-exclamation-circle fa-2x mb-3"></i>
+          <p class="mb-0 fs-5">Nenhuma oficina disponível no momento.</p>
+        </div>
+      </div>
     </div>
   {% endfor %}
   
@@ -236,32 +484,45 @@ function inscrever(oficinaId) {
     if (vagasElement) {
         let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
         vagasElement.innerText = vagasAtualizadas;
-        if (vagasAtualizadas === 0) {
-            vagasElement.innerHTML = '0 <span class="text-danger">(Esgotado)</span>';
+        
+        // Atualiza o badge
+        let badgeElement = vagasElement.nextElementSibling;
+        if (badgeElement) {
+            if (vagasAtualizadas === 0) {
+                badgeElement.className = "status-badge badge-esgotado";
+                badgeElement.innerText = "Esgotado";
+            } else {
+                badgeElement.innerText = vagasAtualizadas + " disponíveis";
+            }
         }
     }
 
     // Remove o botão de inscrição
-    let botaoInscrever = oficinaCard.querySelector(".btn-success");
-    if (botaoInscrever) {
-        botaoInscrever.remove();
+    let cardFooter = oficinaCard.querySelector(".card-footer");
+    if (cardFooter) {
+        cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
+        let buttonContainer = cardFooter.querySelector(".d-flex");
+        
+        // Adiciona o formulário para cancelar inscrição
+        let cancelForm = document.createElement("form");
+        cancelForm.setAttribute("action", `/remover_inscricao/${oficinaId}`);
+        cancelForm.setAttribute("method", "post");
+        cancelForm.innerHTML = `
+            <button type="submit" class="btn btn-danger w-100">
+                <i class="fas fa-times-circle"></i> Cancelar Inscrição
+            </button>
+        `;
+        buttonContainer.appendChild(cancelForm);
+        
+        // Adiciona botão de check-in se permitido
+        if ('{{ permitir_checkin_global }}' === 'True') {
+            let checkinBtn = document.createElement("a");
+            checkinBtn.setAttribute("href", `/checkin/${oficinaId}`);
+            checkinBtn.className = "btn btn-warning w-100";
+            checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
+            buttonContainer.appendChild(checkinBtn);
+        }
     }
-
-    // Cria os botões de Cancelar Inscrição e Check-in
-    let buttonContainer = oficinaCard.querySelector(".card-body");
-    let div = document.createElement("div");
-    div.className = "d-flex flex-column gap-2 mt-2";
-
-    let checkinButton = `{% if permitir_checkin_global %} <a href="/checkin/${oficinaId}" class="btn btn-warning btn-block">Realizar Check-in</a> {% endif %}`;
-    
-    div.innerHTML = `
-      <form action="/remover_inscricao/${oficinaId}" method="post">
-        <button type="submit" class="btn btn-danger btn-block">Cancelar Inscrição</button>
-      </form>
-      ${checkinButton}
-    `;
-
-    buttonContainer.appendChild(div);
 
     // Envia requisição ao servidor para registrar a inscrição
     fetch(`/inscrever/${oficinaId}`, {
@@ -270,11 +531,38 @@ function inscrever(oficinaId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            let buttonContainer = oficinaCard.querySelector(".card-footer .d-flex");
+            
             let comprovanteBtn = document.createElement("a");
             comprovanteBtn.setAttribute("href", data.pdf_url);
-            comprovanteBtn.className = "btn btn-primary btn-block mt-2";
-            comprovanteBtn.innerHTML = "📄 Baixar Comprovante";
+            comprovanteBtn.className = "btn btn-primary w-100";
+            comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
             buttonContainer.appendChild(comprovanteBtn);
+            
+            // Exibe um toast de sucesso (opcional)
+            let toast = document.createElement("div");
+            toast.className = "toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3";
+            toast.setAttribute("role", "alert");
+            toast.setAttribute("aria-live", "assertive");
+            toast.setAttribute("aria-atomic", "true");
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle"></i> Inscrição realizada com sucesso!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            // Inicializa e mostra o toast (requer Bootstrap 5)
+            let bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove o toast após 5 segundos
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
         } else {
             alert(data.message);
             location.reload();
