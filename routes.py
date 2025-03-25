@@ -714,8 +714,10 @@ def dashboard_participante():
 
     # Se o participante está associado a um cliente, buscamos a config desse cliente
     config_cliente = None
-    # Verifica se há formulários disponíveis para preenchimento
-    formularios_disponiveis = Formulario.query.count() > 0
+    # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
+    formularios_disponiveis = False
+    if current_user.cliente_id:
+        formularios_disponiveis = Formulario.query.filter_by(cliente_id=current_user.cliente_id).count() > 0
     
     if current_user.cliente_id:
         from models import ConfiguracaoCliente
@@ -1129,8 +1131,9 @@ def excluir_oficina(oficina_id):
         print("✅ [DEBUG] Relatórios da oficina removidos.")
 
         # 6️⃣ **Excluir associações com ministrantes na tabela de associação**
+        from sqlalchemy import text
         db.session.execute(
-            'DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id',
+            text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
             {'oficina_id': oficina.id}
         )
         print("✅ [DEBUG] Associações com ministrantes removidas.")
@@ -4602,7 +4605,18 @@ def listar_formularios_participante():
         return redirect(url_for('routes.dashboard'))
 
     # Busca apenas formulários disponíveis para o participante
-    formularios = Formulario.query.all()
+    # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
+    cliente_id = current_user.cliente_id
+    
+    if not cliente_id:
+        flash("Você não está associado a nenhum cliente.", "warning")
+        return redirect(url_for('routes.dashboard_participante'))
+        
+    # Busca formulários criados pelo cliente do participante
+    formularios = Formulario.query.filter_by(cliente_id=cliente_id).all()
+    
+    # Não há relação direta entre formulários e ministrantes no modelo atual,
+    # então estamos filtrando apenas pelo cliente_id do participante
 
     if not formularios:
         flash("Nenhum formulário disponível no momento.", "warning")

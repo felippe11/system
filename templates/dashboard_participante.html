@@ -80,7 +80,7 @@
 <div class="container">
   <div class="dashboard-header text-center">
     <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
-    <h3>Abaixo você encontra as oficinas disponíveis para inscrição</h3>
+    <h3>Abaixo você encontra as atividades disponíveis</h3>
   </div>
 
   {% if formularios_disponiveis %}
@@ -97,10 +97,12 @@
   <!-- Agrupa oficinas por evento -->
   {% set eventos = {} %}
   {% for oficina in oficinas %}
-    {% if oficina.evento_id not in eventos %}
-      {% if eventos.update({oficina.evento_id: {'nome': oficina.evento_nome, 'oficinas': []}}) %}{% endif %}
+    {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
+      {% if oficina.evento_id not in eventos %}
+        {% if eventos.update({oficina.evento_id: {'nome': oficina.evento_nome, 'oficinas': []}}) %}{% endif %}
+      {% endif %}
+      {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
     {% endif %}
-    {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
   {% endfor %}
   
   <!-- Itera sobre cada evento -->
