@@ -3981,6 +3981,7 @@ def dashboard_cliente():
         return redirect(url_for('routes.dashboard'))
 
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
+    
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
     oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(
@@ -10986,3 +10987,97 @@ def desativar_template_certificado(template_id):
     flash('Template desativado com sucesso!', 'info')
     return redirect(url_for('routes.upload_personalizacao_certificado'))
 
+@routes.route('/remover_patrocinador/<int:patrocinador_id>', methods=['POST'])
+@login_required
+def remover_patrocinador(patrocinador_id):
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    patrocinador = Patrocinador.query.get_or_404(patrocinador_id)
+
+    # Se for cliente, verifica se realmente é dele
+    if current_user.tipo == 'cliente':
+        # Busca o evento do patrocinador e verifica se pertence ao cliente
+        if not patrocinador.evento or patrocinador.evento.cliente_id != current_user.id:
+            flash("Você não tem permissão para remover esse patrocinador.", "danger")
+            return redirect(url_for('routes.listar_patrocinadores'))
+
+    try:
+        db.session.delete(patrocinador)
+        db.session.commit()
+        flash("Patrocinador removido com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao remover patrocinador: {e}", "danger")
+
+    return redirect(url_for('routes.listar_patrocinadores'))
+
+
+@routes.route('/patrocinadores', methods=['GET'])
+@login_required
+def listar_patrocinadores():
+    # Verifica se é admin ou cliente
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+    
+    # Se for admin, traz todos; se for cliente, traz só do cliente
+    if current_user.tipo == 'admin':
+        patrocinadores = Patrocinador.query.all()
+    else:
+        # Busca os eventos do cliente
+        eventos_cliente = Evento.query.filter_by(cliente_id=current_user.id).all()
+        evento_ids = [ev.id for ev in eventos_cliente]
+        # Traz patrocinadores apenas dos eventos do cliente
+        patrocinadores = Patrocinador.query.filter(Patrocinador.evento_id.in_(evento_ids)).all()
+
+    return render_template(
+        'listar_patrocinadores.html', 
+        patrocinadores=patrocinadores
+    )
+
+@routes.route('/gerenciar_patrocinadores')
+@login_required
+def gerenciar_patrocinadores():
+    """Lista todos os patrocinadores, de todas as categorias."""
+    if current_user.tipo not in ['admin','cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Se for admin, traz todos. Se for cliente, filtra pelos eventos do cliente
+    if current_user.tipo == 'admin':
+        patrocinadores = Patrocinador.query.all()
+    else:
+        # Buscar eventos do cliente e extrair seus IDs
+        eventos_cliente = Evento.query.filter_by(cliente_id=current_user.id).all()
+        eventos_ids = [ev.id for ev in eventos_cliente]
+        patrocinadores = Patrocinador.query.filter(Patrocinador.evento_id.in_(eventos_ids)).all()
+
+    return render_template('gerenciar_patrocinadores.html', patrocinadores=patrocinadores)
+
+@routes.route('/remover_foto_patrocinador/<int:patrocinador_id>', methods=['POST'])
+@login_required
+def remover_foto_patrocinador(patrocinador_id):
+    """Remove a foto de patrocinador (categoria: Realização, Organização, Apoio, Patrocínio)."""
+    if current_user.tipo not in ['admin','cliente']:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    pat = Patrocinador.query.get_or_404(patrocinador_id)
+
+    # Se for cliente, verifica se esse patrocinador é dele
+    if current_user.tipo == 'cliente':
+        if not pat.evento or pat.evento.cliente_id != current_user.id:
+            flash("Você não tem permissão para remover este registro.", "danger")
+            return redirect(url_for('routes.gerenciar_patrocinadores'))
+
+    try:
+        db.session.delete(pat)
+        db.session.commit()
+        flash("Logo removida com sucesso!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao remover: {e}", "danger")
+
+    return redirect(url_for('routes.gerenciar_patrocinadores'))
