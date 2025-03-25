@@ -15,6 +15,9 @@ from models import Ministrante
 from models import Cliente
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
+# routes.py (no início do arquivo)
+from models import CampoPersonalizadoCadastro
+
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -241,6 +244,9 @@ def cadastro_participante(identifier=None):
 
     sorted_keys = sorted(temp_group.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
     grouped_oficinas = temp_group
+    
+    campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente_id).all()
+
 
     if request.method == 'POST':
         # Lógica de cadastro do participante
@@ -299,9 +305,23 @@ def cadastro_participante(identifier=None):
             )
             try:
                 db.session.add(novo_usuario)
+                db.session.flush()
+                
+                for campo in campos_personalizados:
+                    valor = request.form.get(f'campo_{campo.id}')
+                    if campo.obrigatorio and not valor:
+                        raise ValueError(f"O campo '{campo.nome}' é obrigatório.")
+                    resposta = RespostaCampo(
+                        resposta_formulario_id=novo_usuario.id,
+                        campo_id=campo.id,
+                        valor=valor
+                    )
+                    db.session.add(resposta)
+
                 db.session.commit()
                 flash("Cadastro realizado com sucesso!", "success")
                 return redirect(url_for('routes.login'))
+            
             except Exception as e:
                 db.session.rollback()
                 print(f"Erro ao cadastrar usuário: {e}")
@@ -333,7 +353,8 @@ def cadastro_participante(identifier=None):
         sorted_keys=sorted_keys,
         ministrantes=ministrantes,
         grouped_oficinas=grouped_oficinas,
-        patrocinadores=patrocinadores
+        patrocinadores=patrocinadores,
+        campos_personalizados=campos_personalizados
     )
 
 # ===========================
@@ -11067,3 +11088,38 @@ def remover_foto_patrocinador(patrocinador_id):
         flash(f"Erro ao remover: {e}", "danger")
 
     return redirect(url_for('routes.gerenciar_patrocinadores'))
+
+@routes.route('/adicionar_campo_personalizado', methods=['POST'])
+@login_required
+def adicionar_campo_personalizado():
+    nome_campo = request.form.get('nome_campo')
+    tipo_campo = request.form.get('tipo_campo')
+    obrigatorio = bool(request.form.get('obrigatorio'))
+
+    novo_campo = CampoPersonalizadoCadastro(
+        cliente_id=current_user.id,
+        nome=nome_campo,
+        tipo=tipo_campo,
+        obrigatorio=obrigatorio
+    )
+    db.session.add(novo_campo)
+    db.session.commit()
+
+    flash('Campo personalizado adicionado com sucesso!', 'success')
+    return redirect(url_for('routes.dashboard_cliente'))
+
+@routes.route('/remover_campo_personalizado/<int:campo_id>', methods=['POST'])
+@login_required
+def remover_campo_personalizado(campo_id):
+    campo = CampoPersonalizadoCadastro.query.get_or_404(campo_id)
+
+    if campo.cliente_id != current_user.id:
+        flash('Você não tem permissão para remover este campo.', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    db.session.delete(campo)
+    db.session.commit()
+
+    flash('Campo personalizado removido com sucesso!', 'success')
+    return redirect(url_for('routes.dashboard_cliente'))
+

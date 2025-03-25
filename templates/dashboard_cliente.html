@@ -404,199 +404,246 @@
           
         </div><!-- /ABA 3: CRIAR NOVO -->
 
-        <!-- ABA 4: CONFIGURAÇÕES -->
-        <div class="tab-pane fade" id="configuracoes" role="tabpanel">
-          <div class="row g-4">
-           <!-- Configurações do Sistema -->
-<div class="row">
-  <!-- Coluna 1 (Esquerda) -->
-  <div class="col-md-6">
-    <!-- CARD: Configurações do Sistema -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-info text-white">
-        <h5 class="m-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Configurações do Sistema</h5>
-      </div>
-      <div class="card-body">
-        <div class="list-group mb-4">
-          <!-- Check-in Global -->
-          <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-            <div>
-              <h6 class="mb-0 fw-semibold">Check-in Global</h6>
-              <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
-            </div>
-            <button type="button" 
-                    id="btnToggleCheckin"
-                    class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
-                    data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}">
-              {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
-            </button>
+      <!-- ABA 4: CONFIGURAÇÕES -->
+<div class="tab-pane fade" id="configuracoes" role="tabpanel">
+  <div class="row g-4">
+    <!-- Configurações do Sistema -->
+    <div class="row">
+      <!-- Coluna 1 (Esquerda) -->
+      <div class="col-md-6">
+        <!-- CARD: Configurações do Sistema -->
+        <div class="card shadow mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="m-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Configurações do Sistema</h5>
           </div>
+          <div class="card-body">
+            <div class="list-group mb-4">
+              <!-- Check-in Global -->
+              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                  <h6 class="mb-0 fw-semibold">Check-in Global</h6>
+                  <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
+                </div>
+                <button type="button" 
+                        id="btnToggleCheckin"
+                        class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
+                        data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}">
+                  {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
+                </button>
+              </div>
 
-          <!-- Feedback -->
-          <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-            <div>
-              <h6 class="mb-0 fw-semibold">Feedback dos Participantes</h6>
-              <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
-            </div>
-            <button type="button"
-                    id="btnToggleFeedback"
-                    class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
-                    data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}">
-              {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
-            </button>
-          </div>
+              <!-- Feedback -->
+              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                  <h6 class="mb-0 fw-semibold">Feedback dos Participantes</h6>
+                  <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
+                </div>
+                <button type="button"
+                        id="btnToggleFeedback"
+                        class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
+                        data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}">
+                  {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
+                </button>
+              </div>
 
-          <!-- Certificado -->
-          <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-            <div>
-              <h6 class="mb-0 fw-semibold">Download de Certificado</h6>
-              <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
+              <!-- Certificado -->
+              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                  <h6 class="mb-0 fw-semibold">Download de Certificado</h6>
+                  <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
+                </div>
+                <button type="button" 
+                        id="btnToggleCertificado"
+                        class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
+                        data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}">
+                  {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
+                </button>
+              </div>
             </div>
-            <button type="button" 
-                    id="btnToggleCertificado"
-                    class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
-                    data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}">
-              {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
-            </button>
+
+            <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-primary w-100">
+              <i class="bi bi-calendar-event me-2"></i> Configurar Eventos
+            </a>
           </div>
         </div>
 
-        <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-primary w-100">
-          <i class="bi bi-calendar-event me-2"></i> Configurar Eventos
-        </a>
-      </div>
-    </div>
+        <!-- CARD: Baixar Modelos Excel -->
+        <div class="card shadow mb-4">
+          <div class="card-header bg-success text-white">
+            <h5 class="m-0 fw-bold"><i class="bi bi-download me-2"></i>Baixar Modelos Excel</h5>
+          </div>
+          <div class="card-body">
+            <p>Selecione um dos modelos para download:</p>
+            <div class="d-flex">
+              <a href="{{ url_for('routes.gerar_modelo', tipo='usuarios') }}"
+                 class="btn btn-primary me-2">
+                <i class="bi bi-file-earmark-excel me-1"></i>Modelo Usuários
+              </a>
+              <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}"
+                 class="btn btn-info">
+                <i class="bi bi-file-earmark-excel me-1"></i>Modelo Atividades
+              </a>
+            </div>
+          </div>
+        </div>
 
-    <!-- CARD: Baixar Modelos Excel -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-success text-white">
-        <h5 class="m-0 fw-bold"><i class="bi bi-download me-2"></i>Baixar Modelos Excel</h5>
+        <!-- CARD: Campos Personalizados para Cadastro -->
+        <div class="card shadow mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="m-0 fw-bold"><i class="bi bi-ui-checks-grid me-2"></i>Campos Personalizados para Cadastro</h5>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="{{ url_for('routes.adicionar_campo_personalizado') }}">
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" name="nome_campo" placeholder="Nome do Campo" required>
+                <select class="form-select" name="tipo_campo" required>
+                  <option value="text">Texto</option>
+                  <option value="email">Email</option>
+                  <option value="number">Número</option>
+                  <option value="date">Data</option>
+                </select>
+                <div class="input-group-text">
+                  <input type="checkbox" name="obrigatorio"> Obrigatório
+                </div>
+                <button class="btn btn-success" type="submit">
+                  <i class="bi bi-plus-circle me-1"></i>Adicionar
+                </button>
+              </div>
+            </form>
+
+            <ul class="list-group">
+              {% for campo in current_user.campos_personalizados %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <span>
+                    <strong>{{ campo.nome }}</strong> <small class="text-muted">({{ campo.tipo }})</small>
+                    {% if campo.obrigatorio %}
+                      <span class="badge bg-success ms-2">Obrigatório</span>
+                    {% else %}
+                      <span class="badge bg-secondary ms-2">Opcional</span>
+                    {% endif %}
+                  </span>
+                  <form method="POST" action="{{ url_for('routes.remover_campo_personalizado', campo_id=campo.id) }}" onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
+                    <button class="btn btn-sm btn-danger" type="submit">
+                      <i class="bi bi-trash-fill"></i>
+                    </button>
+                  </form>
+                </li>
+              {% else %}
+                <li class="list-group-item text-center text-muted">Nenhum campo personalizado cadastrado.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        <p>Selecione um dos modelos para download:</p>
-        <div class="d-flex">
-          <a href="{{ url_for('routes.gerar_modelo', tipo='usuarios') }}"
-             class="btn btn-primary me-2">
-            <i class="bi bi-file-earmark-excel me-1"></i>Modelo Usuários
-          </a>
-          <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}"
-             class="btn btn-info">
-            <i class="bi bi-file-earmark-excel me-1"></i>Modelo Atividades
-          </a>
+
+      <!-- Coluna 2 (Direita) -->
+      <div class="col-md-6">
+        <!-- CARD: Importar Oficinas -->
+        <div class="card shadow mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="m-0 fw-bold"><i class="bi bi-upload me-2"></i>Importar Atividades</h5>
+          </div>
+          <div class="card-body">
+            <p>
+              Selecione abaixo o arquivo Excel (.xlsx) contendo as informações das atividades que deseja cadastrar de forma automática.
+            </p>
+            <!-- Exemplo de instruções -->
+            <ul>
+              <li>O arquivo deve conter as colunas obrigatórias: <strong>titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, datas, horarios_inicio, horarios_fim</strong>.</li>
+              <li>Para adicionar vários dias na mesma atividade, utilize vírgula para separar cada data e horário:
+                <br><em>Exemplo</em>: 
+                <code>datas = 01/05/2025,02/05/2025</code> |
+                <code>horarios_inicio = 08:00,09:00</code> |
+                <code>horarios_fim = 12:00,13:00</code>
+              </li>
+              <li>As listas "datas", "horarios_inicio" e "horarios_fim" devem ter a mesma quantidade de itens.</li>
+              <li>Informe o ID do ministrante (coluna <em>ministrante_id</em>) caso já exista no sistema.</li>
+            </ul>
+
+            <!-- Formulário de upload -->
+            <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
+              <div class="input-group">
+                <input type="file" name="arquivo" accept=".xlsx" class="form-control" required>
+                <button type="submit" class="btn btn-success">
+                  <i class="bi bi-upload me-1"></i> Enviar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- CARD: Patrocinadores por Categoria -->
+        <div class="card shadow mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="m-0 fw-bold"><i class="fas fa-upload me-2"></i>Adicionar Patrocinadores por Categoria</h5>
+          </div>
+          <div class="card-body">
+            <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores_categorizados') }}" enctype="multipart/form-data">
+              <!-- Selecionar evento -->
+              <div class="mb-4">
+                <label for="evento_id" class="form-label fw-bold">Selecione o Evento:</label>
+                <select name="evento_id" id="evento_id" class="form-select" required>
+                  <option value="">-- Selecione --</option>
+                  {% for ev in usuario.eventos %}
+                    <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Escolha da quantidade por categoria -->
+              <div class="card border-0 bg-light mb-4">
+                <div class="card-body row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                      <i class="fas fa-star text-primary me-1"></i> Realização
+                    </label>
+                    <input type="number" class="form-control" id="qtd_realizacao" name="qtd_realizacao" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                      <i class="fas fa-handshake text-success me-1"></i> Patrocínio
+                    </label>
+                    <input type="number" class="form-control" id="qtd_patrocinio" name="qtd_patrocinio" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                      <i class="fas fa-users-cog text-info me-1"></i> Organização
+                    </label>
+                    <input type="number" class="form-control" id="qtd_organizacao" name="qtd_organizacao" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label fw-bold">
+                      <i class="fas fa-thumbs-up text-secondary me-1"></i> Apoio
+                    </label>
+                    <input type="number" class="form-control" id="qtd_apoio" name="qtd_apoio" min="0" value="0">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botão para gerar inputs -->
+              <button type="button" class="btn btn-outline-primary mb-3" onclick="gerarCamposUploads()">
+                <i class="fas fa-plus-circle me-2"></i>Gerar Campos para Upload
+              </button>
+
+              <!-- Área onde aparecem os campos de upload -->
+              <div id="containerPatrocinadores" class="mb-3"></div>
+
+              <div class="d-flex justify-content-between">
+                <a href="{{ url_for('routes.gerenciar_patrocinadores') }}" class="btn btn-primary">
+                  <i class="bi bi-card-image me-2"></i> Gerenciar Fotos
+                </a>
+                <button type="submit" class="btn btn-success">
+                  <i class="fas fa-save me-2"></i>Salvar Patrocinadores
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- Coluna 2 (Direita) -->
-  <div class="col-md-6">
-    <!-- CARD: Importar Oficinas -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-primary text-white">
-        <h5 class="m-0 fw-bold"><i class="bi bi-upload me-2"></i>Importar Atividades</h5>
-      </div>
-      <div class="card-body">
-        <p>
-          Selecione abaixo o arquivo Excel (.xlsx) contendo as informações das atividades que deseja cadastrar de forma automática.
-        </p>
-        <!-- Exemplo de instruções -->
-        <ul>
-          <li>O arquivo deve conter as colunas obrigatórias: <strong>titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, datas, horarios_inicio, horarios_fim</strong>.</li>
-          <li>Para adicionar vários dias na mesma atividade, utilize vírgula para separar cada data e horário:
-            <br><em>Exemplo</em>: 
-            <code>datas = 01/05/2025,02/05/2025</code> |
-            <code>horarios_inicio = 08:00,09:00</code> |
-            <code>horarios_fim = 12:00,13:00</code>
-          </li>
-          <li>As listas "datas", "horarios_inicio" e "horarios_fim" devem ter a mesma quantidade de itens.</li>
-          <li>Informe o ID do ministrante (coluna <em>ministrante_id</em>) caso já exista no sistema.</li>
-        </ul>
-
-
-        <!-- Formulário de upload -->
-        <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
-          <div class="input-group">
-            <input type="file" name="arquivo" accept=".xlsx" class="form-control" required>
-            <button type="submit" class="btn btn-success">
-              <i class="bi bi-upload me-1"></i> Enviar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores_categorizados') }}"
-      enctype="multipart/form-data"
-      class="card shadow p-4 my-5">
-
-    <div class="card-header bg-primary text-white rounded mb-4">
-        <h4 class="mb-0"><i class="fas fa-upload me-2"></i>Adicionar Patrocinadores por Categoria</h4>
-    </div>
-
-    <!-- Selecionar evento -->
-    <div class="mb-4">
-        <label for="evento_id" class="form-label fw-bold">Selecione o Evento:</label>
-        <select name="evento_id" id="evento_id" class="form-select" required>
-            <option value="">-- Selecione --</option>
-            {% for ev in usuario.eventos %}
-                <option value="{{ ev.id }}">{{ ev.nome }}</option>
-            {% endfor %}
-        </select>
-    </div>
-
-    <!-- Escolha da quantidade por categoria -->
-    <div class="card border-0 bg-light mb-4">
-        <div class="card-body row g-3">
-            <div class="col-md-3">
-                <label class="form-label fw-bold">
-                    <i class="fas fa-star text-primary me-1"></i> Realização
-                </label>
-                <input type="number" class="form-control" id="qtd_realizacao" name="qtd_realizacao" min="0" value="0">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold">
-                    <i class="fas fa-handshake text-success me-1"></i> Patrocínio
-                </label>
-                <input type="number" class="form-control" id="qtd_patrocinio" name="qtd_patrocinio" min="0" value="0">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold">
-                    <i class="fas fa-users-cog text-info me-1"></i> Organização
-                </label>
-                <input type="number" class="form-control" id="qtd_organizacao" name="qtd_organizacao" min="0" value="0">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label fw-bold">
-                    <i class="fas fa-thumbs-up text-secondary me-1"></i> Apoio
-                </label>
-                <input type="number" class="form-control" id="qtd_apoio" name="qtd_apoio" min="0" value="0">
-            </div>
-        </div>
-    </div>
-
-    <!-- Botão para gerar inputs -->
-    <button type="button" class="btn btn-outline-primary mb-4" onclick="gerarCamposUploads()">
-        <i class="fas fa-plus-circle me-2"></i>Gerar Campos para Upload
-    </button>
-
-    <a href="{{ url_for('routes.gerenciar_patrocinadores') }}" class="btn btn-primary">
-      <i class="bi bi-card-image me-2"></i> Gerenciar Fotos (Patrocínios / Realizações / Apoios)
-    </a>
-
-    <!-- Área onde aparecem os campos de upload -->
-    <div id="containerPatrocinadores" class="mb-3"></div>
-
-    <button type="submit" class="btn btn-success btn-lg">
-        <i class="fas fa-save me-2"></i>Salvar Patrocinadores
-    </button>
-
-    
-    
-
-</form>
-
-
-
+</div>
+<!-- /ABA 4: CONFIGURAÇÕES -->
 <!-- Javascript com ícones e labels melhorados -->
 <script>
 function gerarCamposUploads() {

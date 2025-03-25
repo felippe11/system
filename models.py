@@ -753,6 +753,15 @@ class CertificadoTemplate(db.Model):
     cliente = db.relationship("Cliente", backref="certificados_templates")
 
 
+class CampoPersonalizadoCadastro(db.Model):
+    __tablename__ = 'campos_personalizados_cadastro'
 
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # texto, número, email, data, etc.
+    obrigatorio = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship('Cliente', backref=db.backref('campos_personalizados', lazy=True))
 
 
