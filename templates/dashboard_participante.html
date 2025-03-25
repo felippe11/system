@@ -76,6 +76,8 @@
     height: 100%;
     background: linear-gradient(to left, rgba(58, 134, 255, 0.1), transparent);
     border-radius: 0 1rem 1rem 0;
+    color: var(--gray-text);
+    font-weight: 400;
   }
   
   /* Cards de oficina */
@@ -116,14 +118,14 @@
     height: 100%;
     background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
     opacity: 0.3;
-  }
+  }  
   
   .card-body {
     padding: 1.5rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-  }
+  }  
   
   .card-body p {
     margin-bottom: 0.75rem;
@@ -134,6 +136,7 @@
   .card-body p strong {
     color: var(--dark-text);
     font-weight: 600;
+    font-size: 0.95rem;
   }
   
   .card-body ul {
@@ -146,6 +149,14 @@
     margin-bottom: 0.5rem;
     padding: 0.5rem;
     background-color: rgba(248, 249, 250, 0.7);
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .badge-esgotado {
+    background-color: rgba(255, 0, 110, 0.1);
+    color: var(--danger-color);
+    padding: 0.5rem;
     border-radius: 0.5rem;
     font-size: 0.9rem;
   }
@@ -173,11 +184,6 @@
   .badge-vagas {
     background-color: var(--light-bg);
     color: var(--dark-text);
-  }
-  
-  .badge-esgotado {
-    background-color: rgba(255, 0, 110, 0.1);
-    color: var(--danger-color);
   }
   
   /* Botões customizados */
@@ -308,9 +314,9 @@
 </style>
 
 <div class="container">
-  <div class="dashboard-header">
-    <h2>Bem-vindo(a), {{ usuario.nome }}</h2>
-    <h3>Confira as oficinas disponíveis para inscrição</h3>
+  <div class="dashboard-header text-center">
+    <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
+    <h3>Abaixo você encontra as atividades disponíveis</h3>
   </div>
 
   {% if formularios_disponiveis %}
@@ -328,10 +334,12 @@
   <!-- Agrupa oficinas por evento -->
   {% set eventos = {} %}
   {% for oficina in oficinas %}
-    {% if oficina.evento_id not in eventos %}
-      {% if eventos.update({oficina.evento_id: {'nome': oficina.evento_nome, 'oficinas': []}}) %}{% endif %}
+    {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
+      {% if oficina.evento_id not in eventos %}
+        {% if eventos.update({oficina.evento_id: {'nome': oficina.evento_nome, 'oficinas': []}}) %}{% endif %}
+      {% endif %}
+      {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
     {% endif %}
-    {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
   {% endfor %}
   
   <!-- Itera sobre cada evento -->
@@ -363,7 +371,6 @@
                 {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
                 <p>
                   <strong>Vagas:</strong>
-                  <span class="info-vagas">{{ oficina.vagas }}</span>
                   {% if oficina.vagas == 0 %}
                     <span class="status-badge badge-esgotado">Esgotado</span>
                   {% else %}
@@ -430,28 +437,6 @@
                             <i class="fas fa-exclamation-triangle"></i> Vagas esgotadas
                           </div>
                       {% endif %}
-                      {% if oficina.id in inscricoes_ids %}
-                          <div class="d-flex flex-column gap-2">
-                              {% if permitir_checkin_global %}
-                              <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
-                                  <i class="fas fa-clipboard-check"></i> Realizar Check-in
-                              </a>
-                              {% endif %}
-                              <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
-                                  <button type="submit" class="btn btn-danger w-100">
-                                    <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                                  </button>
-                              </form>
-                              <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
-                                  <i class="fas fa-file-download"></i> Baixar Comprovante
-                              </a>
-                              {% if habilitar_feedback %}
-                              <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
-                                  <i class="fas fa-comment-dots"></i> Enviar Feedback
-                              </a>
-                              {% endif %}
-                          </div>
-                      {% endif %}
                   {% endif %}
                 </div> <!-- Fim card-footer -->
               </div> <!-- Fim card-body -->
@@ -473,7 +458,7 @@
   
 </div> <!-- Fim container -->
 
-<!-- Script para inscrição assíncrona (se desejar manter) -->
+<!-- Script para inscrição assíncrona -->
 <script>
 function inscrever(oficinaId) {
     let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
@@ -539,7 +524,7 @@ function inscrever(oficinaId) {
             comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
             buttonContainer.appendChild(comprovanteBtn);
             
-            // Exibe um toast de sucesso (opcional)
+            // Exibe um toast de sucesso
             let toast = document.createElement("div");
             toast.className = "toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3";
             toast.setAttribute("role", "alert");

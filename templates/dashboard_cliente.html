@@ -534,6 +534,26 @@
             </ul>
           </div>
         </div>
+    <!-- CARD: Manutenção do Sistema -->
+    <div class="card shadow mb-4">
+      <div class="card-header bg-danger text-white">
+        <h5 class="m-0 fw-bold"><i class="bi bi-shield-exclamation me-2"></i>Manutenção do Sistema</h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-warning">
+          <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Atenção!</h6>
+          <p class="mb-0">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
+        </div>
+
+        <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
+              onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');"
+              class="mt-3">
+          <button type="submit" class="btn btn-danger w-100">
+            <i class="bi bi-trash-fill me-2"></i> Excluir Todas as Atividades
+          </button>
+        </form>
+      </div>
+    </div>
       </div>
 
       <!-- Coluna 2 (Direita) -->
@@ -695,37 +715,6 @@ function gerarCamposUploads() {
 }
 </script>
 
-
-
-    <!-- CARD: Manutenção do Sistema -->
-    <div class="card shadow mb-4">
-      <div class="card-header bg-danger text-white">
-        <h5 class="m-0 fw-bold"><i class="bi bi-shield-exclamation me-2"></i>Manutenção do Sistema</h5>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-warning">
-          <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Atenção!</h6>
-          <p class="mb-0">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
-        </div>
-
-        <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
-              onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');"
-              class="mt-3">
-          <button type="submit" class="btn btn-danger w-100">
-            <i class="bi bi-trash-fill me-2"></i> Excluir Todas as Atividades
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-</div><!-- /ABA 4: CONFIGURAÇÕES -->
-  
-</div><!-- /ABA 4: CONFIGURAÇÕES -->
-      </div><!-- /tab-content -->
-    </div><!-- /card-body -->
-  </div><!-- /card shadow -->
-</div> <!-- /container-fluid -->
 
 <!-- MODALS -->
 <!-- Modal do Relatório de Mensagem -->
