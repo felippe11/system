@@ -47,31 +47,98 @@
         </div>
 
         <div class="mb-3">
-          <label for="ministrante_id" class="form-label">Ministrante</label>
-          <select name="ministrante_id" id="ministrante_id" class="form-select">
-            <option value="">-- Selecione um Ministrante --</option>
+          <label for="ministrantes_search" class="form-label">Ministrantes:</label>
+          <input type="text" class="form-control mb-2" id="ministrantes_search" placeholder="Buscar ministrante...">
+          
+          <div class="ministrantes-container border rounded p-2" style="max-height: 300px; overflow-y: auto;">
             {% for minist in ministrantes %}
-              <option value="{{ minist.id }}" {% if oficina.ministrante_id == minist.id %} selected {% endif %}>
-                {{ minist.nome }}
-              </option>
+              <div class="ministrante-card mb-2 p-2 border rounded" data-nome="{{ minist.nome.lower() }}">
+                <div class="form-check">
+                  <input class="form-check-input ministrante-checkbox" type="checkbox" value="{{ minist.id }}" 
+                         id="ministrante_{{ minist.id }}" name="ministrantes_ids[]"
+                         {% if minist.id == oficina.ministrante_id or minist in oficina.ministrantes_associados %}checked{% endif %}>
+                  <label class="form-check-label w-100" for="ministrante_{{ minist.id }}">
+                    {{ minist.nome }}
+                  </label>
+                </div>
+              </div>
             {% endfor %}
-          </select>
+          </div>
+          <small class="text-muted">Selecione os ministrantes clicando nos cards</small>
         </div>
-
-              <!-- editar_oficina.html -->
-      <!-- Múltiplos ministrantes -->
-      <div class="mb-3">
-        <label>Ministrantes Extras (múltiplos)</label>
-        <select name="ministrantes_ids[]" class="form-select" multiple>
-          {% for minist in ministrantes %}
-          <option value="{{ minist.id }}"
-            {% if minist in oficina.ministrantes_associados %}
-              selected
-            {% endif %}
-          >{{ minist.nome }}</option>
-          {% endfor %}
-        </select>
-      </div>
+        
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            // Filtro de busca para ministrantes
+            const searchInput = document.getElementById('ministrantes_search');
+            const ministranteCards = document.querySelectorAll('.ministrante-card');
+            
+            searchInput.addEventListener('input', function() {
+              const searchTerm = this.value.toLowerCase().trim();
+              
+              ministranteCards.forEach(card => {
+                const nome = card.dataset.nome;
+                if (nome.includes(searchTerm)) {
+                  card.style.display = 'block';
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+            
+            // Melhorar a experiência de seleção
+            ministranteCards.forEach(card => {
+              // Configurar estilo inicial baseado no estado do checkbox
+              const checkbox = card.querySelector('.ministrante-checkbox');
+              if (checkbox.checked) {
+                card.classList.add('bg-light');
+                card.style.borderColor = '#0d6efd';
+              }
+              
+              card.addEventListener('click', function(e) {
+                // Não acione quando o clique for diretamente no checkbox
+                if (e.target.type !== 'checkbox') {
+                  const checkbox = this.querySelector('.ministrante-checkbox');
+                  checkbox.checked = !checkbox.checked;
+                  
+                  // Atualizar estilo do card
+                  if (checkbox.checked) {
+                    this.classList.add('bg-light');
+                    this.style.borderColor = '#0d6efd';
+                  } else {
+                    this.classList.remove('bg-light');
+                    this.style.borderColor = '';
+                  }
+                }
+              });
+              
+              // Configura estilo para os checkboxes quando mudarem
+              checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                  card.classList.add('bg-light');
+                  card.style.borderColor = '#0d6efd';
+                } else {
+                  card.classList.remove('bg-light');
+                  card.style.borderColor = '';
+                }
+              });
+            });
+          });
+        </script>
+        
+        <style>
+          .ministrante-card {
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .ministrante-card:hover {
+            background-color: #f8f9fa;
+          }
+          .ministrante-card.selected {
+            background-color: #e2f0ff;
+            border-color: #0d6efd !important;
+          }
+        </style>
 
         <div class="mb-3">
           <label for="tipo_oficina" class="form-label">Tipo de Atividade:</label>
@@ -119,11 +186,11 @@
         <div class="row">
           <div class="mb-3 col-md-6">
             <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
-            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5" required>
+            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5">
           </div>
           <div class="mb-3 col-md-6">
             <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
-            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta" required>
+            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta">
           </div>
         </div>
 
