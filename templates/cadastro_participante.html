@@ -79,7 +79,7 @@
                                     {% for m in item.oficina.ministrantes_associados %}
                                         <div class="ministrante-card">
                                             <img 
-                                                src="{{ url_for('static', filename=m.foto or 'uploads/ministrantes/default-profile.png') }}"
+                                                src="{{ url_for('static', filename=m.foto or 'default-profile.png') }}"
                                                 alt="Foto do ministrante"
                                                 class="ministrante-foto-pequena"
                                             >
@@ -98,6 +98,13 @@
             </ul>
         </div>
     {% endfor %}
+        <!-- Botão para download do PDF -->
+        <div class="download-folder-container">
+            <a href="{{ url_for('routes.gerar_folder_evento', evento_id=evento.id) if evento else '#' }}" 
+               class="download-folder-btn" {% if not evento %}disabled{% endif %}>
+                <i class="fas fa-file-pdf"></i> Baixar Programação em PDF
+            </a>
+        </div>
 </div>
 
 
@@ -315,7 +322,7 @@
                     {% endfor %}    
 
                     <div class="form-group full-width locations-group">
-                        <label>Locais de Atuação</label>
+                        <label>Endereço</label>
                         <div id="locations-container"></div>
                         <button type="button" id="add-location" class="add-button">
                             <i class="fas fa-plus-circle"></i> Adicionar Local
@@ -339,6 +346,44 @@
 
 <!-- Estilos -->
 <style>
+
+    .download-folder-container {
+        margin-top: 30px;
+        text-align: center;
+    }
+
+    .download-folder-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #e74c3c;
+        color: white;
+        padding: 12px 25px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2);
+    }
+
+    .download-folder-btn:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(231, 76, 60, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+
+    .download-folder-btn[disabled] {
+        background: #ccc;
+        cursor: not-allowed;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .download-folder-btn i {
+        font-size: 1.2em;
+    }
     /* Estilos Gerais */
     * {
         margin: 0;
