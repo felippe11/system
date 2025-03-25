@@ -21,6 +21,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import RespostaFormulario, RespostaCampo
 from utils import enviar_email
+from utils import gerar_certificado_personalizado
 from datetime import datetime
 from flask_mail import Message
 from models import Evento
@@ -29,6 +30,9 @@ from models import FormularioTemplate
 from models import CampoFormulario
 from models import Formulario
 from models import CampoFormularioTemplate
+from models import CertificadoTemplate
+from utils import gerar_certificados_pdf
+
 # Adicione esta linha na seção de importações no topo do arquivo routes.py
 from sqlalchemy import and_, func, or_
 from models import (
@@ -5014,6 +5018,9 @@ def excluir_formulario(formulario_id):
 @routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
 def upload_personalizacao_certificado():
+    
+    cliente = Cliente.query.get(current_user.id)
+    templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
 
     if request.method == 'POST':
         logo_file = request.files.get('logo_certificado')
@@ -5047,7 +5054,7 @@ def upload_personalizacao_certificado():
         flash("Personalização salva com sucesso!", "success")
         return redirect(url_for('routes.dashboard_cliente'))
 
-    return render_template('upload_personalizacao_cert.html')
+    return render_template('upload_personalizacao_cert.html', templates=templates, cliente=cliente)
 
 @routes.route('/leitor_checkin_json', methods=['POST'])
 @login_required
@@ -5493,6 +5500,10 @@ def criar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
+    
+    # Para evitar o erro 'evento is undefined' no template,
+    # vamos inicializar a variável evento como None
+    evento = None
 
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -5509,7 +5520,8 @@ def criar_evento():
             caminho_banner = os.path.join('static/banners', filename)
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
-            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+            # Se preferir gerar URL absoluta, mantenha _external=True
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=False)
         
         # Processar campos de data
         data_inicio_str = request.form.get('data_inicio')
@@ -5517,17 +5529,14 @@ def criar_evento():
         hora_inicio_str = request.form.get('hora_inicio')
         hora_fim_str = request.form.get('hora_fim')
         
-        # Converter strings para objetos de data/hora
         data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d') if data_inicio_str else None
         data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') if data_fim_str else None
-        
-        # Processar hora (se necessário)
+
         from datetime import time
         hora_inicio = time.fromisoformat(hora_inicio_str) if hora_inicio_str else None
         hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
-    
 
-        # Cria o objeto Evento (modelo) normalmente
+        # Cria o objeto Evento
         novo_evento = Evento(
             cliente_id=current_user.id,
             nome=nome,
@@ -5544,45 +5553,27 @@ def criar_evento():
 
         try:
             db.session.add(novo_evento)
-            db.session.flush()  # Precisamos do ID do evento antes de criar tipos de inscrição
+            db.session.flush()  # precisamos do ID para criar tipos de inscrição
 
-            # Se o cliente tiver pagamento habilitado, trata a questão dos tipos de inscrição
+            # Se o cliente tiver pagamento habilitado, tratar tipos de inscrição
             if current_user.habilita_pagamento:
-                # Verifica se o user marcou "Inscrição Gratuita"
                 inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
+                # novo_evento.inscricao_gratuita = inscricao_gratuita  # caso queira gravar no próprio evento
 
-                # Se quiser, você pode criar um campo novo no modelo Evento para armazenar essa flag
-                # Exemplo: novo_evento.inscricao_gratuita = inscricao_gratuita
-
-                # Se não for gratuito, criamos os tipos de inscrição
                 if not inscricao_gratuita:
                     nomes_tipos = request.form.getlist('nome_tipo[]')
                     precos = request.form.getlist('preco_tipo[]')
-                    for nome, preco in zip(nomes_tipos, precos):
-                        # A classe EventoInscricaoTipo PRECISA estar definida e importada!
-                        novo_tipo = EventoInscricaoTipo(
-                            evento_id=novo_evento.id,
-                            nome=nome,
-                            preco=float(preco)
-                        )
-                        db.session.add(novo_tipo)
-
-                    # Aqui você pode salvar numa tabela "EventoInscricaoTipo" (por exemplo)
-                    # ou adaptar para alguma tabela existente.
                     if not nomes_tipos or not precos:
-                        raise ValueError(
-                            "Tipos de inscrição e preços são obrigatórios quando o evento não é gratuito."
-                        )
+                        raise ValueError("Tipos de inscrição e preços são obrigatórios quando não é gratuito.")
 
                     for nome, preco in zip(nomes_tipos, precos):
-                        # Exemplo de criação de um novo registro:
                         novo_tipo = EventoInscricaoTipo(
                             evento_id=novo_evento.id,
                             nome=nome,
                             preco=float(preco)
                         )
                         db.session.add(novo_tipo)
-            
+
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             return redirect(url_for('routes.dashboard_cliente'))
@@ -5591,7 +5582,8 @@ def criar_evento():
             db.session.rollback()
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
-    return render_template('configurar_evento.html')
+    # Retorna ao template, passando o 'evento' mesmo que seja None
+    return render_template('criar_evento_agendamento.html', evento=evento)
 
 @routes.route('/evento/<identifier>')
 def pagina_evento(identifier):
@@ -10883,3 +10875,114 @@ def adicionar_patrocinadores_categorizados():
 
     flash(f"Patrocinadores adicionados com sucesso! Total: {total_importados}", "success")
     return redirect(url_for('routes.dashboard_cliente'))
+
+@routes.route('/templates_certificado', methods=['GET', 'POST'])
+@login_required
+def templates_certificado():
+    if request.method == 'POST':
+        titulo = request.form['titulo']
+        conteudo = request.form['conteudo']
+        novo_template = CertificadoTemplate(cliente_id=current_user.id, titulo=titulo, conteudo=conteudo)
+        db.session.add(novo_template)
+        db.session.commit()
+        flash('Template cadastrado com sucesso!', 'success')
+
+    templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('templates_certificado.html', templates=templates)
+
+@routes.route('/set_template_ativo/<int:template_id>', methods=['POST'])
+@login_required
+def set_template_ativo(template_id):
+    CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
+    template = CertificadoTemplate.query.get(template_id)
+    template.ativo = True
+    db.session.commit()
+    flash('Template definido como ativo com sucesso!', 'success')
+    return redirect(url_for('routes.templates_certificado'))
+
+@routes.route('/gerar_certificado_evento', methods=['POST'])
+@login_required
+def gerar_certificado_evento():
+    texto_personalizado = request.form.get('texto_personalizado', '')
+    oficinas_ids = request.form.getlist('oficinas_selecionadas')
+
+    oficinas = Oficina.query.filter(Oficina.id.in_(oficinas_ids)).all()
+    total_horas = sum(int(of.carga_horaria) for of in oficinas)
+
+    # Capturar template ativo
+    template = CertificadoTemplate.query.filter_by(cliente_id=current_user.id, ativo=True).first()
+    if not template:
+        flash('Nenhum template ativo encontrado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    pdf_path = gerar_certificado_personalizado(current_user, oficinas, total_horas, texto_personalizado, template.conteudo)
+    return send_file(pdf_path, as_attachment=True)
+
+@routes.route('/salvar_personalizacao_certificado', methods=['POST'])
+@login_required
+def salvar_personalizacao_certificado():
+    cliente = Cliente.query.get(current_user.id)
+
+    for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
+        arquivo = request.files.get(campo)
+        if arquivo:
+            filename = secure_filename(arquivo.filename)
+            path = os.path.join('static/uploads/certificados', filename)
+            arquivo.save(path)
+            setattr(cliente, campo, path)
+
+    cliente.texto_personalizado = request.form.get('texto_personalizado')
+    db.session.commit()
+
+    flash('Personalizações salvas com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+@routes.route('/ativar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def ativar_template_certificado(template_id):
+    CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
+    template = CertificadoTemplate.query.get_or_404(template_id)
+    template.ativo = True
+    db.session.commit()
+
+    flash('Template ativado com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+
+@routes.route('/editar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def editar_template_certificado(template_id):
+    template = CertificadoTemplate.query.get_or_404(template_id)
+
+    if template.cliente_id != current_user.id:
+        flash('Você não tem permissão para editar este template.', 'danger')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    novo_titulo = request.form.get('titulo')
+    novo_conteudo = request.form.get('conteudo')
+
+    if not novo_titulo or not novo_conteudo:
+        flash('Todos os campos são obrigatórios.', 'warning')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    template.titulo = novo_titulo
+    template.conteudo = novo_conteudo
+
+    db.session.commit()
+    flash('Template atualizado com sucesso!', 'success')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+@routes.route('/desativar_template_certificado/<int:template_id>', methods=['POST'])
+@login_required
+def desativar_template_certificado(template_id):
+    template = CertificadoTemplate.query.get_or_404(template_id)
+
+    if template.cliente_id != current_user.id:
+        flash('Você não tem permissão para alterar esse template.', 'danger')
+        return redirect(url_for('routes.upload_personalizacao_certificado'))
+
+    template.ativo = False
+    db.session.commit()
+    flash('Template desativado com sucesso!', 'info')
+    return redirect(url_for('routes.upload_personalizacao_certificado'))
+
