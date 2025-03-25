@@ -5486,6 +5486,10 @@ def criar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
+    
+    # Para evitar o erro 'evento is undefined' no template,
+    # vamos inicializar a variável evento como None
+    evento = None
 
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -5502,7 +5506,8 @@ def criar_evento():
             caminho_banner = os.path.join('static/banners', filename)
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
-            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+            # Se preferir gerar URL absoluta, mantenha _external=True
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=False)
         
         # Processar campos de data
         data_inicio_str = request.form.get('data_inicio')
@@ -5510,17 +5515,14 @@ def criar_evento():
         hora_inicio_str = request.form.get('hora_inicio')
         hora_fim_str = request.form.get('hora_fim')
         
-        # Converter strings para objetos de data/hora
         data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d') if data_inicio_str else None
         data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') if data_fim_str else None
-        
-        # Processar hora (se necessário)
+
         from datetime import time
         hora_inicio = time.fromisoformat(hora_inicio_str) if hora_inicio_str else None
         hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
-    
 
-        # Cria o objeto Evento (modelo) normalmente
+        # Cria o objeto Evento
         novo_evento = Evento(
             cliente_id=current_user.id,
             nome=nome,
@@ -5537,45 +5539,27 @@ def criar_evento():
 
         try:
             db.session.add(novo_evento)
-            db.session.flush()  # Precisamos do ID do evento antes de criar tipos de inscrição
+            db.session.flush()  # precisamos do ID para criar tipos de inscrição
 
-            # Se o cliente tiver pagamento habilitado, trata a questão dos tipos de inscrição
+            # Se o cliente tiver pagamento habilitado, tratar tipos de inscrição
             if current_user.habilita_pagamento:
-                # Verifica se o user marcou "Inscrição Gratuita"
                 inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
+                # novo_evento.inscricao_gratuita = inscricao_gratuita  # caso queira gravar no próprio evento
 
-                # Se quiser, você pode criar um campo novo no modelo Evento para armazenar essa flag
-                # Exemplo: novo_evento.inscricao_gratuita = inscricao_gratuita
-
-                # Se não for gratuito, criamos os tipos de inscrição
                 if not inscricao_gratuita:
                     nomes_tipos = request.form.getlist('nome_tipo[]')
                     precos = request.form.getlist('preco_tipo[]')
-                    for nome, preco in zip(nomes_tipos, precos):
-                        # A classe EventoInscricaoTipo PRECISA estar definida e importada!
-                        novo_tipo = EventoInscricaoTipo(
-                            evento_id=novo_evento.id,
-                            nome=nome,
-                            preco=float(preco)
-                        )
-                        db.session.add(novo_tipo)
-
-                    # Aqui você pode salvar numa tabela "EventoInscricaoTipo" (por exemplo)
-                    # ou adaptar para alguma tabela existente.
                     if not nomes_tipos or not precos:
-                        raise ValueError(
-                            "Tipos de inscrição e preços são obrigatórios quando o evento não é gratuito."
-                        )
+                        raise ValueError("Tipos de inscrição e preços são obrigatórios quando não é gratuito.")
 
                     for nome, preco in zip(nomes_tipos, precos):
-                        # Exemplo de criação de um novo registro:
                         novo_tipo = EventoInscricaoTipo(
                             evento_id=novo_evento.id,
                             nome=nome,
                             preco=float(preco)
                         )
                         db.session.add(novo_tipo)
-            
+
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             return redirect(url_for('routes.dashboard_cliente'))
@@ -5584,7 +5568,8 @@ def criar_evento():
             db.session.rollback()
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
-    return render_template('configurar_evento.html')
+    # Retorna ao template, passando o 'evento' mesmo que seja None
+    return render_template('criar_evento_agendamento.html', evento=evento)
 
 @routes.route('/evento/<identifier>')
 def pagina_evento(identifier):
