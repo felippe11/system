@@ -4464,25 +4464,6 @@ def editar_cliente(cliente_id):
     return render_template('editar_cliente.html', cliente=cliente)
 
 
-@routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
-@login_required
-def excluir_cliente(cliente_id):
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
-    logger.info(f"Tentando excluir cliente ID: {cliente_id}")
-    cliente = Cliente.query.get_or_404(cliente_id)
-    try:
-        db.session.delete(cliente)
-        db.session.commit()
-        flash("Cliente excluído com sucesso!", "success")
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Erro ao excluir cliente {cliente_id}: {str(e)}")
-        flash(f"Erro ao excluir cliente: {str(e)}", "danger")
-    return redirect(url_for('routes.dashboard'))
-
 @routes.route('/formularios', methods=['GET'])
 @login_required
 def listar_formularios():
@@ -11527,3 +11508,98 @@ def gerar_folder_evento(evento_id):
     
     # Retornar o arquivo para download
     return send_file(pdf_path, as_attachment=True, download_name=f"Programacao_{evento.nome.replace(' ', '_')}.pdf")
+
+@routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
+@login_required
+def excluir_cliente(cliente_id):
+    if current_user.tipo != 'admin':
+        flash("Apenas administradores podem excluir clientes.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+
+    try:
+        from sqlalchemy import or_, text
+        from models import (
+            Usuario, Oficina, OficinaDia, Checkin, Inscricao, MaterialOficina, RelatorioOficina,
+            Ministrante, Evento, Patrocinador, CampoPersonalizadoCadastro, LinkCadastro,
+            ConfiguracaoCliente, CertificadoTemplate, Feedback, RespostaCampo, RespostaFormulario,
+            ConfiguracaoAgendamento, HorarioVisitacao, SalaVisitacao
+        )
+
+        # ===============================
+        # 1️⃣ PARTICIPANTES
+        # ===============================
+        participantes = Usuario.query.filter_by(cliente_id=cliente.id).all()
+
+        with db.session.no_autoflush:
+            for usuario in participantes:
+                Checkin.query.filter_by(usuario_id=usuario.id).delete()
+                Inscricao.query.filter_by(usuario_id=usuario.id).delete()
+                Feedback.query.filter_by(usuario_id=usuario.id).delete()
+                RespostaCampo.query.filter_by(resposta_formulario_id=usuario.id).delete()
+                RespostaFormulario.query.filter_by(usuario_id=usuario.id).delete()
+
+        Usuario.query.filter_by(cliente_id=cliente.id).delete()
+
+        # ===============================
+        # 2️⃣ OFICINAS
+        # ===============================
+        oficinas = Oficina.query.filter_by(cliente_id=cliente.id).all()
+
+        for oficina in oficinas:
+            Checkin.query.filter_by(oficina_id=oficina.id).delete()
+            Inscricao.query.filter_by(oficina_id=oficina.id).delete()
+            OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
+            MaterialOficina.query.filter_by(oficina_id=oficina.id).delete()
+            RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
+
+            db.session.execute(
+                text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
+                {'oficina_id': oficina.id}
+            )
+
+            db.session.delete(oficina)
+
+        # ===============================
+        # 3️⃣ MINISTRANTES
+        # ===============================
+        Ministrante.query.filter_by(cliente_id=cliente.id).delete()
+
+        # ===============================
+        # 4️⃣ EVENTOS E DEPENDÊNCIAS
+        # ===============================
+        eventos = Evento.query.filter(
+            or_(Evento.cliente_id == cliente.id, Evento.cliente_id == None)
+        ).all()
+
+        for evento in eventos:
+            with db.session.no_autoflush:
+                HorarioVisitacao.query.filter_by(evento_id=evento.id).delete()
+                ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).delete()
+                Patrocinador.query.filter_by(evento_id=evento.id).delete()
+                SalaVisitacao.query.filter_by(evento_id=evento.id).delete()  # ✅ NOVO
+
+                db.session.delete(evento)
+
+        # ===============================
+        # 5️⃣ CONFIGURAÇÕES E VINCULAÇÕES
+        # ===============================
+        CertificadoTemplate.query.filter_by(cliente_id=cliente.id).delete()
+        CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente.id).delete()
+        LinkCadastro.query.filter_by(cliente_id=cliente.id).delete()
+        ConfiguracaoCliente.query.filter_by(cliente_id=cliente.id).delete()
+
+        # ===============================
+        # 6️⃣ EXCLUI O CLIENTE
+        # ===============================
+        db.session.delete(cliente)
+        db.session.commit()
+
+        flash('Cliente e todos os dados vinculados foram excluídos com sucesso!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao excluir cliente: {str(e)}", 'danger')
+
+    return redirect(url_for('routes.dashboard'))

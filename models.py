@@ -446,16 +446,18 @@ class CampoFormulario(db.Model):
     __tablename__ = 'campos_formulario'
 
     id = db.Column(db.Integer, primary_key=True)
-    formulario_id = db.Column(db.Integer, db.ForeignKey('formularios.id'), nullable=False)
+    formulario_id = db.Column(db.Integer, db.ForeignKey('formularios.id'), nullable=True, default=1)  # Atualizado: permite NULL e default 1
     nome = db.Column(db.String(255), nullable=False)
-    tipo = db.Column(db.String(50), nullable=False)  # Exemplo: texto, número, arquivo, dropdown
-    opcoes = db.Column(db.Text, nullable=True)  # Para dropdowns/checklists (valores separados por vírgula)
+    tipo = db.Column(db.String(50), nullable=False)
+    opcoes = db.Column(db.Text, nullable=True)
     obrigatorio = db.Column(db.Boolean, default=False)
-    tamanho_max = db.Column(db.Integer, nullable=True)  # Para limitar caracteres
-    regex_validacao = db.Column(db.String(255), nullable=True)  # Validação customizada
+    tamanho_max = db.Column(db.Integer, nullable=True)
+    regex_validacao = db.Column(db.String(255), nullable=True)
+    descricao = db.Column(db.Text, nullable=True)  # Novo campo conforme banco do Render
 
     def __repr__(self):
         return f"<Campo {self.nome} ({self.tipo})>"
+
 
 class RespostaFormulario(db.Model):
     __tablename__ = 'respostas_formulario'
