@@ -130,6 +130,7 @@
                           </td>
                           <td>
                             <div class="d-flex gap-2">
+                              <!-- Botão de Editar -->
                               <button class="btn btn-sm btn-outline-warning"
                                       data-bs-toggle="modal"
                                       data-bs-target="#modalEditarCliente"
@@ -139,12 +140,22 @@
                                       data-habilita-pagamento="{{ cliente.habilita_pagamento }}">
                                 <i class="bi bi-pencil"></i>
                               </button>
-                      
+                            
+                              <!-- Botão Ativar/Inativar -->
                               <a href="{{ url_for('routes.toggle_cliente', cliente_id=cliente.id) }}" 
                                  class="btn btn-sm btn-outline-{{ 'secondary' if cliente.ativo else 'success' }}">
                                 {{ "Restringir" if cliente.ativo else "Ativar" }}
                               </a>
+                            
+                              <!-- Botão Excluir -->
+                              <form method="POST" action="{{ url_for('routes.excluir_cliente', cliente_id=cliente.id) }}"
+                                    onsubmit="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </form>
                             </div>
+                            
                           </td>
                         </tr>
                         {% endfor %}
