@@ -15,6 +15,9 @@ from models import Ministrante
 from models import Cliente
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
+from extensions import socketio
+
+
 # routes.py (no início do arquivo)
 from models import CampoPersonalizadoCadastro
 
@@ -362,46 +365,66 @@ def cadastro_participante(identifier=None):
 # ===========================
 
 @routes.route('/editar_participante', methods=['GET', 'POST'])
+@routes.route('/editar_participante/<int:usuario_id>/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
-def editar_participante():
-    # Verifica se o usuário logado é do tipo participante
-    if current_user.tipo != 'participante':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
-    
+def editar_participante(usuario_id=None, oficina_id=None):
+    # Caso o cliente esteja editando um usuário
+    if usuario_id:
+        if not hasattr(current_user, 'tipo') or current_user.tipo != 'cliente':
+            flash('Acesso negado!', 'danger')
+            return redirect(url_for('routes.dashboard'))
+
+        usuario = Usuario.query.get_or_404(usuario_id)
+        oficina = Oficina.query.get_or_404(oficina_id)
+    else:
+        # Participante editando a si mesmo
+        if not hasattr(current_user, 'tipo') or current_user.tipo != 'participante':
+            flash('Acesso negado!', 'danger')
+            return redirect(url_for('routes.dashboard'))
+        usuario = current_user
+        oficina = None  # Não necessário nesse caso
+
     if request.method == 'POST':
-        # Captura os dados enviados pelo formulário de edição
-        nome = request.form.get('nome')
-        cpf = request.form.get('cpf')
-        email = request.form.get('email')
-        formacao = request.form.get('formacao')
-        # Captura os arrays dos locais (estados e cidades)
-        estados = request.form.getlist('estados[]')
-        cidades = request.form.getlist('cidades[]')
-        # Atualiza os dados do usuário
-        current_user.nome = nome
-        current_user.cpf = cpf
-        current_user.email = email
-        current_user.formacao = formacao
-        # Armazena os locais como strings separadas por vírgula
-        current_user.estados = ','.join(estados) if estados else ''
-        current_user.cidades = ','.join(cidades) if cidades else ''
-        
-        # Se o participante informar uma nova senha, atualiza-a
+        usuario.nome = request.form.get('nome')
+        usuario.cpf = request.form.get('cpf')
+        usuario.email = request.form.get('email')
+        usuario.formacao = request.form.get('formacao')
+        usuario.estados = ','.join(request.form.getlist('estados[]') or [])
+        usuario.cidades = ','.join(request.form.getlist('cidades[]') or [])
+
         nova_senha = request.form.get('senha')
         if nova_senha:
-            current_user.senha = generate_password_hash(nova_senha)
-        
+            usuario.senha = generate_password_hash(nova_senha)
+
         try:
             db.session.commit()
             flash("Perfil atualizado com sucesso!", "success")
+            if usuario_id:
+                return redirect(url_for('routes.editar_participante', usuario_id=usuario.id, oficina_id=oficina_id))
             return redirect(url_for('routes.dashboard_participante'))
         except Exception as e:
             db.session.rollback()
             flash("Erro ao atualizar o perfil: " + str(e), "danger")
-    
-    # Renderiza o template passando o usuário logado (current_user)
-    return render_template('editar_participante.html', usuario=current_user)
+
+    return render_template('editar_participante.html', usuario=usuario, oficina=oficina)
+
+
+@routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
+@login_required
+def checkin_manual(usuario_id, oficina_id):
+    # Verifica se já existe check-in
+    checkin_existente = Checkin.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
+    if checkin_existente:
+        flash('Participante já realizou check-in.', 'warning')
+        return redirect(url_for('routes.dashboard') + '#gerenciar')
+
+    # Cria check-in com palavra_chave obrigatória
+    checkin = Checkin(usuario_id=usuario_id, oficina_id=oficina_id, palavra_chave="manual")
+    db.session.add(checkin)
+    db.session.commit()
+
+    flash('Check-in manual registrado com sucesso!', 'success')
+    return redirect(url_for('routes.dashboard') + '#gerenciar')
 
 
 # ===========================
@@ -1278,43 +1301,56 @@ def remover_inscricao(oficina_id):
 @routes.route('/leitor_checkin', methods=['GET'])
 @login_required
 def leitor_checkin():
-    # Se quiser que somente admin/staff faça check-in, verifique current_user.tipo
-    # if current_user.tipo not in ('admin', 'staff'):
-    #     flash("Acesso negado!", "danger")
-    #     return redirect(url_for('routes.dashboard'))
-
-    # 1. Obtém o token enviado pelo QR Code
     token = request.args.get('token')
     if not token:
-        flash("Token não fornecido ou inválido.", "danger")
+        mensagem = "Token não fornecido ou inválido."
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
+        flash(mensagem, "danger")
         return redirect(url_for('routes.dashboard'))
 
-    # 2. Busca a inscrição correspondente
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
     if not inscricao:
-        flash("Inscrição não encontrada para este token.", "danger")
+        mensagem = "Inscrição não encontrada para este token."
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
+        flash(mensagem, "danger")
         return redirect(url_for('routes.dashboard'))
 
-    # 3. Verifica se o check-in já foi feito anteriormente
     checkin_existente = Checkin.query.filter_by(
-        usuario_id=inscricao.usuario_id, 
+        usuario_id=inscricao.usuario_id,
         oficina_id=inscricao.oficina_id
     ).first()
     if checkin_existente:
-        flash("Check-in já foi realizado!", "warning")
+        mensagem = "Check-in já foi realizado!"
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
+        flash(mensagem, "warning")
         return redirect(url_for('routes.dashboard'))
 
-    # 4. Registra o novo check-in
     novo_checkin = Checkin(
         usuario_id=inscricao.usuario_id,
         oficina_id=inscricao.oficina_id,
-        palavra_chave="QR-AUTO"  # Se quiser indicar que foi via QR
+        palavra_chave="QR-AUTO"
     )
     db.session.add(novo_checkin)
     db.session.commit()
 
+    # Dados do check-in
+    dados_checkin = {
+        'participante': inscricao.usuario.nome,
+        'oficina': inscricao.oficina.titulo,
+        'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+    }
+
+    # Emitir evento Socket.IO
+    socketio.emit('novo_checkin', dados_checkin, broadcast=True)
+
+    # Retorno AJAX
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'status': 'ok', **dados_checkin})
+
     flash("Check-in realizado com sucesso!", "success")
-    # 5. Redireciona ao dashboard (admin ou participante, conforme sua lógica)
     return redirect(url_for('routes.dashboard'))
 
 @routes.route('/baixar_comprovante/<int:oficina_id>')
@@ -3421,7 +3457,7 @@ def gerenciar_ministrantes():
 
 
 
-@routes.route('/gerenciar_inscricoes', methods=['GET'])
+@routes.route('/gerenciar_inscricoes', methods=['GET', 'POST'])
 @login_required
 def gerenciar_inscricoes():
     if current_user.tipo not in ['admin', 'cliente']:
@@ -5067,52 +5103,6 @@ def upload_personalizacao_certificado():
 
     return render_template('upload_personalizacao_cert.html', templates=templates, cliente=cliente)
 
-@routes.route('/leitor_checkin_json', methods=['POST'])
-@login_required
-def leitor_checkin_json():
-    """
-    Esta rota faz o check-in de forma assíncrona (AJAX) e retorna JSON.
-    """
-    data = request.get_json()  # Lê os dados enviados em JSON
-    token = data.get('token')
-
-    if not token:
-        return jsonify({"status": "error", "message": "Token não fornecido ou inválido."}), 400
-
-    # Busca a inscrição correspondente
-    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
-    if not inscricao:
-        return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
-
-    # Verifica se o check-in já foi feito anteriormente
-    checkin_existente = Checkin.query.filter_by(
-        usuario_id=inscricao.usuario_id, 
-        oficina_id=inscricao.oficina_id
-    ).first()
-
-    if checkin_existente:
-        return jsonify({"status": "warning", "message": "Check-in já foi realizado!"}), 200
-
-    # Registra o novo check-in
-    novo_checkin = Checkin(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id,
-        palavra_chave="QR-AUTO"
-    )
-    db.session.add(novo_checkin)
-    db.session.commit()
-
-    # Para retornar o nome do participante e o nome da oficina,
-    # basta acessar as relações: inscricao.usuario e inscricao.oficina (por exemplo)
-    usuario_nome = inscricao.usuario.nome  # Ajuste conforme seu modelo
-    oficina_nome = inscricao.oficina.nome  # Ajuste conforme seu modelo
-
-    return jsonify({
-        "status": "success",
-        "message": "Check-in realizado com sucesso!",
-        "participante": usuario_nome,
-        "oficina": oficina_nome
-    }), 200
 
 
 @routes.route("/api/configuracao_cliente_atual", methods=["GET"])
@@ -11603,3 +11593,115 @@ def excluir_cliente(cliente_id):
         flash(f"Erro ao excluir cliente: {str(e)}", 'danger')
 
     return redirect(url_for('routes.dashboard'))
+
+@routes.route('/admin/evento/<int:evento_id>/inscritos')
+@login_required
+def listar_inscritos_evento(evento_id):
+    if current_user.tipo != 'cliente':
+        flash("Acesso restrito.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    evento = Evento.query.get_or_404(evento_id)
+    inscricoes = Inscricao.query.filter_by(evento_id=evento.id).all()
+
+    return render_template('listar_inscritos_evento.html', evento=evento, inscricoes=inscricoes)
+
+
+@routes.route('/admin/inscricao/<int:inscricao_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_inscricao_evento(inscricao_id):
+    inscricao = Inscricao.query.get_or_404(inscricao_id)
+    tipos = InscricaoTipo.query.filter_by(oficina_id=inscricao.oficina_id).all()
+
+    if request.method == 'POST':
+        tipo_id = request.form.get('tipo_inscricao_id')
+        inscricao.tipo_inscricao_id = tipo_id
+        db.session.commit()
+        flash("Inscrição atualizada com sucesso!", "success")
+        return redirect(url_for('listar_inscritos_evento', evento_id=inscricao.evento_id))
+
+    return render_template('editar_inscricao_evento.html', inscricao=inscricao, tipos=tipos)
+
+
+@routes.route('/admin/inscricao/<int:inscricao_id>/excluir', methods=['POST'])
+@login_required
+def excluir_inscricao_evento(inscricao_id):
+    inscricao = Inscricao.query.get_or_404(inscricao_id)
+    evento_id = inscricao.evento_id
+    db.session.delete(inscricao)
+    db.session.commit()
+    flash("Inscrição excluída com sucesso.", "warning")
+    return redirect(url_for('listar_inscritos_evento', evento_id=evento_id))
+
+
+@routes.route('/leitor_checkin_json', methods=['POST'])
+@login_required
+def leitor_checkin_json():
+    """
+    Rota AJAX que recebe token do QR, faz check-in e emite evento para Socket.IO.
+    """
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({"status": "error", "message": "Token não fornecido!"}), 400
+
+    # Busca a inscrição correspondente ao token
+    inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    if not inscricao:
+        return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
+    
+    # Verifica se check-in já foi feito
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id
+    ).first()
+    if checkin_existente:
+        return jsonify({"status": "warning", "message": "Check-in já realizado!"})
+
+    # Registra um novo checkin
+    novo_checkin = Checkin(
+        usuario_id=inscricao.usuario_id,
+        oficina_id=inscricao.oficina_id,
+        palavra_chave="QR-AUTO"
+    )
+    db.session.add(novo_checkin)
+    db.session.commit()
+
+    # Prepara dados para JSON
+    dados = {
+        "status": "success",
+        "message": "Check-in realizado com sucesso!",
+        "participante": inscricao.usuario.nome,
+        "oficina": inscricao.oficina.titulo,
+        "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+    }
+
+    # Emite evento para todos os clientes Socket.IO
+    socketio.emit('novo_checkin', {
+        'participante': dados["participante"],
+        'oficina': dados["oficina"],
+        'data_hora': dados["data_hora"]
+    }, broadcast=True)
+
+    return jsonify(dados)
+
+@routes.route('/lista_checkins_json')
+@login_required
+def lista_checkins_json():
+    """
+    Retorna os últimos check-ins em formato JSON (usado para exibir a tabela inicial).
+    """
+    # Ajuste se quiser limitar a quantidade
+    checkins = Checkin.query.order_by(Checkin.data_hora.desc()).limit(50).all()
+    
+    resultado = []
+    for c in checkins:
+        resultado.append({
+            'participante': c.usuario.nome,
+            'oficina': c.oficina.titulo,
+            'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        })
+
+    return jsonify(status='success', checkins=resultado)
+
