@@ -5,13 +5,18 @@ from datetime import datetime
 import os
 import logging
 import pytz
+from models import Usuario, Cliente, Ministrante  # ou só os que você precisa
+from extensions import socketio  # Importa a instância de SocketIO
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     app.jinja_env.add_extension('jinja2.ext.do')
     app.config["UPLOAD_FOLDER"] = "uploads" # Pasta para salvar os arquivos
-
+    
+    
+    # Initialize o SocketIO com o app
+    socketio.init_app(app)
     
     app.debug = True
     # Configuração de logging
@@ -51,6 +56,7 @@ def create_app():
 # Criar a aplicação
 app = create_app()
 
+
 # Função que converte um datetime para o horário de Brasília
 def convert_to_brasilia(dt):
     # Se a data não for "aware", considere que está em UTC
@@ -78,4 +84,25 @@ def index():
 
 # Executar apenas se rodar diretamente
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
+    
+from models import Usuario, Cliente, Ministrante  # ou só os que você precisa
+
+@login_manager.user_loader
+def load_user(user_id):
+    # Tenta carregar como Usuario
+    usuario = Usuario.query.get(user_id)
+    if usuario:
+        return usuario
+    
+    # Tenta carregar como Cliente
+    cliente = Cliente.query.get(user_id)
+    if cliente:
+        return cliente
+    
+    # Tenta carregar como Ministrante (opcional)
+    ministrante = Ministrante.query.get(user_id)
+    if ministrante:
+        return ministrante
+    
+    return None
