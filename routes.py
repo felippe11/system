@@ -44,7 +44,8 @@ from models import (
     HorarioVisitacao, 
     AgendamentoVisita, 
     AlunoVisitante, 
-    ProfessorBloqueado
+    ProfessorBloqueado,
+    RegraInscricaoEvento
 )
 
 from models import Evento
@@ -1796,7 +1797,7 @@ def gerar_pdf_inscritos_pdf(oficina_id):
             # Formatação de CPF se necessário (adicionar pontos e traço)
             if cpf and len(cpf) == 11 and cpf.isdigit():
                 cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
-            
+                
             # Usando Paragraph para permitir quebra de linha em cada coluna
             table_data.append([
                 Paragraph(str(idx), table_text_style),
@@ -3475,7 +3476,7 @@ def gerar_pdf_checkins_qr():
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from models import Checkin
     from extensions import db
-    
+
     # 1. Busca os Check-ins com palavra_chave="QR-AUTO"
     checkins_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').order_by(Checkin.data_hora.desc()).all()
     
@@ -3797,14 +3798,14 @@ def gerar_relatorio_mensagem():
                 tipo_inscricao_texto = "Inscrição sem limite de vagas"
             elif oficina.tipo_inscricao == "com_inscricao_com_limite":
                 tipo_inscricao_texto = "Inscrição com vagas limitadas"
-                
-            mensagem += (
-                f"\n🎓 *Oficina:* {oficina.titulo}\n"
+        
+        mensagem += (
+            f"\n🎓 *Oficina:* {oficina.titulo}\n"
                 f"🔹 *Tipo de Inscrição:* {tipo_inscricao_texto}\n"
                 f"🔹 *Vagas:* {vagas_texto}\n"
-                f"🔹 *Inscritos:* {num_inscritos}\n"
-                f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
-            )
+            f"🔹 *Inscritos:* {num_inscritos}\n"
+            f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+        )
         
         mensagem += "----------------------------------------\n"
 
@@ -5416,6 +5417,8 @@ def configurar_evento():
 
             # Atualizar tipos de inscrição
             if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
+                # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
+                RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
                 # Remover tipos existentes
                 EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
                 # Adicionar novos tipos
@@ -5542,11 +5545,11 @@ def criar_evento():
         
         data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d') if data_inicio_str else None
         data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') if data_fim_str else None
-
+        
         from datetime import time
         hora_inicio = time.fromisoformat(hora_inicio_str) if hora_inicio_str else None
         hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
-
+    
         # Cria o objeto Evento
         novo_evento = Evento(
             cliente_id=current_user.id,
@@ -5584,17 +5587,86 @@ def criar_evento():
                             preco=float(preco)
                         )
                         db.session.add(novo_tipo)
-
+            
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_cliente'))
+            flash('Agora você pode configurar as regras de inscrição para este evento.', 'info')
+            return redirect(url_for('routes.configurar_regras_inscricao', evento_id=novo_evento.id))
         
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
     # Retorna ao template, passando o 'evento' mesmo que seja None
-    return render_template('criar_evento_agendamento.html', evento=evento)
+    return render_template('criar_evento.html', evento=evento)
+
+@routes.route('/configurar_regras_inscricao', methods=['GET', 'POST'])
+@login_required
+def configurar_regras_inscricao():
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+    
+    # Lista todos os eventos do cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    # Evento selecionado (por padrão, None até que o usuário escolha)
+    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    evento = None
+    oficinas = []
+    regras = {}
+    
+    if evento_id:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if evento:
+            # Carrega oficinas do evento
+            oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
+            
+            # Carrega regras existentes
+            regras_db = RegraInscricaoEvento.query.filter_by(evento_id=evento.id).all()
+            for regra in regras_db:
+                regras[regra.tipo_inscricao_id] = {
+                    'limite_oficinas': regra.limite_oficinas,
+                    'oficinas_permitidas_list': regra.get_oficinas_permitidas_list()
+                }
+    
+    if request.method == 'POST' and evento:
+        try:
+            # Primeiro, remove todas as regras existentes para este evento
+            RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
+            
+            # Processa cada tipo de inscrição
+            for tipo in evento.tipos_inscricao_evento:
+                limite_oficinas = int(request.form.get(f'limite_oficinas_{tipo.id}', 0))
+                oficinas_permitidas = request.form.getlist(f'oficinas_{tipo.id}[]')
+                
+                # Cria nova regra
+                nova_regra = RegraInscricaoEvento(
+                    evento_id=evento.id,
+                    tipo_inscricao_id=tipo.id,
+                    limite_oficinas=limite_oficinas
+                )
+                
+                # Define as oficinas permitidas
+                nova_regra.set_oficinas_permitidas_list(oficinas_permitidas)
+                
+                db.session.add(nova_regra)
+            
+            db.session.commit()
+            flash('Regras de inscrição configuradas com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao configurar regras: {str(e)}', 'danger')
+    
+    return render_template(
+        'configurar_regras_inscricao.html', 
+        eventos=eventos, 
+        evento=evento, 
+        oficinas=oficinas,
+        regras=regras
+    )
 
 @routes.route('/evento/<identifier>')
 def pagina_evento(identifier):
@@ -10590,7 +10662,6 @@ def horarios_disponiveis_api():
         })
 
     return jsonify(eventos)
-
 @routes.route("/importar_oficinas", methods=["POST"])
 @login_required
 def importar_oficinas():
@@ -11603,3 +11674,4 @@ def excluir_cliente(cliente_id):
         flash(f"Erro ao excluir cliente: {str(e)}", 'danger')
 
     return redirect(url_for('routes.dashboard'))
+
