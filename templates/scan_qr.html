@@ -1,159 +1,183 @@
 {% extends "base.html" %}
-
 {% block title %}Escanear QR Code{% endblock %}
 
 {% block content %}
 <div class="container d-flex flex-column justify-content-center align-items-center" style="min-height: 80vh;">
     <h2 class="mb-4">Escanear QR Code</h2>
-    <!-- Contêiner de vídeo para o scanner -->
+
+    <!-- Scanner de vídeo -->
     <div id="qr-video" class="position-relative" style="width: 100%; max-width: 600px; aspect-ratio: 1/1;"></div>
     <div id="qr-status" class="mt-3 text-muted">Inicializando câmera...</div>
     <p id="qr-result" class="mt-4 text-center"></p>
 
-    <!-- Lista de participantes escaneados -->
-    <div class="mt-4 w-100">
-      <ul id="scanned-list" class="list-group"></ul>
-    </div>
+    <!-- Tabela de check-ins -->
+    <table id="tabelaCheckins" class="table table-bordered mt-4">
+        <thead class="table-light">
+            <tr>
+                <th>Nome</th>
+                <th>Oficina</th>
+                <th>Data/Hora</th>
+            </tr>
+        </thead>
+        <tbody id="checkinBody">
+            <!-- Dados inseridos dinamicamente -->
+        </tbody>
+    </table>
 
     <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>
 </div>
 
-<!-- CDN do html5-qrcode -->
+<!-- QR Scanner -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- Socket.IO -->
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
 <script>
-document.addEventListener("DOMContentLoaded", async function () {
-    const videoContainer = document.getElementById('qr-video');
-    const statusElement = document.getElementById('qr-status');
-    const resultElement = document.getElementById('qr-result');
-    const scannedList = document.getElementById('scanned-list');
+    /**
+     * 1) Primeiro definimos as variáveis e funções
+     */
     
     let scanner = null;
-
-    try {
-        scanner = new Html5Qrcode('qr-video');
-
-        // Configurações do scanner
-        const config = {
-            fps: 15,
-            qrbox: { width: 400, height: 400 },
-            aspectRatio: 1.0,
-            disableFlip: false
-        };
-
-        // Tenta usar a câmera traseira
-        const cameraId = await Html5Qrcode.getCameras()
-            .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
-
-        await scanner.start(
-            cameraId || { facingMode: 'environment' },
-            config,
-            onScanSuccess,
-            onScanError
-        );
-
-        statusElement.textContent = 'Aponte para o QR Code';
-        
-    } catch (error) {
-        console.error('Camera error:', error);
-        statusElement.textContent = 'Erro ao acessar a câmera. Verifique as permissões.';
-        resultElement.innerHTML = `<div class="text-danger">${error.message}</div>`;
-    }
-
-    /**
-     * Função chamada quando o QR Code é lido com sucesso.
-     */
-    async function onScanSuccess(decodedText) {
-    // 1. Tentar tratar decodedText como URL
+    const checkinsRegistrados = new Set(); // Evita duplicar a mesma pessoa+oficina
+    
+    function onScanSuccess(decodedText) {
         let scannedToken = null;
         try {
-            // Se for uma URL, extrai o parâmetro 'token'
+            // Se for URL
             const urlObj = new URL(decodedText);
             scannedToken = urlObj.searchParams.get('token');
         } catch (e) {
-            // Se não for URL válida, então interpretamos como token cru
+            // Caso não seja URL
             scannedToken = decodedText;
         }
-
-        // 2. Se não veio nada no token, mostrar erro (ou apenas sair)
+    
+        const resultElement = document.getElementById('qr-result');
         if (!scannedToken) {
-            resultElement.innerHTML = `
-                <div class="alert alert-danger">
-                    QR Code inválido ou sem token.
-                </div>
-            `;
+            resultElement.innerHTML = `<div class="alert alert-danger">QR Code inválido ou sem token.</div>`;
             return;
         }
-
-        // 3. Agora chama a rota AJAX passando apenas o token puro
+        fazerCheckinAjax(scannedToken);
+    }
+    
+    function onScanError(errorMessage) {
+        console.debug('Erro de leitura:', errorMessage);
+    }
+    
+    async function fazerCheckinAjax(token) {
+        const resultElement = document.getElementById('qr-result');
+    
         try {
             const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token: scannedToken })
+                body: JSON.stringify({ token })
             });
-
+    
             const data = await response.json();
-
             if (data.status === "success") {
-                // Exibir mensagem e adicionar na lista
-                resultElement.innerHTML = `
-                    <div class="alert alert-success">
-                        ${data.message}
-                    </div>
-                `;
-                addScannedItem(data.participante, data.oficina);
-
+                resultElement.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+                addScannedItem(data.participante, data.oficina, data.data_hora);
             } else if (data.status === "warning") {
-                resultElement.innerHTML = `
-                    <div class="alert alert-warning">
-                        ${data.message}
-                    </div>
-                `;
+                // ex.: "Check-in já realizado!"
+                resultElement.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
             } else {
                 // Erro
-                resultElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        ${data.message}
-                    </div>
-                `;
+                resultElement.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
             }
-
         } catch (err) {
             console.error("Erro no fetch:", err);
-            resultElement.innerHTML = `
-                <div class="alert alert-danger">
-                    Ocorreu um erro ao processar o check-in.
-                </div>
-            `;
+            resultElement.innerHTML = `<div class="alert alert-danger">Erro ao processar o check-in.</div>`;
         }
-        
-        // NÂO paramos o scanner, para continuar escaneando
     }
-
+    
+    function addScannedItem(participante, oficina, dataHora) {
+        // Monta a "chave"
+        const chave = participante + oficina;
+        // Se já existe, sai
+        if (checkinsRegistrados.has(chave)) return;
+    
+        // Senão, registra que já apareceu
+        checkinsRegistrados.add(chave);
+    
+        const agora = dataHora || new Date().toLocaleString('pt-BR', {
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            day: '2-digit', month: '2-digit', year: 'numeric'
+        });
+    
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${participante}</td>
+            <td>${oficina}</td>
+            <td>${agora}</td>
+        `;
+        const tbody = document.getElementById('checkinBody');
+        tbody.insertBefore(tr, tbody.firstChild);
+    }
+    
+    async function carregarCheckinsAnteriores() {
+        try {
+            const resp = await fetch("{{ url_for('routes.lista_checkins_json') }}");
+            const data = await resp.json();
+            if (data.status === 'success' && Array.isArray(data.checkins)) {
+                data.checkins.forEach(chk => {
+                    addScannedItem(chk.participante, chk.oficina, chk.data_hora);
+                });
+            }
+        } catch (err) {
+            console.error("Erro ao carregar check-ins:", err);
+        }
+    }
+    
     /**
-     * Função chamada quando há erro na leitura do QR Code
+     * 2) Depois chamamos o DOMContentLoaded, usando as funções definidas acima
      */
-    function onScanError(errorMessage) {
-        // Se ficar poluindo muito o console, só deixe um console.debug ou remova
-        console.debug('Erro na leitura:', errorMessage);
-    }
-
-    /**
-     * Adiciona item na lista de check-ins recentes
-     */
-    function addScannedItem(participante, oficina) {
-        const li = document.createElement('li');
-        li.classList.add('list-group-item');
-        li.textContent = `${participante} fez check-in em "${oficina}"`;
-        scannedList.prepend(li); // prepend para mostrar o mais recente no topo
-    }
-
-    // Cleanup ao sair da página
-    window.addEventListener('beforeunload', () => {
-        if (scanner) {
-            scanner.stop();
+    document.addEventListener("DOMContentLoaded", async function () {
+        // Carrega check-ins anteriores antes de iniciar
+        await carregarCheckinsAnteriores();
+    
+        const statusElement = document.getElementById('qr-status');
+        const resultElement = document.getElementById('qr-result');
+    
+        try {
+            scanner = new Html5Qrcode('qr-video');
+    
+            const config = {
+                fps: 15,
+                qrbox: { width: 400, height: 400 },
+                aspectRatio: 1.0,
+                disableFlip: false
+            };
+    
+            const cameraId = await Html5Qrcode.getCameras()
+                .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
+    
+            await scanner.start(
+                cameraId || { facingMode: 'environment' },
+                config,
+                onScanSuccess,
+                onScanError
+            );
+    
+            statusElement.textContent = 'Aponte para o QR Code';
+            
+        } catch (error) {
+            console.error('Erro na câmera:', error);
+            statusElement.textContent = 'Erro ao acessar a câmera. Verifique as permissões.';
+            resultElement.innerHTML = `<div class="text-danger">${error.message}</div>`;
+        }
+    
+        window.addEventListener('beforeunload', () => {
+            if (scanner) scanner.stop();
+        });
+    });
+    
+    // Recebe atualizações em tempo real via Socket.IO
+    const socket = io(); // conectar no mesmo host
+    
+    socket.on('novo_checkin', function (data) {
+        if (data.participante && data.oficina && data.data_hora) {
+            addScannedItem(data.participante, data.oficina, data.data_hora);
         }
     });
-});
-</script>
+    </script>
 {% endblock %}
