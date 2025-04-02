@@ -376,16 +376,20 @@
               </div>
             </div>
 
-            <!-- Coluna 2: Certificados -->
+            <!-- Coluna 2: Certificados e Regras -->
             <div class="col-md-6">
               <div class="card shadow h-100">
                 <div class="card-header bg-primary text-white">
-                  <h5 class="m-0 fw-bold"><i class="bi bi-award me-2"></i>Gestão de Certificados</h5>
+                  <h5 class="m-0 fw-bold"><i class="bi bi-award me-2"></i>Gestão de Certificados e Regras</h5>
                 </div>
                 <div class="card-body">
                   <div class="d-grid gap-3">
                     <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" class="btn btn-success btn-lg">
                       <i class="bi bi-image me-2"></i> Personalizar Certificado
+                    </a>
+                    
+                    <a href="{{ url_for('routes.configurar_regras_inscricao') }}" class="btn btn-warning btn-lg">
+                      <i class="bi bi-gear-fill me-2"></i> Configurar Regras de Inscrição
                     </a>
                     
                     <div class="card bg-light">
