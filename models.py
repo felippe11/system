@@ -33,8 +33,9 @@ class Usuario(db.Model, UserMixin):
     tipo = db.Column(db.String(20), nullable=False, default='participante')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Alterado para permitir NULL
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)  # Novo campo para associar usuário ao evento
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=True)
 
-    
+    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('usuarios', lazy=True))
     cliente = db.relationship('Cliente', backref=db.backref('usuarios', lazy=True))
     evento = db.relationship('Evento', backref=db.backref('usuarios', lazy=True))
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
