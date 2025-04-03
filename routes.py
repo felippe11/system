@@ -5586,8 +5586,7 @@ def criar_evento():
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
     
-    # Para evitar o erro 'evento is undefined' no template,
-    # vamos inicializar a variável evento como None
+    # Para evitar o erro 'evento is undefined' no template
     evento = None
 
     if request.method == 'POST':
