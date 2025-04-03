@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Configurar Regras de Inscrição{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <!-- Header section -->
+  <div class="bg-primary bg-gradient rounded-lg p-4 mb-4 shadow">
+    <h1 class="h3 fw-bold text-white mb-0">
+      <i class="bi bi-gear-fill me-2"></i>Configurar Regras de Inscrição
+    </h1>
+  </div>
+
+  <!-- Main form card -->
+  <div class="card border-0 shadow">
+    <div class="card-body p-4 bg-light">
+      <!-- Seleção de Evento -->
+      <div class="mb-4">
+        <label for="evento_id" class="form-label fw-semibold">Selecionar Evento</label>
+        <select id="evento_id" class="form-select" onchange="carregarEvento(this.value)">
+          <option value="">-- Selecione um Evento --</option>
+          {% for ev in eventos %}
+            <option value="{{ ev.id }}" {% if evento and evento.id == ev.id %}selected{% endif %}>
+              {{ ev.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="regras-container" {% if not evento %}class="d-none"{% endif %}>
+        <form method="POST" id="regras-form">
+          <input type="hidden" name="evento_id" id="form-evento-id" value="{{ evento.id if evento else '' }}">
+          
+          <!-- Tipos de Inscrição -->
+          <div class="mb-4">
+            <h5 class="border-bottom border-primary pb-2 mb-3">
+              <i class="bi bi-ticket-perforated me-2"></i>Tipos de Inscrição Disponíveis
+            </h5>
+            
+            <div id="tipos-inscricao-list" class="mb-3">
+              {% if evento and evento.tipos_inscricao_evento %}
+                {% for tipo in evento.tipos_inscricao_evento %}
+                <div class="card mb-3">
+                  <div class="card-header bg-light">
+                    <h6 class="mb-0">{{ tipo.nome }} {% if tipo.preco > 0 %}(R$ {{ "%.2f"|format(tipo.preco) }}){% else %}(Gratuito){% endif %}</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="mb-3">
+                      <label class="form-label">Limite de Oficinas:</label>
+                      <div class="input-group">
+                        <input type="number" class="form-control" name="limite_oficinas_{{ tipo.id }}" 
+                              value="{{ regras[tipo.id].limite_oficinas if regras and tipo.id in regras else '0' }}" min="0">
+                        <span class="input-group-text">oficinas</span>
+                        <div class="form-text w-100">Digite 0 para permitir inscrição em todas as oficinas disponíveis.</div>
+                      </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label">Oficinas Permitidas:</label>
+                      <div class="form-check mb-2">
+                        <input class="form-check-input select-all-oficinas" type="checkbox" 
+                              id="todas-oficinas-{{ tipo.id }}" data-tipo-id="{{ tipo.id }}">
+                        <label class="form-check-label" for="todas-oficinas-{{ tipo.id }}">
+                          Selecionar todas as oficinas
+                        </label>
+                      </div>
+                      
+                      <div class="oficinas-list border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                        {% if oficinas %}
+                          {% for oficina in oficinas %}
+                          <div class="form-check">
+                            <input class="form-check-input oficina-checkbox" type="checkbox" 
+                                  name="oficinas_{{ tipo.id }}[]" value="{{ oficina.id }}" 
+                                  id="oficina-{{ tipo.id }}-{{ oficina.id }}"
+                                  data-tipo-id="{{ tipo.id }}"
+                                  {% if regras and tipo.id in regras and oficina.id in regras[tipo.id].oficinas_permitidas_list %}checked{% endif %}>
+                            <label class="form-check-label" for="oficina-{{ tipo.id }}-{{ oficina.id }}">
+                              {{ oficina.titulo }}
+                            </label>
+                          </div>
+                          {% endfor %}
+                        {% else %}
+                          <p class="text-muted">Nenhuma oficina disponível para este evento.</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>Nenhum tipo de inscrição configurado para este evento.
+                  <a href="{{ url_for('routes.configurar_evento') }}" class="alert-link">Clique aqui</a> para configurar os tipos de inscrição.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="d-flex justify-content-end gap-3 pt-4 border-top mt-4">
+            <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-outline-secondary px-4">
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-2"></i>Salvar Regras
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Mensagem quando nenhum evento está selecionado -->
+      <div id="sem-evento-msg" class="alert alert-info {% if evento %}d-none{% endif %}">
+        <i class="bi bi-info-circle me-2"></i>Selecione um evento para configurar as regras de inscrição.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function carregarEvento(eventoId) {
+  if (eventoId) {
+    window.location.href = "{{ url_for('routes.configurar_regras_inscricao') }}?evento_id=" + eventoId;
+  } else {
+    document.getElementById('regras-container').classList.add('d-none');
+    document.getElementById('sem-evento-msg').classList.remove('d-none');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Manipular a seleção de todas as oficinas
+  document.querySelectorAll('.select-all-oficinas').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+      const tipoId = this.dataset.tipoId;
+      const isChecked = this.checked;
+      
+      document.querySelectorAll(`.oficina-checkbox[data-tipo-id="${tipoId}"]`).forEach(function(oficinaCb) {
+        oficinaCb.checked = isChecked;
+      });
+    });
+  });
+
+  // Verificar estado inicial dos checkboxes "selecionar todos"
+  document.querySelectorAll('.select-all-oficinas').forEach(function(checkbox) {
+    const tipoId = checkbox.dataset.tipoId;
+    const oficinasCheckboxes = document.querySelectorAll(`.oficina-checkbox[data-tipo-id="${tipoId}"]`);
+    const allChecked = Array.from(oficinasCheckboxes).every(cb => cb.checked);
+    
+    if (oficinasCheckboxes.length > 0 && allChecked) {
+      checkbox.checked = true;
+    }
+  });
+
+  // Atualizar checkbox "selecionar todos" quando oficinas individuais são alteradas
+  document.querySelectorAll('.oficina-checkbox').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+      const tipoId = this.dataset.tipoId;
+      const oficinasCheckboxes = document.querySelectorAll(`.oficina-checkbox[data-tipo-id="${tipoId}"]`);
+      const allChecked = Array.from(oficinasCheckboxes).every(cb => cb.checked);
+      
+      document.getElementById(`todas-oficinas-${tipoId}`).checked = allChecked;
+    });
+  });
+});
+</script>
+{% endblock %}

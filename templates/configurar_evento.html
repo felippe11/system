@@ -57,6 +57,7 @@
         <!-- Campos de coordenadas ocultos -->
         <input type="hidden" id="latitude" name="latitude" value="{{ evento.latitude if evento else '' }}">
         <input type="hidden" id="longitude" name="longitude" value="{{ evento.longitude if evento else '' }}">
+        <input type="hidden" id="link_mapa" name="link_mapa" value="{{ evento.link_mapa if evento else '' }}">
         
         <div class="mb-3">
           <label class="form-label fw-semibold">Banner do Evento</label>
