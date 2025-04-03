@@ -33,8 +33,9 @@ class Usuario(db.Model, UserMixin):
     tipo = db.Column(db.String(20), nullable=False, default='participante')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Alterado para permitir NULL
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)  # Novo campo para associar usuário ao evento
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=True)
 
-    
+    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('usuarios', lazy=True))
     cliente = db.relationship('Cliente', backref=db.backref('usuarios', lazy=True))
     evento = db.relationship('Evento', backref=db.backref('usuarios', lazy=True))
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
@@ -276,14 +277,40 @@ class EventoInscricaoTipo(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     preco = db.Column(db.Float, nullable=False)
 
-    # Relação com Evento
-    evento = db.relationship("Evento", backref="tipos_inscricao_evento")
+    # Relação com Evento - removendo backref para evitar conflito
+    evento = db.relationship("Evento")
 
     def __init__(self, evento_id, nome, preco):
         self.evento_id = evento_id
         self.nome = nome
         self.preco = preco
 
+
+class RegraInscricaoEvento(db.Model):
+    __tablename__ = 'regra_inscricao_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    limite_oficinas = db.Column(db.Integer, nullable=False, default=0)  # 0 = sem limite
+    oficinas_permitidas = db.Column(db.Text, nullable=True)  # IDs das oficinas separados por vírgula
+
+    evento = db.relationship('Evento', backref=db.backref('regras_inscricao', lazy=True))
+    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('regras', lazy=True))
+
+    def __init__(self, evento_id, tipo_inscricao_id, limite_oficinas=0, oficinas_permitidas=None):
+        self.evento_id = evento_id
+        self.tipo_inscricao_id = tipo_inscricao_id
+        self.limite_oficinas = limite_oficinas
+        self.oficinas_permitidas = oficinas_permitidas
+
+    def get_oficinas_permitidas_list(self):
+        if not self.oficinas_permitidas:
+            return []
+        return [int(id) for id in self.oficinas_permitidas.split(',') if id]
+
+    def set_oficinas_permitidas_list(self, oficinas_ids):
+        self.oficinas_permitidas = ','.join(str(id) for id in oficinas_ids)
 
 
 # =================================
@@ -553,8 +580,21 @@ class Evento(db.Model):
         publico = db.Column(db.Boolean, default=True)
 
         cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
-        # A relação com EventoInscricaoTipo já está definida em EventoInscricaoTipo via backref
+        # Modificando o relacionamento para evitar conflito de backref
+        tipos_inscricao = db.relationship('EventoInscricaoTipo', foreign_keys=[EventoInscricaoTipo.evento_id], lazy=True)
         
+        @property
+        def tipos_inscricao_evento(self):
+            """Propriedade para compatibilidade com os templates existentes"""
+            return self.tipos_inscricao
+
+        def get_regras_inscricao(self, tipo_inscricao_id):
+            """Retorna as regras de inscrição para um tipo específico de inscrição"""
+            for regra in self.regras_inscricao:
+                if regra.tipo_inscricao_id == tipo_inscricao_id:
+                    return regra
+            return None
+
 
 class FormularioTemplate(db.Model):
     __tablename__ = 'formulario_templates'

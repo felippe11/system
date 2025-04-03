@@ -263,7 +263,7 @@
                       <i class="bi bi-person-badge me-2"></i> Ministrantes
                     </a>
                     
-
+                    
                     <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-info">
                       <i class="bi bi-ui-checks me-2"></i> Formulários
                     </a>
@@ -381,16 +381,20 @@
               </div>
             </div>
 
-            <!-- Coluna 2: Certificados -->
+            <!-- Coluna 2: Certificados e Regras -->
             <div class="col-md-6">
               <div class="card shadow h-100">
                 <div class="card-header bg-primary text-white">
-                  <h5 class="m-0 fw-bold"><i class="bi bi-award me-2"></i>Gestão de Certificados</h5>
+                  <h5 class="m-0 fw-bold"><i class="bi bi-award me-2"></i>Gestão de Certificados e Regras</h5>
                 </div>
                 <div class="card-body">
                   <div class="d-grid gap-3">
                     <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" class="btn btn-success btn-lg">
                       <i class="bi bi-image me-2"></i> Personalizar Certificado
+                    </a>
+                    
+                    <a href="{{ url_for('routes.configurar_regras_inscricao') }}" class="btn btn-warning btn-lg">
+                      <i class="bi bi-gear-fill me-2"></i> Configurar Regras de Inscrição
                     </a>
                     
                     <div class="card bg-light">
@@ -409,65 +413,65 @@
           
         </div><!-- /ABA 3: CRIAR NOVO -->
 
-      <!-- ABA 4: CONFIGURAÇÕES -->
-<div class="tab-pane fade" id="configuracoes" role="tabpanel">
-  <div class="row g-4">
-    <!-- Configurações do Sistema -->
+        <!-- ABA 4: CONFIGURAÇÕES -->
+        <div class="tab-pane fade" id="configuracoes" role="tabpanel">
+          <div class="row g-4">
+            <!-- Configurações do Sistema -->
     <div class="row">
       <!-- Coluna 1 (Esquerda) -->
-      <div class="col-md-6">
+            <div class="col-md-6">
         <!-- CARD: Configurações do Sistema -->
         <div class="card shadow mb-4">
-          <div class="card-header bg-info text-white">
-            <h5 class="m-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Configurações do Sistema</h5>
-          </div>
-          <div class="card-body">
-            <div class="list-group mb-4">
-              <!-- Check-in Global -->
-              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                <div>
-                  <h6 class="mb-0 fw-semibold">Check-in Global</h6>
-                  <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
+                <div class="card-header bg-info text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-gear-fill me-2"></i>Configurações do Sistema</h5>
                 </div>
-                <button type="button" 
-                        id="btnToggleCheckin"
-                        class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
+                <div class="card-body">
+                  <div class="list-group mb-4">
+                    <!-- Check-in Global -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Check-in Global</h6>
+                        <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
+                      </div>
+                      <button type="button" 
+                              id="btnToggleCheckin"
+                              class="btn btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
                         data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}">
-                  {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
-                </button>
-              </div>
+                        {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
+                      </button>
+                    </div>
 
-              <!-- Feedback -->
-              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                <div>
-                  <h6 class="mb-0 fw-semibold">Feedback dos Participantes</h6>
+                    <!-- Feedback -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Feedback dos Participantes</h6>
                   <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
-                </div>
-                <button type="button"
-                        id="btnToggleFeedback"
-                        class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
+                      </div>
+                      <button type="button"
+                              id="btnToggleFeedback"
+                              class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
                         data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}">
-                  {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
-                </button>
-              </div>
+                        {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
+                      </button>
+                    </div>
 
-              <!-- Certificado -->
-              <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                <div>
-                  <h6 class="mb-0 fw-semibold">Download de Certificado</h6>
-                  <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
-                </div>
-                <button type="button" 
-                        id="btnToggleCertificado"
-                        class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
+                    <!-- Certificado -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                      <div>
+                        <h6 class="mb-0 fw-semibold">Download de Certificado</h6>
+                        <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
+                      </div>
+                      <button type="button" 
+                              id="btnToggleCertificado"
+                              class="btn btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
                         data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}">
-                  {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
-                </button>
-              </div>
-            </div>
+                        {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
+                      </button>
+                    </div>
+                  </div>
 
-            <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-primary w-100">
-              <i class="bi bi-calendar-event me-2"></i> Configurar Eventos
+                  <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-primary w-100">
+                    <i class="bi bi-calendar-event me-2"></i> Configurar Eventos
             </a>
           </div>
         </div>
@@ -493,17 +497,17 @@
               <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}"
                  class="btn btn-info">
                 <i class="bi bi-file-earmark-excel me-1"></i>Modelo Atividades
-              </a>
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
         <!-- CARD: Campos Personalizados para Cadastro -->
         <div class="card shadow mb-4">
-          <div class="card-header bg-primary text-white">
+                    <div class="card-header bg-primary text-white">
             <h5 class="m-0 fw-bold"><i class="bi bi-ui-checks-grid me-2"></i>Campos Personalizados para Cadastro</h5>
-          </div>
-          <div class="card-body">
+                    </div>
+                    <div class="card-body">
             <form method="POST" action="{{ url_for('routes.adicionar_campo_personalizado') }}">
               <div class="input-group mb-3">
                 <input type="text" class="form-control" name="nome_campo" placeholder="Nome do Campo" required>
@@ -518,9 +522,9 @@
                 </div>
                 <button class="btn btn-success" type="submit">
                   <i class="bi bi-plus-circle me-1"></i>Adicionar
-                </button>
-              </div>
-            </form>
+                            </button>
+                          </div>
+                        </form>
 
             <ul class="list-group">
               {% for campo in current_user.campos_personalizados %}
@@ -536,36 +540,36 @@
                   <form method="POST" action="{{ url_for('routes.remover_campo_personalizado', campo_id=campo.id) }}" onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
                     <button class="btn btn-sm btn-danger" type="submit">
                       <i class="bi bi-trash-fill"></i>
-                    </button>
-                  </form>
+                            </button>
+                        </form>
                 </li>
               {% else %}
                 <li class="list-group-item text-center text-muted">Nenhum campo personalizado cadastrado.</li>
               {% endfor %}
             </ul>
-          </div>
-        </div>
+                      </div>
+                    </div>
     <!-- CARD: Manutenção do Sistema -->
     <div class="card shadow mb-4">
-      <div class="card-header bg-danger text-white">
-        <h5 class="m-0 fw-bold"><i class="bi bi-shield-exclamation me-2"></i>Manutenção do Sistema</h5>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-warning">
-          <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Atenção!</h6>
-          <p class="mb-0">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
-        </div>
+                <div class="card-header bg-danger text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-shield-exclamation me-2"></i>Manutenção do Sistema</h5>
+                </div>
+                <div class="card-body">
+                  <div class="alert alert-warning">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Atenção!</h6>
+                    <p class="mb-0">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
+                  </div>
 
-        <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
-              onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');"
-              class="mt-3">
-          <button type="submit" class="btn btn-danger w-100">
+                  <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
+                        onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');"
+                        class="mt-3">
+                    <button type="submit" class="btn btn-danger w-100">
             <i class="bi bi-trash-fill me-2"></i> Excluir Todas as Atividades
-          </button>
-        </form>
-      </div>
-    </div>
-      </div>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
 
       <!-- Coluna 2 (Direita) -->
       <div class="col-md-6">
