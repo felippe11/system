@@ -5604,7 +5604,6 @@ def criar_evento():
             caminho_banner = os.path.join('static/banners', filename)
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
-            # Se preferir gerar URL absoluta, mantenha _external=True
             banner_url = url_for('static', filename=f'banners/{filename}', _external=False)
         
         # Processar campos de data
@@ -5619,6 +5618,9 @@ def criar_evento():
         from datetime import time
         hora_inicio = time.fromisoformat(hora_inicio_str) if hora_inicio_str else None
         hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
+        
+        # Verificar se é gratuito
+        inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
     
         # Cria o objeto Evento
         novo_evento = Evento(
@@ -5632,7 +5634,8 @@ def criar_evento():
             data_inicio=data_inicio,
             data_fim=data_fim,
             hora_inicio=hora_inicio,
-            hora_fim=hora_fim
+            hora_fim=hora_fim,
+            inscricao_gratuita=inscricao_gratuita  # Salvar a flag no evento
         )
 
         try:
@@ -5641,27 +5644,32 @@ def criar_evento():
 
             # Se o cliente tiver pagamento habilitado, tratar tipos de inscrição
             if current_user.habilita_pagamento:
-                inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
-                # novo_evento.inscricao_gratuita = inscricao_gratuita  # caso queira gravar no próprio evento
-
-                if not inscricao_gratuita:
-                    nomes_tipos = request.form.getlist('nome_tipo[]')
-                    precos = request.form.getlist('preco_tipo[]')
-                    if not nomes_tipos or not precos:
-                        raise ValueError("Tipos de inscrição e preços são obrigatórios quando não é gratuito.")
-
-                    for nome, preco in zip(nomes_tipos, precos):
+                nomes_tipos = request.form.getlist('nome_tipo[]')
+                precos = request.form.getlist('preco_tipo[]')
+                
+                # Verificar se os tipos de inscrição foram fornecidos
+                if not nomes_tipos:
+                    raise ValueError("É necessário definir pelo menos um tipo de inscrição.")
+                
+                # Para eventos gratuitos, definir todos os preços como 0.00
+                if inscricao_gratuita:
+                    precos = ['0.00'] * len(nomes_tipos)
+                
+                # Criar tipos de inscrição para o evento
+                for i, nome in enumerate(nomes_tipos):
+                    if nome.strip():  # Só criar se o nome não estiver vazio
+                        preco = 0.0 if inscricao_gratuita else float(precos[i])
                         novo_tipo = EventoInscricaoTipo(
                             evento_id=novo_evento.id,
                             nome=nome,
-                            preco=float(preco)
+                            preco=preco
                         )
                         db.session.add(novo_tipo)
             
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             flash('Agora você pode configurar as regras de inscrição para este evento.', 'info')
-            return redirect(url_for('routes.configurar_regras_inscricao', evento_id=novo_evento.id))
+            return redirect(url_for('routes.dashboard_cliente'))
         
         except Exception as e:
             db.session.rollback()
@@ -5669,6 +5677,7 @@ def criar_evento():
 
     # Retorna ao template, passando o 'evento' mesmo que seja None
     return render_template('criar_evento.html', evento=evento)
+
 
 @routes.route('/configurar_regras_inscricao', methods=['GET', 'POST'])
 @login_required
