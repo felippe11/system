@@ -295,6 +295,38 @@
     color: var(--dark-text);
   }
   
+  /* Informações do tipo de inscrição */
+  .tipo-inscricao-info {
+    background: linear-gradient(135deg, rgba(58, 134, 255, 0.1), rgba(131, 56, 236, 0.1));
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin: 1.5rem auto;
+    max-width: 800px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid var(--primary-color);
+  }
+  
+  .tipo-inscricao-info p {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    color: var(--dark-text);
+  }
+  
+  .tipo-inscricao-info strong {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+  
+  .limite-oficinas {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .limite-oficinas i {
+    color: var(--info-color);
+  }
+  
   /* Animações */
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -317,6 +349,22 @@
   <div class="dashboard-header text-center">
     <h2>Bem-vindo(a), <b>{{ usuario.nome }}</b></h2>
     <h3>Abaixo você encontra as atividades disponíveis</h3>
+    
+    {% if usuario.tipo_inscricao %}
+      <div class="tipo-inscricao-info">
+        <p>Seu tipo de inscrição: <strong>{{ usuario.tipo_inscricao.nome }}</strong></p>
+        
+        {% set regra = usuario.tipo_inscricao.regras|first %}
+        {% if regra and regra.limite_oficinas > 0 %}
+          {% set inscricoes_evento = usuario.inscricoes|selectattr('oficina.evento_id', 'equalto', regra.evento_id)|list|length %}
+          <p class="limite-oficinas">
+            <i class="fas fa-info-circle"></i> 
+            Você pode se inscrever em até <strong>{{ regra.limite_oficinas }}</strong> oficinas 
+            ({{ inscricoes_evento }} de {{ regra.limite_oficinas }} utilizadas)
+          </p>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 
   {% if formularios_disponiveis %}
@@ -426,9 +474,15 @@
 
                   <!-- Se não estiver inscrito ainda, houver vagas e for do tipo com inscrição -->
                   {% elif oficina.vagas > 0 and oficina.tipo_inscricao != 'sem_inscricao' %}
-                      <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
-                          <i class="fas fa-check-circle"></i> Inscrever-se
-                      </button>
+                      {% if oficina.disponivel_para_inscricao %}
+                          <button onclick="inscrever('{{ oficina.id }}')" class="btn btn-success w-100">
+                              <i class="fas fa-check-circle"></i> Inscrever-se
+                          </button>
+                      {% else %}
+                          <div class="alert alert-warning text-center mb-3">
+                              <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
+                          </div>
+                      {% endif %}
 
                   <!-- Se não houver vagas (mas se o usuário já estiver inscrito, exibimos check-in, etc.) -->
                   {% else %}

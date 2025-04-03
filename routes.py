@@ -259,6 +259,7 @@ def cadastro_participante(identifier=None):
         email = request.form.get('email')
         senha = request.form.get('senha')
         formacao = request.form.get('formacao')
+        tipo_inscricao_id = request.form.get('tipo_inscricao_id')
         estados = request.form.getlist('estados[]')
         cidades = request.form.getlist('cidades[]')
         estados_str = ','.join(estados) if estados else ''
@@ -305,7 +306,8 @@ def cadastro_participante(identifier=None):
                 tipo='participante',
                 estados=estados_str,
                 cidades=cidades_str,
-                cliente_id=cliente_id  # Vincula ao cliente do link
+                cliente_id=cliente_id,  # Vincula ao cliente do link
+                tipo_inscricao_id=tipo_inscricao_id  # Adiciona o tipo de inscrição
             )
             try:
                 db.session.add(novo_usuario)
@@ -821,10 +823,56 @@ def dashboard_participante():
         HorarioVisitacao.data >= datetime.now().date()
     ).all()
 
+    # Carregar regras de inscrição para o tipo de inscrição do usuário
+    regras_inscricao = {}
+    oficinas_permitidas = set()
+    limite_oficinas = 0
+    
+    if current_user.tipo_inscricao_id and current_user.evento_id:
+        # Buscar regra para o tipo de inscrição do usuário
+        regra = RegraInscricaoEvento.query.filter_by(
+            evento_id=current_user.evento_id,
+            tipo_inscricao_id=current_user.tipo_inscricao_id
+        ).first()
+        
+        if regra:
+            limite_oficinas = regra.limite_oficinas
+            oficinas_permitidas = set(regra.get_oficinas_permitidas_list())
+            regras_inscricao[current_user.tipo_inscricao_id] = {
+                'limite_oficinas': limite_oficinas,
+                'oficinas_permitidas': oficinas_permitidas
+            }
+    
+    # Contar inscrições do usuário por evento
+    inscricoes_por_evento = {}
+    for inscricao in current_user.inscricoes:
+        if inscricao.oficina and inscricao.oficina.evento_id:
+            evento_id = inscricao.oficina.evento_id
+            if evento_id not in inscricoes_por_evento:
+                inscricoes_por_evento[evento_id] = 0
+            inscricoes_por_evento[evento_id] += 1
+    
     # Monte a estrutura que o template "dashboard_participante.html" precisa
     oficinas_formatadas = []
     for oficina in oficinas:
         dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
+        
+        # Verificar se a oficina está disponível para o tipo de inscrição do usuário
+        disponivel_para_inscricao = True
+        motivo_indisponibilidade = None
+        
+        if current_user.tipo_inscricao_id and oficina.evento_id == current_user.evento_id:
+            # Se há oficinas permitidas definidas e esta oficina não está na lista
+            if oficinas_permitidas and oficina.id not in oficinas_permitidas:
+                disponivel_para_inscricao = False
+                motivo_indisponibilidade = "Seu tipo de inscrição não permite acesso a esta oficina"
+            
+            # Se há limite de oficinas e o usuário já atingiu o limite
+            if limite_oficinas > 0 and oficina.evento_id in inscricoes_por_evento:
+                if inscricoes_por_evento[oficina.evento_id] >= limite_oficinas and oficina.id not in inscricoes_ids:
+                    disponivel_para_inscricao = False
+                    motivo_indisponibilidade = f"Você já atingiu o limite de {limite_oficinas} oficinas para seu tipo de inscrição"
+        
         oficinas_formatadas.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
@@ -835,7 +883,9 @@ def dashboard_participante():
             'dias': dias,
             'evento_id': oficina.evento_id,  # Adicionado para agrupar por evento
             'evento_nome': oficina.evento.nome if oficina.evento else 'Sem evento',  # Nome do evento
-            'tipo_inscricao': oficina.tipo_inscricao  # Adicionado o tipo de inscrição
+            'tipo_inscricao': oficina.tipo_inscricao,  # Adicionado o tipo de inscrição
+            'disponivel_para_inscricao': disponivel_para_inscricao,
+            'motivo_indisponibilidade': motivo_indisponibilidade
         })
 
     return render_template(
@@ -1239,6 +1289,37 @@ def inscrever(oficina_id):
     if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
         flash('Você já está inscrito nesta oficina!', 'warning')
         return redirect(url_for('routes.dashboard_participante'))
+    
+    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
+    if oficina.evento_id and current_user.tipo_inscricao_id:
+        # Buscar regras para o tipo de inscrição do participante
+        regra = RegraInscricaoEvento.query.filter_by(
+            evento_id=oficina.evento_id,
+            tipo_inscricao_id=current_user.tipo_inscricao_id
+        ).first()
+        
+        if regra:
+            # Verificar se esta oficina está na lista de oficinas permitidas
+            oficinas_permitidas = regra.get_oficinas_permitidas_list()
+            if oficinas_permitidas and oficina.id not in oficinas_permitidas:
+                return jsonify({
+                    'success': False,
+                    'message': 'Seu tipo de inscrição não permite acesso a esta oficina.'
+                })
+            
+            # Verificar se o participante já atingiu o limite de oficinas
+            if regra.limite_oficinas > 0:
+                # Contar quantas oficinas o participante já está inscrito neste evento
+                inscricoes_evento = Inscricao.query.join(Oficina).filter(
+                    Inscricao.usuario_id == current_user.id,
+                    Oficina.evento_id == oficina.evento_id
+                ).count()
+                
+                if inscricoes_evento >= regra.limite_oficinas:
+                    return jsonify({
+                        'success': False,
+                        'message': f'Você já atingiu o limite de {regra.limite_oficinas} oficinas para seu tipo de inscrição.'
+                    })
 
     # Decrementa vagas e cria a Inscricao
     oficina.vagas -= 1
