@@ -160,57 +160,83 @@
 
 {% if current_user.habilita_pagamento %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Toggle registration types visibility
-  const inscricaoGratuita = document.getElementById('inscricao_gratuita');
-  const tiposContainer = document.getElementById('tipos-inscricao-container');
-  
-  // Check initial state
-  tiposContainer.style.display = inscricaoGratuita.checked ? 'none' : 'block';
-  
-  // Add event listener
-  inscricaoGratuita.addEventListener('change', function() {
-    tiposContainer.style.display = this.checked ? 'none' : 'block';
-  });
-
-  // Add new registration type
-  const addButton = document.getElementById('adicionar-tipo-inscricao');
-  const tiposList = document.getElementById('tipos-inscricao-list');
-  
-  addButton.addEventListener('click', function() {
-    const newItem = document.createElement('div');
-    newItem.className = 'row mb-3 align-items-end tipo-inscricao-item';
-    newItem.innerHTML = `
-      <div class="col-md-5">
-        <label class="form-label">Tipo de Inscrição</label>
-        <input type="text" class="form-control" name="nome_tipo[]" 
-              placeholder="Ex: Estudante, Profissional...">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Preço (R$)</label>
-        <input type="number" step="0.01" class="form-control" name="preco_tipo[]" 
-              placeholder="0.00">
-      </div>
-      <div class="col-md-4">
-        <button type="button" class="btn btn-outline-danger remover-tipo-inscricao">
-          <i class="bi bi-trash"></i> Remover
-        </button>
-      </div>
-    `;
-    tiposList.appendChild(newItem);
-  });
-
-  // Remove registration type
-  tiposList.addEventListener('click', function(e) {
-    if (e.target.classList.contains('remover-tipo-inscricao') || 
-        e.target.closest('.remover-tipo-inscricao')) {
-      const button = e.target.classList.contains('remover-tipo-inscricao') ? 
-                    e.target : e.target.closest('.remover-tipo-inscricao');
-      const row = button.closest('.tipo-inscricao-item');
-      row.remove();
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle price fields visibility
+    const inscricaoGratuita = document.getElementById('inscricao_gratuita');
+    const tiposContainer = document.getElementById('tipos-inscricao-container');
+    const tiposList = document.getElementById('tipos-inscricao-list');
+    
+    // Function to update price fields visibility and values
+    function updatePriceFields() {
+      const isGratuito = inscricaoGratuita.checked;
+      
+      // Manter o container visível sempre
+      tiposContainer.style.display = 'block';
+      
+      // Selecionar todos os campos de preço e seus labels
+      const precoFields = document.querySelectorAll('input[name="preco_tipo[]"]');
+      const precoLabels = document.querySelectorAll('.tipo-inscricao-item .col-md-3');
+      
+      // Atualizar todos os campos de preço
+      precoFields.forEach(field => {
+        field.parentElement.style.display = isGratuito ? 'none' : 'block';
+        if (isGratuito) {
+          field.value = '0.00';
+        }
+      });
+      
+      // Atualizar todos os labels de preço
+      precoLabels.forEach(label => {
+        label.style.display = isGratuito ? 'none' : 'block';
+      });
     }
+    
+    // Verificar estado inicial
+    updatePriceFields();
+    
+    // Adicionar event listener
+    inscricaoGratuita.addEventListener('change', updatePriceFields);
+  
+    // Adicionar novo tipo de inscrição
+    const addButton = document.getElementById('adicionar-tipo-inscricao');
+    
+    addButton.addEventListener('click', function() {
+      const newItem = document.createElement('div');
+      newItem.className = 'row mb-3 align-items-end tipo-inscricao-item';
+      newItem.innerHTML = `
+        <div class="col-md-5">
+          <label class="form-label">Tipo de Inscrição</label>
+          <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" 
+                placeholder="Ex: Estudante, Profissional...">
+        </div>
+        <div class="col-md-3" ${inscricaoGratuita.checked ? 'style="display:none;"' : ''}>
+          <label class="form-label">Preço (R$)</label>
+          <input type="number" step="0.01" class="form-control" name="preco_tipo[]" 
+                placeholder="0.00" value="${inscricaoGratuita.checked ? '0.00' : ''}">
+        </div>
+        <div class="col-md-4">
+          <button type="button" class="btn btn-outline-danger remover-tipo-inscricao">
+            <i class="bi bi-trash"></i> Remover
+          </button>
+        </div>
+      `;
+      tiposList.appendChild(newItem);
+      
+      // Atualizar campos após adicionar um novo item
+      updatePriceFields();
+    });
+  
+    // Remover tipo de inscrição
+    tiposList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remover-tipo-inscricao') || 
+          e.target.closest('.remover-tipo-inscricao')) {
+        const button = e.target.classList.contains('remover-tipo-inscricao') ? 
+                      e.target : e.target.closest('.remover-tipo-inscricao');
+        const row = button.closest('.tipo-inscricao-item');
+        row.remove();
+      }
+    });
   });
-});
-</script>
+  </script>
 {% endif %}
 {% endblock %}
