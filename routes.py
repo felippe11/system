@@ -11857,3 +11857,28 @@ def lista_checkins_json():
 
     return jsonify(status='success', checkins=resultado)
 
+@routes.route('/remover_fotos_selecionadas', methods=['POST'])
+def remover_fotos_selecionadas():
+    # Recupera a lista de IDs selecionados no checkbox
+    ids_selecionados = request.form.getlist('fotos_selecionadas')
+
+    if not ids_selecionados:
+        flash('Nenhuma imagem foi selecionada para remoção.', 'warning')
+        return redirect(url_for('routes.gerenciar_patrocinadores'))
+    
+    # Converte cada id para inteiro
+    ids_selecionados = [int(x) for x in ids_selecionados]
+
+    # Busca cada patrocinador correspondente e remove do DB
+    for pat_id in ids_selecionados:
+        pat = Patrocinador.query.get(pat_id)
+        if pat:
+            # Se quiser, remova também o arquivo de imagem físico, se armazenar localmente
+            # Exemplo: os.remove(os.path.join(current_app.static_folder, pat.logo_path))
+
+            db.session.delete(pat)
+    
+    db.session.commit()
+    flash('Fotos removidas com sucesso!', 'success')
+    return redirect(url_for('routes.gerenciar_patrocinadores'))
+    # Se não houver fotos selecionadas, redireciona para a página de gerenciamento
