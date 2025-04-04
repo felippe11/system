@@ -1,8 +1,8 @@
-"""Add InscricaoEvento model
+"""Initial migration
 
-Revision ID: 89e1ecaf4910
-Revises: 8f11731efdf6
-Create Date: 2025-04-03 00:59:42.209640
+Revision ID: f19c5a40e84a
+Revises: 
+Create Date: 2025-04-03 11:14:39.434346
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '89e1ecaf4910'
-down_revision = '8f11731efdf6'
+revision = 'f19c5a40e84a'
+down_revision = None
 branch_labels = None
 depends_on = None
 
