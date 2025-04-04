@@ -307,7 +307,8 @@ def cadastro_participante(identifier=None):
                 estados=estados_str,
                 cidades=cidades_str,
                 cliente_id=cliente_id,  # Vincula ao cliente do link
-                tipo_inscricao_id=tipo_inscricao_id  # Adiciona o tipo de inscrição
+                tipo_inscricao_id=tipo_inscricao_id,  # Adiciona o tipo de inscrição
+                evento_id=link.evento_id
             )
             try:
                 db.session.add(novo_usuario)
