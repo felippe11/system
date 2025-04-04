@@ -4,7 +4,8 @@ from models import (
     Feedback, Ministrante, Cliente, ConfiguracaoCliente,
     Evento, LinkCadastro, Formulario, CampoFormulario,
     RespostaFormulario, RespostaCampo, MaterialOficina,
-    RelatorioOficina
+    RelatorioOficina, EventoInscricaoTipo, InscricaoTipo,
+    RegraInscricaoEvento
 )
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
@@ -47,9 +48,17 @@ def populate_database():
     # em seções críticas do código
     db.session.autoflush = False
 
-    # Create Admin
-    admin = Usuario.query.filter_by(email="admin@email.com").first()
-    if not admin:
+    # Create Admin - verificando CPF e email para evitar erro de duplicidade
+    admin_by_email = Usuario.query.filter_by(email="admin@email.com").first()
+    admin_by_cpf = Usuario.query.filter_by(cpf="00000000000").first()
+    
+    if admin_by_email:
+        admin = admin_by_email
+        print("Admin user already exists with email admin@email.com")
+    elif admin_by_cpf:
+        admin = admin_by_cpf
+        print(f"Admin user already exists with CPF 00000000000")
+    else:
         admin = Usuario(
             nome="Admin User",
             cpf="00000000000",
@@ -59,6 +68,8 @@ def populate_database():
             tipo="admin"
         )
         db.session.add(admin)
+        print("Created new admin user")
+        db.session.commit()
 
     # Clients
     clients = []
@@ -123,6 +134,36 @@ def populate_database():
             events.append(event)
 
     db.session.commit()
+    
+    # Criar tipos de inscrição para eventos não gratuitos
+    print("Criando tipos de inscrição para eventos...")
+    for event in events:
+        if not event.inscricao_gratuita:
+            # Criar 3 tipos de inscrição para cada evento não gratuito
+            tipos = [
+                {"nome": "Estudante", "preco": 50.0},
+                {"nome": "Professor", "preco": 80.0},
+                {"nome": "Profissional", "preco": 120.0}
+            ]
+            
+            for tipo in tipos:
+                inscricao_tipo = EventoInscricaoTipo(
+                    evento_id=event.id,
+                    nome=tipo["nome"],
+                    preco=tipo["preco"]
+                )
+                db.session.add(inscricao_tipo)
+                db.session.flush()  # Para obter o ID
+                
+                # Criar regra de inscrição para este tipo
+                regra = RegraInscricaoEvento(
+                    evento_id=event.id,
+                    tipo_inscricao_id=inscricao_tipo.id,
+                    limite_oficinas=random.choice([0, 3, 5, 10])
+                )
+                db.session.add(regra)
+                
+    db.session.commit()
 
     # Ministrantes - Criar mais ministrantes
     ministrantes = []
@@ -131,8 +172,10 @@ def populate_database():
     
     # Primeiro, buscar ministrantes existentes para evitar duplicidades
     existing_emails = set()
+    existing_cpfs = set()
     for m in Ministrante.query.all():
         existing_emails.add(m.email)
+        existing_cpfs.add(m.cpf)
         ministrantes.append(m)
     
     # Determinar quantos ministrantes ainda precisamos criar
@@ -151,12 +194,19 @@ def populate_database():
         
         existing_emails.add(email)
         
+        # Gerar um CPF único
+        cpf = None
+        while cpf is None or cpf in existing_cpfs:
+            cpf = random_cpf()
+        
+        existing_cpfs.add(cpf)
+        
         m = Ministrante(
             nome=f"Ministrante Novo {i+1}",
             formacao=formacao_escolhida,
             categorias_formacao=",".join(random.sample(formacoes, k=random.randint(1, 3))),
             areas_atuacao=",".join(area_escolhida),
-            cpf=random_cpf(),
+            cpf=cpf,
             pix=f"pix_{unique_id}@email.com",
             cidade="Maceió",
             estado="AL",
@@ -244,6 +294,26 @@ def populate_database():
 
     db.session.commit()
 
+    # Para oficinas que não são gratuitas, criar tipos de inscrição
+    print("Criando tipos de inscrição para oficinas...")
+    for oficina in oficinas:
+        if not oficina.inscricao_gratuita:
+            tipos = [
+                {"nome": "Estudante", "preco": 20.0},
+                {"nome": "Professor", "preco": 35.0},
+                {"nome": "Profissional", "preco": 50.0}
+            ]
+            
+            for tipo in tipos:
+                tipo_inscricao = InscricaoTipo(
+                    oficina_id=oficina.id,
+                    nome=tipo["nome"],
+                    preco=tipo["preco"]
+                )
+                db.session.add(tipo_inscricao)
+    
+    db.session.commit()
+
     # Participantes - Criar muito mais participantes
     participantes = []
     cidades = ["Maceió", "Rio Largo", "Marechal Deodoro", "Arapiraca", "Palmeira dos Índios", "Penedo"]
@@ -277,6 +347,19 @@ def populate_database():
         
         existing_cpfs.add(cpf)
         
+        # Escolher um cliente aleatório
+        cliente = random.choice(clients)
+        
+        # Escolher um evento deste cliente
+        evento = random.choice([e for e in events if e.cliente_id == cliente.id])
+        
+        # Escolher um tipo de inscrição aleatório se o evento não for gratuito
+        tipo_inscricao_id = None
+        if not evento.inscricao_gratuita:
+            tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
+            if tipos_inscricao:
+                tipo_inscricao_id = random.choice(tipos_inscricao).id
+        
         p = Usuario(
             nome=f"Participante Novo {i+1}",
             cpf=cpf,
@@ -284,7 +367,9 @@ def populate_database():
             senha=generate_password_hash("part123"),
             formacao=random.choice(formacoes_part),
             tipo="participante",
-            cliente_id=random.choice(clients).id,
+            cliente_id=cliente.id,
+            evento_id=evento.id,
+            tipo_inscricao_id=tipo_inscricao_id,
             estados="AL",
             cidades=random.choice(cidades)
         )
@@ -317,6 +402,11 @@ def populate_database():
         if oficina.tipo_inscricao == "sem_inscricao":
             continue
             
+        # Obter tipos de inscrição para esta oficina (se não for gratuita)
+        tipos_inscricao = []
+        if not oficina.inscricao_gratuita:
+            tipos_inscricao = InscricaoTipo.query.filter_by(oficina_id=oficina.id).all()
+        
         # Definir o número de inscrições a serem criadas
         if oficina.tipo_inscricao == "com_inscricao_com_limite":
             # Preencher entre 70% e 110% das vagas (algumas podem ficar em lista de espera)
@@ -339,6 +429,26 @@ def populate_database():
                 
                 try:
                     ins = Inscricao(usuario_id=part.id, oficina_id=oficina.id, cliente_id=oficina.cliente_id)
+                    
+                    # Atribuir um tipo de inscrição se a oficina não for gratuita
+                    if not oficina.inscricao_gratuita and tipos_inscricao:
+                        ins.tipo_inscricao_id = random.choice(tipos_inscricao).id
+                    
+                    # Certificar que o usuário tenha tipo de inscrição no evento
+                    if oficina.evento_id:
+                        # Definir o evento no usuário
+                        if not part.evento_id:
+                            part.evento_id = oficina.evento_id
+                            db.session.add(part)
+                        
+                        # Se o evento não for gratuito, garantir que o usuário tenha um tipo de inscrição
+                        evento = Evento.query.get(oficina.evento_id)
+                        if not evento.inscricao_gratuita and not part.tipo_inscricao_id:
+                            tipos_evento = EventoInscricaoTipo.query.filter_by(evento_id=oficina.evento_id).all()
+                            if tipos_evento:
+                                part.tipo_inscricao_id = random.choice(tipos_evento).id
+                                db.session.add(part)
+                    
                     db.session.add(ins)
                     inscricoes_count += 1
                     
@@ -432,8 +542,11 @@ def populate_database():
     Resumo da população:
     - Clientes: {Cliente.query.count()}
     - Eventos: {Evento.query.count()}
+    - Tipos de Inscrição em Eventos: {EventoInscricaoTipo.query.count()}
+    - Regras de Inscrição: {RegraInscricaoEvento.query.count()}
     - Ministrantes: {Ministrante.query.count()}
     - Oficinas: {Oficina.query.count()}
+    - Tipos de Inscrição em Oficinas: {InscricaoTipo.query.count()}
     - Participantes: {Usuario.query.filter_by(tipo="participante").count()}
     - Inscrições: {Inscricao.query.count()}
     - Checkins: {Checkin.query.count()}
