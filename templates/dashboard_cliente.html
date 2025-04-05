@@ -214,13 +214,19 @@
                       </a>
                     </div>
                     <div class="col-md-6">
+                      <p>Eventos encontrados: {{ eventos|length }}</p>
+
                       {% for evento in eventos %}
-                      <a href="{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=evento.id) }}"
-                         class="btn btn-outline-danger btn-sm">
-                        Baixar Check-ins do Evento (PDF)
-                      </a>
-                    {% endfor %}  
-                    <p>{{ eventos|length }} eventos encontrados</p>
+                        <div class="card p-3 mb-3">
+                          <h5>{{ evento.nome }}</h5>
+                          <a href="{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=evento.id) }}"
+                            class="btn btn-outline-danger btn-sm">
+                            Baixar Check-ins do Evento (PDF)
+                          </a>
+                        </div>
+                      {% endfor %}
+
+                      
                   </div>
                   </div>
                 </div>
