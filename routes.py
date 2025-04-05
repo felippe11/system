@@ -5512,6 +5512,304 @@ def configurar_evento():
         inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
+        
+        banner = request.files.get('banner')
+        banner_url = evento.banner_url if evento else None
+        
+        if banner:
+            filename = secure_filename(banner.filename)
+            caminho_banner = os.path.join('static/banners', filename)
+            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
+            banner.save(caminho_banner)
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+
+        if evento:  # Atualizar evento existente
+            evento.nome = nome
+            evento.descricao = descricao
+            evento.programacao = programacao
+            evento.localizacao = localizacao
+            evento.link_mapa = link_mapa
+            evento.inscricao_gratuita = inscricao_gratuita
+            if banner_url:
+                evento.banner_url = banner_url
+
+            # Remover regras de inscrição associadas para evitar violação de chave estrangeira
+            RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
+            
+            # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
+            tipos_com_usuarios = db.session.query(EventoInscricaoTipo.id).join(
+                Usuario, Usuario.tipo_inscricao_id == EventoInscricaoTipo.id
+            ).filter(
+                EventoInscricaoTipo.evento_id == evento.id
+            ).all()
+            
+            # Lista de IDs de tipos que têm usuários vinculados
+            ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
+            
+            if ids_tipos_com_usuarios:
+                # Exclui apenas os tipos que NÃO têm usuários vinculados
+                EventoInscricaoTipo.query.filter(
+                    EventoInscricaoTipo.evento_id == evento.id,
+                    ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
+                ).delete(synchronize_session=False)
+            else:
+                # Se não houver tipos com usuários, exclui todos normalmente
+                EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+            
+            # Adicionar novos tipos ou atualizar existentes
+            for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                if nome_tipo:  # Só adicionar se o nome for preenchido
+                    # Se for inscrição gratuita, definir preço como 0.00
+                    preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                    
+                    # Verificar se já existe um tipo com este nome
+                    tipo_existente = None
+                    for tipo_id in ids_tipos_com_usuarios:
+                        tipo = EventoInscricaoTipo.query.get(tipo_id)
+                        if tipo and tipo.nome == nome_tipo:
+                            tipo_existente = tipo
+                            break
+                    
+                    if tipo_existente:
+                        # Atualiza o preço do tipo existente
+                        tipo_existente.preco = preco_efetivo
+                    else:
+                        # Cria um novo tipo
+                        tipo = EventoInscricaoTipo(
+                            evento_id=evento.id,
+                            nome=nome_tipo,
+                            preco=preco_efetivo
+                        )
+                        db.session.add(tipo)
+        else:  # Criar novo evento
+            evento = Evento(
+                cliente_id=current_user.id,
+                nome=nome,
+                descricao=descricao,
+                programacao=programacao,
+                localizacao=localizacao,
+                link_mapa=link_mapa,
+                banner_url=banner_url,
+                inscricao_gratuita=inscricao_gratuita
+            )
+            db.session.add(evento)
+            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
+
+            # Adicionar tipos de inscrição
+            for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                if nome_tipo:  # Só adicionar se o nome for preenchido
+                    # Se for inscrição gratuita, definir preço como 0.00
+                    preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                    
+                    tipo = EventoInscricaoTipo(
+                        evento_id=evento.id,
+                        nome=nome_tipo,
+                        preco=preco_efetivo
+                    )
+                    db.session.add(tipo)
+
+        try:
+            db.session.commit()
+            flash('Evento salvo com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao salvar evento: {str(e)}', 'danger')
+
+    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    # Lista todos os eventos do cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    # Evento selecionado (por padrão, None até que o usuário escolha)
+    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    evento = None
+    if evento_id:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        programacao = request.form.get('programacao')
+        localizacao = request.form.get('localizacao')
+        link_mapa = request.form.get('link_mapa')
+        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
+        nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
+        precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
+        
+        banner = request.files.get('banner')
+        banner_url = evento.banner_url if evento else None
+        
+        if banner:
+            filename = secure_filename(banner.filename)
+            caminho_banner = os.path.join('static/banners', filename)
+            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
+            banner.save(caminho_banner)
+            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
+
+        if evento:  # Atualizar evento existente
+            evento.nome = nome
+            evento.descricao = descricao
+            evento.programacao = programacao
+            evento.localizacao = localizacao
+            evento.link_mapa = link_mapa
+            evento.inscricao_gratuita = inscricao_gratuita
+            if banner_url:
+                evento.banner_url = banner_url
+
+            # Atualizar tipos de inscrição
+            if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
+                # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
+                RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
+                
+                # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
+                tipos_com_usuarios = db.session.query(EventoInscricaoTipo.id).join(
+                    Usuario, Usuario.tipo_inscricao_id == EventoInscricaoTipo.id
+                ).filter(
+                    EventoInscricaoTipo.evento_id == evento.id
+                ).all()
+                
+                # Lista de IDs de tipos que têm usuários vinculados
+                ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
+                
+                if ids_tipos_com_usuarios:
+                    # Exclui apenas os tipos que NÃO têm usuários vinculados
+                    EventoInscricaoTipo.query.filter(
+                        EventoInscricaoTipo.evento_id == evento.id,
+                        ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
+                    ).delete(synchronize_session=False)
+                else:
+                    # Se não houver tipos com usuários, exclui todos normalmente
+                    EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+                
+                # Adicionar novos tipos
+                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                    if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
+                        # Verificar se já existe um tipo com este nome
+                        tipo_existente = None
+                        for tipo_id in ids_tipos_com_usuarios:
+                            tipo = EventoInscricaoTipo.query.get(tipo_id)
+                            if tipo and tipo.nome == nome_tipo:
+                                tipo_existente = tipo
+                                break
+                        
+                        if tipo_existente:
+                            # Atualiza o preço do tipo existente
+                            tipo_existente.preco = float(preco_tipo)
+                        else:
+                            # Cria um novo tipo
+                            tipo = EventoInscricaoTipo(
+                                evento_id=evento.id,
+                                nome=nome_tipo,
+                                preco=float(preco_tipo)
+                            )
+                            db.session.add(tipo)
+        else:  # Criar novo evento
+            evento = Evento(
+                cliente_id=current_user.id,
+                nome=nome,
+                descricao=descricao,
+                programacao=programacao,
+                localizacao=localizacao,
+                link_mapa=link_mapa,
+                banner_url=banner_url,
+                inscricao_gratuita=inscricao_gratuita
+            )
+            db.session.add(evento)
+            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
+
+            # Adicionar tipos de inscrição se não for gratuita
+            if not inscricao_gratuita:
+                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                    if nome_tipo and preco_tipo:
+                        tipo = EventoInscricaoTipo(
+                            evento_id=evento.id,
+                            nome=nome_tipo,
+                            preco=float(preco_tipo)
+                        )
+                        db.session.add(tipo)
+
+        try:
+            db.session.commit()
+            flash('Evento salvo com sucesso!', 'success')
+            return redirect(url_for('routes.dashboard_cliente'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao salvar evento: {str(e)}', 'danger')
+
+    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
+    # Atualizar tipos de inscrição
+    if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
+        # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
+        RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
+        
+        # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
+        tipos_com_usuarios = db.session.query(EventoInscricaoTipo.id).join(
+            Usuario, Usuario.tipo_inscricao_id == EventoInscricaoTipo.id
+        ).filter(
+            EventoInscricaoTipo.evento_id == evento.id
+        ).all()
+        
+        # Lista de IDs de tipos que têm usuários vinculados
+        ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
+        
+        if ids_tipos_com_usuarios:
+            # Exclui apenas os tipos que NÃO têm usuários vinculados
+            EventoInscricaoTipo.query.filter(
+                EventoInscricaoTipo.evento_id == evento.id,
+                ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
+            ).delete(synchronize_session=False)
+        else:
+            # Se não houver tipos com usuários, exclui todos normalmente
+            EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+        
+        # Adicionar novos tipos
+        for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+            if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
+                # Verificar se já existe um tipo com este nome
+                tipo_existente = None
+                for tipo_id in ids_tipos_com_usuarios:
+                    tipo = EventoInscricaoTipo.query.get(tipo_id)
+                    if tipo and tipo.nome == nome_tipo:
+                        tipo_existente = tipo
+                        break
+                
+                if tipo_existente:
+                    # Atualiza o preço do tipo existente
+                    tipo_existente.preco = float(preco_tipo)
+                else:
+                    # Cria um novo tipo
+                    tipo = EventoInscricaoTipo(
+                        evento_id=evento.id,
+                        nome=nome_tipo,
+                        preco=float(preco_tipo)
+                    )
+                    db.session.add(tipo)
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    # Lista todos os eventos do cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    # Evento selecionado (por padrão, None até que o usuário escolha)
+    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    evento = None
+    if evento_id:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        descricao = request.form.get('descricao')
+        programacao = request.form.get('programacao')
+        localizacao = request.form.get('localizacao')
+        link_mapa = request.form.get('link_mapa')
+        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
+        nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
+        precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
 
         banner = request.files.get('banner')
         banner_url = evento.banner_url if evento else None
