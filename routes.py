@@ -4171,8 +4171,14 @@ def dashboard_cliente():
         return redirect(url_for('routes.dashboard'))
 
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
-    
-    evento = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
+    print("Usuário logado:", current_user.email)
+    print("ID:", current_user.id)
+    print("Tipo:", current_user.tipo if hasattr(current_user, 'tipo') else "N/A")
+
+
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    print("✅ Eventos:", eventos)
+  
     
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
@@ -4336,7 +4342,7 @@ def dashboard_cliente():
         proximos_agendamentos=proximos_agendamentos,
         ocupacao_media=ocupacao_media,
         total_eventos=total_eventos,
-        evento=evento
+        eventos=eventos
     )
     
 def obter_configuracao_do_cliente(cliente_id):
