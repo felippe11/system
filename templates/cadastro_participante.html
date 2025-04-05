@@ -278,8 +278,15 @@
                 {% endif %}
             {% endwith %}
             
-            <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}">
+            <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}" id="formularioCadastro">
                 <div class="form-grid-modal">
+                    <!-- Campo oculto para o evento_id - garantindo que sempre seja enviado -->
+                    {% if evento %}
+                    <input type="hidden" id="evento_id" name="evento_id" value="{{ evento.id }}">
+                    {% else %}
+                    <input type="hidden" id="evento_id" name="evento_id" value="">
+                    {% endif %}
+                    
                     <!-- Linha 1 -->
                     <div class="form-row">
                         <div class="form-group">
@@ -322,11 +329,11 @@
                     {% endfor %}    
 
                     <!-- Seção de Tipo de Inscrição -->
-                    {% if evento and not evento.inscricao_gratuita and evento.tipos_inscricao %}
+                    {% if evento and evento.tipos_inscricao %}
                     <div class="form-group full-width">
                         <label for="tipo_inscricao">Tipo de Inscrição</label>
                         <select id="tipo_inscricao" name="tipo_inscricao_id" class="form-control" required>
-                            <option value="">Selecione o tipo de inscrição</option>
+                            <option value="">Selecione um tipo de inscrição</option>
                             {% for tipo in evento.tipos_inscricao %}
                                 <option value="{{ tipo.id }}" data-preco="{{ tipo.preco }}">{{ tipo.nome }}</option>
                             {% endfor %}
@@ -334,6 +341,7 @@
                         <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
                             <span id="texto_valor">Selecione um tipo de inscrição</span>
                         </div>
+
                     </div>
                     {% elif evento and evento.inscricao_gratuita %}
                     <div class="form-group full-width">
@@ -1549,6 +1557,19 @@ input::placeholder {
                 });
         }
     });
+
+    // Garantir que o evento_id seja enviado corretamente
+    document.addEventListener('DOMContentLoaded', function() {
+        const formulario = document.getElementById('formularioCadastro');
+        if (formulario) {
+            formulario.addEventListener('submit', function(e) {
+                const eventoId = document.getElementById('evento_id');
+                if (!eventoId.value && {{ evento.id|default('null') }}) {
+                    eventoId.value = {{ evento.id|default('null') }};
+                }
+            });
+        }
+    });
 </script>
 
 <!-- Scripts específicos para esta página -->
@@ -1599,5 +1620,3 @@ input::placeholder {
     });
     </script>
 {% endblock %}
-
-
