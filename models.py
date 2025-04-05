@@ -432,6 +432,8 @@ class Cliente(db.Model, UserMixin):
     def get_id(self):
         """Retorna o ID do cliente como string, necessário para Flask-Login."""
         return str(self.id)
+    def is_cliente(self):
+        return self.tipo == 'cliente'
 
 class LinkCadastro(db.Model):
     __tablename__ = 'link_cadastro'
