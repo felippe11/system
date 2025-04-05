@@ -2,13 +2,15 @@
 {% block title %}Configurar Evento{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-  <h2 class="my-4 fw-bold text-primary">
-    <i class="bi bi-calendar-event me-2"></i>Configurar Evento
-  </h2>
+<div class="container py-5">
+  <div class="bg-primary bg-gradient rounded-lg p-4 mb-4 shadow">
+    <h1 class="h3 fw-bold text-white mb-0">
+      <i class="bi bi-calendar-event me-2"></i>Configurar Evento
+    </h1>
+  </div>
 
-  <div class="card shadow">
-    <div class="card-body">
+  <div class="card border-0 shadow">
+    <div class="card-body p-4 bg-light">
       <!-- Seleção de Evento -->
       <div class="mb-4">
         <label for="evento_id" class="form-label fw-semibold">Selecionar Evento</label>
@@ -21,6 +23,9 @@
           {% endfor %}
         </select>
       </div>
+      <div class="border-bottom border-primary pb-2 mb-3">
+        <h5 class="text-primary"><i class="bi bi-info-circle me-2"></i>Informações Básicas</h5>
+      </div>
 
       <!-- Formulário -->
       <form method="POST" enctype="multipart/form-data">
@@ -29,22 +34,25 @@
         <!-- Campos originais -->
         <div class="mb-3">
           <label class="form-label fw-semibold">Nome do Evento</label>
-          <input type="text" name="nome" class="form-control" value="{{ evento.nome if evento else '' }}" required>
+          <input type="text" name="nome" class="form-control form-control-lg border border-secondary bg-white" value="{{ evento.nome if evento else '' }}" required>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Descrição</label>
-          <textarea name="descricao" class="form-control" rows="3">{{ evento.descricao if evento else '' }}</textarea>
+          <textarea name="descricao" class="form-control form-control-lg border border-secondary bg-white" rows="3">{{ evento.descricao if evento else '' }}</textarea>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Programação</label>
-          <textarea name="programacao" class="form-control" rows="3">{{ evento.programacao if evento else '' }}</textarea>
+          <textarea name="programacao" class="form-control form-control-lg border border-secondary bg-white" rows="3">{{ evento.programacao if evento else '' }}</textarea>
         </div>
         
         <!-- Campo de Endereço com Localizador -->
         <div class="mb-3">
+          <div class="border-bottom border-primary pb-2 mb-3">
+            <h5 class="text-primary"><i class="bi bi-geo-alt me-2"></i>Localização</h5>
+          </div>
           <label class="form-label fw-semibold">Endereço do Evento</label>
           <div class="input-group">
-            <input type="text" id="localizacao-input" name="localizacao" class="form-control" value="{{ evento.localizacao if evento else '' }}" autocomplete="off">
+            <input type="text" id="localizacao-input" name="localizacao" class="form-control border border-secondary bg-white" value="{{ evento.localizacao if evento else '' }}" autocomplete="off">
             <button type="button" class="btn btn-outline-secondary" id="btn-mostrar-mapa" data-bs-toggle="modal" data-bs-target="#mapaModal">
               <i class="bi bi-geo-alt"></i> Buscar no Mapa
             </button>
@@ -60,8 +68,11 @@
         <input type="hidden" id="link_mapa" name="link_mapa" value="{{ evento.link_mapa if evento else '' }}">
         
         <div class="mb-3">
+          <div class="border-bottom border-primary pb-2 mb-3">
+            <h5 class="text-primary"><i class="bi bi-image me-2"></i>Mídia</h5>
+          </div>
           <label class="form-label fw-semibold">Banner do Evento</label>
-          <input type="file" name="banner" class="form-control">
+          <input type="file" name="banner" class="form-control border border-secondary bg-white">
           {% if evento and evento.banner_url %}
             <img src="{{ evento.banner_url }}" alt="Banner" class="img-fluid mt-2" style="max-width: 200px;">
           {% endif %}
@@ -72,52 +83,67 @@
         <div class="mb-3">
           <br>
           <label for="inscricao_gratuita" class="form-label fw-semibold">Configuração de Inscrição</label>
-          <div class="form-check">
+          <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita" 
                    {% if evento and evento.inscricao_gratuita %}checked{% endif %}>
             <label class="form-check-label" for="inscricao_gratuita">
               Inscrição Gratuita
             </label>
+            <small class="form-text text-muted d-block mt-1">
+              Quando marcado, todos os tipos de inscrição terão o preço definido como R$ 0,00.
+            </small>
           </div>
         </div>
 
-        <div id="tipos-inscricao-container" class="{% if evento and evento.inscricao_gratuita %}d-none{% else %}d-block{% endif %}">
+        <div id="tipos-inscricao-container">
+          <p class="text-muted small mb-3">Configure os tipos de inscrição e seus respectivos valores:</p>
           <div id="tipos-inscricao-list">
-            {% if evento and evento.tipos_inscricao_evento and not evento.inscricao_gratuita %}
+            {% if evento and evento.tipos_inscricao_evento %}
               {% for tipo in evento.tipos_inscricao_evento %}
-              <div class="row mb-2 align-items-center">
+              <div class="row mb-2 align-items-center tipo-inscricao-item">
                 <div class="col-md-4">
                   <label class="form-label">Tipo de Inscrição:</label>
-                  <input type="text" class="form-control" name="nome_tipo[]" value="{{ tipo.nome }}" placeholder="Nome do Tipo de Inscrição">
+                  <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" value="{{ tipo.nome }}" placeholder="Nome do Tipo de Inscrição">
+                  <!-- Campo oculto para preservar ID do tipo de inscrição -->
+                  <input type="hidden" name="id_tipo[]" value="{{ tipo.id }}">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 preco-container" {% if evento and evento.inscricao_gratuita %}style="display:none;"{% endif %}>
                   <label class="form-label">Preço:</label>
-                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" value="{{ tipo.preco }}" placeholder="Preço">
+                  <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" value="{{ tipo.preco }}" placeholder="Preço">
                 </div>
                 <div class="col-md-2">
-                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+                  <button type="button" class="btn btn-danger remover-tipo-inscricao" 
+                          data-inscricoes="{{ tipo.quantidade_inscricoes|default(0) }}" 
+                          data-id="{{ tipo.id }}">
+                    {% if tipo.quantidade_inscricoes and tipo.quantidade_inscricoes > 0 %}
+                      <i class="bi bi-lock"></i> Possui {{ tipo.quantidade_inscricoes }} inscrições
+                    {% else %}
+                      Remover
+                    {% endif %}
+                  </button>
                 </div>
               </div>
               {% endfor %}
             {% else %}
-              <!-- Caso não haja tipos de inscrição ou seja gratuito, exibe um campo vazio como padrão -->
-              <div class="row mb-2 align-items-center">
+              <!-- Caso não haja tipos de inscrição, exibe um campo vazio como padrão -->
+              <div class="row mb-2 align-items-center tipo-inscricao-item">
                 <div class="col-md-4">
                   <label class="form-label">Tipo de Inscrição:</label>
-                  <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+                  <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+                  <input type="hidden" name="id_tipo[]" value="">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 preco-container" {% if evento and evento.inscricao_gratuita %}style="display:none;"{% endif %}>
                   <label class="form-label">Preço:</label>
-                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+                  <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" placeholder="Preço" value="{% if evento and evento.inscricao_gratuita %}0.00{% endif %}">
                 </div>
                 <div class="col-md-2">
-                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+                  <button type="button" class="btn btn-danger remover-tipo-inscricao" data-inscricoes="0">Remover</button>
                 </div>
               </div>
             {% endif %}
           </div>
-          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">
-            + Adicionar Tipo de Inscrição
+          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary mt-2">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar Tipo de Inscrição
           </button>
         </div>
         {% endif %}
@@ -175,36 +201,155 @@
 <!-- Scripts -->
 {% if current_user.habilita_pagamento %}
 <script>
-document.getElementById('inscricao_gratuita').addEventListener('change', function() {
-  var container = document.getElementById('tipos-inscricao-container');
-  container.classList.toggle('d-none', this.checked);
-  container.classList.toggle('d-block', !this.checked);
-});
-
-document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
-  var container = document.getElementById('tipos-inscricao-list');
-  var div = document.createElement('div');
-  div.className = 'row mb-2 align-items-center';
-  div.innerHTML = `
-    <div class="col-md-4">
-      <label class="form-label">Tipo de Inscrição:</label>
-      <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
-    </div>
-    <div class="col-md-2">
-      <label class="form-label">Preço:</label>
-      <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
-    </div>
-    <div class="col-md-2">
-      <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-    </div>
-  `;
-  container.appendChild(div);
-});
-
-document.getElementById('tipos-inscricao-list').addEventListener('click', function(e) {
-  if (e.target && e.target.classList.contains('remover-tipo-inscricao')) {
-    e.target.parentElement.parentElement.remove();
+document.addEventListener('DOMContentLoaded', function() {
+  // Toggle price fields visibility
+  const inscricaoGratuita = document.getElementById('inscricao_gratuita');
+  const tiposContainer = document.getElementById('tipos-inscricao-container');
+  const tiposList = document.getElementById('tipos-inscricao-list');
+  
+  // Function to update price fields visibility and values
+  function updatePriceFields() {
+    const isGratuito = inscricaoGratuita.checked;
+    
+    // Manter o container visível sempre
+    tiposContainer.style.display = 'block';
+    
+    // Selecionar todos os campos de preço e seus containers
+    const precoFields = document.querySelectorAll('input[name="preco_tipo[]"]');
+    const precoContainers = document.querySelectorAll('.preco-container');
+    
+    // Atualizar todos os campos de preço
+    precoFields.forEach(field => {
+      if (isGratuito) {
+        field.value = '0.00';
+      }
+    });
+    
+    // Atualizar visibilidade de todos os containers de preço
+    precoContainers.forEach(container => {
+      container.style.display = isGratuito ? 'none' : 'block';
+    });
+    
+    // Se for gratuito, garantir que pelo menos um tipo de inscrição exista
+    if (isGratuito && tiposList.querySelectorAll('.tipo-inscricao-item').length === 0) {
+      addTipoInscricao('Inscrição Gratuita', '0.00');
+    }
   }
+  
+  // Verificar estado inicial
+  updatePriceFields();
+  
+  // Adicionar event listener
+  inscricaoGratuita.addEventListener('change', updatePriceFields);
+
+  // Função para adicionar novo tipo de inscrição
+  function addTipoInscricao(nome = '', preco = '') {
+    const newItem = document.createElement('div');
+    newItem.className = 'row mb-2 align-items-center tipo-inscricao-item';
+    newItem.innerHTML = `
+      <div class="col-md-4">
+        <label class="form-label">Tipo de Inscrição:</label>
+        <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição" value="${nome}">
+        <input type="hidden" name="id_tipo[]" value="">
+      </div>
+      <div class="col-md-2 preco-container" ${inscricaoGratuita.checked ? 'style="display:none;"' : ''}>
+        <label class="form-label">Preço:</label>
+        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
+              placeholder="Preço" value="${inscricaoGratuita.checked ? '0.00' : preco}">
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger remover-tipo-inscricao" data-inscricoes="0">Remover</button>
+      </div>
+    `;
+    tiposList.appendChild(newItem);
+    
+    // Atualizar campos após adicionar um novo item
+    updatePriceFields();
+  }
+
+  // Adicionar tipo de inscrição ao clicar no botão
+  document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
+    addTipoInscricao();
+  });
+  
+  // Se não houver nenhum tipo de inscrição, adicionar um automaticamente
+  if (tiposList.querySelectorAll('.tipo-inscricao-item').length === 0) {
+    if (inscricaoGratuita.checked) {
+      addTipoInscricao('Inscrição Gratuita', '0.00');
+    } else {
+      addTipoInscricao('Inscrição Padrão', '');
+    }
+  }
+
+  // Remover tipo de inscrição
+  tiposList.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remover-tipo-inscricao') || 
+        e.target.closest('.remover-tipo-inscricao')) {
+      const button = e.target.classList.contains('remover-tipo-inscricao') ? 
+                     e.target : e.target.closest('.remover-tipo-inscricao');
+      const row = button.closest('.tipo-inscricao-item');
+      
+      // Verificar se o tipo tem inscrições vinculadas
+      const inscricoes = parseInt(button.getAttribute('data-inscricoes') || '0');
+      
+      if (inscricoes > 0) {
+        // Exibir alerta se houver inscrições
+        alert(`Este tipo de inscrição possui ${inscricoes} usuário(s) vinculado(s) e não pode ser removido. Você pode apenas modificar seu nome e preço.`);
+        return;
+      }
+      
+      // Verificar se não é o último tipo de inscrição
+      if (tiposList.querySelectorAll('.tipo-inscricao-item').length > 1) {
+        row.remove();
+      } else {
+        // Se for o último, apenas exibir um alerta
+        alert('Pelo menos um tipo de inscrição é necessário.');
+      }
+    }
+  });
+  
+  // Validação para garantir pelo menos um tipo de inscrição ao enviar o formulário
+  document.querySelector('form').addEventListener('submit', function(e) {
+    const tiposItems = tiposList.querySelectorAll('.tipo-inscricao-item');
+    
+    if (tiposItems.length === 0) {
+      e.preventDefault();
+      alert('Você precisa definir pelo menos um tipo de inscrição.');
+      return;
+    }
+    
+    // Verificar se todos os campos obrigatórios estão preenchidos
+    let camposVazios = false;
+    tiposItems.forEach(item => {
+      const nomeTipo = item.querySelector('input[name="nome_tipo[]"]');
+      if (!nomeTipo.value.trim()) {
+        camposVazios = true;
+      }
+    });
+    
+    if (camposVazios) {
+      e.preventDefault();
+      alert('Todos os tipos de inscrição precisam ter um nome.');
+      return;
+    }
+    
+    // Verificar se todos os tipos de inscrição com usuários vinculados continuam no formulário
+    const idCampos = document.querySelectorAll('input[name="id_tipo[]"]');
+    let idsPreservados = [];
+    
+    idCampos.forEach(campo => {
+      if (campo.value) {
+        idsPreservados.push(campo.value);
+      }
+    });
+    
+    // Adicionar campo especial para marcar IDs a serem preservados no servidor
+    const preservarIdsInput = document.createElement('input');
+    preservarIdsInput.type = 'hidden';
+    preservarIdsInput.name = 'preservar_ids_tipo';
+    preservarIdsInput.value = idsPreservados.join(',');
+    this.appendChild(preservarIdsInput);
+  });
 });
 </script>
 {% endif %}
