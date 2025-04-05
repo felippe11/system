@@ -215,19 +215,43 @@
                     </div>
                     <div class="col-md-6">
                       <p>Eventos encontrados: {{ eventos|length }}</p>
-
-                      {% for evento in eventos %}
-                        <div class="card p-3 mb-3">
-                          <h5>{{ evento.nome }}</h5>
-                          <a href="{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=evento.id) }}"
-                            class="btn btn-outline-danger btn-sm">
-                            Baixar Check-ins do Evento (PDF)
-                          </a>
-                        </div>
-                      {% endfor %}
-
                       
-                  </div>
+                      <div class="card p-3 mb-3">
+                        <h5>Exportar Check-ins</h5>
+                        
+                        <div class="form-group mb-3">
+                          <label for="eventoSelector" class="form-label">Selecione um evento:</label>
+                          <select class="form-select" id="eventoSelector">
+                            <option value="" selected disabled>Escolha um evento</option>
+                            {% for evento in eventos %}
+                              <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        
+                        <button id="btnExportar" class="btn btn-outline-danger btn-sm" disabled>
+                          Baixar Check-ins do Evento (PDF)
+                        </button>
+                      </div>
+                      
+                      <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                          const selector = document.getElementById('eventoSelector');
+                          const btnExportar = document.getElementById('btnExportar');
+                          
+                          selector.addEventListener('change', function() {
+                            if (this.value) {
+                              btnExportar.disabled = false;
+                              btnExportar.onclick = function() {
+                                window.location.href = "{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=0) }}".replace('0', selector.value);
+                              }
+                            } else {
+                              btnExportar.disabled = true;
+                            }
+                          });
+                        });
+                      </script>
+                    </div>
                   </div>
                 </div>
               </div>
