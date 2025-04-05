@@ -221,12 +221,9 @@ class Inscricao(db.Model):
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
     
-    # Novo campo:
     qr_code_token = db.Column(db.String(100), unique=True, nullable=True)
-
     checkin_attempts = db.Column(db.Integer, default=0)
-
-    # Novo campo: referência ao tipo de inscrição, se aplicável.
+    
     tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('inscricao_tipo.id'), nullable=True)
     
     usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))
@@ -234,10 +231,11 @@ class Inscricao(db.Model):
     evento = db.relationship('Evento', backref='inscricoes')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
 
-    def __init__(self, usuario_id, oficina_id, cliente_id):
+    def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None):
         self.usuario_id = usuario_id
-        self.oficina_id = oficina_id
         self.cliente_id = cliente_id
+        self.oficina_id = oficina_id
+        self.evento_id = evento_id
 
         # Gera um token único garantido
         while True:
@@ -248,7 +246,7 @@ class Inscricao(db.Model):
                 break
 
     def __repr__(self):
-        return f"<Inscricao Usuario: {self.usuario_id} Oficina: {self.oficina_id}>"
+        return f"<Inscricao Usuario={self.usuario_id}, Oficina={self.oficina_id}, Evento={self.evento_id}>"
 
     
 
@@ -316,21 +314,23 @@ class RegraInscricaoEvento(db.Model):
 # =================================
 #            CHECKIN
 # =================================
+
 class Checkin(db.Model):
     __tablename__ = 'checkin'
 
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=False)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)  # agora pode ser nulo
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)    # novo campo
     data_hora = db.Column(db.DateTime, default=datetime.utcnow)
     palavra_chave = db.Column(db.String(50), nullable=False)
 
     usuario = db.relationship('Usuario', backref=db.backref('checkins', lazy=True))
     oficina = db.relationship('Oficina', backref=db.backref('checkins', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('checkins_evento', lazy=True))
 
     def __repr__(self):
-        return f"<Checkin Usuario: {self.usuario_id}, Oficina: {self.oficina_id}, Data: {self.data_hora}>"
-
+        return f"<Checkin (usuario={self.usuario_id}, oficina={self.oficina_id}, evento={self.evento_id}, data={self.data_hora})>"
 
 # =================================
 #            FEEDBACK
@@ -530,8 +530,12 @@ class ConfiguracaoCliente(db.Model):
     habilitar_feedback = db.Column(db.Boolean, default=False)
     habilitar_certificado_individual = db.Column(db.Boolean, default=False)
     
+    # Campo para habilitar credenciamento via QRCode do evento:
+    habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
+    
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
     cliente = db.relationship("Cliente", backref=db.backref("configuracao_cliente", uselist=False))
+    
     
 class FeedbackCampo(db.Model):
     __tablename__ = 'feedback_campo'

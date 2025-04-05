@@ -375,6 +375,16 @@
       </a>
     </div>
   {% endif %}
+
+  {% if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento %}
+    <a href="{{ url_for('routes.gerar_evento_qrcode_pdf', evento_id=evento.id) }}" class="btn btn-primary">
+      <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
+    </a>
+  {% else %}
+    <p class="text-muted">QR Code do evento desativado pelo cliente.</p>
+  {% endif %}
+
+
   
   <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
   {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}

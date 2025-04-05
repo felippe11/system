@@ -542,6 +542,8 @@ def dashboard():
     propostas = Proposta.query.all()
      # Buscando os agendamentos do professor logado
     agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+    
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
 
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
@@ -754,7 +756,8 @@ def dashboard():
         habilitar_certificado_individual=habilitar_certificado_individual,
         clientes=clientes,
         cliente_filter=cliente_filter,
-        agendamentos_professor=agendamentos_professor
+        agendamentos_professor=agendamentos_professor,
+        eventos=eventos
     )
 
 @routes.route('/dashboard_participante')
@@ -766,6 +769,10 @@ def dashboard_participante():
 
     # Se o participante está associado a um cliente, buscamos a config desse cliente
     config_cliente = None
+    
+     # Aqui buscamos o evento do cliente, o primeiro, ou mais recente, etc.
+    evento = Evento.query.filter_by(cliente_id=current_user.cliente_id).first()
+    
     # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
     formularios_disponiveis = False
     if current_user.cliente_id:
@@ -874,6 +881,8 @@ def dashboard_participante():
                     disponivel_para_inscricao = False
                     motivo_indisponibilidade = f"Você já atingiu o limite de {limite_oficinas} oficinas para seu tipo de inscrição"
         
+        print(config_cliente)
+        
         oficinas_formatadas.append({
             'id': oficina.id,
             'titulo': oficina.titulo,
@@ -891,7 +900,9 @@ def dashboard_participante():
 
     return render_template(
         'dashboard_participante.html',
+        config_cliente = config_cliente,
         usuario=current_user,
+        evento=evento,
         oficinas=oficinas_formatadas,
         eventos_inscritos=eventos_inscritos,
         # Aqui passamos as booleans *do cliente* para o template
@@ -1400,36 +1411,68 @@ def leitor_checkin():
         flash(mensagem, "danger")
         return redirect(url_for('routes.dashboard'))
 
-    checkin_existente = Checkin.query.filter_by(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id
-    ).first()
-    if checkin_existente:
-        mensagem = "Check-in já foi realizado!"
+    # Verifica se é check-in de evento ou oficina
+    if inscricao.evento_id:
+        checkin_existente = Checkin.query.filter_by(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id
+        ).first()
+        if checkin_existente:
+            mensagem = "Check-in de evento já foi realizado!"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
+            flash(mensagem, "warning")
+            return redirect(url_for('routes.dashboard'))
+
+        novo_checkin = Checkin(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id,
+            palavra_chave="QR-EVENTO"
+        )
+
+        dados_checkin = {
+            'participante': inscricao.usuario.nome,
+            'evento': inscricao.evento.nome,
+            'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        }
+
+    elif inscricao.oficina_id:
+        checkin_existente = Checkin.query.filter_by(
+            usuario_id=inscricao.usuario_id,
+            oficina_id=inscricao.oficina_id
+        ).first()
+        if checkin_existente:
+            mensagem = "Check-in da oficina já foi realizado!"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
+            flash(mensagem, "warning")
+            return redirect(url_for('routes.dashboard'))
+
+        novo_checkin = Checkin(
+            usuario_id=inscricao.usuario_id,
+            oficina_id=inscricao.oficina_id,
+            palavra_chave="QR-OFICINA"
+        )
+
+        dados_checkin = {
+            'participante': inscricao.usuario.nome,
+            'oficina': inscricao.oficina.titulo,
+            'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        }
+
+    else:
+        mensagem = "Inscrição sem evento ou oficina vinculada."
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
-        flash(mensagem, "warning")
+            return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
+        flash(mensagem, "danger")
         return redirect(url_for('routes.dashboard'))
 
-    novo_checkin = Checkin(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id,
-        palavra_chave="QR-AUTO"
-    )
     db.session.add(novo_checkin)
     db.session.commit()
 
-    # Dados do check-in
-    dados_checkin = {
-        'participante': inscricao.usuario.nome,
-        'oficina': inscricao.oficina.titulo,
-        'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-    }
-
-    # Emitir evento Socket.IO
+    # Emitir via Socket.IO
     socketio.emit('novo_checkin', dados_checkin, broadcast=True)
 
-    # Retorno AJAX
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'status': 'ok', **dados_checkin})
 
@@ -4130,6 +4173,8 @@ def dashboard_cliente():
 
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
     
+    evento = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
+    
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
     oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(
@@ -4291,7 +4336,8 @@ def dashboard_cliente():
         agendamentos_hoje=agendamentos_hoje,
         proximos_agendamentos=proximos_agendamentos,
         ocupacao_media=ocupacao_media,
-        total_eventos=total_eventos
+        total_eventos=total_eventos,
+        evento=evento
     )
     
 def obter_configuracao_do_cliente(cliente_id):
@@ -11891,3 +11937,359 @@ def remover_fotos_selecionadas():
     flash('Fotos removidas com sucesso!', 'success')
     return redirect(url_for('routes.gerenciar_patrocinadores'))
     # Se não houver fotos selecionadas, redireciona para a página de gerenciamento
+    
+@routes.route('/gerar_evento_qrcode_pdf/<int:evento_id>')
+@login_required
+def gerar_evento_qrcode_pdf(evento_id):
+    """
+    Gera um PDF contendo o QR Code do evento para credenciamento.
+    O PDF terá informações do evento e do participante, além do código QR.
+    """
+
+    import os
+    import uuid
+    from datetime import datetime
+    from flask import send_file, flash, redirect, url_for
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    import qrcode
+
+    # 1) Verifica se há configuração do cliente e se está habilitado o QR Code de evento
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
+    if not config_cliente or not config_cliente.habilitar_qrcode_evento_credenciamento:
+        flash("A geração de QR Code para credenciamento de evento está desabilitada para este cliente.", "danger")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # 2) Localiza o evento
+    evento = Evento.query.get_or_404(evento_id)
+
+    # 3) Verifica se o participante está inscrito nesse evento, senão cria a inscrição automaticamente
+    inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento_id).first()
+    if not inscricao:
+        inscricao = Inscricao(
+            usuario_id=current_user.id,
+            cliente_id=current_user.cliente_id,
+            evento_id=evento_id
+        )
+        db.session.add(inscricao)
+        db.session.commit()
+
+    # 4) Caso não tenha token gerado, gera agora
+    if not inscricao.qr_code_token:
+        novo_token = str(uuid.uuid4())
+        inscricao.qr_code_token = novo_token
+        db.session.commit()
+
+    token = inscricao.qr_code_token
+
+    # 5) Gera a imagem do QR Code
+    output_dir = os.path.join("static", "tmp")
+    os.makedirs(output_dir, exist_ok=True)
+    qr_filename = f"qr_evento_{evento_id}_user_{current_user.id}.png"
+    qr_path = os.path.join(output_dir, qr_filename)
+
+    # Criando QR code com estilo
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(token)
+    qr.make(fit=True)
+
+    # Criando QR code colorido
+    qr_img = qr.make_image(fill_color="#0066CC", back_color="white")
+    qr_img.save(qr_path)
+
+    # 6) Cria um PDF com ReportLab
+    pdf_filename = f"evento_{evento_id}_qrcode_{current_user.id}.pdf"
+    pdf_output_dir = os.path.join("static", "comprovantes")
+    os.makedirs(pdf_output_dir, exist_ok=True)
+    pdf_path = os.path.join(pdf_output_dir, pdf_filename)
+
+    # Registro de fontes personalizadas (se disponíveis)
+    # Descomente as linhas abaixo se tiver arquivos de fontes
+    # pdfmetrics.registerFont(TTFont('Montserrat', 'static/fonts/Montserrat-Regular.ttf'))
+    # pdfmetrics.registerFont(TTFont('MontserratBold', 'static/fonts/Montserrat-Bold.ttf'))
+
+    # Cores e estilos
+    cor_primaria = colors.HexColor("#0066CC")  # Azul
+    cor_secundaria = colors.HexColor("#333333")  # Cinza escuro
+    cor_destaque = colors.HexColor("#FF9900")  # Laranja
+
+    # Configurações do PDF
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+    c.setTitle("Comprovante de Inscrição - " + evento.nome)
+
+    # Fundo do cabeçalho
+    c.setFillColor(cor_primaria)
+    c.rect(0, height-4*cm, width, 4*cm, fill=True, stroke=False)
+
+    # Título no cabeçalho
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 22)
+    c.drawCentredString(width/2, height-2.5*cm, "COMPROVANTE DE INSCRIÇÃO")
+
+    # Logo da organização (se disponível)
+    # c.drawImage("static/img/logo.png", 1*cm, height-3*cm, width=2*cm, height=2*cm)
+
+    # Data e hora de geração do comprovante
+    import datetime
+    data_geracao = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    c.setFont("Helvetica", 9)
+    c.drawRightString(width-1*cm, height-3.5*cm, f"Gerado em: {data_geracao}")
+
+    # Caixa principal de conteúdo
+    c.setFillColor(colors.white)
+    c.roundRect(1*cm, 5*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+
+    # Sombra sutil para a caixa
+    c.setFillColor(colors.HexColor("#EEEEEE"))
+    c.roundRect(1.1*cm, 4.9*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+    c.setFillColor(colors.white)
+    c.roundRect(1*cm, 5*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+
+    # Informações do evento
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(2*cm, height-5.5*cm, evento.nome)
+
+    # Linha decorativa
+    c.setStrokeColor(cor_destaque)
+    c.setLineWidth(3)
+    c.line(2*cm, height-5.8*cm, width-2*cm, height-5.8*cm)
+
+    # Informações detalhadas
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(2*cm, height-7*cm, "DETALHES DO EVENTO:")
+
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica", 12)
+    data_evento = evento.data_inicio.strftime("%d/%m/%Y") if evento.data_inicio else "Data indefinida"
+    hora_evento = evento.hora_inicio.strftime("%H:%M") if hasattr(evento, 'hora_inicio') and evento.hora_inicio else "Horário não especificado"
+    localizacao = evento.localizacao or "Local não especificado"
+
+    y_position = height-8*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Data:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, data_evento)
+
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Horário:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, hora_evento)
+
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Local:")
+    c.setFont("Helvetica", 10)
+    # Gerencia texto de localização longo para não sobrepor o QR code
+    # Calcula a largura máxima disponível para o texto (evitando a área do QR code)
+    texto_max_largura = width - 15*cm  # Deixa margem para o QR code à direita
+
+    # Importa ferramentas para texto multilinha
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+
+    # Define o estilo do parágrafo
+    style = ParagraphStyle(
+        name='Normal',
+        fontName='Helvetica',
+        fontSize=10,
+        leading=12  # Espaçamento entre linhas
+    )
+
+    # Cria o parágrafo com o texto da localização
+    p = Paragraph(localizacao, style)
+
+    # Organiza o parágrafo dentro do espaço disponível
+    text_width, text_height = p.wrapOn(c, texto_max_largura, 4*cm)
+
+    # Desenha o parágrafo
+    p.drawOn(c, 4*cm, y_position - text_height + 10)
+
+    # Ajusta a posição vertical baseada na altura do texto
+    y_position -= (text_height + 0.3*cm)
+
+    # Informações do participante
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(2*cm, y_position, "DADOS DO PARTICIPANTE:")
+    y_position -= 0.7*cm
+
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Nome:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, current_user.nome)
+
+    # Adicionar e-mail se disponível
+    if hasattr(current_user, 'email'):
+        y_position -= 0.7*cm
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(2*cm, y_position, "E-mail:")
+        c.setFont("Helvetica", 10)
+        c.drawString(4*cm, y_position, current_user.email)
+
+    # Código de inscrição
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Código:")
+    c.setFont("Helvetica", 10)
+    codigo_inscricao = token[:8].upper()  # Primeiros 8 caracteres do token
+    c.drawString(4*cm, y_position, codigo_inscricao)
+
+    # QR Code com título
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(width-7*cm, height-7*cm, "QR CODE DE ACESSO")
+
+    # Borda decorativa ao redor do QR Code
+    c.setStrokeColor(cor_destaque)
+    c.setLineWidth(2)
+    c.roundRect(width-7*cm, height-13*cm, 5*cm, 5*cm, 5, fill=False, stroke=True)
+
+    # Inserir o QR Code
+    c.drawImage(qr_path, width-6.5*cm, height-12.5*cm, width=4*cm, height=4*cm)
+
+    # Instruções
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColor(cor_secundaria)
+    c.drawCentredString(width-4.5*cm, height-13.5*cm, "Apresente este QR Code na entrada do evento")
+
+    # Rodapé
+    c.setFillColor(cor_primaria)
+    c.rect(0, 0, width, 2*cm, fill=True, stroke=False)
+
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(width/2, 1*cm, "Este é um comprovante oficial de inscrição. Em caso de dúvidas, entre em contato conosco.")
+
+    # Número da inscrição
+    numero_inscricao = f"#{current_user.id:06d}"
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(width-3*cm, 1*cm, numero_inscricao)
+
+    # Finaliza o PDF
+    c.showPage()
+    c.save()
+
+    # 7) Retorna o PDF para download
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
+
+
+@routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
+@login_required
+def toggle_qrcode_evento_credenciamento():
+    # Garante que apenas o cliente (dono) possa mudar
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    # Busca (ou cria) a configuração desse cliente
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(
+            cliente_id=current_user.id,
+            permitir_checkin_global=False,
+            habilitar_feedback=False,
+            habilitar_certificado_individual=False,
+            habilitar_qrcode_evento_credenciamento=False
+        )
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    # Inverte o valor atual
+    config_cliente.habilitar_qrcode_evento_credenciamento = not config_cliente.habilitar_qrcode_evento_credenciamento
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_qrcode_evento_credenciamento,
+        "message": "Habilitação de QRCode de Evento atualizada!"
+    })
+
+@routes.route("/exportar_checkins_evento_pdf/<int:evento_id>")
+@login_required
+def exportar_checkins_evento_pdf(evento_id):
+    import os
+    from io import BytesIO
+    from flask import send_file, flash, redirect, url_for
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+
+    # Verifica permissão
+    if not (current_user.is_cliente() or current_user.is_superuser()):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("routes.dashboard_cliente"))
+
+    evento = Evento.query.get_or_404(evento_id)
+    checkins = Checkin.query.filter_by(evento_id=evento.id).all()
+
+    if not checkins:
+        flash("Nenhum check-in encontrado para este evento.", "warning")
+        return redirect(url_for("routes.dashboard_cliente"))
+
+    # Cria PDF em memória
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    largura, altura = A4
+
+    c.setTitle(f"Check-ins do Evento: {evento.nome}")
+
+    # Cabeçalho
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(2*cm, altura - 2*cm, f"Relatório de Check-ins - {evento.nome}")
+    c.setFont("Helvetica", 12)
+    c.drawString(2*cm, altura - 2.7*cm, f"Data de geração: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+
+    # Títulos da tabela
+    c.setFont("Helvetica-Bold", 10)
+    y = altura - 4*cm
+    c.drawString(2*cm, y, "Nome")
+    c.drawString(7*cm, y, "CPF")
+    c.drawString(10*cm, y, "Data/Hora")
+    c.drawString(14*cm, y, "Palavra-chave")
+    y -= 0.5*cm
+    c.line(2*cm, y, 19*cm, y)
+    y -= 0.4*cm
+
+    # Conteúdo
+    c.setFont("Helvetica", 10)
+    for checkin in checkins:
+        usuario = checkin.usuario
+        if y < 2.5*cm:
+            c.showPage()
+            y = altura - 3*cm
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(2*cm, y, "Nome")
+            c.drawString(7*cm, y, "CPF")
+            c.drawString(10*cm, y, "Data/Hora")
+            c.drawString(14*cm, y, "Palavra-chave")
+            y -= 0.5*cm
+            c.line(2*cm, y, 19*cm, y)
+            y -= 0.4*cm
+            c.setFont("Helvetica", 10)
+
+        c.drawString(2*cm, y, usuario.nome[:40])
+        c.drawString(7*cm, y, usuario.cpf or "-")
+        c.drawString(10*cm, y, checkin.data_hora.strftime('%d/%m/%Y %H:%M'))
+        c.drawString(14*cm, y, checkin.palavra_chave or "-")
+        y -= 0.4*cm
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+
+    filename = f"checkins_evento_{evento.id}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
