@@ -369,30 +369,11 @@
 
   {% if config_cliente and config_cliente.habilitar_submissao_trabalhos %}
   <div class="container-fluid px-4 mt-5">
-    <h3 class="mb-4">Submissão de Trabalho Científico</h3>
-    <form method="POST" enctype="multipart/form-data">
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label for="titulo" class="form-label">Título</label>
-          <input type="text" class="form-control" name="titulo" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label for="area_tematica" class="form-label">Área Temática</label>
-          <input type="text" class="form-control" name="area_tematica" required>
-        </div>
-        <div class="col-12 mb-3">
-          <label for="resumo" class="form-label">Resumo</label>
-          <textarea class="form-control" name="resumo" rows="4" required></textarea>
-        </div>
-        <div class="col-md-6 mb-4">
-          <label for="arquivo_pdf" class="form-label">Arquivo PDF</label>
-          <input type="file" class="form-control" name="arquivo_pdf" accept="application/pdf" required>
-        </div>
-      </div>
-      <button type="submit" class="btn btn-success">
-        <i class="bi bi-upload me-2"></i>Submeter Trabalho
-      </button>
-    </form>
+    <div class="d-flex justify-content-end mb-4">
+      <a href="{{ url_for('routes.nova_submissao') }}" class="btn btn-success btn-lg">
+        <i class="bi bi-upload me-2"></i> Submeter Trabalho
+      </a>
+    </div>
   </div>
   {% else %}
   <div class="container mt-5">
