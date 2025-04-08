@@ -16,6 +16,7 @@ from models import Cliente
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from extensions import socketio
+from models import TrabalhoCientifico
 
 
 # routes.py (no início do arquivo)
@@ -11659,12 +11660,126 @@ def gerar_folder_evento(evento_id):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm, cm
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.units import mm, cm, inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak, Flowable, KeepTogether
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.graphics.shapes import Drawing, Line, Circle, Rect, Polygon
+    from reportlab.graphics import renderPDF
     import os
     from datetime import datetime
     from flask import current_app
+    from io import BytesIO
+    
+    # Classes personalizadas para elementos decorativos
+    class HorizontalLine(Flowable):
+        def __init__(self, width, height=0.5, color=colors.black, dash=None):
+            Flowable.__init__(self)
+            self.width = width
+            self.height = height
+            self.color = color
+            self.dash = dash
+            
+        def draw(self):
+            self.canv.saveState()
+            self.canv.setLineWidth(self.height)
+            self.canv.setStrokeColor(self.color)
+            if self.dash:
+                self.canv.setDash(self.dash)
+            self.canv.line(0, 0, self.width, 0)
+            self.canv.restoreState()
+            
+    class ColoredBox(Flowable):
+        """Um box decorativo com cor sólida"""
+        def __init__(self, width, height, color=colors.blue, radius=0):
+            Flowable.__init__(self)
+            self.width = width
+            self.height = height
+            self.color = color
+            self.radius = radius
+            
+        def draw(self):
+            self.canv.saveState()
+            self.canv.setFillColor(self.color)
+            if self.radius > 0:
+                # Quando o reportlab suportar, usaremos roundRect
+                self.canv.setStrokeColor(self.color)
+                self.canv.rect(0, 0, self.width, self.height, fill=1, stroke=0)
+            else:
+                self.canv.rect(0, 0, self.width, self.height, fill=1, stroke=0)
+            self.canv.restoreState()
+    
+    class DecorationHeader(Flowable):
+        """Um elemento de decoração gráfica moderna para cabeçalhos"""
+        def __init__(self, width, height=10*mm, colors=[colors.blue, colors.lightblue]):
+            Flowable.__init__(self)
+            self.width = width
+            self.height = height
+            self.colors = colors
+            
+        def draw(self):
+            self.canv.saveState()
+            
+            # Desenhar elementos decorativos
+            main_color = self.colors[0]
+            accent_color = self.colors[1]
+            
+            # Retângulo principal
+            self.canv.setFillColor(main_color)
+            self.canv.rect(0, 0, self.width * 0.8, self.height, fill=1, stroke=0)
+            
+            # Elemento de destaque
+            self.canv.setFillColor(accent_color)
+            self.canv.rect(self.width * 0.8, 0, self.width * 0.2, self.height, fill=1, stroke=0)
+            
+            # Círculos decorativos
+            self.canv.setFillColor(colors.white.clone(alpha=0.2))
+            self.canv.circle(self.width * 0.1, self.height * 0.5, self.height * 0.3, fill=1, stroke=0)
+            self.canv.circle(self.width * 0.9, self.height * 0.5, self.height * 0.3, fill=1, stroke=0)
+            
+            self.canv.restoreState()
+    
+    # Nova classe para contêiner com cantos arredondados
+    class RoundedContainer(Flowable):
+        def __init__(self, contents, width, corner_radius=10, background_color=colors.white, border_color=None, border_width=1, padding=5):
+            Flowable.__init__(self)
+            self.contents = contents
+            self.width = width
+            self.corner_radius = corner_radius
+            self.background_color = background_color
+            self.border_color = border_color
+            self.border_width = border_width
+            self.padding = padding
+            
+            # Calcular a altura aproximada do conteúdo
+            # Isso é uma estimativa, pode precisar ser ajustado
+            self.height = 0
+            for item in contents:
+                self.height += item.wrap(width - 2*padding, 1000)[1]
+            self.height += 2*padding
+            
+        def draw(self):
+            canvas = self.canv
+            canvas.saveState()
+            
+            # Desenhar o retângulo arredondado de fundo
+            p = canvas.beginPath()
+            p.roundRect(0, 0, self.width, self.height, self.corner_radius)
+            canvas.setFillColor(self.background_color)
+            canvas.setLineWidth(self.border_width)
+            if self.border_color:
+                canvas.setStrokeColor(self.border_color)
+                canvas.drawPath(p, fill=1, stroke=1)
+            else:
+                canvas.drawPath(p, fill=1, stroke=0)
+            
+            # Desenhar o conteúdo
+            x, y = self.padding, self.height - self.padding
+            for item in self.contents:
+                item_width, item_height = item.wrap(self.width - 2*self.padding, y)
+                y -= item_height
+                item.drawOn(canvas, x, y)
+            
+            canvas.restoreState()
     
     # Busca o evento no banco de dados
     evento = Evento.query.get_or_404(evento_id)
@@ -11719,6 +11834,15 @@ def gerar_folder_evento(evento_id):
     os.makedirs(folder_dir, exist_ok=True)
     pdf_path = os.path.join(folder_dir, pdf_filename)
     
+    # Definição de cores conforme solicitado
+    primary_color = colors.HexColor('#1a237e')      # Azul escuro
+    secondary_color = colors.HexColor('#283593')    # Azul médio
+    accent_color = colors.HexColor('#5c6bc0')       # Azul claro
+    light_bg = colors.HexColor('#f5f5f5')           # Cinza claro
+    text_dark = colors.HexColor('#212121')          # Quase preto
+    text_medium = colors.HexColor('#424242')        # Cinza escuro
+    highlight_color = colors.HexColor('#03a9f4')    # Azul claro para destaque
+    
     # Configuração de estilos personalizados
     styles = getSampleStyleSheet()
     
@@ -11726,54 +11850,57 @@ def gerar_folder_evento(evento_id):
     title_style = ParagraphStyle(
         name='CustomTitle',
         parent=styles['Title'],
-        fontSize=28,
+        fontSize=26,
         alignment=TA_CENTER,
         spaceAfter=6 * mm,
         fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#023E8A')
+        textColor=primary_color,
+        leading=34,
+        borderPadding=10
     )
     
     # Estilo para subtítulos
     subtitle_style = ParagraphStyle(
         name='CustomSubtitle',
         parent=styles['Heading2'],
-        fontSize=20,
+        fontSize=18,
         alignment=TA_CENTER,
         spaceAfter=5 * mm,
         fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#0077B6'),
+        textColor=secondary_color,
         borderPadding=10,
-        borderWidth=1,
+        borderWidth=0,
         borderRadius=5,
-        borderColor=colors.HexColor('#E9ECEF')
+        leading=24
     )
     
     # Estilo para dias da semana
     day_style = ParagraphStyle(
         name='DayStyle',
         parent=styles['Heading3'],
-        fontSize=18,
+        fontSize=16,
         alignment=TA_LEFT,
-        spaceBefore=8 * mm,
-        spaceAfter=5 * mm,
+        spaceBefore=16 * mm,
+        spaceAfter=8 * mm,
         fontName='Helvetica-Bold',
         textColor=colors.white,
         borderPadding=10,
         borderWidth=0,
-        borderRadius=5,
-        borderColor=colors.HexColor('#023E8A'),
-        backColor=colors.HexColor('#023E8A')
+        borderRadius=8,
+        backColor=primary_color,
+        leading=20
     )
     
     # Estilo para atividades
     activity_title_style = ParagraphStyle(
         name='ActivityTitle',
         parent=styles['Heading4'],
-        fontSize=14,
+        fontSize=15,
         alignment=TA_LEFT,
         spaceAfter=2 * mm,
         fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#023E8A')
+        textColor=secondary_color,
+        leading=18
     )
     
     # Estilo para descrições
@@ -11781,9 +11908,10 @@ def gerar_folder_evento(evento_id):
         name='Description',
         parent=styles['Normal'],
         fontSize=11,
-        alignment=TA_LEFT,
+        alignment=TA_JUSTIFY,
         spaceAfter=3 * mm,
-        leading=14
+        leading=14,
+        textColor=text_medium
     )
     
     # Estilo para ministrante
@@ -11792,18 +11920,20 @@ def gerar_folder_evento(evento_id):
         parent=styles['Italic'],
         fontSize=11,
         alignment=TA_LEFT,
-        textColor=colors.HexColor('#0077B6'),
-        spaceAfter=3 * mm
+        textColor=accent_color,
+        spaceAfter=3 * mm,
+        leading=14
     )
     
     # Estilo para tipo de atividade
     tipo_style = ParagraphStyle(
         name='TipoOficina',
         parent=styles['Normal'],
-        fontSize=10,
+        fontSize=11,
         alignment=TA_LEFT,
-        textColor=colors.HexColor('#0096C7'),
-        fontName='Helvetica-Oblique'
+        textColor=highlight_color,
+        fontName='Helvetica-Oblique',
+        leading=13
     )
     
     # Estilo para horário
@@ -11811,23 +11941,26 @@ def gerar_folder_evento(evento_id):
         name='Horario',
         parent=styles['Normal'],
         fontSize=12,
-        alignment=TA_LEFT,
+        alignment=TA_CENTER,
         textColor=colors.white,
         fontName='Helvetica-Bold',
         spaceAfter=2 * mm,
         borderPadding=5,
         borderWidth=0,
         borderRadius=3,
-        backColor=colors.HexColor('#0096C7')
+        backColor=secondary_color,
+        leading=14
     )
     
     # Estilo para info do evento
     info_style = ParagraphStyle(
         name='InfoEvent',
         parent=styles['Normal'],
-        fontSize=11,
+        fontSize=12,
         alignment=TA_CENTER,
-        spaceAfter=2 * mm
+        spaceAfter=2 * mm,
+        textColor=text_dark,
+        leading=15
     )
     
     # Estilo para rodapé
@@ -11836,7 +11969,23 @@ def gerar_folder_evento(evento_id):
         parent=styles['Normal'],
         fontSize=9,
         textColor=colors.gray,
-        alignment=TA_CENTER
+        alignment=TA_CENTER,
+        leading=11
+    )
+    
+    # Estilo para destaque
+    highlight_style = ParagraphStyle(
+        name='Highlight',
+        parent=styles['Normal'],
+        fontSize=13,
+        alignment=TA_CENTER,
+        textColor=colors.white,
+        fontName='Helvetica-Bold',
+        borderPadding=8,
+        borderWidth=0,
+        borderRadius=5,
+        backColor=highlight_color,
+        leading=15
     )
     
     # Criar o documento PDF
@@ -11845,8 +11994,10 @@ def gerar_folder_evento(evento_id):
         pagesize=A4,
         rightMargin=25,
         leftMargin=25,
-        topMargin=30,
-        bottomMargin=30
+        topMargin=35,
+        bottomMargin=30,
+        title=evento.nome,
+        author="Sistema de Eventos"
     )
     
     # Lista para elementos do PDF
@@ -11869,17 +12020,18 @@ def gerar_folder_evento(evento_id):
                 
             if img_path and (img_path.startswith('http') or os.path.exists(img_path)):
                 img = Image(img_path)
-                img_width = doc.width * 0.8
+                img_width = doc.width * 0.85
                 img_height = img_width / 3  # Proporção da imagem
                 img.drawWidth = img_width
                 img.drawHeight = img_height
                 elements.append(img)
-                elements.append(Spacer(1, 8 * mm))
+                elements.append(Spacer(1, 10 * mm))
         except Exception as e:
             print(f"Erro ao carregar imagem: {str(e)}")
     
     # Título do evento
     elements.append(Paragraph(f"{evento.nome}", title_style))
+
     
     # Box com informações do evento
     info_box_content = []
@@ -11896,39 +12048,89 @@ def gerar_folder_evento(evento_id):
     # Criar tabela para info box
     if info_box_content:
         elements.append(Spacer(1, 5 * mm))
+        
+        # Background para informações
         info_table = Table([
             [content] for content in info_box_content
-        ], colWidths=[doc.width * 0.9])
+        ], colWidths=[doc.width * 0.92])
         
         info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8F9FA')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            #('BACKGROUND', (0, 0), (-1, -1), light_bg),
+            # Remover borda original
+            # ('BOX', (0, 0), (-1, -1), 1, accent_color),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         
-        elements.append(info_table)
+        # Criar contêiner arredondado para a tabela de informações
+        info_rounded = RoundedContainer(
+            [info_table], 
+            doc.width * 0.92, 
+            corner_radius=10, 
+            border_color=accent_color, 
+            background_color=light_bg,
+            border_width=1,
+            padding=2
+        )
+        
+        elements.append(info_rounded)
     
-    elements.append(Spacer(1, 12 * mm))
+    elements.append(Spacer(1, 20 * mm))
     
-    # Título da programação
+    # Título da programação com elemento visual
     elements.append(Paragraph("PROGRAMAÇÃO DO EVENTO", subtitle_style))
-    elements.append(Spacer(1, 8 * mm))
+    
+
     
     # Adicionar programação por dia
-    for data_str in sorted_keys:
+    for i, data_str in enumerate(sorted_keys):
         # Título do dia
-        elements.append(Paragraph(f"Dia: {data_str}", day_style))
+        weekday_names = {
+            0: "Segunda-feira", 
+            1: "Terça-feira", 
+            2: "Quarta-feira", 
+            3: "Quinta-feira", 
+            4: "Sexta-feira", 
+            5: "Sábado", 
+            6: "Domingo"
+        }
+        day_date = datetime.strptime(data_str, '%d/%m/%Y')
+        weekday = weekday_names[day_date.weekday()]
+        
+        # Box decorativo para o dia
+        day_content = [
+            [Paragraph(f"{weekday} - {data_str}", day_style)]
+        ]
+        
+        day_table = Table(day_content, colWidths=[doc.width * 0.95])
+        day_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), primary_color),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        # Criar contêiner arredondado para o dia
+        day_rounded = RoundedContainer(
+            [day_table], 
+            doc.width * 0.95, 
+            corner_radius=10, 
+            border_color=None, 
+            background_color=primary_color,
+            border_width=0,
+            padding=2
+        )
+        
+        elements.append(day_rounded)
+        elements.append(Spacer(1, 5 * mm))
         
         # Ordenar atividades pelo horário
         sorted_atividades = sorted(grouped_oficinas[data_str], key=lambda x: x['horario_inicio'])
         
         # Atividades do dia
-        for atividade in sorted_atividades:
-            # Box da atividade
-            atividade_box = []
+        for j, atividade in enumerate(sorted_atividades):
+            atividade_elements = []
             
             # Criar tabela para o horário e título
             header_data = [
@@ -11940,89 +12142,360 @@ def gerar_folder_evento(evento_id):
             
             header_table = Table(header_data, colWidths=[doc.width * 0.25, doc.width * 0.65])
             header_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#0096C7')),
-                ('BACKGROUND', (1, 0), (1, 0), colors.white),
+                ('BACKGROUND', (0, 0), (0, 0), secondary_color),
+                #('BACKGROUND', (1, 0), (1, 0), light_bg),
                 ('LEFTPADDING', (0, 0), (0, 0), 10),
                 ('LEFTPADDING', (1, 0), (1, 0), 15),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
                 ('ALIGN', (0, 0), (0, 0), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ROUNDEDCORNERS', [5, 5, 0, 0]),
             ]))
             
-            atividade_box.append(header_table)
+            # Criar contêiner arredondado para o cabeçalho
+            header_rounded = RoundedContainer(
+                [header_table], 
+                doc.width * 0.90, 
+                corner_radius=8, 
+                border_color=None, 
+                background_color=colors.white,
+                border_width=0,
+                padding=2
+            )
+            
+            atividade_elements.append(header_rounded)
+            atividade_elements.append(Spacer(1, 4 * mm))
             
             # Tipo de atividade
-            atividade_box.append(Paragraph(f"<i>{atividade['tipo_oficina']}</i>", tipo_style))
+            tipo_data = [
+                [
+                    Paragraph(f"<i>{atividade['tipo_oficina']}</i>", tipo_style)
+                ]
+            ]
             
-            # Descrição
-            atividade_box.append(Paragraph(f"{atividade['descricao']}", description_style))
+            tipo_table = Table(tipo_data, colWidths=[doc.width * 0.35])
+            tipo_table.setStyle(TableStyle([
+                #('BACKGROUND', (0, 0), (0, 0), light_bg.clone(alpha=0.7)),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (0, 0), 4),
+                ('BOTTOMPADDING', (0, 0), (0, 0), 4),
+                ('LEFTPADDING', (0, 0), (0, 0), 10),
+                ('RIGHTPADDING', (0, 0), (0, 0), 10),
+                # Remover borda
+                # ('BOX', (0, 0), (0, 0), 1, highlight_color),
+            ]))
             
-            # Ministrante
+            # Criar contêiner arredondado para o tipo
+            tipo_rounded = RoundedContainer(
+                [tipo_table], 
+                doc.width * 0.35, 
+                corner_radius=8, 
+                border_color=highlight_color, 
+                background_color=light_bg.clone(alpha=0.7),
+                border_width=1,
+                padding=1
+            )
+            
+            atividade_elements.append(tipo_rounded)
+            atividade_elements.append(Spacer(1, 4 * mm))
+            
+            # Descrição com moldura estilizada
+            if atividade['descricao']:
+                desc_data = [
+                    [Paragraph(f"{atividade['descricao']}", description_style)]
+                ]
+                
+                desc_table = Table(desc_data, colWidths=[doc.width * 0.9])
+                desc_table.setStyle(TableStyle([
+                    ('TOPPADDING', (0, 0), (0, 0), 8),
+                    ('BOTTOMPADDING', (0, 0), (0, 0), 8),
+                    ('LEFTPADDING', (0, 0), (0, 0), 10),
+                    ('RIGHTPADDING', (0, 0), (0, 0), 10),
+                    #('BACKGROUND', (0, 0), (0, 0), light_bg.clone(alpha=0.3)),
+                ]))
+                
+                # Criar contêiner arredondado para a descrição
+                desc_rounded = RoundedContainer(
+                    [desc_table], 
+                    doc.width * 0.9, 
+                    corner_radius=8, 
+                    border_color=None, 
+                    background_color=light_bg.clone(alpha=0.3),
+                    border_width=0,
+                    padding=1
+                )
+                
+                atividade_elements.append(desc_rounded)
+                atividade_elements.append(Spacer(1, 4 * mm))
+            
+            # Ministrante com layout moderno
             if atividade['ministrante'] != 'N/A':
                 if atividade['ministrante_foto']:
                     try:
                         # Tentar exibir foto do ministrante com nome ao lado
                         foto_path = os.path.join(current_app.root_path, 'static', atividade['ministrante_foto'])
                         if os.path.exists(foto_path):
+                            # Dimensões e estilo da foto
+                            photo_size = 24*mm
+                            
                             ministrante_data = [
                                 [
-                                    Image(foto_path, width=25*mm, height=25*mm),
+                                    Image(foto_path, width=photo_size, height=photo_size),
                                     Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
                                 ]
                             ]
                             
-                            ministrante_table = Table(ministrante_data, colWidths=[30*mm, doc.width - 40*mm])
+                            ministrante_table = Table(ministrante_data, colWidths=[photo_size+5*mm, doc.width - (photo_size+20*mm)])
                             ministrante_table.setStyle(TableStyle([
                                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                                 ('LEFTPADDING', (1, 0), (1, 0), 10),
+                                #('BACKGROUND', (0, 0), (-1, -1), light_bg),
+                                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
                             ]))
                             
-                            atividade_box.append(ministrante_table)
+                            # Criar contêiner arredondado para o ministrante
+                            ministrante_rounded = RoundedContainer(
+                                [ministrante_table], 
+                                doc.width * 0.9, 
+                                corner_radius=8, 
+                                border_color=None, 
+                                background_color=light_bg,
+                                border_width=0,
+                                padding=1
+                            )
+                            
+                            atividade_elements.append(ministrante_rounded)
                         else:
-                            atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                            # Sem foto, mas com design moderno
+                            ministrante_data = [
+                                [
+                                    ColoredBox(10*mm, 10*mm, secondary_color),
+                                    Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
+                                ]
+                            ]
+                            
+                            ministrante_table = Table(ministrante_data, colWidths=[15*mm, doc.width - 25*mm])
+                            ministrante_table.setStyle(TableStyle([
+                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                ('LEFTPADDING', (1, 0), (1, 0), 10),
+                                #('BACKGROUND', (0, 0), (-1, -1), light_bg),
+                                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                            ]))
+                            
+                            # Criar contêiner arredondado para o ministrante
+                            ministrante_rounded = RoundedContainer(
+                                [ministrante_table], 
+                                doc.width * 0.9, 
+                                corner_radius=8, 
+                                border_color=None, 
+                                background_color=light_bg,
+                                border_width=0,
+                                padding=1
+                            )
+                            
+                            atividade_elements.append(ministrante_rounded)
                     except Exception as e:
                         print(f"Erro ao carregar foto do ministrante: {str(e)}")
-                        atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                        ministrante_data = [
+                            [
+                                ColoredBox(10*mm, 10*mm, secondary_color),
+                                Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
+                            ]
+                        ]
+                        
+                        ministrante_table = Table(ministrante_data, colWidths=[15*mm, doc.width - 25*mm])
+                        ministrante_table.setStyle(TableStyle([
+                           ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                           ('LEFTPADDING', (1, 0), (1, 0), 10),
+                           #('BACKGROUND', (0, 0), (-1, -1), light_bg),
+                           ('TOPPADDING', (0, 0), (-1, -1), 8),
+                           ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                        ]))
+                        
+                        # Criar contêiner arredondado para o ministrante
+                        ministrante_rounded = RoundedContainer(
+                            [ministrante_table], 
+                            doc.width * 0.9, 
+                            corner_radius=8, 
+                            border_color=None, 
+                            background_color=light_bg,
+                            border_width=0,
+                            padding=1
+                        )
+                        
+                        atividade_elements.append(ministrante_rounded)
                 else:
-                    atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                    # Sem foto, mas com design moderno
+                    ministrante_data = [
+                        [
+                            ColoredBox(10*mm, 10*mm, secondary_color),
+                            Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
+                        ]
+                    ]
+                    
+                    ministrante_table = Table(ministrante_data, colWidths=[15*mm, doc.width - 25*mm])
+                    ministrante_table.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('LEFTPADDING', (1, 0), (1, 0), 10),
+                        #('BACKGROUND', (0, 0), (-1, -1), light_bg),
+                        ('TOPPADDING', (0, 0), (-1, -1), 8),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ]))
+                    
+                    # Criar contêiner arredondado para o ministrante
+                    ministrante_rounded = RoundedContainer(
+                        [ministrante_table], 
+                        doc.width * 0.9, 
+                        corner_radius=8, 
+                        border_color=None, 
+                        background_color=light_bg,
+                        border_width=0,
+                        padding=1
+                    )
+                    
+                    atividade_elements.append(ministrante_rounded)
             
-            # Ministrantes associados
+            # Ministrantes associados com design moderno
             if atividade['ministrantes_associados']:
                 ministrantes_extras = ", ".join([m['nome'] for m in atividade['ministrantes_associados']])
                 if ministrantes_extras:
-                    atividade_box.append(Paragraph(f"<b>Ministrantes adicionais:</b> {ministrantes_extras}", ministrante_style))
+                    ministrantes_assoc_data = [
+                        [
+                            ColoredBox(10*mm, 10*mm, accent_color),
+                            Paragraph(f"<b>Ministrantes adicionais:</b> {ministrantes_extras}", ministrante_style)
+                        ]
+                    ]
+                    
+                    ministrantes_assoc_table = Table(ministrantes_assoc_data, colWidths=[15*mm, doc.width - 25*mm])
+                    ministrantes_assoc_table.setStyle(TableStyle([
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('LEFTPADDING', (1, 0), (1, 0), 10),
+                        #('BACKGROUND', (0, 0), (-1, -1), light_bg.clone(alpha=0.7)),
+                        ('TOPPADDING', (0, 0), (-1, -1), 8),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ]))
+                    
+                    # Criar contêiner arredondado para ministrantes adicionais
+                    ministrantes_assoc_rounded = RoundedContainer(
+                        [ministrantes_assoc_table], 
+                        doc.width * 0.9, 
+                        corner_radius=8, 
+                        border_color=None, 
+                        background_color=light_bg.clone(alpha=0.7),
+                        border_width=0,
+                        padding=1
+                    )
+                    
+                    atividade_elements.append(Spacer(1, 2 * mm))
+                    atividade_elements.append(ministrantes_assoc_rounded)
             
-            # Espaçamento entre atividades
-            atividade_box.append(Spacer(1, 5 * mm))
-            
-            # Criar tabela para toda a atividade
+            # Criar tabela para toda a atividade com design moderno
             atividade_table = Table([
-                [content] for content in atividade_box
+                [Spacer(1, 2 * mm)],  # Espaço superior
+                *[[elemento] for elemento in atividade_elements],
+                [Spacer(1, 2 * mm)]   # Espaço inferior
             ], colWidths=[doc.width * 0.95])
             
+            # Estilo sofisticado para as atividades (sem borda, pois usaremos o contêiner arredondado)
             atividade_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
                 ('TOPPADDING', (0, 0), (-1, -1), 0),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
             ]))
             
-            elements.append(atividade_table)
-            elements.append(Spacer(1, 5 * mm))
+            # Contêiner com cantos arredondados para envolver a tabela
+            rounded_container = RoundedContainer(
+                [atividade_table], 
+                doc.width * 0.95, 
+                corner_radius=10, 
+                border_color=accent_color, 
+                background_color=colors.white,
+                border_width=1,
+                padding=5
+            )
+            
+            # Usar o contêiner arredondado em vez da tabela diretamente
+            elements.append(KeepTogether(rounded_container))
+            elements.append(Spacer(1, 10 * mm))
     
-    # Adicionar rodapé com data de geração
+    # Adicionar rodapé com informações e data de geração
     elements.append(Spacer(1, 15 * mm))
+    elements.append(HorizontalLine(doc.width, height=0.5, color=accent_color, dash=[2, 2]))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Tabela para o rodapé com informações de contato
+    footer_data = []
+    
+    # Data de geração
     current_date = datetime.now().strftime("%d/%m/%Y às %H:%M")
-    elements.append(Paragraph(f"Folder de programação gerado em {current_date}", footer_style))
+    footer_text = f"Folder de programação gerado no appfiber.com.br em {current_date}"
+    
+    # Se tiver informações de contato do evento, adicionar
+    if hasattr(evento, 'email_contato') and evento.email_contato:
+        footer_text += f" | Contato: {evento.email_contato}"
+    
+    footer_data.append([Paragraph(footer_text, footer_style)])
+    
+    footer_table = Table(footer_data, colWidths=[doc.width * 0.95])
+    footer_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    elements.append(footer_table)
+    
+    # Gerar o PDF com cabeçalho e rodapé personalizados
+    def add_page_decorations(canvas, doc):
+        """Adiciona cabeçalho e rodapé decorativos"""
+        # Cabeçalho
+        canvas.saveState()
+        
+        # Faixa superior colorida
+        canvas.setFillColor(primary_color)
+        canvas.rect(0, doc.height + 65, doc.width + 50, 6, fill=1, stroke=0)
+        
+        # Elementos decorativos
+        canvas.setFillColor(accent_color)
+        canvas.rect(0, doc.height + 40, 50, 3, fill=1, stroke=0)
+        canvas.rect(doc.width - 50, doc.height + 40, 100, 3, fill=1, stroke=0)
+        
+        # Rodapé
+        canvas.setFillColor(primary_color)
+        canvas.rect(0, 15, doc.width + 50, 2, fill=1, stroke=0)
+        
+        # Adicionar número de página com estilo
+        canvas.setFont('Helvetica-Bold', 9)
+        canvas.setFillColor(text_dark)
+        page_num = canvas.getPageNumber()
+        text = f"Página {page_num}"
+        
+        # Box para o número da página
+        text_width = canvas.stringWidth(text, 'Helvetica-Bold', 9)
+        canvas.setFillColor(light_bg)
+        canvas.rect(doc.width - text_width - 14, 25, text_width + 10, 16, fill=1, stroke=0)
+        
+        # Texto do número da página
+        canvas.setFillColor(primary_color)
+        canvas.drawRightString(doc.width + 25 - 7, 25 + 4, text)
+        
+        # Nome do evento no rodapé
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.gray)
+        canvas.drawString(25, 25, evento.nome[:40] + ("..." if len(evento.nome) > 40 else ""))
+        
+        canvas.restoreState()
     
     # Gerar o PDF
-    doc.build(elements)
+    doc.build(elements, onFirstPage=add_page_decorations, onLaterPages=add_page_decorations)
     
     # Retornar o arquivo para download
     return send_file(pdf_path, as_attachment=True, download_name=f"Programacao_{evento.nome.replace(' ', '_')}.pdf")
@@ -12838,3 +13311,148 @@ def exportar_checkins_evento_pdf(evento_id):
 
     filename = f"checkins_evento_{evento.id}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@routes.route('/submeter_trabalho', methods=['GET', 'POST'])
+@login_required
+def submeter_trabalho():
+    if current_user.tipo != 'participante':
+        flash('Apenas participantes podem submeter trabalhos.', 'danger')
+        return redirect(url_for('routes.dashboard_participante'))
+
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        resumo = request.form.get('resumo')
+        area_tematica = request.form.get('area_tematica')
+        arquivo = request.files.get('arquivo_pdf')
+
+        if not all([titulo, resumo, area_tematica, arquivo]):
+            flash('Todos os campos são obrigatórios!', 'danger')
+            return redirect(url_for('routes.submeter_trabalho'))
+
+        filename = secure_filename(arquivo.filename)
+        caminho_pdf = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        arquivo.save(caminho_pdf)
+
+        trabalho = TrabalhoCientifico(
+            titulo=titulo,
+            resumo=resumo,
+            area_tematica=area_tematica,
+            arquivo_pdf=caminho_pdf,
+            usuario_id=current_user.id,
+            evento_id=current_user.evento_id  # opcionalmente usa o evento do usuário
+        )
+        db.session.add(trabalho)
+        db.session.commit()
+
+        flash("Trabalho submetido com sucesso!", "success")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    return render_template('submeter_trabalho.html')
+
+
+@routes.route('/avaliar_trabalhos')
+@login_required
+def avaliar_trabalhos():
+    if current_user.tipo != 'cliente' and not current_user.is_superuser():
+        flash('Apenas administradores ou avaliadores têm acesso.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    trabalhos = TrabalhoCientifico.query.filter(TrabalhoCientifico.status != 'aceito').all()
+    return render_template('avaliar_trabalhos.html', trabalhos=trabalhos)
+
+@routes.route('/avaliar_trabalho/<int:trabalho_id>', methods=['GET', 'POST'])
+@login_required
+def avaliar_trabalho(trabalho_id):
+    trabalho = TrabalhoCientifico.query.get_or_404(trabalho_id)
+
+    if request.method == 'POST':
+        estrelas = request.form.get('estrelas')
+        nota = request.form.get('nota')
+        conceito = request.form.get('conceito')
+        comentario = request.form.get('comentario')
+
+        avaliacao = AvaliacaoTrabalho(
+            trabalho_id=trabalho.id,
+            avaliador_id=current_user.id,
+            estrelas=int(estrelas) if estrelas else None,
+            nota=float(nota) if nota else None,
+            conceito=conceito,
+            comentario=comentario
+        )
+        db.session.add(avaliacao)
+
+        trabalho.status = 'avaliado'
+        db.session.commit()
+
+        flash("Avaliação registrada!", "success")
+        return redirect(url_for('routes.avaliar_trabalhos'))
+
+    return render_template('avaliar_trabalho.html', trabalho=trabalho)
+
+
+@routes.route('/meus_trabalhos')
+@login_required
+def meus_trabalhos():
+    if current_user.tipo != 'participante':
+        return redirect(url_for('routes.dashboard_participante'))
+
+    trabalhos = TrabalhoCientifico.query.filter_by(usuario_id=current_user.id).all()
+    return render_template('meus_trabalhos.html', trabalhos=trabalhos)
+
+@routes.route('/submeter_trabalho', methods=['GET', 'POST'])
+@login_required
+def nova_submissao():
+    if current_user.tipo != 'participante':
+        flash('Apenas participantes podem submeter trabalhos.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        resumo = request.form.get('resumo')
+        area_tematica = request.form.get('area_tematica')
+        arquivo = request.files.get('arquivo_pdf')
+
+        if not all([titulo, resumo, area_tematica, arquivo]):
+            flash('Todos os campos são obrigatórios!', 'warning')
+            return redirect(url_for('routes.nova_submissao'))
+
+        # Garante diretório e salva o arquivo PDF
+        filename = secure_filename(arquivo.filename)
+        caminho_pdf = os.path.join('static/uploads/trabalhos', filename)
+        os.makedirs(os.path.dirname(caminho_pdf), exist_ok=True)
+        arquivo.save(caminho_pdf)
+
+        # Registra trabalho no banco
+        trabalho = TrabalhoCientifico(
+            titulo=titulo,
+            resumo=resumo,
+            area_tematica=area_tematica,
+            arquivo_pdf=caminho_pdf,
+            usuario_id=current_user.id,
+            evento_id=current_user.evento_id if hasattr(current_user, 'evento_id') else None
+        )
+
+        db.session.add(trabalho)
+        db.session.commit()
+
+        flash('Trabalho submetido com sucesso!', 'success')
+        return redirect(url_for('routes.meus_trabalhos'))
+    
+@routes.route('/toggle_submissao_trabalhos')
+@login_required
+def toggle_submissao_trabalhos_cliente():
+    if current_user.tipo != 'cliente':
+        flash("Apenas clientes podem alterar essa configuração.", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    config = current_user.configuracao
+
+    if not config:
+        flash("Cliente sem configuração associada.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
+    db.session.commit()
+    flash("Configuração de submissão de trabalhos atualizada!", "success")
+    return redirect(url_for('routes.dashboard'))
