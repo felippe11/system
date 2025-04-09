@@ -2572,6 +2572,348 @@ def gerar_certificado_individual_admin():
 
 
 # ===========================
+#   SORTEIOS
+# ===========================
+
+@routes.route('/criar_sorteio', methods=['GET', 'POST'])
+@login_required
+def criar_sorteio():
+    """
+    Rota para criar um novo sorteio.
+    GET: Exibe o formulário de criação
+    POST: Processa o formulário e cria o sorteio
+    """
+    # Verificar se o usuário é um cliente
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado. Apenas clientes podem gerenciar sorteios.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Listar eventos do cliente para o formulário
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        premio = request.form.get('premio')
+        descricao = request.form.get('descricao')
+        tipo_sorteio = request.form.get('tipo_sorteio')
+        evento_id = request.form.get('evento_id')
+        oficina_id = request.form.get('oficina_id') if tipo_sorteio == 'oficina' else None
+        
+        # Validações básicas
+        if not titulo or not premio or not evento_id:
+            flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
+            return render_template('criar_sorteio.html', eventos=eventos)
+        
+        # Criar novo sorteio
+        sorteio = Sorteio(
+            titulo=titulo,
+            premio=premio,
+            descricao=descricao,
+            cliente_id=current_user.id,
+            evento_id=evento_id,
+            oficina_id=oficina_id,
+            status='pendente'
+        )
+        
+        try:
+            db.session.add(sorteio)
+            db.session.commit()
+            flash('Sorteio criado com sucesso!', 'success')
+            return redirect(url_for('routes.gerenciar_sorteios'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar sorteio: {str(e)}', 'danger')
+    
+    return render_template('criar_sorteio.html', eventos=eventos)
+
+@routes.route('/gerenciar_sorteios')
+@login_required
+def gerenciar_sorteios():
+    """
+    Rota para listar e gerenciar os sorteios existentes.
+    """
+    # Verificar se o usuário é um cliente
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado. Apenas clientes podem gerenciar sorteios.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+    
+    # Filtros da URL
+    evento_id = request.args.get('evento_id', type=int)
+    status = request.args.get('status')
+    
+    # Consulta base
+    query = Sorteio.query.filter_by(cliente_id=current_user.id)
+    
+    # Aplicar filtros
+    if evento_id:
+        query = query.filter_by(evento_id=evento_id)
+    if status:
+        query = query.filter_by(status=status)
+    
+    # Ordenar por data, mais recentes primeiro
+    sorteios = query.order_by(Sorteio.data_sorteio.desc()).all()
+    
+    # Listar eventos do cliente para o filtro
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
+    return render_template('gerenciar_sorteios.html', 
+                           sorteios=sorteios, 
+                           eventos=eventos)
+
+@routes.route('/api/oficinas_evento/<int:evento_id>')
+@login_required
+def get_oficinas_evento(evento_id):
+    """
+    API para obter as oficinas de um evento específico.
+    """
+    try:
+        oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
+        return jsonify({
+            'success': True,
+            'oficinas': [{'id': o.id, 'titulo': o.titulo} for o in oficinas]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@routes.route('/api/participantes_contagem')
+@login_required
+def get_participantes_contagem():
+    """
+    API para contar o número de participantes elegíveis para um sorteio.
+    """
+    tipo = request.args.get('tipo')
+    id_param = request.args.get('id', type=int)
+    
+    if not tipo or not id_param:
+        return jsonify({'success': False, 'message': 'Parâmetros inválidos'})
+    
+    try:
+        if tipo == 'evento':
+            # Contar participantes de um evento - filtrar diretamente pelo evento_id na tabela Usuario
+            total = Usuario.query.filter_by(evento_id=id_param).count()
+        elif tipo == 'oficina':
+            # Contar participantes de uma oficina
+            total = Usuario.query.join(
+                Inscricao, Usuario.id == Inscricao.usuario_id
+            ).filter(
+                Inscricao.oficina_id == id_param
+            ).count()
+        else:
+            return jsonify({'success': False, 'message': 'Tipo inválido'})
+        
+        return jsonify({'success': True, 'total': total})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+    """
+    API para contar o número de participantes elegíveis para um sorteio.
+    """
+    tipo = request.args.get('tipo')
+    id_param = request.args.get('id', type=int)
+    
+    if not tipo or not id_param:
+        return jsonify({'success': False, 'message': 'Parâmetros inválidos'})
+    
+    try:
+        if tipo == 'evento':
+            # Contar participantes de um evento
+            total = Inscricao.query.filter_by(evento_id=id_param).count()
+        elif tipo == 'oficina':
+            # Contar participantes de uma oficina
+            total = Inscricao.query.filter_by(oficina_id=id_param).count()
+        else:
+            return jsonify({'success': False, 'message': 'Tipo inválido'})
+        
+        return jsonify({'success': True, 'total': total})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@routes.route('/api/sorteio/<int:sorteio_id>')
+@login_required
+def get_sorteio(sorteio_id):
+    """
+    API para obter detalhes de um sorteio específico.
+    """
+    try:
+        sorteio = Sorteio.query.get_or_404(sorteio_id)
+        
+        # Verificar se o usuário atual é o dono do sorteio
+        if sorteio.cliente_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Acesso negado'})
+        
+        # Verificar se o sorteio foi realizado
+        if sorteio.status != 'realizado' or not sorteio.ganhador:
+            return jsonify({'success': False, 'message': 'Este sorteio ainda não foi realizado'})
+        
+        # Formatar dados do sorteio
+        return jsonify({
+            'success': True,
+            'sorteio': {
+                'id': sorteio.id,
+                'titulo': sorteio.titulo,
+                'premio': sorteio.premio,
+                'descricao': sorteio.descricao,
+                'data_sorteio': sorteio.data_sorteio.isoformat(),
+                'status': sorteio.status,
+                'ganhador': {
+                    'id': sorteio.ganhador.id,
+                    'nome': sorteio.ganhador.nome,
+                    'email': sorteio.ganhador.email
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@routes.route('/realizar_sorteio/<int:sorteio_id>', methods=['POST'])
+@login_required
+def realizar_sorteio(sorteio_id):
+    """
+    Rota para realizar um sorteio, selecionando um ganhador aleatório.
+    """
+    try:
+        sorteio = Sorteio.query.get_or_404(sorteio_id)
+        
+        # Verificar se o usuário atual é o dono do sorteio
+        if sorteio.cliente_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Acesso negado'})
+        
+        # Verificar se o sorteio já foi realizado ou cancelado
+        if sorteio.status != 'pendente':
+            return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
+        
+        # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
+        participantes = []
+        if sorteio.oficina_id:
+            # Sorteio para uma oficina específica - buscar usuários diretamente
+            participantes = Usuario.query.filter_by(oficina_id=sorteio.oficina_id).all()
+        else:
+            # Sorteio para todo o evento - buscar usuários diretamente
+            participantes = Usuario.query.filter_by(evento_id=sorteio.evento_id).all()
+        
+        if not participantes:
+            return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
+        
+        # Selecionar um participante aleatoriamente
+        ganhador = random.choice(participantes)
+        
+        # Atualizar o sorteio com o ganhador
+        sorteio.ganhador_id = ganhador.id
+        sorteio.status = 'realizado'
+        sorteio.data_sorteio = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Formatar dados do sorteio realizado
+        return jsonify({
+            'success': True,
+            'message': 'Sorteio realizado com sucesso!',
+            'sorteio': {
+                'id': sorteio.id,
+                'titulo': sorteio.titulo,
+                'premio': sorteio.premio,
+                'descricao': sorteio.descricao,
+                'data_sorteio': sorteio.data_sorteio.isoformat(),
+                'status': sorteio.status,
+                'ganhador': {
+                    'id': ganhador.id,
+                    'nome': ganhador.nome,
+                    'email': ganhador.email
+                }
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    """
+    Rota para realizar um sorteio, selecionando um ganhador aleatório.
+    """
+    try:
+        sorteio = Sorteio.query.get_or_404(sorteio_id)
+        
+        # Verificar se o usuário atual é o dono do sorteio
+        if sorteio.cliente_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Acesso negado'})
+        
+        # Verificar se o sorteio já foi realizado ou cancelado
+        if sorteio.status != 'pendente':
+            return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
+        
+        # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
+        if sorteio.oficina_id:
+            # Sorteio para uma oficina específica
+            participantes = Inscricao.query.filter_by(oficina_id=sorteio.oficina_id).all()
+        else:
+            # Sorteio para todo o evento
+            participantes = Inscricao.query.filter_by(evento_id=sorteio.evento_id).all()
+        
+        if not participantes:
+            return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
+        
+        # Selecionar um participante aleatoriamente
+        inscricao_sorteada = random.choice(participantes)
+        
+        # Atualizar o sorteio com o ganhador
+        sorteio.ganhador_id = inscricao_sorteada.usuario_id
+        sorteio.status = 'realizado'
+        sorteio.data_sorteio = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Buscar dados completos do ganhador
+        ganhador = Usuario.query.get(inscricao_sorteada.usuario_id)
+        
+        # Formatar dados do sorteio realizado
+        return jsonify({
+            'success': True,
+            'message': 'Sorteio realizado com sucesso!',
+            'sorteio': {
+                'id': sorteio.id,
+                'titulo': sorteio.titulo,
+                'premio': sorteio.premio,
+                'descricao': sorteio.descricao,
+                'data_sorteio': sorteio.data_sorteio.isoformat(),
+                'status': sorteio.status,
+                'ganhador': {
+                    'id': ganhador.id,
+                    'nome': ganhador.nome,
+                    'email': ganhador.email
+                }
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@routes.route('/cancelar_sorteio/<int:sorteio_id>', methods=['POST'])
+@login_required
+def cancelar_sorteio(sorteio_id):
+    """
+    Rota para cancelar um sorteio.
+    """
+    try:
+        sorteio = Sorteio.query.get_or_404(sorteio_id)
+        
+        # Verificar se o usuário atual é o dono do sorteio
+        if sorteio.cliente_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Acesso negado'})
+        
+        # Verificar se o sorteio já foi realizado ou cancelado
+        if sorteio.status != 'pendente':
+            return jsonify({'success': False, 'message': f'O sorteio não pode ser cancelado porque está com status: {sorteio.status}'})
+        
+        # Cancelar o sorteio
+        sorteio.status = 'cancelado'
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Sorteio cancelado com sucesso!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+# ===========================
 #   RESET DE SENHA VIA CPF
 # ===========================
 @routes.route('/esqueci_senha_cpf', methods=['GET', 'POST'])
@@ -3296,11 +3638,12 @@ def gerar_certificado_individual(oficina_id):
 #   CADASTRO DE MINISTRANTE
 # ===========================
 import logging
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from werkzeug.security import generate_password_hash
 from extensions import db
-from models import Ministrante, EventoInscricaoTipo
+from models import Ministrante, EventoInscricaoTipo, Sorteio, Inscricao, Usuario, Oficina
 from flask_login import login_required
+import random
 
 # Configure o logger (isso pode ser configurado globalmente no seu app)
 logging.basicConfig(level=logging.DEBUG)
@@ -11623,8 +11966,11 @@ def remover_campo_personalizado(campo_id):
 
 @routes.route('/gerar_folder_evento/<int:evento_id>')
 def gerar_folder_evento(evento_id):
+
     """
-    Gera um PDF contendo a programação do evento como um folder acadêmico para download.
+    Gera um PDF em formato de folder com três dobras (trifold) contendo
+    a programação do evento para download. Usa canvas para desenho direto,
+    com quebra de texto automática e layout compacto.
     
     Args:
         evento_id: ID do evento para obter a programação
@@ -11636,12 +11982,47 @@ def gerar_folder_evento(evento_id):
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm, cm
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.units import mm, cm, inch
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
+    from reportlab.pdfgen import canvas
     import os
     from datetime import datetime
     from flask import current_app
+    from flask import send_file
+    import textwrap
+    
+    # Função para quebrar texto em várias linhas
+    def wrap_text(text, width, font_name, font_size):
+        """Quebra o texto em múltiplas linhas baseado na largura disponível."""
+        words = text.split()
+        lines = []
+        current_line = []
+        
+        for word in words:
+            # Testar se adicionando esta palavra ainda cabe na linha
+            test_line = current_line + [word]
+            test_text = ' '.join(test_line)
+            text_width = c.stringWidth(test_text, font_name, font_size)
+            
+            if text_width <= width:
+                current_line.append(word)
+            else:
+                # A linha atual está cheia, adicioná-la à lista e começar uma nova
+                if current_line:  # Verificar se não está vazia
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
+                else:
+                    # Se a linha estiver vazia, significa que uma única palavra é maior que a largura
+                    # Adicionar a palavra mesmo assim (será cortada na exibição)
+                    lines.append(word)
+                    current_line = []
+        
+        # Adicionar a última linha
+        if current_line:
+            lines.append(' '.join(current_line))
+            
+        return lines
     
     # Busca o evento no banco de dados
     evento = Evento.query.get_or_404(evento_id)
@@ -11687,322 +12068,399 @@ def gerar_folder_evento(evento_id):
             })
     
     # Ordenar datas
-    from datetime import datetime
     sorted_keys = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
     
     # Preparar o diretório para salvar o PDF
-    pdf_filename = f"folder_evento_{evento_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    pdf_filename = f"folder_trifold_{evento_id}{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
     folder_dir = os.path.join("static", "folders")
     os.makedirs(folder_dir, exist_ok=True)
     pdf_path = os.path.join(folder_dir, pdf_filename)
     
-    # Configuração de estilos personalizados
+    # Definição de cores
+    primary_color = colors.HexColor('#1a237e')      # Azul escuro
+    secondary_color = colors.HexColor('#283593')    # Azul médio
+    accent_color = colors.HexColor('#5c6bc0')       # Azul claro
+    light_bg = colors.HexColor('#f5f5f5')           # Cinza claro
+    text_dark = colors.HexColor('#212121')          # Quase preto
+    text_medium = colors.HexColor('#424242')        # Cinza escuro
+    highlight_color = colors.HexColor('#03a9f4')    # Azul claro para destaque
+    
+    # Configuração de estilos personalizados para os parágrafos
     styles = getSampleStyleSheet()
-    
-    # Estilo para título principal
-    title_style = ParagraphStyle(
-        name='CustomTitle',
-        parent=styles['Title'],
-        fontSize=28,
-        alignment=TA_CENTER,
-        spaceAfter=6 * mm,
-        fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#023E8A')
-    )
-    
-    # Estilo para subtítulos
-    subtitle_style = ParagraphStyle(
-        name='CustomSubtitle',
-        parent=styles['Heading2'],
-        fontSize=20,
-        alignment=TA_CENTER,
-        spaceAfter=5 * mm,
-        fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#0077B6'),
-        borderPadding=10,
-        borderWidth=1,
-        borderRadius=5,
-        borderColor=colors.HexColor('#E9ECEF')
-    )
-    
-    # Estilo para dias da semana
-    day_style = ParagraphStyle(
-        name='DayStyle',
-        parent=styles['Heading3'],
-        fontSize=18,
-        alignment=TA_LEFT,
-        spaceBefore=8 * mm,
-        spaceAfter=5 * mm,
-        fontName='Helvetica-Bold',
-        textColor=colors.white,
-        borderPadding=10,
-        borderWidth=0,
-        borderRadius=5,
-        borderColor=colors.HexColor('#023E8A'),
-        backColor=colors.HexColor('#023E8A')
-    )
-    
-    # Estilo para atividades
-    activity_title_style = ParagraphStyle(
-        name='ActivityTitle',
-        parent=styles['Heading4'],
-        fontSize=14,
-        alignment=TA_LEFT,
-        spaceAfter=2 * mm,
-        fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#023E8A')
-    )
     
     # Estilo para descrições
     description_style = ParagraphStyle(
         name='Description',
         parent=styles['Normal'],
-        fontSize=11,
-        alignment=TA_LEFT,
-        spaceAfter=3 * mm,
-        leading=14
-    )
-    
-    # Estilo para ministrante
-    ministrante_style = ParagraphStyle(
-        name='Ministrante',
-        parent=styles['Italic'],
-        fontSize=11,
-        alignment=TA_LEFT,
-        textColor=colors.HexColor('#0077B6'),
-        spaceAfter=3 * mm
-    )
-    
-    # Estilo para tipo de atividade
-    tipo_style = ParagraphStyle(
-        name='TipoOficina',
-        parent=styles['Normal'],
-        fontSize=10,
-        alignment=TA_LEFT,
-        textColor=colors.HexColor('#0096C7'),
-        fontName='Helvetica-Oblique'
-    )
-    
-    # Estilo para horário
-    horario_style = ParagraphStyle(
-        name='Horario',
-        parent=styles['Normal'],
-        fontSize=12,
-        alignment=TA_LEFT,
-        textColor=colors.white,
-        fontName='Helvetica-Bold',
+        fontSize=9,  # Reduzido
+        alignment=TA_JUSTIFY,
         spaceAfter=2 * mm,
-        borderPadding=5,
-        borderWidth=0,
-        borderRadius=3,
-        backColor=colors.HexColor('#0096C7')
+        leading=11,
+        textColor=text_medium
     )
     
-    # Estilo para info do evento
-    info_style = ParagraphStyle(
-        name='InfoEvent',
-        parent=styles['Normal'],
-        fontSize=11,
-        alignment=TA_CENTER,
-        spaceAfter=2 * mm
+    # Estilo para títulos de atividades
+    activity_title_style = ParagraphStyle(
+        name='ActivityTitle',
+        parent=styles['Heading4'],
+        fontSize=12,  # Reduzido
+        alignment=TA_LEFT,
+        spaceAfter=1 * mm,
+        fontName='Helvetica-Bold',
+        textColor=secondary_color,
+        leading=15
     )
     
-    # Estilo para rodapé
-    footer_style = ParagraphStyle(
-        name='Footer',
-        parent=styles['Normal'],
-        fontSize=9,
-        textColor=colors.gray,
-        alignment=TA_CENTER
-    )
+    # Criar o PDF diretamente com canvas
+    pagesize = landscape(A4)
+    c = canvas.Canvas(pdf_path, pagesize=pagesize)
     
-    # Criar o documento PDF
-    doc = SimpleDocTemplate(
-        pdf_path,
-        pagesize=A4,
-        rightMargin=25,
-        leftMargin=25,
-        topMargin=30,
-        bottomMargin=30
-    )
+    # Dimensões da página
+    page_width, page_height = pagesize
     
-    # Lista para elementos do PDF
-    elements = []
+    # Largura útil (removendo margens)
+    margin = 10*mm
+    gutter = 5*mm
+    usable_width = page_width - 2*margin
     
-    # Adicionar logo se disponível
+    # Largura de cada painel
+    panel_width = (usable_width - 2*gutter) / 3
+    
+    # Posições X dos painéis
+    panel1_x = margin  # Painel da direita (frente)
+    panel2_x = margin + panel_width + gutter  # Painel do meio
+    panel3_x = margin + 2*panel_width + 2*gutter  # Painel da esquerda (verso)
+    
+    # Desenhar linhas para marcar as dobras
+    c.setStrokeColor(colors.gray)
+    c.setDash([3, 3])
+    c.setLineWidth(0.5)
+    
+    # Primeira dobra
+    fold1_x = panel1_x + panel_width + gutter/2
+    c.line(fold1_x, 5*mm, fold1_x, page_height - 5*mm)
+    
+    # Segunda dobra
+    fold2_x = panel2_x + panel_width + gutter/2
+    c.line(fold2_x, 5*mm, fold2_x, page_height - 5*mm)
+    
+    # Desenhar moldura de cada painel para visualização
+    c.setStrokeColor(colors.black)
+    c.setDash([1, 2])
+    c.setLineWidth(0.5)
+    
+    # Painel 1 (direita)
+    c.rect(panel1_x, margin, panel_width, page_height - 2*margin, stroke=1, fill=0)
+    
+    # Painel 2 (meio)
+    c.rect(panel2_x, margin, panel_width, page_height - 2*margin, stroke=1, fill=0)
+    
+    # Painel 3 (esquerda)
+    c.rect(panel3_x, margin, panel_width, page_height - 2*margin, stroke=1, fill=0)
+    
+    # === PAINEL 1 (CAPA) ===
+    # Posição Y inicial para este painel
+    y_pos = page_height - 2*margin
+    
+    # Título do evento em destaque
+    c.setFont("Helvetica-Bold", 22)
+    c.setFillColor(primary_color)
+    
+    # Banner do evento se disponível
     if evento.banner_url:
         try:
             # Tentar construir caminho correto da imagem
             img_path = None
             if evento.banner_url.startswith('http'):
-                # URL externo
                 img_path = evento.banner_url
             elif evento.banner_url.startswith('/static/'):
-                # Caminho relativo a /static/
                 img_path = os.path.join(current_app.root_path, 'static', evento.banner_url.replace('/static/', ''))
             else:
-                # Caminho simples
                 img_path = os.path.join(current_app.root_path, 'static', evento.banner_url)
                 
             if img_path and (img_path.startswith('http') or os.path.exists(img_path)):
-                img = Image(img_path)
-                img_width = doc.width * 0.8
-                img_height = img_width / 3  # Proporção da imagem
-                img.drawWidth = img_width
-                img.drawHeight = img_height
-                elements.append(img)
-                elements.append(Spacer(1, 8 * mm))
+                img_width = panel_width * 0.9
+                img_height = img_width / 2  # Proporção da imagem
+                
+                # Centralizar a imagem
+                img_x = panel1_x + (panel_width - img_width) / 2
+                c.drawImage(img_path, img_x, y_pos - img_height, width=img_width, height=img_height)
+                
+                # Ajustar posição Y
+                y_pos -= (img_height + 15*mm)
         except Exception as e:
             print(f"Erro ao carregar imagem: {str(e)}")
+            y_pos -= 10*mm  # Ajustar menos se a imagem falhar
     
     # Título do evento
-    elements.append(Paragraph(f"{evento.nome}", title_style))
+    title_text = evento.nome
+    title_width = c.stringWidth(title_text, "Helvetica-Bold", 22)
     
-    # Box com informações do evento
-    info_box_content = []
+    # Se o título for muito largo, dividir em várias linhas
+    if title_width > panel_width * 0.9:
+        title_lines = wrap_text(title_text, panel_width * 0.9, "Helvetica-Bold", 22)
+        line_height = 25  # Altura de linha em pontos
+        
+        # Desenhar cada linha do título centralizada
+        for line in title_lines:
+            line_width = c.stringWidth(line, "Helvetica-Bold", 22)
+            c.drawString(panel1_x + (panel_width - line_width) / 2, y_pos - 10*mm, line)
+            y_pos -= line_height
+        
+        y_pos -= 5*mm  # Espaço adicional depois do título
+    else:
+        # Centralizar texto
+        c.drawString(panel1_x + (panel_width - title_width) / 2, y_pos - 10*mm, title_text)
+        y_pos -= 20*mm
+    
+    # Informações do evento
+    info_text = []
     
     # Datas
     if hasattr(evento, 'data_inicio') and evento.data_inicio and hasattr(evento, 'data_fim') and evento.data_fim:
         data_evento = f"De {evento.data_inicio.strftime('%d/%m/%Y')} a {evento.data_fim.strftime('%d/%m/%Y')}"
-        info_box_content.append(Paragraph(data_evento, info_style))
+        info_text.append(data_evento)
     
     # Local
     if evento.localizacao:
-        info_box_content.append(Paragraph(f"Local: {evento.localizacao}", info_style))
+        info_text.append(f"Local: {evento.localizacao}")
     
-    # Criar tabela para info box
-    if info_box_content:
-        elements.append(Spacer(1, 5 * mm))
-        info_table = Table([
-            [content] for content in info_box_content
-        ], colWidths=[doc.width * 0.9])
-        
-        info_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8F9FA')),
-            ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        
-        elements.append(info_table)
+    # Desenhar informações
+    c.setFont("Helvetica", 10)
+    c.setFillColor(text_dark)
     
-    elements.append(Spacer(1, 12 * mm))
+    # Desenhar cada linha de informação
+    for line in info_text:
+        line_width = c.stringWidth(line, "Helvetica", 10)
+        
+        # Se a linha for muito grande, quebrar
+        if line_width > panel_width * 0.9:
+            wrapped_lines = wrap_text(line, panel_width * 0.9, "Helvetica", 10)
+            for wrapped in wrapped_lines:
+                wrapped_width = c.stringWidth(wrapped, "Helvetica", 10)
+                c.drawString(panel1_x + (panel_width - wrapped_width) / 2, y_pos - 5*mm, wrapped)
+                y_pos -= 12*mm
+        else:
+            c.drawString(panel1_x + (panel_width - line_width) / 2, y_pos - 5*mm, line)
+            y_pos -= 12*mm
+    
+    # Deixar espaço
+    y_pos -= 5*mm
+    
+    # Adicionar descrição do evento se disponível
+    if hasattr(evento, 'descricao') and evento.descricao:
+        c.setFont("Helvetica-Bold", 16)
+        c.setFillColor(secondary_color)
+        about_text = "Sobre o Evento"
+        about_width = c.stringWidth(about_text, "Helvetica-Bold", 16)
+        c.drawString(panel1_x + (panel_width - about_width) / 2, y_pos - 8*mm, about_text)
+        y_pos -= 15*mm
+        
+        # Descrição em parágrafo limitada a 500 caracteres
+        desc_text = evento.descricao[:500] + ("..." if len(evento.descricao) > 500 else "")
+        
+        # Usar Paragraph para descrição com quebra automática
+        desc_p = Paragraph(desc_text, description_style)
+        w, h = desc_p.wrap(panel_width * 0.9, 100*mm)
+        desc_p.drawOn(c, panel1_x + (panel_width - w) / 2, y_pos - h)
+        y_pos -= (h + 10*mm)
+    
+    # Contato
+    if hasattr(evento, 'email_contato') and evento.email_contato:
+        c.setFont("Helvetica", 8)
+        c.setFillColor(colors.gray)
+        contact_text = f"Contato: {evento.email_contato}"
+        contact_width = c.stringWidth(contact_text, "Helvetica", 8)
+        c.drawString(panel1_x + (panel_width - contact_width) / 2, margin + 10*mm, contact_text)
+    
+    # === DIVISÃO DA PROGRAMAÇÃO ENTRE PAINÉIS 2 E 3 ===
+    # Selecionamos metade das datas para o painel 2 e metade para o painel 3
+    half_point = len(sorted_keys) // 2
+    panel2_dates = sorted_keys[:half_point]
+    panel3_dates = sorted_keys[half_point:]
+    
+    # Se houver apenas uma data, colocamos no painel 2
+    if not panel2_dates and panel3_dates:
+        panel2_dates = [panel3_dates[0]]
+        panel3_dates = panel3_dates[1:]
+    
+    # === PAINEL 2 (PROGRAMAÇÃO - PARTE 1) ===
+    y_pos = page_height - 2*margin
     
     # Título da programação
-    elements.append(Paragraph("PROGRAMAÇÃO DO EVENTO", subtitle_style))
-    elements.append(Spacer(1, 8 * mm))
+    c.setFont("Helvetica-Bold", 16)
+    c.setFillColor(secondary_color)
+    prog_text = "PROGRAMAÇÃO"
+    prog_width = c.stringWidth(prog_text, "Helvetica-Bold", 16)
+    c.drawString(panel2_x + (panel_width - prog_width) / 2, y_pos - 8*mm, prog_text)
+    y_pos -= 20*mm
     
-    # Adicionar programação por dia
-    for data_str in sorted_keys:
-        # Título do dia
-        elements.append(Paragraph(f"Dia: {data_str}", day_style))
+    # Função para desenhar uma data com suas atividades
+    def draw_date_activities(date_key, start_x, start_y, width):
+        y = start_y
+        
+        # Nome do dia da semana
+        weekday_names = {
+            0: "Segunda-feira", 
+            1: "Terça-feira", 
+            2: "Quarta-feira", 
+            3: "Quinta-feira", 
+            4: "Sexta-feira", 
+            5: "Sábado", 
+            6: "Domingo"
+        }
+        day_date = datetime.strptime(date_key, '%d/%m/%Y')
+        weekday = weekday_names[day_date.weekday()]
+        
+        # Fundo para o título do dia
+        c.setFillColor(primary_color)
+        c.rect(start_x + 5*mm, y - 8*mm, width - 10*mm, 12*mm, fill=1, stroke=0)
+        
+        # Texto do dia
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.white)
+        day_text = f"{weekday} - {date_key}"
+        c.drawString(start_x + 10*mm, y - 5*mm, day_text)
+        y -= 20*mm
         
         # Ordenar atividades pelo horário
-        sorted_atividades = sorted(grouped_oficinas[data_str], key=lambda x: x['horario_inicio'])
+        sorted_atividades = sorted(grouped_oficinas[date_key], key=lambda x: x['horario_inicio'])
         
-        # Atividades do dia
+        # Desenhar cada atividade
         for atividade in sorted_atividades:
-            # Box da atividade
-            atividade_box = []
+            # Criar texto com título e horário na mesma linha
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(secondary_color)
             
-            # Criar tabela para o horário e título
-            header_data = [
-                [
-                    Paragraph(f"{atividade['horario_inicio']} - {atividade['horario_fim']}", horario_style),
-                    Paragraph(f"{atividade['titulo']}", activity_title_style)
-                ]
-            ]
+            # Horário com fonte menor
+            horario = f"{atividade['horario_inicio']} - {atividade['horario_fim']}"
+            c.setFont("Helvetica", 8)
+            c.setFillColor(text_medium)
+            horario_width = c.stringWidth(horario, "Helvetica", 8)
             
-            header_table = Table(header_data, colWidths=[doc.width * 0.25, doc.width * 0.65])
-            header_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#0096C7')),
-                ('BACKGROUND', (1, 0), (1, 0), colors.white),
-                ('LEFTPADDING', (0, 0), (0, 0), 10),
-                ('LEFTPADDING', (1, 0), (1, 0), 15),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ROUNDEDCORNERS', [5, 5, 0, 0]),
-            ]))
+            # Título da atividade
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(secondary_color)
             
-            atividade_box.append(header_table)
+            # Título com quebra automática (considerando espaço para o horário)
+            titulo_width = width - 20*mm  # Largura disponível para o título
+            wrapped_title = wrap_text(atividade['titulo'], titulo_width, "Helvetica-Bold", 12)
             
-            # Tipo de atividade
-            atividade_box.append(Paragraph(f"<i>{atividade['tipo_oficina']}</i>", tipo_style))
+            # Desenhar a primeira linha do título com o horário
+            c.drawString(start_x + 10*mm, y - 5*mm, wrapped_title[0])
             
-            # Descrição
-            atividade_box.append(Paragraph(f"{atividade['descricao']}", description_style))
+            # Desenhar o horário ao lado da primeira linha (se couber) ou na mesma altura
+            c.setFont("Helvetica", 8)
+            c.setFillColor(text_medium)
+            
+            # Calcular posição X para o horário (alinhado à direita do painel)
+            horario_x = start_x + width - 10*mm - horario_width
+            c.drawString(horario_x, y - 5*mm, horario)
+            
+            # Desenhar resto do título se houver mais linhas
+            if len(wrapped_title) > 1:
+                c.setFont("Helvetica-Bold", 12)
+                c.setFillColor(secondary_color)
+                line_height = 14
+                for i in range(1, len(wrapped_title)):
+                    y -= line_height
+                    c.drawString(start_x + 10*mm, y - 5*mm, wrapped_title[i])
+            
+            y -= 15*mm
+            
+            # Tipo de oficina
+            c.setFont("Helvetica-Oblique", 9)
+            c.setFillColor(highlight_color)
+            c.drawString(start_x + 10*mm, y - 5*mm, atividade['tipo_oficina'])
+            
+            y -= 10*mm
             
             # Ministrante
             if atividade['ministrante'] != 'N/A':
-                if atividade['ministrante_foto']:
-                    try:
-                        # Tentar exibir foto do ministrante com nome ao lado
-                        foto_path = os.path.join(current_app.root_path, 'static', atividade['ministrante_foto'])
-                        if os.path.exists(foto_path):
-                            ministrante_data = [
-                                [
-                                    Image(foto_path, width=25*mm, height=25*mm),
-                                    Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style)
-                                ]
-                            ]
-                            
-                            ministrante_table = Table(ministrante_data, colWidths=[30*mm, doc.width - 40*mm])
-                            ministrante_table.setStyle(TableStyle([
-                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                                ('LEFTPADDING', (1, 0), (1, 0), 10),
-                            ]))
-                            
-                            atividade_box.append(ministrante_table)
-                        else:
-                            atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
-                    except Exception as e:
-                        print(f"Erro ao carregar foto do ministrante: {str(e)}")
-                        atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                c.setFont("Helvetica-Oblique", 9)
+                c.setFillColor(accent_color)
+                ministrante_text = f"Ministrante: {atividade['ministrante']}"
+                
+                # Verificar se precisa quebrar o texto do ministrante
+                ministrante_width = c.stringWidth(ministrante_text, "Helvetica-Oblique", 9)
+                if ministrante_width > width - 20*mm:
+                    ministrante_lines = wrap_text(ministrante_text, width - 20*mm, "Helvetica-Oblique", 9)
+                    line_height = 11
+                    for line in ministrante_lines:
+                        c.drawString(start_x + 10*mm, y - 5*mm, line)
+                        y -= line_height
                 else:
-                    atividade_box.append(Paragraph(f"<b>Ministrante:</b> {atividade['ministrante']}", ministrante_style))
+                    c.drawString(start_x + 10*mm, y - 5*mm, ministrante_text)
+                    y -= 10*mm
             
-            # Ministrantes associados
-            if atividade['ministrantes_associados']:
-                ministrantes_extras = ", ".join([m['nome'] for m in atividade['ministrantes_associados']])
-                if ministrantes_extras:
-                    atividade_box.append(Paragraph(f"<b>Ministrantes adicionais:</b> {ministrantes_extras}", ministrante_style))
+            # Descrição resumida
+            if atividade['descricao']:
+                # Limitar a descrição para economizar espaço
+                desc_short = atividade['descricao'][:150] + ("..." if len(atividade['descricao']) > 150 else "")
+                
+                # Usar Paragraph para descrição com quebra automática
+                desc_p = Paragraph(desc_short, description_style)
+                desc_w, desc_h = desc_p.wrap(width - 20*mm, 50*mm)
+                desc_p.drawOn(c, start_x + 10*mm, y - desc_h)
+                y -= (desc_h + 5*mm)
             
-            # Espaçamento entre atividades
-            atividade_box.append(Spacer(1, 5 * mm))
-            
-            # Criar tabela para toda a atividade
-            atividade_table = Table([
-                [content] for content in atividade_box
-            ], colWidths=[doc.width * 0.95])
-            
-            atividade_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#DEE2E6')),
-                ('TOPPADDING', (0, 0), (-1, -1), 0),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-            
-            elements.append(atividade_table)
-            elements.append(Spacer(1, 5 * mm))
+            # Separador entre atividades
+            c.setStrokeColor(light_bg)
+            c.setLineWidth(0.5)
+            c.line(start_x + 10*mm, y - 5*mm, start_x + width - 10*mm, y - 5*mm)
+            y -= 10*mm
+        
+        return y
     
-    # Adicionar rodapé com data de geração
-    elements.append(Spacer(1, 15 * mm))
-    current_date = datetime.now().strftime("%d/%m/%Y às %H:%M")
-    elements.append(Paragraph(f"Folder de programação gerado em {current_date}", footer_style))
+    # Desenhar programação para o painel 2
+    for date_key in panel2_dates:
+        y_pos = draw_date_activities(date_key, panel2_x, y_pos, panel_width)
     
-    # Gerar o PDF
-    doc.build(elements)
+    # === PAINEL 3 (PROGRAMAÇÃO - PARTE 2 OU INFORMAÇÕES ADICIONAIS) ===
+    y_pos = page_height - 2*margin
+    
+    # Se houver mais programação, continua no painel 3
+    if panel3_dates:
+        # Título da programação (continuação)
+        c.setFont("Helvetica-Bold", 16)
+        c.setFillColor(secondary_color)
+        prog2_text = "PROGRAMAÇÃO (cont.)"
+        prog2_width = c.stringWidth(prog2_text, "Helvetica-Bold", 16)
+        c.drawString(panel3_x + (panel_width - prog2_width) / 2, y_pos - 8*mm, prog2_text)
+        y_pos -= 20*mm
+        
+        # Desenhar programação para o painel 3
+        for date_key in panel3_dates:
+            y_pos = draw_date_activities(date_key, panel3_x, y_pos, panel_width)
+    else:
+        # Se não houver mais programação, adicionar informações adicionais
+        c.setFont("Helvetica-Bold", 16)
+        c.setFillColor(secondary_color)
+        info_add_text = "INFORMAÇÕES ADICIONAIS"
+        info_add_width = c.stringWidth(info_add_text, "Helvetica-Bold", 16)
+        c.drawString(panel3_x + (panel_width - info_add_width) / 2, y_pos - 8*mm, info_add_text)
+        y_pos -= 20*mm
+        
+        # Informações adicionais
+        if hasattr(evento, 'informacoes_adicionais') and evento.informacoes_adicionais:
+            # Usar Paragraph para texto com quebra automática
+            info_p = Paragraph(evento.informacoes_adicionais, description_style)
+            w, h = info_p.wrap(panel_width * 0.9, 100*mm)
+            info_p.drawOn(c, panel3_x + (panel_width - w) / 2, y_pos - h)
+        else:
+            # Mensagem genérica
+            c.setFont("Helvetica", 9)
+            c.setFillColor(text_medium)
+            default_text = "Para mais informações, entre em contato conosco ou visite nosso site."
+            default_p = Paragraph(default_text, description_style)
+            w, h = default_p.wrap(panel_width * 0.9, 50*mm)
+            default_p.drawOn(c, panel3_x + (panel_width - w) / 2, y_pos - h)
+    
+    # Salvar o PDF
+    c.save()
     
     # Retornar o arquivo para download
-    return send_file(pdf_path, as_attachment=True, download_name=f"Programacao_{evento.nome.replace(' ', '_')}.pdf")
+    return send_file(pdf_path, as_attachment=True, download_name=f"Folder_{evento.nome.replace(' ', '_')}.pdf")
 
 @routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])
 @login_required
