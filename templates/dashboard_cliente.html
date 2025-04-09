@@ -214,14 +214,44 @@
                       </a>
                     </div>
                     <div class="col-md-6">
-                      {% for evento in eventos %}
-                      <a href="{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=evento.id) }}"
-                         class="btn btn-outline-danger btn-sm">
-                        Baixar Check-ins do Evento (PDF)
-                      </a>
-                    {% endfor %}  
-                    <p>{{ eventos|length }} eventos encontrados</p>
-                  </div>
+                      <p>Eventos encontrados: {{ eventos|length }}</p>
+                      
+                      <div class="card p-3 mb-3">
+                        <h5>Exportar Check-ins</h5>
+                        
+                        <div class="form-group mb-3">
+                          <label for="eventoSelector" class="form-label">Selecione um evento:</label>
+                          <select class="form-select" id="eventoSelector">
+                            <option value="" selected disabled>Escolha um evento</option>
+                            {% for evento in eventos %}
+                              <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        
+                        <button id="btnExportar" class="btn btn-outline-danger btn-sm" disabled>
+                          Baixar Check-ins do Evento (PDF)
+                        </button>
+                      </div>
+                      
+                      <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                          const selector = document.getElementById('eventoSelector');
+                          const btnExportar = document.getElementById('btnExportar');
+                          
+                          selector.addEventListener('change', function() {
+                            if (this.value) {
+                              btnExportar.disabled = false;
+                              btnExportar.onclick = function() {
+                                window.location.href = "{{ url_for('routes.exportar_checkins_evento_pdf', evento_id=0) }}".replace('0', selector.value);
+                              }
+                            } else {
+                              btnExportar.disabled = true;
+                            }
+                          });
+                        });
+                      </script>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -314,6 +344,24 @@
       </div>
     </div>
 
+    <!-- Gerenciar Trabalhos Científicos -->
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-info mb-3">
+            <i class="bi bi-journal-text fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Trabalhos Científicos</h5>
+          <p class="card-text text-muted">Acompanhe e avalie os trabalhos submetidos</p>
+        </div>
+        <div class="card-footer bg-white border-0 pt-0">
+          <a href="{{ url_for('routes.avaliar_trabalhos') }}" class="btn btn-info w-100 text-white">
+            <i class="bi bi-eye-fill me-2"></i> Avaliar Trabalhos
+          </a>
+        </div>
+      </div>
+    </div>
+
     <!-- Gerenciamento de conteúdo -->
     <div class="row g-4 mb-4">
       <div class="col-12">
@@ -376,6 +424,8 @@
               </button>
             </div>
           </div>
+
+
           
           <div class="collapse show" id="tabelaAtividades">
             <div class="card-body p-0">
@@ -924,6 +974,25 @@
                   {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
                 </button>
               </div>
+
+              <!-- Submissão de Trabalhos -->
+            <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+              <div>
+                <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                  <i class="bi bi-upload text-primary me-2"></i>
+                  Submissão de Trabalhos
+                </h6>
+                <p class="text-muted small mb-0">Permite que participantes enviem artigos científicos</p>
+              </div>
+              <button type="button"
+                      id="btnToggleSubmissao"
+                      class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'danger' }}"
+                      data-toggle-url="{{ url_for('routes.toggle_submissao_trabalhos_cliente') }}">
+                <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'x-circle-fill' }}"></i>
+                {{ 'Ativo' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'Desativado' }}
+              </button>
+            </div>
+
 
               <div class="d-grid mt-4">
                 <a href="{{ url_for('routes.configurar_evento') }}" class="btn btn-padrao btn-primary">
@@ -1846,6 +1915,32 @@ document.addEventListener('DOMContentLoaded', function() {
 </style>
 
 <!-- Scripts -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const btnSubmissao = document.getElementById('btnToggleSubmissao');
+
+    if (btnSubmissao) {
+      btnSubmissao.addEventListener('click', function () {
+        const toggleUrl = btnSubmissao.getAttribute('data-toggle-url');
+
+        fetch(toggleUrl)
+          .then(response => {
+            if (response.ok) {
+              location.reload(); // recarrega para refletir a mudança
+            } else {
+              alert("Erro ao atualizar a configuração.");
+            }
+          })
+          .catch(error => {
+            console.error("Erro na requisição:", error);
+            alert("Erro ao conectar com o servidor.");
+          });
+      });
+    }
+  });
+</script>
+
 <script>
 // Carregamento inicial - Estados e configurações
 document.addEventListener('DOMContentLoaded', function() {

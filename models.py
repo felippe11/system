@@ -419,6 +419,8 @@ class Cliente(db.Model, UserMixin):
      # Relacionamento com Oficina
     oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`
     
+    configuracao = db.relationship('ConfiguracaoCliente', back_populates='cliente', uselist=False)
+    
     # Novos campos (caminho das imagens):
     logo_certificado = db.Column(db.String(255), nullable=True)       # Logo
     fundo_certificado = db.Column(db.String(255), nullable=True)      # Fundo do certificado
@@ -432,6 +434,8 @@ class Cliente(db.Model, UserMixin):
     def get_id(self):
         """Retorna o ID do cliente como string, necessário para Flask-Login."""
         return str(self.id)
+    def is_cliente(self):
+        return self.tipo == 'cliente'
 
 class LinkCadastro(db.Model):
     __tablename__ = 'link_cadastro'
@@ -534,7 +538,10 @@ class ConfiguracaoCliente(db.Model):
     habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
     
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
-    cliente = db.relationship("Cliente", backref=db.backref("configuracao_cliente", uselist=False))
+    cliente = db.relationship('Cliente', back_populates='configuracao')
+    
+    habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
+
     
     
 class FeedbackCampo(db.Model):
@@ -809,6 +816,35 @@ class CampoPersonalizadoCadastro(db.Model):
     obrigatorio = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship('Cliente', backref=db.backref('campos_personalizados', lazy=True))
+
+class TrabalhoCientifico(db.Model):
+    __tablename__ = 'trabalhos_cientificos'
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(255), nullable=False)
+    resumo = db.Column(db.Text, nullable=True)
+    arquivo_pdf = db.Column(db.String(255), nullable=True)
+    area_tematica = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(50), default="submetido")  # Ex: submetido, em avaliação, aceito, rejeitado, revisando
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+
+class AvaliacaoTrabalho(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
+    avaliador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    nota = db.Column(db.Float, nullable=True)
+    conceito = db.Column(db.String(20), nullable=True)
+    estrelas = db.Column(db.Integer, nullable=True)
+    comentario = db.Column(db.Text)
+    status = db.Column(db.String(20), default='avaliado')
+
+class ApresentacaoTrabalho(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    horario = db.Column(db.String(5), nullable=False)
+    local = db.Column(db.String(100), nullable=True)
+
 
 
 class Sorteio(db.Model):
