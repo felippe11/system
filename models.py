@@ -864,3 +864,27 @@ class Pagamento(db.Model):
 
 
 
+class Sorteio(db.Model):
+    __tablename__ = 'sorteio'
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    premio = db.Column(db.String(255), nullable=False)
+    data_sorteio = db.Column(db.DateTime, default=datetime.utcnow)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)
+    ganhador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    status = db.Column(db.String(20), default='pendente')  # pendente, realizado, cancelado
+    
+    # Relacionamentos
+    cliente = db.relationship('Cliente', backref=db.backref('sorteios', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('sorteios', lazy=True))
+    oficina = db.relationship('Oficina', backref=db.backref('sorteios', lazy=True))
+    ganhador = db.relationship('Usuario', backref=db.backref('sorteios_ganhos', lazy=True))
+
+    def __repr__(self):
+        return f"<Sorteio {self.titulo} - Prêmio: {self.premio}>"
+
+
