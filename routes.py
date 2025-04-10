@@ -16,6 +16,7 @@ from models import Cliente
 from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from extensions import socketio
+from models import TrabalhoCientifico
 
 
 # routes.py (no início do arquivo)
@@ -1395,17 +1396,25 @@ def remover_inscricao(oficina_id):
 @routes.route('/leitor_checkin', methods=['GET'])
 @login_required
 def leitor_checkin():
+    print("➡️ Entrou em /leitor_checkin")
+
     token = request.args.get('token')
+    print(f"➡️ token recebido: {token}")
+
     if not token:
         mensagem = "Token não fornecido ou inválido."
+        print(f"➡️ Erro: {mensagem}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
         return redirect(url_for('routes.dashboard'))
 
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
+    print(f"➡️ Inscricao encontrada: {inscricao} (ID: {inscricao.id if inscricao else 'None'})")
+
     if not inscricao:
         mensagem = "Inscrição não encontrada para este token."
+        print(f"➡️ Erro: {mensagem}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
@@ -1413,12 +1422,14 @@ def leitor_checkin():
 
     # Verifica se é check-in de evento ou oficina
     if inscricao.evento_id:
+        print(f"➡️ Esta inscrição pertence a um EVENTO (ID={inscricao.evento_id})")
         checkin_existente = Checkin.query.filter_by(
             usuario_id=inscricao.usuario_id,
             evento_id=inscricao.evento_id
         ).first()
         if checkin_existente:
             mensagem = "Check-in de evento já foi realizado!"
+            print(f"➡️ Aviso: {mensagem}")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
@@ -1429,20 +1440,22 @@ def leitor_checkin():
             evento_id=inscricao.evento_id,
             palavra_chave="QR-EVENTO"
         )
-
         dados_checkin = {
             'participante': inscricao.usuario.nome,
             'evento': inscricao.evento.nome,
             'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
         }
+        print(f"➡️ Check-in de EVENTO criado. Usuario={inscricao.usuario_id}, Evento={inscricao.evento_id}")
 
     elif inscricao.oficina_id:
+        print(f"➡️ Esta inscrição pertence a uma OFICINA (ID={inscricao.oficina_id})")
         checkin_existente = Checkin.query.filter_by(
             usuario_id=inscricao.usuario_id,
             oficina_id=inscricao.oficina_id
         ).first()
         if checkin_existente:
             mensagem = "Check-in da oficina já foi realizado!"
+            print(f"➡️ Aviso: {mensagem}")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
@@ -1453,15 +1466,16 @@ def leitor_checkin():
             oficina_id=inscricao.oficina_id,
             palavra_chave="QR-OFICINA"
         )
-
         dados_checkin = {
             'participante': inscricao.usuario.nome,
             'oficina': inscricao.oficina.titulo,
             'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
         }
+        print(f"➡️ Check-in de OFICINA criado. Usuario={inscricao.usuario_id}, Oficina={inscricao.oficina_id}")
 
     else:
         mensagem = "Inscrição sem evento ou oficina vinculada."
+        print(f"➡️ Erro: {mensagem}")
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
@@ -1469,14 +1483,18 @@ def leitor_checkin():
 
     db.session.add(novo_checkin)
     db.session.commit()
+    print(f"➡️ Check-in salvo no banco: ID={novo_checkin.id}")
 
-    # Emitir via Socket.IO
+    # Emitir via Socket.IO (se você usa Socket.IO)
     socketio.emit('novo_checkin', dados_checkin, broadcast=True)
+    print(f"➡️ Socket.IO emit -> {dados_checkin}")
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        print("➡️ Retornando JSON para AJAX")
         return jsonify({'status': 'ok', **dados_checkin})
 
     flash("Check-in realizado com sucesso!", "success")
+    print("➡️ Check-in concluído e flash exibido, redirecionando para dashboard.")
     return redirect(url_for('routes.dashboard'))
 
 @routes.route('/baixar_comprovante/<int:oficina_id>')
@@ -4515,8 +4533,14 @@ def dashboard_cliente():
         return redirect(url_for('routes.dashboard'))
 
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
-    
-    evento = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
+    print("Usuário logado:", current_user.email)
+    print("ID:", current_user.id)
+    print("Tipo:", current_user.tipo if hasattr(current_user, 'tipo') else "N/A")
+
+
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    print("✅ Eventos:", eventos)
+  
     
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
@@ -4680,7 +4704,7 @@ def dashboard_cliente():
         proximos_agendamentos=proximos_agendamentos,
         ocupacao_media=ocupacao_media,
         total_eventos=total_eventos,
-        evento=evento
+        eventos=eventos
     )
     
 def obter_configuracao_do_cliente(cliente_id):
@@ -12602,10 +12626,16 @@ def excluir_inscricao_evento(inscricao_id):
 def leitor_checkin_json():
     """
     Rota AJAX que recebe token do QR, faz check-in e emite evento para Socket.IO.
+    Pode lidar com evento_id ou oficina_id, dependendo da inscrição.
     """
+    import sys  # Para printar debug (opcional)
+
     data = request.get_json()
     token = data.get('token')
-    
+
+    print("➡️ [DEBUG] leitor_checkin_json chamado", file=sys.stderr)
+    print(f"➡️ [DEBUG] token = {token}", file=sys.stderr)
+
     if not token:
         return jsonify({"status": "error", "message": "Token não fornecido!"}), 400
 
@@ -12613,58 +12643,123 @@ def leitor_checkin_json():
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
     if not inscricao:
         return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
-    
-    # Verifica se check-in já foi feito
-    checkin_existente = Checkin.query.filter_by(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id
-    ).first()
-    if checkin_existente:
-        return jsonify({"status": "warning", "message": "Check-in já realizado!"})
 
-    # Registra um novo checkin
-    novo_checkin = Checkin(
-        usuario_id=inscricao.usuario_id,
-        oficina_id=inscricao.oficina_id,
-        palavra_chave="QR-AUTO"
-    )
-    db.session.add(novo_checkin)
-    db.session.commit()
+    print(f"➡️ [DEBUG] Inscricao ID={inscricao.id} -> evento_id={inscricao.evento_id}, oficina_id={inscricao.oficina_id}", file=sys.stderr)
 
-    # Prepara dados para JSON
-    dados = {
-        "status": "success",
-        "message": "Check-in realizado com sucesso!",
-        "participante": inscricao.usuario.nome,
-        "oficina": inscricao.oficina.titulo,
-        "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-    }
+    # Verifica se é check-in de evento ou oficina
+    if inscricao.evento_id:
+        # Checa se check-in de evento já existe
+        checkin_existente = Checkin.query.filter_by(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id
+        ).first()
+        if checkin_existente:
+            return jsonify({"status": "warning", "message": "Check-in do evento já foi realizado!"})
 
-    # Emite evento para todos os clientes Socket.IO
-    socketio.emit('novo_checkin', {
-        'participante': dados["participante"],
-        'oficina': dados["oficina"],
-        'data_hora': dados["data_hora"]
-    }, broadcast=True)
+        # Cria novo checkin para evento
+        novo_checkin = Checkin(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id,
+            palavra_chave="QR-EVENTO"
+        )
+        db.session.add(novo_checkin)
+        db.session.commit()
 
-    return jsonify(dados)
+        # Prepara dados de retorno
+        dados = {
+            "status": "success",
+            "message": "Check-in de EVENTO realizado com sucesso!",
+            "participante": inscricao.usuario.nome,
+            "evento": inscricao.evento.nome,
+            "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        }
+
+        # Emite evento Socket.IO
+        socketio.emit('novo_checkin', {
+            'participante': dados["participante"],
+            'evento': dados["evento"],
+            'data_hora': dados["data_hora"]
+        }, broadcast=True)
+
+        return jsonify(dados)
+
+    elif inscricao.oficina_id:
+        # Checa se check-in de oficina já existe
+        checkin_existente = Checkin.query.filter_by(
+            usuario_id=inscricao.usuario_id,
+            oficina_id=inscricao.oficina_id
+        ).first()
+        if checkin_existente:
+            return jsonify({"status": "warning", "message": "Check-in da oficina já foi realizado!"})
+
+        # Cria novo checkin para oficina
+        novo_checkin = Checkin(
+            usuario_id=inscricao.usuario_id,
+            oficina_id=inscricao.oficina_id,
+            palavra_chave="QR-OFICINA"
+        )
+        db.session.add(novo_checkin)
+        db.session.commit()
+
+        # Prepara dados de retorno
+        dados = {
+            "status": "success",
+            "message": "Check-in de OFICINA realizado com sucesso!",
+            "participante": inscricao.usuario.nome,
+            "oficina": inscricao.oficina.titulo,
+            "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        }
+
+        # Emite evento Socket.IO
+        socketio.emit('novo_checkin', {
+            'participante': dados["participante"],
+            'oficina': dados["oficina"],
+            'data_hora': dados["data_hora"]
+        }, broadcast=True)
+
+        return jsonify(dados)
+
+    else:
+        # Nenhum evento nem oficina
+        return jsonify({
+            "status": "error",
+            "message": "Inscrição sem evento ou oficina vinculada."
+        }), 400
 
 @routes.route('/lista_checkins_json')
 @login_required
 def lista_checkins_json():
     """
     Retorna os últimos check-ins em formato JSON (usado para exibir a tabela inicial).
+    Agora identifica se é checkin de evento ou de oficina.
     """
     # Ajuste se quiser limitar a quantidade
     checkins = Checkin.query.order_by(Checkin.data_hora.desc()).limit(50).all()
     
     resultado = []
     for c in checkins:
-        resultado.append({
-            'participante': c.usuario.nome,
-            'oficina': c.oficina.titulo,
-            'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-        })
+        # Verifica se c.evento_id está preenchido
+        if c.evento_id:
+            resultado.append({
+                'participante': c.usuario.nome,
+                'evento': c.evento.nome if c.evento else "Evento Desconhecido",
+                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'tipo_checkin': 'evento'
+            })
+        elif c.oficina_id:
+            resultado.append({
+                'participante': c.usuario.nome,
+                'oficina': c.oficina.titulo if c.oficina else "Oficina Desconhecida",
+                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'tipo_checkin': 'oficina'
+            })
+        else:
+            resultado.append({
+                'participante': c.usuario.nome,
+                'atividade': "N/A",
+                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'tipo_checkin': 'nenhum'
+            })
 
     return jsonify(status='success', checkins=resultado)
 
@@ -12971,7 +13066,7 @@ def toggle_qrcode_evento_credenciamento():
         "value": config_cliente.habilitar_qrcode_evento_credenciamento,
         "message": "Habilitação de QRCode de Evento atualizada!"
     })
-
+    
 @routes.route("/exportar_checkins_evento_pdf/<int:evento_id>")
 @login_required
 def exportar_checkins_evento_pdf(evento_id):
@@ -12981,9 +13076,16 @@ def exportar_checkins_evento_pdf(evento_id):
     from datetime import datetime
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm
+    from reportlab.lib.units import cm, mm
     from reportlab.lib import colors
-
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus.flowables import Image
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.platypus.doctemplate import SimpleDocTemplate
+    from reportlab.platypus.frames import Frame
+    from reportlab.platypus.tableofcontents import TableOfContents
+    
     # Verifica permissão
     if not (current_user.is_cliente() or current_user.is_superuser()):
         flash("Acesso negado!", "danger")
@@ -12998,54 +13100,345 @@ def exportar_checkins_evento_pdf(evento_id):
 
     # Cria PDF em memória
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    largura, altura = A4
-
-    c.setTitle(f"Check-ins do Evento: {evento.nome}")
-
-    # Cabeçalho
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(2*cm, altura - 2*cm, f"Relatório de Check-ins - {evento.nome}")
-    c.setFont("Helvetica", 12)
-    c.drawString(2*cm, altura - 2.7*cm, f"Data de geração: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-
-    # Títulos da tabela
-    c.setFont("Helvetica-Bold", 10)
-    y = altura - 4*cm
-    c.drawString(2*cm, y, "Nome")
-    c.drawString(7*cm, y, "CPF")
-    c.drawString(10*cm, y, "Data/Hora")
-    c.drawString(14*cm, y, "Palavra-chave")
-    y -= 0.5*cm
-    c.line(2*cm, y, 19*cm, y)
-    y -= 0.4*cm
-
-    # Conteúdo
-    c.setFont("Helvetica", 10)
+    
+    # Define cores do tema do relatório
+    cor_primaria = colors.HexColor("#1E88E5")  # Azul moderno
+    cor_secundaria = colors.HexColor("#E0E0E0")  # Cinza claro
+    cor_destaque = colors.HexColor("#FF5722")   # Laranja para destaques
+    cor_texto = colors.HexColor("#333333")      # Cinza escuro para texto
+    
+    # Configuração do documento
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        title=f"Check-ins do Evento: {evento.nome}",
+        author="Sistema de Eventos",
+        leftMargin=2*cm,
+        rightMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name='Titulo',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        textColor=cor_primaria,
+        spaceAfter=12,
+        spaceBefore=12,
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='Subtitulo',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        textColor=cor_primaria,
+        spaceAfter=6,
+    ))
+    
+    # Modificar o estilo Normal existente em vez de adicionar um novo
+    styles['Normal'].fontName = 'Helvetica'
+    styles['Normal'].fontSize = 10
+    styles['Normal'].textColor = cor_texto
+    styles['Normal'].spaceAfter = 6
+    
+    styles.add(ParagraphStyle(
+        name='InfoEvento',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique',
+        fontSize=10,
+        textColor=cor_texto,
+        spaceAfter=10,
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='Rodape',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=cor_texto,
+        alignment=TA_CENTER,
+    ))
+    
+    # Lista para elementos do documento
+    elementos = []
+    
+    # Função para cabeçalho e rodapé
+    def adicionar_cabecalho_rodape(canvas, doc):
+        canvas.saveState()
+        largura, altura = A4
+        
+        # Cabeçalho
+        canvas.setFillColor(cor_primaria)
+        canvas.rect(0, altura - 1.5*cm, largura, 1.5*cm, fill=1)
+        
+        canvas.setFillColor(colors.white)
+        canvas.setFont('Helvetica-Bold', 14)
+        canvas.drawString(2*cm, altura - 1*cm, "RELATÓRIO DE CHECK-INS")
+        
+        # Rodapé
+        canvas.setFillColor(cor_secundaria)
+        canvas.rect(0, 0, largura, 1*cm, fill=1)
+        
+        canvas.setFillColor(cor_texto)
+        canvas.setFont('Helvetica', 8)
+        canvas.drawString(2*cm, 0.5*cm, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        canvas.drawString(largura/2, 0.5*cm, f"Página {doc.page}")
+        
+        # Logo ou ícone (exemplo)
+        # Se tiver um logo, substituir a linha abaixo
+        canvas.setFillColor(cor_destaque)
+        canvas.circle(largura - 3*cm, altura - 0.75*cm, 0.5*cm, fill=1)
+        
+        canvas.restoreState()
+    
+    # Título do relatório
+    elementos.append(Paragraph(f"Relatório de Check-ins", styles['Titulo']))
+    
+    # Informações do evento
+    elementos.append(Paragraph(f"<b>Evento:</b> {evento.nome}", styles['Subtitulo']))
+    
+    # Adicionar mais informações do evento se disponíveis
+    if hasattr(evento, 'data'):
+        elementos.append(Paragraph(f"<b>Data do evento:</b> {evento.data.strftime('%d/%m/%Y')}", styles['InfoEvento']))
+    if hasattr(evento, 'local'):
+        elementos.append(Paragraph(f"<b>Local:</b> {evento.local}", styles['InfoEvento']))
+    
+    elementos.append(Paragraph(f"<b>Total de check-ins:</b> {len(checkins)}", styles['InfoEvento']))
+    elementos.append(Spacer(1, 0.5*cm))
+    
+    # Resumo estatístico se houver dados suficientes
+    if len(checkins) > 1:
+        # Dados para tabela de resumo
+        resumo_data = []
+        
+        # Exemplo: distribuição por hora (ajuste conforme necessário)
+        hora_counts = {}
+        for checkin in checkins:
+            hora = checkin.data_hora.hour
+            hora_counts[hora] = hora_counts.get(hora, 0) + 1
+        
+        # Mostrar distribuição por horas se relevante
+        if len(hora_counts) > 1:
+            elementos.append(Paragraph("Distribuição de check-ins por hora:", styles['Subtitulo']))
+            
+            # Criar dados para tabela de distribuição
+            hora_data = [["Hora", "Quantidade", "Percentual"]]
+            for hora in sorted(hora_counts.keys()):
+                qtd = hora_counts[hora]
+                percentual = (qtd / len(checkins)) * 100
+                hora_str = f"{hora}:00 - {hora+1}:00"
+                hora_data.append([hora_str, str(qtd), f"{percentual:.1f}%"])
+            
+            # Criar e estilizar tabela de distribuição
+            tabela_horas = Table(hora_data, colWidths=[5*cm, 3*cm, 3*cm])
+            tabela_horas.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), cor_primaria),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, cor_texto),
+                ('BOX', (0, 0), (-1, -1), 1, cor_primaria),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_secundaria.clone(alpha=0.3)]),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ]))
+            
+            elementos.append(tabela_horas)
+            elementos.append(Spacer(1, 0.5*cm))
+    
+    # Tabela principal de check-ins
+    elementos.append(Paragraph("Lista de Check-ins Realizados:", styles['Subtitulo']))
+    elementos.append(Spacer(1, 0.2*cm))
+    
+    # Dados para tabela principal
+    dados_tabela = [["Nome", "CPF", "Data/Hora", "Palavra-chave"]]
+    
+    # Preencher dados na tabela
     for checkin in checkins:
         usuario = checkin.usuario
-        if y < 2.5*cm:
-            c.showPage()
-            y = altura - 3*cm
-            c.setFont("Helvetica-Bold", 10)
-            c.drawString(2*cm, y, "Nome")
-            c.drawString(7*cm, y, "CPF")
-            c.drawString(10*cm, y, "Data/Hora")
-            c.drawString(14*cm, y, "Palavra-chave")
-            y -= 0.5*cm
-            c.line(2*cm, y, 19*cm, y)
-            y -= 0.4*cm
-            c.setFont("Helvetica", 10)
-
-        c.drawString(2*cm, y, usuario.nome[:40])
-        c.drawString(7*cm, y, usuario.cpf or "-")
-        c.drawString(10*cm, y, checkin.data_hora.strftime('%d/%m/%Y %H:%M'))
-        c.drawString(14*cm, y, checkin.palavra_chave or "-")
-        y -= 0.4*cm
-
-    c.showPage()
-    c.save()
+        dados_tabela.append([
+            usuario.nome[:40],
+            usuario.cpf or "-",
+            checkin.data_hora.strftime('%d/%m/%Y %H:%M'),
+            checkin.palavra_chave or "-"
+        ])
+    
+    # Criar e estilizar tabela
+    tabela = Table(dados_tabela, colWidths=[5*cm, 3*cm, 4*cm, 4*cm])
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), cor_primaria),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, cor_texto),
+        ('BOX', (0, 0), (-1, -1), 1, cor_primaria),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_secundaria.clone(alpha=0.2)]),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    elementos.append(tabela)
+    
+    # Adicionar informações finais ou observações
+    elementos.append(Spacer(1, 1*cm))
+    elementos.append(Paragraph("* Este relatório é gerado automaticamente pelo sistema de eventos.", styles['Rodape']))
+    
+    # Construir documento com cabeçalho e rodapé personalizados
+    doc.build(elementos, onFirstPage=adicionar_cabecalho_rodape, onLaterPages=adicionar_cabecalho_rodape)
+    
     buffer.seek(0)
 
     filename = f"checkins_evento_{evento.id}.pdf"
     return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@routes.route('/submeter_trabalho', methods=['GET', 'POST'])
+@login_required
+def submeter_trabalho():
+    if current_user.tipo != 'participante':
+        flash('Apenas participantes podem submeter trabalhos.', 'danger')
+        return redirect(url_for('routes.dashboard_participante'))
+
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        resumo = request.form.get('resumo')
+        area_tematica = request.form.get('area_tematica')
+        arquivo = request.files.get('arquivo_pdf')
+
+        if not all([titulo, resumo, area_tematica, arquivo]):
+            flash('Todos os campos são obrigatórios!', 'danger')
+            return redirect(url_for('routes.submeter_trabalho'))
+
+        filename = secure_filename(arquivo.filename)
+        caminho_pdf = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        arquivo.save(caminho_pdf)
+
+        trabalho = TrabalhoCientifico(
+            titulo=titulo,
+            resumo=resumo,
+            area_tematica=area_tematica,
+            arquivo_pdf=caminho_pdf,
+            usuario_id=current_user.id,
+            evento_id=current_user.evento_id  # opcionalmente usa o evento do usuário
+        )
+        db.session.add(trabalho)
+        db.session.commit()
+
+        flash("Trabalho submetido com sucesso!", "success")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    return render_template('submeter_trabalho.html')
+
+
+@routes.route('/avaliar_trabalhos')
+@login_required
+def avaliar_trabalhos():
+    if current_user.tipo != 'cliente' and not current_user.is_superuser():
+        flash('Apenas administradores ou avaliadores têm acesso.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    trabalhos = TrabalhoCientifico.query.filter(TrabalhoCientifico.status != 'aceito').all()
+    return render_template('avaliar_trabalhos.html', trabalhos=trabalhos)
+
+@routes.route('/avaliar_trabalho/<int:trabalho_id>', methods=['GET', 'POST'])
+@login_required
+def avaliar_trabalho(trabalho_id):
+    trabalho = TrabalhoCientifico.query.get_or_404(trabalho_id)
+
+    if request.method == 'POST':
+        estrelas = request.form.get('estrelas')
+        nota = request.form.get('nota')
+        conceito = request.form.get('conceito')
+        comentario = request.form.get('comentario')
+
+        avaliacao = AvaliacaoTrabalho(
+            trabalho_id=trabalho.id,
+            avaliador_id=current_user.id,
+            estrelas=int(estrelas) if estrelas else None,
+            nota=float(nota) if nota else None,
+            conceito=conceito,
+            comentario=comentario
+        )
+        db.session.add(avaliacao)
+
+        trabalho.status = 'avaliado'
+        db.session.commit()
+
+        flash("Avaliação registrada!", "success")
+        return redirect(url_for('routes.avaliar_trabalhos'))
+
+    return render_template('avaliar_trabalho.html', trabalho=trabalho)
+
+
+@routes.route('/meus_trabalhos')
+@login_required
+def meus_trabalhos():
+    if current_user.tipo != 'participante':
+        return redirect(url_for('routes.dashboard_participante'))
+
+    trabalhos = TrabalhoCientifico.query.filter_by(usuario_id=current_user.id).all()
+    return render_template('meus_trabalhos.html', trabalhos=trabalhos)
+
+@routes.route('/submeter_trabalho', methods=['GET', 'POST'])
+@login_required
+def nova_submissao():
+    if current_user.tipo != 'participante':
+        flash('Apenas participantes podem submeter trabalhos.', 'danger')
+        return redirect(url_for('routes.dashboard'))
+
+    if request.method == 'POST':
+        titulo = request.form.get('titulo')
+        resumo = request.form.get('resumo')
+        area_tematica = request.form.get('area_tematica')
+        arquivo = request.files.get('arquivo_pdf')
+
+        if not all([titulo, resumo, area_tematica, arquivo]):
+            flash('Todos os campos são obrigatórios!', 'warning')
+            return redirect(url_for('routes.nova_submissao'))
+
+        # Garante diretório e salva o arquivo PDF
+        filename = secure_filename(arquivo.filename)
+        caminho_pdf = os.path.join('static/uploads/trabalhos', filename)
+        os.makedirs(os.path.dirname(caminho_pdf), exist_ok=True)
+        arquivo.save(caminho_pdf)
+
+        # Registra trabalho no banco
+        trabalho = TrabalhoCientifico(
+            titulo=titulo,
+            resumo=resumo,
+            area_tematica=area_tematica,
+            arquivo_pdf=caminho_pdf,
+            usuario_id=current_user.id,
+            evento_id=current_user.evento_id if hasattr(current_user, 'evento_id') else None
+        )
+
+        db.session.add(trabalho)
+        db.session.commit()
+
+        flash('Trabalho submetido com sucesso!', 'success')
+        return redirect(url_for('routes.meus_trabalhos'))
+    
+@routes.route('/toggle_submissao_trabalhos')
+@login_required
+def toggle_submissao_trabalhos_cliente():
+    if current_user.tipo != 'cliente':
+        flash("Apenas clientes podem alterar essa configuração.", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    config = current_user.configuracao
+
+    if not config:
+        flash("Cliente sem configuração associada.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
+    db.session.commit()
+    flash("Configuração de submissão de trabalhos atualizada!", "success")
+    return redirect(url_for('routes.dashboard'))
