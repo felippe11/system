@@ -1,5 +1,5 @@
 // Service Worker para AppFiber PWA
-const CACHE_NAME = 'appfiber-v1';
+const CACHE_NAME = 'appfiber-v2';
 const urlsToCache = [
   '/',
   '/static/css/estilos.css',
@@ -12,8 +12,13 @@ const urlsToCache = [
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css',
-  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap'
+  'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+  '/templates/offline.html'
 ];
+
+// Página offline para fallback
+const OFFLINE_PAGE = '/templates/offline.html';
+
 
 // Instalação do Service Worker
 self.addEventListener('install', event => {
@@ -42,8 +47,11 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Estratégia de cache: Cache First, then Network
+// Estratégia de cache: Cache First, then Network com fallback para offline
 self.addEventListener('fetch', event => {
+  // Verifica se a requisição é para uma página HTML
+  const isNavigationRequest = event.request.mode === 'navigate';
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -55,8 +63,8 @@ self.addEventListener('fetch', event => {
         // Clone da requisição
         const fetchRequest = event.request.clone();
 
-        return fetch(fetchRequest).then(
-          response => {
+        return fetch(fetchRequest)
+          .then(response => {
             // Verifica se a resposta é válida
             if(!response || response.status !== 200 || response.type !== 'basic') {
               return response;
@@ -72,8 +80,22 @@ self.addEventListener('fetch', event => {
               });
 
             return response;
-          }
-        );
+          })
+          .catch(error => {
+            // Falha na rede - retorna a página offline para requisições de navegação
+            if (isNavigationRequest) {
+              return caches.match(OFFLINE_PAGE);
+            }
+            // Para outros tipos de requisições, apenas propaga o erro
+            throw error;
+          });
       })
   );
+});
+
+// Evento para lidar com mensagens do cliente
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
