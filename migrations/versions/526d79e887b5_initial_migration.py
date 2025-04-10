@@ -1,8 +1,8 @@
-"""habilitar submissao de trabalhos
+"""initial migration
 
-Revision ID: 284d77f90e08
-Revises: e8249eb9ca71
-Create Date: 2025-04-08 17:56:24.671741
+Revision ID: 526d79e887b5
+Revises: 
+Create Date: 2025-04-09 00:05:21.147933
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '284d77f90e08'
-down_revision = 'e8249eb9ca71'
+revision = '526d79e887b5'
+down_revision = None
 branch_labels = None
 depends_on = None
 
