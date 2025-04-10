@@ -8,6 +8,7 @@ import logging
 import pandas as pd
 import qrcode
 import requests
+import mercadopago
 from flask import abort
 from sqlalchemy.exc import IntegrityError
 from flask import send_from_directory
@@ -92,6 +93,9 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+
+sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
 
 
 # Registrar a fonte personalizada
@@ -181,189 +185,195 @@ def enviar_proposta():
 # ===========================
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 @routes.route('/inscricao/<path:identifier>', methods=['GET', 'POST'])  # Aceita slug ou token
-def cadastro_participante(identifier=None):
+def cadastro_participante(identifier: str | None = None):
+    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
+
+    1.  Valida link (token ou slug)
+    2.  Renderiza formulário (GET)
+    3.  Cria Usuario, Inscricao (status **pending**)
+    4.  Se gratuito  → approved  → login
+         Se pago      → gera preference  → redireciona init_point
+    """
+    # ────────────────────────────── imports locais ─────────────────────────────
     from collections import defaultdict
     from datetime import datetime
+    import os, mercadopago
 
-    alert = None
-    cliente_id = None
-    evento = None
-    token = request.args.get('token') if not identifier else identifier  # Pega o token da URL ou usa o identifier
-    
+    # SDK Mercado Pago (token vem de variável de ambiente)
+    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
 
-    # 1) Inicializa variáveis
-    sorted_keys = []
-    grouped_oficinas = defaultdict(list)  # Using defaultdict to avoid KeyError
-    oficinas = []
-    ministrantes = []
-
-    # Busca o link pelo token ou slug
+    # ────────────────────────────── Busca do link ──────────────────────────────
+    token = request.args.get("token") if not identifier else identifier
     link = None
     if token:
         link = LinkCadastro.query.filter(
-            (LinkCadastro.token == token) | 
-            (LinkCadastro.slug_customizado == token)
+            (LinkCadastro.token == token) | (LinkCadastro.slug_customizado == token)
         ).first()
-
     if not link:
         flash("Erro: Link de cadastro inválido ou expirado!", "danger")
-        return redirect(url_for('routes.cadastro_participante'))
+        return redirect(url_for("routes.cadastro_participante"))
 
-    cliente_id = link.cliente_id
+    cliente_id: int = link.cliente_id
     evento = Evento.query.get(link.evento_id) if link.evento_id else None
 
-    if evento:
-        # Carrega oficinas do evento
-        oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
-        # Carrega ministrantes do evento
-        ministrantes = Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all()
-    else:
-        # Fallback: carrega oficinas do cliente se não houver evento associado
-        oficinas = Oficina.query.filter_by(cliente_id=cliente_id).all()
+    # ────────────────────────────── Carrega oficinas/ministrantes ──────────────
+    oficinas = (
+        Oficina.query.filter_by(evento_id=evento.id).all() if evento else Oficina.query.filter_by(cliente_id=cliente_id).all()
+    )
+    ministrantes = (
+        Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all() if evento else []
+    )
 
-    # Agrupa oficinas por data
-    temp_group = defaultdict(list)
-   # Em routes.py, na função cadastro_participante(), ao montar grouped_oficinas
+    # Agrupamento de oficinas por dia (para exibir programação)
+    grouped_oficinas: dict[str, list] = defaultdict(list)
+    for of in oficinas:
+        for dia in of.dias:
+            data_str = dia.data.strftime("%d/%m/%Y")
+            grouped_oficinas[data_str].append(
+                {
+                    "oficina": of,
+                    "titulo": of.titulo,
+                    "descricao": of.descricao,
+                    "ministrante": of.ministrante_obj,
+                    "horario_inicio": dia.horario_inicio,
+                    "horario_fim": dia.horario_fim,
+                }
+            )
+    for lst in grouped_oficinas.values():
+        lst.sort(key=lambda x: x["horario_inicio"])
+    sorted_keys = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, "%d/%m/%Y"))
 
-    
-    for oficina in oficinas:
-        for dia in oficina.dias:
-            data_str = dia.data.strftime('%d/%m/%Y')
-            ministrante_info = {
-                'nome': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
-                'foto': oficina.ministrante_obj.foto if oficina.ministrante_obj and oficina.ministrante_obj.foto else None
-            }
-
-            temp_group[data_str].append({
-                'oficina': oficina, 
-                'titulo': oficina.titulo,
-                'descricao': oficina.descricao,
-                'ministrante': oficina.ministrante_obj,
-                'horario_inicio': dia.horario_inicio,
-                'horario_fim': dia.horario_fim
-            })
-
-    # Ordena as atividades por horário de início para cada data
-    for date_str in temp_group:
-        temp_group[date_str].sort(key=lambda x: x['horario_inicio'])
-
-    sorted_keys = sorted(temp_group.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
-    grouped_oficinas = temp_group
-    
     campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente_id).all()
 
+    # ────────────────────────────── POST  (cadastro) ───────────────────────────
+    if request.method == "POST":
+        # Dados básicos
+        nome = request.form.get("nome")
+        cpf = request.form.get("cpf")
+        email = request.form.get("email")
+        senha = request.form.get("senha")
+        formacao = request.form.get("formacao")
+        tipo_inscricao_id = request.form.get("tipo_inscricao_id")
 
-    if request.method == 'POST':
-        # Lógica de cadastro do participante
-        nome = request.form.get('nome')
-        cpf = request.form.get('cpf')
-        email = request.form.get('email')
-        senha = request.form.get('senha')
-        formacao = request.form.get('formacao')
-        tipo_inscricao_id = request.form.get('tipo_inscricao_id')
-        estados = request.form.getlist('estados[]')
-        cidades = request.form.getlist('cidades[]')
-        estados_str = ','.join(estados) if estados else ''
-        cidades_str = ','.join(cidades) if cidades else ''
+        estados_str = ",".join(request.form.getlist("estados[]") or [])
+        cidades_str = ",".join(request.form.getlist("cidades[]") or [])
 
-        # Verifica se todos os campos obrigatórios foram preenchidos
+        # Validação mínima
         if not all([nome, cpf, email, senha, formacao]):
-            flash('Erro: Todos os campos obrigatórios devem ser preenchidos!', 'danger')
+            flash("Todos os campos obrigatórios devem ser preenchidos!", "danger")
             return render_template(
-                'cadastro_participante.html',
-                alert={"category": "danger", "message": "Todos os campos obrigatórios devem ser preenchidos!"},
+                "cadastro_participante.html",
                 token=link.token,
                 evento=evento,
                 sorted_keys=sorted_keys,
                 ministrantes=ministrantes,
-                grouped_oficinas=grouped_oficinas
+                grouped_oficinas=grouped_oficinas,
             )
 
+        if Usuario.query.filter_by(email=email).first():
+            flash("Este e-mail já está cadastrado!", "danger")
+            return redirect(request.url)
+        if Usuario.query.filter_by(cpf=cpf).first():
+            flash("CPF já está sendo usado por outro usuário!", "danger")
+            return redirect(request.url)
 
-        # Verifica se o e-mail já existe
-        usuario_existente = Usuario.query.filter_by(email=email).first()
-        if usuario_existente:
-            flash('Erro: Este e-mail já está cadastrado!', 'danger')
-            return render_template(
-                'cadastro_participante.html',
-                alert={"category": "danger", "message": "Este e-mail já está cadastrado!"},
-                token=link.token,
-                evento=evento,
-                sorted_keys=sorted_keys,
-                grouped_oficinas=grouped_oficinas
-            )
+        # Cria usuário
+        novo_usuario = Usuario(
+            nome=nome,
+            cpf=cpf,
+            email=email,
+            senha=generate_password_hash(senha),
+            formacao=formacao,
+            tipo="participante",
+            estados=estados_str,
+            cidades=cidades_str,
+            cliente_id=cliente_id,
+            tipo_inscricao_id=tipo_inscricao_id,
+            evento_id=link.evento_id,
+        )
+        db.session.add(novo_usuario)
+        db.session.flush()  # garante id
 
-        # Verifica se o CPF já existe
-        usuario_existente = Usuario.query.filter_by(cpf=cpf).first()
-        if usuario_existente:
-            alert = {"category": "danger", "message": "CPF já está sendo usado por outro usuário!"}
-        else:
-            novo_usuario = Usuario(
-                nome=nome,
-                cpf=cpf,
-                email=email,
-                senha=generate_password_hash(senha),  # Usando generate_password_hash diretamente
-                formacao=formacao,
-                tipo='participante',
-                estados=estados_str,
-                cidades=cidades_str,
-                cliente_id=cliente_id,  # Vincula ao cliente do link
-                tipo_inscricao_id=tipo_inscricao_id,  # Adiciona o tipo de inscrição
-                evento_id=link.evento_id
-            )
-            try:
-                db.session.add(novo_usuario)
-                db.session.flush()
-                
-                for campo in campos_personalizados:
-                    valor = request.form.get(f'campo_{campo.id}')
-                    if campo.obrigatorio and not valor:
-                        raise ValueError(f"O campo '{campo.nome}' é obrigatório.")
-                    resposta = RespostaCampo(
-                        resposta_formulario_id=novo_usuario.id,
-                        campo_id=campo.id,
-                        valor=valor
-                    )
-                    db.session.add(resposta)
-
-                db.session.commit()
-                flash("Cadastro realizado com sucesso!", "success")
-                return redirect(url_for('routes.login'))
-            
-            except Exception as e:
+        # Campos personalizados
+        for campo in campos_personalizados:
+            valor = request.form.get(f"campo_{campo.id}")
+            if campo.obrigatorio and not valor:
                 db.session.rollback()
-                print(f"Erro ao cadastrar usuário: {e}")
-                alert = {"category": "danger", "message": "Erro ao cadastrar. Tente novamente!"}
-    
-    patrocinadores = []
-    if evento:
-        patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all()
-        
-    all_ministrantes = set()  # set() para evitar duplicados
+                flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
+                return redirect(request.url)
+            db.session.add(
+                RespostaCampo(
+                    resposta_formulario_id=novo_usuario.id,
+                    campo_id=campo.id,
+                    valor=valor,
+                )
+            )
+
+        # Cria inscrição pendente
+        inscricao = Inscricao(
+            usuario_id=novo_usuario.id,
+            evento_id=evento.id if evento else None,
+            cliente_id=cliente_id,
+            status_pagamento="pending",
+        )
+        db.session.add(inscricao)
+        db.session.flush()
+
+        # Preferência de pagamento se for pago
+        tipo_inscricao = EventoInscricaoTipo.query.get(tipo_inscricao_id)
+        if tipo_inscricao and tipo_inscricao.preco > 0:
+            preference_data = {
+                "items": [
+                    {
+                        "id": str(tipo_inscricao.id),
+                        "title": f"Inscrição – {evento.nome} – {tipo_inscricao.nome}",
+                        "quantity": 1,
+                        "currency_id": "BRL",
+                        "unit_price": float(tipo_inscricao.preco),
+                    }
+                ],
+                "payer": {"email": novo_usuario.email, "name": novo_usuario.nome},
+                "external_reference": str(inscricao.id),
+                "back_urls": {
+                    "success": url_for("routes.pagamento_sucesso", _external=True),
+                    "failure": url_for("routes.pagamento_falha", _external=True),
+                    "pending": url_for("routes.pagamento_pendente", _external=True),
+                },
+                "notification_url": url_for("routes.webhook_mp", _external=True),
+                "auto_return": "approved",
+            }
+            pref = sdk.preference().create(preference_data)
+            db.session.commit()
+            return redirect(pref["response"]["init_point"])
+
+        # Gratuito – aprova direto
+        inscricao.status_pagamento = "approved"
+        db.session.commit()
+        flash("Cadastro realizado com sucesso!", "success")
+        return redirect(url_for("routes.login"))
+
+    # ────────────────────────────── GET  (render) ──────────────────────────────
+    patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all() if evento else []
+
+    # garante lista completa de ministrantes (principal + extras)
+    all_ministrantes = set()
     for of in oficinas:
-        # Adiciona o ministrante "principal" (campo officiant) se existir
         if of.ministrante_obj:
             all_ministrantes.add(of.ministrante_obj)
+        all_ministrantes.update(of.ministrantes_associados)
 
-        # Adiciona os ministrantes extras (many-to-many)
-        for m in of.ministrantes_associados:
-            all_ministrantes.add(m)
-
-    # Converte para lista para passar ao template
-    ministrantes = list(all_ministrantes)
-
-    # Renderiza o template
     return render_template(
-        'cadastro_participante.html',
-        alert=alert,
+        "cadastro_participante.html",
         token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
-        ministrantes=ministrantes,
+        ministrantes=list(all_ministrantes),
         grouped_oficinas=grouped_oficinas,
         patrocinadores=patrocinadores,
-        campos_personalizados=campos_personalizados
+        campos_personalizados=campos_personalizados,
     )
+
+
 
 # ===========================
 #      EDITAR PARTICIPANTE
@@ -13456,3 +13466,45 @@ def toggle_submissao_trabalhos_cliente():
     db.session.commit()
     flash("Configuração de submissão de trabalhos atualizada!", "success")
     return redirect(url_for('routes.dashboard'))
+
+@routes.route("/pagamento_sucesso")
+def pagamento_sucesso():
+    ref  = request.args.get("external_reference")
+    pay  = request.args.get("payment_id")
+    stat = request.args.get("status")           # approved | pending
+
+    if ref and stat == "approved":
+        insc = Inscricao.query.get(int(ref))
+        if insc:
+            insc.status_pagamento = "approved"
+            db.session.commit()
+            flash("Pagamento aprovado! Bem‑vindo ao evento 🎉", "success")
+    return redirect(url_for("routes.login"))
+
+
+@routes.route("/pagamento_pendente")
+def pagamento_pendente():
+    flash("Pagamento pendente. Você poderá concluir mais tarde.", "warning")
+    return redirect(url_for("routes.login"))
+
+
+@routes.route("/pagamento_falha")
+def pagamento_falha():
+    flash("Pagamento não foi concluído. Tente novamente.", "danger")
+    return redirect(url_for("routes.login"))
+
+
+@routes.route("/webhook_mp", methods=["POST"])
+def webhook_mp():
+    data = request.get_json(silent=True) or {}
+    if data.get("type") == "payment":
+        sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+        pay = sdk.payment().get(data["data"]["id"])["response"]
+
+        if pay["status"] == "approved":
+            ref = pay["external_reference"]
+            insc = Inscricao.query.get(int(ref))
+            if insc and insc.status_pagamento != "approved":
+                insc.status_pagamento = "approved"
+                db.session.commit()
+    return "", 200
