@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Criar Sorteio{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-trophy me-2"></i>Criar Novo Sorteio
+            </h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('routes.criar_sorteio') }}">
+                <div class="row g-3">
+                    <!-- Título do Sorteio -->
+                    <div class="col-md-6">
+                        <label for="titulo" class="form-label">Título do Sorteio</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    
+                    <!-- Prêmio -->
+                    <div class="col-md-6">
+                        <label for="premio" class="form-label">Prêmio</label>
+                        <input type="text" class="form-control" id="premio" name="premio" required>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div class="col-12">
+                        <label for="descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                    </div>
+
+                    <!-- Seleção de Evento ou Oficina -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0 fs-6">Participantes do Sorteio</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_sorteio" id="tipo_evento" value="evento" checked>
+                                        <label class="form-check-label" for="tipo_evento">
+                                            Todos os participantes de um evento
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="tipo_sorteio" id="tipo_oficina" value="oficina">
+                                        <label class="form-check-label" for="tipo_oficina">
+                                            Apenas os participantes de uma atividade específica
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div id="evento_select_container">
+                                    <label for="evento_id" class="form-label">Selecione o Evento</label>
+                                    <select class="form-select" id="evento_id" name="evento_id">
+                                        <option value="">Selecione um evento</option>
+                                        {% for evento in eventos %}
+                                            <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div id="oficina_select_container" style="display: none;">
+                                    <label for="oficina_id" class="form-label">Selecione a Atividade</label>
+                                    <select class="form-select" id="oficina_id" name="oficina_id" disabled>
+                                        <option value="">Selecione um evento primeiro</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview de Participantes -->
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0 fs-6">Resumo dos Participantes</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="participantes_info" class="text-center py-4">
+                                    <i class="bi bi-people fs-1 text-muted"></i>
+                                    <p class="mb-0 mt-2 text-muted">Selecione um evento ou atividade para ver o resumo de participantes elegíveis para o sorteio.</p>
+                                </div>
+                                <div id="participantes_contagem" class="d-none">
+                                    <div class="alert alert-info">
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-3">
+                                                <i class="bi bi-info-circle-fill fs-3"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">Participantes Elegíveis</h6>
+                                                <p class="mb-0"><span id="num_participantes">0</span> pessoas participarão deste sorteio.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                    <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trophy me-2"></i>Criar Sorteio
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Sorteio -->
+<div class="modal fade" id="modalSorteio" tabindex="-1" aria-labelledby="modalSorteioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalSorteioLabel">
+                    <i class="bi bi-trophy me-2"></i>Resultado do Sorteio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-stars text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="mb-3">Sorteio Concluído!</h3>
+                <div class="winner-container p-4 border rounded bg-light mb-4">
+                    <h5 class="text-muted mb-1">Ganhador(a):</h5>
+                    <h3 id="winnerName" class="text-danger">Nome do Ganhador</h3>
+                    <p class="mb-0"><span id="winnerEmail">email@exemplo.com</span></p>
+                </div>
+                <p class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    O ganhador será notificado por e-mail automaticamente.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a href="#" class="btn btn-primary" id="btnVisualizarSorteios">Ver Todos os Sorteios</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gerenciar a visibilidade dos seletores com base no tipo de sorteio
+    const tipoEvento = document.getElementById('tipo_evento');
+    const tipoOficina = document.getElementById('tipo_oficina');
+    const eventoContainer = document.getElementById('evento_select_container');
+    const oficinaContainer = document.getElementById('oficina_select_container');
+    const eventoSelect = document.getElementById('evento_id');
+    const oficinaSelect = document.getElementById('oficina_id');
+    
+    function toggleSelectors() {
+        if (tipoEvento.checked) {
+            eventoContainer.style.display = 'block';
+            oficinaContainer.style.display = 'none';
+            oficinaSelect.disabled = true;
+            eventoSelect.disabled = false;
+        } else {
+            eventoContainer.style.display = 'block';
+            oficinaContainer.style.display = 'block';
+            oficinaSelect.disabled = false;
+            eventoSelect.disabled = false;
+        }
+    }
+    
+    tipoEvento.addEventListener('change', toggleSelectors);
+    tipoOficina.addEventListener('change', toggleSelectors);
+    
+    // Carregar oficinas quando o evento for selecionado
+    eventoSelect.addEventListener('change', function() {
+        const eventoId = this.value;
+        
+        if (!eventoId) {
+            oficinaSelect.innerHTML = '<option value="">Selecione um evento primeiro</option>';
+            oficinaSelect.disabled = true;
+            return;
+        }
+        
+        // Atualizar contagem de participantes para evento
+        if (tipoEvento.checked) {
+            fetchParticipantesInfo('evento', eventoId);
+        }
+        
+        // Carregar oficinas do evento selecionado
+        fetch(`/api/oficinas_evento/${eventoId}`)
+            .then(response => response.json())
+            .then(data => {
+                oficinaSelect.innerHTML = '<option value="">Selecione uma atividade</option>';
+                
+                if (data.oficinas && data.oficinas.length > 0) {
+                    data.oficinas.forEach(oficina => {
+                        const option = document.createElement('option');
+                        option.value = oficina.id;
+                        option.textContent = oficina.titulo;
+                        oficinaSelect.appendChild(option);
+                    });
+                    oficinaSelect.disabled = false;
+                } else {
+                    oficinaSelect.innerHTML = '<option value="">Nenhuma atividade disponível</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao carregar oficinas:', error);
+                oficinaSelect.innerHTML = '<option value="">Erro ao carregar atividades</option>';
+            });
+    });
+    
+    // Atualizar contagem de participantes quando a oficina for selecionada
+    oficinaSelect.addEventListener('change', function() {
+        if (tipoOficina.checked && this.value) {
+            fetchParticipantesInfo('oficina', this.value);
+        }
+    });
+    
+    // Função para buscar informações de participantes
+    function fetchParticipantesInfo(tipo, id) {
+        const infoContainer = document.getElementById('participantes_info');
+        const contagemContainer = document.getElementById('participantes_contagem');
+        const numParticipantes = document.getElementById('num_participantes');
+        
+        // Mostrar loading
+        infoContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-danger" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+                <p class="mb-0 mt-2">Carregando informações dos participantes...</p>
+            </div>
+        `;
+        
+        infoContainer.classList.remove('d-none');
+        contagemContainer.classList.add('d-none');
+        
+        // Fazer a requisição para obter a contagem de participantes
+        fetch(`/api/participantes_contagem?tipo=${tipo}&id=${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    infoContainer.classList.add('d-none');
+                    contagemContainer.classList.remove('d-none');
+                    numParticipantes.textContent = data.total || 0;
+                } else {
+                    throw new Error(data.message || 'Erro ao buscar informações');
+                }
+            })
+            .catch(error => {
+                infoContainer.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
+                        <p class="mb-0 mt-2 text-danger">Erro ao carregar informações: ${error.message}</p>
+                    </div>
+                `;
+                contagemContainer.classList.add('d-none');
+            });
+    }
+});
+</script>
+{% endblock %}
