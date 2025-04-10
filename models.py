@@ -230,12 +230,15 @@ class Inscricao(db.Model):
     oficina = db.relationship('Oficina', backref='inscritos')
     evento = db.relationship('Evento', backref='inscricoes')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    
+    status_pagamento = db.Column(db.String(20), default="pending")  # pending, approved, rejected
 
-    def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None):
+    def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None, status_pagamento="pending"):
         self.usuario_id = usuario_id
         self.cliente_id = cliente_id
         self.oficina_id = oficina_id
         self.evento_id = evento_id
+        self.status_pagamento = status_pagamento
 
         # Gera um token único garantido
         while True:
@@ -844,6 +847,20 @@ class ApresentacaoTrabalho(db.Model):
     data = db.Column(db.Date, nullable=False)
     horario = db.Column(db.String(5), nullable=False)
     local = db.Column(db.String(100), nullable=True)
+
+
+class Pagamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    status = db.Column(db.String(50), default="pendente")
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    mercado_pago_id = db.Column(db.String(255), nullable=True)
+
+    usuario = db.relationship("Usuario")
+    evento = db.relationship("Evento")
+    tipo_inscricao = db.relationship("EventoInscricaoTipo")
 
 
 

@@ -895,3 +895,56 @@ def caminho_absoluto_arquivo(imagem_relativa):
     if imagem_relativa.startswith('static/'):
         return imagem_relativa
     return os.path.join('static', imagem_relativa)
+
+import mercadopago
+import os
+
+sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
+def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
+    preference_data = {
+        "payer": {"name": nome, "email": email},
+        "items": [{
+            "title": descricao,
+            "quantity": 1,
+            "currency_id": "BRL",
+            "unit_price": float(valor),
+        }],
+        "back_urls": {
+            "success": return_url,
+            "failure": return_url,
+            "pending": return_url
+        },
+        "auto_return": "approved"
+    }
+    preference_response = sdk.preference().create(preference_data)
+    return preference_response["response"]["init_point"]
+
+# utils.py ou dentro da mesma função
+def criar_preference_mp(usuario, tipo_inscricao, evento):
+    import mercadopago, os
+    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
+    preference_data = {
+        "items": [{
+            "id": str(tipo_inscricao.id),
+            "title": f"Inscrição – {tipo_inscricao.nome} – {evento.nome}",
+            "quantity": 1,
+            "currency_id": "BRL",
+            "unit_price": float(tipo_inscricao.preco),
+        }],
+        "payer": {
+            "email": usuario.email
+        },
+        "external_reference": str(usuario.id),        # para localizar depois
+        "back_urls": {
+            "success": url_for("routes.pagamento_sucesso", _external=True),
+            "failure": url_for("routes.pagamento_falhou", _external=True),
+            "pending": url_for("routes.pagamento_pendente", _external=True)
+        },
+        "auto_return": "approved",
+        "notification_url": url_for("routes.webhook_mp", _external=True)  # opcional
+    }
+    pref = sdk.preference().create(preference_data)
+    return pref["response"]["init_point"]
+
