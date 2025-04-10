@@ -690,6 +690,21 @@
         </div>
       </div>
     </div>
+    
+    <div class="col-md-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100 action-card">
+        <div class="card-body text-center p-4">
+          <div class="icon-circle bg-danger text-white mb-3">
+            <i class="bi bi-trophy"></i>
+          </div>
+          <h5 class="card-title">Realizar Sorteio</h5>
+          <p class="card-text text-muted small">Sorteie prêmios entre os participantes</p>
+          <a href="{{ url_for('routes.gerenciar_sorteios') }}" class="btn btn-danger mt-2 w-100">
+            <i class="bi bi-gift me-2"></i> Gerenciar Sorteios
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Configurações e Instruções -->
@@ -918,7 +933,8 @@
                 </div>
                 <button type="button" 
                         id="btnToggleQrCredenciamento"
-                        class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'danger' }}">
+                        class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'danger' }}"
+                        data-toggle-url="{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}">
                   <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'x-circle-fill' }}"></i>
                   {{ 'Ativo' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'Desativado' }}
                 </button>
@@ -943,7 +959,7 @@
               </div>
 
               <!-- Certificado -->
-              <div class="config-item d-flex justify-content-between align-items-center p-3">
+              <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
                 <div>
                   <h6 class="mb-0 fw-semibold d-flex align-items-center">
                     <i class="bi bi-award text-primary me-2"></i>
