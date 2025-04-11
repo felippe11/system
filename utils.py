@@ -34,6 +34,9 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
