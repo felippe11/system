@@ -382,6 +382,15 @@
     </div>
   </div>
   {% endif %}
+
+  {% if current_user.tem_pagamento_pendente() %}
+<div class="alert alert-warning d-flex align-items-center mb-4">
+  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+  <div>
+    Seu pagamento ainda não foi confirmado. Enquanto isso você só pode visualizar o sistema.
+  </div>
+</div>
+{% endif %}
   
 
   {% if formularios_disponiveis %}
