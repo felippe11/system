@@ -7,6 +7,8 @@ import logging
 import pytz
 from models import Usuario, Cliente, Ministrante  # ou só os que você precisa
 from extensions import socketio  # Importa a instância de SocketIO
+from flask_socketio import join_room
+
 
 def create_app():
     app = Flask(__name__)
@@ -79,6 +81,14 @@ def reconciliar_pendentes():
 scheduler = BackgroundScheduler()
 scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)  # 03:00 UTC
 scheduler.start()
+
+
+@socketio.on('join', namespace='/checkins')
+def on_join(data):
+    sala = data.get('sala')
+    if sala:
+        join_room(sala)
+
 
 
 

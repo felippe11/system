@@ -1,35 +1,90 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <h2>Criar Novo Template de Formulário</h2>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-file-earmark-plus me-2"></i>Criar Novo Template
+        </h2>
+        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar para Templates
+        </a>
+    </div>
 
-    <form method="POST">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Template</label>
-            <input type="text" id="nome" name="nome" class="form-control" required>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form method="POST">
+                <div class="row g-4">
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label fw-medium">Nome do Template</label>
+                            <input type="text" id="nome" name="nome" class="form-control form-control-lg" 
+                                   required placeholder="Digite o nome para o template" autofocus>
+                            <div class="form-text">O nome irá aparecer na lista de templates disponíveis.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label fw-medium">Descrição</label>
+                            <textarea id="descricao" name="descricao" class="form-control" 
+                                      rows="3" placeholder="Descreva o propósito deste template (opcional)"></textarea>
+                            <div class="form-text">Uma breve descrição sobre para que este template será utilizado.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="categoria" class="form-label fw-medium">Categoria</label>
+                            <select id="categoria" name="categoria" class="form-select">
+                                <option value="workshop">Workshop</option>
+                                <option value="evento">Evento</option>
+                                <option value="curso">Curso</option>
+                                <option value="pesquisa">Pesquisa</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                            <div class="form-text">Categorizar facilita a organização e busca.</div>
+                        </div>
+                    </div>
+                    
+                    {% if current_user.tipo == 'admin' %}
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0 h-100">
+                            <div class="card-body">
+                                <h5 class="card-title h6 mb-3">
+                                    <i class="bi bi-shield-check me-2"></i>Opções de Administrador
+                                </h5>
+                                <div class="form-check form-switch">
+                                    <input type="checkbox" class="form-check-input" id="is_default" name="is_default" role="switch">
+                                    <label class="form-check-label" for="is_default">Template Padrão</label>
+                                </div>
+                                <div class="form-text">
+                                    Se ativado, este template estará disponível para todos os clientes do sistema.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            Após criar o template, você poderá adicionar os campos necessários.
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-light me-md-2">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-1"></i> Criar Template
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
-        <div class="mb-3">
-            <label for="descricao" class="form-label">Descrição</label>
-            <textarea id="descricao" name="descricao" class="form-control"></textarea>
-        </div>
-        <div class="mb-3">
-            <label for="categoria" class="form-label">Categoria</label>
-            <select id="categoria" name="categoria" class="form-select">
-                <option value="workshop">Workshop</option>
-                <option value="evento">Evento</option>
-                <option value="curso">Curso</option>
-                <option value="pesquisa">Pesquisa</option>
-                <option value="outro">Outro</option>
-            </select>
-        </div>
-        {% if current_user.tipo == 'admin' %}
-        <div class="mb-3 form-check">
-            <input type="checkbox" class="form-check-input" id="is_default" name="is_default">
-            <label class="form-check-label" for="is_default">Template Padrão (disponível para todos os clientes)</label>
-        </div>
-        {% endif %}
-        <button type="submit" class="btn btn-success">Criar Template</button>
-        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-secondary">Cancelar</a>
-    </form>
+    </div>
 </div>
 {% endblock %}
