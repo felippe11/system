@@ -899,7 +899,14 @@ def caminho_absoluto_arquivo(imagem_relativa):
 import mercadopago
 import os
 
-sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+if not token:
+    raise RuntimeError(
+        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
+        "Exporte a variável de ambiente antes de iniciar o servidor."
+    )
+
+sdk = mercadopago.SDK(token)
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     preference_data = {
@@ -947,4 +954,22 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
     }
     pref = sdk.preference().create(preference_data)
     return pref["response"]["init_point"]
+
+# utils.py  (ou um novo arquivo helpers.py)
+from functools import wraps
+from flask_login import current_user
+from flask import flash, redirect, url_for, request
+
+def pagamento_necessario(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if (hasattr(current_user, "tipo")
+                and current_user.tipo == "participante"
+                and current_user.tem_pagamento_pendente()):
+            # Permite apenas GETs (visualização). Bloqueia POST/PUT/DELETE.
+            if request.method != "GET":
+                flash("⚠️ Pagamento ainda pendente. Aguarde a confirmação para usar esta função.", "warning")
+                return redirect(url_for("routes.dashboard_participante"))
+        return f(*args, **kwargs)
+    return wrapper
 

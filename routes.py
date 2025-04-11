@@ -114,6 +114,24 @@ login_manager.login_view = 'routes.login'  # Essa é a rota que será usada para
 
 routes = Blueprint("routes", __name__)
 
+# routes.py, logo após criar o Blueprint
+@routes.before_request
+def bloquear_usuarios_pendentes():
+    from flask_login import current_user
+    if (current_user.is_authenticated and
+        getattr(current_user, "tipo", None) == "participante" and
+        current_user.tem_pagamento_pendente()):
+        # autoriza só rotas de leitura
+        if request.endpoint in [
+            "routes.dashboard_participante",
+            "static"  # etc.
+        ]:
+            return  # ok
+        if request.method != "GET":
+            flash("Pagamento pendente – funcionalidades bloqueadas até aprovação.", "warning")
+            return redirect(url_for("routes.dashboard_participante"))
+
+
 
 
 
@@ -13452,19 +13470,25 @@ def toggle_submissao_trabalhos_cliente():
     return redirect(url_for('routes.dashboard'))
 
   
+# routes.py  (já existe)
 @routes.route("/pagamento_sucesso")
 def pagamento_sucesso():
-    ref  = request.args.get("external_reference")
-    pay  = request.args.get("payment_id")
-    stat = request.args.get("status")           # approved | pending
+    payment_id        = request.args.get("payment_id")
+    external_ref      = request.args.get("external_reference")  # id da inscrição
+    inscricao         = Inscricao.query.get_or_404(external_ref)
 
-    if ref and stat == "approved":
-        insc = Inscricao.query.get(int(ref))
-        if insc:
-            insc.status_pagamento = "approved"
-            db.session.commit()
-            flash("Pagamento aprovado! Bem‑vindo ao evento 🎉", "success")
-    return redirect(url_for("routes.login"))
+    # 1) marca como aprovado, se ainda não estiver
+    if inscricao.status_pagamento != "approved":
+        inscricao.status_pagamento = "approved"
+        db.session.commit()
+
+    # 2) faz login do usuário automaticamente
+    login_user(inscricao.usuario)
+    session['user_type'] = 'participante'
+
+    flash("Pagamento aprovado! Bem‑vindo(a) 😉", "success")
+    return redirect(url_for("routes.dashboard_participante"))
+
 
 
 @routes.route("/pagamento_pendente")
