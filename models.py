@@ -56,6 +56,13 @@ class Usuario(db.Model, UserMixin):
     
     def is_professor(self):
          return self.tipo == 'professor'
+    
+    def tem_pagamento_pendente(self):
+        pendente = Inscricao.query.filter_by(
+            usuario_id=self.id,
+            status_pagamento="pending"
+        ).count()
+        return pendente > 0
 
 
 
@@ -215,6 +222,13 @@ class OficinaDia(db.Model):
 
 class Inscricao(db.Model):
     __tablename__ = 'inscricao'
+    
+     # 👉 NOVOS CAMPOS
+    payment_id = db.Column(db.String(64), index=True, nullable=True)       # id da transação no MP
+    created_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           index=True, nullable=False)
+    
+    boleto_url      = db.Column(db.String(512), nullable=True)   # ← NOVO
 
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
@@ -231,7 +245,11 @@ class Inscricao(db.Model):
     evento = db.relationship('Evento', backref='inscricoes')
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     
-    status_pagamento = db.Column(db.String(20), default="pending")  # pending, approved, rejected
+    status_pagamento = db.Column(
+        db.String(20),
+        default="pending",
+        index=True        # ➊  (gera índice)
+    )
 
     def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None, status_pagamento="pending"):
         self.usuario_id = usuario_id
