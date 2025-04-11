@@ -950,4 +950,3 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
     }
     pref = sdk.preference().create(preference_data)
     return pref["response"]["init_point"]
-
