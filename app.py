@@ -56,6 +56,31 @@ def create_app():
 # Criar a aplicação
 app = create_app()
 
+# app.py  (logo depois de create_app)
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import mercadopago, os
+
+def reconciliar_pendentes():
+    sdk   = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+    ontem = datetime.utcnow() - timedelta(hours=24)
+
+    pendentes = Inscricao.query.filter(
+        Inscricao.status_pagamento == "pending",
+        Inscricao.created_at < ontem        # adicione created_at se ainda não existir
+    ).all()
+
+    for ins in pendentes:
+        resp = sdk.payment().get(ins.payment_id)   # armazene payment_id na criação
+        if resp["response"]["status"] == "approved":
+            ins.status_pagamento = "approved"
+            db.session.commit()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)  # 03:00 UTC
+scheduler.start()
+
+
 
 # Função que converte um datetime para o horário de Brasília
 def convert_to_brasilia(dt):
