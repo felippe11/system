@@ -3,22 +3,57 @@
 
 {% block content %}
 <div class="container py-5">
-  <div class="card shadow-sm border-0 mb-5">
-    <div class="card-header bg-primary text-white py-3">
-      <h2 class="card-title text-center mb-0 fw-bold">Gerenciar Inscrições</h2>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h2 mb-0">
+          <i class="bi bi-people-fill me-2"></i>Gerenciar Inscrições
+        </h1>
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center">
+          <i class="bi bi-arrow-left me-2"></i>Voltar 
+        </a>
+        
+      </div>
     </div>
-    <div class="card-body p-4">
-      <!-- Filtros -->
-      <div class="row g-3 mb-4 bg-light p-3 rounded">
-        <div class="col-md-4">
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+          <div class="d-flex align-items-center">
+            {% if category == 'success' %}
+              <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+            {% elif category == 'danger' %}
+              <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+            {% else %}
+              <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+            {% endif %}
+            <div>{{ message }}</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card shadow border-0 mb-5">
+    <div class="card-header bg-white p-3 border-bottom">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-funnel-fill me-2 text-primary"></i>Filtros de Pesquisa
+      </h5>
+    </div>
+    <div class="card-body bg-light p-4">
+      <div class="row g-3">
+        <div class="col-md-5">
           <div class="form-floating">
-            <input type="text" class="form-control" id="filtroParticipante" placeholder="Digite o nome do participante">
+            <input type="text" class="form-control shadow-sm" id="filtroParticipante" placeholder="Digite o nome do participante">
             <label for="filtroParticipante"><i class="bi bi-search me-2"></i>Filtrar por Participante</label>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-5">
           <div class="form-floating">
-            <select class="form-select" id="filtroOficina">
+            <select class="form-select shadow-sm" id="filtroOficina">
               <option value="">Todas as Oficinas</option>
               {% for oficina in oficinas %}
               <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
@@ -27,40 +62,38 @@
             <label for="filtroOficina"><i class="bi bi-filter me-2"></i>Filtrar por Oficina</label>
           </div>
         </div>
-        <div class="col-md-4 d-flex align-items-center">
-          <button type="button" class="btn btn-primary w-100 py-3" data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
-            <i class="bi bi-arrow-right-circle me-2"></i> Mover Selecionados
+        <div class="col-md-2">
+          <button type="button" class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm" data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
+            <i class="bi bi-arrow-right-circle me-2"></i>Mover Selecionados
           </button>
         </div>
       </div>
+    </div>
+  </div>
 
-      {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-      </div>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
-
-
-      <!-- Tabela de Inscrições -->
+  <!-- Tabela de Inscrições -->
+  <div class="card shadow border-0">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center p-3 border-bottom">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-table me-2 text-primary"></i>Lista de Inscrições
+      </h5>
+      <span class="badge bg-primary rounded-pill" id="contadorInscricoes">{{ inscritos|length }}</span>
+    </div>
+    <div class="card-body p-0">
       <form id="formGerenciarInscricoes" method="POST">
-        <div class="table-responsive rounded">
-          <table class="table table-striped table-hover align-middle border">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 border-0">
             <thead class="table-dark">
-              <tr class="text-center">
-                <th width="5%">
+              <tr>
+                <th width="5%" class="text-center">
                   <div class="form-check d-flex justify-content-center">
                     <input class="form-check-input" type="checkbox" id="selecionarTodos">
                   </div>
                 </th>
-                <th width="8%">ID</th>
+                <th width="8%" class="text-center">ID</th>
                 <th width="30%">Participante</th>
                 <th width="30%">Oficina</th>
-                <th width="27%">Ações</th>
+                <th width="27%" class="text-center">Ações</th>
               </tr>
             </thead>
             <tbody id="tabelaInscricoes">
@@ -71,9 +104,23 @@
                     <input class="form-check-input selecao-inscricao" type="checkbox" name="inscricao_ids" value="{{ insc.id }}" data-oficina-id="{{ insc.oficina.id }}">
                   </div>
                 </td>
-                <td class="text-center fw-bold">{{ insc.id }}</td>
-                <td>{{ insc.usuario.nome }}</td>
-                <td>{{ insc.oficina.titulo }}</td>
+                <td class="text-center fw-medium">{{ insc.id }}</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-circle bg-light text-primary me-2 d-flex align-items-center justify-content-center">
+                      <i class="bi bi-person"></i>
+                    </div>
+                    <div>{{ insc.usuario.nome }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-circle bg-light text-primary me-2 d-flex align-items-center justify-content-center">
+                      <i class="bi bi-book"></i>
+                    </div>
+                    <div>{{ insc.oficina.titulo }}</div>
+                  </div>
+                </td>
                 <td>
                   <div class="d-flex gap-2 justify-content-center">
                     <!-- Botão Gerenciar -->
@@ -104,13 +151,24 @@
           </table>
         </div>
       </form>
+      {% if not inscritos %}
+      <div class="text-center py-5">
+        <i class="bi bi-clipboard-x text-muted fs-1 mb-3"></i>
+        <p class="lead text-muted">Nenhuma inscrição encontrada</p>
+        <p class="text-muted">Verifique os filtros ou aguarde novas inscrições.</p>
+      </div>
+      {% endif %}
+    </div>
+    <div class="card-footer bg-white text-muted p-3 d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-info-circle me-1"></i> Selecione inscrições para realizar ações em lote</span>
+      <span id="infoSelecao" class="badge bg-secondary">0 selecionados</span>
     </div>
   </div>
 
   <!-- Modal para Mover Inscrições -->
   <div class="modal fade" id="moverInscricoesModal" tabindex="-1" aria-labelledby="moverInscricoesModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
+      <div class="modal-content border-0 shadow">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title" id="moverInscricoesModalLabel">
             <i class="bi bi-arrow-right-circle me-2"></i>Mover Inscrições
@@ -120,12 +178,11 @@
         <div class="modal-body p-4">
           <form id="formMoverInscricoes" action="{{ url_for('routes.mover_inscricoes_lote') }}" method="POST">
             <div class="mb-4">
-              <div class="form-floating">
-                <select class="form-select" id="oficina_destino" name="oficina_destino" required>
-                  <option value="">-- Selecione uma Oficina --</option>
-                </select>
-                <label for="oficina_destino">Oficina de Destino</label>
-              </div>
+              <label for="oficina_destino" class="form-label fw-medium mb-2">Oficina de Destino</label>
+              <select class="form-select form-select-lg" id="oficina_destino" name="oficina_destino" required>
+                <option value="">-- Selecione uma Oficina --</option>
+              </select>
+              <div class="form-text">Selecione a oficina para onde deseja transferir os participantes</div>
             </div>
             <div id="inscricoes_selecionadas_container" class="d-none">
               <!-- Aqui serão inseridos os inputs hidden com os IDs das inscrições selecionadas -->
@@ -142,8 +199,8 @@
             </div>
           </form>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x me-1"></i>Cancelar
           </button>
           <button type="submit" form="formMoverInscricoes" class="btn btn-primary" id="btnConfirmarMover" disabled>
@@ -178,6 +235,19 @@
       
       // Atualiza o contador no modal
       document.getElementById('num_selecionados').textContent = checkboxes.length;
+      
+      // Atualiza o contador no footer
+      document.getElementById('infoSelecao').textContent = `${checkboxes.length} selecionados`;
+      
+      // Atualiza a classe do badge
+      const infoSelecao = document.getElementById('infoSelecao');
+      if (checkboxes.length > 0) {
+        infoSelecao.classList.remove('bg-secondary');
+        infoSelecao.classList.add('bg-primary');
+      } else {
+        infoSelecao.classList.remove('bg-primary');
+        infoSelecao.classList.add('bg-secondary');
+      }
     }
 
     // Função para verificar disponibilidade de vagas
@@ -225,6 +295,14 @@
       });
     }
 
+    // Função para atualizar contador de inscrições visíveis
+    function atualizarContadorInscricoes() {
+      const rowsVisiveis = Array.from(document.querySelectorAll('#tabelaInscricoes tr')).filter(row => 
+        row.style.display !== 'none'
+      ).length;
+      document.getElementById('contadorInscricoes').textContent = rowsVisiveis;
+    }
+
     // Event Listeners
     document.addEventListener('DOMContentLoaded', function() {
       // Selecionar/Deselecionar todos
@@ -232,7 +310,10 @@
       selecionarTodos.addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('.selecao-inscricao');
         checkboxes.forEach(checkbox => {
-          checkbox.checked = selecionarTodos.checked;
+          // Só seleciona os visíveis
+          if (checkbox.closest('tr').style.display !== 'none') {
+            checkbox.checked = selecionarTodos.checked;
+          }
         });
         atualizarBotaoMover();
       });
@@ -262,6 +343,9 @@
         // Esconder alerta de vagas
         document.getElementById('alerta_vagas').classList.add('d-none');
       });
+      
+      // Iniciar contagem
+      atualizarBotaoMover();
     });
 
     // Quando o modal é aberto, buscar oficinas do mesmo evento
@@ -324,6 +408,12 @@
           row.style.display = 'none';
         }
       });
+      
+      // Atualiza o contador de inscrições visíveis
+      atualizarContadorInscricoes();
+      
+      // Desmarca o checkbox "selecionar todos" quando filtra
+      document.getElementById('selecionarTodos').checked = false;
     }
   </script>
 
@@ -333,10 +423,6 @@
     .table th {
       font-weight: 600;
       vertical-align: middle;
-    }
-    
-    .table-striped tbody tr:nth-of-type(odd) {
-      background-color: rgba(0, 0, 0, 0.02);
     }
     
     .table-hover tbody tr:hover {
@@ -353,10 +439,6 @@
       overflow: hidden;
     }
     
-    .card-header {
-      border-bottom: none;
-    }
-    
     .form-control:focus, .form-select:focus {
       border-color: #86b7fe;
       box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
@@ -366,9 +448,25 @@
       border-radius: 8px;
     }
     
-    .table-responsive {
-      border-radius: 8px;
-      overflow: hidden;
+    .avatar-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    
+    /* Melhorias de responsividade */
+    @media (max-width: 768px) {
+      .btn {
+        font-size: 0.85rem;
+      }
+      
+      .table th, .table td {
+        padding: 0.5rem;
+      }
     }
   </style>
 {% endblock %}

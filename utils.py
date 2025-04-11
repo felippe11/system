@@ -973,3 +973,14 @@ def pagamento_necessario(f):
         return f(*args, **kwargs)
     return wrapper
 
+import pytz
+from datetime import datetime
+
+def formatar_brasilia(dt):
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    brasilia = pytz.timezone("America/Sao_Paulo")
+    return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
+
