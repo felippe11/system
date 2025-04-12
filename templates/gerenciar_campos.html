@@ -1,63 +1,194 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <h2>Gerenciar Campos - {{ formulario.nome }}</h2>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-list-nested me-2"></i>Gerenciar Campos
+        </h2>
+        <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar para Formulários
+        </a>
+    </div>
+    
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        Formulário: <strong>{{ formulario.nome }}</strong>
+    </div>
 
-    <form method="POST">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Campo</label>
-            <input type="text" id="nome" name="nome" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label for="tipo" class="form-label">Tipo</label>
-            <select id="tipo" name="tipo" class="form-select" required>
-                <option value="text">Texto Curto</option>
-                <option value="textarea">Texto Longo</option>
-                <option value="number">Número</option>
-                <option value="file">Upload de Arquivo</option>
-                <option value="date">Data</option>
-                <option value="dropdown">Dropdown</option>
-                <option value="checkbox">Checkbox</option>
-                <option value="radio">Botões de Opção</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="opcoes" class="form-label">Opções (separadas por vírgula)</label>
-            <input type="text" id="opcoes" name="opcoes" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="tamanho_max" class="form-label">Tamanho Máximo (aplicável para texto e número)</label>
-            <input type="number" id="tamanho_max" name="tamanho_max" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="regex_validacao" class="form-label">Validação Regex (opcional)</label>
-            <input type="text" id="regex_validacao" name="regex_validacao" class="form-control">
-        </div>
-        <div class="mb-3 form-check">
-            <input type="checkbox" id="obrigatorio" name="obrigatorio" class="form-check-input">
-            <label for="obrigatorio" class="form-check-label">Campo Obrigatório</label>
-        </div>
-        <button type="submit" class="btn btn-success">Adicionar Campo</button>
-    </form>
-
-    <h3 class="mt-4">Campos Existentes</h3>
-    <ul class="list-group">
-        {% for campo in formulario.campos %}
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-            <strong>{{ campo.nome }}</strong> ({{ campo.tipo }})
-            <div>
-                <a href="{{ url_for('routes.editar_campo', campo_id=campo.id) }}" class="btn btn-warning btn-sm">Editar</a>
-                <form action="{{ url_for('routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
-                    <button type="submit" class="btn btn-danger btn-sm">Remover</button>
-                </form>
+    <div class="row g-4">
+        <!-- Campos Existentes -->
+        <div class="col-lg-7 order-lg-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="h5 mb-0">
+                            <i class="bi bi-ui-checks me-2"></i>Campos Existentes
+                        </h3>
+                        <span class="badge bg-primary rounded-pill">{{ formulario.campos|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if formulario.campos %}
+                    <div class="list-group list-group-flush">
+                        {% for campo in formulario.campos %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-1">{{ campo.nome }}</h5>
+                                    <div class="d-flex align-items-center text-muted small">
+                                        <span class="badge bg-light text-dark me-2">{{ campo.tipo }}</span>
+                                        {% if campo.obrigatorio %}
+                                        <span class="badge bg-danger">Obrigatório</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('routes.editar_campo', campo_id=campo.id) }}" class="btn btn-outline-warning">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal para exclusão -->
+                        <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Confirmar exclusão</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
+                                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <form action="{{ url_for('routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-danger">Remover Campo</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center p-4">
+                        <i class="bi bi-dash-circle text-muted fs-1"></i>
+                        <p class="text-muted mt-2">Nenhum campo adicionado ainda.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if formulario.campos %}
+                <div class="card-footer bg-white text-center">
+                    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> Finalizar e Salvar
+                    </a>
+                </div>
+                {% endif %}
             </div>
-        </li>
-        {% endfor %}
-    </ul>
+        </div>
+        
+        <!-- Adicionar Campo -->
+        <div class="col-lg-5 order-lg-1">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h3 class="h5 mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>Adicionar Novo Campo
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label fw-medium">Nome do Campo</label>
+                            <input type="text" id="nome" name="nome" class="form-control" 
+                                   required placeholder="Ex: Nome, Email, Telefone...">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label fw-medium">Tipo de Campo</label>
+                            <select id="tipo" name="tipo" class="form-select" required>
+                                <option value="text">Texto Curto</option>
+                                <option value="textarea">Texto Longo</option>
+                                <option value="number">Número</option>
+                                <option value="file">Upload de Arquivo</option>
+                                <option value="date">Data</option>
+                                <option value="dropdown">Dropdown</option>
+                                <option value="checkbox">Checkbox</option>
+                                <option value="radio">Botões de Opção</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="opcoesContainer">
+                            <label for="opcoes" class="form-label fw-medium">Opções</label>
+                            <input type="text" id="opcoes" name="opcoes" class="form-control" 
+                                   placeholder="Opção 1, Opção 2, Opção 3...">
+                            <div class="form-text">Separadas por vírgula (para dropdown, checkbox ou radio)</div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="tamanho_max" class="form-label fw-medium">Tamanho Máximo</label>
+                                <input type="number" id="tamanho_max" name="tamanho_max" class="form-control" 
+                                       placeholder="Ex: 100">
+                                <div class="form-text">Para texto e número</div>
+                            </div>
+                            <div class="col">
+                                <label for="regex_validacao" class="form-label fw-medium">Regex</label>
+                                <input type="text" id="regex_validacao" name="regex_validacao" 
+                                       class="form-control" placeholder="Ex: [0-9]{5}-[0-9]{3}">
+                                <div class="form-text">Validação opcional</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-4">
+                            <input type="checkbox" id="obrigatorio" name="obrigatorio" 
+                                   class="form-check-input" role="switch">
+                            <label for="obrigatorio" class="form-check-label">Campo Obrigatório</label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar Campo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="mt-4">
-    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary">Salvar e Voltar para Formulários</a>
-</div>
-
+<script>
+    // Controle de exibição do campo opções
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoSelect = document.getElementById('tipo');
+        const opcoesContainer = document.getElementById('opcoesContainer');
+        
+        function checkTipoVisibility() {
+            const tipoValue = tipoSelect.value;
+            if (['dropdown', 'checkbox', 'radio'].includes(tipoValue)) {
+                opcoesContainer.style.display = 'block';
+            } else {
+                opcoesContainer.style.display = 'none';
+            }
+        }
+        
+        // Verificar na inicialização
+        checkTipoVisibility();
+        
+        // Verificar quando o tipo mudar
+        tipoSelect.addEventListener('change', checkTipoVisibility);
+        
+        // Inicializar tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
 {% endblock %}

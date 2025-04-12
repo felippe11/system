@@ -345,6 +345,10 @@ class Checkin(db.Model):
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)    # novo campo
     data_hora = db.Column(db.DateTime, default=datetime.utcnow)
     palavra_chave = db.Column(db.String(50), nullable=False)
+    
+     # NOVO  ▼▼▼
+    cliente_id  = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    cliente     = db.relationship('Cliente', backref=db.backref('checkins', lazy=True))
 
     usuario = db.relationship('Usuario', backref=db.backref('checkins', lazy=True))
     oficina = db.relationship('Oficina', backref=db.backref('checkins', lazy=True))
