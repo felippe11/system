@@ -2,65 +2,190 @@
 {% block title %}Gerenciar Ministrantes{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-  <h2 class="text-center mb-4">Gerenciar Ministrantes</h2>
-
-  <!-- Botão para cadastrar ministrante (Admin e Cliente) -->
-  <div class="text-center mt-4">
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-people-fill me-2"></i>Gerenciar Ministrantes
+    </h2>
     <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-success">
-        <i class="bi bi-person-plus"></i> Cadastrar Novo Ministrante
+      <i class="bi bi-person-plus me-1"></i> Cadastrar Novo Ministrante
     </a>
   </div>
-  
-  {% if ministrantes %}
-  <div class="table-responsive mt-3">
-    <table class="table table-striped table-bordered">
-      <thead class="table-dark">
-        <tr>
-          <th>ID</th>
-          <th>Nome</th>
-          <th>Formação</th>
-          <th>Áreas de Atuação</th>
-          <th>CPF</th>
-          <th>Email</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for ministrante in ministrantes %}
-        <tr>
-          <td>{{ ministrante.id }}</td>
-          <td>{{ ministrante.nome }}</td>
-          <td>{{ ministrante.formacao }}</td>
-          <td>{{ ministrante.areas_atuacao }}</td>
-          <td>{{ ministrante.cpf }}</td>
-          <td>{{ ministrante.email }}</td>
-          <td>
-            <!-- Substituir o modal pelo link para a rota de edição -->
-            <a 
-              href="{{ url_for('routes.editar_ministrante', ministrante_id=ministrante.id) }}" 
-              class="btn btn-warning btn-sm"
-            >
-              Editar
-            </a>
 
-            <!-- Formulário para exclusão -->
-            <form
-              action="{{ url_for('routes.excluir_ministrante', ministrante_id=ministrante.id) }}"
-              method="POST"
-              style="display:inline-block;"
-              onsubmit="return confirm('Tem certeza que deseja excluir este ministrante?');"
-            >
-              <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+          <div class="d-flex align-items-center">
+            {% if category == 'success' %}
+              <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+            {% elif category == 'danger' %}
+              <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+            {% else %}
+              <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+            {% endif %}
+            <div>{{ message }}</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center p-3 border-bottom">
+      <h5 class="card-title mb-0">
+        <i class="bi bi-list-ul me-2 text-primary"></i>Lista de Ministrantes
+      </h5>
+      <span class="badge bg-primary rounded-pill">{{ ministrantes|length }}</span>
+    </div>
+    
+    <div class="card-body p-0">
+      {% if ministrantes %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th width="5%" class="text-center">ID</th>
+              <th width="20%">Nome</th>
+              <th width="15%">Formação</th>
+              <th width="20%">Áreas de Atuação</th>
+              <th width="10%">CPF</th>
+              <th width="15%">Email</th>
+              <th width="15%" class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ministrante in ministrantes %}
+            <tr>
+              <td class="text-center fw-medium">{{ ministrante.id }}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar-circle bg-primary text-white me-2 d-flex align-items-center justify-content-center">
+                    {{ ministrante.nome[:1].upper() }}
+                  </div>
+                  <div class="fw-medium">{{ ministrante.nome }}</div>
+                </div>
+              </td>
+              <td>{{ ministrante.formacao or "Não informada" }}</td>
+              <td>
+                {% if ministrante.areas_atuacao %}
+                <div class="text-truncate" style="max-width: 200px;" title="{{ ministrante.areas_atuacao }}">
+                  {{ ministrante.areas_atuacao }}
+                </div>
+                {% else %}
+                <span class="text-muted fst-italic">Não informadas</span>
+                {% endif %}
+              </td>
+              <td>{{ ministrante.cpf }}</td>
+              <td>
+                <a href="mailto:{{ ministrante.email }}" class="text-decoration-none">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-envelope me-2 text-muted"></i>
+                    <span class="text-primary text-truncate" style="max-width: 150px;" title="{{ ministrante.email }}">
+                      {{ ministrante.email }}
+                    </span>
+                  </div>
+                </a>
+              </td>
+              <td>
+                <div class="d-flex justify-content-center gap-2">
+                  <a href="{{ url_for('routes.editar_ministrante', ministrante_id=ministrante.id) }}" 
+                     class="btn btn-outline-primary btn-sm" 
+                     data-bs-toggle="tooltip" 
+                     title="Editar Ministrante">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  
+                  <button type="button" 
+                          class="btn btn-outline-danger btn-sm" 
+                          data-bs-toggle="modal" 
+                          data-bs-target="#deleteModal{{ ministrante.id }}"
+                          title="Excluir Ministrante">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+                
+                <!-- Modal de confirmação para exclusão -->
+                <div class="modal fade" id="deleteModal{{ ministrante.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Confirmar exclusão</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <div class="d-flex align-items-center mb-3">
+                          <div class="avatar-circle bg-danger text-white me-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+                            {{ ministrante.nome[:1].upper() }}
+                          </div>
+                          <div>
+                            <p class="mb-0">Tem certeza que deseja excluir o ministrante:</p>
+                            <h5 class="mt-1 mb-0">{{ ministrante.nome }}</h5>
+                          </div>
+                        </div>
+                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form action="{{ url_for('routes.excluir_ministrante', ministrante_id=ministrante.id) }}" method="POST" class="d-inline">
+                          <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i> Excluir Ministrante
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-people text-muted fs-1 mb-3"></i>
+        <h4 class="text-muted">Nenhum ministrante cadastrado</h4>
+        <p class="text-muted mb-4">Cadastre seu primeiro ministrante para começar.</p>
+        <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-primary">
+          <i class="bi bi-person-plus me-1"></i> Cadastrar Ministrante
+        </a>
+      </div>
+      {% endif %}
+    </div>
+    
+    {% if ministrantes %}
+    <div class="card-footer bg-white p-3 text-muted small">
+      <i class="bi bi-info-circle me-1"></i> Você pode editar ou excluir ministrantes a qualquer momento.
+    </div>
+    {% endif %}
   </div>
-  {% else %}
-    <p class="text-center">Nenhum ministrante cadastrado.</p>
-  {% endif %}
 </div>
+
+<script>
+  // Inicializar tooltips
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+  });
+</script>
+
+<style>
+  .avatar-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  
+  .table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.08);
+  }
+</style>
 {% endblock %}

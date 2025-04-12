@@ -1,71 +1,203 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <h2>Gerenciar Campos do Template - {{ template.nome }}</h2>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-layout-text-window me-2"></i>Gerenciar Campos do Template
+        </h2>
+        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar para Templates
+        </a>
+    </div>
+    
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        Template: <strong>{{ template.nome }}</strong>
+    </div>
 
-    <form method="POST">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Campo</label>
-            <input type="text" id="nome" name="nome" class="form-control" required>
+    <div class="row g-4">
+        <!-- Campos Existentes -->
+        <div class="col-lg-7 order-lg-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3 class="h5 mb-0">
+                            <i class="bi bi-table me-2"></i>Campos Existentes
+                        </h3>
+                        <span class="badge bg-primary rounded-pill">{{ template.campos|length }}</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if template.campos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0">Ordem</th>
+                                    <th class="border-0">Nome</th>
+                                    <th class="border-0">Tipo</th>
+                                    <th class="border-0 text-center">Obrigatório</th>
+                                    <th class="border-0 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for campo in template.campos|sort(attribute='ordem') %}
+                                <tr>
+                                    <td class="align-middle">{{ campo.ordem }}</td>
+                                    <td class="align-middle fw-medium">{{ campo.nome }}</td>
+                                    <td class="align-middle">
+                                        <span class="badge bg-light text-dark">{{ campo.tipo }}</span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        {% if campo.obrigatorio %}
+                                        <span class="badge bg-danger"><i class="bi bi-check-circle me-1"></i>Sim</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary"><i class="bi bi-dash-circle me-1"></i>Não</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="#" class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar Campo">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}"
+                                                    title="Remover Campo">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Modal para exclusão -->
+                                        <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Confirmar exclusão</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
+                                                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <form action="#" method="POST" class="d-inline">
+                                                            <button type="submit" class="btn btn-danger">Remover Campo</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center p-4">
+                        <i class="bi bi-table text-muted fs-1"></i>
+                        <p class="text-muted mt-2">Nenhum campo adicionado ainda.</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if template.campos %}
+                <div class="card-footer bg-white text-center">
+                    <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> Finalizar e Salvar
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="tipo" class="form-label">Tipo</label>
-            <select id="tipo" name="tipo" class="form-select" required>
-                <option value="text">Texto Curto</option>
-                <option value="textarea">Texto Longo</option>
-                <option value="number">Número</option>
-                <option value="rating">Avaliação (Estrelas)</option>
-                <option value="dropdown">Dropdown</option>
-                <option value="checkbox">Checkbox</option>
-                <option value="radio">Botões de Opção</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label for="opcoes" class="form-label">Opções (separadas por vírgula)</label>
-            <input type="text" id="opcoes" name="opcoes" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="ordem" class="form-label">Ordem</label>
-            <input type="number" id="ordem" name="ordem" class="form-control" value="0">
-        </div>
-        <div class="mb-3 form-check">
-            <input type="checkbox" id="obrigatorio" name="obrigatorio" class="form-check-input">
-            <label for="obrigatorio" class="form-check-label">Campo Obrigatório</label>
-        </div>
-        <button type="submit" class="btn btn-success">Adicionar Campo</button>
-    </form>
-
-    <h3 class="mt-4">Campos Existentes</h3>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Ordem</th>
-                <th>Nome</th>
-                <th>Tipo</th>
-                <th>Obrigatório</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for campo in template.campos|sort(attribute='ordem') %}
-            <tr>
-                <td>{{ campo.ordem }}</td>
-                <td>{{ campo.nome }}</td>
-                <td>{{ campo.tipo }}</td>
-                <td>{% if campo.obrigatorio %}Sim{% else %}Não{% endif %}</td>
-                <td>
-                    <a href="#" class="btn btn-sm btn-warning">Editar</a>
-                    <form action="#" method="POST" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-danger">Remover</button>
+        
+        <!-- Adicionar Campo -->
+        <div class="col-lg-5 order-lg-1">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h3 class="h5 mb-0">
+                        <i class="bi bi-plus-circle me-2"></i>Adicionar Novo Campo
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label fw-medium">Nome do Campo</label>
+                            <input type="text" id="nome" name="nome" class="form-control" 
+                                   required placeholder="Ex: Nome, Pontuação, Comentário...">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label fw-medium">Tipo de Campo</label>
+                            <select id="tipo" name="tipo" class="form-select" required>
+                                <option value="text">Texto Curto</option>
+                                <option value="textarea">Texto Longo</option>
+                                <option value="number">Número</option>
+                                <option value="rating">Avaliação (Estrelas)</option>
+                                <option value="dropdown">Dropdown</option>
+                                <option value="checkbox">Checkbox</option>
+                                <option value="radio">Botões de Opção</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="opcoesContainer">
+                            <label for="opcoes" class="form-label fw-medium">Opções</label>
+                            <input type="text" id="opcoes" name="opcoes" class="form-control" 
+                                   placeholder="Opção 1, Opção 2, Opção 3...">
+                            <div class="form-text">Separadas por vírgula (para dropdown, checkbox ou radio)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ordem" class="form-label fw-medium">Ordem de Exibição</label>
+                            <input type="number" id="ordem" name="ordem" class="form-control" 
+                                   value="0" min="0" placeholder="0">
+                            <div class="form-text">Determina a posição do campo no formulário (0 = primeiro)</div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-4">
+                            <input type="checkbox" id="obrigatorio" name="obrigatorio" 
+                                   class="form-check-input" role="switch">
+                            <label for="obrigatorio" class="form-check-label">Campo Obrigatório</label>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle me-1"></i> Adicionar Campo
+                            </button>
+                        </div>
                     </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="mt-4">
-        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-primary">Voltar para Templates</a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+    // Controle de exibição do campo opções
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoSelect = document.getElementById('tipo');
+        const opcoesContainer = document.getElementById('opcoesContainer');
+        
+        function checkTipoVisibility() {
+            const tipoValue = tipoSelect.value;
+            if (['dropdown', 'checkbox', 'radio'].includes(tipoValue)) {
+                opcoesContainer.style.display = 'block';
+            } else {
+                opcoesContainer.style.display = 'none';
+            }
+        }
+        
+        // Verificar na inicialização
+        checkTipoVisibility();
+        
+        // Verificar quando o tipo mudar
+        tipoSelect.addEventListener('change', checkTipoVisibility);
+        
+        // Inicializar tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
 {% endblock %}

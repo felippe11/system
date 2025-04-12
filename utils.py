@@ -1,3 +1,4 @@
+
 import requests
 from reportlab.lib.units import inch
 import os
@@ -34,13 +35,9 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 
-from dotenv import load_dotenv
-load_dotenv()
-
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(_name_)
-
+logger = logging.getLogger(__name__)
 
 # Escopo necessário para envio de e-mails
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
@@ -140,7 +137,7 @@ def gerar_comprovante_pdf(usuario, oficina, inscricao):
     infos = [
         (f"Nome: {usuario.nome}", "👤"),
         (f"CPF: {usuario.cpf}", "🆔"),
-        (f"E-mail: {usuario.email}", "✉"),
+        (f"E-mail: {usuario.email}", "✉️"),
         (f"Oficina: {oficina.titulo}", "📚")
     ]
     
@@ -324,7 +321,7 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     
     # Nome do arquivo baseado no evento ou cliente
     if evento:
-        pdf_filename = f"etiquetas_evento_{evento.id}{evento.nome.replace(' ', '')}.pdf"
+        pdf_filename = f"etiquetas_evento_{evento.id}_{evento.nome.replace(' ', '_')}.pdf"
     else:
         pdf_filename = f"etiquetas_cliente_{cliente_id}.pdf"
     
@@ -519,8 +516,8 @@ def gerar_qr_code_inscricao(token):
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=7,  # *Reduzi ainda mais*
-        border=2,  # *Menos margem branca*
+        box_size=7,  # **Reduzi ainda mais**
+        border=2,  # **Menos margem branca**
     )
     qr.add_data(token)
     qr.make(fit=True)
@@ -972,7 +969,19 @@ def pagamento_necessario(f):
                 and current_user.tem_pagamento_pendente()):
             # Permite apenas GETs (visualização). Bloqueia POST/PUT/DELETE.
             if request.method != "GET":
-                flash("⚠ Pagamento ainda pendente. Aguarde a confirmação para usar esta função.", "warning")
+                flash("⚠️ Pagamento ainda pendente. Aguarde a confirmação para usar esta função.", "warning")
                 return redirect(url_for("routes.dashboard_participante"))
         return f(*args, **kwargs)
     return wrapper
+
+import pytz
+from datetime import datetime
+
+def formatar_brasilia(dt):
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    brasilia = pytz.timezone("America/Sao_Paulo")
+    return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
+
