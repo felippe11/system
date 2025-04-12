@@ -108,7 +108,7 @@ class Ministrante(db.Model, UserMixin):
     estado = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
     senha = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     cliente = db.relationship("Cliente", backref="ministrantes")
 
