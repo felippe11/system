@@ -18,6 +18,9 @@ from flask import (Flask, Blueprint, render_template, redirect, url_for, flash,
                    request, jsonify, send_file, session)
 from extensions import socketio
 from models import TrabalhoCientifico
+from flask_socketio import emit, join_room, leave_room
+from utils import formatar_brasilia
+
 
 
 # routes.py (no início do arquivo)
@@ -5736,16 +5739,39 @@ def listar_respostas():
     if current_user.tipo not in ['cliente', 'ministrante']:
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard'))
-    
-    # Carrega todas as respostas ordenadas por data
-    respostas = RespostaFormulario.query.order_by(RespostaFormulario.data_submissao.desc()).all()
-    
-    # Se não houver respostas, redireciona para o dashboard com uma mensagem
+
+    # --- Se for cliente ---
+    if current_user.tipo == 'cliente':
+        respostas = (
+            RespostaFormulario.query
+            .join(Usuario)
+            .join(Formulario)
+            .filter(
+                Usuario.cliente_id == current_user.id,
+                Formulario.cliente_id == current_user.id
+            )
+            .order_by(RespostaFormulario.data_submissao.desc())
+            .all()
+        )
+
+    # --- Se for ministrante ---
+    elif current_user.tipo == 'ministrante':
+        # Você pode adaptar essa parte para buscar participantes das oficinas que ele ministra
+        respostas = (
+            RespostaFormulario.query
+            .join(Usuario)
+            .join(Inscricao, Inscricao.usuario_id == Usuario.id)
+            .join(Oficina, Inscricao.oficina_id == Oficina.id)
+            .filter(Oficina.ministrante_id == current_user.id)
+            .order_by(RespostaFormulario.data_submissao.desc())
+            .all()
+        )
+
+    # Se não houver respostas
     if not respostas:
         flash('Não há respostas disponíveis no momento.', 'info')
         return redirect(url_for('routes.dashboard'))
-        
-    # Pega o primeiro formulário para manter compatibilidade com o template
+
     formulario = respostas[0].formulario
 
     return render_template(
@@ -5753,6 +5779,7 @@ def listar_respostas():
         formulario=formulario,
         respostas=respostas
     )
+
 
 @routes.route('/formularios/<int:formulario_id>/respostas_ministrante', methods=['GET'])
 @login_required
@@ -12710,148 +12737,130 @@ def excluir_inscricao_evento(inscricao_id):
     flash("Inscrição excluída com sucesso.", "warning")
     return redirect(url_for('listar_inscritos_evento', evento_id=evento_id))
 
-
 @routes.route('/leitor_checkin_json', methods=['POST'])
 @login_required
 def leitor_checkin_json():
     """
-    Rota AJAX que recebe token do QR, faz check-in e emite evento para Socket.IO.
-    Pode lidar com evento_id ou oficina_id, dependendo da inscrição.
+    Recebe o token do QR‑Code, grava o check‑in
+    (evento ou oficina) e avisa via Socket.IO.
+    Sempre grava o cliente_id para que apareça
+    na lista filtrada por cliente.
     """
-    import sys  # Para printar debug (opcional)
+    from datetime import datetime      # ← agora importado
+    import sys
 
-    data = request.get_json()
-    token = data.get('token')
-
-    print("➡️ [DEBUG] leitor_checkin_json chamado", file=sys.stderr)
-    print(f"➡️ [DEBUG] token = {token}", file=sys.stderr)
+    data = request.get_json(silent=True) or {}
+    token = (data.get('token') or '').strip()
 
     if not token:
-        return jsonify({"status": "error", "message": "Token não fornecido!"}), 400
+        return jsonify(status='error',
+                       message='Token não fornecido!'), 400
 
-    # Busca a inscrição correspondente ao token
+    # procura a inscrição pelo token
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
     if not inscricao:
-        return jsonify({"status": "error", "message": "Inscrição não encontrada para este token."}), 404
+        return jsonify(status='error',
+                       message='Inscrição não encontrada.'), 404
 
-    print(f"➡️ [DEBUG] Inscricao ID={inscricao.id} -> evento_id={inscricao.evento_id}, oficina_id={inscricao.oficina_id}", file=sys.stderr)
+    cliente_id   = inscricao.cliente_id        # já existe no modelo :contentReference[oaicite:0]{index=0}
+    sala_cliente = f"cliente_{cliente_id}"     # sala usada no Socket.IO
 
-    # Verifica se é check-in de evento ou oficina
+    # ---------- EVENTO ----------
     if inscricao.evento_id:
-        # Checa se check-in de evento já existe
-        checkin_existente = Checkin.query.filter_by(
-            usuario_id=inscricao.usuario_id,
-            evento_id=inscricao.evento_id
-        ).first()
-        if checkin_existente:
-            return jsonify({"status": "warning", "message": "Check-in do evento já foi realizado!"})
+        # evita duplicidade
+        if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
+                                   evento_id=inscricao.evento_id).first():
+            return jsonify(status='warning',
+                           message='Check‑in do evento já foi realizado!')
 
-        # Cria novo checkin para evento
-        novo_checkin = Checkin(
-            usuario_id=inscricao.usuario_id,
-            evento_id=inscricao.evento_id,
-            palavra_chave="QR-EVENTO"
-        )
-        db.session.add(novo_checkin)
-        db.session.commit()
-
-        # Prepara dados de retorno
-        dados = {
-            "status": "success",
-            "message": "Check-in de EVENTO realizado com sucesso!",
-            "participante": inscricao.usuario.nome,
-            "evento": inscricao.evento.nome,
-            "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-        }
-
-        # Emite evento Socket.IO
-        socketio.emit('novo_checkin', {
-            'participante': dados["participante"],
-            'evento': dados["evento"],
-            'data_hora': dados["data_hora"]
-        }, broadcast=True)
-
-        return jsonify(dados)
-
+        novo = Checkin(usuario_id = inscricao.usuario_id,
+                       evento_id  = inscricao.evento_id,
+                       cliente_id = cliente_id,          # ★ grava aqui
+                       palavra_chave = "QR‑EVENTO")
+    # ---------- OFICINA ----------
     elif inscricao.oficina_id:
-        # Checa se check-in de oficina já existe
-        checkin_existente = Checkin.query.filter_by(
-            usuario_id=inscricao.usuario_id,
-            oficina_id=inscricao.oficina_id
-        ).first()
-        if checkin_existente:
-            return jsonify({"status": "warning", "message": "Check-in da oficina já foi realizado!"})
+        if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
+                                   oficina_id=inscricao.oficina_id).first():
+            return jsonify(status='warning',
+                           message='Check‑in da oficina já foi realizado!')
 
-        # Cria novo checkin para oficina
-        novo_checkin = Checkin(
-            usuario_id=inscricao.usuario_id,
-            oficina_id=inscricao.oficina_id,
-            palavra_chave="QR-OFICINA"
-        )
-        db.session.add(novo_checkin)
-        db.session.commit()
-
-        # Prepara dados de retorno
-        dados = {
-            "status": "success",
-            "message": "Check-in de OFICINA realizado com sucesso!",
-            "participante": inscricao.usuario.nome,
-            "oficina": inscricao.oficina.titulo,
-            "data_hora": novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-        }
-
-        # Emite evento Socket.IO
-        socketio.emit('novo_checkin', {
-            'participante': dados["participante"],
-            'oficina': dados["oficina"],
-            'data_hora': dados["data_hora"]
-        }, broadcast=True)
-
-        return jsonify(dados)
-
+        novo = Checkin(usuario_id = inscricao.usuario_id,
+                       oficina_id = inscricao.oficina_id,
+                       cliente_id = cliente_id,          # ★ grava aqui
+                       palavra_chave = "QR‑OFICINA")
     else:
-        # Nenhum evento nem oficina
-        return jsonify({
-            "status": "error",
-            "message": "Inscrição sem evento ou oficina vinculada."
-        }), 400
+        return jsonify(status='error',
+                       message='Inscrição sem evento ou oficina.'), 400
+
+    db.session.add(novo)
+    db.session.commit()
+
+    # prepara carga para front‑end
+    payload = {
+        'participante': inscricao.usuario.nome,
+        'data_hora'   : novo.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+    }
+    if novo.evento_id:
+        payload['evento'] = inscricao.evento.nome
+    else:
+        payload['oficina'] = inscricao.oficina.titulo
+
+    # emite apenas para quem estiver na sala do cliente
+    socketio.emit('novo_checkin', payload,
+                  namespace='/checkins', room=sala_cliente)
+
+    return jsonify(status='success',
+                   message='Check‑in realizado com sucesso!',
+                   **payload)
+
+
+from utils import formatar_brasilia  # coloque no topo do routes.py
 
 @routes.route('/lista_checkins_json')
 @login_required
 def lista_checkins_json():
     """
-    Retorna os últimos check-ins em formato JSON (usado para exibir a tabela inicial).
-    Agora identifica se é checkin de evento ou de oficina.
+    Retorna os últimos check‑ins do cliente logado em formato JSON.
+    Identifica se o check‑in é de evento ou de oficina.
     """
-    # Ajuste se quiser limitar a quantidade
-    checkins = Checkin.query.order_by(Checkin.data_hora.desc()).limit(50).all()
-    
+    if current_user.is_cliente():
+        base_query = Checkin.query.filter_by(cliente_id=current_user.id)
+    else:
+        base_query = Checkin.query
+
+    checkins = (base_query
+                .order_by(Checkin.data_hora.desc())
+                .limit(50)
+                .all())
+
     resultado = []
     for c in checkins:
-        # Verifica se c.evento_id está preenchido
+        data_formatada = formatar_brasilia(c.data_hora)
+
         if c.evento_id:
             resultado.append({
                 'participante': c.usuario.nome,
-                'evento': c.evento.nome if c.evento else "Evento Desconhecido",
-                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'evento'      : c.evento.nome if c.evento else "Evento Desconhecido",
+                'data_hora'   : data_formatada,
                 'tipo_checkin': 'evento'
             })
         elif c.oficina_id:
             resultado.append({
                 'participante': c.usuario.nome,
-                'oficina': c.oficina.titulo if c.oficina else "Oficina Desconhecida",
-                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'oficina'     : c.oficina.titulo if c.oficina else "Oficina Desconhecida",
+                'data_hora'   : data_formatada,
                 'tipo_checkin': 'oficina'
             })
         else:
             resultado.append({
                 'participante': c.usuario.nome,
-                'atividade': "N/A",
-                'data_hora': c.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+                'atividade'   : "N/A",
+                'data_hora'   : data_formatada,
                 'tipo_checkin': 'nenhum'
             })
 
     return jsonify(status='success', checkins=resultado)
+
 
 @routes.route('/remover_fotos_selecionadas', methods=['POST'])
 def remover_fotos_selecionadas():
