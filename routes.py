@@ -2829,6 +2829,70 @@ def realizar_sorteio(sorteio_id):
             return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
         
         # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
+        if sorteio.oficina_id:
+            # Sorteio para uma oficina específica - buscar usuários através da tabela de inscrições
+            participantes_ids = db.session.query(Inscricao.usuario_id).filter_by(oficina_id=sorteio.oficina_id).all()
+            if not participantes_ids:
+                return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
+            
+            # Extrair os IDs dos usuários da lista de tuplas
+            usuario_ids = [id[0] for id in participantes_ids]
+            
+            # Buscar os objetos de usuário
+            participantes = Usuario.query.filter(Usuario.id.in_(usuario_ids)).all()
+        else:
+            # Sorteio para todo o evento - buscar usuários diretamente
+            participantes = Usuario.query.filter_by(evento_id=sorteio.evento_id).all()
+        
+        if not participantes:
+            return jsonify({'success': False, 'message': 'Não há participantes elegíveis para este sorteio'})
+        
+        # Selecionar um participante aleatoriamente
+        ganhador = random.choice(participantes)
+        
+        # Atualizar o sorteio com o ganhador
+        sorteio.ganhador_id = ganhador.id
+        sorteio.status = 'realizado'
+        sorteio.data_sorteio = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Formatar dados do sorteio realizado
+        return jsonify({
+            'success': True,
+            'message': 'Sorteio realizado com sucesso!',
+            'sorteio': {
+                'id': sorteio.id,
+                'titulo': sorteio.titulo,
+                'premio': sorteio.premio,
+                'descricao': sorteio.descricao,
+                'data_sorteio': sorteio.data_sorteio.isoformat(),
+                'status': sorteio.status,
+                'ganhador': {
+                    'id': ganhador.id,
+                    'nome': ganhador.nome,
+                    'email': ganhador.email
+                }
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    """
+    Rota para realizar um sorteio, selecionando um ganhador aleatório.
+    """
+    try:
+        sorteio = Sorteio.query.get_or_404(sorteio_id)
+        
+        # Verificar se o usuário atual é o dono do sorteio
+        if sorteio.cliente_id != current_user.id:
+            return jsonify({'success': False, 'message': 'Acesso negado'})
+        
+        # Verificar se o sorteio já foi realizado ou cancelado
+        if sorteio.status != 'pendente':
+            return jsonify({'success': False, 'message': f'O sorteio não pode ser realizado porque está com status: {sorteio.status}'})
+        
+        # Buscar participantes elegíveis baseado no tipo de sorteio (evento ou oficina)
         participantes = []
         if sorteio.oficina_id:
             # Sorteio para uma oficina específica - buscar usuários diretamente
