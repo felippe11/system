@@ -39,7 +39,7 @@ load_dotenv()
 
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(_name_)
 
 
 # Escopo necessário para envio de e-mails
