@@ -81,8 +81,9 @@
         <!-- Bloco para Inscrição Gratuita e Tipos de Inscrição -->
         {% if current_user.habilita_pagamento %}
         <div class="mb-3">
-          <br>
-          <label for="inscricao_gratuita" class="form-label fw-semibold">Configuração de Inscrição</label>
+          <div class="border-bottom border-primary pb-2 mb-3">
+            <h5 class="text-primary"><i class="bi bi-cash-coin me-2"></i>Configuração de Inscrição</h5>
+          </div>
           <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita" 
                    {% if evento and evento.inscricao_gratuita %}checked{% endif %}>
@@ -91,6 +92,17 @@
             </label>
             <small class="form-text text-muted d-block mt-1">
               Quando marcado, todos os tipos de inscrição terão o preço definido como R$ 0,00.
+            </small>
+          </div>
+          
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="habilitar_lotes" name="habilitar_lotes" 
+                   {% if evento and evento.habilitar_lotes %}checked{% endif %}>
+            <label class="form-check-label" for="habilitar_lotes">
+              Habilitar inscrição em lotes
+            </label>
+            <small class="form-text text-muted d-block mt-1">
+              Quando marcado, você poderá configurar diferentes lotes de inscrição com preços e períodos específicos.
             </small>
           </div>
         </div>
@@ -142,8 +154,181 @@
               </div>
             {% endif %}
           </div>
-          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary mt-2">
+          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary mt-2 mb-4">
             <i class="bi bi-plus-circle me-1"></i> Adicionar Tipo de Inscrição
+          </button>
+        </div>
+
+        <!-- Lotes de Inscrição -->
+        <div id="lotes-section" class="mb-4" {% if not evento or not evento.habilitar_lotes %}style="display:none;"{% endif %}>
+          <div class="border-bottom border-primary pb-2 mb-3">
+            <h5 class="text-primary"><i class="bi bi-layers me-2"></i>Lotes de Inscrição</h5>
+          </div>
+          
+          <p class="text-muted small mb-3">Configure os lotes de inscrição para definir preços por período ou quantidade:</p>
+          
+          <div id="lotes-container">
+            {% if evento and evento.lotes %}
+              {% for lote in evento.lotes %}
+              <div class="lote-item card mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">{{ lote.nome }}</h6>
+                  <button type="button" class="btn btn-sm btn-outline-danger remover-lote" data-id="{{ lote.id }}" {% if lote.inscricoes|length > 0 %}disabled{% endif %}>
+                    {% if lote.inscricoes|length > 0 %}
+                      <i class="bi bi-lock"></i> Possui {{ lote.inscricoes|length }} inscrições
+                    {% else %}
+                      <i class="bi bi-trash"></i> Remover
+                    {% endif %}
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Nome do Lote</label>
+                      <input type="text" class="form-control border border-secondary bg-white" name="lote_nome[]" value="{{ lote.nome }}" placeholder="Ex: Lote Promocional">
+                      <input type="hidden" name="lote_id[]" value="{{ lote.id }}">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Ordem</label>
+                      <input type="number" class="form-control border border-secondary bg-white" name="lote_ordem[]" value="{{ lote.ordem }}" min="1">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Status</label>
+                      <select class="form-select border border-secondary bg-white" name="lote_ativo[]">
+                        <option value="1" {% if lote.ativo %}selected{% endif %}>Ativo</option>
+                        <option value="0" {% if not lote.ativo %}selected{% endif %}>Inativo</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_data[]" {% if lote.data_inicio or lote.data_fim %}checked{% endif %}>
+                        <label class="form-check-label">Definir por período</label>
+                      </div>
+                      <div class="row lote-datas" {% if not lote.data_inicio and not lote.data_fim %}style="display:none"{% endif %}>
+                        <div class="col-md-6">
+                          <label class="form-label">Data Início</label>
+                          <input type="date" class="form-control border border-secondary bg-white" name="lote_data_inicio[]" value="{{ lote.data_inicio.strftime('%Y-%m-%d') if lote.data_inicio else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Data Fim</label>
+                          <input type="date" class="form-control border border-secondary bg-white" name="lote_data_fim[]" value="{{ lote.data_fim.strftime('%Y-%m-%d') if lote.data_fim else '' }}">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_qtd[]" {% if lote.qtd_maxima %}checked{% endif %}>
+                        <label class="form-check-label">Definir por quantidade</label>
+                      </div>
+                      <div class="lote-quantidade" {% if not lote.qtd_maxima %}style="display:none"{% endif %}>
+                        <label class="form-label">Quantidade máxima</label>
+                        <input type="number" class="form-control border border-secondary bg-white" name="lote_qtd_maxima[]" min="1" placeholder="Limite de inscritos" value="{{ lote.qtd_maxima or '' }}">
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <hr>
+                  <h6 class="mb-3">Preços por tipo de inscrição:</h6>
+                  <div class="lote-precos">
+                    {% for tipo in evento.tipos_inscricao_evento %}
+                      {% set preco_lote = None %}
+                      {% for lote_tipo in lote.tipos_inscricao %}
+                        {% if lote_tipo.tipo_inscricao_id == tipo.id %}
+                          {% set preco_lote = lote_tipo.preco %}
+                        {% endif %}
+                      {% endfor %}
+                      
+                      <div class="row mb-2 align-items-center">
+                        <div class="col-md-6">
+                          <label class="form-label">{{ tipo.nome }}</label>
+                          <input type="hidden" name="lote_tipo_id_{{ lote.id }}_{{ tipo.id }}" value="{{ tipo.id }}">
+                        </div>
+                        <div class="col-md-4 preco-container" {% if evento.inscricao_gratuita %}style="display:none;"{% endif %}>
+                          <label class="form-label">Preço (R$)</label>
+                          <input type="number" step="0.01" class="form-control border border-secondary bg-white" 
+                                 name="lote_tipo_preco_{{ lote.id }}_{{ tipo.id }}" 
+                                 placeholder="0.00" 
+                                 value="{{ preco_lote if preco_lote is not none else tipo.preco }}">
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <!-- Lote padrão para novos eventos -->
+              <div class="lote-item card mb-3">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Lote 1</h6>
+                  <button type="button" class="btn btn-sm btn-outline-danger remover-lote">
+                    <i class="bi bi-trash"></i> Remover
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Nome do Lote</label>
+                      <input type="text" class="form-control border border-secondary bg-white" name="lote_nome[]" placeholder="Ex: Lote Promocional">
+                      <input type="hidden" name="lote_id[]" value="">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Ordem</label>
+                      <input type="number" class="form-control border border-secondary bg-white" name="lote_ordem[]" value="1" min="1">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Status</label>
+                      <select class="form-select border border-secondary bg-white" name="lote_ativo[]">
+                        <option value="1" selected>Ativo</option>
+                        <option value="0">Inativo</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div class="row mb-3">
+                    <div class="col-md-6">
+                      <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_data[]" checked>
+                        <label class="form-check-label">Definir por período</label>
+                      </div>
+                      <div class="row lote-datas">
+                        <div class="col-md-6">
+                          <label class="form-label">Data Início</label>
+                          <input type="date" class="form-control border border-secondary bg-white" name="lote_data_inicio[]">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label">Data Fim</label>
+                          <input type="date" class="form-control border border-secondary bg-white" name="lote_data_fim[]">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_qtd[]">
+                        <label class="form-check-label">Definir por quantidade</label>
+                      </div>
+                      <div class="lote-quantidade" style="display: none;">
+                        <label class="form-label">Quantidade máxima</label>
+                        <input type="number" class="form-control border border-secondary bg-white" name="lote_qtd_maxima[]" min="1" placeholder="Limite de inscritos">
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <hr>
+                  <h6 class="mb-3">Preços por tipo de inscrição:</h6>
+                  <div class="lote-precos">
+                    <!-- Os campos de preços serão gerados dinamicamente com base nos tipos de inscrição -->
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          
+          <button type="button" id="adicionar-lote" class="btn btn-secondary mt-2">
+            <i class="bi bi-plus-circle me-1"></i> Adicionar Lote
           </button>
         </div>
         {% endif %}
@@ -207,6 +392,19 @@ document.addEventListener('DOMContentLoaded', function() {
   const tiposContainer = document.getElementById('tipos-inscricao-container');
   const tiposList = document.getElementById('tipos-inscricao-list');
   
+  // Toggle lotes visibility
+  const habilitarLotes = document.getElementById('habilitar_lotes');
+  const lotesSection = document.getElementById('lotes-section');
+  
+  function toggleLotesVisibility() {
+    lotesSection.style.display = habilitarLotes.checked ? 'block' : 'none';
+  }
+  
+  habilitarLotes.addEventListener('change', toggleLotesVisibility);
+  
+  // Verificar estado inicial da opção lotes
+  toggleLotesVisibility();
+  
   // Function to update price fields visibility and values
   function updatePriceFields() {
     const isGratuito = inscricaoGratuita.checked;
@@ -234,6 +432,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isGratuito && tiposList.querySelectorAll('.tipo-inscricao-item').length === 0) {
       addTipoInscricao('Inscrição Gratuita', '0.00');
     }
+
+    // Também atualizar os preços nos lotes
+    updateLotePriceFields();
   }
   
   // Verificar estado inicial
@@ -265,6 +466,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Atualizar campos após adicionar um novo item
     updatePriceFields();
+    
+    // Atualizar os campos de preço nos lotes
+    updateLotePriceFields();
   }
 
   // Adicionar tipo de inscrição ao clicar no botão
@@ -301,12 +505,208 @@ document.addEventListener('DOMContentLoaded', function() {
       // Verificar se não é o último tipo de inscrição
       if (tiposList.querySelectorAll('.tipo-inscricao-item').length > 1) {
         row.remove();
+        // Atualizar os preços nos lotes quando um tipo for removido
+        updateLotePriceFields();
       } else {
         // Se for o último, apenas exibir um alerta
         alert('Pelo menos um tipo de inscrição é necessário.');
       }
     }
   });
+  
+  // Gerenciamento de lotes
+  const lotesContainer = document.getElementById('lotes-container');
+  const btnAdicionarLote = document.getElementById('adicionar-lote');
+  
+  // Adicionar evento para alternar entre data e quantidade
+  lotesContainer.addEventListener('change', function(e) {
+    if (e.target.name && e.target.name.includes('lote_usar_data')) {
+      const loteItem = e.target.closest('.lote-item');
+      const datasDiv = loteItem.querySelector('.lote-datas');
+      const qtdCheckbox = loteItem.querySelector('input[name^="lote_usar_qtd"]');
+      
+      if (e.target.checked) {
+        datasDiv.style.display = 'flex';
+        qtdCheckbox.checked = false;
+        loteItem.querySelector('.lote-quantidade').style.display = 'none';
+      } else {
+        datasDiv.style.display = 'none';
+      }
+    }
+    
+    if (e.target.name && e.target.name.includes('lote_usar_qtd')) {
+      const loteItem = e.target.closest('.lote-item');
+      const qtdDiv = loteItem.querySelector('.lote-quantidade');
+      const dataCheckbox = loteItem.querySelector('input[name^="lote_usar_data"]');
+      
+      if (e.target.checked) {
+        qtdDiv.style.display = 'block';
+        dataCheckbox.checked = false;
+        loteItem.querySelector('.lote-datas').style.display = 'none';
+      } else {
+        qtdDiv.style.display = 'none';
+      }
+    }
+  });
+  
+  // Adicionar novo lote
+  btnAdicionarLote.addEventListener('click', function() {
+    const lotesCount = document.querySelectorAll('.lote-item').length;
+    const newLoteItem = document.createElement('div');
+    newLoteItem.className = 'lote-item card mb-3';
+    
+    newLoteItem.innerHTML = `
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Lote ${lotesCount + 1}</h6>
+        <button type="button" class="btn btn-sm btn-outline-danger remover-lote">
+          <i class="bi bi-trash"></i> Remover
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Nome do Lote</label>
+            <input type="text" class="form-control border border-secondary bg-white" name="lote_nome[]" placeholder="Ex: Lote ${lotesCount + 1}">
+            <input type="hidden" name="lote_id[]" value="">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Ordem</label>
+            <input type="number" class="form-control border border-secondary bg-white" name="lote_ordem[]" value="${lotesCount + 1}" min="1">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <select class="form-select border border-secondary bg-white" name="lote_ativo[]">
+              <option value="1" selected>Ativo</option>
+              <option value="0">Inativo</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_data[]" checked>
+              <label class="form-check-label">Definir por período</label>
+            </div>
+            <div class="row lote-datas">
+              <div class="col-md-6">
+                <label class="form-label">Data Início</label>
+                <input type="date" class="form-control border border-secondary bg-white" name="lote_data_inicio[]">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Data Fim</label>
+                <input type="date" class="form-control border border-secondary bg-white" name="lote_data_fim[]">
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input border border-secondary" name="lote_usar_qtd[]">
+              <label class="form-check-label">Definir por quantidade</label>
+            </div>
+            <div class="lote-quantidade" style="display: none;">
+              <label class="form-label">Quantidade máxima</label>
+              <input type="number" class="form-control border border-secondary bg-white" name="lote_qtd_maxima[]" min="1" placeholder="Limite de inscritos">
+            </div>
+          </div>
+        </div>
+        
+        <hr>
+        <h6 class="mb-3">Preços por tipo de inscrição:</h6>
+        <div class="lote-precos">
+          <!-- Será preenchido pela função updateLotePriceFields -->
+        </div>
+      </div>
+    `;
+    
+    lotesContainer.appendChild(newLoteItem);
+    updateLoteHeaders();
+    updateLotePriceFields();
+  });
+  
+  // Remover lote
+  lotesContainer.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remover-lote') || 
+        e.target.closest('.remover-lote')) {
+      const button = e.target.classList.contains('remover-lote') ? 
+                    e.target : e.target.closest('.remover-lote');
+      
+      // Verificar se o botão está desabilitado
+      if (button.hasAttribute('disabled')) {
+        return;
+      }
+      
+      const loteItem = button.closest('.lote-item');
+      
+      if (document.querySelectorAll('.lote-item').length > 1) {
+        loteItem.remove();
+        updateLoteHeaders();
+      } else {
+        alert('É necessário manter pelo menos um lote.');
+      }
+    }
+  });
+  
+  // Atualizar cabeçalhos dos lotes
+  function updateLoteHeaders() {
+    const lotes = document.querySelectorAll('.lote-item');
+    lotes.forEach((lote, index) => {
+      // Só atualizar o cabeçalho se não tiver um nome personalizado
+      const nomeInput = lote.querySelector('input[name="lote_nome[]"]');
+      const header = lote.querySelector('h6');
+      if (!nomeInput.value) {
+        header.textContent = `Lote ${index + 1}`;
+      }
+    });
+  }
+  
+  // Gerar campos de preço para tipos de inscrição nos lotes
+  function updateLotePriceFields() {
+    const lotePrecosDivs = document.querySelectorAll('.lote-precos');
+    const isGratuito = inscricaoGratuita.checked;
+    
+    // Para cada div de preços de lote
+    lotePrecosDivs.forEach((lotePrecos, loteIndex) => {
+      let html = '';
+      const tiposInscricao = document.querySelectorAll('input[name="nome_tipo[]"]');
+      const tiposIds = document.querySelectorAll('input[name="id_tipo[]"]');
+      
+      if (tiposInscricao.length === 0) {
+        html = '<p class="text-warning">Defina os tipos de inscrição primeiro.</p>';
+      } else {
+        tiposInscricao.forEach((tipo, index) => {
+          const tipoNome = tipo.value || `Tipo ${index + 1}`;
+          const tipoId = tiposIds[index].value || `new_${index}`;
+          const precoDefault = isGratuito ? '0.00' : '';
+          
+          // Use o ID do lote para gerar nomes de campos únicos
+          const loteItem = lotePrecos.closest('.lote-item');
+          const loteIdInput = loteItem.querySelector('input[name="lote_id[]"]');
+          const loteId = loteIdInput.value || `new_${loteIndex}`;
+          
+          html += `
+            <div class="row mb-2 align-items-center">
+              <div class="col-md-6">
+                <label class="form-label">${tipoNome}</label>
+                <input type="hidden" name="lote_tipo_id_${loteId}_${index}" value="${tipoId}">
+              </div>
+              <div class="col-md-4 preco-container" ${isGratuito ? 'style="display:none;"' : ''}>
+                <label class="form-label">Preço (R$)</label>
+                <input type="number" step="0.01" class="form-control border border-secondary bg-white" 
+                      name="lote_tipo_preco_${loteId}_${tipoId}" 
+                      placeholder="0.00" value="${precoDefault}">
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      lotePrecos.innerHTML = html;
+    });
+  }
+  
+  // Inicializar os preços dos lotes
+  updateLotePriceFields();
   
   // Validação para garantir pelo menos um tipo de inscrição ao enviar o formulário
   document.querySelector('form').addEventListener('submit', function(e) {
@@ -333,6 +733,57 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
+    // Verificar lotes apenas se estiverem habilitados
+    if (habilitarLotes.checked) {
+      // Verificar se há pelo menos um lote
+      const loteItems = lotesContainer.querySelectorAll('.lote-item');
+      
+      if (loteItems.length === 0) {
+        e.preventDefault();
+        alert('Você precisa definir pelo menos um lote de inscrição.');
+        return;
+      }
+      
+      // Verificar se todos os lotes estão corretamente configurados
+      let lotesInvalidos = false;
+      loteItems.forEach(item => {
+        const nomeLote = item.querySelector('input[name="lote_nome[]"]');
+        const usaData = item.querySelector('input[name^="lote_usar_data"]').checked;
+        const usaQtd = item.querySelector('input[name^="lote_usar_qtd"]').checked;
+        
+        if (!nomeLote.value.trim()) {
+          lotesInvalidos = true;
+        }
+        
+        if (usaData) {
+          const dataInicio = item.querySelector('input[name="lote_data_inicio[]"]');
+          const dataFim = item.querySelector('input[name="lote_data_fim[]"]');
+          
+          if (!dataInicio.value || !dataFim.value) {
+            lotesInvalidos = true;
+          }
+        }
+        
+        if (usaQtd) {
+          const qtdMaxima = item.querySelector('input[name="lote_qtd_maxima[]"]');
+          
+          if (!qtdMaxima.value || parseInt(qtdMaxima.value) <= 0) {
+            lotesInvalidos = true;
+          }
+        }
+        
+        if (!usaData && !usaQtd) {
+          lotesInvalidos = true;
+        }
+      });
+      
+      if (lotesInvalidos) {
+        e.preventDefault();
+        alert('Todos os lotes precisam ter um nome e um critério de definição (período ou quantidade) completo.');
+        return;
+      }
+    }
+    
     // Verificar se todos os tipos de inscrição com usuários vinculados continuam no formulário
     const idCampos = document.querySelectorAll('input[name="id_tipo[]"]');
     let idsPreservados = [];
@@ -349,6 +800,22 @@ document.addEventListener('DOMContentLoaded', function() {
     preservarIdsInput.name = 'preservar_ids_tipo';
     preservarIdsInput.value = idsPreservados.join(',');
     this.appendChild(preservarIdsInput);
+    
+    // Adicionar campo para lotes preservados
+    const idLotes = document.querySelectorAll('input[name="lote_id[]"]');
+    let idsLotesPreservados = [];
+    
+    idLotes.forEach(campo => {
+      if (campo.value) {
+        idsLotesPreservados.push(campo.value);
+      }
+    });
+    
+    const preservarLotesInput = document.createElement('input');
+    preservarLotesInput.type = 'hidden';
+    preservarLotesInput.name = 'preservar_ids_lote';
+    preservarLotesInput.value = idsLotesPreservados.join(',');
+    this.appendChild(preservarLotesInput);
   });
 });
 </script>

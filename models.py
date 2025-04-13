@@ -239,10 +239,12 @@ class Inscricao(db.Model):
     checkin_attempts = db.Column(db.Integer, default=0)
     
     tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('inscricao_tipo.id'), nullable=True)
+    lote_id = db.Column(db.Integer, db.ForeignKey('lote_inscricao.id'), nullable=True)
     
     usuario = db.relationship('Usuario', backref=db.backref('inscricoes', lazy='joined'))
     oficina = db.relationship('Oficina', backref='inscritos')
     evento = db.relationship('Evento', backref='inscricoes')
+    lote = db.relationship('LoteInscricao', backref=db.backref('inscricoes', lazy=True))
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     
     status_pagamento = db.Column(
@@ -615,6 +617,8 @@ class Evento(db.Model):
         requer_aprovacao = db.Column(db.Boolean, default=False)
         publico = db.Column(db.Boolean, default=True)
 
+        habilitar_lotes = db.Column(db.Boolean, default=False)
+
         cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
         # Modificando o relacionamento para evitar conflito de backref
         tipos_inscricao = db.relationship('EventoInscricaoTipo', foreign_keys=[EventoInscricaoTipo.evento_id], lazy=True)
@@ -910,3 +914,56 @@ class Sorteio(db.Model):
         return f"<Sorteio {self.titulo} - Prêmio: {self.premio}>"
 
 
+
+class LoteInscricao(db.Model):
+    __tablename__ = 'lote_inscricao'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    data_inicio = db.Column(db.DateTime, nullable=True)
+    data_fim = db.Column(db.DateTime, nullable=True)
+    qtd_maxima = db.Column(db.Integer, nullable=True)  # Limite de inscrições
+    ordem = db.Column(db.Integer, nullable=False, default=0)  # Para ordenar lotes
+    ativo = db.Column(db.Boolean, default=True)
+
+    # Relacionamento com o evento
+    evento = db.relationship('Evento', backref=db.backref('lotes', lazy=True, order_by='LoteInscricao.ordem'))
+
+    def __repr__(self):
+        return f"<LoteInscricao {self.nome}>"
+    
+    def is_valid(self):
+        """Verifica se o lote está válido (dentro da data ou limite de inscritos)"""
+        now = datetime.utcnow()
+        
+        # Verificar por data
+        if self.data_inicio and self.data_fim:
+            if now < self.data_inicio or now > self.data_fim:
+                return False
+        
+        # Verificar por quantidade de inscrições
+        if self.qtd_maxima is not None:
+            count = Inscricao.query.filter_by(
+                evento_id=self.evento_id, 
+                lote_id=self.id
+            ).count()
+            if count >= self.qtd_maxima:
+                return False
+        
+        return True
+    
+class LoteTipoInscricao(db.Model):
+    __tablename__ = 'lote_tipo_inscricao'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lote_id = db.Column(db.Integer, db.ForeignKey('lote_inscricao.id'), nullable=False)
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    preco = db.Column(db.Float, nullable=False)
+
+    # Relacionamentos
+    lote = db.relationship('LoteInscricao', backref=db.backref('tipos_inscricao', lazy=True))
+    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('lotes_precos', lazy=True))
+
+    def __repr__(self):
+        return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
