@@ -35,7 +35,7 @@ from utils import enviar_email
 from utils import gerar_certificado_personalizado
 from datetime import datetime
 from flask_mail import Message
-from models import Evento
+from models import Evento, EventoInscricaoTipo, LoteInscricao, LoteTipoInscricao
 from flask import current_app
 from models import FormularioTemplate
 from models import CampoFormulario
@@ -5985,7 +5985,11 @@ def configurar_evento():
     evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
     evento = None
     if evento_id:
-        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        # Carregamento eager de todos os relacionamentos necessários
+        evento = Evento.query.options(
+            db.joinedload(Evento.tipos_inscricao),
+            db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
+        ).filter_by(id=evento_id, cliente_id=current_user.id).first()
 
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -5994,6 +5998,7 @@ def configurar_evento():
         localizacao = request.form.get('localizacao')
         link_mapa = request.form.get('link_mapa')
         inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
+        habilitar_lotes = request.form.get('habilitar_lotes') == 'on'  # Novo campo
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
         
@@ -6006,147 +6011,20 @@ def configurar_evento():
             os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
             banner.save(caminho_banner)
             banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
-
-        if evento:  # Atualizar evento existente
-            evento.nome = nome
-            evento.descricao = descricao
-            evento.programacao = programacao
-            evento.localizacao = localizacao
-            evento.link_mapa = link_mapa
-            evento.inscricao_gratuita = inscricao_gratuita
-            if banner_url:
-                evento.banner_url = banner_url
-
-            # Remover regras de inscrição associadas para evitar violação de chave estrangeira
-            RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
-            
-            # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
-            tipos_com_usuarios = db.session.query(EventoInscricaoTipo.id).join(
-                Usuario, Usuario.tipo_inscricao_id == EventoInscricaoTipo.id
-            ).filter(
-                EventoInscricaoTipo.evento_id == evento.id
-            ).all()
-            
-            # Lista de IDs de tipos que têm usuários vinculados
-            ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
-            
-            if ids_tipos_com_usuarios:
-                # Exclui apenas os tipos que NÃO têm usuários vinculados
-                EventoInscricaoTipo.query.filter(
-                    EventoInscricaoTipo.evento_id == evento.id,
-                    ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
-                ).delete(synchronize_session=False)
-            else:
-                # Se não houver tipos com usuários, exclui todos normalmente
-                EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
-            
-            # Adicionar novos tipos ou atualizar existentes
-            for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                if nome_tipo:  # Só adicionar se o nome for preenchido
-                    # Se for inscrição gratuita, definir preço como 0.00
-                    preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
-                    
-                    # Verificar se já existe um tipo com este nome
-                    tipo_existente = None
-                    for tipo_id in ids_tipos_com_usuarios:
-                        tipo = EventoInscricaoTipo.query.get(tipo_id)
-                        if tipo and tipo.nome == nome_tipo:
-                            tipo_existente = tipo
-                            break
-                    
-                    if tipo_existente:
-                        # Atualiza o preço do tipo existente
-                        tipo_existente.preco = preco_efetivo
-                    else:
-                        # Cria um novo tipo
-                        tipo = EventoInscricaoTipo(
-                            evento_id=evento.id,
-                            nome=nome_tipo,
-                            preco=preco_efetivo
-                        )
-                        db.session.add(tipo)
-        else:  # Criar novo evento
-            evento = Evento(
-                cliente_id=current_user.id,
-                nome=nome,
-                descricao=descricao,
-                programacao=programacao,
-                localizacao=localizacao,
-                link_mapa=link_mapa,
-                banner_url=banner_url,
-                inscricao_gratuita=inscricao_gratuita
-            )
-            db.session.add(evento)
-            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
-
-            # Adicionar tipos de inscrição
-            for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                if nome_tipo:  # Só adicionar se o nome for preenchido
-                    # Se for inscrição gratuita, definir preço como 0.00
-                    preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
-                    
-                    tipo = EventoInscricaoTipo(
-                        evento_id=evento.id,
-                        nome=nome_tipo,
-                        preco=preco_efetivo
-                    )
-                    db.session.add(tipo)
 
         try:
-            db.session.commit()
-            flash('Evento salvo com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_cliente'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao salvar evento: {str(e)}', 'danger')
+            if evento:  # Atualizar evento existente
+                evento.nome = nome
+                evento.descricao = descricao
+                evento.programacao = programacao
+                evento.localizacao = localizacao
+                evento.link_mapa = link_mapa
+                evento.inscricao_gratuita = inscricao_gratuita
+                evento.habilitar_lotes = habilitar_lotes  # Novo campo
+                if banner_url:
+                    evento.banner_url = banner_url
 
-    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
-    if current_user.tipo != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
-
-    # Lista todos os eventos do cliente
-    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
-    
-    # Evento selecionado (por padrão, None até que o usuário escolha)
-    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
-    evento = None
-    if evento_id:
-        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
-
-    if request.method == 'POST':
-        nome = request.form.get('nome')
-        descricao = request.form.get('descricao')
-        programacao = request.form.get('programacao')
-        localizacao = request.form.get('localizacao')
-        link_mapa = request.form.get('link_mapa')
-        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
-        nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
-        precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
-        
-        banner = request.files.get('banner')
-        banner_url = evento.banner_url if evento else None
-        
-        if banner:
-            filename = secure_filename(banner.filename)
-            caminho_banner = os.path.join('static/banners', filename)
-            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
-            banner.save(caminho_banner)
-            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
-
-        if evento:  # Atualizar evento existente
-            evento.nome = nome
-            evento.descricao = descricao
-            evento.programacao = programacao
-            evento.localizacao = localizacao
-            evento.link_mapa = link_mapa
-            evento.inscricao_gratuita = inscricao_gratuita
-            if banner_url:
-                evento.banner_url = banner_url
-
-            # Atualizar tipos de inscrição
-            if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
-                # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
+                # Remover regras de inscrição associadas para evitar violação de chave estrangeira
                 RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
                 
                 # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
@@ -6169,9 +6047,13 @@ def configurar_evento():
                     # Se não houver tipos com usuários, exclui todos normalmente
                     EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
                 
-                # Adicionar novos tipos
+                # Adicionar novos tipos ou atualizar existentes
+                tipos_inscricao = []
                 for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                    if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
+                    if nome_tipo:  # Só adicionar se o nome for preenchido
+                        # Se for inscrição gratuita, definir preço como 0.00
+                        preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                        
                         # Verificar se já existe um tipo com este nome
                         tipo_existente = None
                         for tipo_id in ids_tipos_com_usuarios:
@@ -6182,188 +6064,235 @@ def configurar_evento():
                         
                         if tipo_existente:
                             # Atualiza o preço do tipo existente
-                            tipo_existente.preco = float(preco_tipo)
+                            tipo_existente.preco = preco_efetivo
+                            tipos_inscricao.append(tipo_existente)
                         else:
                             # Cria um novo tipo
                             tipo = EventoInscricaoTipo(
                                 evento_id=evento.id,
                                 nome=nome_tipo,
-                                preco=float(preco_tipo)
+                                preco=preco_efetivo
                             )
                             db.session.add(tipo)
-        else:  # Criar novo evento
-            evento = Evento(
-                cliente_id=current_user.id,
-                nome=nome,
-                descricao=descricao,
-                programacao=programacao,
-                localizacao=localizacao,
-                link_mapa=link_mapa,
-                banner_url=banner_url,
-                inscricao_gratuita=inscricao_gratuita
-            )
-            db.session.add(evento)
-            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
-
-            # Adicionar tipos de inscrição se não for gratuita
-            if not inscricao_gratuita:
-                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                    if nome_tipo and preco_tipo:
-                        tipo = EventoInscricaoTipo(
-                            evento_id=evento.id,
-                            nome=nome_tipo,
-                            preco=float(preco_tipo)
-                        )
-                        db.session.add(tipo)
-
-        try:
-            db.session.commit()
-            flash('Evento salvo com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_cliente'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao salvar evento: {str(e)}', 'danger')
-
-    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
-    # Atualizar tipos de inscrição
-    if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
-        # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
-        RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
-        
-        # Verifica se existem usuários vinculados aos tipos de inscrição deste evento
-        tipos_com_usuarios = db.session.query(EventoInscricaoTipo.id).join(
-            Usuario, Usuario.tipo_inscricao_id == EventoInscricaoTipo.id
-        ).filter(
-            EventoInscricaoTipo.evento_id == evento.id
-        ).all()
-        
-        # Lista de IDs de tipos que têm usuários vinculados
-        ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
-        
-        if ids_tipos_com_usuarios:
-            # Exclui apenas os tipos que NÃO têm usuários vinculados
-            EventoInscricaoTipo.query.filter(
-                EventoInscricaoTipo.evento_id == evento.id,
-                ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
-            ).delete(synchronize_session=False)
-        else:
-            # Se não houver tipos com usuários, exclui todos normalmente
-            EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
-        
-        # Adicionar novos tipos
-        for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-            if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
-                # Verificar se já existe um tipo com este nome
-                tipo_existente = None
-                for tipo_id in ids_tipos_com_usuarios:
-                    tipo = EventoInscricaoTipo.query.get(tipo_id)
-                    if tipo and tipo.nome == nome_tipo:
-                        tipo_existente = tipo
-                        break
+                            db.session.flush()  # Para obter o ID do tipo
+                            tipos_inscricao.append(tipo)
                 
-                if tipo_existente:
-                    # Atualiza o preço do tipo existente
-                    tipo_existente.preco = float(preco_tipo)
-                else:
-                    # Cria um novo tipo
-                    tipo = EventoInscricaoTipo(
-                        evento_id=evento.id,
-                        nome=nome_tipo,
-                        preco=float(preco_tipo)
-                    )
-                    db.session.add(tipo)
-    if current_user.tipo != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+                # Processar os lotes somente se habilitar_lotes for True
+                if habilitar_lotes:
+                    lote_ids = request.form.getlist('lote_id[]')
+                    lote_nomes = request.form.getlist('lote_nome[]')
+                    lote_ordens = request.form.getlist('lote_ordem[]')
+                    lote_ativo = [val == '1' for val in request.form.getlist('lote_ativo[]')]
+                    lote_usar_data = [val == 'on' for val in request.form.getlist('lote_usar_data[]')]
+                    lote_data_inicio = request.form.getlist('lote_data_inicio[]')
+                    lote_data_fim = request.form.getlist('lote_data_fim[]')
+                    lote_usar_qtd = [val == 'on' for val in request.form.getlist('lote_usar_qtd[]')]
+                    lote_qtd_maxima = request.form.getlist('lote_qtd_maxima[]')
+                    
+                    # Verificar quais lotes possuem inscrições
+                    lotes_com_inscricoes = db.session.query(LoteInscricao.id).join(
+                        Inscricao, Inscricao.lote_id == LoteInscricao.id
+                    ).filter(
+                        LoteInscricao.evento_id == evento.id
+                    ).all()
+                    
+                    # Lista de IDs de lotes com inscrições vinculadas
+                    ids_lotes_com_inscricoes = [lote_id[0] for lote_id in lotes_com_inscricoes]
+                    
+                    # IDs de lotes que devem ser preservados (informados pelo cliente via form)
+                    preservar_ids_lote = request.form.get('preservar_ids_lote', '').split(',')
+                    preservar_ids_lote = [int(id) for id in preservar_ids_lote if id and id.isdigit()]
+                    
+                    # Excluir lotes não preservados e sem inscrições
+                    LoteInscricao.query.filter(
+                        LoteInscricao.evento_id == evento.id,
+                        ~LoteInscricao.id.in_(preservar_ids_lote),
+                        ~LoteInscricao.id.in_(ids_lotes_com_inscricoes)
+                    ).delete(synchronize_session=False)
+                    
+                    # Processar cada lote
+                    for i, nome in enumerate(lote_nomes):
+                        if nome:
+                            # Determinar configurações do lote
+                            data_inicio_lote = None
+                            data_fim_lote = None
+                            qtd_maxima = None
+                            ativo = True if i < len(lote_ativo) and lote_ativo[i] else False
+                            
+                            if i < len(lote_usar_data) and lote_usar_data[i]:
+                                if i < len(lote_data_inicio) and lote_data_inicio[i]:
+                                    data_inicio_lote = datetime.strptime(lote_data_inicio[i], '%Y-%m-%d')
+                                if i < len(lote_data_fim) and lote_data_fim[i]:
+                                    data_fim_lote = datetime.strptime(lote_data_fim[i], '%Y-%m-%d')
+                            
+                            if i < len(lote_usar_qtd) and lote_usar_qtd[i]:
+                                if i < len(lote_qtd_maxima) and lote_qtd_maxima[i]:
+                                    qtd_maxima = int(lote_qtd_maxima[i])
+                            
+                            # Verificar se é um lote existente ou novo
+                            lote_id = lote_ids[i] if i < len(lote_ids) and lote_ids[i] else None
+                            
+                            if lote_id:
+                                # Atualizar lote existente
+                                lote = LoteInscricao.query.get(int(lote_id))
+                                if lote:
+                                    lote.nome = nome
+                                    lote.data_inicio = data_inicio_lote
+                                    lote.data_fim = data_fim_lote
+                                    lote.qtd_maxima = qtd_maxima
+                                    lote.ordem = int(lote_ordens[i]) if i < len(lote_ordens) else i+1
+                                    lote.ativo = ativo
+                            else:
+                                # Criar novo lote
+                                lote = LoteInscricao(
+                                    evento_id=evento.id,
+                                    nome=nome,
+                                    data_inicio=data_inicio_lote,
+                                    data_fim=data_fim_lote,
+                                    qtd_maxima=qtd_maxima,
+                                    ordem=int(lote_ordens[i]) if i < len(lote_ordens) else i+1,
+                                    ativo=ativo
+                                )
+                                db.session.add(lote)
+                                db.session.flush()  # Para obter o ID
+                            
+                            # Processar preços dos tipos de inscrição para este lote
+                            for tipo in tipos_inscricao:
+                                # O formato do nome do campo: lote_tipo_preco_[lote_id]_[tipo_id]
+                                preco_key = f'lote_tipo_preco_{lote_id if lote_id else "new_" + str(i)}_{tipo.id}'
+                                preco_valor = request.form.get(preco_key)
+                                
+                                if preco_valor is not None:
+                                    # Se for gratuito, todos os preços são 0
+                                    preco_final = 0.0 if inscricao_gratuita else float(preco_valor)
+                                    
+                                    # Verificar se já existe um registro de preço para este lote e tipo
+                                    lote_tipo = LoteTipoInscricao.query.filter_by(
+                                        lote_id=lote.id, 
+                                        tipo_inscricao_id=tipo.id
+                                    ).first()
+                                    
+                                    if lote_tipo:
+                                        # Atualizar preço existente
+                                        lote_tipo.preco = preco_final
+                                    else:
+                                        # Criar novo registro de preço
+                                        novo_lote_tipo = LoteTipoInscricao(
+                                            lote_id=lote.id,
+                                            tipo_inscricao_id=tipo.id,
+                                            preco=preco_final
+                                        )
+                                        db.session.add(novo_lote_tipo)
+                
+            else:  # Criar novo evento
+                evento = Evento(
+                    cliente_id=current_user.id,
+                    nome=nome,
+                    descricao=descricao,
+                    programacao=programacao,
+                    localizacao=localizacao,
+                    link_mapa=link_mapa,
+                    banner_url=banner_url,
+                    inscricao_gratuita=inscricao_gratuita,
+                    habilitar_lotes=habilitar_lotes  # Novo campo
+                )
+                db.session.add(evento)
+                db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
 
-    # Lista todos os eventos do cliente
-    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
-    
-    # Evento selecionado (por padrão, None até que o usuário escolha)
-    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
-    evento = None
-    if evento_id:
-        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
-
-    if request.method == 'POST':
-        nome = request.form.get('nome')
-        descricao = request.form.get('descricao')
-        programacao = request.form.get('programacao')
-        localizacao = request.form.get('localizacao')
-        link_mapa = request.form.get('link_mapa')
-        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
-        nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
-        precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
-
-        banner = request.files.get('banner')
-        banner_url = evento.banner_url if evento else None
-        
-        if banner:
-            filename = secure_filename(banner.filename)
-            caminho_banner = os.path.join('static/banners', filename)
-            os.makedirs(os.path.dirname(caminho_banner), exist_ok=True)
-            banner.save(caminho_banner)
-            banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
-
-        if evento:  # Atualizar evento existente
-            evento.nome = nome
-            evento.descricao = descricao
-            evento.programacao = programacao
-            evento.localizacao = localizacao
-            evento.link_mapa = link_mapa
-            evento.inscricao_gratuita = inscricao_gratuita
-            if banner_url:
-                evento.banner_url = banner_url
-
-            # Atualizar tipos de inscrição
-            if not inscricao_gratuita:  # Só atualizar tipos se não for gratuita
-                # Primeiro, remover regras de inscrição associadas para evitar violação de chave estrangeira
-                RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
-                # Remover tipos existentes
-                EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
-                # Adicionar novos tipos
+                # Adicionar tipos de inscrição
+                tipos_inscricao = []
                 for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                    if nome_tipo and preco_tipo:  # Só adicionar se ambos forem preenchidos
+                    if nome_tipo:  # Só adicionar se o nome for preenchido
+                        # Se for inscrição gratuita, definir preço como 0.00
+                        preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                        
                         tipo = EventoInscricaoTipo(
                             evento_id=evento.id,
                             nome=nome_tipo,
-                            preco=float(preco_tipo)
+                            preco=preco_efetivo
                         )
                         db.session.add(tipo)
-        else:  # Criar novo evento
-            evento = Evento(
-                cliente_id=current_user.id,
-                nome=nome,
-                descricao=descricao,
-                programacao=programacao,
-                localizacao=localizacao,
-                link_mapa=link_mapa,
-                banner_url=banner_url,
-                inscricao_gratuita=inscricao_gratuita
-            )
-            db.session.add(evento)
-            db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
+                        db.session.flush()  # Para obter o ID
+                        tipos_inscricao.append(tipo)
+                
+                # Adicionar lotes de inscrição somente se habilitar_lotes for True
+                if habilitar_lotes:
+                    lote_nomes = request.form.getlist('lote_nome[]')
+                    lote_ordens = request.form.getlist('lote_ordem[]')
+                    lote_ativo = [val == '1' for val in request.form.getlist('lote_ativo[]')]
+                    lote_usar_data = [val == 'on' for val in request.form.getlist('lote_usar_data[]')]
+                    lote_data_inicio = request.form.getlist('lote_data_inicio[]')
+                    lote_data_fim = request.form.getlist('lote_data_fim[]')
+                    lote_usar_qtd = [val == 'on' for val in request.form.getlist('lote_usar_qtd[]')]
+                    lote_qtd_maxima = request.form.getlist('lote_qtd_maxima[]')
+                    
+                    # Criar cada lote
+                    for i, nome in enumerate(lote_nomes):
+                        if nome:
+                            # Determinar configurações do lote
+                            data_inicio_lote = None
+                            data_fim_lote = None
+                            qtd_maxima = None
+                            ativo = True if i < len(lote_ativo) and lote_ativo[i] else False
+                            
+                            if i < len(lote_usar_data) and lote_usar_data[i]:
+                                if i < len(lote_data_inicio) and lote_data_inicio[i]:
+                                    data_inicio_lote = datetime.strptime(lote_data_inicio[i], '%Y-%m-%d')
+                                if i < len(lote_data_fim) and lote_data_fim[i]:
+                                    data_fim_lote = datetime.strptime(lote_data_fim[i], '%Y-%m-%d')
+                            
+                            if i < len(lote_usar_qtd) and lote_usar_qtd[i]:
+                                if i < len(lote_qtd_maxima) and lote_qtd_maxima[i]:
+                                    qtd_maxima = int(lote_qtd_maxima[i])
+                            
+                            # Criar o lote
+                            lote = LoteInscricao(
+                                evento_id=evento.id,
+                                nome=nome,
+                                data_inicio=data_inicio_lote,
+                                data_fim=data_fim_lote,
+                                qtd_maxima=qtd_maxima,
+                                ordem=int(lote_ordens[i]) if i < len(lote_ordens) else i+1,
+                                ativo=ativo
+                            )
+                            db.session.add(lote)
+                            db.session.flush()  # Para obter o ID do lote
+                            
+                            # Processar preços por tipo de inscrição
+                            for j, tipo in enumerate(tipos_inscricao):
+                                # Formato do nome do campo no form: lote_tipo_preco_new_0_new_0
+                                preco_key = f'lote_tipo_preco_new_{i}_new_{j}'
+                                preco_valor = request.form.get(preco_key)
+                                
+                                if preco_valor is not None:
+                                    # Se for gratuito, todos os preços são 0
+                                    preco_final = 0.0 if inscricao_gratuita else float(preco_valor)
+                                    
+                                    novo_lote_tipo = LoteTipoInscricao(
+                                        lote_id=lote.id,
+                                        tipo_inscricao_id=tipo.id,
+                                        preco=preco_final
+                                    )
+                                    db.session.add(novo_lote_tipo)
 
-            # Adicionar tipos de inscrição se não for gratuita
-            if not inscricao_gratuita:
-                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
-                    if nome_tipo and preco_tipo:
-                        tipo = EventoInscricaoTipo(
-                            evento_id=evento.id,
-                            nome=nome_tipo,
-                            preco=float(preco_tipo)
-                        )
-                        db.session.add(tipo)
-
-        try:
             db.session.commit()
+            
+            # Recarregar o evento com todos os relacionamentos para exibição
+            if evento:
+                evento = Evento.query.options(
+                    db.joinedload(Evento.tipos_inscricao),
+                    db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
+                ).filter_by(id=evento.id, cliente_id=current_user.id).first()
+                
             flash('Evento salvo com sucesso!', 'success')
             return redirect(url_for('routes.dashboard_cliente'))
+        
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao salvar evento: {str(e)}', 'danger')
 
     return render_template('configurar_evento.html', eventos=eventos, evento=evento)
+
 from collections import defaultdict
 from datetime import datetime
 
@@ -6450,6 +6379,9 @@ def criar_evento():
         
         # Verificar se é gratuito
         inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
+        
+        # Verificar se habilita lotes
+        habilitar_lotes = (request.form.get('habilitar_lotes') == 'on')
     
         # Cria o objeto Evento
         novo_evento = Evento(
@@ -6464,7 +6396,8 @@ def criar_evento():
             data_fim=data_fim,
             hora_inicio=hora_inicio,
             hora_fim=hora_fim,
-            inscricao_gratuita=inscricao_gratuita  # Salvar a flag no evento
+            inscricao_gratuita=inscricao_gratuita,  # Salvar a flag no evento
+            habilitar_lotes=habilitar_lotes  # Nova flag para habilitar lotes
         )
 
         try:
@@ -6485,6 +6418,7 @@ def criar_evento():
                     precos = ['0.00'] * len(nomes_tipos)
                 
                 # Criar tipos de inscrição para o evento
+                tipos_inscricao = []
                 for i, nome in enumerate(nomes_tipos):
                     if nome.strip():  # Só criar se o nome não estiver vazio
                         preco = 0.0 if inscricao_gratuita else float(precos[i])
@@ -6494,6 +6428,66 @@ def criar_evento():
                             preco=preco
                         )
                         db.session.add(novo_tipo)
+                        db.session.flush()  # Para obter o ID do tipo
+                        tipos_inscricao.append(novo_tipo)
+                
+                # Processar os lotes de inscrição somente se habilitar_lotes for True
+                if habilitar_lotes:
+                    lote_nomes = request.form.getlist('lote_nome[]')
+                    lote_ordens = request.form.getlist('lote_ordem[]')
+                    lote_usar_data = [item == 'on' for item in request.form.getlist('lote_usar_data[]')]
+                    lote_data_inicio = request.form.getlist('lote_data_inicio[]')
+                    lote_data_fim = request.form.getlist('lote_data_fim[]')
+                    lote_usar_qtd = [item == 'on' for item in request.form.getlist('lote_usar_qtd[]')]
+                    lote_qtd_maxima = request.form.getlist('lote_qtd_maxima[]')
+                    
+                    # Criar cada lote
+                    for i, nome in enumerate(lote_nomes):
+                        if nome.strip():
+                            # Determinar se usa data ou quantidade
+                            data_inicio_lote = None
+                            data_fim_lote = None
+                            qtd_maxima = None
+                            
+                            if i < len(lote_usar_data) and lote_usar_data[i]:
+                                if i < len(lote_data_inicio) and lote_data_inicio[i]:
+                                    data_inicio_lote = datetime.strptime(lote_data_inicio[i], '%Y-%m-%d')
+                                if i < len(lote_data_fim) and lote_data_fim[i]:
+                                    data_fim_lote = datetime.strptime(lote_data_fim[i], '%Y-%m-%d')
+                            
+                            if i < len(lote_usar_qtd) and lote_usar_qtd[i]:
+                                if i < len(lote_qtd_maxima) and lote_qtd_maxima[i]:
+                                    qtd_maxima = int(lote_qtd_maxima[i])
+                            
+                            # Criar o lote
+                            novo_lote = LoteInscricao(
+                                evento_id=novo_evento.id,
+                                nome=nome,
+                                data_inicio=data_inicio_lote,
+                                data_fim=data_fim_lote,
+                                qtd_maxima=qtd_maxima,
+                                ordem=int(lote_ordens[i]) if i < len(lote_ordens) and lote_ordens[i] else i+1,
+                                ativo=True
+                            )
+                            db.session.add(novo_lote)
+                            db.session.flush()  # Para obter o ID do lote
+                            
+                            # Processar preços por tipo de inscrição para este lote
+                            for j, tipo in enumerate(tipos_inscricao):
+                                # O formato do name é lote_tipo_preco_0_1 onde 0 é o índice do lote e 1 é o índice do tipo
+                                preco_key = f'lote_tipo_preco_{i}_{j}'
+                                preco_lote = request.form.get(preco_key)
+                                
+                                if preco_lote:
+                                    # Se o evento for gratuito, todos os preços são 0
+                                    preco_valor = 0.0 if inscricao_gratuita else float(preco_lote)
+                                    
+                                    novo_preco = LoteTipoInscricao(
+                                        lote_id=novo_lote.id,
+                                        tipo_inscricao_id=tipo.id,
+                                        preco=preco_valor
+                                    )
+                                    db.session.add(novo_preco)
             
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
