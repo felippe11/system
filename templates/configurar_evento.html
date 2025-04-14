@@ -170,7 +170,15 @@
           <div id="lotes-container">
             {% if evento and evento.lotes %}
               {% for lote in evento.lotes %}
-              <div class="lote-item card mb-3">
+              <div class="lote-item card mb-3" data-lote-id="{{ lote.id }}">
+                {% for tipo in evento.tipos_inscricao_evento %}
+                  {% for lote_tipo in lote.tipos_inscricao %}
+                    {% if lote_tipo.tipo_inscricao_id == tipo.id %}
+                      <div hidden data-preco-{{ tipo.id }}="{{ lote_tipo.preco }}"></div>
+                    {% endif %}
+                  {% endfor %}
+                {% endfor %}
+                
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
                   <h6 class="mb-0">{{ lote.nome }}</h6>
                   <button type="button" class="btn btn-sm btn-outline-danger remover-lote" data-id="{{ lote.id }}" {% if lote.inscricoes|length > 0 %}disabled{% endif %}>
@@ -665,8 +673,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const lotePrecosDivs = document.querySelectorAll('.lote-precos');
     const isGratuito = inscricaoGratuita.checked;
     
-    // Para cada div de preços de lote
     lotePrecosDivs.forEach((lotePrecos, loteIndex) => {
+      // Removendo esta verificação para sempre recarregar os valores
+      // if (lotePrecos.querySelectorAll('input[type="number"]').length > 0) {
+      //   return; // Preserva os valores existentes
+      // }
+      
       let html = '';
       const tiposInscricao = document.querySelectorAll('input[name="nome_tipo[]"]');
       const tiposIds = document.querySelectorAll('input[name="id_tipo[]"]');
@@ -679,22 +691,28 @@ document.addEventListener('DOMContentLoaded', function() {
           const tipoId = tiposIds[index].value || `new_${index}`;
           const precoDefault = isGratuito ? '0.00' : '';
           
-          // Use o ID do lote para gerar nomes de campos únicos
           const loteItem = lotePrecos.closest('.lote-item');
           const loteIdInput = loteItem.querySelector('input[name="lote_id[]"]');
           const loteId = loteIdInput.value || `new_${loteIndex}`;
+          
+          // Verificar se há um preço definido para este tipo no data-* do lote
+          let precoExistente = precoDefault;
+          const precoAttr = loteItem.querySelector(`[data-preco-${tipoId}]`);
+          if (precoAttr) {
+            precoExistente = precoAttr.getAttribute(`data-preco-${tipoId}`);
+          }
           
           html += `
             <div class="row mb-2 align-items-center">
               <div class="col-md-6">
                 <label class="form-label">${tipoNome}</label>
-                <input type="hidden" name="lote_tipo_id_${loteId}_${index}" value="${tipoId}">
+                <input type="hidden" name="lote_tipo_id_${loteId}_${tipoId}" value="${tipoId}">
               </div>
               <div class="col-md-4 preco-container" ${isGratuito ? 'style="display:none;"' : ''}>
                 <label class="form-label">Preço (R$)</label>
                 <input type="number" step="0.01" class="form-control border border-secondary bg-white" 
                       name="lote_tipo_preco_${loteId}_${tipoId}" 
-                      placeholder="0.00" value="${precoDefault}">
+                      placeholder="0.00" value="${precoExistente}">
               </div>
             </div>
           `;
@@ -704,9 +722,15 @@ document.addEventListener('DOMContentLoaded', function() {
       lotePrecos.innerHTML = html;
     });
   }
+
   
   // Inicializar os preços dos lotes
   updateLotePriceFields();
+  
+  // Adicione esta função para garantir que os preços são carregados corretamente
+  setTimeout(function() {
+    updateLotePriceFields();
+  }, 100);
   
   // Validação para garantir pelo menos um tipo de inscrição ao enviar o formulário
   document.querySelector('form').addEventListener('submit', function(e) {
