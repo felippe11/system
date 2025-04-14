@@ -10,153 +10,191 @@
     </h1>
   </div>
 
+  <!-- Barra de progresso -->
+  <div class="progress mb-4 shadow-sm" style="height: 25px;">
+    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">Etapa 1 de 4</div>
+  </div>
+
   <!-- Main form card with better shadow -->
   <div class="card border-0 shadow">
     <div class="card-body p-4 bg-light">
-      <form method="POST" enctype="multipart/form-data">
-        <!-- Organized in sections with visual spacing -->
-        <div class="row g-4">
-          <!-- Basic Information Section -->
-          <div class="col-12">
-            <div class="border-bottom border-primary pb-2 mb-3">
-              <h5 class="text-primary"><i class="bi bi-info-circle me-2"></i>Informações Básicas</h5>
-            </div>
-            
-            <div class="mb-3">
-              <label for="nome" class="form-label">Nome do Evento</label>
-              <input type="text" class="form-control form-control-lg border border-secondary bg-white" id="nome" name="nome" required>
-            </div>
-
-            <div class="mb-3">
-              <label for="descricao" class="form-label">Descrição</label>
-              <textarea class="form-control border border-secondary bg-white" id="descricao" name="descricao" rows="3" 
-                        placeholder="Descreva os detalhes do seu evento"></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label for="programacao" class="form-label">Programação</label>
-              <textarea class="form-control border border-secondary bg-white" id="programacao" name="programacao" rows="3"
-                        placeholder="Descreva a programação do evento"></textarea>
-            </div>
-          </div>
-
-          <!-- Location Section -->
-          <div class="col-12">
-            <div class="border-bottom border-primary pb-2 mb-3">
-              <h5 class="text-primary"><i class="bi bi-geo-alt me-2"></i>Localização</h5>
-            </div>
-            
-            <div class="mb-3">
-              <label for="localizacao" class="form-label">Endereço</label>
-              <input type="text" class="form-control border border-secondary bg-white" id="localizacao" name="localizacao"
-                    placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP">
-            </div>
-            
-            <div class="mb-3">
-              <label for="link_mapa" class="form-label">Link do Google Maps</label>
-              <div class="input-group">
-                <span class="input-group-text bg-primary text-white"><i class="bi bi-map"></i></span>
-                <input type="url" class="form-control border border-secondary bg-white" id="link_mapa" name="link_mapa"
-                      placeholder="https://maps.google.com/...">
-              </div>
-            </div>
-          </div>
-
-          <!-- Media Section -->
-          <div class="col-12">
-            <div class="border-bottom border-primary pb-2 mb-3">
-              <h5 class="text-primary"><i class="bi bi-image me-2"></i>Mídia</h5>
-            </div>
-            
-            <div class="mb-4">
-              <label for="banner" class="form-label">Banner do Evento</label>
-              <input type="file" class="form-control border border-secondary bg-white" id="banner" name="banner" accept="image/*">
-              <div class="form-text">Recomendado: Imagem no formato 1200 x 600px</div>
-            </div>
-          </div>
-
-          <div class="border-bottom border-primary pb-2 mb-3">
-            <h5 class="text-primary"><i class="bi bi-calendar me-2"></i>Data e Horário</h5>
+      <form method="POST" enctype="multipart/form-data" id="form-evento">
+        <!-- Organized in etapas with visual spacing -->
+        
+        <!-- Etapa 1: Informações Básicas -->
+        <div class="step" id="step-1">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">1</span>
+              <i class="bi bi-info-circle me-2"></i>Informações Básicas
+            </h5>
           </div>
           
-          <div class="mb-3">
-            <label for="data_inicio" class="form-label">Data de Início</label>
-            <input type="date" class="form-control border border-secondary bg-white" id="data_inicio" name="data_inicio" value="{{ evento.data_inicio.strftime('%Y-%m-%d') if evento.data_inicio else '' }}">
-          </div>
-          
-          <div class="mb-3">
-            <label for="data_fim" class="form-label">Data de Término</label>
-            <input type="date" class="form-control border border-secondary bg-white" id="data_fim" name="data_fim" value="{{ evento.data_fim.strftime('%Y-%m-%d') if evento.data_fim else '' }}">
-          </div>
-          
-          <div class="mb-3">
-            <label for="hora_inicio" class="form-label">Hora de Início</label>
-            <input type="time" class="form-control border border-secondary bg-white" id="hora_inicio" name="hora_inicio" value="{{ evento.hora_inicio.strftime('%H:%M') if evento.hora_inicio else '' }}">
-          </div>
-          
-          <div class="mb-3">
-            <label for="hora_fim" class="form-label">Hora de Término</label>
-            <input type="time" class="form-control border border-secondary bg-white" id="hora_fim" name="hora_fim" value="{{ evento.hora_fim.strftime('%H:%M') if evento.hora_fim else '' }}">
+          <div class="mb-4">
+            <label for="nome" class="form-label fw-bold">Nome do Evento</label>
+            <input type="text" class="form-control form-control-lg border border-secondary bg-white" id="nome" name="nome" required>
           </div>
 
-          <!-- Registration Options Section -->
+          <div class="mb-4">
+            <label for="descricao" class="form-label fw-bold">Descrição</label>
+            <textarea class="form-control border border-secondary bg-white" id="descricao" name="descricao" rows="3" 
+                      placeholder="Descreva os detalhes do seu evento"></textarea>
+          </div>
+
+          <div class="mb-4">
+            <label for="programacao" class="form-label fw-bold">Programação</label>
+            <textarea class="form-control border border-secondary bg-white" id="programacao" name="programacao" rows="3"
+                      placeholder="Descreva a programação do evento"></textarea>
+          </div>
+          
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button" class="btn btn-primary next-step px-4" data-next="2">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Etapa 2: Localização e Mídia -->
+        <div class="step" id="step-2" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">2</span>
+              <i class="bi bi-geo-alt me-2"></i>Localização e Mídia
+            </h5>
+          </div>
+          
+          <div class="mb-4">
+            <label for="localizacao" class="form-label fw-bold">Endereço</label>
+            <input type="text" class="form-control border border-secondary bg-white" id="localizacao" name="localizacao"
+                  placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP">
+          </div>
+          
+          <div class="mb-4">
+            <label for="link_mapa" class="form-label fw-bold">Link do Google Maps</label>
+            <div class="input-group">
+              <span class="input-group-text bg-primary text-white"><i class="bi bi-map"></i></span>
+              <input type="url" class="form-control border border-secondary bg-white" id="link_mapa" name="link_mapa"
+                    placeholder="https://maps.google.com/...">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="banner" class="form-label fw-bold">Banner do Evento</label>
+            <input type="file" class="form-control border border-secondary bg-white" id="banner" name="banner" accept="image/*">
+            <div class="form-text">Recomendado: Imagem no formato 1200 x 600px</div>
+          </div>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="1">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-primary next-step px-4" data-next="3">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Etapa 3: Data e Horário -->
+        <div class="step" id="step-3" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">3</span>
+              <i class="bi bi-calendar me-2"></i>Data e Horário
+            </h5>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <label for="data_inicio" class="form-label fw-bold">Data de Início</label>
+              <input type="date" class="form-control border border-secondary bg-white" id="data_inicio" name="data_inicio" value="{{ evento.data_inicio.strftime('%Y-%m-%d') if evento.data_inicio else '' }}">
+            </div>
+            
+            <div class="col-md-6 mb-4">
+              <label for="data_fim" class="form-label fw-bold">Data de Término</label>
+              <input type="date" class="form-control border border-secondary bg-white" id="data_fim" name="data_fim" value="{{ evento.data_fim.strftime('%Y-%m-%d') if evento.data_fim else '' }}">
+            </div>
+            
+            <div class="col-md-6 mb-4">
+              <label for="hora_inicio" class="form-label fw-bold">Hora de Início</label>
+              <input type="time" class="form-control border border-secondary bg-white" id="hora_inicio" name="hora_inicio" value="{{ evento.hora_inicio.strftime('%H:%M') if evento.hora_inicio else '' }}">
+            </div>
+            
+            <div class="col-md-6 mb-4">
+              <label for="hora_fim" class="form-label fw-bold">Hora de Término</label>
+              <input type="time" class="form-control border border-secondary bg-white" id="hora_fim" name="hora_fim" value="{{ evento.hora_fim.strftime('%H:%M') if evento.hora_fim else '' }}">
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="2">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-primary next-step px-4" data-next="4">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Etapa 4: Opções de Inscrição -->
+        <div class="step" id="step-4" style="display: none;">
           {% if current_user.habilita_pagamento %}
-          <div class="col-12">
-            <div class="border-bottom border-primary pb-2 mb-3">
-              <h5 class="text-primary"><i class="bi bi-cash-coin me-2"></i>Opções de Inscrição</h5>
-            </div>
-            
-            <div class="card bg-white border border-secondary mb-4">
-              <div class="card-body">
-                <div class="form-check form-switch mb-3">
-                  <input type="checkbox" class="form-check-input border border-secondary" id="inscricao_gratuita" name="inscricao_gratuita">
-                  <label class="form-check-label" for="inscricao_gratuita">
-                    Evento com Inscrição Gratuita
-                  </label>
-                  <small class="text-muted d-block mt-1">
-                    Quando marcado, todos os tipos de inscrição terão o preço definido como R$ 0,00.
-                  </small>
-                </div>
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">4</span>
+              <i class="bi bi-cash-coin me-2"></i>Opções de Inscrição
+            </h5>
+          </div>
+          
+          <div class="card bg-white border border-secondary mb-4">
+            <div class="card-body">
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" class="form-check-input border border-secondary" id="inscricao_gratuita" name="inscricao_gratuita">
+                <label class="form-check-label" for="inscricao_gratuita">
+                  Evento com Inscrição Gratuita
+                </label>
+                <small class="text-muted d-block mt-1">
+                  Quando marcado, todos os tipos de inscrição terão o preço definido como R$ 0,00.
+                </small>
+              </div>
 
-                <div class="form-check form-switch mb-3">
-                  <input type="checkbox" class="form-check-input border border-secondary" id="habilitar_lotes" name="habilitar_lotes">
-                  <label class="form-check-label" for="habilitar_lotes">
-                    Habilitar inscrição em lotes
-                  </label>
-                  <small class="text-muted d-block mt-1">
-                    Quando marcado, você poderá configurar diferentes lotes de inscrição com preços e períodos específicos.
-                  </small>
-                </div>
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" class="form-check-input border border-secondary" id="habilitar_lotes" name="habilitar_lotes">
+                <label class="form-check-label" for="habilitar_lotes">
+                  Habilitar inscrição em lotes
+                </label>
+                <small class="text-muted d-block mt-1">
+                  Quando marcado, você poderá configurar diferentes lotes de inscrição com preços e períodos específicos.
+                </small>
+              </div>
 
-                <div id="tipos-inscricao-container">
-                  <p class="text-muted small mb-3">Configure os tipos de inscrição e seus respectivos valores:</p>
-                  
-                  <div id="tipos-inscricao-list">
-                    <div class="row mb-3 align-items-end tipo-inscricao-item">
-                      <div class="col-md-5">
-                        <label class="form-label">Tipo de Inscrição</label>
-                        <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" 
-                              placeholder="Ex: Estudante, Profissional...">
-                        <!-- Campo oculto para preservar ID do tipo de inscrição existente -->
-                        <input type="hidden" name="id_tipo[]" value="">
-                      </div>
-                      <div class="col-md-3">
-                        <label class="form-label">Preço (R$)</label>
-                        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
-                              placeholder="0.00">
-                      </div>
-                      <div class="col-md-4">
-                        <button type="button" class="btn btn-outline-danger remover-tipo-inscricao" data-inscricoes="0">
-                          <i class="bi bi-trash"></i> Remover
-                        </button>
-                      </div>
+              <div id="tipos-inscricao-container">
+                <p class="text-muted small mb-3">Configure os tipos de inscrição e seus respectivos valores:</p>
+                
+                <div id="tipos-inscricao-list">
+                  <div class="row mb-3 align-items-end tipo-inscricao-item">
+                    <div class="col-md-5">
+                      <label class="form-label">Tipo de Inscrição</label>
+                      <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" 
+                            placeholder="Ex: Estudante, Profissional...">
+                      <!-- Campo oculto para preservar ID do tipo de inscrição existente -->
+                      <input type="hidden" name="id_tipo[]" value="">
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Preço (R$)</label>
+                      <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
+                            placeholder="0.00">
+                    </div>
+                    <div class="col-md-4">
+                      <button type="button" class="btn btn-outline-danger remover-tipo-inscricao" data-inscricoes="0">
+                        <i class="bi bi-trash"></i> Remover
+                      </button>
                     </div>
                   </div>
-                  
-                  <button type="button" id="adicionar-tipo-inscricao" class="btn btn-outline-primary">
-                    <i class="bi bi-plus-circle"></i> Adicionar Tipo de Inscrição
-                  </button>
                 </div>
+                
+                <button type="button" id="adicionar-tipo-inscricao" class="btn btn-outline-primary">
+                  <i class="bi bi-plus-circle"></i> Adicionar Tipo de Inscrição
+                </button>
               </div>
             </div>
           </div>
@@ -236,16 +274,15 @@
             </div>
           </div>
           {% endif %}
-        </div>
-
-        <!-- Footer Actions -->
-        <div class="d-flex justify-content-end gap-3 pt-4 border-top mt-4">
-          <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-outline-secondary px-4">
-            Cancelar
-          </a>
-          <button type="submit" class="btn btn-primary px-4">
-            <i class="bi bi-save me-2"></i>Criar Evento
-          </button>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="3">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="submit" class="btn btn-success px-4">
+              <i class="bi bi-save me-2"></i>Criar Evento
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -255,6 +292,63 @@
 {% if current_user.habilita_pagamento %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Controle de etapas
+    const progressBar = document.getElementById('progress-bar');
+    const steps = document.querySelectorAll('.step');
+    let currentStep = 1;
+
+    // Atualizar barra de progresso
+    function updateProgressBar(step) {
+      const percent = (step / steps.length) * 100;
+      progressBar.style.width = percent + '%';
+      progressBar.setAttribute('aria-valuenow', percent);
+      progressBar.textContent = `Etapa ${step} de ${steps.length}`;
+    }
+
+    // Navegar para próxima etapa
+    document.querySelectorAll('.next-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const nextStep = parseInt(this.getAttribute('data-next'));
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar próxima etapa
+        document.getElementById(`step-${nextStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = nextStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
+    // Navegar para etapa anterior
+    document.querySelectorAll('.prev-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const prevStep = parseInt(this.getAttribute('data-prev'));
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar etapa anterior
+        document.getElementById(`step-${prevStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = prevStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
     // Toggle price fields visibility
     const inscricaoGratuita = document.getElementById('inscricao_gratuita');
     const tiposContainer = document.getElementById('tipos-inscricao-container');
@@ -600,4 +694,83 @@
   });
 </script>
 {% endif %}
+
+<style>
+  /* Estilos adicionais para melhorar a experiência de usuário */
+  .step {
+    transition: opacity 0.3s ease;
+  }
+  
+  .form-control:focus, .form-check-input:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+  
+  /* Melhorias para dispositivos móveis */
+  @media (max-width: 768px) {
+    .container {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    
+    h5.text-primary {
+      font-size: 1.1rem;
+    }
+    
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .next-step, .prev-step {
+      width: 45%;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+      font-size: 0.9rem;
+    }
+    
+    .tipo-inscricao-item .col-md-4 {
+      margin-top: 10px;
+    }
+    
+    /* Ajuste para botões no mobile */
+    .remover-tipo-inscricao {
+      width: 100%;
+      margin-top: 10px;
+    }
+  }
+  
+  /* Animação da barra de progresso */
+  .progress-bar {
+    transition: width 0.5s ease;
+  }
+  
+  /* Melhorias visuais para formulários */
+  .form-label {
+    margin-bottom: 0.3rem;
+  }
+  
+  .card {
+    border-radius: 0.5rem;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .btn {
+    border-radius: 0.35rem;
+    transition: all 0.2s;
+  }
+  
+  /* Indicador de etapa atual */
+  .step:not([style*="display: none"]) {
+    animation: fadeIn 0.5s;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
 {% endblock %}
