@@ -6037,14 +6037,50 @@ def configurar_evento():
                 # Lista de IDs de tipos que têm usuários vinculados
                 ids_tipos_com_usuarios = [tipo[0] for tipo in tipos_com_usuarios]
                 
-                if ids_tipos_com_usuarios:
-                    # Exclui apenas os tipos que NÃO têm usuários vinculados
+                # Verifica quais tipos têm referências na tabela lote_tipo_inscricao
+                tipos_com_lotes = db.session.query(LoteTipoInscricao.tipo_inscricao_id).join(
+                    EventoInscricaoTipo, LoteTipoInscricao.tipo_inscricao_id == EventoInscricaoTipo.id
+                ).filter(
+                    EventoInscricaoTipo.evento_id == evento.id
+                ).distinct().all()
+                
+                # Lista de IDs de tipos que têm lotes vinculados
+                ids_tipos_com_lotes = [tipo[0] for tipo in tipos_com_lotes]
+                
+                # Primeiro, remover as referências de lote_tipo_inscricao para os tipos que serão removidos
+                ids_tipos_para_preservar = list(set(ids_tipos_com_usuarios))
+                
+                # Lista de IDs que foram enviados pelo formulário
+                ids_tipos_enviados = []
+                for i, nome_tipo in enumerate(nomes_tipos):
+                    if nome_tipo and i < len(request.form.getlist('id_tipo[]')):
+                        tipo_id = request.form.getlist('id_tipo[]')[i]
+                        if tipo_id and tipo_id.isdigit():
+                            ids_tipos_enviados.append(int(tipo_id))
+                
+                # Adicionar os tipos enviados pelo formulário à lista de preservação
+                ids_tipos_para_preservar.extend([tid for tid in ids_tipos_enviados if tid not in ids_tipos_para_preservar])
+                
+                # Remover referências em lote_tipo_inscricao para tipos que serão excluídos
+                for tipo_id in ids_tipos_com_lotes:
+                    if tipo_id not in ids_tipos_para_preservar:
+                        LoteTipoInscricao.query.filter_by(tipo_inscricao_id=tipo_id).delete()
+                
+                # Agora podemos excluir os tipos de inscrição com segurança
+                if ids_tipos_para_preservar:
+                    # Exclui apenas os tipos que NÃO estão na lista de preservação
                     EventoInscricaoTipo.query.filter(
                         EventoInscricaoTipo.evento_id == evento.id,
-                        ~EventoInscricaoTipo.id.in_(ids_tipos_com_usuarios)
+                        ~EventoInscricaoTipo.id.in_(ids_tipos_para_preservar)
                     ).delete(synchronize_session=False)
                 else:
-                    # Se não houver tipos com usuários, exclui todos normalmente
+                    # Se não houver tipos para preservar, primeiro remova todas as referências
+                    LoteTipoInscricao.query.filter(
+                        LoteTipoInscricao.tipo_inscricao_id.in_(
+                            db.session.query(EventoInscricaoTipo.id).filter_by(evento_id=evento.id)
+                        )
+                    ).delete(synchronize_session=False)
+                    # Depois exclua todos os tipos
                     EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
                 
                 # Adicionar novos tipos ou atualizar existentes
@@ -6056,7 +6092,7 @@ def configurar_evento():
                         
                         # Verificar se já existe um tipo com este nome
                         tipo_existente = None
-                        for tipo_id in ids_tipos_com_usuarios:
+                        for tipo_id in ids_tipos_para_preservar:
                             tipo = EventoInscricaoTipo.query.get(tipo_id)
                             if tipo and tipo.nome == nome_tipo:
                                 tipo_existente = tipo
@@ -6103,12 +6139,20 @@ def configurar_evento():
                     preservar_ids_lote = request.form.get('preservar_ids_lote', '').split(',')
                     preservar_ids_lote = [int(id) for id in preservar_ids_lote if id and id.isdigit()]
                     
-                    # Excluir lotes não preservados e sem inscrições
-                    LoteInscricao.query.filter(
+                    # Lotes a serem removidos
+                    lotes_para_remover = LoteInscricao.query.filter(
                         LoteInscricao.evento_id == evento.id,
                         ~LoteInscricao.id.in_(preservar_ids_lote),
                         ~LoteInscricao.id.in_(ids_lotes_com_inscricoes)
-                    ).delete(synchronize_session=False)
+                    ).all()
+                    
+                    # Remover os registros de lote_tipo_inscricao antes de remover os lotes
+                    for lote in lotes_para_remover:
+                        LoteTipoInscricao.query.filter_by(lote_id=lote.id).delete()
+                    
+                    # Agora é seguro remover os lotes
+                    for lote in lotes_para_remover:
+                        db.session.delete(lote)
                     
                     # Processar cada lote
                     for i, nome in enumerate(lote_nomes):
@@ -6159,7 +6203,7 @@ def configurar_evento():
                             # Processar preços dos tipos de inscrição para este lote
                             for tipo in tipos_inscricao:
                                 # O formato do nome do campo: lote_tipo_preco_[lote_id]_[tipo_id]
-                                preco_key = f'lote_tipo_preco_{lote_id if lote_id else "new_" + str(i)}_{tipo.id}'
+                                preco_key = f'lote_tipo_preco_{lote.id}_{tipo.id}'
                                 preco_valor = request.form.get(preco_key)
                                 
                                 if preco_valor is not None:
@@ -6260,9 +6304,10 @@ def configurar_evento():
                             
                             # Processar preços por tipo de inscrição
                             for j, tipo in enumerate(tipos_inscricao):
-                                # Formato do nome do campo no form: lote_tipo_preco_new_0_new_0
-                                preco_key = f'lote_tipo_preco_new_{i}_new_{j}'
-                                preco_valor = request.form.get(preco_key)
+                                # Para novos lotes e tipos, o formato é diferente
+                                preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}'
+                                # Verificar também o formato alternativo para compatibilidade
+                                preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
                                 
                                 if preco_valor is not None:
                                     # Se for gratuito, todos os preços são 0
@@ -6290,8 +6335,13 @@ def configurar_evento():
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao salvar evento: {str(e)}', 'danger')
+            # Adicionar log para debugging
+            print(f"Erro ao salvar evento: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     return render_template('configurar_evento.html', eventos=eventos, evento=evento)
+
 
 from collections import defaultdict
 from datetime import datetime
