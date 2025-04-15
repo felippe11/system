@@ -2,348 +2,776 @@
 {% block title %}Criar Atividade{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-  <div class="card">
-    <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 text-center">Criar Nova Atividade</h2>
+<div class="container py-5">
+  <!-- Header section -->
+  <div class="bg-primary bg-gradient rounded-3 p-4 mb-4 shadow-sm">
+    <h1 class="h3 fw-bold text-white mb-0 text-center">
+      <i class="bi bi-mortarboard-fill me-2"></i>Criar Nova Atividade
+    </h1>
+  </div>
+
+  <!-- Barra de progresso moderna com indicadores de etapa -->
+  <div class="progress-container mb-4">
+    <div class="progress-steps-container">
+      <div class="step-indicator-container">
+        <div class="step-indicator active" data-step="1">
+          <div class="step-number">1</div>
+          <div class="step-label">Informações Básicas</div>
+        </div>
+        <div class="step-indicator" data-step="2">
+          <div class="step-number">2</div>
+          <div class="step-label">Ministrantes</div>
+        </div>
+        <div class="step-indicator" data-step="3">
+          <div class="step-number">3</div>
+          <div class="step-label">Datas e Horários</div>
+        </div>
+        <div class="step-indicator" data-step="4">
+          <div class="step-number">4</div>
+          <div class="step-label">Localização</div>
+        </div>
+        <div class="step-indicator" data-step="5">
+          <div class="step-number">5</div>
+          <div class="step-label">Configurações</div>
+        </div>
+      </div>
+      <div class="progress progress-bar-modern">
+        <div id="progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
     </div>
-    <div class="card-body">
-      <form action="{{ url_for('routes.criar_oficina') }}" method="POST">
-        <div class="row">
-          {% if current_user.tipo == 'admin' %}
+  </div>
+
+  <!-- Main form card -->
+  <div class="card border-0 shadow">
+    <div class="card-body p-4 bg-light rounded-3">
+      <form action="{{ url_for('routes.criar_oficina') }}" method="POST" id="form-oficina">
+        
+        <!-- Etapa 1: Informações Básicas -->
+        <div class="step" id="step-1">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">1</span>
+              <i class="bi bi-info-circle me-2"></i>Informações Básicas
+            </h5>
+          </div>
+
+          <div class="row">
+            {% if current_user.tipo == 'admin' %}
+              <div class="mb-3">
+                <label for="cliente_id" class="form-label fw-bold">Cliente:</label>
+                <select name="cliente_id" id="cliente_id" class="form-select form-select-lg border border-secondary bg-white">
+                  <option value="">-- Selecione um Cliente --</option>
+                  {% for cliente in clientes %}
+                    <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            {% endif %}
+
             <div class="mb-3">
-              <label for="cliente_id" class="form-label">Cliente:</label>
-              <select name="cliente_id" id="cliente_id" class="form-select">
-                <option value="">-- Selecione um Cliente --</option>
-                {% for cliente in clientes %}
-                  <option value="{{ cliente.id }}">{{ cliente.nome }}</option>
+              <label for="evento_id" class="form-label fw-bold">Evento:</label>
+              <select name="evento_id" id="evento_id" class="form-select form-select-lg border border-secondary bg-white" required>
+                <option value="">-- Selecione um Evento --</option>
+                {% for evento in eventos %}
+                  <option value="{{ evento.id }}">{{ evento.nome }}</option>
                 {% endfor %}
               </select>
             </div>
-          {% endif %}
 
-          <!-- Novo campo para selecionar o Evento -->
+            <div class="col-md-6 mb-3">
+              <label for="titulo" class="form-label fw-bold">Título da atividade:</label>
+              <input type="text" class="form-control form-control-lg border border-secondary bg-white" id="titulo" name="titulo" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="descricao" class="form-label fw-bold">Descrição:</label>
+              <input type="text" class="form-control form-control-lg border border-secondary bg-white" id="descricao" name="descricao" required>
+            </div>
+          </div>
+
           <div class="mb-3">
-            <label for="evento_id" class="form-label">Evento:</label>
-            <select name="evento_id" id="evento_id" class="form-select" required>
-              <option value="">-- Selecione um Evento --</option>
-              {% for evento in eventos %}
-                <option value="{{ evento.id }}">{{ evento.nome }}</option>
-              {% endfor %}
+            <label for="tipo_oficina" class="form-label fw-bold">Tipo de Atividade:</label>
+            <select class="form-select form-select-lg border border-secondary bg-white" id="tipo_oficina" name="tipo_oficina" required onchange="toggleOutroTipo()">
+              <option value="Oficina" selected>Oficina</option>
+              <option value="Palestra">Palestra</option>
+              <option value="Conferência">Conferência</option>
+              <option value="Mesa-redonda">Mesa-redonda</option>
+              <option value="Apresentação de trabalho">Apresentação de trabalho</option>
+              <option value="Minicurso">Minicurso</option>
+              <option value="Painéis">Painéis</option>
+              <option value="Exposição">Exposição</option>
+              <option value="Atividade cultural">Atividade cultural</option>
+              <option value="Sessão plenária">Sessão plenária</option>
+              <option value="outros">Outros</option>
             </select>
           </div>
-
-          <div class="mb-3 col-md-6">
-            <label for="titulo" class="form-label">Título da atividade:</label>
-            <input type="text" class="form-control" id="titulo" name="titulo" required>
+          
+          <div class="mb-3" id="outro_tipo_div" style="display: none;">
+            <label for="tipo_oficina_outro" class="form-label fw-bold">Especifique o tipo:</label>
+            <input type="text" class="form-control form-control-lg border border-secondary bg-white" id="tipo_oficina_outro" name="tipo_oficina_outro">
           </div>
-          <div class="mb-3 col-md-6">
-            <label for="descricao" class="form-label">Descrição:</label>
-            <input type="text" class="form-control" id="descricao" name="descricao" required>
+
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button" class="btn btn-primary next-step px-4" data-next="2">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
           </div>
         </div>
 
-        <div class="mb-3">
-          <label for="ministrantes_search" class="form-label">Ministrantes:</label>
-          <input type="text" class="form-control mb-2" id="ministrantes_search" placeholder="Buscar ministrante...">
+        <!-- Etapa 2: Ministrantes -->
+        <div class="step" id="step-2" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">2</span>
+              <i class="bi bi-people me-2"></i>Ministrantes
+            </h5>
+          </div>
           
-          <div class="ministrantes-container border rounded p-2" style="max-height: 300px; overflow-y: auto;">
-            {% for minist in ministrantes %}
-              <div class="ministrante-card mb-2 p-2 border rounded" data-nome="{{ minist.nome.lower() }}">
-                <div class="form-check">
-                  <input class="form-check-input ministrante-checkbox" type="checkbox" value="{{ minist.id }}" id="ministrante_{{ minist.id }}" name="ministrantes_ids[]">
-                  <label class="form-check-label w-100" for="ministrante_{{ minist.id }}">
-                    {{ minist.nome }}
-                  </label>
+          <div class="mb-4">
+            <label for="ministrantes_search" class="form-label fw-bold">Ministrantes:</label>
+            <input type="text" class="form-control form-control-lg border border-secondary bg-white mb-3" id="ministrantes_search" placeholder="Buscar ministrante...">
+            
+            <div class="ministrantes-container border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+              {% for minist in ministrantes %}
+                <div class="ministrante-card mb-2 p-3 border rounded" data-nome="{{ minist.nome.lower() }}">
+                  <div class="form-check">
+                    <input class="form-check-input ministrante-checkbox" type="checkbox" value="{{ minist.id }}" id="ministrante_{{ minist.id }}" name="ministrantes_ids[]">
+                    <label class="form-check-label w-100" for="ministrante_{{ minist.id }}">
+                      {{ minist.nome }}
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            <small class="text-muted mt-2 d-block">Selecione os ministrantes clicando nos cards</small>
+          </div>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="1">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-primary next-step px-4" data-next="3">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Etapa 3: Datas e Horários -->
+        <div class="step" id="step-3" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">3</span>
+              <i class="bi bi-calendar-event me-2"></i>Datas e Horários
+            </h5>
+          </div>
+          
+          <div class="mb-4">
+            <label class="form-label fw-bold">Datas e Horários:</label>
+            <div id="horarios-container">
+              {% for i in range(datas|length if datas is defined else 1) %}
+              <div class="data-item mb-3 p-3 border rounded shadow-sm">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4">
+                    <label>Data:</label>
+                    <input type="date" class="form-control border border-secondary bg-white" name="data[]" value="{{ datas[i] if datas is defined else '' }}" required>
+                  </div>
+                  <div class="col-md-3">
+                    <label>Horário de Início:</label>
+                    <input type="time" class="form-control border border-secondary bg-white" name="horario_inicio[]" value="{{ horarios_inicio[i] if horarios_inicio is defined else '' }}" required>
+                  </div>
+                  <div class="col-md-3">
+                    <label>Horário de Fim:</label>
+                    <input type="time" class="form-control border border-secondary bg-white" name="horario_fim[]" value="{{ horarios_fim[i] if horarios_fim is defined else '' }}" required>
+                  </div>
+                  <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remover-data w-100">Remover</button>
+                  </div>
                 </div>
               </div>
-            {% endfor %}
+              {% endfor %}
+            </div>
+            <button type="button" id="add-horario" class="btn btn-outline-primary w-100">
+              <i class="bi bi-plus-circle me-2"></i>Adicionar Dia
+            </button>
           </div>
-          <small class="text-muted">Selecione os ministrantes clicando nos cards</small>
-        </div>
-        
-        <script>
-          document.addEventListener('DOMContentLoaded', function() {
-            // Filtro de busca para ministrantes
-            const searchInput = document.getElementById('ministrantes_search');
-            const ministranteCards = document.querySelectorAll('.ministrante-card');
-            
-            searchInput.addEventListener('input', function() {
-              const searchTerm = this.value.toLowerCase().trim();
-              
-              ministranteCards.forEach(card => {
-                const nome = card.dataset.nome;
-                if (nome.includes(searchTerm)) {
-                  card.style.display = 'block';
-                } else {
-                  card.style.display = 'none';
-                }
-              });
-            });
-            
-            // Melhorar a experiência de seleção
-            ministranteCards.forEach(card => {
-              card.addEventListener('click', function(e) {
-                // Não acione quando o clique for diretamente no checkbox
-                if (e.target.type !== 'checkbox') {
-                  const checkbox = this.querySelector('.ministrante-checkbox');
-                  checkbox.checked = !checkbox.checked;
-                  
-                  // Atualizar estilo do card
-                  if (checkbox.checked) {
-                    this.classList.add('bg-light');
-                    this.style.borderColor = '#0d6efd';
-                  } else {
-                    this.classList.remove('bg-light');
-                    this.style.borderColor = '';
-                  }
-                }
-              });
-              
-              // Configura estilo inicial para os checkboxes
-              const checkbox = card.querySelector('.ministrante-checkbox');
-              checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                  card.classList.add('bg-light');
-                  card.style.borderColor = '#0d6efd';
-                } else {
-                  card.classList.remove('bg-light');
-                  card.style.borderColor = '';
-                }
-              });
-            });
-          });
-        </script>
-        
-        <style>
-          .ministrante-card {
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          .ministrante-card:hover {
-            background-color: #f8f9fa;
-          }
-          .ministrante-card.selected {
-            background-color: #e2f0ff;
-            border-color: #0d6efd !important;
-          }
-        </style>
-
-        <div class="mb-3">
-          <label for="tipo_oficina" class="form-label">Tipo de Atividade:</label>
-          <select class="form-select" id="tipo_oficina" name="tipo_oficina" required onchange="toggleOutroTipo()">
-            <option value="Oficina" selected>Oficina</option>
-            <option value="Palestra">Palestra</option>
-            <option value="Conferência">Conferência</option>
-            <option value="Mesa-redonda">Mesa-redonda</option>
-            <option value="Apresentação de trabalho">Apresentação de trabalho</option>
-            <option value="Minicurso">Minicurso</option>
-            <option value="Painéis">Painéis</option>
-            <option value="Exposição">Exposição</option>
-            <option value="Atividade cultural">Atividade cultural</option>
-            <option value="Sessão plenária">Sessão plenária</option>
-            <option value="outros">Outros</option>
-          </select>
-        </div>
-        
-        <div class="mb-3" id="outro_tipo_div" style="display: none;">
-          <label for="tipo_oficina_outro" class="form-label">Especifique o tipo:</label>
-          <input type="text" class="form-control" id="tipo_oficina_outro" name="tipo_oficina_outro">
-        </div>
-
-        <div class="mb-3">
-          <label for="tipo_inscricao" class="form-label">Inscrição:</label>
-          <select class="form-select" id="tipo_inscricao" name="tipo_inscricao" required>
-            <option value="sem_inscricao">Não é necessário se inscrever</option>
-            <option value="com_inscricao_sem_limite">Sem limite de vagas</option>
-            <option value="com_inscricao_com_limite" selected>Com limite de vagas</option>
-          </select>
-          <small class="text-muted"> Atenção, os certificados ficam disponiveis apenas para as opções com inscrição.</small>
-        </div>
-        
-        <div class="row">
-          <div class="mb-3 col-md-6" id="vagas-container">
-            <label for="vagas" class="form-label">Número de Vagas:</label>
-            <input type="number" class="form-control" id="vagas" name="vagas" required>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="carga_horaria" class="form-label fw-bold">Carga Horária (em horas):</label>
+              <input type="number" class="form-control form-control-lg border border-secondary bg-white" id="carga_horaria" name="carga_horaria" required>
+            </div>
           </div>
-          <div class="mb-3 col-md-6">
-            <label for="carga_horaria" class="form-label">Carga Horária (em horas):</label>
-            <input type="number" class="form-control" id="carga_horaria" name="carga_horaria" required>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="2">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-primary next-step px-4" data-next="4">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
           </div>
         </div>
 
-        <!-- Configuração de Check-in -->
-        <div class="row">
-          <div class="mb-3 col-md-6">
-            <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
-            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" placeholder="Ex: chave1,chave2,chave3,chave4,chave5">
+        <!-- Etapa 4: Localização -->
+        <div class="step" id="step-4" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">4</span>
+              <i class="bi bi-geo-alt me-2"></i>Localização
+            </h5>
           </div>
-          <div class="mb-3 col-md-6">
-            <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
-            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" placeholder="Informe a palavra correta">
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="estado" class="form-label fw-bold">Estado:</label>
+              <select class="form-select form-select-lg border border-secondary bg-white" name="estado" id="estado" required>
+                <option value="">Selecione um estado</option>
+                {% for sigla, nome in estados %}
+                  <option value="{{ sigla }}">{{ nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="cidade" class="form-label fw-bold">Cidade:</label>
+              <select class="form-select form-select-lg border border-secondary bg-white" name="cidade" id="cidade" required>
+                <option value="">Selecione um estado primeiro</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="3">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="button" class="btn btn-primary next-step px-4" data-next="5">
+              Próximo <i class="bi bi-arrow-right ms-2"></i>
+            </button>
           </div>
         </div>
 
-        <!-- Datas e Horários -->
-        <div class="mb-3">
-          <label class="form-label">Datas e Horários:</label>
-          <div id="horarios-container">
-            {% for i in range(datas|length if datas is defined else 1) %}
-            <div class="data-item mb-3 p-3 border rounded">
-              <div class="row g-2 align-items-end">
-                <div class="col-md-4">
-                  <label>Data:</label>
-                  <input type="date" class="form-control" name="data[]" value="{{ datas[i] if datas is defined else '' }}" required>
+        <!-- Etapa 5: Configurações -->
+        <div class="step" id="step-5" style="display: none;">
+          <div class="border-bottom border-primary pb-2 mb-4">
+            <h5 class="text-primary d-flex align-items-center">
+              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">5</span>
+              <i class="bi bi-gear me-2"></i>Configurações
+            </h5>
+          </div>
+          
+          <div class="mb-3">
+            <label for="tipo_inscricao" class="form-label fw-bold">Inscrição:</label>
+            <select class="form-select form-select-lg border border-secondary bg-white" id="tipo_inscricao" name="tipo_inscricao" required>
+              <option value="sem_inscricao">Não é necessário se inscrever</option>
+              <option value="com_inscricao_sem_limite">Sem limite de vagas</option>
+              <option value="com_inscricao_com_limite" selected>Com limite de vagas</option>
+            </select>
+            <small class="text-muted d-block mt-2">Atenção, os certificados ficam disponíveis apenas para as opções com inscrição.</small>
+          </div>
+          
+          <div class="row">
+            <div class="mb-3 col-md-6" id="vagas-container">
+              <label for="vagas" class="form-label fw-bold">Número de Vagas:</label>
+              <input type="number" class="form-control form-control-lg border border-secondary bg-white" id="vagas" name="vagas" required>
+            </div>
+          </div>
+
+          <!-- Configuração de Check-in -->
+          <div class="card bg-white shadow-sm border-0 mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">Configuração de Check-in</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="opcoes_checkin" class="form-label fw-bold">Opções de Check-in:</label>
+                  <input type="text" class="form-control border border-secondary bg-white" id="opcoes_checkin" name="opcoes_checkin" placeholder="Ex: chave1,chave2,chave3,chave4,chave5">
                 </div>
-                <div class="col-md-3">
-                  <label>Horário de Início:</label>
-                  <input type="time" class="form-control" name="horario_inicio[]" value="{{ horarios_inicio[i] if horarios_inicio is defined else '' }}" required>
-                </div>
-                <div class="col-md-3">
-                  <label>Horário de Fim:</label>
-                  <input type="time" class="form-control" name="horario_fim[]" value="{{ horarios_fim[i] if horarios_fim is defined else '' }}" required>
-                </div>
-                <div class="col-md-2">
-                  <button type="button" class="btn btn-danger btn-sm remover-data w-100">Remover</button>
+                <div class="col-md-6 mb-3">
+                  <label for="palavra_correta" class="form-label fw-bold">Palavra-correta para Check-in:</label>
+                  <input type="text" class="form-control border border-secondary bg-white" id="palavra_correta" name="palavra_correta" placeholder="Informe a palavra correta">
                 </div>
               </div>
             </div>
-            {% endfor %}
           </div>
-          <button type="button" id="add-horario" class="btn btn-info w-100 mb-3">+ Adicionar Dia</button>
-        </div>
 
-        <div class="row">
-          <div class="mb-3 col-md-6">
-            <label for="estado" class="form-label">Estado:</label>
-            <select class="form-select" name="estado" id="estado" required>
-              <option value="">Selecione um estado</option>
-              {% for sigla, nome in estados %}
-                <option value="{{ sigla }}">{{ nome }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-3 col-md-6">
-            <label for="cidade" class="form-label">Cidade:</label>
-            <select class="form-select" name="cidade" id="cidade" required>
-              <option value="">Selecione um estado primeiro</option>
-            </select>
-          </div>
-        </div>
-
-
-        {% if current_user.habilita_pagamento %}
-        <!-- Configuração de Inscrição para Clientes com Pagamento Habilitado -->
-        <div class="mb-3">
-          <label class="form-label">Configuração de Inscrição:</label>
-          <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita">
-            <label class="form-check-label" for="inscricao_gratuita">
-              Inscrição Gratuita
-            </label>
-          </div>
-        </div>
-        
-        <!-- Container para Tipos de Inscrição e Preços -->
-        <div id="tipos-inscricao-container" class="{% if evento and evento.inscricao_gratuita %}d-none{% else %}d-block{% endif %}">
-          <div id="tipos-inscricao-list">
-            {% if evento and evento.tipos_inscricao_evento and not evento.inscricao_gratuita %}
-              {% for tipo in evento.tipos_inscricao_evento %}
-              <div class="row mb-2 align-items-center">
-                <div class="col-md-4">
-                  <label class="form-label">Tipo de Inscrição:</label>
-                  <input type="text" class="form-control" name="nome_tipo[]" value="{{ tipo.nome }}" placeholder="Nome do Tipo de Inscrição">
-                </div>
-                <div class="col-md-2">
-                  <label class="form-label">Preço:</label>
-                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" value="{{ tipo.preco }}" placeholder="Preço">
-                </div>
-                <div class="col-md-2">
-                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-                </div>
+          {% if current_user.habilita_pagamento %}
+          <!-- Configuração de Inscrição para Clientes com Pagamento Habilitado -->
+          <div class="card bg-white shadow-sm border-0 mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">Configuração de Pagamento</h6>
+            </div>
+            <div class="card-body">
+              <div class="form-check form-switch mb-3">
+                <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita">
+                <label class="form-check-label" for="inscricao_gratuita">
+                  Inscrição Gratuita
+                </label>
+                <small class="form-text text-muted d-block mt-1">
+                  Quando marcado, todos os tipos de inscrição terão o preço definido como R$ 0,00.
+                </small>
               </div>
-              {% endfor %}
-            {% else %}
-              <!-- Caso não haja tipos de inscrição ou seja gratuito, exibe um campo vazio como padrão -->
-              <div class="row mb-2 align-items-center">
-                <div class="col-md-4">
-                  <label class="form-label">Tipo de Inscrição:</label>
-                  <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+              
+              <!-- Container para Tipos de Inscrição e Preços -->
+              <div id="tipos-inscricao-container" class="{% if evento and evento.inscricao_gratuita %}d-none{% else %}d-block{% endif %}">
+                <div id="tipos-inscricao-list">
+                  {% if evento and evento.tipos_inscricao_evento and not evento.inscricao_gratuita %}
+                    {% for tipo in evento.tipos_inscricao_evento %}
+                    <div class="row mb-3 align-items-center">
+                      <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
+                        <label class="form-label">Tipo de Inscrição:</label>
+                        <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" value="{{ tipo.nome }}" placeholder="Nome do Tipo de Inscrição">
+                      </div>
+                      <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
+                        <label class="form-label">Preço:</label>
+                        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" value="{{ tipo.preco }}" placeholder="Preço">
+                      </div>
+                      <div class="col-md-3 col-sm-6">
+                        <button type="button" class="btn btn-danger w-100 remover-tipo-inscricao">
+                          <i class="bi bi-trash"></i> Remover
+                        </button>
+                      </div>
+                    </div>
+                    {% endfor %}
+                  {% else %}
+                    <!-- Caso não haja tipos de inscrição ou seja gratuito, exibe um campo vazio como padrão -->
+                    <div class="row mb-3 align-items-center">
+                      <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
+                        <label class="form-label">Tipo de Inscrição:</label>
+                        <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+                      </div>
+                      <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
+                        <label class="form-label">Preço:</label>
+                        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" placeholder="Preço">
+                      </div>
+                      <div class="col-md-3 col-sm-6">
+                        <button type="button" class="btn btn-danger w-100 remover-tipo-inscricao">
+                          <i class="bi bi-trash"></i> Remover
+                        </button>
+                      </div>
+                    </div>
+                  {% endif %}
                 </div>
-                <div class="col-md-2">
-                  <label class="form-label">Preço:</label>
-                  <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
-                </div>
-                <div class="col-md-2">
-                  <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
-                </div>
+                <button type="button" id="adicionar-tipo-inscricao" class="btn btn-outline-primary mt-2">
+                  <i class="bi bi-plus-circle me-1"></i> Adicionar Tipo de Inscrição
+                </button>
               </div>
-            {% endif %}
+            </div>
           </div>
-          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">
-            + Adicionar Tipo de Inscrição
-          </button>
-        </div>
-        {% endif %}
+          {% endif %}
 
-        <button type="submit" class="btn btn-success w-100 mt-4">Criar Atividade</button>
-        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Voltar</a>
+          <div class="d-flex justify-content-between mt-4">
+            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="4">
+              <i class="bi bi-arrow-left me-2"></i> Anterior
+            </button>
+            <button type="submit" class="btn btn-success px-4">
+              <i class="bi bi-save me-2"></i>Criar Atividade
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Scripts JavaScript -->
-<script>
-  function toggleOutroTipo() {
-    const tipoSelect = document.getElementById('tipo_oficina');
-    const outroTipoDiv = document.getElementById('outro_tipo_div');
+<!-- Estilos CSS -->
+<style>
+  /* Barra de progresso moderna */
+  .progress-container {
+    margin: 30px 0;
+  }
+
+  .progress-steps-container {
+    position: relative;
+  }
+
+  .step-indicator-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    max-width: 20%;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: #6c757d;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+    border: 2px solid #dee2e6;
+  }
+
+  .step-label {
+    font-size: 0.8rem;
+    text-align: center;
+    color: #6c757d;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .step-indicator.active .step-number {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  }
+
+  .step-indicator.active .step-label {
+    color: var(--bs-primary);
+    font-weight: bold;
+  }
+
+  .step-indicator.completed .step-number {
+    background-color: #198754;
+    color: white;
+    border-color: #198754;
+  }
+
+  .progress-bar-modern {
+    height: 8px;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    margin: 0 20px;
+  }
+
+  /* Estilos para etapas e transições */
+  .step {
+    transition: opacity 0.3s ease;
+  }
+
+  .form-control:focus, .form-check-input:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+
+  /* Melhorias para ministrantes */
+  .ministrante-card {
+    cursor: pointer;
+    transition: all 0.2s;
+    border-color: #dee2e6;
+  }
+  .ministrante-card:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+  }
+  .ministrante-card.selected {
+    background-color: #e2f0ff;
+    border-color: #0d6efd !important;
+  }
+
+  /* Estilos para data items */
+  .data-item {
+    transition: all 0.3s ease;
+  }
+  .data-item:hover {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  }
+
+  /* Melhorias para dispositivos móveis */
+  @media (max-width: 768px) {
+    .container {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
     
-    if (tipoSelect.value === 'outros') {
-      outroTipoDiv.style.display = 'block';
-    } else {
-      outroTipoDiv.style.display = 'none';
+    h5.text-primary {
+      font-size: 1.1rem;
+    }
+    
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .next-step, .prev-step {
+      width: 45%;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+      font-size: 0.9rem;
+    }
+    
+    .step-label {
+      font-size: 0.7rem;
+    }
+    
+    .step-number {
+      width: 30px;
+      height: 30px;
+      font-size: 0.8rem;
+    }
+    
+    .progress-bar-modern {
+      top: 15px;
     }
   }
+
+  /* Para telas muito pequenas */
+  @media (max-width: 576px) {
+    .step-label {
+      display: none;
+    }
+    
+    .progress-bar-modern {
+      margin: 0 15px;
+    }
+  }
+
+  /* Animações e efeitos visuais */
+  .step:not([style*="display: none"]) {
+    animation: fadeIn 0.5s;
+  }
   
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
+
+<!-- Scripts JavaScript -->
+<script>
   document.addEventListener('DOMContentLoaded', function() {
-      // Controle de exibição do campo de vagas baseado no tipo de inscrição
-      const tipoInscricaoSelect = document.getElementById('tipo_inscricao');
-      const vagasContainer = document.getElementById('vagas-container');
-      const vagasInput = document.getElementById('vagas');
+    // Controle de etapas
+    const progressBar = document.getElementById('progress-bar');
+    const steps = document.querySelectorAll('.step');
+    let currentStep = 1;
+
+    // Atualizar barra de progresso e indicadores
+    function updateProgressBar(step) {
+      const totalSteps = steps.length;
+      const percent = (step / totalSteps) * 100;
       
-      tipoInscricaoSelect.addEventListener('change', function() {
-        if (this.value === 'com_inscricao_com_limite') {
-          vagasContainer.style.display = 'block';
-          vagasInput.required = true;
+      // Atualizar a barra de progresso
+      progressBar.style.width = percent + '%';
+      progressBar.setAttribute('aria-valuenow', percent);
+      
+      // Atualizar os indicadores de etapa
+      document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+        if (index + 1 < step) {
+          indicator.classList.add('completed');
+          indicator.classList.remove('active');
+        } else if (index + 1 === step) {
+          indicator.classList.add('active');
+          indicator.classList.remove('completed');
         } else {
-          vagasContainer.style.display = 'none';
-          vagasInput.required = false;
-          if (this.value === 'com_inscricao_sem_limite') {
-            vagasInput.value = '9999'; // Um valor alto para representar "sem limite"
+          indicator.classList.remove('active', 'completed');
+        }
+      });
+    }
+
+    // Navegar para próxima etapa
+    document.querySelectorAll('.next-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const nextStep = parseInt(this.getAttribute('data-next'));
+        
+        // Validar etapa atual antes de prosseguir
+        if (!validateStep(currentStep)) {
+          return;
+        }
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar próxima etapa
+        document.getElementById(`step-${nextStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = nextStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
+    // Navegar para etapa anterior
+    document.querySelectorAll('.prev-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const prevStep = parseInt(this.getAttribute('data-prev'));
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar etapa anterior
+        document.getElementById(`step-${prevStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = prevStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
+    // Validação de cada etapa
+    function validateStep(step) {
+      switch(step) {
+        case 1:
+          const eventoId = document.getElementById('evento_id').value;
+          const titulo = document.getElementById('titulo').value;
+          const descricao = document.getElementById('descricao').value;
+          
+          if (!eventoId || !titulo || !descricao) {
+            alert("Por favor, preencha todos os campos obrigatórios para continuar.");
+            return false;
+          }
+          return true;
+          
+        case 2:
+          // A seleção de ministrantes é opcional
+          return true;
+          
+        case 3:
+          const dataItems = document.querySelectorAll('.data-item');
+          const cargaHoraria = document.getElementById('carga_horaria').value;
+          
+          if (dataItems.length === 0 || !cargaHoraria) {
+            alert("Por favor, defina pelo menos uma data e a carga horária.");
+            return false;
+          }
+          return true;
+          
+        case 4:
+          const estado = document.getElementById('estado').value;
+          const cidade = document.getElementById('cidade').value;
+          
+          if (!estado || !cidade) {
+            alert("Por favor, selecione o estado e a cidade para continuar.");
+            return false;
+          }
+          return true;
+          
+        case 5:
+          // A etapa final é validada no envio do formulário
+          return true;
+          
+        default:
+          return true;
+      }
+    }
+
+    // Funções originais mantidas
+    function toggleOutroTipo() {
+      const tipoSelect = document.getElementById('tipo_oficina');
+      const outroTipoDiv = document.getElementById('outro_tipo_div');
+      
+      if (tipoSelect.value === 'outros') {
+        outroTipoDiv.style.display = 'block';
+      } else {
+        outroTipoDiv.style.display = 'none';
+      }
+    }
+    
+    // Controle de exibição do campo de vagas baseado no tipo de inscrição
+    const tipoInscricaoSelect = document.getElementById('tipo_inscricao');
+    const vagasContainer = document.getElementById('vagas-container');
+    const vagasInput = document.getElementById('vagas');
+    
+    tipoInscricaoSelect.addEventListener('change', function() {
+      if (this.value === 'com_inscricao_com_limite') {
+        vagasContainer.style.display = 'block';
+        vagasInput.required = true;
+      } else {
+        vagasContainer.style.display = 'none';
+        vagasInput.required = false;
+        if (this.value === 'com_inscricao_sem_limite') {
+          vagasInput.value = '9999'; // Um valor alto para representar "sem limite"
+        } else {
+          vagasInput.value = '0'; // Para 'sem_inscricao'
+        }
+      }
+    });
+
+    // Filtro de busca para ministrantes
+    const searchInput = document.getElementById('ministrantes_search');
+    const ministranteCards = document.querySelectorAll('.ministrante-card');
+    
+    searchInput.addEventListener('input', function() {
+      const searchTerm = this.value.toLowerCase().trim();
+      
+      ministranteCards.forEach(card => {
+        const nome = card.dataset.nome;
+        if (nome.includes(searchTerm)) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+    
+    // Melhorar a experiência de seleção de ministrantes
+    ministranteCards.forEach(card => {
+      card.addEventListener('click', function(e) {
+        // Não acione quando o clique for diretamente no checkbox
+        if (e.target.type !== 'checkbox') {
+          const checkbox = this.querySelector('.ministrante-checkbox');
+          checkbox.checked = !checkbox.checked;
+          
+          // Atualizar estilo do card
+          if (checkbox.checked) {
+            this.classList.add('bg-light');
+            this.style.borderColor = '#0d6efd';
           } else {
-            vagasInput.value = '0'; // Para 'sem_inscricao'
+            this.classList.remove('bg-light');
+            this.style.borderColor = '';
           }
         }
       });
+      
+      // Configura estilo inicial para os checkboxes
+      const checkbox = card.querySelector('.ministrante-checkbox');
+      checkbox.addEventListener('change', function() {
+        if (this.checked) {
+          card.classList.add('bg-light');
+          card.style.borderColor = '#0d6efd';
+        } else {
+          card.classList.remove('bg-light');
+          card.style.borderColor = '';
+        }
+      });
+    });
+
     // Adição de novo horário
     document.getElementById('add-horario').addEventListener('click', function () {
       let container = document.getElementById('horarios-container');
       let newGroup = document.createElement('div');
-      newGroup.classList.add('data-item', 'mb-3', 'p-3', 'border', 'rounded');
+      newGroup.classList.add('data-item', 'mb-3', 'p-3', 'border', 'rounded', 'shadow-sm');
       newGroup.innerHTML = `
         <div class="row g-2 align-items-end">
           <div class="col-md-4">
             <label>Data:</label>
-            <input type="date" class="form-control" name="data[]" required>
+            <input type="date" class="form-control border border-secondary bg-white" name="data[]" required>
           </div>
           <div class="col-md-3">
             <label>Horário de Início:</label>
-            <input type="time" class="form-control" name="horario_inicio[]" required>
+            <input type="time" class="form-control border border-secondary bg-white" name="horario_inicio[]" required>
           </div>
           <div class="col-md-3">
             <label>Horário de Fim:</label>
-            <input type="time" class="form-control" name="horario_fim[]" required>
+            <input type="time" class="form-control border border-secondary bg-white" name="horario_fim[]" required>
           </div>
           <div class="col-md-2">
             <button type="button" class="btn btn-danger btn-sm remover-data w-100">Remover</button>
@@ -401,93 +829,11 @@
       }
     });
 
-    // Busca os estados do Brasil via API do IBGE
-    let statesData = [];
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
-      .then(response => response.json())
-      .then(data => {
-        statesData = data.sort((a, b) => a.nome.localeCompare(b.nome));
-        // Adiciona um local inicial
-        addLocationBlock();
-      })
-      .catch(error => console.error('Erro ao buscar estados:', error));
-
-    // Função para adicionar um novo bloco de localização
-    function addLocationBlock() {
-      const block = document.createElement('div');
-      block.classList.add('location-block', 'mb-3', 'p-3', 'border', 'rounded');
-      
-      let statesOptions = `<option value="">Selecione o Estado</option>`;
-      statesData.forEach(state => {
-        statesOptions += `<option value="${state.sigla}">${state.nome}</option>`;
-      });
-
-      block.innerHTML = `
-        <div class="row g-2">
-          <div class="col-md-5">
-            <label class="form-label">Estado</label>
-            <select name="estados[]" class="form-select estado-select">
-              ${statesOptions}
-            </select>
-          </div>
-          <div class="col-md-5">
-            <label class="form-label">Cidade</label>
-            <select name="cidades[]" class="form-select cidade-select">
-              <option value="">Selecione o Estado primeiro</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label d-block">&nbsp;</label>
-            <button type="button" class="btn btn-danger btn-sm remover-location w-100">Remover</button>
-          </div>
-        </div>
-      `;
-
-      // Adicionar ouvinte de evento para o select de estados
-      const estadoSelect = block.querySelector('.estado-select');
-      const cidadeSelect = block.querySelector('.cidade-select');
-
-      estadoSelect.addEventListener('change', function() {
-        const siglaUF = this.value;
-        cidadeSelect.innerHTML = '<option value="">Selecione a cidade</option>';
-
-        if (siglaUF) {
-          fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${siglaUF}/municipios`)
-            .then(response => response.json())
-            .then(cidades => {
-              cidades.sort((a, b) => a.nome.localeCompare(b.nome));
-              cidades.forEach(cidade => {
-                const option = document.createElement('option');
-                option.value = cidade.nome;
-                option.textContent = cidade.nome;
-                cidadeSelect.appendChild(option);
-              });
-            })
-            .catch(error => console.error('Erro ao buscar cidades:', error));
-        }
-      });
-
-      locationsContainer.appendChild(block);
-    }
-
-    // Delegação de eventos para remover locais
-    locationsContainer.addEventListener('click', function(e) {
-      if (e.target && e.target.classList.contains('remover-location')) {
-        // Verifica se há mais de um elemento antes de remover
-        const locationBlocks = document.querySelectorAll('.location-block');
-        if (locationBlocks.length > 1) {
-          e.target.closest('.location-block').remove();
-        } else {
-          alert('É necessário pelo menos um local de atuação!');
-        }
-      }
-    });
-
-    // Adicionar evento no botão para adicionar mais locais
-    addLocationBtn.addEventListener('click', addLocationBlock);
-
+    // Inicializar a barra de progresso
+    updateProgressBar(1);
   });
 </script>
+
 {% if current_user.habilita_pagamento %}
 <script>
 document.getElementById('inscricao_gratuita').addEventListener('change', function() {
@@ -498,18 +844,20 @@ document.getElementById('inscricao_gratuita').addEventListener('change', functio
 document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function() {
   var container = document.getElementById('tipos-inscricao-list');
   var div = document.createElement('div');
-  div.className = 'row mb-2 align-items-center';
+  div.className = 'row mb-3 align-items-center';
   div.innerHTML = `
-    <div class="col-md-4">
+    <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
       <label class="form-label">Tipo de Inscrição:</label>
-      <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+      <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
     </div>
-    <div class="col-md-2">
+    <div class="col-md-3 col-sm-6 mb-2 mb-md-0">
       <label class="form-label">Preço:</label>
-      <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+      <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" placeholder="Preço">
     </div>
-    <div class="col-md-2">
-      <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+    <div class="col-md-3 col-sm-6">
+      <button type="button" class="btn btn-danger w-100 remover-tipo-inscricao">
+        <i class="bi bi-trash"></i> Remover
+      </button>
     </div>
   `;
   container.appendChild(div);
