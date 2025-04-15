@@ -50,7 +50,6 @@
         <div class="step" id="step-1">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">1</span>
               <i class="bi bi-info-circle me-2"></i>Informações Básicas
             </h5>
           </div>
@@ -121,7 +120,6 @@
         <div class="step" id="step-2" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">2</span>
               <i class="bi bi-people me-2"></i>Ministrantes
             </h5>
           </div>
@@ -159,7 +157,6 @@
         <div class="step" id="step-3" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">3</span>
               <i class="bi bi-calendar-event me-2"></i>Datas e Horários
             </h5>
           </div>
@@ -215,7 +212,6 @@
         <div class="step" id="step-4" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">4</span>
               <i class="bi bi-geo-alt me-2"></i>Localização
             </h5>
           </div>
@@ -252,7 +248,6 @@
         <div class="step" id="step-5" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">5</span>
               <i class="bi bi-gear me-2"></i>Configurações
             </h5>
           </div>
@@ -673,7 +668,7 @@
       }
     }
 
-    // Funções originais mantidas
+    // Função para mostrar/ocultar o campo personalizado de tipo
     function toggleOutroTipo() {
       const tipoSelect = document.getElementById('tipo_oficina');
       const outroTipoDiv = document.getElementById('outro_tipo_div');
@@ -684,6 +679,11 @@
         outroTipoDiv.style.display = 'none';
       }
     }
+    
+    // Vincular o evento change e chamar a função inicialmente
+    const tipoSelect = document.getElementById('tipo_oficina');
+    tipoSelect.addEventListener('change', toggleOutroTipo);
+    toggleOutroTipo(); // Chamar para verificar o estado inicial
     
     // Controle de exibição do campo de vagas baseado no tipo de inscrição
     const tipoInscricaoSelect = document.getElementById('tipo_inscricao');
