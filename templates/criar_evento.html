@@ -4,20 +4,42 @@
 {% block content %}
 <div class="container py-5">
   <!-- Header section with improved background contrast -->
-  <div class="bg-primary bg-gradient rounded-lg p-4 mb-4 shadow">
+  <div class="bg-primary bg-gradient rounded-3 p-4 mb-4 shadow-sm">
     <h1 class="h3 fw-bold text-white mb-0">
       <i class="bi bi-calendar-event me-2"></i>Criar Novo Evento
     </h1>
   </div>
 
-  <!-- Barra de progresso -->
-  <div class="progress mb-4 shadow-sm" style="height: 25px;">
-    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">Etapa 1 de 4</div>
+<!-- Barra de progresso moderna com indicadores de etapa -->
+<div class="progress-container mb-4">
+  <div class="progress-steps-container">
+    <div class="step-indicator-container">
+      <div class="step-indicator active" data-step="1">
+        <div class="step-number">1</div>
+        <div class="step-label">Informações Básicas</div>
+      </div>
+      <div class="step-indicator" data-step="2">
+        <div class="step-number">2</div>
+        <div class="step-label">Data e Horário</div>
+      </div>
+      <div class="step-indicator" data-step="3">
+        <div class="step-number">3</div>
+        <div class="step-label">Localização</div>
+      </div>
+      <div class="step-indicator" data-step="4">
+        <div class="step-number">4</div>
+        <div class="step-label">Inscrição</div>
+      </div>
+    </div>
+    <div class="progress progress-bar-modern">
+      <div id="progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
   </div>
+</div>
 
   <!-- Main form card with better shadow -->
   <div class="card border-0 shadow">
-    <div class="card-body p-4 bg-light">
+    <div class="card-body p-4 bg-light rounded-3">
       <form method="POST" enctype="multipart/form-data" id="form-evento">
         <!-- Organized in etapas with visual spacing -->
         
@@ -25,7 +47,6 @@
         <div class="step" id="step-1">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">1</span>
               <i class="bi bi-info-circle me-2"></i>Informações Básicas
             </h5>
           </div>
@@ -58,7 +79,6 @@
         <div class="step" id="step-2" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">2</span>
               <i class="bi bi-geo-alt me-2"></i>Localização e Mídia
             </h5>
           </div>
@@ -98,7 +118,6 @@
         <div class="step" id="step-3" style="display: none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">3</span>
               <i class="bi bi-calendar me-2"></i>Data e Horário
             </h5>
           </div>
@@ -140,7 +159,6 @@
           {% if current_user.habilita_pagamento %}
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <span class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 28px; height: 28px;">4</span>
               <i class="bi bi-cash-coin me-2"></i>Opções de Inscrição
             </h5>
           </div>
@@ -297,13 +315,28 @@
     const steps = document.querySelectorAll('.step');
     let currentStep = 1;
 
-    // Atualizar barra de progresso
-    function updateProgressBar(step) {
-      const percent = (step / steps.length) * 100;
-      progressBar.style.width = percent + '%';
-      progressBar.setAttribute('aria-valuenow', percent);
-      progressBar.textContent = `Etapa ${step} de ${steps.length}`;
+// Atualizar barra de progresso e indicadores
+function updateProgressBar(step) {
+  const totalSteps = steps.length;
+  const percent = (step / totalSteps) * 100;
+  
+  // Atualizar a barra de progresso
+  progressBar.style.width = percent + '%';
+  progressBar.setAttribute('aria-valuenow', percent);
+  
+  // Atualizar os indicadores de etapa
+  document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+    if (index + 1 < step) {
+      indicator.classList.add('completed');
+      indicator.classList.remove('active');
+    } else if (index + 1 === step) {
+      indicator.classList.add('active');
+      indicator.classList.remove('completed');
+    } else {
+      indicator.classList.remove('active', 'completed');
     }
+  });
+}
 
     // Navegar para próxima etapa
     document.querySelectorAll('.next-step').forEach(button => {
@@ -739,10 +772,113 @@
     }
   }
   
-  /* Animação da barra de progresso */
-  .progress-bar {
-    transition: width 0.5s ease;
+/* Barra de progresso moderna */
+.progress-container {
+  margin: 30px 0;
+}
+
+.progress-steps-container {
+  position: relative;
+}
+
+.step-indicator-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  max-width: 20%;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  color: #6c757d;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6;
+}
+
+.step-label {
+  font-size: 0.8rem;
+  text-align: center;
+  color: #6c757d;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.step-indicator.active .step-number {
+  background-color: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+.step-indicator.active .step-label {
+  color: var(--bs-primary);
+  font-weight: bold;
+}
+
+.step-indicator.completed .step-number {
+  background-color: #198754;
+  color: white;
+  border-color: #198754;
+}
+
+.progress-bar-modern {
+  height: 8px;
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  margin: 0 20px;
+}
+
+/* Para dispositivos móveis */
+@media (max-width: 768px) {
+  .step-label {
+    font-size: 0.7rem;
   }
+  
+  .step-number {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+  
+  .progress-bar-modern {
+    top: 15px;
+  }
+}
+
+/* Para telas muito pequenas */
+@media (max-width: 576px) {
+  .step-label {
+    display: none;
+  }
+  
+  .progress-bar-modern {
+    margin: 0 15px;
+  }
+}
   
   /* Melhorias visuais para formulários */
   .form-label {
