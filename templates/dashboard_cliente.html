@@ -401,7 +401,7 @@
     </div>
 
     <!-- Gerenciar Trabalhos Científicos -->
-    <div class="col-lg-6 col-xl-3">
+    <div class="col-lg-6 col-xl-3 mb-4">
       <div class="card h-100 shadow-sm hover-shadow border-0">
         <div class="card-body">
           <div class="text-info mb-3">
@@ -657,14 +657,14 @@
     </div>
     
     <!-- Cards de Criação -->
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-primary text-white mb-3">
-            <i class="bi bi-calendar-event"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-primary mb-3">
+            <i class="bi bi-calendar-event fs-1"></i>
           </div>
-          <h5 class="card-title">Criar Evento</h5>
-          <p class="card-text text-muted small">Crie um novo evento com data, local e inscrições</p>
+          <h5 class="card-title fw-bold">Criar Evento</h5>
+          <p class="card-text text-muted">Crie um novo evento com data, local e inscrições</p>
           <a href="{{ url_for('routes.criar_evento') }}" class="btn btn-primary mt-2 w-100">
             <i class="bi bi-calendar-event me-2"></i> Novo Evento
           </a>
@@ -672,14 +672,14 @@
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-success text-white mb-3">
-            <i class="bi bi-journal-plus"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-success mb-3">
+            <i class="bi bi-journal-plus fs-1"></i>
           </div>
-          <h5 class="card-title">Criar Atividade</h5>
-          <p class="card-text text-muted small">Adicione palestras, oficinas e outras atividades</p>
+          <h5 class="card-title fw-bold">Criar Atividade</h5>
+          <p class="card-text text-muted">Adicione palestras, oficinas e outras atividades</p>
           <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-success mt-2 w-100">
             <i class="bi bi-journal-plus me-2"></i> Nova Atividade
           </a>
@@ -687,14 +687,14 @@
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-info text-white mb-3">
-            <i class="bi bi-person-plus"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-info mb-3">
+            <i class="bi bi-person-plus fs-1"></i>
           </div>
-          <h5 class="card-title">Adicionar Ministrante</h5>
-          <p class="card-text text-muted small">Cadastre palestrantes e facilitadores</p>
+          <h5 class="card-title fw-bold">Adicionar Ministrante</h5>
+          <p class="card-text text-muted">Cadastre palestrantes e facilitadores</p>
           <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-info mt-2 w-100 text-white">
             <i class="bi bi-person-plus me-2"></i> Novo Ministrante
           </a>
@@ -702,14 +702,14 @@
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-warning text-white mb-3">
-            <i class="bi bi-link-45deg"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-warning mb-3">
+            <i class="bi bi-link-45deg fs-1"></i>
           </div>
-          <h5 class="card-title">Link de Inscrição</h5>
-          <p class="card-text text-muted small">Gere links personalizados para compartilhar</p>
+          <h5 class="card-title fw-bold">Link de Inscrição</h5>
+          <p class="card-text text-muted ">Gere links personalizados para compartilhar</p>
           <button id="gerarLinkBtn" class="btn btn-warning mt-2 w-100">
             <i class="bi bi-link-45deg me-2"></i> Gerar Link
           </button>
@@ -717,29 +717,29 @@
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-primary text-white mb-3">
-            <i class="bi bi-speedometer2"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-secondary mb-3">
+            <i class="bi bi-journal-bookmark fs-1"></i>
           </div>
-          <h5 class="card-title">Dashboard</h5>
-          <p class="card-text text-muted small">Visualize estatísticas de agendamentos</p>
-          <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-primary mt-2 w-100">
-            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+          <h5 class="card-title fw-bold">Agendamentos</h5>
+          <p class="card-text text-muted ">Acesse o dashboard de agendamentos</p>
+          <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-secondary mt-2 w-100">
+            <i class="bi bi-journal-bookmark me-2"></i> Agendamentos
           </a>
         </div>
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-success text-white mb-3">
-            <i class="bi bi-image"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-success mb-3">
+            <i class="bi bi-image fs-1"></i>
           </div>
-          <h5 class="card-title">Certificados</h5>
-          <p class="card-text text-muted small">Personalize a aparência dos certificados</p>
+          <h5 class="card-title fw-bold">Certificados</h5>
+          <p class="card-text text-muted ">Personalize a aparência dos certificados</p>
           <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" class="btn btn-success mt-2 w-100">
             <i class="bi bi-image me-2"></i> Personalizar
           </a>
@@ -747,14 +747,14 @@
       </div>
     </div>
     
-    <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100 action-card">
-        <div class="card-body text-center p-4">
-          <div class="icon-circle bg-danger text-white mb-3">
-            <i class="bi bi-trophy"></i>
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-danger mb-3">
+            <i class="bi bi-trophy fs-1"></i>
           </div>
-          <h5 class="card-title">Realizar Sorteio</h5>
-          <p class="card-text text-muted small">Sorteie prêmios entre os participantes</p>
+          <h5 class="card-title fw-bold">Realizar Sorteio</h5>
+          <p class="card-text text-muted ">Sorteie prêmios entre os participantes</p>
           <a href="{{ url_for('routes.gerenciar_sorteios') }}" class="btn btn-danger mt-2 w-100">
             <i class="bi bi-gift me-2"></i> Gerenciar Sorteios
           </a>
