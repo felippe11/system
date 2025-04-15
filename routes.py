@@ -4092,8 +4092,16 @@ def gerar_pdf_checkins_qr():
     from models import Checkin
     from extensions import db
 
-    # 1. Busca os Check-ins com palavra_chave="QR-AUTO"
-    checkins_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').order_by(Checkin.data_hora.desc()).all()
+    from flask_login import current_user
+
+    # Busca apenas os check-ins QR do cliente logado
+    checkins_qr = (Checkin.query
+        .filter(Checkin.palavra_chave == 'QR-AUTO')
+        .join(Checkin.oficina)
+        .filter_by(cliente_id=current_user.id)
+        .order_by(Checkin.data_hora.desc())
+        .all())
+
     
     if not checkins_qr:
         flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
@@ -4637,9 +4645,8 @@ def dashboard_cliente():
     
 
     # Mostra apenas as oficinas criadas por este cliente OU pelo admin (cliente_id nulo)
-    oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(
-        db.joinedload(Oficina.inscritos).joinedload(Inscricao.usuario)
-    ).all()
+    oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
+
     # Cálculo das estatísticas
     total_oficinas = len(oficinas)
     
@@ -4658,9 +4665,19 @@ def dashboard_cliente():
     ).count()
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
 
-    checkins_via_qr = Checkin.query.join(Oficina).filter(
-        (Oficina.cliente_id == current_user.id) | (Oficina.cliente_id.is_(None))
-    ).all()
+    # Busca apenas check-ins via QR dos usuários do cliente
+    checkins_via_qr = (
+        Checkin.query
+        .join(Checkin.usuario)
+        .join(Checkin.oficina)
+        .filter(
+            Checkin.palavra_chave == 'QR-AUTO',
+            Usuario.cliente_id == current_user.id,
+            Oficina.cliente_id == current_user.id
+        )
+        .order_by(Checkin.data_hora.desc())
+        .all()
+    )
 
     # Se for para filtrar pela coluna Inscricao.cliente_id:
     inscritos = Inscricao.query.filter(
