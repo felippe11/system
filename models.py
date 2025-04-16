@@ -576,14 +576,18 @@ class FeedbackCampo(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     resposta_campo_id = db.Column(db.Integer, db.ForeignKey('respostas_campo.id'), nullable=False)
-    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=False)
-
+    
+    ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
+    cliente_id     = db.Column(db.Integer, db.ForeignKey('cliente.id'),    nullable=True)
+    
     texto_feedback = db.Column(db.Text, nullable=False)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relacionamentos
     resposta_campo = db.relationship('RespostaCampo', backref=db.backref('feedbacks_campo', lazy=True))
     ministrante = db.relationship('Ministrante', backref=db.backref('feedbacks_campo', lazy=True))
+    cliente     = db.relationship('Cliente',    backref=db.backref('feedbacks_campo', lazy=True))
+
 
     def __repr__(self):
         return f"<FeedbackCampo id={self.id} resposta_campo={self.resposta_campo_id} ministrante={self.ministrante_id}>"
