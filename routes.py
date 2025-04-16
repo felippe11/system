@@ -5849,81 +5849,48 @@ def listar_respostas_ministrante(formulario_id):
         respostas=respostas
     )
 
-@routes.route('/respostas/<int:resposta_id>/feedback', methods=['GET', 'POST'])
+@routes.route(
+    '/respostas/<int:resposta_id>/feedback', 
+    methods=['GET', 'POST'], 
+    endpoint='dar_feedback_resposta_formulario'
+)
 @login_required
 def dar_feedback_resposta(resposta_id):
+    # só Ministrantes ou Clientes
     if not (isinstance(current_user, Ministrante) or current_user.tipo == 'cliente'):
         flash('Apenas clientes e ministrantes podem dar feedback.', 'danger')
         return redirect(url_for('routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
-    formulario = resposta.formulario
-    lista_campos = formulario.campos
+    lista_campos = resposta.formulario.campos
     resposta_campos = resposta.respostas_campos
 
     if request.method == 'POST':
-        for rcampo in resposta_campos:
-            nome_textarea = f"feedback_{rcampo.id}"
-            texto_feedback = request.form.get(nome_textarea, "").strip()
-            if texto_feedback:
-                novo_feedback = FeedbackCampo(
-                    resposta_campo_id=rcampo.id,
-                    ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
-                    cliente_id=current_user.id if current_user.tipo == 'cliente' else None,
-                    texto_feedback=texto_feedback
-                )
-                db.session.add(novo_feedback)
-        
+        for rc in resposta_campos:
+            nome_textarea = f"feedback_{rc.id}"
+            texto = request.form.get(nome_textarea, "").strip()
+            if not texto:
+                continue
+
+            fb = FeedbackCampo(
+                resposta_campo_id=rc.id,
+                ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
+                cliente_id    =current_user.id if current_user.tipo == 'cliente' else None,
+                texto_feedback=texto
+            )
+            db.session.add(fb)
+
         db.session.commit()
         flash("Feedback registrado com sucesso!", "success")
-        return redirect(url_for('routes.dar_feedback_resposta', resposta_id=resposta_id))
+        return redirect(url_for('routes.dar_feedback_resposta_formulario', resposta_id=resposta_id))
 
     return render_template(
         'dar_feedback_resposta.html',
         resposta=resposta,
+        lista_campos=lista_campos,
         resposta_campos=resposta_campos
     )
 
-@routes.route('/resposta/<int:resposta_id>/definir_status', methods=['GET','POST'])
-@login_required
-def definir_status_resposta(resposta_id):
-    # 1) Garantir que somente ministrantes possam avaliar
-    if not isinstance(current_user, Ministrante):
-        flash("Apenas ministrantes podem definir status de respostas.", "danger")
-        return redirect(url_for('routes.dashboard_ministrante'))  
-
-    # 2) Buscar a resposta no banco
-    resposta = RespostaFormulario.query.get_or_404(resposta_id)
-
-    # Exemplo: se quiser garantir que o ministrante só avalie respostas do seu formulário...
-    # ou que pertencem a alguma oficina que ele ministra. 
-    # Adapte conforme sua lógica.
-
-    if request.method == 'POST':
-        novo_status = request.form.get('status_avaliacao')
-        # Exemplo: checa se o valor está na lista de escolhas
-        opcoes_validas = [
-            "Não Avaliada",
-            "Aprovada",
-            "Aprovada com ressalvas",
-            "Aprovada para pôster",
-            "Aprovada para apresentação oral",
-            "Negada"
-        ]
-        if novo_status not in opcoes_validas:
-            flash("Status inválido!", "danger")
-            return redirect(url_for('routes.definir_status_resposta', resposta_id=resposta_id))
-
-        # 3) Atualiza o status
-        resposta.status_avaliacao = novo_status
-        db.session.commit()
-        flash("Status atualizado com sucesso!", "success")
-
-        return redirect(url_for('routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id))
-        # ou para onde você preferir redirecionar
-
-    # Se for GET, renderize a página com um formulário para escolher o status
-    return render_template('definir_status_resposta.html', resposta=resposta)
 
 @routes.route('/definir_status_inline', methods=['POST'])
 @login_required
