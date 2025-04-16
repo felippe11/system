@@ -1,14 +1,254 @@
-<!-- reset_senha_cpf.html -->
 {% extends "base.html" %}
 {% block content %}
-  <h2>Redefinir Senha</h2>
-  <form method="POST">
-    <label for="nova_senha">Nova Senha:</label>
-    <input type="password" name="nova_senha" required>
+<div class="reset-password-container">
+  <div class="reset-password-card">
+    <div class="card-header">
+      <h2>Redefinir Senha</h2>
+      <p class="subtitle">Crie uma nova senha segura para sua conta</p>
+    </div>
+    
+    <form method="POST" class="reset-password-form">
+      <div class="form-group">
+        <label for="nova_senha">Nova Senha</label>
+        <div class="password-input">
+          <input type="password" id="nova_senha" name="nova_senha" required placeholder="Digite sua nova senha">
+          <span class="toggle-password" onclick="togglePassword('nova_senha')">
+            <i class="eye-icon">👁️</i>
+          </span>
+        </div>
+        <div class="password-strength">
+          <div class="strength-bar">
+            <div class="strength-indicator" id="strength-meter"></div>
+          </div>
+          <span class="strength-text" id="strength-text">Força da senha</span>
+        </div>
+      </div>
 
-    <label for="confirmar_senha">Confirmar Senha:</label>
-    <input type="password" name="confirmar_senha" required>
+      <div class="form-group">
+        <label for="confirmar_senha">Confirmar Senha</label>
+        <div class="password-input">
+          <input type="password" id="confirmar_senha" name="confirmar_senha" required placeholder="Confirme sua nova senha">
+          <span class="toggle-password" onclick="togglePassword('confirmar_senha')">
+            <i class="eye-icon">👁️</i>
+          </span>
+        </div>
+        <div id="password-match" class="match-feedback"></div>
+      </div>
 
-    <button type="submit">Redefinir Senha</button>
-  </form>
+      <button type="submit" class="reset-btn">Redefinir Senha</button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .reset-password-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f7f9fc;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .reset-password-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    width: 100%;
+    max-width: 450px;
+    padding: 32px;
+  }
+
+  .card-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .card-header h2 {
+    color: #1a73e8;
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+  }
+
+  .subtitle {
+    color: #5f6368;
+    margin-top: 8px;
+    font-size: 16px;
+  }
+
+  .reset-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .form-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #202124;
+  }
+
+  .password-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  input[type="password"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border 0.2s;
+    outline: none;
+  }
+
+  input[type="password"]:focus {
+    border: 2px solid #1a73e8;
+    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+  }
+
+  .toggle-password {
+    position: absolute;
+    right: 16px;
+    cursor: pointer;
+    color: #5f6368;
+  }
+
+  .password-strength {
+    margin-top: 8px;
+  }
+
+  .strength-bar {
+    height: 4px;
+    background-color: #dadce0;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .strength-indicator {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s, background-color 0.3s;
+    background-color: #dadce0;
+  }
+
+  .strength-text {
+    font-size: 12px;
+    color: #5f6368;
+    display: block;
+    margin-top: 4px;
+  }
+
+  .match-feedback {
+    font-size: 12px;
+    height: 16px;
+  }
+
+  .reset-btn {
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 16px;
+  }
+
+  .reset-btn:hover {
+    background-color: #1765cc;
+  }
+
+  .reset-btn:active {
+    background-color: #185abc;
+  }
+
+  /* Password strength colors */
+  .weak { background-color: #f44336; width: 25%; }
+  .medium { background-color: #ff9800; width: 50%; }
+  .strong { background-color: #4caf50; width: 100%; }
+  
+  /* Match feedback colors */
+  .match { color: #4caf50; }
+  .no-match { color: #f44336; }
+</style>
+
+<script>
+  // Toggle password visibility
+  function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    if (input.type === "password") {
+      input.type = "text";
+    } else {
+      input.type = "password";
+    }
+  }
+
+  // Check password strength
+  document.getElementById('nova_senha').addEventListener('input', function() {
+    const password = this.value;
+    const strengthMeter = document.getElementById('strength-meter');
+    const strengthText = document.getElementById('strength-text');
+    
+    // Simple password strength check
+    let strength = 0;
+    
+    if (password.length > 6) strength += 1;
+    if (password.length > 10) strength += 1;
+    if (/[A-Z]/.test(password)) strength += 1;
+    if (/[0-9]/.test(password)) strength += 1;
+    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+    
+    // Update UI based on strength
+    if (password.length === 0) {
+      strengthMeter.className = '';
+      strengthMeter.style.width = '0%';
+      strengthText.textContent = 'Força da senha';
+    } else if (strength < 2) {
+      strengthMeter.className = 'weak';
+      strengthText.textContent = 'Fraca';
+    } else if (strength < 4) {
+      strengthMeter.className = 'medium';
+      strengthText.textContent = 'Média';
+    } else {
+      strengthMeter.className = 'strong';
+      strengthText.textContent = 'Forte';
+    }
+    
+    // Check if passwords match
+    checkPasswordsMatch();
+  });
+  
+  // Check if passwords match
+  function checkPasswordsMatch() {
+    const password = document.getElementById('nova_senha').value;
+    const confirmPassword = document.getElementById('confirmar_senha').value;
+    const matchFeedback = document.getElementById('password-match');
+    
+    if (confirmPassword.length === 0) {
+      matchFeedback.textContent = '';
+      matchFeedback.className = '';
+    } else if (password === confirmPassword) {
+      matchFeedback.textContent = 'Senhas coincidem';
+      matchFeedback.className = 'match';
+    } else {
+      matchFeedback.textContent = 'Senhas não coincidem';
+      matchFeedback.className = 'no-match';
+    }
+  }
+  
+  document.getElementById('confirmar_senha').addEventListener('input', checkPasswordsMatch);
+</script>
 {% endblock %}
