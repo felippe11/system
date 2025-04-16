@@ -450,7 +450,17 @@
                 </div>
                 <div class="card-body">
                   <p><strong>Descrição:</strong> {{ oficina.descricao }}</p>
-                  <p><strong>Ministrante:</strong> {{ oficina.ministrante }}</p>
+                  <p><strong>Ministrantes:</strong>
+                    {% if oficina.ministrantes %}
+                      {{ oficina.ministrantes | join(', ') }}
+                    {% else %}
+                      N/A
+                    {% endif %}
+                  </p>
+                  
+                  
+                  
+                  
                   <p><strong>Datas e Horários:</strong></p>
                   <ul>
                     {% for dia in oficina.dias %}
