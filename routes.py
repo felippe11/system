@@ -20,6 +20,8 @@ from extensions import socketio
 from models import TrabalhoCientifico
 from flask_socketio import emit, join_room, leave_room
 from utils import formatar_brasilia
+from sqlalchemy import or_
+
 
 
 
@@ -815,7 +817,7 @@ def dashboard():
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
+           'ministrantes': [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else [],
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': dias,
@@ -999,7 +1001,7 @@ def dashboard_participante():
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A',
+            'ministrantes': [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else [],
             'vagas': oficina.vagas,
             'carga_horaria': oficina.carga_horaria,
             'dias': dias,
@@ -2346,16 +2348,27 @@ def checkin(oficina_id):
 def lista_checkins(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso Autorizado!", "danger")
-        
+
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
+
     usuarios_checkin = [{
         'nome': checkin.usuario.nome,
         'cpf': checkin.usuario.cpf,
         'email': checkin.usuario.email,
         'data_hora': checkin.data_hora
     } for checkin in checkins]
-    return render_template('lista_checkins.html', oficina=oficina, usuarios_checkin=usuarios_checkin)
+
+    # Coleta todos os ministrantes associados à oficina
+    ministrantes = [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else []
+
+    return render_template(
+        'lista_checkins.html',
+        oficina=oficina,
+        usuarios_checkin=usuarios_checkin,
+        ministrantes=ministrantes
+    )
+
 
 @routes.route('/gerar_pdf_checkins/<int:oficina_id>', methods=['GET'])
 @login_required
@@ -2812,6 +2825,7 @@ def get_participantes_contagem():
     """
     tipo = request.args.get('tipo')
     id_param = request.args.get('id', type=int)
+    
     
     if not tipo or not id_param:
         return jsonify({'success': False, 'message': 'Parâmetros inválidos'})
@@ -4155,40 +4169,53 @@ def get_relatorio_file(filename):
 @routes.route('/gerar_pdf_checkins_qr', methods=['GET'])
 @login_required
 def gerar_pdf_checkins_qr():
-    """
-    Gera um relatório em PDF dos check-ins realizados via QR Code.
-    O relatório é agrupado por oficina e inclui dados do participante e horário do check-in.
-    """
     import os
     import pytz
     from datetime import datetime
     from collections import defaultdict
-
     from flask import flash, redirect, url_for, send_file
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle
     from reportlab.lib.pagesizes import landscape, A4
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT
-    from models import Checkin
+    from models import Checkin, Usuario, Oficina
     from extensions import db
-
     from flask_login import current_user
+    from sqlalchemy import or_
 
-    # Busca apenas os check-ins QR do cliente logado
-    checkins_qr = (Checkin.query
-        .filter(Checkin.palavra_chave == 'QR-AUTO')
-        .join(Checkin.oficina)
-        .filter_by(cliente_id=current_user.id)
+    print(f"\n📥 DEBUG: Cliente logado: {current_user.id} ({current_user.nome})")
+
+    checkins_qr = (
+        Checkin.query
+        .outerjoin(Checkin.oficina)
+        .outerjoin(Checkin.usuario)
+        .filter(
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO', 'QR-OFICINA', 'QR‑OFICINA']),
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id
+            )
+        )
         .order_by(Checkin.data_hora.desc())
-        .all())
+        .all()
+    )
 
-    
+    print(f"📊 DEBUG: Total de check-ins encontrados: {len(checkins_qr)}")
+    for i, ck in enumerate(checkins_qr, start=1):
+        print(f" - Checkin {i}: Usuario={ck.usuario.nome if ck.usuario else 'N/A'} | "
+              f"Email={ck.usuario.email if ck.usuario else 'N/A'} | "
+              f"Palavra={ck.palavra_chave} | "
+              f"Oficina={'N/A' if not ck.oficina else ck.oficina.titulo} | "
+              f"ClienteID={ck.cliente_id}")
+
     if not checkins_qr:
         flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
         return redirect(url_for('routes.dashboard'))
 
+    # (continua com sua lógica atual do PDF sem alterações)
     # 2. Configuração do documento
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
     pdf_filename = f"checkins_qr_{current_time}.pdf"
@@ -4748,18 +4775,24 @@ def dashboard_cliente():
     percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
 
     # Busca apenas check-ins via QR dos usuários do cliente
+    from sqlalchemy import or_
+
     checkins_via_qr = (
         Checkin.query
-        .join(Checkin.usuario)
-        .join(Checkin.oficina)
+        .outerjoin(Checkin.oficina)
+        .outerjoin(Checkin.usuario)
         .filter(
-            Checkin.palavra_chave == 'QR-AUTO',
-            Usuario.cliente_id == current_user.id,
-            Oficina.cliente_id == current_user.id
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO']),
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id  # segurança extra
+            )
         )
         .order_by(Checkin.data_hora.desc())
         .all()
     )
+
 
     # Se for para filtrar pela coluna Inscricao.cliente_id:
     inscritos = Inscricao.query.filter(
@@ -5898,81 +5931,48 @@ def listar_respostas_ministrante(formulario_id):
         respostas=respostas
     )
 
-@routes.route('/respostas/<int:resposta_id>/feedback', methods=['GET', 'POST'])
+@routes.route(
+    '/respostas/<int:resposta_id>/feedback', 
+    methods=['GET', 'POST'], 
+    endpoint='dar_feedback_resposta_formulario'
+)
 @login_required
 def dar_feedback_resposta(resposta_id):
+    # só Ministrantes ou Clientes
     if not (isinstance(current_user, Ministrante) or current_user.tipo == 'cliente'):
         flash('Apenas clientes e ministrantes podem dar feedback.', 'danger')
         return redirect(url_for('routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
-    formulario = resposta.formulario
-    lista_campos = formulario.campos
+    lista_campos = resposta.formulario.campos
     resposta_campos = resposta.respostas_campos
 
     if request.method == 'POST':
-        for rcampo in resposta_campos:
-            nome_textarea = f"feedback_{rcampo.id}"
-            texto_feedback = request.form.get(nome_textarea, "").strip()
-            if texto_feedback:
-                novo_feedback = FeedbackCampo(
-                    resposta_campo_id=rcampo.id,
-                    ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
-                    cliente_id=current_user.id if current_user.tipo == 'cliente' else None,
-                    texto_feedback=texto_feedback
-                )
-                db.session.add(novo_feedback)
-        
+        for rc in resposta_campos:
+            nome_textarea = f"feedback_{rc.id}"
+            texto = request.form.get(nome_textarea, "").strip()
+            if not texto:
+                continue
+
+            fb = FeedbackCampo(
+                resposta_campo_id=rc.id,
+                ministrante_id=current_user.id if isinstance(current_user, Ministrante) else None,
+                cliente_id    =current_user.id if current_user.tipo == 'cliente' else None,
+                texto_feedback=texto
+            )
+            db.session.add(fb)
+
         db.session.commit()
         flash("Feedback registrado com sucesso!", "success")
-        return redirect(url_for('routes.dar_feedback_resposta', resposta_id=resposta_id))
+        return redirect(url_for('routes.dar_feedback_resposta_formulario', resposta_id=resposta_id))
 
     return render_template(
         'dar_feedback_resposta.html',
         resposta=resposta,
+        lista_campos=lista_campos,
         resposta_campos=resposta_campos
     )
 
-@routes.route('/resposta/<int:resposta_id>/definir_status', methods=['GET','POST'])
-@login_required
-def definir_status_resposta(resposta_id):
-    # 1) Garantir que somente ministrantes possam avaliar
-    if not isinstance(current_user, Ministrante):
-        flash("Apenas ministrantes podem definir status de respostas.", "danger")
-        return redirect(url_for('routes.dashboard_ministrante'))  
-
-    # 2) Buscar a resposta no banco
-    resposta = RespostaFormulario.query.get_or_404(resposta_id)
-
-    # Exemplo: se quiser garantir que o ministrante só avalie respostas do seu formulário...
-    # ou que pertencem a alguma oficina que ele ministra. 
-    # Adapte conforme sua lógica.
-
-    if request.method == 'POST':
-        novo_status = request.form.get('status_avaliacao')
-        # Exemplo: checa se o valor está na lista de escolhas
-        opcoes_validas = [
-            "Não Avaliada",
-            "Aprovada",
-            "Aprovada com ressalvas",
-            "Aprovada para pôster",
-            "Aprovada para apresentação oral",
-            "Negada"
-        ]
-        if novo_status not in opcoes_validas:
-            flash("Status inválido!", "danger")
-            return redirect(url_for('routes.definir_status_resposta', resposta_id=resposta_id))
-
-        # 3) Atualiza o status
-        resposta.status_avaliacao = novo_status
-        db.session.commit()
-        flash("Status atualizado com sucesso!", "success")
-
-        return redirect(url_for('routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id))
-        # ou para onde você preferir redirecionar
-
-    # Se for GET, renderize a página com um formulário para escolher o status
-    return render_template('definir_status_resposta.html', resposta=resposta)
 
 @routes.route('/definir_status_inline', methods=['POST'])
 @login_required
@@ -13309,6 +13309,8 @@ def toggle_qrcode_evento_credenciamento():
         "message": "Habilitação de QRCode de Evento atualizada!"
     })
     
+from flask import current_app  # já pode deixar no topo
+
 @routes.route("/exportar_checkins_evento_pdf/<int:evento_id>")
 @login_required
 def exportar_checkins_evento_pdf(evento_id):
@@ -13327,18 +13329,37 @@ def exportar_checkins_evento_pdf(evento_id):
     from reportlab.platypus.doctemplate import SimpleDocTemplate
     from reportlab.platypus.frames import Frame
     from reportlab.platypus.tableofcontents import TableOfContents
-    
-    # Verifica permissão
-    if not (current_user.is_cliente() or current_user.is_superuser()):
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard_cliente"))
 
-    evento = Evento.query.get_or_404(evento_id)
-    checkins = Checkin.query.filter_by(evento_id=evento.id).all()
+    print(f"[DEBUG] Usuário acessou exportação de check-ins do evento ID {evento_id}")
+
+    if current_user.is_cliente():
+            evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+            if not evento:
+                flash("Evento não encontrado ou não pertence ao seu acesso.", "danger")
+                print("[DEBUG] Evento não pertence ao cliente logado.")
+                return redirect(url_for("routes.dashboard_cliente"))
+    else:
+        evento = Evento.query.get_or_404(evento_id)
+
+    print(f"[DEBUG] Evento encontrado: {evento.nome} (ID: {evento.id})")
+
+    checkins = (
+        Checkin.query
+        .filter_by(evento_id=evento.id)
+        .filter(Checkin.palavra_chave == 'QR-EVENTO')
+        .all()
+    )
+    print(f"[DEBUG] Total de check-ins encontrados: {len(checkins)}")
 
     if not checkins:
         flash("Nenhum check-in encontrado para este evento.", "warning")
         return redirect(url_for("routes.dashboard_cliente"))
+
+    # DEBUG de alguns dados dos check-ins
+    for c in checkins[:5]:
+        print(f"[DEBUG] Check-in: Nome={c.usuario.nome}, Data={c.data_hora}, Palavra-chave={c.palavra_chave}")
+
+    # ...continua o restante da geração do PDF normalmente
 
     # Cria PDF em memória
     buffer = BytesIO()
@@ -13733,3 +13754,179 @@ def webhook_mp():
                 insc.status_pagamento = "approved"
                 db.session.commit()
     return "", 200  
+
+
+from flask import request, send_file, redirect, url_for, flash
+from io import BytesIO
+from datetime import datetime
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from flask_login import login_required, current_user
+from models import Checkin, Evento
+import unicodedata
+
+@routes.route('/exportar_checkins_pdf_opcoes', methods=['GET'])
+@login_required
+def exportar_checkins_pdf_opcoes():
+    from flask import request
+    import unicodedata
+    from io import BytesIO
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from models import Checkin, Evento, Oficina
+
+    def normalizar(texto):
+        return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("utf-8").strip()
+
+    tipo = normalizar(request.args.get('tipo', '').upper())
+    evento_id = request.args.get('evento_id')
+
+    if not current_user.is_cliente():
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Query base
+    base_query = Checkin.query.filter(Checkin.cliente_id == current_user.id)
+
+    if evento_id and evento_id != 'todos':
+        base_query = base_query.filter(Checkin.evento_id == int(evento_id))
+
+    if tipo and tipo != 'TODOS':
+        base_query = base_query.filter(Checkin.palavra_chave == tipo)
+
+    checkins = base_query.order_by(Checkin.data_hora.desc()).all()
+
+    if not checkins:
+        flash("Nenhum check-in encontrado para os filtros aplicados.", "info")
+        return redirect(url_for('routes.dashboard'))
+
+    # Gerar PDF
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Cores modernas
+    azul_principal = colors.HexColor('#2196F3')
+    azul_claro = colors.HexColor('#BBDEFB')
+    cinza_escuro = colors.HexColor('#424242')
+    cinza_claro = colors.HexColor('#EEEEEE')
+    
+    def adicionar_cabecalho_rodape(pagina, num_pagina, total_paginas):
+        # Cabeçalho
+        pagina.setFillColor(azul_principal)
+        pagina.rect(0, height - 2*cm, width, 2*cm, fill=1)
+        
+        pagina.setFillColor(colors.white)
+        pagina.setFont("Helvetica-Bold", 16)
+        titulo_relatorio = "Relatório de Check-ins"
+        if tipo != 'TODOS':
+            titulo_relatorio += f" - {tipo}"
+        pagina.drawCentredString(width/2, height - 1.2*cm, titulo_relatorio)
+        
+        pagina.setFont("Helvetica", 10)
+        data_relatorio = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        pagina.drawString(width - 5*cm, height - 1.7*cm, data_relatorio)
+        
+        # Rodapé
+        pagina.setFillColor(cinza_escuro)
+        pagina.rect(0, 0, width, 1*cm, fill=1)
+        pagina.setFillColor(colors.white)
+        pagina.setFont("Helvetica", 8)
+        pagina.drawString(1*cm, 0.4*cm, f"Página {num_pagina} de {total_paginas}")
+        pagina.drawRightString(width - 1*cm, 0.4*cm, "Sistema de Check-ins")
+    
+    # Função para criar nova página
+    def nova_pagina(num_pagina, total_paginas):
+        p.showPage()
+        adicionar_cabecalho_rodape(p, num_pagina, total_paginas)
+        return height - 3*cm  # Retornar posição Y após o cabeçalho
+    
+    # Calcular número total de páginas (estimativa)
+    # Vamos estimar 15 itens por página
+    total_paginas = 1 + (len(checkins) // 15)
+    
+    # Agrupando check-ins por evento e oficina
+    agrupados = {}
+    for c in checkins:
+        chave = f"EVENTO: {c.evento.nome}" if c.evento else f"OFICINA: {c.oficina.titulo if c.oficina else 'Sem título'}"
+        if chave not in agrupados:
+            agrupados[chave] = []
+        agrupados[chave].append(c)
+    
+    # Iniciar primeira página
+    pagina_atual = 1
+    adicionar_cabecalho_rodape(p, pagina_atual, total_paginas)
+    y = height - 3*cm  # Posição inicial após o cabeçalho
+    
+    for secao, lista in agrupados.items():
+        # Verificar se tem espaço na página
+        if y < 8*cm:
+            y = nova_pagina(pagina_atual, total_paginas)
+            pagina_atual += 1
+        
+        # Desenhar cabeçalho da seção
+        p.setFont("Helvetica-Bold", 12)
+        p.setFillColor(azul_principal)
+        p.drawString(1*cm, y, secao)
+        y -= 0.8*cm
+        
+        # Desenhar cabeçalho da tabela
+        p.setFillColor(azul_principal)
+        p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
+        
+        p.setFillColor(colors.white)
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(1.2*cm, y - 0.4*cm, "Participante")
+        p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
+        p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+        
+        y -= 0.7*cm
+        
+        # Listar check-ins desta seção
+        linha_alternada = True
+        for c in lista:
+            # Verificar se tem espaço na página
+            if y < 2*cm:
+                y = nova_pagina(pagina_atual, total_paginas)
+                pagina_atual += 1
+                
+                # Redesenhar cabeçalho da tabela
+                p.setFillColor(azul_principal)
+                p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
+                
+                p.setFillColor(colors.white)
+                p.setFont("Helvetica-Bold", 10)
+                p.drawString(1.2*cm, y - 0.4*cm, "Participante")
+                p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
+                p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+                
+                y -= 0.7*cm
+            
+            # Alternar cores de fundo para linhas
+            if linha_alternada:
+                p.setFillColor(cinza_claro)
+                p.rect(1*cm, y - 0.5*cm, width - 2*cm, 0.5*cm, fill=1)
+            linha_alternada = not linha_alternada
+            
+            # Desenhar dados
+            p.setFillColor(cinza_escuro)
+            p.setFont("Helvetica", 9)
+            p.drawString(1.2*cm, y - 0.3*cm, c.usuario.nome[:28])
+            p.drawString(7*cm, y - 0.3*cm, c.palavra_chave[:20])
+            p.drawString(13*cm, y - 0.3*cm, c.data_hora.strftime('%d/%m/%Y %H:%M'))
+            
+            # Descer para próxima linha
+            y -= 0.5*cm
+        
+        # Espaço entre seções
+        y -= 1*cm
+    
+    # Finalizar PDF
+    p.save()
+    buffer.seek(0)
+    
+    nome_arquivo = f"checkins_{evento_id or 'todos'}_{tipo or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype='application/pdf')

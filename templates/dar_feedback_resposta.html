@@ -1,76 +1,330 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container my-4">
+<div class="feedback-container">
+  <div class="feedback-header">
+    <h1 class="feedback-title">Dar Feedback</h1>
+    <h2 class="feedback-subtitle">Formulário: {{ resposta.formulario.nome }}</h2>
+    
+    <div class="participant-info">
+      <div class="participant-avatar">
+        <span>{{ resposta.usuario.nome[0] }}</span>
+      </div>
+      <div class="participant-details">
+        <h3>{{ resposta.usuario.nome }}</h3>
+        <p>{{ resposta.usuario.email }}</p>
+      </div>
+    </div>
+  </div>
 
-  <h3 class="mb-3">
-    Dar Feedback - Formulário: {{ resposta.formulario.nome }}
-  </h3>
-  <p>
-    <strong>Participante:</strong> {{ resposta.usuario.nome }} ({{ resposta.usuario.email }})
-  </p>
-
-  <form method="POST" class="mt-4">
-    <!-- Se você estiver usando Flask-WTF / CSRFProtect -->
+  <form method="POST" class="feedback-form">
     {% if form is defined %}
       {{ form.csrf_token() }}
     {% endif %}
-
-    <div class="table-responsive">
-      <table class="table align-middle">
-        <thead class="table-dark">
-          <tr>
-            <th>Campo</th>
-            <th>Resposta do Participante</th>
-            <th>Feedback(s) já existente(s)</th>
-            <th>Adicionar Novo Feedback</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for rcampo in resposta_campos %}
-          <tr>
-            <td class="fw-bold">
-              {{ rcampo.campo.nome }}
-            </td>
-            <td>
-              <!-- Se for um arquivo, exibe link; caso contrário, exibe valor -->
-              {% if rcampo.campo.tipo == 'file' and rcampo.valor %}
-                <a href="{{ url_for('routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}">
-                  Visualizar Anexo
-                </a>
-              {% else %}
-                {{ rcampo.valor }}
-              {% endif %}
-            </td>
-            <td style="min-width: 200px;">
-              {% if rcampo.feedbacks_campo %}
-                {% for f in rcampo.feedbacks_campo %}
-                <div class="bg-light p-2 mb-2 rounded">
-                  <strong>{{ f.ministrante.nome }}</strong> <br>
-                  <em>{{ f.criado_em.strftime('%d/%m/%Y %H:%M') }}</em><br>
-                  {{ f.texto_feedback }}
-                </div>
-                {% endfor %}
-              {% else %}
-                <span class="text-muted">Nenhum feedback até agora.</span>
-              {% endif %}
-            </td>
-            <td style="min-width: 200px;">
-              <textarea class="form-control" name="feedback_{{ rcampo.id }}" rows="2"></textarea>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    
+    <div class="feedback-items">
+      {% for rcampo in resposta_campos %}
+        <div class="feedback-item">
+          <div class="feedback-card">
+            <div class="feedback-field">
+              <h4>Campo</h4>
+              <div class="field-name">{{ rcampo.campo.nome }}</div>
+            </div>
+            
+            <div class="feedback-response">
+              <h4>Resposta do Participante</h4>
+              <div class="response-content">
+                {% if rcampo.campo.tipo == 'file' and rcampo.valor %}
+                  <a href="#" class="file-link">
+                    <i class="file-icon"></i>
+                    Visualizar Anexo
+                  </a>
+                {% else %}
+                  {{ rcampo.valor }}
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="existing-feedback">
+              <h4>Feedback(s) Existente(s)</h4>
+              <div class="feedback-list">
+                {% if rcampo.feedbacks_campo %}
+                  {% for f in rcampo.feedbacks_campo %}
+                    <div class="feedback-entry">
+                      <div class="feedback-author">
+                        <strong>{{ f.ministrante.nome }}</strong>
+                        <span class="feedback-date">{{ f.criado_em.strftime('%d/%m/%Y %H:%M') }}</span>
+                      </div>
+                      <div class="feedback-text">{{ f.texto_feedback }}</div>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="no-feedback">Nenhum feedback até agora.</div>
+                {% endif %}
+              </div>
+            </div>
+            
+            <div class="new-feedback">
+              <h4>Adicionar Novo Feedback</h4>
+              <textarea name="feedback_{{ rcampo.id }}" class="feedback-textarea" placeholder="Digite seu feedback aqui..."></textarea>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
     </div>
-
-    <!-- BOTÃO PARA SALVAR O FEEDBACK -->
-    <div class="text-center mt-3">
-      <button type="submit" class="btn btn-primary">
+    
+    <div class="form-actions">
+      <button type="submit" class="submit-button">
+        <i class="send-icon"></i>
         Enviar Feedback
       </button>
     </div>
   </form>
-
 </div>
+
+<style>
+:root {
+  --primary-color: #4a6cf7;
+  --primary-hover: #3a5ae8;
+  --text-color: #333;
+  --light-text: #666;
+  --lighter-text: #888;
+  --border-color: #e0e0e0;
+  --light-bg: #f9f9f9;
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --success-color: #34c759;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.feedback-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: var(--font-sans);
+  color: var(--text-color);
+}
+
+.feedback-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.feedback-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--primary-color);
+}
+
+.feedback-subtitle {
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin: 0 0 1.5rem;
+  color: var(--light-text);
+}
+
+.participant-info {
+  display: flex;
+  align-items: center;
+  background-color: var(--light-bg);
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.participant-avatar {
+  width: 50px;
+  height: 50px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-right: 1rem;
+}
+
+.participant-details h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.participant-details p {
+  margin: 0.2rem 0 0;
+  color: var(--lighter-text);
+}
+
+.feedback-items {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.feedback-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.feedback-field, .feedback-response, .existing-feedback, .new-feedback {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.new-feedback {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.feedback-card h4 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  color: var(--lighter-text);
+  margin: 0 0 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+.field-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.response-content {
+  background-color: var(--light-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.file-link {
+  display: flex;
+  align-items: center;
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.file-icon::before {
+  content: "📎";
+  margin-right: 0.5rem;
+}
+
+.feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.feedback-entry {
+  background-color: var(--light-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  position: relative;
+}
+
+.feedback-author {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.feedback-date {
+  font-size: 0.85rem;
+  color: var(--lighter-text);
+}
+
+.feedback-text {
+  white-space: pre-wrap;
+}
+
+.no-feedback {
+  color: var(--lighter-text);
+  font-style: italic;
+}
+
+.feedback-textarea {
+  width: 100%;
+  height: 120px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.feedback-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(74, 108, 247, 0.2);
+}
+
+.form-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-button {
+  display: flex;
+  align-items: center;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.submit-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.send-icon::before {
+  content: "➤";
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .feedback-container {
+    padding: 1rem;
+  }
+  
+  .participant-info {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .participant-avatar {
+    margin-right: 0;
+    margin-bottom: 0.75rem;
+  }
+  
+  .feedback-card {
+    padding: 1rem;
+  }
+  
+  .feedback-author {
+    flex-direction: column;
+  }
+  
+  .form-actions {
+    justify-content: center;
+  }
+  
+  .submit-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>
 {% endblock %}
