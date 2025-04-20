@@ -1,100 +1,164 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <h2>Respostas - {{ formulario.nome }}</h2>
+<div class="container py-4">
+    <!-- Header with shadow card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">{{ formulario.nome }}</h2>
+            <div>
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}">
+                        <i class="bi bi-file-pdf"></i> PDF
+                    </a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('routes.exportar_csv', formulario_id=formulario.id) }}">
+                        <i class="bi bi-file-excel"></i> CSV
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and search bar -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <select class="form-select" id="filterStatus">
+                        <option value="">Filtrar por status</option>
+                        <option value="Não Avaliada">Não Avaliada</option>
+                        <option value="Aprovada">Aprovada</option>
+                        <option value="Aprovada com ressalvas">Aprovada com ressalvas</option>
+                        <option value="Aprovada para pôster">Aprovada para pôster</option>
+                        <option value="Aprovada para apresentação oral">Aprovada para apresentação oral</option>
+                        <option value="Negada">Negada</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Buscar por nome de usuário..." id="searchInput">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {% if respostas %}
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Usuário</th>
-                <th>Data de Envio</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for resposta in respostas %}
-            <tr>
-                <td>{{ resposta.usuario.nome }}</td>
-                <td>{{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}</td>
-
-                <!-- Coluna do STATUS (com form inline) -->
-                <td>
-                  <form method="POST" action="{{ url_for('routes.definir_status_inline') }}"
-                        class="d-flex align-items-center">
+    <!-- Response cards -->
+    <div class="row g-4" id="respostasContainer">
+        {% for resposta in respostas %}
+        <div class="col-md-6 resposta-item">
+            <div class="card h-100 shadow-sm border-{% if resposta.status_avaliacao == 'Não Avaliada' %}warning{% elif resposta.status_avaliacao == 'Aprovada' or resposta.status_avaliacao == 'Aprovada para pôster' or resposta.status_avaliacao == 'Aprovada para apresentação oral' %}success{% elif resposta.status_avaliacao == 'Aprovada com ressalvas' %}info{% else %}danger{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">{{ resposta.usuario.nome }}</h5>
+                    <span class="badge bg-{% if resposta.status_avaliacao == 'Não Avaliada' %}warning{% elif resposta.status_avaliacao == 'Aprovada' or resposta.status_avaliacao == 'Aprovada para pôster' or resposta.status_avaliacao == 'Aprovada para apresentação oral' %}success{% elif resposta.status_avaliacao == 'Aprovada com ressalvas' %}info{% else %}danger{% endif %}">
+                        {{ resposta.status_avaliacao }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        <i class="bi bi-calendar-event"></i> 
+                        {{ resposta.data_submissao.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
                     
-                    <!-- O ID da resposta (oculto) -->
-                    <input type="hidden" name="resposta_id" value="{{ resposta.id }}">
-
-                    <!-- Selecione o status -->
-                    <select name="status_avaliacao" class="form-select form-select-sm me-2">
-                      <option value="Não Avaliada"
-                        {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>
-                        Não Avaliada
-                      </option>
-                      <option value="Aprovada"
-                        {% if resposta.status_avaliacao == 'Aprovada' %} selected {% endif %}>
-                        Aprovada
-                      </option>
-                      <option value="Aprovada com ressalvas"
-                        {% if resposta.status_avaliacao == 'Aprovada com ressalvas' %} selected {% endif %}>
-                        Aprovada com ressalvas
-                      </option>
-                      <option value="Aprovada para pôster"
-                        {% if resposta.status_avaliacao == 'Aprovada para pôster' %} selected {% endif %}>
-                        Aprovada para pôster
-                      </option>
-                      <option value="Aprovada para apresentação oral"
-                        {% if resposta.status_avaliacao == 'Aprovada para apresentação oral' %} selected {% endif %}>
-                        Aprovada para apresentação oral
-                      </option>
-                      <option value="Negada"
-                        {% if resposta.status_avaliacao == 'Negada' %} selected {% endif %}>
-                        Negada
-                      </option>
-                    </select>
-
-                    <!-- Botão Salvar -->
-                    <button type="submit" class="btn btn-sm btn-primary">
-                      Salvar
-                    </button>
-                  </form>
-                </td>
-
-                <!-- Ações (Ver Detalhes / Dar Feedback) -->
-                <td>
-                    <!-- Botão: Ver Detalhes -->
-                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=resposta.id) }}"
-                       class="btn btn-info btn-sm mb-1">
-                       Ver Detalhes
-                    </a>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary status-toggle" data-resposta-id="{{ resposta.id }}">
+                                <i class="bi bi-pencil-square"></i> Alterar Status
+                            </button>
+                        </div>
+                        <a href="{{ url_for('routes.dar_feedback_resposta_formulario', resposta_id=resposta.id) }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-eye"></i> Ver / Feedback
+                        </a>
+                    </div>
                     
-                    <!-- Botão: Dar Feedback -->
-                    <a href="{{ url_for('routes.dar_feedback_resposta', resposta_id=resposta.id) }}"
-                       class="btn btn-primary btn-sm">
-                       Ver Respostas / Dar Feedback
-                    </a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    <!-- Hidden status form (revealed by button click) -->
+                    <div class="status-form mt-3" id="status-form-{{ resposta.id }}" style="display: none;">
+                        <form method="POST" action="{{ url_for('routes.definir_status_inline') }}" class="d-flex gap-2">
+                            <input type="hidden" name="resposta_id" value="{{ resposta.id }}">
+                            <select name="status_avaliacao" class="form-select form-select-sm">
+                                <option value="Não Avaliada" {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>Não Avaliada</option>
+                                <option value="Aprovada" {% if resposta.status_avaliacao == 'Aprovada' %} selected {% endif %}>Aprovada</option>
+                                <option value="Aprovada com ressalvas" {% if resposta.status_avaliacao == 'Aprovada com ressalvas' %} selected {% endif %}>Aprovada com ressalvas</option>
+                                <option value="Aprovada para pôster" {% if resposta.status_avaliacao == 'Aprovada para pôster' %} selected {% endif %}>Aprovada para pôster</option>
+                                <option value="Aprovada para apresentação oral" {% if resposta.status_avaliacao == 'Aprovada para apresentação oral' %} selected {% endif %}>Aprovada para apresentação oral</option>
+                                <option value="Negada" {% if resposta.status_avaliacao == 'Negada' %} selected {% endif %}>Negada</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary cancel-status-edit" data-resposta-id="{{ resposta.id }}">Cancelar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
     {% else %}
-      <p class="text-warning">Nenhuma resposta enviada ainda.</p>
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        Nenhuma resposta enviada ainda.
+    </div>
     {% endif %}
 
     <div class="mt-4">
-        <a href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}"
-           class="btn btn-primary">
-           📄 Exportar PDF
-        </a>
-        <a href="{{ url_for('routes.exportar_csv', formulario_id=formulario.id) }}"
-           class="btn btn-success">
-           📊 Exportar CSV
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
         </a>
     </div>
-
-    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary mt-3">Voltar</a>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle status edit form
+    document.querySelectorAll('.status-toggle').forEach(button => {
+        button.addEventListener('click', function() {
+            const respostaId = this.getAttribute('data-resposta-id');
+            document.getElementById(`status-form-${respostaId}`).style.display = 'block';
+        });
+    });
+
+    // Hide status edit form when cancel is clicked
+    document.querySelectorAll('.cancel-status-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            const respostaId = this.getAttribute('data-resposta-id');
+            document.getElementById(`status-form-${respostaId}`).style.display = 'none';
+        });
+    });
+
+    // Filter by status
+    document.getElementById('filterStatus').addEventListener('change', function() {
+        const selectedStatus = this.value;
+        const respostaItems = document.querySelectorAll('.resposta-item');
+        
+        respostaItems.forEach(item => {
+            const status = item.querySelector('.badge').textContent.trim();
+            if (selectedStatus === '' || status === selectedStatus) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Search by username
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchText = this.value.toLowerCase();
+        const respostaItems = document.querySelectorAll('.resposta-item');
+        
+        respostaItems.forEach(item => {
+            const username = item.querySelector('.card-title').textContent.toLowerCase();
+            if (username.includes(searchText)) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
