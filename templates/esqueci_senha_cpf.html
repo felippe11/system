@@ -6,22 +6,177 @@
   <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
       <!-- Card de Redefinição de Senha -->
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white text-center">
-          <h4 class="mb-0">Esqueci Minha Senha</h4>
+      <div class="card shadow border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-4">
+          <h4 class="mb-1 fw-semibold">Esqueci Minha Senha</h4>
           <small class="d-block">Informe seu CPF para redefinir sua senha</small>
         </div>
-        <div class="card-body">
-          <form method="POST">
-            <div class="mb-3">
-              <label for="cpf" class="form-label">CPF</label>
-              <input type="text" id="cpf" name="cpf" class="form-control" placeholder="Digite seu CPF" required>
+        <div class="card-body p-4">
+          <form method="POST" id="recuperarSenhaForm">
+            <div class="mb-4">
+              <label for="cpf" class="form-label fw-medium">CPF</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">
+                  <i class="bi bi-person-badge"></i>
+                </span>
+                <input type="text" id="cpf" name="cpf" class="form-control form-control-lg" 
+                  placeholder="000.000.000-00" maxlength="14" required>
+              </div>
+              <div class="invalid-feedback" id="cpfError">
+                CPF inválido, verifique os números digitados.
+              </div>
+              <small class="form-text text-muted mt-2">Digite apenas os números do seu CPF.</small>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Continuar</button>
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg py-3" id="btnSubmit">Continuar</button>
+              <a href="#" class="btn btn-link text-decoration-none">Voltar para o login</a>
+            </div>
           </form>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  body {
+    background-color: #f8f9fa;
+  }
+  
+  .card {
+    box-shadow: 0 10px 25px rgba(0,0,0,.05);
+    transition: all 0.3s ease;
+  }
+  
+  .card-header {
+    border-bottom: none;
+  }
+  
+  .form-control:focus {
+    border-color: #4a6fdc;
+    box-shadow: 0 0 0 0.25rem rgba(74, 111, 220, 0.25);
+  }
+  
+  .btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+    transform: translateY(-2px);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  
+  .btn-link {
+    color: #6c757d;
+  }
+  
+  .btn-link:hover {
+    color: #0d6efd;
+  }
+  
+  .invalid-feedback {
+    display: none;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const cpfInput = document.getElementById('cpf');
+    const cpfError = document.getElementById('cpfError');
+    const submitBtn = document.getElementById('btnSubmit');
+    const form = document.getElementById('recuperarSenhaForm');
+    
+    // Aplicar máscara de CPF
+    cpfInput.addEventListener('input', function(e) {
+      let value = e.target.value;
+      
+      // Remove todos os caracteres não numéricos
+      value = value.replace(/\D/g, '');
+      
+      // Aplica a máscara de CPF: 000.000.000-00
+      if (value.length <= 11) {
+        value = value.replace(/(\d{3})(\d)/, "$1.$2");
+        value = value.replace(/(\d{3})(\d)/, "$1.$2");
+        value = value.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      }
+      
+      e.target.value = value;
+      
+      // Valida o formato e comprimento do CPF
+      if (value.length === 14) {
+        validateCPF(value);
+      } else {
+        cpfError.style.display = 'none';
+        cpfInput.classList.remove('is-invalid');
+      }
+    });
+    
+    // Função para validar CPF
+    function validateCPF(cpf) {
+      // Remove caracteres não numéricos para validação
+      cpf = cpf.replace(/\D/g, '');
+      
+      // Verifica se todos os dígitos são iguais
+      if (/^(\d)\1+$/.test(cpf)) {
+        showError();
+        return false;
+      }
+      
+      // Validação do primeiro dígito verificador
+      let sum = 0;
+      for (let i = 0; i < 9; i++) {
+        sum += parseInt(cpf.charAt(i)) * (10 - i);
+      }
+      
+      let remainder = (sum * 10) % 11;
+      if (remainder === 10 || remainder === 11) remainder = 0;
+      
+      if (remainder !== parseInt(cpf.charAt(9))) {
+        showError();
+        return false;
+      }
+      
+      // Validação do segundo dígito verificador
+      sum = 0;
+      for (let i = 0; i < 10; i++) {
+        sum += parseInt(cpf.charAt(i)) * (11 - i);
+      }
+      
+      remainder = (sum * 10) % 11;
+      if (remainder === 10 || remainder === 11) remainder = 0;
+      
+      if (remainder !== parseInt(cpf.charAt(10))) {
+        showError();
+        return false;
+      }
+      
+      // CPF válido
+      cpfError.style.display = 'none';
+      cpfInput.classList.remove('is-invalid');
+      return true;
+    }
+    
+    function showError() {
+      cpfError.style.display = 'block';
+      cpfInput.classList.add('is-invalid');
+    }
+    
+    // Validação no envio do formulário
+    form.addEventListener('submit', function(e) {
+      const cpfValue = cpfInput.value;
+      
+      if (cpfValue.length !== 14 || !validateCPF(cpfValue)) {
+        e.preventDefault();
+        showError();
+      }
+    });
+  });
+</script>
 {% endblock %}
