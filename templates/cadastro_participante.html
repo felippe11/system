@@ -248,7 +248,7 @@
     {% endif %}
           
 
-    <!-- Modal de Cadastro -->
+<!-- Modal de Cadastro -->
 <div id="cadastroModal" class="modal">
     <div class="modal-conteudo">
         <div class="modal-header">
@@ -311,7 +311,7 @@
                         </div>
                     </div>
 
-                    <!-- Campos full-width -->
+                    <!-- Campo de Formação Acadêmica -->
                     <div class="form-group full-width">
                         <label for="formacao">Formação Acadêmica</label>
                         <input type="text" id="formacao" name="formacao" value="{{ request.form.get('formacao', '') }}" placeholder="Ex: Bacharel em Engenharia" required>
@@ -326,10 +326,32 @@
                                 placeholder="Digite aqui"
                                 {% if campo.obrigatorio %}required{% endif %}>
                         </div>
-                    {% endfor %}    
+                    {% endfor %}
 
                     <!-- Seção de Tipo de Inscrição -->
-                    {% if evento and evento.tipos_inscricao %}
+                    {% if evento and evento.habilitar_lotes %}
+                    <div class="form-group full-width">
+                        <label for="lote_tipo_inscricao">Tipo de Inscrição</label>
+                        <select id="lote_tipo_inscricao" name="lote_tipo_inscricao_id" class="form-control" required>
+                            <option value="">Selecione um tipo de inscrição</option>
+                            {% for lote in evento.lotes if lote.ativo and lote.is_valid() %}
+                                <optgroup label="{{ lote.nome }}">
+                                    {% for lote_tipo in lote.tipos_inscricao %}
+                                        <option value="{{ lote_tipo.id }}" 
+                                                data-lote-id="{{ lote.id }}" 
+                                                data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}" 
+                                                data-preco="{{ lote_tipo.preco }}">
+                                            {{ lote_tipo.tipo_inscricao.nome }} - R$ {{ lote_tipo.preco }}
+                                        </option>
+                                    {% endfor %}
+                                </optgroup>
+                            {% endfor %}
+                        </select>
+                        <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
+                            <span id="texto_valor">Selecione um tipo de inscrição</span>
+                        </div>
+                    </div>
+                    {% elif evento and evento.tipos_inscricao %}
                     <div class="form-group full-width">
                         <label for="tipo_inscricao">Tipo de Inscrição</label>
                         <select id="tipo_inscricao" name="tipo_inscricao_id" class="form-control" required>
@@ -341,7 +363,6 @@
                         <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
                             <span id="texto_valor">Selecione um tipo de inscrição</span>
                         </div>
-
                     </div>
                     {% elif evento and evento.inscricao_gratuita %}
                     <div class="form-group full-width">
@@ -351,6 +372,7 @@
                     </div>
                     {% endif %}
 
+                    <!-- Campo para endereço (locais) -->
                     <div class="form-group full-width locations-group">
                         <label>Endereço</label>
                         <div id="locations-container"></div>
@@ -359,6 +381,7 @@
                         </button>
                     </div>
 
+                    <!-- Botão de envio -->
                     <div class="form-group full-width">
                         <button type="submit" class="submit-button">
                             <i class="fas fa-user-check"></i> Completar Cadastro
@@ -1319,26 +1342,21 @@ input::placeholder {
 <script>
     // Controle do Modal
     function abrirModal() {
-        document.getElementById('cadastroModal').style.display = 'block';
-        document.body.classList.add('modal-aberto');
+        document.getElementById("cadastroModal").style.display = "block";
     }
-
     function fecharModal() {
-        document.getElementById('cadastroModal').style.display = 'none';
-        document.body.classList.remove('modal-aberto');
+        document.getElementById("cadastroModal").style.display = "none";
     }
-
-    window.onclick = function(event) {
-        const modal = document.getElementById('cadastroModal');
-        if (event.target === modal) {
-            fecharModal();
-        }
-    }
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            fecharModal();
-        }
+    // Exemplo de script para atualizar o valor exibido conforme a opção selecionada (ajuste conforme a sua lógica)
+    document.getElementById("lote_tipo_inscricao")?.addEventListener("change", function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const preco = selectedOption.getAttribute("data-preco");
+        document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
+    });
+    document.getElementById("tipo_inscricao")?.addEventListener("change", function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const preco = selectedOption.getAttribute("data-preco");
+        document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
     });
 
     // Máscara de CPF
@@ -1572,51 +1590,141 @@ input::placeholder {
     });
 </script>
 
-<!-- Scripts específicos para esta página -->
 <script>
-    // Script existente para o modal
-    function abrirModal() {
-        document.getElementById('cadastroModal').style.display = 'block';
-    }
-    
-    function fecharModal() {
-        document.getElementById('cadastroModal').style.display = 'none';
-    }
-    
-    // Fechar o modal se o usuário clicar fora dele
-    window.onclick = function(event) {
-        if (event.target == document.getElementById('cadastroModal')) {
-            fecharModal();
-        }
-    }
-    
-    // Script para atualizar o valor da inscrição
-    document.addEventListener('DOMContentLoaded', function() {
-        const tipoInscricaoSelect = document.getElementById('tipo_inscricao');
-        const valorInscricaoDiv = document.getElementById('valor_inscricao');
-        const textoValorSpan = document.getElementById('texto_valor');
-        
-        if (tipoInscricaoSelect) {
-            tipoInscricaoSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const preco = selectedOption.getAttribute('data-preco');
+// Controle do Modal
+function abrirModal() {
+    document.getElementById("cadastroModal").style.display = "block";
+}
+function fecharModal() {
+    document.getElementById("cadastroModal").style.display = "none";
+}
+
+// Atualizar o valor exibido quando um lote e tipo de inscrição são selecionados
+document.addEventListener('DOMContentLoaded', function() {
+    // Para lotes e tipos de inscrição
+    const loteSelect = document.getElementById("lote_tipo_inscricao");
+    if (loteSelect) {
+        loteSelect.addEventListener("change", function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                const preco = selectedOption.getAttribute("data-preco");
                 
-                if (selectedOption.value === '') {
-                    textoValorSpan.textContent = 'Selecione um tipo de inscrição';
-                    valorInscricaoDiv.className = 'mt-2 p-2 bg-light rounded';
-                } else if (preco == 0) {
-                    textoValorSpan.innerHTML = `<i class="fas fa-check-circle"></i> Inscrição gratuita`;
-                    valorInscricaoDiv.className = 'mt-2 p-2 bg-success text-white rounded';
+                if (preco) {
+                    document.getElementById("texto_valor").innerText = "Valor: R$ " + preco;
+                    
+                    // Adicionar campo oculto para o lote_id
+                    const loteId = selectedOption.getAttribute("data-lote-id");
+                    let loteInput = document.getElementById("lote_id");
+                    if (!loteInput) {
+                        loteInput = document.createElement("input");
+                        loteInput.type = "hidden";
+                        loteInput.id = "lote_id";
+                        loteInput.name = "lote_id";
+                        document.getElementById("formularioCadastro").appendChild(loteInput);
+                    }
+                    loteInput.value = loteId;
+                    
+                    // Adicionar campo oculto para o tipo_inscricao_id
+                    const tipoId = selectedOption.getAttribute("data-tipo-id");
+                    let tipoInput = document.getElementById("tipo_inscricao_id");
+                    if (!tipoInput) {
+                        tipoInput = document.createElement("input");
+                        tipoInput.type = "hidden";
+                        tipoInput.id = "tipo_inscricao_id";
+                        tipoInput.name = "tipo_inscricao_id";
+                        document.getElementById("formularioCadastro").appendChild(tipoInput);
+                    }
+                    tipoInput.value = tipoId;
+                    
+                    // Logging para debug
+                    console.log("Selecionado lote_tipo_inscricao_id:", selectedOption.value);
+                    console.log("lote_id:", loteId);
+                    console.log("tipo_inscricao_id:", tipoId);
+                    console.log("preco:", preco);
                 } else {
-                    const precoFormatado = parseFloat(preco).toLocaleString('pt-BR', {
-                        style: 'currency',
-                        currency: 'BRL'
-                    });
-                    textoValorSpan.innerHTML = `<i class="fas fa-tag"></i> Valor: ${precoFormatado}`;
-                    valorInscricaoDiv.className = 'mt-2 p-2 bg-light rounded';
+                    document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+                }
+            } else {
+                document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+            }
+        });
+    }
+    
+    // Para tipos de inscrição sem lotes
+    const tipoSelect = document.getElementById("tipo_inscricao");
+    if (tipoSelect) {
+        tipoSelect.addEventListener("change", function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption.value) {
+                const preco = selectedOption.getAttribute("data-preco");
+                document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
+                
+                // Logging para debug
+                console.log("Selecionado tipo_inscricao_id:", selectedOption.value);
+                console.log("preco:", preco);
+            } else {
+                document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+            }
+        });
+    }
+    
+    // Adicionar evento de submit ao formulário para verificar se os dados estão corretos
+    const form = document.getElementById("formularioCadastro");
+    if (form) {
+        form.addEventListener("submit", function(event) {
+            const loteSelect = document.getElementById("lote_tipo_inscricao");
+            const tipoSelect = document.getElementById("tipo_inscricao");
+            
+            if (loteSelect && loteSelect.style.display !== "none") {
+                const selectedLote = loteSelect.options[loteSelect.selectedIndex];
+                if (!selectedLote || !selectedLote.value) {
+                    event.preventDefault();
+                    alert("Por favor, selecione um tipo de inscrição.");
+                    return false;
+                }
+                
+                // Garantir que os campos ocultos foram adicionados
+                const loteId = selectedLote.getAttribute("data-lote-id");
+                const tipoId = selectedLote.getAttribute("data-tipo-id");
+                
+                // Verificar se os campos foram adicionados
+                if (!document.getElementById("lote_id")) {
+                    const loteInput = document.createElement("input");
+                    loteInput.type = "hidden";
+                    loteInput.id = "lote_id";
+                    loteInput.name = "lote_id";
+                    loteInput.value = loteId;
+                    form.appendChild(loteInput);
+                }
+                
+                if (!document.getElementById("tipo_inscricao_id")) {
+                    const tipoInput = document.createElement("input");
+                    tipoInput.type = "hidden";
+                    tipoInput.id = "tipo_inscricao_id";
+                    tipoInput.name = "tipo_inscricao_id";
+                    tipoInput.value = tipoId;
+                    form.appendChild(tipoInput);
+                }
+            } else if (tipoSelect && tipoSelect.style.display !== "none") {
+                const selectedTipo = tipoSelect.options[tipoSelect.selectedIndex];
+                if (!selectedTipo || !selectedTipo.value) {
+                    event.preventDefault();
+                    alert("Por favor, selecione um tipo de inscrição.");
+                    return false;
+                }
+            }
+            
+            // Logging no submit
+            console.log("Enviando formulário com os seguintes dados:");
+            Array.from(form.elements).forEach(element => {
+                if (element.name) {
+                    console.log(element.name + ": " + element.value);
                 }
             });
-        }
-    });
-    </script>
+            
+            return true;
+        });
+    }
+});
+</script>
 {% endblock %}
