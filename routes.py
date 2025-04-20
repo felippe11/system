@@ -207,21 +207,31 @@ def enviar_proposta():
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 @routes.route('/inscricao/<path:identifier>', methods=['GET', 'POST'])  # Aceita slug ou token
 def cadastro_participante(identifier: str | None = None):
-    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
+    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
 
     1.  Valida link (token ou slug)
     2.  Renderiza formulário (GET)
     3.  Cria Usuario, Inscricao (status **pending**)
     4.  Se gratuito  → approved  → login
-         Se pago      → gera preference  → redireciona init_point
+         Se pago      → gera preference  → redireciona init_point
     """
     # ────────────────────────────── imports locais ─────────────────────────────
     from collections import defaultdict
     from datetime import datetime
-    import os, mercadopago
+    import os, mercadopago, logging
 
-    # SDK Mercado Pago (token vem de variável de ambiente)
-    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+    # Configurar logging para debug
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
+    # SDK Mercado Pago (token vem de variável de ambiente)
+    mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+    if not mp_token:
+        logger.error("Token do Mercado Pago não encontrado nas variáveis de ambiente")
+        flash("Erro de configuração do sistema de pagamento", "danger")
+        return redirect(url_for("routes.login"))
+        
+    sdk = mercadopago.SDK(mp_token)
 
     # ────────────────────────────── Busca do link ──────────────────────────────
     token = request.args.get("token") if not identifier else identifier
@@ -232,7 +242,7 @@ def cadastro_participante(identifier: str | None = None):
         ).first()
     if not link:
         flash("Erro: Link de cadastro inválido ou expirado!", "danger")
-        return redirect(url_for("routes.cadastro_participante"))
+        return redirect(url_for("routes.login"))
 
     cliente_id: int = link.cliente_id
     evento = Evento.query.get(link.evento_id) if link.evento_id else None
@@ -268,14 +278,23 @@ def cadastro_participante(identifier: str | None = None):
 
     # ────────────────────────────── POST  (cadastro) ───────────────────────────
     if request.method == "POST":
+        # Debug de todos os campos do formulário
+        logger.debug(f"Dados do formulário: {request.form}")
+        
         # Dados básicos
         nome = request.form.get("nome")
         cpf = request.form.get("cpf")
         email = request.form.get("email")
         senha = request.form.get("senha")
         formacao = request.form.get("formacao")
+        
+        # Verifica se está usando lotes ou tipo de inscrição direto
+        lote_tipo_inscricao_id = request.form.get("lote_tipo_inscricao_id")
         tipo_inscricao_id = request.form.get("tipo_inscricao_id")
-
+        lote_id = request.form.get("lote_id")
+        
+        logger.debug(f"IDs recebidos: lote_tipo_inscricao_id={lote_tipo_inscricao_id}, tipo_inscricao_id={tipo_inscricao_id}, lote_id={lote_id}")
+        
         estados_str = ",".join(request.form.getlist("estados[]") or [])
         cidades_str = ",".join(request.form.getlist("cidades[]") or [])
 
@@ -322,13 +341,17 @@ def cadastro_participante(identifier: str | None = None):
                 db.session.rollback()
                 flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
                 return redirect(request.url)
-            db.session.add(
-                RespostaCampo(
-                    resposta_formulario_id=novo_usuario.id,
-                    campo_id=campo.id,
-                    valor=valor,
+            try:
+                db.session.add(
+                    RespostaCampo(
+                        resposta_formulario_id=novo_usuario.id,
+                        campo_id=campo.id,
+                        valor=valor or "",
+                    )
                 )
-            )
+            except Exception as e:
+                logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
+                pass  # continua mesmo se der erro nos campos personalizados
 
         # Cria inscrição pendente
         inscricao = Inscricao(
@@ -337,20 +360,55 @@ def cadastro_participante(identifier: str | None = None):
             cliente_id=cliente_id,
             status_pagamento="pending",
         )
+        
+        # Adiciona o lote_id se estiver disponível
+        if lote_id:
+            inscricao.lote_id = lote_id
+            
         db.session.add(inscricao)
-        db.session.flush()
+        db.session.flush()  # Garante que a inscrição tenha um ID
+
+        # Determina o preço baseado no tipo de inscrição usado
+        preco = 0
+        titulo_inscricao = "Inscrição"
+        
+        # Se estiver usando lotes
+        if lote_tipo_inscricao_id and evento and evento.habilitar_lotes:
+            logger.debug(f"Usando preço do lote_tipo_inscricao_id={lote_tipo_inscricao_id}")
+            lote_tipo = LoteTipoInscricao.query.get(lote_tipo_inscricao_id)
+            if lote_tipo:
+                preco = float(lote_tipo.preco)
+                tipo_inscricao = EventoInscricaoTipo.query.get(lote_tipo.tipo_inscricao_id)
+                if tipo_inscricao:
+                    titulo_inscricao = f"Inscrição – {evento.nome} – {tipo_inscricao.nome} ({lote_tipo.lote.nome})"
+                    # Atualizamos também o tipo_inscricao_id do usuário
+                    novo_usuario.tipo_inscricao_id = tipo_inscricao.id
+        # Se estiver usando tipo de inscrição direto
+        elif tipo_inscricao_id:
+            logger.debug(f"Usando preço do tipo_inscricao_id={tipo_inscricao_id}")
+            tipo_inscricao = EventoInscricaoTipo.query.get(tipo_inscricao_id)
+            if tipo_inscricao:
+                preco = float(tipo_inscricao.preco)
+                titulo_inscricao = f"Inscrição – {evento.nome} – {tipo_inscricao.nome}"
+        
+        # Verifica se inscrição é gratuita pelo evento
+        if evento and evento.inscricao_gratuita:
+            logger.debug("Evento com inscrição gratuita, ignorando preço")
+            preco = 0
+
+        logger.debug(f"Preço calculado: {preco}, Título: {titulo_inscricao}")
 
         # Preferência de pagamento se for pago
-        tipo_inscricao = EventoInscricaoTipo.query.get(tipo_inscricao_id)
-        if tipo_inscricao and tipo_inscricao.preco > 0:
+        if preco > 0:
+            logger.debug("Criando preferência de pagamento no Mercado Pago")
             preference_data = {
                 "items": [
                     {
-                        "id": str(tipo_inscricao.id),
-                        "title": f"Inscrição – {evento.nome} – {tipo_inscricao.nome}",
+                        "id": str(lote_tipo_inscricao_id or tipo_inscricao_id or inscricao.id),
+                        "title": titulo_inscricao,
                         "quantity": 1,
                         "currency_id": "BRL",
-                        "unit_price": float(tipo_inscricao.preco),
+                        "unit_price": preco,
                     }
                 ],
                 "payer": {"email": novo_usuario.email, "name": novo_usuario.nome},
@@ -363,11 +421,35 @@ def cadastro_participante(identifier: str | None = None):
                 "notification_url": url_for("routes.webhook_mp", _external=True),
                 "auto_return": "approved",
             }
-            pref = sdk.preference().create(preference_data)
-            db.session.commit()
-            return redirect(pref["response"]["init_point"])
+            
+            logger.debug(f"Dados da preferência: {preference_data}")
+            
+            try:
+                pref = sdk.preference().create(preference_data)
+                logger.debug(f"Resposta do Mercado Pago: {pref}")
+                
+                if "response" in pref and "init_point" in pref["response"]:
+                    # Salvar o ID do pagamento na inscrição
+                    if "id" in pref["response"]:
+                        inscricao.payment_id = pref["response"]["id"]
+                    
+                    db.session.commit()
+                    logger.debug(f"Redirecionando para: {pref['response']['init_point']}")
+                    return redirect(pref["response"]["init_point"])
+                else:
+                    # Erro na criação da preferência
+                    logger.error(f"Erro na resposta do Mercado Pago: {pref}")
+                    db.session.rollback()
+                    flash("Erro ao processar pagamento: resposta inválida do Mercado Pago.", "danger")
+                    return redirect(request.url)
+            except Exception as e:
+                logger.exception(f"Exceção ao criar preferência: {str(e)}")
+                db.session.rollback()
+                flash(f"Erro ao processar pagamento: {str(e)}", "danger")
+                return redirect(request.url)
 
         # Gratuito – aprova direto
+        logger.debug("Inscrição gratuita - aprovando diretamente")
         inscricao.status_pagamento = "approved"
         db.session.commit()
         flash("Cadastro realizado com sucesso!", "success")
