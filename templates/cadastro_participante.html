@@ -1,5 +1,3 @@
-<!-- Dependências -->
-
 {% extends "base.html" %}
 {% block title %}{% if evento %}{{ evento.nome }} - {% endif %}Cadastro de Participante{% endblock %}
 
@@ -278,6 +276,15 @@
                 {% endif %}
             {% endwith %}
             
+            <div id="lote-status-container">
+                <!-- Placeholder para alertas sobre mudança de lote -->
+            </div>
+            
+            {% if evento and evento.habilitar_lotes and not lote_vigente %}
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> Não há lotes disponíveis para inscrição no momento.
+            </div>
+            {% else %}
             <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}" id="formularioCadastro">
                 <div class="form-grid-modal">
                     <!-- Campo oculto para o evento_id - garantindo que sempre seja enviado -->
@@ -329,27 +336,38 @@
                     {% endfor %}
 
                     <!-- Seção de Tipo de Inscrição -->
-                    {% if evento and evento.habilitar_lotes %}
+                    {% if evento and evento.habilitar_lotes and lote_vigente %}
                     <div class="form-group full-width">
                         <label for="lote_tipo_inscricao">Tipo de Inscrição</label>
+                        <div class="lote-badge" id="lote-vigente-badge">
+                            <span class="lote-badge-text">Lote atual: {{ lote_vigente.nome }}</span>
+                            {% if lote_stats %}
+                                <span class="lote-stats">
+                                    {% if lote_stats.vagas_disponiveis != "ilimitado" %}
+                                        (Restam {{ lote_stats.vagas_disponiveis }} vagas)
+                                    {% else %}
+                                        (Vagas ilimitadas)
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </div>
                         <select id="lote_tipo_inscricao" name="lote_tipo_inscricao_id" class="form-control" required>
                             <option value="">Selecione um tipo de inscrição</option>
-                            {% for lote in evento.lotes if lote.ativo and lote.is_valid() %}
-                                <optgroup label="{{ lote.nome }}">
-                                    {% for lote_tipo in lote.tipos_inscricao %}
-                                        <option value="{{ lote_tipo.id }}" 
-                                                data-lote-id="{{ lote.id }}" 
-                                                data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}" 
-                                                data-preco="{{ lote_tipo.preco }}">
-                                            {{ lote_tipo.tipo_inscricao.nome }} - R$ {{ lote_tipo.preco }}
-                                        </option>
-                                    {% endfor %}
-                                </optgroup>
-                            {% endfor %}
+                            <optgroup label="{{ lote_vigente.nome }} (Vigente)">
+                                {% for lote_tipo in lote_vigente.tipos_inscricao %}
+                                    <option value="{{ lote_tipo.id }}" 
+                                            data-lote-id="{{ lote_vigente.id }}" 
+                                            data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}" 
+                                            data-preco="{{ lote_tipo.preco }}">
+                                        {{ lote_tipo.tipo_inscricao.nome }} - R$ {{ lote_tipo.preco }}
+                                    </option>
+                                {% endfor %}
+                            </optgroup>
                         </select>
                         <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
                             <span id="texto_valor">Selecione um tipo de inscrição</span>
                         </div>
+                        <input type="hidden" id="lote_id" name="lote_id" value="{{ lote_vigente.id }}">
                     </div>
                     {% elif evento and evento.tipos_inscricao %}
                     <div class="form-group full-width">
@@ -357,7 +375,7 @@
                         <select id="tipo_inscricao" name="tipo_inscricao_id" class="form-control" required>
                             <option value="">Selecione um tipo de inscrição</option>
                             {% for tipo in evento.tipos_inscricao %}
-                                <option value="{{ tipo.id }}" data-preco="{{ tipo.preco }}">{{ tipo.nome }}</option>
+                                <option value="{{ tipo.id }}" data-preco="{{ tipo.preco }}">{{ tipo.nome }} - R$ {{ tipo.preco }}</option>
                             {% endfor %}
                         </select>
                         <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
@@ -389,6 +407,7 @@
                     </div>
                 </div>
             </form>
+            {% endif %}
 
             <div class="login-link">
                 Já possui conta? <a href="{{ url_for('routes.login') }}">Faça login aqui</a>
@@ -399,6 +418,51 @@
 
 <!-- Estilos -->
 <style>
+    /* Novo estilo para o badge de lote com estatísticas */
+    .lote-badge {
+        background-color: #007bff;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 5px;
+        display: flex;
+        margin-bottom: 10px;
+        font-weight: bold;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .lote-badge-text {
+        display: flex;
+        align-items: center;
+    }
+    
+    .lote-badge-text::before {
+        content: "\f3ff";
+        font-family: "Font Awesome 5 Free";
+        margin-right: 5px;
+    }
+    
+    .lote-stats {
+        font-size: 0.85em;
+        background-color: rgba(255, 255, 255, 0.2);
+        padding: 3px 8px;
+        border-radius: 3px;
+        margin-left: 10px;
+    }
+    
+    .lote-status-alert {
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        animation: flashAlert 0.5s ease-in-out;
+    }
+    
+    @keyframes flashAlert {
+        0% { background-color: rgba(255, 193, 7, 0.3); }
+        50% { background-color: rgba(255, 193, 7, 0.8); }
+        100% { background-color: rgba(255, 193, 7, 0.3); }
+    }
 
     .download-folder-container {
         margin-top: 30px;
@@ -1340,25 +1404,287 @@ input::placeholder {
 
 <!-- Scripts -->
 <script>
+    // Armazenar ID do evento para uso nas funções
+    const eventoId = {% if evento %}{{ evento.id }}{% else %}null{% endif %};
+    let currentLoteId = {% if lote_vigente %}{{ lote_vigente.id }}{% else %}null{% endif %};
+    let loteCheckIntervalId = null;
+    
     // Controle do Modal
     function abrirModal() {
         document.getElementById("cadastroModal").style.display = "block";
+        
+        // Verificar o status do lote ao abrir o modal
+        if (eventoId) {
+            verificarLoteVigente(true);
+            
+            // Iniciar verificação periódica apenas se ainda não estiver ativa
+            if (loteCheckIntervalId === null) {
+                // Verificar a cada 30 segundos (mais frequente do que antes)
+                loteCheckIntervalId = setInterval(() => verificarLoteVigente(false), 30000);
+            }
+        }
     }
+    
     function fecharModal() {
         document.getElementById("cadastroModal").style.display = "none";
+        
+        // Limpar o intervalo de verificação ao fechar o modal para economizar recursos
+        if (loteCheckIntervalId !== null) {
+            clearInterval(loteCheckIntervalId);
+            loteCheckIntervalId = null;
+        }
     }
-    // Exemplo de script para atualizar o valor exibido conforme a opção selecionada (ajuste conforme a sua lógica)
-    document.getElementById("lote_tipo_inscricao")?.addEventListener("change", function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const preco = selectedOption.getAttribute("data-preco");
-        document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
+    
+    // Função para mostrar alertas temporários
+    function showTempAlert(message, type) {
+        const alertsContainer = document.getElementById("lote-status-container");
+        const alertEl = document.createElement("div");
+        alertEl.className = `alert alert-${type} lote-status-alert`;
+        alertEl.innerHTML = `<i class="fas fa-${type === 'info' ? 'info-circle' : 'exclamation-triangle'}"></i> ${message}`;
+        
+        alertsContainer.appendChild(alertEl);
+        
+        // Remover o alerta após 5 segundos
+        setTimeout(() => {
+            alertEl.style.opacity = "0";
+            alertEl.style.transition = "opacity 0.5s ease";
+            setTimeout(() => alertEl.remove(), 500);
+        }, 5000);
+    }
+    
+    // Função para atualizar a interface com as informações do novo lote
+    function updateLoteInterface(loteData) {
+        if (!loteData || !loteData.lote_id) return;
+        
+        // Elementos a atualizar
+        const loteBadge = document.getElementById("lote-vigente-badge");
+        const loteSelect = document.getElementById("lote_tipo_inscricao");
+        const loteIdInput = document.getElementById("lote_id");
+        
+        if (loteBadge && loteSelect && loteIdInput) {
+            // Se o lote mudou, atualizar a interface
+            if (currentLoteId !== loteData.lote_id) {
+                console.log(`Lote mudou de ${currentLoteId} para ${loteData.lote_id}`);
+                showTempAlert(`O lote foi atualizado para '${loteData.nome}'. A página será recarregada em 3 segundos.`, "info");
+                
+                // Esperar 3 segundos e recarregar a página para obter os novos tipos de inscrição
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            } else {
+                // Atualizar informações de vagas disponíveis, se aplicável
+                const vagasText = typeof loteData.vagas_disponiveis === 'number' 
+                    ? `Restam ${loteData.vagas_disponiveis} vagas` 
+                    : "Vagas ilimitadas";
+                
+                // Verificar se o elemento stats existe
+                const statsElement = loteBadge.querySelector('.lote-stats');
+                if (statsElement) {
+                    statsElement.textContent = `(${vagasText})`;
+                } else {
+                    // Criar o elemento se não existir
+                    const statsSpan = document.createElement('span');
+                    statsSpan.className = 'lote-stats';
+                    statsSpan.textContent = `(${vagasText})`;
+                    loteBadge.appendChild(statsSpan);
+                }
+            }
+        }
+    }
+    
+    // Função para verificar o lote vigente através da API
+    function verificarLoteVigente(isInitial = false) {
+        if (!eventoId) return;
+        
+        console.log(`Verificando lote vigente... (isInitial=${isInitial})`);
+        
+        fetch(`/api/lote_vigente/${eventoId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log("Resposta da API:", data);
+                
+                if (!data.lote_id) {
+                    // Se não houver lote vigente, mostrar mensagem e desabilitar o formulário
+                    const formContainer = document.getElementById("formularioCadastro");
+                    if (formContainer) {
+                        formContainer.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i> Não há lotes disponíveis para inscrição no momento.
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+                
+                // Se não for a verificação inicial, verificar se o lote mudou
+                if (!isInitial) {
+                    updateLoteInterface(data);
+                }
+                
+                // Atualizar o ID do lote atual
+                currentLoteId = data.lote_id;
+            })
+            .catch(error => {
+                console.error("Erro ao verificar lote vigente:", error);
+            });
+    }
+    
+    // Atualizar o valor exibido quando um lote e tipo de inscrição são selecionados
+    document.addEventListener('DOMContentLoaded', function() {
+        // Para lotes e tipos de inscrição
+        const loteSelect = document.getElementById("lote_tipo_inscricao");
+        if (loteSelect) {
+            loteSelect.addEventListener("change", function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    const preco = selectedOption.getAttribute("data-preco");
+                    
+                    if (preco) {
+                        document.getElementById("texto_valor").innerText = "Valor: R$ " + preco;
+                        
+                        // Adicionar campo oculto para o lote_id
+                        const loteId = selectedOption.getAttribute("data-lote-id");
+                        let loteInput = document.getElementById("lote_id");
+                        if (!loteInput) {
+                            loteInput = document.createElement("input");
+                            loteInput.type = "hidden";
+                            loteInput.id = "lote_id";
+                            loteInput.name = "lote_id";
+                            document.getElementById("formularioCadastro").appendChild(loteInput);
+                        }
+                        loteInput.value = loteId;
+                        
+                        // Adicionar campo oculto para o tipo_inscricao_id
+                        const tipoId = selectedOption.getAttribute("data-tipo-id");
+                        let tipoInput = document.getElementById("tipo_inscricao_id");
+                        if (!tipoInput) {
+                            tipoInput = document.createElement("input");
+                            tipoInput.type = "hidden";
+                            tipoInput.id = "tipo_inscricao_id";
+                            tipoInput.name = "tipo_inscricao_id";
+                            document.getElementById("formularioCadastro").appendChild(tipoInput);
+                        }
+                        tipoInput.value = tipoId;
+                        
+                        // Logging para debug
+                        console.log("Selecionado lote_tipo_inscricao_id:", selectedOption.value);
+                        console.log("lote_id:", loteId);
+                        console.log("tipo_inscricao_id:", tipoId);
+                        console.log("preco:", preco);
+                    } else {
+                        document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+                    }
+                } else {
+                    document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+                }
+            });
+        }
+        
+        // Para tipos de inscrição sem lotes
+        const tipoSelect = document.getElementById("tipo_inscricao");
+        if (tipoSelect) {
+            tipoSelect.addEventListener("change", function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.value) {
+                    const preco = selectedOption.getAttribute("data-preco");
+                    document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
+                    
+                    // Logging para debug
+                    console.log("Selecionado tipo_inscricao_id:", selectedOption.value);
+                    console.log("preco:", preco);
+                } else {
+                    document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
+                }
+            });
+        }
+        
+        // Adicionar evento de submit ao formulário para verificar se os dados estão corretos
+        const form = document.getElementById("formularioCadastro");
+        if (form) {
+            form.addEventListener("submit", function(event) {
+                const loteSelect = document.getElementById("lote_tipo_inscricao");
+                const tipoSelect = document.getElementById("tipo_inscricao");
+                
+                if (loteSelect && loteSelect.style.display !== "none") {
+                    const selectedLote = loteSelect.options[loteSelect.selectedIndex];
+                    if (!selectedLote || !selectedLote.value) {
+                        event.preventDefault();
+                        alert("Por favor, selecione um tipo de inscrição.");
+                        return false;
+                    }
+                    
+                    // Verificar se o lote ainda é válido antes de enviar
+                    if (eventoId) {
+                        const loteId = selectedLote.getAttribute("data-lote-id");
+                        
+                        // Fazer uma verificação síncrona para garantir que o lote ainda é válido
+                        const xhr = new XMLHttpRequest();
+                        xhr.open("GET", `/api/lote_vigente/${eventoId}`, false);  // false = síncrono
+                        xhr.send();
+                        
+                        if (xhr.status === 200) {
+                            const resposta = JSON.parse(xhr.responseText);
+                            
+                            if (!resposta.lote_id) {
+                                event.preventDefault();
+                                alert("Não há lotes disponíveis para inscrição no momento. Por favor, tente novamente mais tarde.");
+                                window.location.reload();
+                                return false;
+                            }
+                            
+                            if (resposta.lote_id.toString() !== loteId) {
+                                event.preventDefault();
+                                alert("O lote selecionado não é mais válido. A página será recarregada com o lote atual.");
+                                window.location.reload();
+                                return false;
+                            }
+                        }
+                    }
+                    
+                    // Garantir que os campos ocultos foram adicionados
+                    const loteId = selectedLote.getAttribute("data-lote-id");
+                    const tipoId = selectedLote.getAttribute("data-tipo-id");
+                    
+                    // Verificar se os campos foram adicionados
+                    if (!document.getElementById("lote_id")) {
+                        const loteInput = document.createElement("input");
+                        loteInput.type = "hidden";
+                        loteInput.id = "lote_id";
+                        loteInput.name = "lote_id";
+                        loteInput.value = loteId;
+                        form.appendChild(loteInput);
+                    }
+                    
+                    if (!document.getElementById("tipo_inscricao_id")) {
+                        const tipoInput = document.createElement("input");
+                        tipoInput.type = "hidden";
+                        tipoInput.id = "tipo_inscricao_id";
+                        tipoInput.name = "tipo_inscricao_id";
+                        tipoInput.value = tipoId;
+                        form.appendChild(tipoInput);
+                    }
+                } else if (tipoSelect && tipoSelect.style.display !== "none") {
+                    const selectedTipo = tipoSelect.options[tipoSelect.selectedIndex];
+                    if (!selectedTipo || !selectedTipo.value) {
+                        event.preventDefault();
+                        alert("Por favor, selecione um tipo de inscrição.");
+                        return false;
+                    }
+                }
+                
+                // Logging no submit
+                console.log("Enviando formulário com os seguintes dados:");
+                Array.from(form.elements).forEach(element => {
+                    if (element.name) {
+                        console.log(element.name + ": " + element.value);
+                    }
+                });
+                
+                return true;
+            });
+        }
     });
-    document.getElementById("tipo_inscricao")?.addEventListener("change", function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const preco = selectedOption.getAttribute("data-preco");
-        document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
-    });
-
+    
     // Máscara de CPF
     const cpfField = document.getElementById('cpf');
     if (cpfField) {
@@ -1391,7 +1717,7 @@ input::placeholder {
                 <div class="location-body">
                     <div class="form-group">
                         <label>Estado</label>
-                        <select class="estado-select mb-2">
+                        <select class="estado-select mb-2" name="estados[]">
                             <option value="">Selecione o estado</option>
                             ${estados.map(estado => `
                                 <option value="${estado.sigla}">${estado.nome}</option>
@@ -1586,145 +1912,12 @@ input::placeholder {
                     eventoId.value = {{ evento.id|default('null') }};
                 }
             });
+            
+            // Verificar lote vigente quando a página carrega
+            if (window.eventoId) {
+                verificarLoteVigente(true);
+            }
         }
     });
-</script>
-
-<script>
-// Controle do Modal
-function abrirModal() {
-    document.getElementById("cadastroModal").style.display = "block";
-}
-function fecharModal() {
-    document.getElementById("cadastroModal").style.display = "none";
-}
-
-// Atualizar o valor exibido quando um lote e tipo de inscrição são selecionados
-document.addEventListener('DOMContentLoaded', function() {
-    // Para lotes e tipos de inscrição
-    const loteSelect = document.getElementById("lote_tipo_inscricao");
-    if (loteSelect) {
-        loteSelect.addEventListener("change", function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value) {
-                const preco = selectedOption.getAttribute("data-preco");
-                
-                if (preco) {
-                    document.getElementById("texto_valor").innerText = "Valor: R$ " + preco;
-                    
-                    // Adicionar campo oculto para o lote_id
-                    const loteId = selectedOption.getAttribute("data-lote-id");
-                    let loteInput = document.getElementById("lote_id");
-                    if (!loteInput) {
-                        loteInput = document.createElement("input");
-                        loteInput.type = "hidden";
-                        loteInput.id = "lote_id";
-                        loteInput.name = "lote_id";
-                        document.getElementById("formularioCadastro").appendChild(loteInput);
-                    }
-                    loteInput.value = loteId;
-                    
-                    // Adicionar campo oculto para o tipo_inscricao_id
-                    const tipoId = selectedOption.getAttribute("data-tipo-id");
-                    let tipoInput = document.getElementById("tipo_inscricao_id");
-                    if (!tipoInput) {
-                        tipoInput = document.createElement("input");
-                        tipoInput.type = "hidden";
-                        tipoInput.id = "tipo_inscricao_id";
-                        tipoInput.name = "tipo_inscricao_id";
-                        document.getElementById("formularioCadastro").appendChild(tipoInput);
-                    }
-                    tipoInput.value = tipoId;
-                    
-                    // Logging para debug
-                    console.log("Selecionado lote_tipo_inscricao_id:", selectedOption.value);
-                    console.log("lote_id:", loteId);
-                    console.log("tipo_inscricao_id:", tipoId);
-                    console.log("preco:", preco);
-                } else {
-                    document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
-                }
-            } else {
-                document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
-            }
-        });
-    }
-    
-    // Para tipos de inscrição sem lotes
-    const tipoSelect = document.getElementById("tipo_inscricao");
-    if (tipoSelect) {
-        tipoSelect.addEventListener("change", function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value) {
-                const preco = selectedOption.getAttribute("data-preco");
-                document.getElementById("texto_valor").innerText = preco ? "Valor: R$ " + preco : "Selecione um tipo de inscrição";
-                
-                // Logging para debug
-                console.log("Selecionado tipo_inscricao_id:", selectedOption.value);
-                console.log("preco:", preco);
-            } else {
-                document.getElementById("texto_valor").innerText = "Selecione um tipo de inscrição";
-            }
-        });
-    }
-    
-    // Adicionar evento de submit ao formulário para verificar se os dados estão corretos
-    const form = document.getElementById("formularioCadastro");
-    if (form) {
-        form.addEventListener("submit", function(event) {
-            const loteSelect = document.getElementById("lote_tipo_inscricao");
-            const tipoSelect = document.getElementById("tipo_inscricao");
-            
-            if (loteSelect && loteSelect.style.display !== "none") {
-                const selectedLote = loteSelect.options[loteSelect.selectedIndex];
-                if (!selectedLote || !selectedLote.value) {
-                    event.preventDefault();
-                    alert("Por favor, selecione um tipo de inscrição.");
-                    return false;
-                }
-                
-                // Garantir que os campos ocultos foram adicionados
-                const loteId = selectedLote.getAttribute("data-lote-id");
-                const tipoId = selectedLote.getAttribute("data-tipo-id");
-                
-                // Verificar se os campos foram adicionados
-                if (!document.getElementById("lote_id")) {
-                    const loteInput = document.createElement("input");
-                    loteInput.type = "hidden";
-                    loteInput.id = "lote_id";
-                    loteInput.name = "lote_id";
-                    loteInput.value = loteId;
-                    form.appendChild(loteInput);
-                }
-                
-                if (!document.getElementById("tipo_inscricao_id")) {
-                    const tipoInput = document.createElement("input");
-                    tipoInput.type = "hidden";
-                    tipoInput.id = "tipo_inscricao_id";
-                    tipoInput.name = "tipo_inscricao_id";
-                    tipoInput.value = tipoId;
-                    form.appendChild(tipoInput);
-                }
-            } else if (tipoSelect && tipoSelect.style.display !== "none") {
-                const selectedTipo = tipoSelect.options[tipoSelect.selectedIndex];
-                if (!selectedTipo || !selectedTipo.value) {
-                    event.preventDefault();
-                    alert("Por favor, selecione um tipo de inscrição.");
-                    return false;
-                }
-            }
-            
-            // Logging no submit
-            console.log("Enviando formulário com os seguintes dados:");
-            Array.from(form.elements).forEach(element => {
-                if (element.name) {
-                    console.log(element.name + ": " + element.value);
-                }
-            });
-            
-            return true;
-        });
-    }
-});
 </script>
 {% endblock %}
