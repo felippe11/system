@@ -77,6 +77,8 @@ class Configuracao(db.Model):
     permitir_checkin_global = db.Column(db.Boolean, default=False)
     habilitar_feedback = db.Column(db.Boolean, default=False)
     habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    
+    taxa_percentual_inscricao = db.Column(db.Numeric(5,2), default=0)
 
     def __repr__(self):
         return f"<Configuracao permitir_checkin_global={self.permitir_checkin_global}>"

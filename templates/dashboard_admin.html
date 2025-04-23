@@ -12,6 +12,11 @@
       <i class="bi bi-plus-circle me-2"></i>Novo Cliente
     </a>
   </div>
+  <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTaxa">
+    <i class="bi bi-cash-coin"></i> Taxa do sistema
+  </button>
+  
+  
 
   <!-- Statistics Cards -->
   <div class="row g-4 mb-4">
@@ -215,6 +220,31 @@
     </div>
   </div>
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalTaxa" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+   <form method="POST" action="{{ url_for('routes.atualizar_taxa') }}">
+     <div class="modal-header"><h5 class="modal-title">Taxa percentual</h5>
+       <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+     </div>
+     <div class="modal-body">
+       <label class="form-label">Percentual (%)</label>
+       <div class="input-group">
+         <input type="number" step="0.01" min="0" max="100"
+                class="form-control" name="taxa_percentual"
+                value="{{ configuracao.taxa_percentual_inscricao or 0 }}">
+         <span class="input-group-text">%</span>
+       </div>
+       <small class="text-muted">Será aplicado sobre cada inscrição paga.</small>
+     </div>
+     <div class="modal-footer">
+       <button type="submit" class="btn btn-success">Salvar</button>
+     </div>
+   </form>
+  </div></div>
+ </div>
+
 
 <!-- Modal de edição de cliente -->
 <!-- Modal de edição de cliente -->
