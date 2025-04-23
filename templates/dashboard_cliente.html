@@ -2274,12 +2274,18 @@ document.getElementById("eventoSelect").addEventListener("change", function() {
 document.getElementById("gerarLinkConfirm").addEventListener("click", function() {
   const eventoId = document.getElementById("eventoSelect").value;
   const slugCustomizado = document.getElementById("slugInput").value;
-
+  const btnGerar = this; // Guardar referência ao botão
+  
+  // Validação
   if (!eventoId) {
     alert("Por favor, selecione um evento!");
     return;
   }
-
+  
+  // Mudar estado do botão para indicar processamento
+  btnGerar.disabled = true;
+  btnGerar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processando...';
+  
   fetch("{{ url_for('routes.gerar_link') }}", {
     method: "POST",
     headers: {
@@ -2291,35 +2297,180 @@ document.getElementById("gerarLinkConfirm").addEventListener("click", function()
       slug_customizado: slugCustomizado
     })
   })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error('Erro ao gerar o link: ' + response.statusText);
-    }
-    return response.json();
-  })
+  .then(response => response.json())
   .then(data => {
+    // Restaurar estado do botão
+    btnGerar.disabled = false;
+    btnGerar.innerHTML = '<i class="bi bi-magic me-2"></i>Gerar Link';
+    
     if (data.success) {
       const linkGerado = data.link;
       document.getElementById("linkCadastro").value = linkGerado;
       
       // Mostrar o container do link gerado
       document.getElementById("linkGeradoContainer").style.display = "block";
-
-      const mensagem = "Olá! Cadastre-se no evento através deste link: " + linkGerado;
-      document.getElementById("whatsappShare").href =
-        "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
       
-      // Atualizar a lista de links existentes
-      document.getElementById("eventoSelect").dispatchEvent(new Event('change'));
+      // Atualizar a tabela manualmente em vez de disparar o evento change
+      atualizarTabelaLinks(eventoId);
+      
+      // Feedback de sucesso
+      const alertSuccess = document.createElement("div");
+      alertSuccess.className = "alert alert-success alert-dismissible fade show mt-3";
+      alertSuccess.innerHTML = `
+        <strong><i class="bi bi-check-circle me-2"></i>Sucesso!</strong> Link gerado com sucesso.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      document.getElementById("linkGeradoContainer").after(alertSuccess);
+      
+      // Auto-fechar o alerta após 3 segundos
+      setTimeout(() => {
+        alertSuccess.remove();
+      }, 3000);
     } else {
-      alert("Erro: " + data.message);
+      alert("Erro: " + (data.message || "Não foi possível gerar o link"));
     }
   })
   .catch(error => {
     console.error("Erro ao gerar o link:", error);
-    alert("Erro ao gerar o link. Tente novamente.");
+    
+    // Restaurar estado do botão
+    btnGerar.disabled = false;
+    btnGerar.innerHTML = '<i class="bi bi-magic me-2"></i>Gerar Link';
+    
+    alert("Erro ao comunicar com o servidor. Tente novamente.");
   });
 });
+
+// Função para atualizar a tabela de links sem precisar disparar o evento change
+function atualizarTabelaLinks(eventoId) {
+  const linksContainer = document.getElementById("linksExistentesContainer");
+  const linksTable = document.getElementById("linksExistentesTable");
+  const linksLoader = document.getElementById("linksExistentesLoader");
+  const linksEmpty = document.getElementById("linksExistentesEmpty");
+  
+  // Mostrar container e loader
+  linksContainer.style.display = "block";
+  linksLoader.style.display = "block";
+  linksTable.style.display = "none";
+  linksEmpty.style.display = "none";
+  
+  fetch(`{{ url_for('routes.gerar_link') }}?evento_id=${eventoId}`)
+    .then(response => response.json())
+    .then(data => {
+      linksLoader.style.display = "none";
+      
+      if (data.links && data.links.length > 0) {
+        // Temos links para mostrar
+        const linksList = document.getElementById("linksExistentesList");
+        linksList.innerHTML = ""; // Limpar lista atual
+        
+        data.links.forEach(link => {
+          const row = document.createElement("tr");
+          
+          // Coluna Identificador
+          const slugCell = document.createElement("td");
+          const slugSpan = document.createElement("span");
+          slugSpan.className = "d-inline-block text-truncate";
+          slugSpan.style.maxWidth = "300px";
+          slugSpan.textContent = link.slug || "Token: " + link.token.substring(0, 8) + "...";
+          slugSpan.title = link.slug || link.token;
+          slugCell.appendChild(slugSpan);
+          
+          // Coluna data
+          const dataCell = document.createElement("td");
+          const data = new Date(link.criado_em);
+          dataCell.textContent = data.toLocaleDateString('pt-BR');
+          
+          // Coluna ações
+          const acoesCell = document.createElement("td");
+          acoesCell.className = "d-flex gap-1";
+          
+          // Botão copiar
+          const btnCopiar = document.createElement("button");
+          btnCopiar.className = "btn btn-sm btn-outline-primary";
+          btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
+          btnCopiar.title = "Copiar link";
+          btnCopiar.addEventListener("click", function() {
+            navigator.clipboard.writeText(link.url)
+              .then(() => {
+                btnCopiar.innerHTML = '<i class="bi bi-check"></i>';
+                setTimeout(() => {
+                  btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
+                }, 1500);
+              });
+          });
+          
+          // Botão WhatsApp
+          const btnWhatsapp = document.createElement("a");
+          btnWhatsapp.className = "btn btn-sm btn-outline-success";
+          btnWhatsapp.innerHTML = '<i class="bi bi-whatsapp"></i>';
+          btnWhatsapp.title = "Compartilhar via WhatsApp";
+          btnWhatsapp.href = `https://api.whatsapp.com/send?text=${encodeURIComponent("Olá! Cadastre-se no evento através deste link: " + link.url)}`;
+          btnWhatsapp.target = "_blank";
+          
+          // Botão excluir
+          const btnExcluir = document.createElement("button");
+          btnExcluir.className = "btn btn-sm btn-outline-danger";
+          btnExcluir.innerHTML = '<i class="bi bi-trash"></i>';
+          btnExcluir.title = "Excluir link";
+          btnExcluir.addEventListener("click", function() {
+            if (confirm("Tem certeza que deseja excluir este link?")) {
+              fetch("{{ url_for('routes.excluir_link') }}", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Requested-With": "XMLHttpRequest"
+                },
+                body: JSON.stringify({
+                  link_id: link.id
+                })
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  row.remove();
+                  if (linksList.children.length === 0) {
+                    linksTable.style.display = "none";
+                    linksEmpty.style.display = "block";
+                  }
+                } else {
+                  alert("Erro ao excluir: " + data.message);
+                }
+              })
+              .catch(error => {
+                console.error("Erro ao excluir link:", error);
+                alert("Erro ao excluir link. Tente novamente.");
+              });
+            }
+          });
+          
+          // Adicionar botões à célula
+          acoesCell.appendChild(btnCopiar);
+          acoesCell.appendChild(btnWhatsapp);
+          acoesCell.appendChild(btnExcluir);
+          
+          // Montar linha
+          row.appendChild(slugCell);
+          row.appendChild(dataCell);
+          row.appendChild(acoesCell);
+          
+          // Adicionar à tabela
+          linksList.appendChild(row);
+        });
+        
+        linksTable.style.display = "table";
+      } else {
+        // Sem links para mostrar
+        linksEmpty.style.display = "block";
+      }
+    })
+    .catch(error => {
+      console.error("Erro ao carregar links existentes:", error);
+      linksLoader.style.display = "none";
+      linksEmpty.textContent = "Erro ao carregar links. Tente novamente.";
+      linksEmpty.style.display = "block";
+    });
+}
 
 function copiarLink() {
   const linkInput = document.getElementById("linkCadastro");
