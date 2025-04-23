@@ -911,12 +911,14 @@ sdk = mercadopago.SDK(token)
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     preference_data = {
-        "payer": {"name": nome, "email": email},
+        "payer": {"name": nome, "email": email, "last_name": nome},
         "items": [{
             "title": descricao,
+            "description": descricao,
             "quantity": 1,
             "currency_id": "BRL",
             "unit_price": float(valor),
+            "category_id": "evento"
         }],
         "back_urls": {
             "success": return_url,
@@ -937,9 +939,11 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "items": [{
             "id": str(tipo_inscricao.id),
             "title": f"Inscrição – {tipo_inscricao.nome} – {evento.nome}",
+            "description": f"Inscrição para {evento.nome} - {tipo_inscricao.nome}",
             "quantity": 1,
             "currency_id": "BRL",
             "unit_price": float(tipo_inscricao.preco),
+            "category_id": "evento"
         }],
         "payer": {
             "email": usuario.email
