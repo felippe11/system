@@ -209,21 +209,31 @@ def enviar_proposta():
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 @routes.route('/inscricao/<path:identifier>', methods=['GET', 'POST'])  # Aceita slug ou token
 def cadastro_participante(identifier: str | None = None):
-    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
+    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
 
     1.  Valida link (token ou slug)
     2.  Renderiza formulário (GET)
     3.  Cria Usuario, Inscricao (status **pending**)
     4.  Se gratuito  → approved  → login
-         Se pago      → gera preference  → redireciona init_point
+         Se pago      → gera preference  → redireciona init_point
     """
     # ────────────────────────────── imports locais ─────────────────────────────
     from collections import defaultdict
     from datetime import datetime
-    import os, mercadopago
+    import os, mercadopago, logging
 
-    # SDK Mercado Pago (token vem de variável de ambiente)
-    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+    # Configurar logging para debug
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
+    # SDK Mercado Pago (token vem de variável de ambiente)
+    mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+    if not mp_token:
+        logger.error("Token do Mercado Pago não encontrado nas variáveis de ambiente")
+        flash("Erro de configuração do sistema de pagamento", "danger")
+        return redirect(url_for("routes.login"))
+        
+    sdk = mercadopago.SDK(mp_token)
 
     # ────────────────────────────── Busca do link ──────────────────────────────
     token = request.args.get("token") if not identifier else identifier
@@ -234,10 +244,52 @@ def cadastro_participante(identifier: str | None = None):
         ).first()
     if not link:
         flash("Erro: Link de cadastro inválido ou expirado!", "danger")
-        return redirect(url_for("routes.cadastro_participante"))
+        return redirect(url_for("routes.login"))
 
     cliente_id: int = link.cliente_id
     evento = Evento.query.get(link.evento_id) if link.evento_id else None
+    
+    # ────────────────────────────── Verificação de lote vigente ─────────────────────────────
+    lote_vigente = None
+    if evento and evento.habilitar_lotes:
+        lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).order_by(LoteInscricao.ordem).all()
+        
+        # Debug dos lotes
+        for lote in lotes:
+            count = Inscricao.query.filter_by(
+                evento_id=evento.id, 
+                lote_id=lote.id
+            ).filter(
+                Inscricao.status_pagamento.in_(["approved", "pending"])
+            ).count()
+            
+            logger.debug(f"Lote: {lote.nome}, Máximo: {lote.qtd_maxima}, Contagem: {count}, Ativo: {lote.ativo}")
+            
+            # Verificar cada critério explicitamente para debug
+            is_valid = True
+            now = datetime.utcnow()
+            
+            # Verificar por data
+            if lote.data_inicio and lote.data_fim:
+                if now < lote.data_inicio or now > lote.data_fim:
+                    is_valid = False
+                    logger.debug(f"  - Inválido por data: início={lote.data_inicio}, fim={lote.data_fim}, agora={now}")
+            
+            # Verificar por quantidade
+            if lote.qtd_maxima is not None:
+                if count >= lote.qtd_maxima:
+                    is_valid = False
+                    logger.debug(f"  - Inválido por quantidade: {count}/{lote.qtd_maxima}")
+                    
+            if is_valid:
+                lote_vigente = lote
+                logger.debug(f"  => Lote vigente: {lote.nome}")
+                break
+                
+        if not lote_vigente:
+            logger.warning("Nenhum lote válido encontrado!")
+            flash("Não há lotes disponíveis para inscrição no momento.", "warning")
+            return redirect(url_for("routes.login"))
 
     # ────────────────────────────── Carrega oficinas/ministrantes ──────────────
     oficinas = (
@@ -270,14 +322,23 @@ def cadastro_participante(identifier: str | None = None):
 
     # ────────────────────────────── POST  (cadastro) ───────────────────────────
     if request.method == "POST":
+        # Debug de todos os campos do formulário
+        logger.debug(f"Dados do formulário: {request.form}")
+        
         # Dados básicos
         nome = request.form.get("nome")
         cpf = request.form.get("cpf")
         email = request.form.get("email")
         senha = request.form.get("senha")
         formacao = request.form.get("formacao")
+        
+        # Verifica se está usando lotes ou tipo de inscrição direto
+        lote_tipo_inscricao_id = request.form.get("lote_tipo_inscricao_id")
         tipo_inscricao_id = request.form.get("tipo_inscricao_id")
-
+        lote_id = request.form.get("lote_id")
+        
+        logger.debug(f"IDs recebidos: lote_tipo_inscricao_id={lote_tipo_inscricao_id}, tipo_inscricao_id={tipo_inscricao_id}, lote_id={lote_id}")
+        
         estados_str = ",".join(request.form.getlist("estados[]") or [])
         cidades_str = ",".join(request.form.getlist("cidades[]") or [])
 
@@ -291,6 +352,7 @@ def cadastro_participante(identifier: str | None = None):
                 sorted_keys=sorted_keys,
                 ministrantes=ministrantes,
                 grouped_oficinas=grouped_oficinas,
+                lote_vigente=lote_vigente
             )
 
         if Usuario.query.filter_by(email=email).first():
@@ -299,6 +361,81 @@ def cadastro_participante(identifier: str | None = None):
         if Usuario.query.filter_by(cpf=cpf).first():
             flash("CPF já está sendo usado por outro usuário!", "danger")
             return redirect(request.url)
+
+        # ────────────────────────────── VERIFICAÇÃO MAIS ROBUSTA DO LOTE ─────────────────────────────
+        # Verificar se o lote informado ainda é válido (se estiver usando lotes)
+        if lote_id and evento and evento.habilitar_lotes:
+            # Verificar o lote novamente para ter certeza
+            lotes_validos = []
+            lote_atual = None
+            
+            # Percorrer todos os lotes para encontrar o lote vigente atual
+            lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).order_by(LoteInscricao.ordem).all()
+            for l in lotes:
+                # Verificação explícita da validade
+                count = Inscricao.query.filter_by(
+                    evento_id=evento.id, 
+                    lote_id=l.id
+                ).filter(
+                    Inscricao.status_pagamento.in_(["approved", "pending"])
+                ).count()
+                
+                is_valid = True
+                now = datetime.utcnow()
+                
+                # Verificar por data
+                if l.data_inicio and l.data_fim:
+                    if now < l.data_inicio or now > l.data_fim:
+                        is_valid = False
+                
+                # Verificar por quantidade
+                if l.qtd_maxima is not None:
+                    if count >= l.qtd_maxima:
+                        is_valid = False
+                
+                if is_valid:
+                    lotes_validos.append(l)
+                    
+                if l.id == int(lote_id):
+                    lote_atual = l
+            
+            # Se o lote enviado não for mais válido
+            if not lote_atual or not lote_atual in lotes_validos:
+                logger.warning(f"Lote {lote_id} não é mais válido!")
+                
+                if lotes_validos:
+                    # Usar o primeiro lote válido
+                    lote_vigente = lotes_validos[0]
+                    lote_id = lote_vigente.id
+                    
+                    # Atualizar o lote_tipo_inscricao_id se possível
+                    if tipo_inscricao_id:
+                        novo_lote_tipo = LoteTipoInscricao.query.filter_by(
+                            lote_id=lote_vigente.id,
+                            tipo_inscricao_id=tipo_inscricao_id
+                        ).first()
+                        
+                        if novo_lote_tipo:
+                            lote_tipo_inscricao_id = novo_lote_tipo.id
+                            logger.info(f"Tipo de inscrição atualizado para o novo lote: {lote_vigente.nome}")
+                        else:
+                            # Usar o primeiro tipo disponível no novo lote
+                            primeiro_lote_tipo = LoteTipoInscricao.query.filter_by(
+                                lote_id=lote_vigente.id
+                            ).first()
+                            
+                            if primeiro_lote_tipo:
+                                lote_tipo_inscricao_id = primeiro_lote_tipo.id
+                                tipo_inscricao_id = primeiro_lote_tipo.tipo_inscricao_id
+                                logger.info(f"Usando primeiro tipo disponível no novo lote: {lote_vigente.nome}")
+                            else:
+                                flash("Não foi possível encontrar um tipo de inscrição válido.", "danger")
+                                return redirect(request.url)
+                    
+                    flash(f"O lote foi atualizado para '{lote_vigente.nome}' pois o lote anterior não está mais disponível.", "info")
+                else:
+                    flash("Não há lotes disponíveis para inscrição no momento.", "danger")
+                    return redirect(request.url)
 
         # Cria usuário
         novo_usuario = Usuario(
@@ -324,13 +461,17 @@ def cadastro_participante(identifier: str | None = None):
                 db.session.rollback()
                 flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
                 return redirect(request.url)
-            db.session.add(
-                RespostaCampo(
-                    resposta_formulario_id=novo_usuario.id,
-                    campo_id=campo.id,
-                    valor=valor,
+            try:
+                db.session.add(
+                    RespostaCampo(
+                        resposta_formulario_id=novo_usuario.id,
+                        campo_id=campo.id,
+                        valor=valor or "",
+                    )
                 )
-            )
+            except Exception as e:
+                logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
+                pass  # continua mesmo se der erro nos campos personalizados
 
         # Cria inscrição pendente
         inscricao = Inscricao(
@@ -339,37 +480,112 @@ def cadastro_participante(identifier: str | None = None):
             cliente_id=cliente_id,
             status_pagamento="pending",
         )
+        
+        # Adiciona o lote_id se estiver disponível
+        if lote_id:
+            inscricao.lote_id = lote_id
+            logger.debug(f"Definindo lote_id da inscrição: {lote_id}")
+            
         db.session.add(inscricao)
-        db.session.flush()
+        db.session.flush()  # Garante que a inscrição tenha um ID
+
+        # Determina o preço baseado no tipo de inscrição usado
+        preco = 0
+        titulo_inscricao = "Inscrição"
+        
+        # Se estiver usando lotes
+        if lote_tipo_inscricao_id and evento and evento.habilitar_lotes:
+            logger.debug(f"Usando preço do lote_tipo_inscricao_id={lote_tipo_inscricao_id}")
+            lote_tipo = LoteTipoInscricao.query.get(lote_tipo_inscricao_id)
+            
+            if lote_tipo:
+                preco = float(lote_tipo.preco)
+                tipo_inscricao = EventoInscricaoTipo.query.get(lote_tipo.tipo_inscricao_id)
+                if tipo_inscricao:
+                    titulo_inscricao = f"Inscrição – {evento.nome} – {tipo_inscricao.nome} ({lote_tipo.lote.nome})"
+                    # Atualizamos também o tipo_inscricao_id do usuário
+                    novo_usuario.tipo_inscricao_id = tipo_inscricao.id
+        # Se estiver usando tipo de inscrição direto
+        elif tipo_inscricao_id:
+            logger.debug(f"Usando preço do tipo_inscricao_id={tipo_inscricao_id}")
+            tipo_inscricao = EventoInscricaoTipo.query.get(tipo_inscricao_id)
+            if tipo_inscricao:
+                preco = float(tipo_inscricao.preco)
+                titulo_inscricao = f"Inscrição – {evento.nome} – {tipo_inscricao.nome}"
+        
+        # Verifica se inscrição é gratuita pelo evento
+        if evento and evento.inscricao_gratuita:
+            logger.debug("Evento com inscrição gratuita, ignorando preço")
+            preco = 0
+
+        logger.debug(f"Preço calculado: {preco}, Título: {titulo_inscricao}")
 
         # Preferência de pagamento se for pago
-        tipo_inscricao = EventoInscricaoTipo.query.get(tipo_inscricao_id)
-        if tipo_inscricao and tipo_inscricao.preco > 0:
+        if preco > 0:
+            logger.debug("Criando preferência de pagamento no Mercado Pago")
+            # Preparar URLs para o Mercado Pago usando URL absoluta
+            success_url = url_for("routes.pagamento_sucesso", _external=True)
+            failure_url = url_for("routes.pagamento_falha", _external=True)
+            pending_url = url_for("routes.pagamento_pendente", _external=True)
+            webhook_url = url_for("routes.webhook_mp", _external=True)
+            
+            logger.debug(f"URLs de callback: Success={success_url}, Failure={failure_url}, Pending={pending_url}")
+            logger.debug(f"Webhook URL: {webhook_url}")
+            
             preference_data = {
                 "items": [
                     {
-                        "id": str(tipo_inscricao.id),
-                        "title": f"Inscrição – {evento.nome} – {tipo_inscricao.nome}",
+                        "id": str(lote_tipo_inscricao_id or tipo_inscricao_id or inscricao.id),
+                        "title": titulo_inscricao,
                         "quantity": 1,
                         "currency_id": "BRL",
-                        "unit_price": float(tipo_inscricao.preco),
+                        "unit_price": preco,
                     }
                 ],
                 "payer": {"email": novo_usuario.email, "name": novo_usuario.nome},
                 "external_reference": str(inscricao.id),
                 "back_urls": {
-                    "success": url_for("routes.pagamento_sucesso", _external=True),
-                    "failure": url_for("routes.pagamento_falha", _external=True),
-                    "pending": url_for("routes.pagamento_pendente", _external=True),
+                    "success": success_url,
+                    "failure": failure_url,
+                    "pending": pending_url,
                 },
-                "notification_url": url_for("routes.webhook_mp", _external=True),
+                "notification_url": webhook_url,
                 "auto_return": "approved",
             }
-            pref = sdk.preference().create(preference_data)
-            db.session.commit()
-            return redirect(pref["response"]["init_point"])
+            
+            logger.debug(f"Dados da preferência: {preference_data}")
+            
+            try:
+                pref = sdk.preference().create(preference_data)
+                logger.debug(f"Resposta do Mercado Pago: {pref}")
+                
+                if "response" in pref and "init_point" in pref["response"]:
+                    # Salvar o ID do pagamento na inscrição
+                    if "id" in pref["response"]:
+                        inscricao.payment_id = pref["response"]["id"]
+                    
+                    db.session.commit()
+                    
+                    # Extrair a URL completa do init_point
+                    mp_url = pref["response"]["init_point"]
+                    logger.debug(f"URL do Mercado Pago: {mp_url}")
+                    
+                    # Redirecionar diretamente para a URL do Mercado Pago
+                    return redirect(mp_url)
+                else:
+                    # Erro na criação da preferência
+                    logger.error(f"Erro na resposta do Mercado Pago: {pref}")
+                    db.session.rollback()
+                    flash("Erro ao processar pagamento: resposta inválida do Mercado Pago.", "danger")
+                    return redirect(request.url)
+            except Exception as e:
+                logger.exception(f"Exceção ao criar preferência: {str(e)}")
+                db.session.rollback()
+                flash(f"Erro ao processar pagamento: {str(e)}", "danger")
+                return redirect(request.url)
 
         # Gratuito – aprova direto
+        logger.debug("Inscrição gratuita - aprovando diretamente")
         inscricao.status_pagamento = "approved"
         db.session.commit()
         flash("Cadastro realizado com sucesso!", "success")
@@ -385,6 +601,26 @@ def cadastro_participante(identifier: str | None = None):
             all_ministrantes.add(of.ministrante_obj)
         all_ministrantes.update(of.ministrantes_associados)
 
+    # Calcular estatísticas do lote vigente para exibição
+    lote_stats = None
+    if lote_vigente:
+        count = Inscricao.query.filter_by(
+            evento_id=evento.id, 
+            lote_id=lote_vigente.id
+        ).filter(
+            Inscricao.status_pagamento.in_(["approved", "pending"])
+        ).count()
+        
+        vagas_disponiveis = lote_vigente.qtd_maxima - count if lote_vigente.qtd_maxima else "ilimitado"
+        
+        lote_stats = {
+            "nome": lote_vigente.nome,
+            "vagas_totais": lote_vigente.qtd_maxima or "ilimitado",
+            "vagas_usadas": count,
+            "vagas_disponiveis": vagas_disponiveis
+        }
+        logger.debug(f"Estatísticas do lote: {lote_stats}")
+
     return render_template(
         "cadastro_participante.html",
         token=link.token,
@@ -394,7 +630,76 @@ def cadastro_participante(identifier: str | None = None):
         grouped_oficinas=grouped_oficinas,
         patrocinadores=patrocinadores,
         campos_personalizados=campos_personalizados,
+        lote_vigente=lote_vigente,
+        lote_stats=lote_stats
     )
+
+@routes.route('/api/lote_vigente/<int:evento_id>', methods=['GET'])
+def api_lote_vigente(evento_id):
+    """API para verificar o lote vigente atual"""
+    from datetime import datetime
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    lotes = LoteInscricao.query.filter_by(evento_id=evento_id, ativo=True).order_by(LoteInscricao.ordem).all()
+    lote_vigente = None
+    
+    # Debug mais detalhado de cada lote
+    for lote in lotes:
+        # Contagem de inscrições no lote
+        count = Inscricao.query.filter_by(
+            evento_id=evento_id, 
+            lote_id=lote.id
+        ).filter(
+            Inscricao.status_pagamento.in_(["approved", "pending"])
+        ).count()
+        
+        # Verificação explícita da validade
+        is_valid = True
+        now = datetime.utcnow()
+        
+        # Verificar por data
+        data_ok = True
+        if lote.data_inicio and lote.data_fim:
+            if now < lote.data_inicio or now > lote.data_fim:
+                data_ok = False
+                is_valid = False
+        
+        # Verificar por quantidade
+        qtd_ok = True
+        if lote.qtd_maxima is not None:
+            if count >= lote.qtd_maxima:
+                qtd_ok = False
+                is_valid = False
+        
+        logger.debug(f"API - Verificando lote {lote.id} ({lote.nome}): Data OK: {data_ok}, Qtd OK: {qtd_ok}, Usado: {count}/{lote.qtd_maxima or 'ilimitado'}")
+        
+        if is_valid:
+            lote_vigente = lote
+            logger.debug(f"API - Lote vigente encontrado: {lote.nome}")
+            break
+    
+    # Retornar mais informações sobre o lote vigente
+    result = {
+        'lote_id': lote_vigente.id if lote_vigente else None,
+        'nome': lote_vigente.nome if lote_vigente else None,
+    }
+    
+    if lote_vigente:
+        # Contagem de inscrições para o lote vigente
+        count = Inscricao.query.filter_by(
+            evento_id=evento_id, 
+            lote_id=lote_vigente.id
+        ).filter(
+            Inscricao.status_pagamento.in_(["approved", "pending"])
+        ).count()
+        
+        result['vagas_totais'] = lote_vigente.qtd_maxima
+        result['vagas_usadas'] = count
+        result['vagas_disponiveis'] = lote_vigente.qtd_maxima - count if lote_vigente.qtd_maxima else "ilimitado"
+    
+    return jsonify(result)
 
 # ===========================
 #      EDITAR PARTICIPANTE
