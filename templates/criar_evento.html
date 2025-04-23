@@ -2,6 +2,10 @@
 {% block title %}Criar Evento{% endblock %}
 
 {% block content %}
+<!-- Link para o Leaflet - Mapa Gratuito -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
 <div class="container py-5">
   <!-- Header section with improved background contrast -->
   <div class="bg-primary bg-gradient rounded-3 p-4 mb-4 shadow-sm">
@@ -20,11 +24,11 @@
       </div>
       <div class="step-indicator" data-step="2">
         <div class="step-number">2</div>
-        <div class="step-label">Data e Horário</div>
+        <div class="step-label">Localização</div>
       </div>
       <div class="step-indicator" data-step="3">
         <div class="step-number">3</div>
-        <div class="step-label">Localização</div>
+        <div class="step-label">Data e Horário</div>
       </div>
       <div class="step-indicator" data-step="4">
         <div class="step-number">4</div>
@@ -61,12 +65,6 @@
             <textarea class="form-control border border-secondary bg-white" id="descricao" name="descricao" rows="3" 
                       placeholder="Descreva os detalhes do seu evento"></textarea>
           </div>
-
-          <div class="mb-4">
-            <label for="programacao" class="form-label fw-bold">Programação</label>
-            <textarea class="form-control border border-secondary bg-white" id="programacao" name="programacao" rows="3"
-                      placeholder="Descreva a programação do evento"></textarea>
-          </div>
           
           <div class="d-flex justify-content-end mt-4">
             <button type="button" class="btn btn-primary next-step px-4" data-next="2">
@@ -84,21 +82,26 @@
           </div>
           
           <div class="mb-4">
-            <label for="localizacao" class="form-label fw-bold">Endereço</label>
-            <input type="text" class="form-control border border-secondary bg-white" id="localizacao" name="localizacao"
-                  placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP">
-          </div>
-          
-          <div class="mb-4">
-            <label for="link_mapa" class="form-label fw-bold">Link do Google Maps</label>
-            <div class="input-group">
-              <span class="input-group-text bg-primary text-white"><i class="bi bi-map"></i></span>
-              <input type="url" class="form-control border border-secondary bg-white" id="link_mapa" name="link_mapa"
-                    placeholder="https://maps.google.com/...">
+            <label for="localizacao-input" class="form-label fw-bold">Endereço</label>
+            <div class="input-group mb-2">
+              <input type="text" class="form-control border border-secondary bg-white" id="localizacao-input" name="localizacao"
+                    placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP">
+              <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#mapaModal">
+                <i class="bi bi-geo-alt"></i> Buscar no Mapa
+              </button>
             </div>
+            <div id="suggestions" class="border rounded-bottom shadow-sm bg-white position-absolute" 
+                 style="display: none; z-index: 1000; width: calc(100% - 30px);"></div>
           </div>
 
+
+          
           <div class="mb-4">
+            <div class="border-bottom border-primary pb-2 mb-3">
+              <h5 class="text-primary d-flex align-items-center">
+                <i class="bi bi-image me-2"></i>Mídia
+              </h5>
+            </div>
             <label for="banner" class="form-label fw-bold">Banner do Evento</label>
             <input type="file" class="form-control border border-secondary bg-white" id="banner" name="banner" accept="image/*">
             <div class="form-text">Recomendado: Imagem no formato 1200 x 600px</div>
@@ -303,6 +306,35 @@
           </div>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para o Mapa -->
+<div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mapaModalLabel">Localizar Endereço</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-3">
+          <input type="text" id="modal-search-input" class="form-control" placeholder="Digite um lugar para pesquisar...">
+          <button id="modal-search-btn" class="btn btn-primary" type="button">Buscar</button>
+        </div>
+        <div id="mapa-container" style="height: 400px;"></div>
+        <div id="endereco-detalhes" class="mt-3 p-3 bg-light rounded d-none">
+          <h6 class="fw-bold">Detalhes do Local:</h6>
+          <p id="endereco-completo" class="mb-1"></p>
+          <p class="mb-1">Latitude: <span id="info-latitude"></span></p>
+          <p class="mb-1">Longitude: <span id="info-longitude"></span></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-selecionar-local" data-bs-dismiss="modal">Selecionar Este Local</button>
+      </div>
     </div>
   </div>
 </div>
@@ -727,6 +759,365 @@ function updateProgressBar(step) {
   });
 </script>
 {% endif %}
+
+<!-- Script do Localizador de Lugares -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Variáveis globais
+    let map;
+    let marker;
+    let currentLocation = {
+      lat: -15.77972, // Coordenadas iniciais (Brasil)
+      lng: -47.92972
+    };
+    let suggestionTimeout;
+
+    // Configuração de sugestões para o campo de localização
+    const localizacaoInput = document.getElementById('localizacao-input');
+    const suggestionsContainer = document.getElementById('suggestions');
+    
+    // Configurar o mapa quando o modal for aberto
+    document.getElementById('mapaModal').addEventListener('shown.bs.modal', function () {
+      if (!map) {
+        initMap();
+      }
+     
+      // Centralize no local salvo, se existir
+      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        map.setView([lat, lng], 15);
+       
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+       
+        // Mostrar detalhes do local
+        showLocationDetails(lat, lng);
+      }
+    });
+   
+    // Inicializar o mapa
+    function initMap() {
+      map = L.map('mapa-container').setView([currentLocation.lat, currentLocation.lng], 13);
+     
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(map);
+     
+      // Adicionar marker no mapa se já existir localização
+      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        marker = L.marker([lat, lng]).addTo(map);
+      }
+     
+      // Permitir clicar no mapa para selecionar local
+      map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+       
+        // Atualizar ou criar marcador
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+       
+        showLocationDetails(lat, lng);
+      });
+    }
+   
+    // Mostrar detalhes do local selecionado
+    function showLocationDetails(lat, lng) {
+      document.getElementById('endereco-detalhes').classList.remove('d-none');
+      document.getElementById('info-latitude').textContent = lat.toFixed(6);
+      document.getElementById('info-longitude').textContent = lng.toFixed(6);
+     
+      // Fazer geocoding reverso para obter o endereço
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.display_name) {
+            document.getElementById('endereco-completo').textContent = data.display_name;
+            // Guardar temporariamente
+            currentLocation = {
+              lat: lat,
+              lng: lng,
+              address: data.display_name
+            };
+          }
+        })
+        .catch(error => {
+          console.error('Erro ao obter endereço:', error);
+          document.getElementById('endereco-completo').textContent = 'Endereço não disponível';
+        });
+    }
+   
+    // Buscar locais com base no texto digitado
+    function searchPlaces(query, modalSearch = false) {
+      const searchInput = modalSearch ? document.getElementById('modal-search-input') : localizacaoInput;
+     
+      if (query.length < 3) return;
+     
+      fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
+        .then(response => response.json())
+        .then(data => {
+          if (modalSearch) {
+            // Se for busca no modal, centraliza o primeiro resultado no mapa
+            if (data.features && data.features.length > 0) {
+              const feature = data.features[0];
+              const coords = feature.geometry.coordinates;
+              const lat = coords[1];
+              const lng = coords[0];
+             
+              map.setView([lat, lng], 15);
+             
+              if (marker) {
+                marker.setLatLng([lat, lng]);
+              } else {
+                marker = L.marker([lat, lng]).addTo(map);
+              }
+             
+              showLocationDetails(lat, lng);
+            }
+          } else {
+            // Se for busca no campo, mostra sugestões
+            suggestionsContainer.innerHTML = '';
+           
+            if (data.features && data.features.length > 0) {
+              data.features.forEach(feature => {
+                const properties = feature.properties;
+                const coords = feature.geometry.coordinates;
+               
+                // Criar texto para exibição
+                let displayText = [];
+                if (properties.name) displayText.push(properties.name);
+                if (properties.street) displayText.push(properties.street);
+                if (properties.city) displayText.push(properties.city);
+                if (properties.state) displayText.push(properties.state);
+               
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.textContent = displayText.join(', ');
+                item.addEventListener('click', function() {
+                  // Preencher o campo de localização
+                  localizacaoInput.value = displayText.join(', ');
+                 
+                  // Guardar coordenadas
+                  document.getElementById('latitude').value = coords[1];
+                  document.getElementById('longitude').value = coords[0];
+                 
+                  // Gerar link do Google Maps
+                  document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
+                 
+                  // Esconder sugestões
+                  suggestionsContainer.style.display = 'none';
+                });
+               
+                suggestionsContainer.appendChild(item);
+              });
+             
+              suggestionsContainer.style.display = 'block';
+            } else {
+              suggestionsContainer.style.display = 'none';
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Erro na busca:', error);
+        });
+    }
+   
+    // Event listener para o campo de localização
+    localizacaoInput.addEventListener('input', function() {
+      const query = this.value.trim();
+     
+      // Limpar timeout anterior
+      if (suggestionTimeout) {
+        clearTimeout(suggestionTimeout);
+      }
+     
+      // Esperar um pouco antes de buscar para evitar muitas requisições
+      suggestionTimeout = setTimeout(() => {
+        if (query.length >= 3) {
+          searchPlaces(query);
+        } else {
+          suggestionsContainer.style.display = 'none';
+        }
+      }, 300);
+    });
+   
+    // Esconder sugestões ao clicar fora
+    document.addEventListener('click', function(e) {
+      if (e.target !== localizacaoInput && !suggestionsContainer.contains(e.target)) {
+        suggestionsContainer.style.display = 'none';
+      }
+    });
+   
+    // Buscar no modal
+    document.getElementById('modal-search-btn').addEventListener('click', function() {
+      const query = document.getElementById('modal-search-input').value.trim();
+      if (query.length >= 3) {
+        searchPlaces(query, true);
+      }
+    });
+   
+    // Tecla Enter no campo de busca do modal
+    document.getElementById('modal-search-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('modal-search-btn').click();
+      }
+    });
+   
+    // Selecionar local do mapa
+    document.getElementById('btn-selecionar-local').addEventListener('click', function() {
+      if (currentLocation) {
+        // Preencher campos com informações do local selecionado
+        document.getElementById('latitude').value = currentLocation.lat;
+        document.getElementById('longitude').value = currentLocation.lng;
+        document.getElementById('localizacao-input').value = currentLocation.address || '';
+       
+        // Gerar link do Google Maps
+        document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${currentLocation.lat},${currentLocation.lng}`;
+      }
+    });
+  });
+
+  // Price masking functionality
+document.addEventListener('DOMContentLoaded', function() {
+  // Format number as Brazilian currency
+  function formatAsCurrency(value) {
+    const number = parseFloat(value);
+    if (isNaN(number)) return '';
+    
+    return number.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2
+    });
+  }
+  
+  // Apply mask to price inputs
+  function applyPriceMask() {
+    // Select all price inputs that haven't been masked yet
+    document.querySelectorAll('input[name="preco_tipo[]"]:not([data-masked]), input[name^="lote_tipo_preco_"]:not([data-masked])').forEach(input => {
+      // Mark as masked
+      input.setAttribute('data-masked', 'true');
+      
+      // Create display element for formatted value
+      const display = document.createElement('div');
+      display.className = 'price-mask-display';
+      display.style.position = 'absolute';
+      display.style.top = '0';
+      display.style.left = '0';
+      display.style.width = '100%';
+      display.style.height = '100%';
+      display.style.backgroundColor = 'white';
+      display.style.display = 'flex';
+      display.style.alignItems = 'center';
+      display.style.paddingLeft = '12px';
+      display.style.paddingRight = '12px';
+      display.style.pointerEvents = 'none';
+      display.style.borderRadius = 'inherit';
+      display.style.fontSize = 'inherit';
+      display.style.color = 'inherit';
+      display.style.fontFamily = 'inherit';
+      display.style.zIndex = '1';
+      
+      // Make input container position relative
+      const container = input.parentElement;
+      if (window.getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative';
+      }
+      
+      // Add display element to DOM
+      container.appendChild(display);
+      
+      // Initially update display
+      if (input.value) {
+        display.textContent = formatAsCurrency(input.value);
+        display.style.display = 'flex';
+      } else {
+        display.style.display = 'none';
+      }
+      
+      // Show/hide display on focus/blur
+      input.addEventListener('focus', function() {
+        display.style.display = 'none';
+      });
+      
+      input.addEventListener('blur', function() {
+        if (this.value) {
+          display.textContent = formatAsCurrency(this.value);
+          display.style.display = 'flex';
+        } else {
+          display.style.display = 'none';
+        }
+      });
+      
+      // Update display when value changes
+      input.addEventListener('input', function() {
+        display.style.display = 'none';
+      });
+    });
+  }
+  
+  // Apply price masks initially
+  applyPriceMask();
+  
+  // Apply masks when new price fields are added
+  const observer = new MutationObserver(function(mutations) {
+    let shouldUpdate = false;
+    
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'childList' && mutation.addedNodes.length) {
+        shouldUpdate = true;
+      }
+    });
+    
+    if (shouldUpdate) {
+      applyPriceMask();
+    }
+  });
+  
+  observer.observe(document.body, { childList: true, subtree: true });
+  
+  // Also apply masks when buttons are clicked that add new price fields
+  ['#adicionar-tipo-inscricao', '#adicionar-lote'].forEach(function(selector) {
+    const button = document.querySelector(selector);
+    if (button) {
+      button.addEventListener('click', function() {
+        setTimeout(applyPriceMask, 100);
+      });
+    }
+  });
+  
+  // Re-apply masks when the gratuity checkbox changes
+  const gratuitoCheckbox = document.getElementById('inscricao_gratuita');
+  if (gratuitoCheckbox) {
+    gratuitoCheckbox.addEventListener('change', function() {
+      setTimeout(applyPriceMask, 100);
+    });
+  }
+});
+</script>
+
+<!-- CSS para Sugestões -->
+<style>
+.suggestion-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.suggestion-item:hover {
+  background-color: #f0f7ff;
+}
+</style>
 
 <style>
   /* Estilos adicionais para melhorar a experiência de usuário */
