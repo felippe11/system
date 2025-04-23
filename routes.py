@@ -881,6 +881,8 @@ def dashboard():
     agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
     
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
+    
+    configuracao = Configuracao.query.first() 
 
     # Obtem filtros
     estado_filter = request.args.get('estado', '').strip()
@@ -1094,7 +1096,8 @@ def dashboard():
         clientes=clientes,
         cliente_filter=cliente_filter,
         agendamentos_professor=agendamentos_professor,
-        eventos=eventos
+        eventos=eventos,
+        configuracao=configuracao
     )
 
 @routes.route('/dashboard_participante')
@@ -14153,3 +14156,33 @@ def exportar_checkins_pdf_opcoes():
     
     nome_arquivo = f"checkins_{evento_id or 'todos'}_{tipo or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype='application/pdf')
+
+# routes_admin.py  (ou onde guarda rotas de admin)
+from decimal import Decimal
+from flask_login import login_required, current_user
+from models import Configuracao
+from extensions import db
+
+@routes.route("/atualizar_taxa", methods=["POST"])
+@login_required
+def atualizar_taxa():
+    if current_user.tipo != "superadmin":
+        abort(403)
+
+    valor = request.form.get("taxa_percentual", "0").replace(",", ".")
+    try:
+        perc = round(Decimal(valor), 2)          # 0–100
+        assert 0 <= perc <= 100
+    except:
+        flash("Percentual inválido", "danger")
+        return redirect(request.referrer or url_for("routes.dashboard_admin"))
+
+    cfg = Configuracao.query.first()
+    if not cfg:
+        cfg = Configuracao()
+        db.session.add(cfg)
+
+    cfg.taxa_percentual_inscricao = perc
+    db.session.commit()
+    flash("Percentual salvo!", "success")
+    return redirect(request.referrer or url_for("routes.dashboard_admin"))
