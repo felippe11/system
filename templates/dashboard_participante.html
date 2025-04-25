@@ -818,7 +818,7 @@ function inscrever(oficinaId) {
         .then(response => {
             if (response.redirected) {
                 window.location.href = response.url;
-                return;
+                return Promise.reject('Redirecionado');
             }
             return response.json();
         })
@@ -844,7 +844,11 @@ function inscrever(oficinaId) {
             }
         })
         .catch(error => {
+            // Ignora erro de redirecionamento (já tratado acima)
+            if (error === 'Redirecionado') return;
+            
             console.error('Erro:', error);
+            
             // Restaura o conteúdo original em caso de erro
             cardFooter.innerHTML = originalContent;
             criarNotificacao('error', 'Ocorreu um erro ao processar sua inscrição. Tente novamente.');
