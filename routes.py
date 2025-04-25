@@ -125,12 +125,12 @@ routes = Blueprint("routes", __name__)
 def bloquear_usuarios_pendentes():
     pass  # Função desativada - Todos os usuários podem acessar o sistema
         # autoriza só rotas de leitura
-        if request.endpoint in [
+    if request.endpoint in [
             "routes.dashboard_participante",
             "static"  # etc.
         ]:
             return  # ok
-        if request.method != "GET":
+    if request.method != "GET":
             flash("Pagamento pendente – funcionalidades bloqueadas até aprovação.", "warning")
             return redirect(url_for("routes.dashboard_participante"))
 
