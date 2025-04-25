@@ -792,71 +792,12 @@ function inscrever(oficinaId) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            // Atualiza a UI com os novos botões
-            let buttonsHtml = `
-                <a href="${data.pdf_url || '/baixar_comprovante/' + oficinaId}" 
-                   class="btn-action btn-primary">
-                    <i class="fas fa-file-download"></i> Comprovante
-                </a>
-                <form action="/remover_inscricao/${oficinaId}" method="post">
-                    <button type="submit" class="btn-action btn-danger">
-                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                    </button>
-                </form>
-            `;
-            
-            // Adiciona botões condicionais
-            if (typeof permitir_checkin_global !== 'undefined' && permitir_checkin_global) {
-                buttonsHtml = `
-                    <a href="/checkin/${oficinaId}" class="btn-action btn-warning">
-                        <i class="fas fa-clipboard-check"></i> Fazer Check-in
-                    </a>
-                    ${buttonsHtml}
-                `;
-            }
-            
-            // Se estamos em um evento atual, adicionar botões para certificado e feedback
-            // Nota: isso funciona supondo que oficinas de eventos atuais estão na seção correspondente
-            const eventHeader = workshopCard.closest('.event-section').querySelector('.event-header');
-            if (eventHeader && eventHeader.classList.contains('current')) {
-                if (typeof habilitar_certificado_individual !== 'undefined' && habilitar_certificado_individual) {
-                    buttonsHtml += `
-                        <a href="/gerar_certificado_individual/${oficinaId}" class="btn-action btn-success">
-                            <i class="fas fa-certificate"></i> Certificado
-                        </a>
-                    `;
-                }
-                
-                if (typeof habilitar_feedback !== 'undefined' && habilitar_feedback) {
-                    buttonsHtml += `
-                        <a href="/feedback/${oficinaId}" class="btn-action btn-info">
-                            <i class="fas fa-comment-alt"></i> Feedback
-                        </a>
-                    `;
-                }
-            }
-            
-            footer.innerHTML = buttonsHtml;
-            
-            // Atualiza o contador de vagas
-            const vagasElement = workshopCard.querySelector('.info-vagas');
-            if (vagasElement) {
-                const vagasAtuais = parseInt(vagasElement.textContent) - 1;
-                vagasElement.textContent = vagasAtuais;
-                
-                // Se esgotou as vagas, atualiza o estilo
-                if (vagasAtuais <= 0) {
-                    const vacancyBadge = vagasElement.closest('.vacancy-available');
-                    if (vacancyBadge) {
-                        vacancyBadge.className = 'vacancy-full';
-                        vacancyBadge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
-                    }
-                }
-            }
+        // Verifica se o usuário já está inscrito ou se a inscrição foi bem-sucedida
+        if (data.success || data.message && data.message.includes("já está inscrito")) {
+            atualizarBotoesAposInscricao(oficinaId, workshopCard, footer, data);
             
             // Exibe notificação de sucesso
-            criarNotificacao('success', 'Inscrição realizada com sucesso!');
+            criarNotificacao('success', data.message || 'Inscrição realizada com sucesso!');
         } else {
             // Exibe mensagem de erro
             footer.innerHTML = `
@@ -892,6 +833,76 @@ function inscrever(oficinaId) {
         // Mostra notificação de erro
         criarNotificacao('danger', 'Erro na conexão. Verifique sua internet.');
     });
+}
+
+// Função para atualizar os botões após a inscrição bem-sucedida
+function atualizarBotoesAposInscricao(oficinaId, workshopCard, footer, data) {
+    // Atualiza a UI com os novos botões
+    let buttonsHtml = `
+        <a href="/baixar_comprovante/${oficinaId}" 
+           class="btn-action btn-primary">
+            <i class="fas fa-file-download"></i> Comprovante
+        </a>
+        <form action="/remover_inscricao/${oficinaId}" method="post">
+            <button type="submit" class="btn-action btn-danger">
+                <i class="fas fa-times-circle"></i> Cancelar Inscrição
+            </button>
+        </form>
+    `;
+    
+    // Verifica se está em um evento atual/futuro ou se permite check-in
+    const eventHeader = workshopCard.closest('.event-section').querySelector('.event-header');
+    const isCurrentEvent = eventHeader && eventHeader.classList.contains('current');
+    
+    // Adiciona botão de check-in se estiver habilitado (evento atual ou futuro)
+    if ((isCurrentEvent || eventHeader.classList.contains('future')) && 
+        (window.permitir_checkin_global === undefined || window.permitir_checkin_global)) {
+        buttonsHtml = `
+            <a href="/checkin/${oficinaId}" class="btn-action btn-warning">
+                <i class="fas fa-clipboard-check"></i> Fazer Check-in
+            </a>
+            ${buttonsHtml}
+        `;
+    }
+    
+    // Se estamos em um evento atual ou passado, adicionar botões para certificado e feedback
+    if (isCurrentEvent || eventHeader.classList.contains('past')) {
+        // Adiciona botão de certificado se estiver habilitado
+        if (window.habilitar_certificado_individual === undefined || window.habilitar_certificado_individual) {
+            buttonsHtml += `
+                <a href="/gerar_certificado_individual/${oficinaId}" class="btn-action btn-success">
+                    <i class="fas fa-certificate"></i> Certificado
+                </a>
+            `;
+        }
+        
+        // Adiciona botão de feedback se estiver habilitado
+        if (window.habilitar_feedback === undefined || window.habilitar_feedback) {
+            buttonsHtml += `
+                <a href="/feedback/${oficinaId}" class="btn-action btn-info">
+                    <i class="fas fa-comment-alt"></i> Feedback
+                </a>
+            `;
+        }
+    }
+    
+    footer.innerHTML = buttonsHtml;
+    
+    // Atualiza o contador de vagas se necessário
+    const vagasElement = workshopCard.querySelector('.info-vagas');
+    if (vagasElement) {
+        const vagasAtuais = parseInt(vagasElement.textContent) - 1;
+        vagasElement.textContent = vagasAtuais;
+        
+        // Se esgotou as vagas, atualiza o estilo
+        if (vagasAtuais <= 0) {
+            const vacancyBadge = vagasElement.closest('.vacancy-available');
+            if (vacancyBadge) {
+                vacancyBadge.className = 'vacancy-full';
+                vacancyBadge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
+            }
+        }
+    }
 }
 
 // Função para criar notificações visuais
