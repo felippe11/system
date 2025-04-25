@@ -369,6 +369,50 @@ def cadastro_participante(identifier: str | None = None):
 
     # ────────────────────────────── POST  (cadastro) ───────────────────────────
     if request.method == "POST":
+        # Cria usuário
+        novo_usuario = Usuario(
+            nome=nome,
+            cpf=cpf,
+            email=email,
+            senha=generate_password_hash(senha),
+            formacao=formacao,
+            tipo="participante",
+            estados=estados_str,
+            cidades=cidades_str,
+            cliente_id=cliente_id,
+            tipo_inscricao_id=tipo_inscricao_id,
+            evento_id=link.evento_id,
+        )
+        db.session.add(novo_usuario)
+        db.session.flush()  # garante id
+
+        # Primeiro criar uma resposta de formulário para vincular os campos personalizados
+        nova_resposta = RespostaFormulario(
+            usuario_id=novo_usuario.id,
+            cliente_id=cliente_id,
+            evento_id=evento.id if evento else None
+        )
+        db.session.add(nova_resposta)
+        db.session.flush()  # garantir que obtemos o ID da resposta
+        
+        # Campos personalizados
+        for campo in campos_personalizados:
+            valor = request.form.get(f"campo_{campo.id}")
+            if campo.obrigatorio and not valor:
+                db.session.rollback()
+                flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
+                return redirect(request.url)
+            try:
+                db.session.add(
+                    RespostaCampo(
+                        resposta_formulario_id=nova_resposta.id,  # Usar o ID da resposta de formulário corretamente
+                        campo_id=campo.id,
+                        valor=valor or "",
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
+                pass  # continua mesmo se der erro nos campos personalizados
         # Debug de todos os campos do formulário
         logger.debug(f"Dados do formulário: {request.form}")
         
