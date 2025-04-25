@@ -467,15 +467,17 @@
               </div>
     
               <!-- Campos personalizados -->
-              {% for campo in evento.cliente.campos_personalizados %}
-                <div class="form-group{% if campo.full_width %} full-width{% endif %}">
-                  <label>{{ campo.nome }}</label>
-                  <input type="{{ campo.tipo }}"
-                         name="campo_{{ campo.id }}"
-                         placeholder="Digite aqui"
-                         {% if campo.obrigatorio %}required{% endif %}>
-                </div>
-              {% endfor %}
+              {% if evento and evento.cliente and evento.cliente.campos_personalizados %}
+                {% for campo in evento.cliente.campos_personalizados %}
+                  <div class="form-group{% if campo.full_width %} full-width{% endif %}">
+                    <label>{{ campo.nome }}</label>
+                    <input type="{{ campo.tipo }}"
+                           name="campo_{{ campo.id }}"
+                           placeholder="Digite aqui"
+                           {% if campo.obrigatorio %}required{% endif %}>
+                  </div>
+                {% endfor %}
+              {% endif %}
     
               <!-- Inscrição / Lotes -->
               {% if evento and evento.inscricao_gratuita %}
@@ -2070,6 +2072,7 @@ input::placeholder {
         }
     });
 
+    // Garantir que```html
     // Garantir que o evento_id seja enviado corretamente
     document.addEventListener('DOMContentLoaded', function() {
         const formulario = document.getElementById('formularioCadastro');
