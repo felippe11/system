@@ -1,14 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Participante{% endblock %}
 
-{% block head %}
-  {{ super() }}
-  <!-- Meta tag para CSRF token -->
-  {% if csrf_token is defined %}
-  <meta name="csrf-token" content="{{ csrf_token() }}">
-  {% endif %}
-{% endblock %}
-
 {% block content %}
 <style>
   :root {
@@ -411,12 +403,6 @@
   </div>
   
   <!-- Avisos e ações principais -->
-  {% if current_user.tem_pagamento_pendente() %}
-    <div class="alert-message alert-warning" style="max-width: 800px; margin: 0 auto 2rem auto;">
-      <i class="fas fa-info-circle"></i>
-      <div>Pode usar normalmente o sistema.</div>
-    </div>
-  {% endif %}
   
   <div class="action-buttons">
     <!-- Formulários disponíveis -->
@@ -524,17 +510,17 @@
                       <i class="fas fa-info-circle"></i> Não requer inscrição
                     </div>
                   {% elif oficina.vagas > 0 and oficina.disponivel_para_inscricao %}
-                  <button class="btn-inscrever" data-oficina-id="{{ oficina.id }}" class="btn-action btn-success">
-                    <i class="fas fa-check-circle"></i> Inscrever-se
-                  </button>
+                    <button onclick="inscrever('{{ oficina.id }}')" class="btn-action btn-success">
+                      <i class="fas fa-check-circle"></i> Inscrever-se
+                    </button>
                   {% elif not oficina.disponivel_para_inscricao %}
                     <div class="alert-message alert-warning">
                       <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
                     </div>
                   {% else %}
-                  <button class="btn-inscrever" data-oficina-id="{{ oficina.id }}" class="btn-action btn-success">
-                    <i class="fas fa-check-circle"></i> Inscrever-se
-                  </button>
+                    <button onclick="inscrever('{{ oficina.id }}')" class="btn-action btn-success">
+                      <i class="fas fa-check-circle"></i> Inscrever-se
+                    </button>
                   {% endif %}
                 </div>
               </div>
@@ -656,18 +642,20 @@
                       <i class="fas fa-info-circle"></i> Participação livre
                     </div>
                   {% elif oficina.vagas > 0 %}
-                    <button class="btn-inscrever" data-oficina-id="{{ oficina.id }}" class="btn-action btn-success">
-  <i class="fas fa-check-circle"></i> Inscrever-se
-</button>
+                    <button onclick="inscrever('{{ oficina.id }}')" 
+                            class="btn-action btn-success">
+                      <i class="fas fa-check-circle"></i> Inscrever-se
+                    </button>
                   {% elif not oficina.disponivel_para_inscricao %}
                     <div class="alert-message alert-warning">
                       <i class="fas fa-exclamation-triangle"></i> 
                       {{ oficina.motivo_indisponibilidade }}
                     </div>
                   {% else %}
-                    <button class="btn-inscrever" data-oficina-id="{{ oficina.id }}" class="btn-action btn-success">
-  <i class="fas fa-check-circle"></i> Inscrever-se
-</button>
+                    <button onclick="inscrever('{{ oficina.id }}')" 
+                            class="btn-action btn-success">
+                      <i class="fas fa-check-circle"></i> Inscrever-se
+                    </button>
                   {% endif %}
                 </div>
               </div>
@@ -778,205 +766,199 @@
 </div>
 
 <script>
-// Script simplificado para inscrição em oficinas
+// Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
-  // Encontra o botão clicado e o card da oficina
-  const btn = event.currentTarget;  // Mudança aqui para currentTarget
-  const card = btn.closest('[data-oficina-id]');
-  if (!card) return;
-  
-  // Restante do código permanece igual...
-  btn.disabled = true;
-  const btnOriginalHtml = btn.innerHTML;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
-  
-  // Envia a requisição AJAX
-  fetch(`/inscrever/${oficinaId}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    credentials: 'same-origin'
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      // Sucesso: Mostra os botões de "Comprovante" e "Cancelar inscrição"
-      const footer = card.querySelector('.workshop-footer');
-      footer.innerHTML = `
-        <a href="${data.pdf_url}" class="btn-action btn-primary" target="_blank">
-          <i class="fas fa-file-download"></i> Comprovante
-        </a>
-        <form action="/remover_inscricao/${oficinaId}" method="post">
-          <button type="submit" class="btn-action btn-danger">
-            <i class="fas fa-times-circle"></i> Cancelar Inscrição
-          </button>
-        </form>`;
-        
-      // Atualiza o número de vagas (se existir)
-      const vagasElement = card.querySelector('.info-vagas');
-      if (vagasElement) {
-        const vagasAtuais = parseInt(vagasElement.textContent) - 1;
-        vagasElement.textContent = vagasAtuais;
-        
-        // Se esgotou as vagas, muda o badge para "Esgotado"
-        if (vagasAtuais <= 0) {
-          const badge = vagasElement.closest('.vacancy-available');
-          if (badge) {
-            badge.className = 'vacancy-full';
-            badge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
-          }
-        }
-      }
-      
-      // Mostra notificação de sucesso
-      mostrarNotificacao('success', 'Inscrição realizada com sucesso!');
-    } else {
-      // Erro: Restaura o botão e mostra mensagem de erro
-      btn.innerHTML = btnOriginalHtml;
-      btn.disabled = false;
-      mostrarNotificacao('error', data.message || 'Erro ao processar inscrição');
-    }
-  })
-  .catch(error => {
-    console.error('Erro:', error);
-    // Restaura o botão e mostra erro genérico
-    btn.innerHTML = btnOriginalHtml;
-    btn.disabled = false;
-    mostrarNotificacao('error', 'Erro de conexão. Tente novamente.');
-  });
-}
-
-// Função para mostrar notificações na tela
-function mostrarNotificacao(tipo, mensagem) {
-  const toast = document.createElement('div');
-  toast.className = 'toast';
-  toast.style.backgroundColor = tipo === 'success' ? 'rgba(56, 176, 0, 0.1)' : 'rgba(247, 37, 133, 0.1)';
-  
-  toast.innerHTML = `
-    <div class="alert-message alert-${tipo === 'success' ? 'info' : 'danger'}" style="margin-bottom: 0;">
-      <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-      ${mensagem}
-    </div>
-  `;
-  
-  document.body.appendChild(toast);
-  
-  // Remove após 3 segundos
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(10px)';
-    toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+    // Encontra o card da oficina
+    const workshopCard = document.querySelector(`.workshop-card[data-oficina-id="${oficinaId}"]`);
+    if (!workshopCard) return;
     
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
+    const footer = workshopCard.querySelector('.workshop-footer');
+    
+    // Mostrar estado de carregamento
+    footer.innerHTML = `
+        <div class="alert-message alert-info">
+            <div class="spinner-border" role="status"></div>
+            <span>Processando sua inscrição...</span>
+        </div>
+    `;
+    
+    // Enviar requisição AJAX
+    fetch(`/inscrever/${oficinaId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Atualiza a UI com os novos botões
+            let buttonsHtml = `
+                <a href="${data.pdf_url || '/baixar_comprovante/' + oficinaId}" 
+                   class="btn-action btn-primary">
+                    <i class="fas fa-file-download"></i> Comprovante
+                </a>
+                <form action="/remover_inscricao/${oficinaId}" method="post">
+                    <button type="submit" class="btn-action btn-danger">
+                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                    </button>
+                </form>
+            `;
+            
+            // Adiciona botões condicionais
+            if (typeof permitir_checkin_global !== 'undefined' && permitir_checkin_global) {
+                buttonsHtml = `
+                    <a href="/checkin/${oficinaId}" class="btn-action btn-warning">
+                        <i class="fas fa-clipboard-check"></i> Fazer Check-in
+                    </a>
+                    ${buttonsHtml}
+                `;
+            }
+            
+            // Se estamos em um evento atual, adicionar botões para certificado e feedback
+            // Nota: isso funciona supondo que oficinas de eventos atuais estão na seção correspondente
+            const eventHeader = workshopCard.closest('.event-section').querySelector('.event-header');
+            if (eventHeader && eventHeader.classList.contains('current')) {
+                if (typeof habilitar_certificado_individual !== 'undefined' && habilitar_certificado_individual) {
+                    buttonsHtml += `
+                        <a href="/gerar_certificado_individual/${oficinaId}" class="btn-action btn-success">
+                            <i class="fas fa-certificate"></i> Certificado
+                        </a>
+                    `;
+                }
+                
+                if (typeof habilitar_feedback !== 'undefined' && habilitar_feedback) {
+                    buttonsHtml += `
+                        <a href="/feedback/${oficinaId}" class="btn-action btn-info">
+                            <i class="fas fa-comment-alt"></i> Feedback
+                        </a>
+                    `;
+                }
+            }
+            
+            footer.innerHTML = buttonsHtml;
+            
+            // Atualiza o contador de vagas
+            const vagasElement = workshopCard.querySelector('.info-vagas');
+            if (vagasElement) {
+                const vagasAtuais = parseInt(vagasElement.textContent) - 1;
+                vagasElement.textContent = vagasAtuais;
+                
+                // Se esgotou as vagas, atualiza o estilo
+                if (vagasAtuais <= 0) {
+                    const vacancyBadge = vagasElement.closest('.vacancy-available');
+                    if (vacancyBadge) {
+                        vacancyBadge.className = 'vacancy-full';
+                        vacancyBadge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
+                    }
+                }
+            }
+            
+            // Exibe notificação de sucesso
+            criarNotificacao('success', 'Inscrição realizada com sucesso!');
+        } else {
+            // Exibe mensagem de erro
+            footer.innerHTML = `
+                <div class="alert-message alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    ${data.message || 'Erro na inscrição. Tente novamente.'}
+                </div>
+                <button onclick="inscrever('${oficinaId}')" 
+                        class="btn-action btn-success">
+                    <i class="fas fa-redo"></i> Tentar novamente
+                </button>
+            `;
+            
+            // Mostra notificação de erro
+            criarNotificacao('danger', data.message || 'Erro na inscrição. Tente novamente.');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        
+        // Atualiza o footer com botão para tentar novamente
+        footer.innerHTML = `
+            <div class="alert-message alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Erro na conexão. Verifique sua internet.
+            </div>
+            <button onclick="inscrever('${oficinaId}')" 
+                    class="btn-action btn-success">
+                <i class="fas fa-redo"></i> Tentar novamente
+            </button>
+        `;
+        
+        // Mostra notificação de erro
+        criarNotificacao('danger', 'Erro na conexão. Verifique sua internet.');
+    });
 }
+
+// Função para criar notificações visuais
+function criarNotificacao(tipo, mensagem) {
+    // Cria elemento de notificação
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.style.backgroundColor = tipo === 'success' 
+        ? 'rgba(56, 176, 0, 0.1)' // Verde para sucesso
+        : 'rgba(247, 37, 133, 0.1)'; // Vermelho para erro
+    
+    // Define o conteúdo
+    toast.innerHTML = `
+        <div class="alert-message alert-${tipo === 'success' ? 'info' : 'danger'}" style="margin-bottom: 0;">
+            <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+            ${mensagem}
+        </div>
+    `;
+    
+    // Adiciona ao corpo do documento
+    document.body.appendChild(toast);
+    
+    // Remove após 3 segundos
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        
+        // Remove do DOM após a transição
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 3000);
+}
+
+// Função para verificar se o usuário pode se inscrever em mais oficinas
+function verificarLimiteInscricoes() {
+    // Esta função pode ser chamada para verificar se o usuário atingiu o limite
+    // de inscrições antes de mostrar o botão de inscrição
+    const regra = document.querySelector('[data-limite-oficinas]');
+    if (!regra) return true;
+    
+    const limite = parseInt(regra.getAttribute('data-limite-oficinas'));
+    const utilizadas = parseInt(regra.getAttribute('data-inscricoes-utilizadas'));
+    
+    return utilizadas < limite;
+}
+
+// Inicialização quando o documento estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    // Adiciona atributos data para o limite de inscrições
+    const regraElement = document.querySelector('.alert-message.alert-info strong');
+    if (regraElement && regraElement.textContent.includes('oficinas')) {
+        const textContent = regraElement.parentElement.textContent;
+        const match = textContent.match(/(\d+) de (\d+) utilizadas/);
+        
+        if (match && match.length === 3) {
+            const inscricoesUtilizadas = parseInt(match[1]);
+            const limiteOficinas = parseInt(match[2]);
+            
+            document.body.setAttribute('data-inscricoes-utilizadas', inscricoesUtilizadas);
+            document.body.setAttribute('data-limite-oficinas', limiteOficinas);
+        }
+    }
+    
+    // Inicializa qualquer comportamento adicional
+    console.log('Dashboard de participante inicializado com sucesso!');
+});
 </script>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-      // Configura os listeners para todos os botões de inscrição
-      document.querySelectorAll('.btn-inscrever').forEach(btn => {
-          btn.addEventListener('click', async function() {
-              const oficinaId = this.dataset.oficinaId;
-              const card = this.closest('[data-oficina-id]');
-              
-              // Estado de carregamento
-              this.disabled = true;
-              const originalHTML = this.innerHTML;
-              this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processando...';
-              
-              try {
-                  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-                  const response = await fetch(`/inscrever/${oficinaId}`, {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json',
-                          'X-CSRFToken': csrfToken
-                      },
-                      credentials: 'same-origin'
-                  });
-                  
-                  const data = await response.json();
-                  
-                  if (data.success) {
-                      // Atualiza a interface
-                      const footer = card.querySelector('.workshop-footer');
-                      
-                      // Botão de comprovante
-                      let footerHTML = `
-                          <a href="${data.pdf_url}" class="btn-action btn-primary">
-                              <i class="fas fa-file-download"></i> Comprovante
-                          </a>
-                          <form action="/remover_inscricao/${oficinaId}" method="post">
-                              <input type="hidden" name="csrf_token" value="${csrfToken}">
-                              <button type="submit" class="btn-action btn-danger">
-                                  <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                              </button>
-                          </form>`;
-                      
-                      // Adiciona botão de check-in se aplicável
-                      if (card.closest('.event-header.current')) {
-                          footerHTML = `
-                              <a href="/checkin/${oficinaId}" class="btn-action btn-warning">
-                                  <i class="fas fa-clipboard-check"></i> Fazer Check-in
-                              </a>` + footerHTML;
-                      }
-                      
-                      footer.innerHTML = footerHTML;
-                      
-                      // Atualiza contador de vagas se existir
-                      const vagasElement = card.querySelector('.info-vagas');
-                      if (vagasElement) {
-                          vagasElement.textContent = data.vagas_restantes || 0;
-                          
-                          if (data.vagas_restantes <= 0) {
-                              const badge = vagasElement.closest('.vacancy-available');
-                              if (badge) {
-                                  badge.className = 'vacancy-full';
-                                  badge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
-                              }
-                          }
-                      }
-                      
-                      mostrarNotificacao('success', data.message || 'Inscrição realizada com sucesso!');
-                  } else {
-                      this.innerHTML = originalHTML;
-                      this.disabled = false;
-                      mostrarNotificacao('error', data.message || 'Erro ao processar inscrição');
-                  }
-              } catch (error) {
-                  console.error('Erro:', error);
-                  this.innerHTML = originalHTML;
-                  this.disabled = false;
-                  mostrarNotificacao('error', 'Erro de conexão. Tente novamente.');
-              }
-          });
-      });
-      
-      function mostrarNotificacao(tipo, mensagem) {
-          const toast = document.createElement('div');
-          toast.className = `toast toast-${tipo}`;
-          
-          const icon = tipo === 'success' ? 'check-circle' : 'exclamation-triangle';
-          const alertClass = tipo === 'success' ? 'alert-info' : 'alert-danger';
-          
-          toast.innerHTML = `
-              <div class="alert-message ${alertClass}">
-                  <i class="fas fa-${icon}"></i>
-                  ${mensagem}
-              </div>
-          `;
-          
-          document.body.appendChild(toast);
-          
-          setTimeout(() => {
-              toast.style.opacity = '0';
-              setTimeout(() => toast.remove(), 300);
-          }, 3000);
-      }
-  });
-  </script>
-
-
 {% endblock %}
