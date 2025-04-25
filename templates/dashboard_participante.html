@@ -774,86 +774,60 @@
 <script>
 // Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
-    // Encontra o card da oficina pelo ID
-    let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-    if (!oficinaCard) return;
-    
-    // Atualiza imediatamente o número de vagas
-    let vagasElement = oficinaCard.querySelector(".info-vagas");
-    if (vagasElement) {
-        let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-        vagasElement.innerText = vagasAtualizadas;
-        
-        // Atualiza o badge de vagas
-        let badgeElement = vagasElement.closest('.vacancy-available');
-        if (badgeElement) {
-            if (vagasAtualizadas === 0) {
-                badgeElement.className = "vacancy-full";
-                badgeElement.querySelector('i').className = "fas fa-times-circle";
-                badgeElement.innerHTML = badgeElement.innerHTML.replace(/\d+ disponíveis/, "Esgotado");
-            } else {
-                badgeElement.innerHTML = badgeElement.innerHTML.replace(/\d+ disponíveis/, `${vagasAtualizadas} disponíveis`);
-            }
+  const card   = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
+  const footer = card?.querySelector(".workshop-footer");
+  if (!card || !footer) return;
+
+  const vagasEl = card.querySelector(".info-vagas");
+  const vagas   = vagasEl ? parseInt(vagasEl.innerText, 10) : null;
+
+  // placeholder de carregamento
+  const backupHtml = footer.innerHTML;
+  footer.innerHTML =
+    '<div class="alert-message alert-info"><i class="fas fa-spinner fa-spin"></i> Processando...</div>';
+
+  // pega o CSRF token (se estiver usando Flask-WTF)
+  const csrf = document.querySelector('meta[name=csrf-token]')?.content;
+
+  fetch(`/inscrever/${oficinaId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrf && {'X-CSRFToken': csrf})
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ tipo_inscricao_id: null }) // envie ID se houver
+  })
+  .then(r => r.json())
+  .then(data => {
+      if (!data.success) throw new Error(data.message);
+
+      // decrementa vaga (apenas feedback visual)
+      if (vagasEl && vagas !== null) {
+        const novas = vagas - 1;
+        vagasEl.innerText = novas;
+        if (novas === 0) {
+          const badge = vagasEl.closest('.vacancy-available');
+          badge.className = 'vacancy-full';
+          badge.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
         }
-    }
-    
-    // Remove o botão de inscrição e prepara área para novos botões
-    let cardFooter = oficinaCard.querySelector(".workshop-footer");
-    if (cardFooter) {
-        // Salva o conteúdo original para restaurar em caso de erro
-        let originalContent = cardFooter.innerHTML;
-        
-        // Substitui pelo indicador de loading
-        cardFooter.innerHTML = '<div class="alert-message alert-info"><i class="fas fa-spinner fa-spin"></i> Processando inscrição...</div>';
-        
-        // Envia requisição ao servidor para registrar a inscrição
-        fetch(`/inscrever/${oficinaId}`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            if (response.redirected) {
-                window.location.href = response.url;
-                return Promise.reject('Redirecionado');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data && data.success) {
-                // Atualiza o rodapé do card com os botões de ação
-                cardFooter.innerHTML = `
-                    <a href="${data.pdf_url || `/baixar_comprovante/${oficinaId}`}" class="btn-action btn-primary">
-                        <i class="fas fa-file-download"></i> Comprovante
-                    </a>
-                    <form action="/remover_inscricao/${oficinaId}" method="post">
-                        <button type="submit" class="btn-action btn-danger">
-                            <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                        </button>
-                    </form>`;
-                
-                // Exibe notificação de sucesso
-                criarNotificacao('success', 'Inscrição realizada com sucesso!');
-            } else {
-                // Restaura o conteúdo original em caso de erro
-                cardFooter.innerHTML = originalContent;
-                criarNotificacao('error', data?.message || 'Erro ao processar inscrição.');
-            }
-        })
-        .catch(error => {
-            // Ignora erro de redirecionamento (já tratado acima)
-            if (error === 'Redirecionado') return;
-            
-            console.error('Erro:', error);
-            
-            // Restaura o conteúdo original em caso de erro
-            cardFooter.innerHTML = originalContent;
-            criarNotificacao('error', 'Ocorreu um erro ao processar sua inscrição. Tente novamente.');
-        });
-    }
+      }
+
+      footer.innerHTML = `
+        <a href="${data.pdf_url}" class="btn-action btn-primary">
+          <i class="fas fa-file-download"></i> Comprovante
+        </a>
+        <form action="/remover_inscricao/${oficinaId}" method="post">
+          <button type="submit" class="btn-action btn-danger">
+            <i class="fas fa-times-circle"></i> Cancelar Inscrição
+          </button>
+        </form>`;
+      criarNotificacao('success', data.message);
+  })
+  .catch(err => {
+      footer.innerHTML = backupHtml;
+      criarNotificacao('error', err.message || 'Erro inesperado.');
+  });
 }
 
 // Função para criar notificações visuais

@@ -1948,515 +1948,102 @@ def excluir_oficina(oficina_id):
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
+   
     return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+
+
+
 @routes.route('/inscrever/<int:oficina_id>', methods=['POST'])
 @login_required
 def inscrever(oficina_id):
-    # Log para depuração
-    print(f"DEBUG -> Recebida solicitação de inscrição para oficina_id={oficina_id}, usuário={current_user.id}")
-    
-    # Verificar tipo de usuário
+    """Inscreve o participante em uma oficina (única implementação)."""
+    from uuid import uuid4
+    logger = current_app.logger
+
     if current_user.tipo != 'participante':
-        return jsonify({
-            'success': False,
-            'message': 'Apenas participantes podem se inscrever em oficinas.'
-        })
+        return jsonify(success=False,
+                       message='Apenas participantes podem se inscrever em oficinas.')
 
-    # Buscar oficina
-    oficina = Oficina.query.get(oficina_id)
+    oficina: Oficina | None = Oficina.query.get(oficina_id)
     if not oficina:
-        return jsonify({
-            'success': False,
-            'message': 'Oficina não encontrada!'
-        })
+        return jsonify(success=False, message='Oficina não encontrada.')
 
-    # Verificar disponibilidade de vagas com base no tipo de inscrição
+    # ----- Regras de vagas ----------------------------------------------------
     if oficina.tipo_inscricao == 'sem_inscricao':
-        return jsonify({
-            'success': False,
-            'message': 'Esta oficina não requer inscrição.'
-        })
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        # Não há limite de vagas, continuar com a inscrição
-        pass
-    elif oficina.vagas <= 0:
-        return jsonify({
-            'success': False,
-            'message': 'Esta oficina está lotada!'
-        })
+        return jsonify(success=False, message='Esta oficina não requer inscrição.')
+    if oficina.tipo_inscricao == 'com_inscricao_com_limite' and oficina.vagas <= 0:
+        return jsonify(success=False, message='Esta oficina está lotada!')
 
-    # Evitar duplicidade de inscrição
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({
-            'success': False,
-            'message': 'Você já está inscrito nesta oficina!'
-        })
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
+    # ----- Não se inscrever duas vezes ---------------------------------------
+    if Inscricao.query.filter_by(usuario_id=current_user.id,
+                                 oficina_id=oficina.id).first():
+        return jsonify(success=False,
+                       message='Você já está inscrito nesta oficina!')
+
+    # ----- Regras por tipo de inscrição --------------------------------------
     if oficina.evento_id and current_user.tipo_inscricao_id:
-        # Buscar regras para o tipo de inscrição do participante
         regra = RegraInscricaoEvento.query.filter_by(
             evento_id=oficina.evento_id,
             tipo_inscricao_id=current_user.tipo_inscricao_id
         ).first()
-        
         if regra:
-            # Verificar se esta oficina está na lista de oficinas permitidas
-            oficinas_permitidas = regra.get_oficinas_permitidas_list() if hasattr(regra, 'get_oficinas_permitidas_list') else None
-            if oficinas_permitidas and oficina.id not in oficinas_permitidas:
-                return jsonify({
-                    'success': False,
-                    'message': 'Seu tipo de inscrição não permite acesso a esta oficina.'
-                })
-            
-            # Verificar se o participante já atingiu o limite de oficinas
+            # oficina permitida?
+            if regra.get_oficinas_permitidas_list() \
+               and oficina.id not in regra.get_oficinas_permitidas_list():
+                return jsonify(success=False,
+                               message='Seu tipo de inscrição não dá acesso a esta oficina.')
+            # limite atingido?
             if regra.limite_oficinas > 0:
-                # Contar quantas oficinas o participante já está inscrito neste evento
-                inscricoes_evento = Inscricao.query.join(Oficina).filter(
-                    Inscricao.usuario_id == current_user.id,
-                    Oficina.evento_id == oficina.evento_id
-                ).count()
-                
-                if inscricoes_evento >= regra.limite_oficinas:
-                    return jsonify({
-                        'success': False,
-                        'message': f'Você já atingiu o limite de {regra.limite_oficinas} oficinas para seu tipo de inscrição.'
-                    })
-
-    # Decrementar vagas se for uma oficina com inscrição limitada
+                qtd = (Inscricao.query.join(Oficina)
+                       .filter(Inscricao.usuario_id == current_user.id,
+                               Oficina.evento_id == oficina.evento_id)
+                       .count())
+                if qtd >= regra.limite_oficinas:
+                    return jsonify(
+                        success=False,
+                        message=f'Você já atingiu o limite de {regra.limite_oficinas} oficinas.')
+    # ----- Tudo ok: criar inscrição ------------------------------------------
     if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-    
-    # Obter o tipo de inscrição escolhido (se aplicável)
-    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se gratuita
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id  # Importante: associar ao evento da oficina
-    )
-    
-    if tipo_inscricao_id:
-        inscricao.tipo_inscricao_id = tipo_inscricao_id
-    
-    try:
-        # Adicionar e salvar a inscrição
-        db.session.add(inscricao)
-        
-        # Se o usuário não estiver associado a nenhum evento ainda,
-        # associar ao evento da oficina para manter compatibilidade
-        if not current_user.evento_id and oficina.evento_id:
-            current_user.evento_id = oficina.evento_id
-            
-        db.session.commit()
-        
-        # Gerar QR Code para inscrição
-        inscricao.qr_code_token = str(uuid.uuid4())
-        db.session.commit()
+        oficina.vagas -= 1  # reserva a vaga
 
-        # Gerar comprovante
-        try:
-            pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
-            
-            # Enviar e-mail de confirmação
-            assunto = f"Confirmação de Inscrição - {oficina.titulo}"
-            corpo_texto = f"Olá {current_user.nome},\n\nVocê se inscreveu na oficina '{oficina.titulo}'.\nSegue o comprovante de inscrição em anexo."
+    tipo_inscricao_id = request.json.get('tipo_inscricao_id')  # corpo JSON
 
-            enviar_email(
-                destinatario=current_user.email,
-                nome_participante=current_user.nome,
-                nome_oficina=oficina.titulo,
-                assunto=assunto,
-                corpo_texto=corpo_texto,
-                anexo_path=pdf_path
-            )
-        except Exception as e:
-            print(f"Erro ao gerar comprovante/enviar e-mail: {e}")
-            # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
-            
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        print(f"Erro ao realizar inscrição: {e}")
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao realizar inscrição: {str(e)}'
-        })
-    if current_user.tipo != 'participante':
-        return jsonify({'success': False, 'message': 'Apenas participantes podem se inscrever em oficinas.'})
+    inscricao = Inscricao(usuario_id=current_user.id,
+                          oficina_id=oficina.id,
+                          cliente_id=current_user.cliente_id,
+                          evento_id=oficina.evento_id,
+                          tipo_inscricao_id=tipo_inscricao_id or None,
+                          qr_code_token=str(uuid4()))
 
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        return jsonify({'success': False, 'message': 'Oficina não encontrada.'})
+    # Se o usuário ainda não tem evento, vincula-o (retrocompatibilidade)
+    if not current_user.evento_id and oficina.evento_id:
+        current_user.evento_id = oficina.evento_id
 
-    # Verifica disponibilidade de vagas com base no tipo de inscrição
-    if oficina.tipo_inscricao == 'sem_inscricao':
-        return jsonify({'success': False, 'message': 'Esta oficina não requer inscrição.'})
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        pass  # Continua normalmente
-    elif oficina.vagas <= 0:
-        return jsonify({'success': False, 'message': 'Não há vagas disponíveis para esta oficina.'})
-
-    # Evita duplicidade
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({'success': False, 'message': 'Você já está inscrito nesta oficina.'})
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
-    if oficina.evento_id and current_user.tipo_inscricao_id:
-        regra = RegraInscricaoEvento.query.filter_by(
-            evento_id=oficina.evento_id,
-            tipo_inscricao_id=current_user.tipo_inscricao_id
-        ).first()
-        
-        if regra and regra.limite_oficinas > 0:
-            # Conta inscrições do usuário para este evento
-            inscricoes_evento = Inscricao.query.filter_by(
-                usuario_id=current_user.id,
-                evento_id=oficina.evento_id
-            ).count()
-            
-            if inscricoes_evento >= regra.limite_oficinas:
-                return jsonify({
-                    'success': False, 
-                    'message': f'Você atingiu o limite de {regra.limite_oficinas} inscrições para este evento.'
-                })
-
-    # Decrementa vagas se for uma oficina com inscrição limitada
-    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-    
-    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
-    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id    
-    )
-    
-    if tipo_inscricao_id:
-        inscricao.tipo_inscricao_id = tipo_inscricao_id
-    
     try:
         db.session.add(inscricao)
         db.session.commit()
-        
-        # Gera o token QR Code para esta inscrição
-        inscricao.qr_code_token = str(uuid.uuid4())
-        db.session.commit()
-        
-        # Caminho para o PDF de comprovante
-        pdf_url = url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        
-        # Retorna um JSON de sucesso com URL do comprovante
-        return jsonify({
-            'success': True, 
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': pdf_url
-        })
-        
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao processar inscrição: {str(e)}'
-        })
-    if current_user.tipo != 'participante':
-        return jsonify({'success': False, 'message': 'Apenas participantes podem se inscrever em oficinas.'})
+        logger.error('❌ ERRO ao salvar inscrição', exc_info=True)
+        return jsonify(success=False, message=str(e))
 
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        return jsonify({'success': False, 'message': 'Oficina não encontrada.'})
-
-    # Verifica disponibilidade de vagas com base no tipo de inscrição
-    if oficina.tipo_inscricao == 'sem_inscricao':
-        return jsonify({'success': False, 'message': 'Esta oficina não requer inscrição.'})
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        pass  # Continua normalmente
-    elif oficina.vagas <= 0:
-        return jsonify({'success': False, 'message': 'Não há vagas disponíveis para esta oficina.'})
-
-    # Evita duplicidade
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({'success': False, 'message': 'Você já está inscrito nesta oficina.'})
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
-    if oficina.evento_id and current_user.tipo_inscricao_id:
-        regra = RegraInscricaoEvento.query.filter_by(
-            evento_id=oficina.evento_id,
-            tipo_inscricao_id=current_user.tipo_inscricao_id
-        ).first()
-        
-        if regra and regra.limite_oficinas > 0:
-            # Conta inscrições do usuário para este evento
-            inscricoes_evento = Inscricao.query.filter_by(
-                usuario_id=current_user.id,
-                evento_id=oficina.evento_id
-            ).count()
-            
-            if inscricoes_evento >= regra.limite_oficinas:
-                return jsonify({
-                    'success': False, 
-                    'message': f'Você atingiu o limite de {regra.limite_oficinas} inscrições para este evento.'
-                })
-
-    # Decrementa vagas se for uma oficina com inscrição limitada
-    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-    
-    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
-    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id    
-    )
-    
-    if tipo_inscricao_id:
-        inscricao.tipo_inscricao_id = tipo_inscricao_id
-    
+    # -------- Envio de e-mail + PDF (best-effort) -----------------------------
     try:
-        db.session.add(inscricao)
-        db.session.commit()
-        
-        # Gera o token QR Code para esta inscrição
-        inscricao.qr_code_token = str(uuid.uuid4())
-        db.session.commit()
-        
-        # Caminho para o PDF de comprovante
-        pdf_url = url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        
-        # Retorna um JSON de sucesso com URL do comprovante
-        return jsonify({
-            'success': True, 
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': pdf_url
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao processar inscrição: {str(e)}'
-        })
-    if current_user.tipo != 'participante':
-        return jsonify({'success': False, 'message': 'Apenas participantes podem se inscrever em oficinas.'})
+        pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+        enviar_email(destinatario=current_user.email,
+                     nome_participante=current_user.nome,
+                     nome_oficina=oficina.titulo,
+                     assunto=f'Confirmação de Inscrição - {oficina.titulo}',
+                     corpo_texto=(f'Olá {current_user.nome},\n\n'
+                                  f'Você se inscreveu na oficina "{oficina.titulo}". '
+                                  'Seu comprovante está em anexo.'),
+                     anexo_path=pdf_path)
+    except Exception:
+        logger.warning('Falha ao enviar e-mail; inscrição continua válida', exc_info=True)
 
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        return jsonify({'success': False, 'message': 'Oficina não encontrada.'})
-
-    # Verifica disponibilidade de vagas com base no tipo de inscrição
-    if oficina.tipo_inscricao == 'sem_inscricao':
-        return jsonify({'success': False, 'message': 'Esta oficina não requer inscrição.'})
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        pass  # Continua normalmente
-    elif oficina.vagas <= 0:
-        return jsonify({'success': False, 'message': 'Não há vagas disponíveis para esta oficina.'})
-
-    # Evita duplicidade
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({'success': False, 'message': 'Você já está inscrito nesta oficina.'})
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
-    if oficina.evento_id and current_user.tipo_inscricao_id:
-        regra = RegraInscricaoEvento.query.filter_by(
-            evento_id=oficina.evento_id,
-            tipo_inscricao_id=current_user.tipo_inscricao_id
-        ).first()
-        
-        if regra and regra.limite_oficinas > 0:
-            # Conta inscrições do usuário para este evento
-            inscricoes_evento = Inscricao.query.filter_by(
-                usuario_id=current_user.id,
-                evento_id=oficina.evento_id
-            ).count()
-            
-            if inscricoes_evento >= regra.limite_oficinas:
-                return jsonify({
-                    'success': False, 
-                    'message': f'Você atingiu o limite de {regra.limite_oficinas} inscrições para este evento.'
-                })
-
-    # Decrementa vagas se for uma oficina com inscrição limitada
-    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-    
-    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
-    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id    
-    )
-    
-    if tipo_inscricao_id:
-        inscricao.tipo_inscricao_id = tipo_inscricao_id
-    
-    try:
-        db.session.add(inscricao)
-        db.session.commit()
-        
-        # Gera o token QR Code para esta inscrição (se necessário)
-        inscricao.qr_code_token = str(uuid.uuid4())
-        db.session.commit()
-        
-        # Caminho para o PDF de comprovante
-        pdf_url = url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': pdf_url
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao processar inscrição: {str(e)}'
-        })
-    if current_user.tipo != 'participante':
-        return jsonify({
-            'success': False,
-            'message': 'Apenas participantes podem se inscrever.'
-        })
-
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        return jsonify({
-            'success': False,
-            'message': 'Oficina não encontrada!'
-        })
-
-    # Verifica disponibilidade de vagas com base no tipo de inscrição
-    if oficina.tipo_inscricao == 'sem_inscricao':
-        # Não é necessário verificar vagas para oficinas sem inscrição
-        pass
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        # Não há limite de vagas
-        pass
-    elif oficina.vagas <= 0:
-        return jsonify({
-            'success': False,
-            'message': 'Esta oficina está lotada!'
-        })
-
-    # Evita duplicidade
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({
-            'success': False,
-            'message': 'Você já está inscrito nesta oficina!'
-        })
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
-    if oficina.evento_id and current_user.tipo_inscricao_id:
-        # Buscar regras para o tipo de inscrição do participante
-        regra = RegraInscricaoEvento.query.filter_by(
-            evento_id=oficina.evento_id,
-            tipo_inscricao_id=current_user.tipo_inscricao_id
-        ).first()
-        
-        if regra:
-            # Verificar se esta oficina está na lista de oficinas permitidas
-            oficinas_permitidas = regra.get_oficinas_permitidas_list()
-            if oficinas_permitidas and oficina.id not in oficinas_permitidas:
-                return jsonify({
-                    'success': False,
-                    'message': 'Seu tipo de inscrição não permite acesso a esta oficina.'
-                })
-            
-            # Verificar se o participante já atingiu o limite de oficinas
-            if regra.limite_oficinas > 0:
-                # Contar quantas oficinas o participante já está inscrito neste evento
-                inscricoes_evento = Inscricao.query.join(Oficina).filter(
-                    Inscricao.usuario_id == current_user.id,
-                    Oficina.evento_id == oficina.evento_id
-                ).count()
-                
-                if inscricoes_evento >= regra.limite_oficinas:
-                    return jsonify({
-                        'success': False,
-                        'message': f'Você já atingiu o limite de {regra.limite_oficinas} oficinas para seu tipo de inscrição.'
-                    })
-
-    # Decrementa vagas se for uma oficina com inscrição limitada
-    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-    
-    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
-    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id  # Importante: associar ao evento da oficina
-    )
-    
-    if tipo_inscricao_id:
-        inscricao.tipo_inscricao_id = tipo_inscricao_id
-        # Aqui você pode chamar a função que integra com o Mercado Pago
-        # Exemplo: url_pagamento = iniciar_pagamento(inscricao)
-    
-    try:
-        db.session.add(inscricao)
-        
-        # IMPORTANTE: Se o usuário não estiver associado a nenhum evento ainda,
-        # associar este usuário ao evento da oficina para manter compatibilidade com o sistema
-        if not current_user.evento_id and oficina.evento_id:
-            current_user.evento_id = oficina.evento_id
-            
-        db.session.commit()
-
-        # Gera o comprovante
-        try:
-            pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
-
-            assunto = f"Confirmação de Inscrição - {oficina.titulo}"
-            corpo_texto = f"Olá {current_user.nome},\n\nVocê se inscreveu na oficina '{oficina.titulo}'.\nSegue o comprovante de inscrição em anexo."
-
-            enviar_email(
-                destinatario=current_user.email,
-                nome_participante=current_user.nome,
-                nome_oficina=oficina.titulo,
-                assunto=assunto,
-                corpo_texto=corpo_texto,
-                anexo_path=pdf_path
-            )
-        except Exception as e:
-            logger.error(f"❌ ERRO ao enviar e-mail: {e}", exc_info=True)
-            # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
-            
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        })
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"❌ ERRO ao realizar inscrição: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao realizar inscrição: {str(e)}'
-        })
+    return jsonify(success=True,
+                   message='Inscrição realizada com sucesso!',
+                   pdf_url=url_for('routes.baixar_comprovante', oficina_id=oficina.id))
 
 @routes.route('/remover_inscricao/<int:oficina_id>', methods=['POST'])
 @login_required
