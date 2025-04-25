@@ -693,7 +693,7 @@ def cadastro_participante(identifier: str | None = None):
             "vagas_usadas": count,
             "vagas_disponiveis": vagas_disponiveis
         }
-        logger.debug(f"Estatísticas do lote: {lote_stats}")
+        logger.debug(f"Estatísticas do lote:: {lote_stats}")
 
     return render_template(
         "cadastro_participante.html",
