@@ -419,7 +419,6 @@ def cadastro_participante(identifier: str | None = None):
         # Primeiro criar uma resposta de formulário para vincular os campos personalizados
         nova_resposta = RespostaFormulario(
             usuario_id=novo_usuario.id,
-            cliente_id=cliente_id,
             evento_id=evento.id if evento else None
         )
         db.session.add(nova_resposta)
