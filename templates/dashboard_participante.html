@@ -775,7 +775,7 @@
 // Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
     // Encontra o card da oficina pelo ID
-    let oficinaCard = document.querySelector([data-oficina-id="${oficinaId}"]);
+    let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
     if (!oficinaCard) return;
     
     // Atualiza imediatamente o número de vagas
@@ -785,87 +785,71 @@ function inscrever(oficinaId) {
         vagasElement.innerText = vagasAtualizadas;
         
         // Atualiza o badge de vagas
-        let badgeElement = vagasElement.nextElementSibling;
+        let badgeElement = vagasElement.closest('.vacancy-available');
         if (badgeElement) {
             if (vagasAtualizadas === 0) {
-                badgeElement.className = "status-badge badge-esgotado";
-                badgeElement.innerText = "Esgotado";
+                badgeElement.className = "vacancy-full";
+                badgeElement.querySelector('i').className = "fas fa-times-circle";
+                badgeElement.innerHTML = badgeElement.innerHTML.replace(/\d+ disponíveis/, "Esgotado");
             } else {
-                badgeElement.innerText = vagasAtualizadas + " disponíveis";
+                badgeElement.innerHTML = badgeElement.innerHTML.replace(/\d+ disponíveis/, `${vagasAtualizadas} disponíveis`);
             }
         }
     }
     
     // Remove o botão de inscrição e prepara área para novos botões
-    let cardFooter = oficinaCard.querySelector(".card-footer") || oficinaCard.querySelector(".workshop-footer");
+    let cardFooter = oficinaCard.querySelector(".workshop-footer");
     if (cardFooter) {
-        cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
-        let buttonContainer = cardFooter.querySelector(".d-flex");
+        // Salva o conteúdo original para restaurar em caso de erro
+        let originalContent = cardFooter.innerHTML;
         
-        // Adiciona o botão de cancelar inscrição
-        let cancelForm = document.createElement("form");
-        cancelForm.setAttribute("action", /remover_inscricao/${oficinaId});
-        cancelForm.setAttribute("method", "post");
-        cancelForm.innerHTML = `
-            <button type="submit" class="btn btn-danger w-100">
-                <i class="fas fa-times-circle"></i> Cancelar Inscrição
-            </button>
-        `;
-        buttonContainer.appendChild(cancelForm);
+        // Substitui pelo indicador de loading
+        cardFooter.innerHTML = '<div class="alert-message alert-info"><i class="fas fa-spinner fa-spin"></i> Processando inscrição...</div>';
         
-        // Adiciona botão de check-in se permitido globalmente
-        if ('{{ permitir_checkin_global }}' === 'True') {
-            let checkinBtn = document.createElement("a");
-            checkinBtn.setAttribute("href", /checkin/${oficinaId});
-            checkinBtn.className = "btn btn-warning w-100";
-            checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
-            buttonContainer.appendChild(checkinBtn);
-        }
+        // Envia requisição ao servidor para registrar a inscrição
+        fetch(`/inscrever/${oficinaId}`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                // Atualiza o rodapé do card com os botões de ação
+                cardFooter.innerHTML = `
+                    <a href="${data.pdf_url || `/baixar_comprovante/${oficinaId}`}" class="btn-action btn-primary">
+                        <i class="fas fa-file-download"></i> Comprovante
+                    </a>
+                    <form action="/remover_inscricao/${oficinaId}" method="post">
+                        <button type="submit" class="btn-action btn-danger">
+                            <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                        </button>
+                    </form>`;
+                
+                // Exibe notificação de sucesso
+                criarNotificacao('success', 'Inscrição realizada com sucesso!');
+            } else {
+                // Restaura o conteúdo original em caso de erro
+                cardFooter.innerHTML = originalContent;
+                criarNotificacao('error', data?.message || 'Erro ao processar inscrição.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            // Restaura o conteúdo original em caso de erro
+            cardFooter.innerHTML = originalContent;
+            criarNotificacao('error', 'Ocorreu um erro ao processar sua inscrição. Tente novamente.');
+        });
     }
-    
-    // Envia requisição ao servidor para registrar a inscrição
-    fetch(/inscrever/${oficinaId}, {
-        method: 'POST'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            let buttonContainer = oficinaCard.querySelector(".card-footer .d-flex") 
-                                  || oficinaCard.querySelector(".workshop-footer .d-flex");
-            // Adiciona o botão para baixar comprovante
-            let comprovanteBtn = document.createElement("a");
-            comprovanteBtn.setAttribute("href", data.pdf_url);
-            comprovanteBtn.className = "btn btn-primary w-100";
-            comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
-            buttonContainer.appendChild(comprovanteBtn);
-            
-            // Exibe notificação de sucesso (toast) com Bootstrap 5
-            let toast = document.createElement("div");
-            toast.className = "toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3";
-            toast.setAttribute("role", "alert");
-            toast.setAttribute("aria-live", "assertive");
-            toast.setAttribute("aria-atomic", "true");
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="fas fa-check-circle"></i> Inscrição realizada com sucesso!
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            let bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            setTimeout(() => toast.remove(), 5000);
-        } else {
-            alert(data.message);
-            location.reload();
-        }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        location.reload();
-    });
 }
 
 // Função para criar notificações visuais
