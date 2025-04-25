@@ -524,9 +524,9 @@
                       <i class="fas fa-info-circle"></i> Não requer inscrição
                     </div>
                   {% elif oficina.vagas > 0 and oficina.disponivel_para_inscricao %}
-                    <button onclick="inscrever('{{ oficina.id }}')" class="btn-action btn-success">
-                      <i class="fas fa-check-circle"></i> Inscrever-se
-                    </button>
+                  <button onclick="inscrever(event, '{{ oficina.id }}')" class="btn-action btn-success">
+                    <i class="fas fa-check-circle"></i> Inscrever-se
+                  </button>
                   {% elif not oficina.disponivel_para_inscricao %}
                     <div class="alert-message alert-warning">
                       <i class="fas fa-exclamation-triangle"></i> {{ oficina.motivo_indisponibilidade }}
@@ -783,13 +783,13 @@
 // Script simplificado para inscrição em oficinas
 function inscrever(oficinaId) {
   // Encontra o botão clicado e o card da oficina
-  const btn = event.target;
+  const btn = event.currentTarget;  // Mudança aqui para currentTarget
   const card = btn.closest('[data-oficina-id]');
   if (!card) return;
   
-  // Atualiza o botão para indicar processamento
-  const btnOriginalHtml = btn.innerHTML;
+  // Restante do código permanece igual...
   btn.disabled = true;
+  const btnOriginalHtml = btn.innerHTML;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
   
   // Envia a requisição AJAX
