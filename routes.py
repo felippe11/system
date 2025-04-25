@@ -120,35 +120,8 @@ login_manager.login_view = 'routes.login'  # Essa é a rota que será usada para
 
 routes = Blueprint("routes", __name__)
 
-# routes.py, logo após criar o Blueprint
-@routes.before_request
-def bloquear_usuarios_pendentes():
-    pass  # Função desativada - Todos os usuários podem acessar o sistema
-        # autoriza só rotas de leitura
-    if request.endpoint in [
-            "routes.dashboard_participante",
-            "static"  # etc.
-        ]:
-            return  # ok
-    if request.method != "GET":
-            flash("Pagamento pendente – funcionalidades bloqueadas até aprovação.", "warning")
-            return redirect(url_for("routes.dashboard_participante"))
-
-
-
-
-
 def register_routes(app):
     app.register_blueprint(routes)
-
-
-# ===========================
-#        ROTAS GERAIS
-# ===========================
-
-@routes.route('/')
-def home():
-    return render_template('index.html')
 
 class Proposta(db.Model):
     __tablename__ = 'proposta'
