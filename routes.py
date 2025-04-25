@@ -1980,82 +1980,47 @@ def excluir_oficina(oficina_id):
 
     return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
-
 @routes.route('/inscrever/<int:oficina_id>', methods=['POST'])
 @login_required
 def inscrever(oficina_id):
     try:
-        # Log para debug
-        print(f"Iniciando inscrição: oficina_id={oficina_id}, usuario_id={current_user.id}")
-        
-        # Verificações básicas
-        if current_user.tipo != 'participante':
-            return jsonify({'success': False, 'message': 'Apenas participantes podem se inscrever.'})
-
-        # Buscar a oficina
+        # Verificações mínimas
         oficina = Oficina.query.get(oficina_id)
         if not oficina:
-            return jsonify({'success': False, 'message': 'Oficina não encontrada.'})
-
+            return jsonify({'success': False, 'message': 'Oficina não encontrada'})
+            
         # Verificar se já está inscrito
         inscricao_existente = Inscricao.query.filter_by(
-            usuario_id=current_user.id, 
-            oficina_id=oficina.id
+            usuario_id=current_user.id,
+            oficina_id=oficina_id
         ).first()
         
         if inscricao_existente:
-            print(f"Usuário já inscrito: oficina_id={oficina_id}, inscricao_id={inscricao_existente.id}")
-            # Se já está inscrito, retornar sucesso em vez de erro
-            return jsonify({
-                'success': True,
-                'message': 'Você já está inscrito nesta oficina.',
-                'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-            })
+            return jsonify({'success': True, 'message': 'Já inscrito'})
             
-        # Verificar vagas
-        if oficina.tipo_inscricao == 'com_inscricao_com_limite' and oficina.vagas <= 0:
-            return jsonify({'success': False, 'message': 'Esta oficina está lotada!'})
-            
-        # Criar a inscrição simplificada (sem validações adicionais)
-        inscricao = Inscricao(
-            usuario_id=current_user.id, 
-            oficina_id=oficina.id,
+        # Criar inscrição de forma simples
+        nova_inscricao = Inscricao(
+            usuario_id=current_user.id,
+            oficina_id=oficina_id,
             cliente_id=current_user.cliente_id if hasattr(current_user, 'cliente_id') else None,
             evento_id=oficina.evento_id,
-            status_pagamento="approved"  # Sempre aprovado
+            status_pagamento="approved"
         )
-        
-        db.session.add(inscricao)
         
         # Decrementar vagas se necessário
         if oficina.tipo_inscricao == 'com_inscricao_com_limite':
             oficina.vagas -= 1
-            print(f"Vagas decrementadas para {oficina.vagas}")
         
-        # Commit das alterações
+        # Salvar no banco
+        db.session.add(nova_inscricao)
         db.session.commit()
         
-        print(f"Inscrição realizada com sucesso: inscricao_id={inscricao.id}")
+        return jsonify({'success': True, 'message': 'Inscrição realizada com sucesso'})
         
-        # Resposta simples de sucesso
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        })
-    
     except Exception as e:
-        # Em caso de erro, fazer rollback e registrar o erro
         db.session.rollback()
-        import traceback
-        error_trace = traceback.format_exc()
-        print(f"ERRO na inscrição: {str(e)}\n{error_trace}")
-        
-        # Retornar erro
-        return jsonify({
-            'success': False,
-            'message': f'Erro ao processar inscrição: {str(e)}'
-        }), 500  # Código 500 explícito
+        print(f"ERRO: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro no servidor'})
 
 @routes.route('/remover_inscricao/<int:oficina_id>', methods=['POST'])
 @login_required

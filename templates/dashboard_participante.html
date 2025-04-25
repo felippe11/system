@@ -775,103 +775,68 @@
 // Função para lidar com a inscrição em oficinas
 // Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
-    // Encontrar o card da oficina
-    const oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-    if (!oficinaCard) {
-        alert('Erro: Card da oficina não encontrado.');
+    // Confirmação simples
+    if (!confirm('Confirmar inscrição nesta oficina?')) {
         return;
     }
     
-    // Encontrar o footer do card
-    const cardFooter = oficinaCard.querySelector('.workshop-footer');
-    if (!cardFooter) {
-        alert('Erro: Footer da oficina não encontrado.');
-        return;
-    }
+    // Referência ao card da oficina
+    const card = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
+    const footer = card.querySelector('.workshop-footer');
     
-    // Guardar o HTML original
-    const originalHTML = cardFooter.innerHTML;
+    // Mostrar carregamento
+    footer.innerHTML = '<div class="alert-message alert-info">Processando...</div>';
     
-    // Mostrar indicador de carregamento
-    cardFooter.innerHTML = `
-        <div class="alert-message alert-info">
-            <i class="fas fa-spinner fa-spin"></i> Processando inscrição...
-        </div>
-    `;
+    // Fazer requisição simples com XMLHttpRequest em vez de Fetch
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/inscrever/${oficinaId}`, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
     
-    // Criar o objeto FormData para a requisição
-    const formData = new FormData();
-    
-    // Executar a requisição AJAX com fetch
-    fetch(`/inscrever/${oficinaId}`, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => {
-        // Se a resposta não for OK, lançar erro
-        if (!response.ok) {
-            throw new Error(`Erro HTTP ${response.status}`);
-        }
-        // Tentar fazer o parse da resposta como JSON
-        return response.json();
-    })
-    .then(data => {
-        // Se a inscrição foi bem-sucedida
-        if (data.success) {
-            // Atualizar o layout para mostrar botões de inscrito
-            cardFooter.innerHTML = `
-                <a href="${data.pdf_url}" class="btn-action btn-primary">
-                    <i class="fas fa-file-download"></i> Comprovante
-                </a>
-                <form action="/remover_inscricao/${oficinaId}" method="post">
-                    <button type="submit" class="btn-action btn-danger">
-                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                    </button>
-                </form>
-            `;
-            
-            // Atualizar o contador de vagas
-            const vagasElement = oficinaCard.querySelector('.info-vagas');
-            if (vagasElement) {
-                let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-                vagasElement.innerText = vagasAtualizadas;
-            }
-            
-            // Mostrar mensagem de sucesso
-            alert(data.message || 'Inscrição realizada com sucesso!');
-            
-            // Atualizar a lista global de inscrições
-            if (typeof window.inscricoes_ids === 'undefined') {
-                window.inscricoes_ids = [];
-            }
-            if (!window.inscricoes_ids.includes(parseInt(oficinaId))) {
-                window.inscricoes_ids.push(parseInt(oficinaId));
-            }
-        } else {
-            // Restaurar o HTML original em caso de erro
-            cardFooter.innerHTML = originalHTML;
-            alert(data.message || 'Erro ao processar inscrição.');
-        }
-    })
-    .catch(error => {
-        console.error('Erro na requisição:', error);
-        
-        // Restaurar o HTML original
-        cardFooter.innerHTML = originalHTML;
-        
-        // Mostrar mensagem de erro
-        alert(`Erro ao processar requisição: ${error.message}. Tente novamente.`);
-        
-        // Se for um erro de sessão, oferecer para recarregar a página
-        if (error.message.includes('401')) {
-            if (confirm('Sua sessão pode ter expirado. Deseja recarregar a página?')) {
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    // Atualizar interface após sucesso
+                    footer.innerHTML = `
+                        <a href="/baixar_comprovante/${oficinaId}" class="btn-action btn-primary">
+                            <i class="fas fa-file-download"></i> Comprovante
+                        </a>
+                        <form action="/remover_inscricao/${oficinaId}" method="post">
+                            <button type="submit" class="btn-action btn-danger">
+                                <i class="fas fa-times-circle"></i> Cancelar
+                            </button>
+                        </form>
+                    `;
+                    alert('Inscrição realizada com sucesso!');
+                } else {
+                    footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
+                        <i class="fas fa-check-circle"></i> Inscrever-se
+                    </button>`;
+                    alert(data.message || 'Erro na inscrição');
+                }
+            } catch (e) {
+                // Se não conseguir processar JSON, recarregar a página
+                alert('Erro ao processar resposta. A página será recarregada.');
                 window.location.reload();
             }
+        } else {
+            // Em caso de erro, restaurar botão
+            footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
+                <i class="fas fa-check-circle"></i> Inscrever-se
+            </button>`;
+            alert('Erro na comunicação com o servidor');
         }
-    });
+    };
+    
+    xhr.onerror = function() {
+        footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
+            <i class="fas fa-check-circle"></i> Inscrever-se
+        </button>`;
+        alert('Erro de conexão. Verifique sua internet.');
+    };
+    
+    xhr.send();
 }
 // Função para criar notificações visuais
 function criarNotificacao(tipo, mensagem) {
@@ -997,26 +962,5 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   </script>
 
-<script>
-  // Capturador de erros para ajudar na depuração
-  window.addEventListener('error', function(event) {
-      console.error('Erro capturado:', event.error);
-      alert('Ocorreu um erro JavaScript: ' + event.error.message);
-  });
-  
-  // Interceptar chamadas fetch para depuração
-  const originalFetch = window.fetch;
-  window.fetch = function() {
-      console.log('Fetch iniciado:', arguments);
-      return originalFetch.apply(this, arguments)
-          .then(response => {
-              console.log('Fetch concluído:', response);
-              return response;
-          })
-          .catch(error => {
-              console.error('Erro de fetch:', error);
-              throw error;
-          });
-  };
-  </script>
+
 {% endblock %}
