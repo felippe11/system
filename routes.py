@@ -120,8 +120,26 @@ login_manager.login_view = 'routes.login'  # Essa é a rota que será usada para
 
 routes = Blueprint("routes", __name__)
 
+# routes.py, logo após criar o Blueprint
+@routes.before_request
+def bloquear_usuarios_pendentes():
+    from flask_login import current_user
+    # Permitir que participantes com pagamento pendente tenham acesso a todas as funcionalidades.
+    # Código de bloqueio removido para permitir acesso irrestrito.
+    return
+
+       
 def register_routes(app):
     app.register_blueprint(routes)
+
+
+# ===========================
+#        ROTAS GERAIS
+# ===========================
+
+@routes.route('/')
+def home():
+    return render_template('index.html')
 
 class Proposta(db.Model):
     __tablename__ = 'proposta'
@@ -192,7 +210,6 @@ def cadastro_participante(identifier: str | None = None):
     from collections import defaultdict
     from datetime import datetime
     import os, mercadopago, logging
-    from flask_login import login_user
 
     # Configurar logging para debug
     logging.basicConfig(level=logging.DEBUG)
@@ -200,12 +217,12 @@ def cadastro_participante(identifier: str | None = None):
 
     # SDK Mercado Pago (token vem de variável de ambiente)
     mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
-    if not mp_token and not (evento and evento.inscricao_gratuita):
+    if not mp_token:
         logger.error("Token do Mercado Pago não encontrado nas variáveis de ambiente")
         flash("Erro de configuração do sistema de pagamento", "danger")
         return redirect(url_for("routes.login"))
         
-    sdk = mercadopago.SDK(mp_token) if mp_token else None
+    sdk = mercadopago.SDK(mp_token)
 
     # ────────────────────────────── Busca do link ──────────────────────────────
     token = request.args.get("token") if not identifier else identifier
@@ -221,13 +238,9 @@ def cadastro_participante(identifier: str | None = None):
     cliente_id: int = link.cliente_id
     evento = Evento.query.get(link.evento_id) if link.evento_id else None
     
-    # Verificar imediatamente se é um evento gratuito
-    is_evento_gratuito = evento and evento.inscricao_gratuita
-    logger.debug(f"Evento gratuito: {is_evento_gratuito}")
-    
     # ────────────────────────────── Verificação de lote vigente ─────────────────────────────
     lote_vigente = None
-    if evento and evento.habilitar_lotes and not is_evento_gratuito:
+    if evento and evento.habilitar_lotes:
         lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).order_by(LoteInscricao.ordem).all()
         
         # Debug dos lotes
@@ -262,7 +275,7 @@ def cadastro_participante(identifier: str | None = None):
                 logger.debug(f"  => Lote vigente: {lote.nome}")
                 break
                 
-        if not lote_vigente and not is_evento_gratuito:
+        if not lote_vigente:
             logger.warning("Nenhum lote válido encontrado!")
             flash("Não há lotes disponíveis para inscrição no momento.", "warning")
             return redirect(url_for("routes.login"))
@@ -274,18 +287,6 @@ def cadastro_participante(identifier: str | None = None):
     ministrantes = (
         Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all() if evento else []
     )
-
-    # Inicializar o dicionário eventos_info antes de usá-lo
-    eventos_info: dict[int, dict] = {}
-    
-    # Se o evento estiver definido, adicionar suas informações ao dicionário
-    if evento:
-        eventos_info[evento.id] = {
-            'nome': evento.nome,
-            'status': 'Atual',
-            'ja_ocorreu': False,
-            'eh_futuro': False
-        }
 
     # Agrupamento de oficinas por dia (para exibir programação)
     grouped_oficinas: dict[str, list] = defaultdict(list)
@@ -373,37 +374,15 @@ def cadastro_participante(identifier: str | None = None):
             )
 
         if Usuario.query.filter_by(email=email).first():
-            flash("Este e-mail já está associado a um cadastro!", "danger")
-            return render_template(
-                "cadastro_participante.html",
-                token=link.token,
-                evento=evento,
-                sorted_keys=sorted_keys,
-                ministrantes=list(all_ministrantes) if 'all_ministrantes' in locals() else ministrantes,
-                grouped_oficinas=grouped_oficinas,
-                patrocinadores=patrocinadores if 'patrocinadores' in locals() else [],
-                campos_personalizados=campos_personalizados,
-                lote_vigente=lote_vigente,
-                lote_stats=lote_stats if 'lote_stats' in locals() else None
-            )
+            flash("Este e-mail já está cadastrado!", "danger")
+            return redirect(request.url)
         if Usuario.query.filter_by(cpf=cpf).first():
-            flash("CPF já está associado a um cadastrado", "danger")
-            return render_template(
-                "cadastro_participante.html",
-                token=link.token,
-                evento=evento,
-                sorted_keys=sorted_keys,
-                ministrantes=list(all_ministrantes) if 'all_ministrantes' in locals() else ministrantes,
-                grouped_oficinas=grouped_oficinas,
-                patrocinadores=patrocinadores if 'patrocinadores' in locals() else [],
-                campos_personalizados=campos_personalizados,
-                lote_vigente=lote_vigente,
-                lote_stats=lote_stats if 'lote_stats' in locals() else None
-            )
+            flash("CPF já está sendo usado por outro usuário!", "danger")
+            return redirect(request.url)
 
         # ────────────────────────────── VERIFICAÇÃO MAIS ROBUSTA DO LOTE ─────────────────────────────
-        # Verificar se o lote informado ainda é válido (se estiver usando lotes) - Apenas para eventos pagos
-        if lote_id and evento and evento.habilitar_lotes and not is_evento_gratuito:
+        # Verificar se o lote informado ainda é válido (se estiver usando lotes)
+        if lote_id and evento and evento.habilitar_lotes:
             # Verificar o lote novamente para ter certeza
             lotes_validos = []
             lote_atual = None
@@ -493,48 +472,31 @@ def cadastro_participante(identifier: str | None = None):
         db.session.add(novo_usuario)
         db.session.flush()  # garante id
 
-        # Cria formulário de resposta - CORRIGIDO
-        try:
-            # Pegar o formulário default ou o primeiro formulário do cliente
-            formulario = Formulario.query.filter_by(cliente_id=cliente_id).first()
-            formulario_id = formulario.id if formulario else 1  # Usa ID 1 como fallback
-
-            nova_resposta = RespostaFormulario(
-                usuario_id=novo_usuario.id,
-                formulario_id=formulario_id,
-                cliente_id=cliente_id  # Inclui cliente_id se necessário
-            )
-            db.session.add(nova_resposta)
-            db.session.flush()  # garantir que obtemos o ID da resposta
-            
-            # Campos personalizados
-            for campo in campos_personalizados:
-                valor = request.form.get(f"campo_{campo.id}")
-                if campo.obrigatorio and not valor:
-                    db.session.rollback()
-                    flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
-                    return redirect(request.url)
-                try:
-                    db.session.add(
-                        RespostaCampo(
-                            resposta_formulario_id=nova_resposta.id,
-                            campo_id=campo.id,
-                            valor=valor or "",
-                        )
+        # Campos personalizados
+        for campo in campos_personalizados:
+            valor = request.form.get(f"campo_{campo.id}")
+            if campo.obrigatorio and not valor:
+                db.session.rollback()
+                flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
+                return redirect(request.url)
+            try:
+                db.session.add(
+                    RespostaCampo(
+                        resposta_formulario_id=novo_usuario.id,
+                        campo_id=campo.id,
+                        valor=valor or "",
                     )
-                except Exception as e:
-                    logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
-                    pass  # continua mesmo se der erro nos campos personalizados
-        except Exception as e:
-            logger.error(f"Erro ao criar resposta de formulário: {str(e)}")
-            # Continua com o fluxo mesmo se der erro no formulário
+                )
+            except Exception as e:
+                logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
+                pass  # continua mesmo se der erro nos campos personalizados
 
-        # Cria inscrição
+        # Cria inscrição pendente
         inscricao = Inscricao(
             usuario_id=novo_usuario.id,
             evento_id=evento.id if evento else None,
             cliente_id=cliente_id,
-            status_pagamento="pending",  # Começa como pendente mesmo para gratuitos, será alterado abaixo
+            status_pagamento="pending",
         )
         
         # Adiciona o lote_id se estiver disponível
@@ -570,87 +532,82 @@ def cadastro_participante(identifier: str | None = None):
                 titulo_inscricao = f"Inscrição – {evento.nome} – {tipo_inscricao.nome}"
         
         # Verifica se inscrição é gratuita pelo evento
-        if is_evento_gratuito:
+        if evento and evento.inscricao_gratuita:
             logger.debug("Evento com inscrição gratuita, ignorando preço")
             preco = 0
 
         logger.debug(f"Preço calculado: {preco}, Título: {titulo_inscricao}")
 
-        # Verifica se é gratuita e conclui o cadastro sem redirecionar para o Mercado Pago
-        if preco <= 0 or is_evento_gratuito:
-            logger.debug("Inscrição gratuita - aprovando diretamente")
-            inscricao.status_pagamento = "approved"
-            db.session.commit()
+        # Preferência de pagamento se for pago
+        if preco > 0:
+            logger.debug("Criando preferência de pagamento no Mercado Pago")
+            # Preparar URLs para o Mercado Pago usando URL absoluta
+            success_url = url_for("routes.pagamento_sucesso", _external=True)
+            failure_url = url_for("routes.pagamento_falha", _external=True)
+            pending_url = url_for("routes.pagamento_pendente", _external=True)
+            webhook_url = url_for("routes.webhook_mp", _external=True)
             
-            # Fazer login automático do usuário
-            login_user(novo_usuario)
-            session['user_type'] = 'participante'
+            logger.debug(f"URLs de callback: Success={success_url}, Failure={failure_url}, Pending={pending_url}")
+            logger.debug(f"Webhook URL: {webhook_url}")
             
-            flash("Cadastro realizado com sucesso! Sua inscrição foi confirmada automaticamente.", "success")
-            return redirect(url_for("routes.dashboard_participante"))
-        
-        # Se não for gratuita, continua com o fluxo do Mercado Pago
-        logger.debug("Criando preferência de pagamento no Mercado Pago")
-        # Preparar URLs para o Mercado Pago usando URL absoluta
-        success_url = url_for("routes.pagamento_sucesso", _external=True)
-        failure_url = url_for("routes.pagamento_falha", _external=True)
-        pending_url = url_for("routes.pagamento_pendente", _external=True)
-        webhook_url = url_for("routes.webhook_mp", _external=True)
-        
-        logger.debug(f"URLs de callback: Success={success_url}, Failure={failure_url}, Pending={pending_url}")
-        logger.debug(f"Webhook URL: {webhook_url}")
-        
-        preference_data = {
-            "items": [
-                {
-                    "id": str(lote_tipo_inscricao_id or tipo_inscricao_id or inscricao.id),
-                    "title": titulo_inscricao,
-                    "quantity": 1,
-                    "currency_id": "BRL",
-                    "unit_price": preco,
-                }
-            ],
-            "payer": {"email": novo_usuario.email, "name": novo_usuario.nome},
-            "external_reference": str(inscricao.id),
-            "back_urls": {
-                "success": success_url,
-                "failure": failure_url,
-                "pending": pending_url,
-            },
-            "notification_url": webhook_url,
-            "auto_return": "approved",
-        }
-        
-        logger.debug(f"Dados da preferência: {preference_data}")
-        
-        try:
-            pref = sdk.preference().create(preference_data)
-            logger.debug(f"Resposta do Mercado Pago: {pref}")
+            preference_data = {
+                "items": [
+                    {
+                        "id": str(lote_tipo_inscricao_id or tipo_inscricao_id or inscricao.id),
+                        "title": titulo_inscricao,
+                        "quantity": 1,
+                        "currency_id": "BRL",
+                        "unit_price": preco,
+                    }
+                ],
+                "payer": {"email": novo_usuario.email, "name": novo_usuario.nome},
+                "external_reference": str(inscricao.id),
+                "back_urls": {
+                    "success": success_url,
+                    "failure": failure_url,
+                    "pending": pending_url,
+                },
+                "notification_url": webhook_url,
+                "auto_return": "approved",
+            }
             
-            if "response" in pref and "init_point" in pref["response"]:
-                # Salvar o ID do pagamento na inscrição
-                if "id" in pref["response"]:
-                    inscricao.payment_id = pref["response"]["id"]
+            logger.debug(f"Dados da preferência: {preference_data}")
+            
+            try:
+                pref = sdk.preference().create(preference_data)
+                logger.debug(f"Resposta do Mercado Pago: {pref}")
                 
-                db.session.commit()
-                
-                # Extrair a URL completa do init_point
-                mp_url = pref["response"]["init_point"]
-                logger.debug(f"URL do Mercado Pago: {mp_url}")
-                
-                # Redirecionar diretamente para a URL do Mercado Pago
-                return redirect(mp_url)
-            else:
-                # Erro na criação da preferência
-                logger.error(f"Erro na resposta do Mercado Pago: {pref}")
+                if "response" in pref and "init_point" in pref["response"]:
+                    # Salvar o ID do pagamento na inscrição
+                    if "id" in pref["response"]:
+                        inscricao.payment_id = pref["response"]["id"]
+                    
+                    db.session.commit()
+                    
+                    # Extrair a URL completa do init_point
+                    mp_url = pref["response"]["init_point"]
+                    logger.debug(f"URL do Mercado Pago: {mp_url}")
+                    
+                    # Redirecionar diretamente para a URL do Mercado Pago
+                    return redirect(mp_url)
+                else:
+                    # Erro na criação da preferência
+                    logger.error(f"Erro na resposta do Mercado Pago: {pref}")
+                    db.session.rollback()
+                    flash("Erro ao processar pagamento: resposta inválida do Mercado Pago.", "danger")
+                    return redirect(request.url)
+            except Exception as e:
+                logger.exception(f"Exceção ao criar preferência: {str(e)}")
                 db.session.rollback()
-                flash("Erro ao processar pagamento: resposta inválida do Mercado Pago.", "danger")
+                flash(f"Erro ao processar pagamento: {str(e)}", "danger")
                 return redirect(request.url)
-        except Exception as e:
-            logger.exception(f"Exceção ao criar preferência: {str(e)}")
-            db.session.rollback()
-            flash(f"Erro ao processar pagamento: {str(e)}", "danger")
-            return redirect(request.url)
+
+        # Gratuito – aprova direto
+        logger.debug("Inscrição gratuita - aprovando diretamente")
+        inscricao.status_pagamento = "approved"
+        db.session.commit()
+        flash("Cadastro realizado com sucesso!", "success")
+        return redirect(url_for("routes.login"))
 
     # ────────────────────────────── GET  (render) ──────────────────────────────
     patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all() if evento else []
@@ -680,7 +637,7 @@ def cadastro_participante(identifier: str | None = None):
             "vagas_usadas": count,
             "vagas_disponiveis": vagas_disponiveis
         }
-        logger.debug(f"Estatísticas do lote:: {lote_stats}")
+        logger.debug(f"Estatísticas do lote: {lote_stats}")
 
     return render_template(
         "cadastro_participante.html",
@@ -1948,110 +1905,141 @@ def excluir_oficina(oficina_id):
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
-   
     return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
 
 
-
+# ===========================
+# INSCRIÇÃO EM OFICINAS - PARTICIPANTE
+# ===========================
 @routes.route('/inscrever/<int:oficina_id>', methods=['POST'])
 @login_required
 def inscrever(oficina_id):
-    """
-    Processa inscrição em oficina e retorna JSON com resultado.
-    Simplificado para garantir funcionamento básico.
-    """
-    # Log para depuração
-    print(f"DEBUG -> Inscrição iniciada: oficina_id={oficina_id}, usuario_id={current_user.id}")
+    if current_user.tipo != 'participante':
+        return jsonify({
+            'success': False,
+            'message': 'Apenas participantes podem se inscrever.'
+        })
+
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        return jsonify({
+            'success': False,
+            'message': 'Oficina não encontrada!'
+        })
+
+    # Verifica disponibilidade de vagas com base no tipo de inscrição
+    if oficina.tipo_inscricao == 'sem_inscricao':
+        # Não é necessário verificar vagas para oficinas sem inscrição
+        pass
+    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
+        # Não há limite de vagas
+        pass
+    elif oficina.vagas <= 0:
+        return jsonify({
+            'success': False,
+            'message': 'Esta oficina está lotada!'
+        })
+
+    # Evita duplicidade
+    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
+        return jsonify({
+            'success': False,
+            'message': 'Você já está inscrito nesta oficina!'
+        })
     
-    try:
-        # Verificar tipo de usuário
-        if current_user.tipo != 'participante':
-            return jsonify({
-                'success': False,
-                'message': 'Apenas participantes podem se inscrever em oficinas.'
-            })
-
-        # Buscar oficina
-        oficina = Oficina.query.get(oficina_id)
-        if not oficina:
-            return jsonify({
-                'success': False,
-                'message': 'Oficina não encontrada!'
-            })
-
-        # Verificar se já está inscrito
-        inscricao_existente = Inscricao.query.filter_by(
-            usuario_id=current_user.id, 
-            oficina_id=oficina.id
+    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
+    if oficina.evento_id and current_user.tipo_inscricao_id:
+        # Buscar regras para o tipo de inscrição do participante
+        regra = RegraInscricaoEvento.query.filter_by(
+            evento_id=oficina.evento_id,
+            tipo_inscricao_id=current_user.tipo_inscricao_id
         ).first()
         
-        if inscricao_existente:
-            return jsonify({
-                'success': False,
-                'message': 'Você já está inscrito nesta oficina!'
-            })
+        if regra:
+            # Verificar se esta oficina está na lista de oficinas permitidas
+            oficinas_permitidas = regra.get_oficinas_permitidas_list()
+            if oficinas_permitidas and oficina.id not in oficinas_permitidas:
+                return jsonify({
+                    'success': False,
+                    'message': 'Seu tipo de inscrição não permite acesso a esta oficina.'
+                })
+            
+            # Verificar se o participante já atingiu o limite de oficinas
+            if regra.limite_oficinas > 0:
+                # Contar quantas oficinas o participante já está inscrito neste evento
+                inscricoes_evento = Inscricao.query.join(Oficina).filter(
+                    Inscricao.usuario_id == current_user.id,
+                    Oficina.evento_id == oficina.evento_id
+                ).count()
+                
+                if inscricoes_evento >= regra.limite_oficinas:
+                    return jsonify({
+                        'success': False,
+                        'message': f'Você já atingiu o limite de {regra.limite_oficinas} oficinas para seu tipo de inscrição.'
+                    })
 
-        # Verificar vagas disponíveis
-        if oficina.tipo_inscricao == 'sem_inscricao':
-            return jsonify({
-                'success': False,
-                'message': 'Esta oficina não requer inscrição.'
-            })
-        elif oficina.tipo_inscricao == 'com_inscricao_com_limite' and oficina.vagas <= 0:
-            return jsonify({
-                'success': False,
-                'message': 'Não há vagas disponíveis!'
-            })
-
-        # Criar nova inscrição
-        inscricao = Inscricao(
-            usuario_id=current_user.id, 
-            oficina_id=oficina.id, 
-            cliente_id=current_user.cliente_id,
-            evento_id=oficina.evento_id
-        )
-        
-        # Decrementar vagas se for oficina com inscrição limitada
-        if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-            oficina.vagas -= 1
-
-        # Salvar no banco de dados
+    # Decrementa vagas se for uma oficina com inscrição limitada
+    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
+        oficina.vagas -= 1
+    
+    # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
+    tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
+    
+    # Criar a inscrição
+    inscricao = Inscricao(
+        usuario_id=current_user.id, 
+        oficina_id=oficina.id, 
+        cliente_id=current_user.cliente_id,
+        evento_id=oficina.evento_id  # Importante: associar ao evento da oficina
+    )
+    
+    if tipo_inscricao_id:
+        inscricao.tipo_inscricao_id = tipo_inscricao_id
+        # Aqui você pode chamar a função que integra com o Mercado Pago
+        # Exemplo: url_pagamento = iniciar_pagamento(inscricao)
+    
+    try:
         db.session.add(inscricao)
+        
+        # IMPORTANTE: Se o usuário não estiver associado a nenhum evento ainda,
+        # associar este usuário ao evento da oficina para manter compatibilidade com o sistema
+        if not current_user.evento_id and oficina.evento_id:
+            current_user.evento_id = oficina.evento_id
+            
         db.session.commit()
-        
-        # Gerar token QR Code para inscrição (se aplicável)
-        try:
-            import uuid
-            inscricao.qr_code_token = str(uuid.uuid4())
-            db.session.commit()
-        except Exception as e:
-            print(f"AVISO: Erro ao gerar QR Code: {e}")
 
-        # Gerar URL do comprovante
-        pdf_url = url_for('routes.baixar_comprovante', oficina_id=oficina.id)
-        
-        # Resposta de sucesso
+        # Gera o comprovante
+        try:
+            pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
+
+            assunto = f"Confirmação de Inscrição - {oficina.titulo}"
+            corpo_texto = f"Olá {current_user.nome},\n\nVocê se inscreveu na oficina '{oficina.titulo}'.\nSegue o comprovante de inscrição em anexo."
+
+            enviar_email(
+                destinatario=current_user.email,
+                nome_participante=current_user.nome,
+                nome_oficina=oficina.titulo,
+                assunto=assunto,
+                corpo_texto=corpo_texto,
+                anexo_path=pdf_path
+            )
+        except Exception as e:
+            logger.error(f"❌ ERRO ao enviar e-mail: {e}", exc_info=True)
+            # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
+            
         return jsonify({
             'success': True,
             'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': pdf_url,
-            'vagas_restantes': oficina.vagas
+            'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
         })
         
     except Exception as e:
-        # Log detalhado do erro
-        import traceback
-        print(f"ERRO na inscrição: {str(e)}")
-        print(traceback.format_exc())
-        
-        # Rollback em caso de erro
         db.session.rollback()
-        
+        logger.error(f"❌ ERRO ao realizar inscrição: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'message': 'Erro ao processar inscrição. Por favor, tente novamente.'
+            'message': f'Erro ao realizar inscrição: {str(e)}'
         })
-   
 
 @routes.route('/remover_inscricao/<int:oficina_id>', methods=['POST'])
 @login_required
