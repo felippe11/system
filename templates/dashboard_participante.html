@@ -402,13 +402,13 @@
     {% endif %}
   </div>
   
-  <!-- Avisos e ações principais
+  <!-- Avisos e ações principais -->
   {% if current_user.tem_pagamento_pendente() %}
     <div class="alert-message alert-warning" style="max-width: 800px; margin: 0 auto 2rem auto;">
       <i class="fas fa-exclamation-triangle"></i>
       <div>Seu pagamento ainda não foi confirmado. Enquanto isso você só pode visualizar o sistema.</div>
     </div>
-  {% endif %} -->
+  {% endif %}
   
   <div class="action-buttons">
     <!-- Formulários disponíveis -->
@@ -773,71 +773,101 @@
 
 <script>
 // Função para lidar com a inscrição em oficinas
-// Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
-    // Confirmação simples
-    if (!confirm('Confirmar inscrição nesta oficina?')) {
-        return;
+    // Encontra o card da oficina pelo ID
+    let oficinaCard = document.querySelector([data-oficina-id="${oficinaId}"]);
+    if (!oficinaCard) return;
+    
+    // Atualiza imediatamente o número de vagas
+    let vagasElement = oficinaCard.querySelector(".info-vagas");
+    if (vagasElement) {
+        let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+        vagasElement.innerText = vagasAtualizadas;
+        
+        // Atualiza o badge de vagas
+        let badgeElement = vagasElement.nextElementSibling;
+        if (badgeElement) {
+            if (vagasAtualizadas === 0) {
+                badgeElement.className = "status-badge badge-esgotado";
+                badgeElement.innerText = "Esgotado";
+            } else {
+                badgeElement.innerText = vagasAtualizadas + " disponíveis";
+            }
+        }
     }
     
-    // Referência ao card da oficina
-    const card = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-    const footer = card.querySelector('.workshop-footer');
-    
-    // Mostrar carregamento
-    footer.innerHTML = '<div class="alert-message alert-info">Processando...</div>';
-    
-    // Fazer requisição simples com XMLHttpRequest em vez de Fetch
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `/inscrever/${oficinaId}`, true);
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            try {
-                const data = JSON.parse(xhr.responseText);
-                if (data.success) {
-                    // Atualizar interface após sucesso
-                    footer.innerHTML = `
-                        <a href="/baixar_comprovante/${oficinaId}" class="btn-action btn-primary">
-                            <i class="fas fa-file-download"></i> Comprovante
-                        </a>
-                        <form action="/remover_inscricao/${oficinaId}" method="post">
-                            <button type="submit" class="btn-action btn-danger">
-                                <i class="fas fa-times-circle"></i> Cancelar
-                            </button>
-                        </form>
-                    `;
-                    alert('Inscrição realizada com sucesso!');
-                } else {
-                    footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
-                        <i class="fas fa-check-circle"></i> Inscrever-se
-                    </button>`;
-                    alert(data.message || 'Erro na inscrição');
-                }
-            } catch (e) {
-                // Se não conseguir processar JSON, recarregar a página
-                alert('Erro ao processar resposta. A página será recarregada.');
-                window.location.reload();
-            }
-        } else {
-            // Em caso de erro, restaurar botão
-            footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
-                <i class="fas fa-check-circle"></i> Inscrever-se
-            </button>`;
-            alert('Erro na comunicação com o servidor');
+    // Remove o botão de inscrição e prepara área para novos botões
+    let cardFooter = oficinaCard.querySelector(".card-footer") || oficinaCard.querySelector(".workshop-footer");
+    if (cardFooter) {
+        cardFooter.innerHTML = '<div class="d-flex flex-column gap-2"></div>';
+        let buttonContainer = cardFooter.querySelector(".d-flex");
+        
+        // Adiciona o botão de cancelar inscrição
+        let cancelForm = document.createElement("form");
+        cancelForm.setAttribute("action", /remover_inscricao/${oficinaId});
+        cancelForm.setAttribute("method", "post");
+        cancelForm.innerHTML = `
+            <button type="submit" class="btn btn-danger w-100">
+                <i class="fas fa-times-circle"></i> Cancelar Inscrição
+            </button>
+        `;
+        buttonContainer.appendChild(cancelForm);
+        
+        // Adiciona botão de check-in se permitido globalmente
+        if ('{{ permitir_checkin_global }}' === 'True') {
+            let checkinBtn = document.createElement("a");
+            checkinBtn.setAttribute("href", /checkin/${oficinaId});
+            checkinBtn.className = "btn btn-warning w-100";
+            checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Realizar Check-in';
+            buttonContainer.appendChild(checkinBtn);
         }
-    };
+    }
     
-    xhr.onerror = function() {
-        footer.innerHTML = `<button onclick="inscrever('${oficinaId}')" class="btn-action btn-success">
-            <i class="fas fa-check-circle"></i> Inscrever-se
-        </button>`;
-        alert('Erro de conexão. Verifique sua internet.');
-    };
-    
-    xhr.send();
+    // Envia requisição ao servidor para registrar a inscrição
+    fetch(/inscrever/${oficinaId}, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let buttonContainer = oficinaCard.querySelector(".card-footer .d-flex") 
+                                  || oficinaCard.querySelector(".workshop-footer .d-flex");
+            // Adiciona o botão para baixar comprovante
+            let comprovanteBtn = document.createElement("a");
+            comprovanteBtn.setAttribute("href", data.pdf_url);
+            comprovanteBtn.className = "btn btn-primary w-100";
+            comprovanteBtn.innerHTML = '<i class="fas fa-file-download"></i> Baixar Comprovante';
+            buttonContainer.appendChild(comprovanteBtn);
+            
+            // Exibe notificação de sucesso (toast) com Bootstrap 5
+            let toast = document.createElement("div");
+            toast.className = "toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3";
+            toast.setAttribute("role", "alert");
+            toast.setAttribute("aria-live", "assertive");
+            toast.setAttribute("aria-atomic", "true");
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle"></i> Inscrição realizada com sucesso!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            let bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            setTimeout(() => toast.remove(), 5000);
+        } else {
+            alert(data.message);
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        location.reload();
+    });
 }
+
 // Função para criar notificações visuais
 function criarNotificacao(tipo, mensagem) {
     // Cria elemento de notificação
@@ -905,62 +935,4 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard de participante inicializado com sucesso!');
 });
 </script>
-
-<script>
-  // Definir a lista global de inscrições
-  window.inscricoes_ids = {{ inscricoes_ids|tojson|safe if inscricoes_ids else '[]' }};
-  
-  document.addEventListener('DOMContentLoaded', function() {
-      console.log("Inscricoes atuais:", window.inscricoes_ids);
-      
-      // Função para verificar e corrigir status das oficinas inscritas
-      function verificarInscricoes() {
-          window.inscricoes_ids.forEach(function(oficinaId) {
-              const card = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-              if (!card) {
-                  console.warn(`Card para oficina ${oficinaId} não encontrado`);
-                  return;
-              }
-              
-              const footer = card.querySelector('.workshop-footer');
-              if (!footer) {
-                  console.warn(`Footer para oficina ${oficinaId} não encontrado`);
-                  return;
-              }
-              
-              // Verifica se o botão de inscrição ainda está presente (erro de estado)
-              const btnInscrever = footer.querySelector('button[onclick*="inscrever"]');
-              if (btnInscrever) {
-                  console.log(`Corrigindo interface para oficina ${oficinaId} já inscrita`);
-                  
-                  // Substituir por botões de inscrito
-                  footer.innerHTML = `
-                      <a href="/baixar_comprovante/${oficinaId}" class="btn-action btn-primary">
-                          <i class="fas fa-file-download"></i> Comprovante
-                      </a>
-                      <form action="/remover_inscricao/${oficinaId}" method="post">
-                          <button type="submit" class="btn-action btn-danger">
-                              <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                          </button>
-                      </form>
-                  `;
-                  
-                  // Adicionar botão de check-in se permitido globalmente
-                  if ('{{ permitir_checkin_global }}' === 'True') {
-                      const checkinBtn = document.createElement("a");
-                      checkinBtn.href = `/checkin/${oficinaId}`;
-                      checkinBtn.className = "btn-action btn-warning";
-                      checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Fazer Check-in';
-                      footer.appendChild(checkinBtn);
-                  }
-              }
-          });
-      }
-      
-      // Executar verificação após o carregamento da página
-      verificarInscricoes();
-  });
-  </script>
-
-
 {% endblock %}
