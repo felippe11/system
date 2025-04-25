@@ -369,6 +369,96 @@ def cadastro_participante(identifier: str | None = None):
 
     # ────────────────────────────── POST  (cadastro) ───────────────────────────
     if request.method == "POST":
+        # Extrair os dados do formulário
+        nome = request.form.get("nome")
+        cpf = request.form.get("cpf")
+        email = request.form.get("email")
+        senha = request.form.get("senha")
+        formacao = request.form.get("formacao")
+        
+        # Extrair os estados e cidades selecionados
+        estados = request.form.getlist("estados[]")
+        estados_str = ",".join(estados) if estados else ""
+        
+        cidades = request.form.getlist("cidades[]")
+        cidades_str = ",".join(cidades) if cidades else ""
+        
+        # Extrair o tipo de inscrição (se aplicável)
+        tipo_inscricao_id = request.form.get("tipo_inscricao_id")
+        if tipo_inscricao_id:
+            tipo_inscricao_id = int(tipo_inscricao_id)
+        
+        # Validação básica
+        if not all([nome, cpf, email, senha]):
+            flash("Todos os campos obrigatórios devem ser preenchidos!", "danger")
+            return redirect(request.url)
+        
+        # Verificar se o usuário já existe com o mesmo CPF ou email
+        usuario_existente = Usuario.query.filter((Usuario.cpf == cpf) | (Usuario.email == email)).first()
+        if usuario_existente:
+            flash("Usuário já cadastrado com este CPF ou e-mail!", "warning")
+            return redirect(request.url)
+
+        # Cria usuário
+        novo_usuario = Usuario(
+            nome=nome,
+            cpf=cpf,
+            email=email,
+            senha=generate_password_hash(senha),
+            formacao=formacao,
+            tipo="participante",
+            estados=estados_str,
+            cidades=cidades_str,
+            cliente_id=cliente_id,
+            tipo_inscricao_id=tipo_inscricao_id,
+            evento_id=link.evento_id,
+        )
+        db.session.add(novo_usuario)
+        db.session.flush()  # garante id
+
+        # Primeiro criar uma resposta de formulário para vincular os campos personalizados
+        nova_resposta = RespostaFormulario(
+            usuario_id=novo_usuario.id,
+            cliente_id=cliente_id,
+            evento_id=evento.id if evento else None
+        )
+        db.session.add(nova_resposta)
+        db.session.flush()  # garantir que obtemos o ID da resposta
+        
+        # Campos personalizados
+        for campo in campos_personalizados:
+            valor = request.form.get(f"campo_{campo.id}")
+            if campo.obrigatorio and not valor:
+                db.session.rollback()
+                flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
+                return redirect(request.url)
+            try:
+                db.session.add(
+                    RespostaCampo(
+                        resposta_formulario_id=nova_resposta.id,  # Usar o ID da resposta de formulário corretamente
+                        campo_id=campo.id,
+                        valor=valor or "",
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Erro ao salvar campo personalizado: {str(e)}")
+                pass  # continua mesmo se der erro nos campos personalizados
+        
+        try:
+            db.session.commit()
+            flash("Cadastro realizado com sucesso!", "success")
+            
+            # Realizar login automático após o cadastro
+            login_user(novo_usuario)
+            
+            # Redirecionar para dashboard do participante
+            return redirect(url_for("routes.dashboard_participante"))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Erro ao salvar usuário: {str(e)}")
+            flash(f"Erro ao realizar cadastro: {str(e)}", "danger")
+            return redirect(request.url)
         # Cria usuário
         novo_usuario = Usuario(
             nome=nome,
