@@ -45,6 +45,22 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 CREDENTIALS_FILE = "credentials.json"
 TOKEN_FILE = "token.json"
 
+from decimal import Decimal, ROUND_HALF_UP
+from models import Configuracao
+
+def preco_com_taxa(base):
+    """
+    Recebe o preço digitado pelo cliente (Decimal, str ou float)
+    e devolve o valor acrescido do percentual configurado.
+    """
+    base = Decimal(str(base))
+    cfg  = Configuracao.query.first()
+    perc = Decimal(str(cfg.taxa_percentual_inscricao or 0))
+    valor = base * (1 + perc/100)
+    # duas casas, arredondamento comercial
+    return valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
 def gerar_comprovante_pdf(usuario, oficina, inscricao):
     """
     Gera um comprovante de inscrição em PDF com design moderno e organizado.
@@ -932,8 +948,9 @@ def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
 
 # utils.py ou dentro da mesma função
 def criar_preference_mp(usuario, tipo_inscricao, evento):
-    import mercadopago, os
     sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
+    valor_com_taxa = float(preco_com_taxa(tipo_inscricao.preco))
 
     preference_data = {
         "items": [{
@@ -942,23 +959,22 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
             "description": f"Inscrição para {evento.nome} - {tipo_inscricao.nome}",
             "quantity": 1,
             "currency_id": "BRL",
-            "unit_price": float(tipo_inscricao.preco),
+            "unit_price": valor_com_taxa,    # ← preço já com taxa
             "category_id": "evento"
         }],
-        "payer": {
-            "email": usuario.email
-        },
-        "external_reference": str(usuario.id),        # para localizar depois
+        "payer": {"email": usuario.email},
+        "external_reference": str(usuario.id),
         "back_urls": {
             "success": url_for("routes.pagamento_sucesso", _external=True),
             "failure": url_for("routes.pagamento_falhou", _external=True),
             "pending": url_for("routes.pagamento_pendente", _external=True)
         },
         "auto_return": "approved",
-        "notification_url": url_for("routes.webhook_mp", _external=True)  # opcional
+        "notification_url": url_for("routes.webhook_mp", _external=True)
     }
     pref = sdk.preference().create(preference_data)
     return pref["response"]["init_point"]
+
 
 # utils.py  (ou um novo arquivo helpers.py)
 from functools import wraps
