@@ -777,90 +777,94 @@
 function inscrever(oficinaId) {
     // Encontra o card da oficina pelo ID
     let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
-    if (!oficinaCard) return;
-    
-    // Atualiza imediatamente o número de vagas
-    let vagasElement = oficinaCard.querySelector(".info-vagas");
-    if (vagasElement) {
-        let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-        vagasElement.innerText = vagasAtualizadas;
-        
-        // Atualiza o badge de vagas
-        let badgeElement = vagasElement.closest(".vacancy-available, .vacancy-full");
-        if (badgeElement) {
-            if (vagasAtualizadas <= 0) {
-                badgeElement.className = "vacancy-full";
-                badgeElement.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
-            } else {
-                badgeElement.innerHTML = `<i class="fas fa-check-circle"></i> <span class="info-vagas">${vagasAtualizadas}</span> disponíveis`;
-            }
-        }
+    if (!oficinaCard) {
+        console.error(`Oficina card ${oficinaId} não encontrado`);
+        return;
     }
     
-    // Remove o botão de inscrição e prepara área para novos botões
+    // Referência ao footer do card
     let cardFooter = oficinaCard.querySelector(".workshop-footer");
-    if (cardFooter) {
-        // Preserva o HTML original para restaurar em caso de erro
-        const originalHTML = cardFooter.innerHTML;
-        
-        // Mostra indicador de carregamento
-        cardFooter.innerHTML = '<div class="alert-message alert-info"><i class="fas fa-spinner fa-spin"></i> Processando inscrição...</div>';
-        
-        // Envia requisição ao servidor para registrar a inscrição
-        fetch(`/inscrever/${oficinaId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Atualiza o footer com os botões para inscritos
-                cardFooter.innerHTML = `
-                    <a href="${data.pdf_url}" class="btn-action btn-primary">
-                        <i class="fas fa-file-download"></i> Comprovante
-                    </a>
-                    <form action="/remover_inscricao/${oficinaId}" method="post">
-                        <button type="submit" class="btn-action btn-danger">
-                            <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                        </button>
-                    </form>
-                `;
-                
-                // Adiciona botão de check-in se permitido globalmente
-                if ('{{ permitir_checkin_global }}' === 'True') {
-                    const checkinBtn = document.createElement("a");
-                    checkinBtn.href = `/checkin/${oficinaId}`;
-                    checkinBtn.className = "btn-action btn-warning";
-                    checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Fazer Check-in';
-                    cardFooter.appendChild(checkinBtn);
-                }
-                
-                // Exibe notificação de sucesso
-                criarNotificacao('success', 'Inscrição realizada com sucesso!');
-                
-                // Adiciona o ID da oficina à lista de inscrições
-                window.inscricoes_ids = window.inscricoes_ids || [];
-                if (!window.inscricoes_ids.includes(oficinaId)) {
-                    window.inscricoes_ids.push(oficinaId);
-                }
-            } else {
-                // Restaura HTML original em caso de erro
-                cardFooter.innerHTML = originalHTML;
-                alert(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            // Restaura HTML original em caso de erro
-            cardFooter.innerHTML = originalHTML;
-            alert('Erro ao processar inscrição. Tente novamente.');
-        });
+    if (!cardFooter) {
+        console.error(`Footer não encontrado para oficina ${oficinaId}`);
+        return;
     }
+    
+    // Salvar o HTML original para restaurar em caso de erro
+    const originalHTML = cardFooter.innerHTML;
+    
+    // Exibir estado de carregamento
+    cardFooter.innerHTML = `
+        <div class="alert-message alert-info">
+            <i class="fas fa-spinner fa-spin"></i> Processando inscrição...
+        </div>
+    `;
+    
+    // Log de debug
+    console.log(`Enviando solicitação de inscrição para oficina ${oficinaId}`);
+    
+    // Enviar requisição para o servidor
+    fetch(`/inscrever/${oficinaId}`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        },
+        credentials: 'same-origin' // Inclui cookies na requisição
+    })
+    .then(response => {
+        console.log(`Resposta recebida para oficina ${oficinaId}, status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`Erro HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(`Dados recebidos:`, data);
+        
+        if (data.success) {
+            // Atualiza vagas disponíveis
+            let vagasElement = oficinaCard.querySelector(".info-vagas");
+            if (vagasElement) {
+                let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+                vagasElement.innerText = vagasAtualizadas;
+            }
+            
+            // Atualiza o layout do footer com os botões para inscritos
+            cardFooter.innerHTML = `
+                <a href="${data.pdf_url}" class="btn-action btn-primary">
+                    <i class="fas fa-file-download"></i> Comprovante
+                </a>
+                <form action="/remover_inscricao/${oficinaId}" method="post">
+                    <button type="submit" class="btn-action btn-danger">
+                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                    </button>
+                </form>
+            `;
+            
+            // Exibe notificação de sucesso
+            alert('Inscrição realizada com sucesso!');
+            
+            // Adiciona o ID à lista local de inscrições
+            if (typeof window.inscricoes_ids === 'undefined') {
+                window.inscricoes_ids = [];
+            }
+            if (!window.inscricoes_ids.includes(oficinaId)) {
+                window.inscricoes_ids.push(oficinaId);
+            }
+            
+            console.log(`Inscrição concluída com sucesso para oficina ${oficinaId}`);
+        } else {
+            console.error(`Erro na inscrição: ${data.message}`);
+            cardFooter.innerHTML = originalHTML;
+            alert(data.message || 'Erro ao processar inscrição');
+        }
+    })
+    .catch(error => {
+        console.error(`Erro ao processar inscrição para oficina ${oficinaId}:`, error);
+        cardFooter.innerHTML = originalHTML;
+        alert(`Erro ao processar inscrição: ${error.message}. Tente novamente.`);
+    });
 }
-
 // Função para criar notificações visuais
 function criarNotificacao(tipo, mensagem) {
     // Cria elemento de notificação
@@ -928,4 +932,83 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard de participante inicializado com sucesso!');
 });
 </script>
+
+<script>
+  // Definir a lista global de inscrições
+  window.inscricoes_ids = {{ inscricoes_ids|tojson|safe if inscricoes_ids else '[]' }};
+  
+  document.addEventListener('DOMContentLoaded', function() {
+      console.log("Inscricoes atuais:", window.inscricoes_ids);
+      
+      // Função para verificar e corrigir status das oficinas inscritas
+      function verificarInscricoes() {
+          window.inscricoes_ids.forEach(function(oficinaId) {
+              const card = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
+              if (!card) {
+                  console.warn(`Card para oficina ${oficinaId} não encontrado`);
+                  return;
+              }
+              
+              const footer = card.querySelector('.workshop-footer');
+              if (!footer) {
+                  console.warn(`Footer para oficina ${oficinaId} não encontrado`);
+                  return;
+              }
+              
+              // Verifica se o botão de inscrição ainda está presente (erro de estado)
+              const btnInscrever = footer.querySelector('button[onclick*="inscrever"]');
+              if (btnInscrever) {
+                  console.log(`Corrigindo interface para oficina ${oficinaId} já inscrita`);
+                  
+                  // Substituir por botões de inscrito
+                  footer.innerHTML = `
+                      <a href="/baixar_comprovante/${oficinaId}" class="btn-action btn-primary">
+                          <i class="fas fa-file-download"></i> Comprovante
+                      </a>
+                      <form action="/remover_inscricao/${oficinaId}" method="post">
+                          <button type="submit" class="btn-action btn-danger">
+                              <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                          </button>
+                      </form>
+                  `;
+                  
+                  // Adicionar botão de check-in se permitido globalmente
+                  if ('{{ permitir_checkin_global }}' === 'True') {
+                      const checkinBtn = document.createElement("a");
+                      checkinBtn.href = `/checkin/${oficinaId}`;
+                      checkinBtn.className = "btn-action btn-warning";
+                      checkinBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Fazer Check-in';
+                      footer.appendChild(checkinBtn);
+                  }
+              }
+          });
+      }
+      
+      // Executar verificação após o carregamento da página
+      verificarInscricoes();
+  });
+  </script>
+
+<script>
+  // Capturador de erros para ajudar na depuração
+  window.addEventListener('error', function(event) {
+      console.error('Erro capturado:', event.error);
+      alert('Ocorreu um erro JavaScript: ' + event.error.message);
+  });
+  
+  // Interceptar chamadas fetch para depuração
+  const originalFetch = window.fetch;
+  window.fetch = function() {
+      console.log('Fetch iniciado:', arguments);
+      return originalFetch.apply(this, arguments)
+          .then(response => {
+              console.log('Fetch concluído:', response);
+              return response;
+          })
+          .catch(error => {
+              console.error('Erro de fetch:', error);
+              throw error;
+          });
+  };
+  </script>
 {% endblock %}
