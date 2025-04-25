@@ -124,23 +124,11 @@ routes = Blueprint("routes", __name__)
 @routes.before_request
 def bloquear_usuarios_pendentes():
     from flask_login import current_user
-    if (current_user.is_authenticated and
-        getattr(current_user, "tipo", None) == "participante" and
-        current_user.tem_pagamento_pendente()):
-        # autoriza só rotas de leitura
-        if request.endpoint in [
-            "routes.dashboard_participante",
-            "static"  # etc.
-        ]:
-            return  # ok
-        if request.method != "GET":
-            flash("Pagamento pendente – funcionalidades bloqueadas até aprovação.", "warning")
-            return redirect(url_for("routes.dashboard_participante"))
+    # Permitir que participantes com pagamento pendente tenham acesso a todas as funcionalidades.
+    # Código de bloqueio removido para permitir acesso irrestrito.
+    return
 
-
-
-
-
+       
 def register_routes(app):
     app.register_blueprint(routes)
 
