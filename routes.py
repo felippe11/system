@@ -2058,18 +2058,18 @@ def inscrever(oficina_id):
     # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
     tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
     
-    # Criar a inscrição
+    # Criar a inscrição - Definimos o status como "approved" diretamente
     inscricao = Inscricao(
         usuario_id=current_user.id, 
         oficina_id=oficina.id, 
         cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id  # Importante: associar ao evento da oficina
+        evento_id=oficina.evento_id,  # Importante: associar ao evento da oficina
+        status_pagamento="approved"   # Definimos todos como aprovados, independente de pagamento
     )
     
     if tipo_inscricao_id:
         inscricao.tipo_inscricao_id = tipo_inscricao_id
-        # Aqui você pode chamar a função que integra com o Mercado Pago
-        # Exemplo: url_pagamento = iniciar_pagamento(inscricao)
+        # Não precisamos mais verificar pagamento ou iniciar fluxo de pagamento
     
     try:
         db.session.add(inscricao)
