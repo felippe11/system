@@ -305,6 +305,18 @@ def cadastro_participante(identifier: str | None = None):
         Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all() if evento else []
     )
 
+    # Inicializar o dicionário eventos_info antes de usá-lo
+    eventos_info: dict[int, dict] = {}
+    
+    # Se o evento estiver definido, adicionar suas informações ao dicionário
+    if evento:
+        eventos_info[evento.id] = {
+            'nome': evento.nome,
+            'status': 'Atual',
+            'ja_ocorreu': False,
+            'eh_futuro': False
+        }
+
     # Agrupamento de oficinas por dia (para exibir programação)
     grouped_oficinas: dict[str, list] = defaultdict(list)
     for of in oficinas:
