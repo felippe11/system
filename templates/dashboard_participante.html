@@ -775,95 +775,141 @@
 // Função para lidar com a inscrição em oficinas
 // Função para lidar com a inscrição em oficinas
 function inscrever(oficinaId) {
-    // Encontra o card da oficina pelo ID
+    // Encontra o card
     let oficinaCard = document.querySelector(`[data-oficina-id="${oficinaId}"]`);
     if (!oficinaCard) {
-        console.error(`Oficina card ${oficinaId} não encontrado`);
+        console.error(`Card da oficina ${oficinaId} não encontrado`);
         return;
     }
     
-    // Referência ao footer do card
+    // Encontra o footer do card
     let cardFooter = oficinaCard.querySelector(".workshop-footer");
     if (!cardFooter) {
         console.error(`Footer não encontrado para oficina ${oficinaId}`);
         return;
     }
     
-    // Salvar o HTML original para restaurar em caso de erro
+    // Guarda HTML original
     const originalHTML = cardFooter.innerHTML;
     
-    // Exibir estado de carregamento
+    // Mostra indicador de carregamento
     cardFooter.innerHTML = `
         <div class="alert-message alert-info">
             <i class="fas fa-spinner fa-spin"></i> Processando inscrição...
         </div>
     `;
     
-    // Log de debug
-    console.log(`Enviando solicitação de inscrição para oficina ${oficinaId}`);
+    // Cria um token CSRF (se o seu site usar)
+    let csrfToken = '';
+    const csrfElement = document.querySelector('meta[name="csrf-token"]');
+    if (csrfElement) {
+        csrfToken = csrfElement.getAttribute('content');
+    }
     
-    // Enviar requisição para o servidor
-    fetch(`/inscrever/${oficinaId}`, {
+    // Faz a requisição AJAX
+    const fetchOptions = {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
+            'Content-Type': 'application/json'
         },
-        credentials: 'same-origin' // Inclui cookies na requisição
-    })
-    .then(response => {
-        console.log(`Resposta recebida para oficina ${oficinaId}, status: ${response.status}`);
-        if (!response.ok) {
-            throw new Error(`Erro HTTP ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log(`Dados recebidos:`, data);
-        
-        if (data.success) {
-            // Atualiza vagas disponíveis
-            let vagasElement = oficinaCard.querySelector(".info-vagas");
-            if (vagasElement) {
-                let vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
-                vagasElement.innerText = vagasAtualizadas;
+        credentials: 'same-origin'
+    };
+    
+    // Adiciona token CSRF se disponível
+    if (csrfToken) {
+        fetchOptions.headers['X-CSRFToken'] = csrfToken;
+    }
+    
+    fetch(`/inscrever/${oficinaId}`, fetchOptions)
+        .then(response => {
+            console.log(`Resposta de inscrição recebida - Status: ${response.status}`);
+            
+            // Verifica o tipo de conteúdo para detectar redirecionamentos HTML
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                throw new Error('Recebida página HTML em vez de JSON - sessão expirada ou erro de servidor');
             }
             
-            // Atualiza o layout do footer com os botões para inscritos
-            cardFooter.innerHTML = `
-                <a href="${data.pdf_url}" class="btn-action btn-primary">
-                    <i class="fas fa-file-download"></i> Comprovante
-                </a>
-                <form action="/remover_inscricao/${oficinaId}" method="post">
-                    <button type="submit" class="btn-action btn-danger">
-                        <i class="fas fa-times-circle"></i> Cancelar Inscrição
-                    </button>
-                </form>
-            `;
-            
-            // Exibe notificação de sucesso
-            alert('Inscrição realizada com sucesso!');
-            
-            // Adiciona o ID à lista local de inscrições
-            if (typeof window.inscricoes_ids === 'undefined') {
-                window.inscricoes_ids = [];
-            }
-            if (!window.inscricoes_ids.includes(oficinaId)) {
-                window.inscricoes_ids.push(oficinaId);
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
             }
             
-            console.log(`Inscrição concluída com sucesso para oficina ${oficinaId}`);
-        } else {
-            console.error(`Erro na inscrição: ${data.message}`);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Dados da resposta:', data);
+            
+            if (data.success) {
+                // Atualiza vagas disponíveis
+                const vagasElement = oficinaCard.querySelector(".info-vagas");
+                if (vagasElement) {
+                    const vagasAtualizadas = parseInt(vagasElement.innerText) - 1;
+                    vagasElement.innerText = vagasAtualizadas;
+                    
+                    // Atualiza a badge de vagas
+                    const badgeElement = vagasElement.closest('.vacancy-available');
+                    if (badgeElement) {
+                        if (vagasAtualizadas <= 0) {
+                            badgeElement.className = 'vacancy-full';
+                            badgeElement.innerHTML = '<i class="fas fa-times-circle"></i> Esgotado';
+                        }
+                    }
+                }
+                
+                // Atualiza o footer com os botões de inscrito
+                cardFooter.innerHTML = `
+                    <a href="${data.pdf_url}" class="btn-action btn-primary">
+                        <i class="fas fa-file-download"></i> Comprovante
+                    </a>
+                    <form action="/remover_inscricao/${oficinaId}" method="post">
+                        <button type="submit" class="btn-action btn-danger">
+                            <i class="fas fa-times-circle"></i> Cancelar Inscrição
+                        </button>
+                    </form>
+                `;
+                
+                // Adiciona botão de check-in se permitido
+                if ('{{ permitir_checkin_global }}' === 'True') {
+                    const checkBtn = document.createElement('a');
+                    checkBtn.href = `/checkin/${oficinaId}`;
+                    checkBtn.className = 'btn-action btn-warning';
+                    checkBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> Fazer Check-in';
+                    cardFooter.appendChild(checkBtn);
+                }
+                
+                // Atualiza a lista global de inscrições
+                if (!window.inscricoes_ids) {
+                    window.inscricoes_ids = [];
+                }
+                if (!window.inscricoes_ids.includes(parseInt(oficinaId))) {
+                    window.inscricoes_ids.push(parseInt(oficinaId));
+                }
+                
+                // Mostra mensagem de sucesso
+                alert('Inscrição realizada com sucesso!');
+            } else {
+                // Restaura o HTML original em caso de erro
+                cardFooter.innerHTML = originalHTML;
+                alert(data.message || 'Erro ao processar inscrição');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao processar inscrição:', error);
+            
+            // Restaura o HTML original em caso de erro
             cardFooter.innerHTML = originalHTML;
-            alert(data.message || 'Erro ao processar inscrição');
-        }
-    })
-    .catch(error => {
-        console.error(`Erro ao processar inscrição para oficina ${oficinaId}:`, error);
-        cardFooter.innerHTML = originalHTML;
-        alert(`Erro ao processar inscrição: ${error.message}. Tente novamente.`);
-    });
+            
+            // Se parece ser erro de sessão, sugere recarregar
+            if (error.message.includes('HTML')) {
+                if (confirm('Sessão expirada ou erro no servidor. Deseja recarregar a página?')) {
+                    window.location.reload();
+                }
+            } else {
+                alert(`Erro ao processar inscrição: ${error.message}`);
+            }
+        });
 }
 // Função para criar notificações visuais
 function criarNotificacao(tipo, mensagem) {
