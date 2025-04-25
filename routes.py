@@ -123,10 +123,7 @@ routes = Blueprint("routes", __name__)
 # routes.py, logo após criar o Blueprint
 @routes.before_request
 def bloquear_usuarios_pendentes():
-    from flask_login import current_user
-    if (current_user.is_authenticated and
-        getattr(current_user, "tipo", None) == "participante" and
-        current_user.tem_pagamento_pendente()):
+    pass  # Função desativada - Todos os usuários podem acessar o sistema
         # autoriza só rotas de leitura
         if request.endpoint in [
             "routes.dashboard_participante",
