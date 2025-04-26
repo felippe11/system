@@ -1,4 +1,3 @@
-
 import requests
 from reportlab.lib.units import inch
 import os
@@ -984,13 +983,8 @@ from flask import flash, redirect, url_for, request
 def pagamento_necessario(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if (hasattr(current_user, "tipo")
-                and current_user.tipo == "participante"
-                and current_user.tem_pagamento_pendente()):
-            # Permite apenas GETs (visualização). Bloqueia POST/PUT/DELETE.
-            if request.method != "GET":
-                flash("⚠️ Pagamento ainda pendente. Aguarde a confirmação para usar esta função.", "warning")
-                return redirect(url_for("routes.dashboard_participante"))
+        # Todas as restrições de pagamento foram removidas
+        # Agora todos os usuários podem realizar ações independentemente do status de pagamento
         return f(*args, **kwargs)
     return wrapper
 
