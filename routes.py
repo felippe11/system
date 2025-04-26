@@ -123,9 +123,8 @@ routes = Blueprint("routes", __name__)
 # routes.py, logo após criar o Blueprint
 @routes.before_request
 def bloquear_usuarios_pendentes():
-    from flask_login import current_user
-    # Permitir que participantes com pagamento pendente tenham acesso a todas as funcionalidades.
-    # Código de bloqueio removido para permitir acesso irrestrito.
+    # Todas as restrições de pagamento foram removidas
+    # Agora todos os usuários podem acessar todas as funcionalidades, independentemente do status de pagamento
     return
 
        
@@ -314,9 +313,30 @@ def cadastro_participante(identifier: str | None = None):
         
         # Determinar as informações do evento para a oficina
         if oficina.evento_id:
-            if oficina.evento_id in eventos_info:
-                evento_nome = eventos_info[oficina.evento_id]['nome']
-                evento_status = eventos_info[oficina.evento_id]['status']
+            # Obter informações do evento diretamente
+            evento_obj = Evento.query.get(oficina.evento_id)
+            if evento_obj:
+                evento_nome = evento_obj.nome
+                # Determinar status do evento
+                data_atual = datetime.now().date()
+                ja_ocorreu = False
+                eh_futuro = False
+                
+                if evento_obj.data_fim:
+                    if hasattr(evento_obj.data_fim, 'date'):
+                        data_fim = evento_obj.data_fim.date()
+                    else:
+                        data_fim = evento_obj.data_fim
+                    ja_ocorreu = data_fim < data_atual
+                    
+                if evento_obj.data_inicio:
+                    if hasattr(evento_obj.data_inicio, 'date'):
+                        data_inicio = evento_obj.data_inicio.date()
+                    else:
+                        data_inicio = evento_obj.data_inicio
+                    eh_futuro = data_inicio > data_atual
+                
+                evento_status = 'Futuro' if eh_futuro else ('Encerrado' if ja_ocorreu else 'Atual')
             else:
                 evento_nome = "Evento Desconhecido"
                 evento_status = "Atual"
@@ -1914,86 +1934,6 @@ def excluir_oficina(oficina_id):
 @routes.route('/inscrever/<int:oficina_id>', methods=['POST'])
 @login_required
 def inscrever(oficina_id):
-    if current_user.tipo != 'participante':
-        return jsonify({
-            'success': False,
-            'message': 'Apenas participantes podem se inscrever.'
-        })
-
-    oficina = Oficina.query.get(oficina_id)
-    if not oficina:
-        return jsonify({
-            'success': False,
-            'message': 'Oficina não encontrada!'
-        })
-
-    # Verifica disponibilidade de vagas com base no tipo de inscrição
-    if oficina.tipo_inscricao == 'sem_inscricao':
-        # Não é necessário verificar vagas para oficinas sem inscrição
-        pass
-    elif oficina.tipo_inscricao == 'com_inscricao_sem_limite':
-        # Não há limite de vagas
-        pass
-    elif oficina.vagas <= 0:
-        return jsonify({
-            'success': False,
-            'message': 'Esta oficina está lotada!'
-        })
-
-    # Evita duplicidade
-    if Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first():
-        return jsonify({
-            'success': True,
-            'message': 'Você já está inscrito nesta oficina!'
-        })
-    
-    # Verificar regras de inscrição baseadas no tipo de inscrição do participante
-    if oficina.evento_id and current_user.tipo_inscricao_id:
-        regra = RegraInscricaoEvento.query.filter_by(
-            evento_id=oficina.evento_id,
-            tipo_inscricao_id=current_user.tipo_inscricao_id
-        ).first()
-        
-        if regra and regra.limite_oficinas > 0:
-            # Contagem de inscrições já feitas pelo usuário neste evento
-            inscricoes_atuais = Inscricao.query.filter_by(
-                usuario_id=current_user.id, 
-                evento_id=oficina.evento_id
-            ).count()
-            
-            if inscricoes_atuais >= regra.limite_oficinas:
-                return jsonify({
-                    'success': False,
-                    'message': f'Você atingiu o limite máximo de {regra.limite_oficinas} inscrições para o seu tipo de inscrição!'
-                })
-
-    # Decrementa vagas se for uma oficina com inscrição limitada
-    if oficina.tipo_inscricao == 'com_inscricao_com_limite':
-        oficina.vagas -= 1
-        db.session.add(oficina)
-    
-    # Criar a inscrição
-    inscricao = Inscricao(
-        usuario_id=current_user.id, 
-        oficina_id=oficina.id, 
-        cliente_id=current_user.cliente_id,
-        evento_id=oficina.evento_id
-    )
-    
-    try:
-        db.session.add(inscricao)
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!'
-        })
-    except Exception as e:
-        db.session.rollback()
-        print(f"Erro na inscrição: {str(e)}")
-        return jsonify({
-            'success': False, 
-            'message': f'Erro ao processar inscrição: {str(e)}'
-        })
     if current_user.tipo != 'participante':
         return jsonify({
             'success': False,
