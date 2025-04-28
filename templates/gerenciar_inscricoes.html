@@ -3,20 +3,23 @@
 
 {% block content %}
 <div class="container py-5">
+
+  <!-- =================================================== -->
+  <!-- CABEÇALHO ----------------------------------------- -->
+  <!-- =================================================== -->
   <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1 class="h2 mb-0">
-          <i class="bi bi-people-fill me-2"></i>Gerenciar Inscrições
-        </h1>
-        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-primary d-none d-md-inline-flex align-items-center">
-          <i class="bi bi-arrow-left me-2"></i>Voltar 
-        </a>
-        
-      </div>
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <h1 class="h2 mb-0">
+        <i class="bi bi-people-fill me-2"></i>Gerenciar Inscrições
+      </h1>
+      <a href="{{ url_for('routes.dashboard') }}"
+         class="btn btn-outline-primary d-none d-md-inline-flex align-items-center">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+      </a>
     </div>
   </div>
 
+  <!-- FLASHES -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -31,12 +34,15 @@
             {% endif %}
             <div>{{ message }}</div>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
       {% endfor %}
     {% endif %}
   {% endwith %}
 
+  <!-- =================================================== -->
+  <!-- FILTROS ------------------------------------------- -->
+  <!-- =================================================== -->
   <div class="card shadow border-0 mb-5">
     <div class="card-header bg-white p-3 border-bottom">
       <h5 class="card-title mb-0">
@@ -47,8 +53,11 @@
       <div class="row g-3">
         <div class="col-md-5">
           <div class="form-floating">
-            <input type="text" class="form-control shadow-sm" id="filtroParticipante" placeholder="Digite o nome do participante">
-            <label for="filtroParticipante"><i class="bi bi-search me-2"></i>Filtrar por Participante</label>
+            <input type="text" class="form-control shadow-sm" id="filtroParticipante"
+                   placeholder="Digite o nome do participante">
+            <label for="filtroParticipante">
+              <i class="bi bi-search me-2"></i>Filtrar por Participante
+            </label>
           </div>
         </div>
         <div class="col-md-5">
@@ -56,22 +65,29 @@
             <select class="form-select shadow-sm" id="filtroOficina">
               <option value="">Todas as Oficinas</option>
               {% for oficina in oficinas %}
-              <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+                <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
               {% endfor %}
             </select>
-            <label for="filtroOficina"><i class="bi bi-filter me-2"></i>Filtrar por Oficina</label>
+            <label for="filtroOficina">
+              <i class="bi bi-filter me-2"></i>Filtrar por Oficina
+            </label>
           </div>
         </div>
         <div class="col-md-2">
-          <button type="button" class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm" data-bs-toggle="modal" data-bs-target="#moverInscricoesModal" id="btnMoverInscricoes" disabled>
-            <i class="bi bi-arrow-right-circle me-2"></i>Mover Selecionados
+          <button type="button"
+                  class="btn btn-primary w-100 h-100 d-flex align-items-center justify-content-center shadow-sm"
+                  data-bs-toggle="modal" data-bs-target="#moverInscricoesModal"
+                  id="btnMoverInscricoes" disabled>
+            <i class="bi bi-arrow-right-circle me-2"></i>Mover&nbsp;/&nbsp;Copiar
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Tabela de Inscrições -->
+  <!-- =================================================== -->
+  <!-- LISTA DE INSCRIÇÕES -------------------------------->
+  <!-- =================================================== -->
   <div class="card shadow border-0">
     <div class="card-header bg-white d-flex justify-content-between align-items-center p-3 border-bottom">
       <h5 class="card-title mb-0">
@@ -79,18 +95,19 @@
       </h5>
       <span class="badge bg-primary rounded-pill" id="contadorInscricoes">{{ inscritos|length }}</span>
     </div>
+
     <div class="card-body p-0">
       <form id="formGerenciarInscricoes" method="POST">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0 border-0">
             <thead class="table-dark">
               <tr>
-                <th width="5%" class="text-center">
+                <th width="5%"  class="text-center">
                   <div class="form-check d-flex justify-content-center">
                     <input class="form-check-input" type="checkbox" id="selecionarTodos">
                   </div>
                 </th>
-                <th width="8%" class="text-center">ID</th>
+                <th width="8%"  class="text-center">ID</th>
                 <th width="30%">Participante</th>
                 <th width="30%">Oficina</th>
                 <th width="27%" class="text-center">Ações</th>
@@ -98,16 +115,20 @@
             </thead>
             <tbody id="tabelaInscricoes">
               {% for insc in inscritos %}
-              <tr data-oficina-id="{{ insc.oficina.id }}" data-event-id="{{ insc.oficina.evento_id }}" data-participante-nome="{{ insc.usuario.nome | lower }}" class="align-middle">
+              <tr data-oficina-id="{{ insc.oficina.id }}"
+                  data-event-id="{{ insc.oficina.evento_id }}"
+                  data-participante-nome="{{ insc.usuario.nome | lower }}"
+                  class="align-middle">
                 <td class="text-center">
                   <div class="form-check d-flex justify-content-center">
-                    <input class="form-check-input selecao-inscricao" type="checkbox" name="inscricao_ids" value="{{ insc.id }}" data-oficina-id="{{ insc.oficina.id }}">
+                    <input class="form-check-input selecao-inscricao" type="checkbox"
+                           name="inscricao_ids" value="{{ insc.id }}">
                   </div>
                 </td>
                 <td class="text-center fw-medium">{{ insc.id }}</td>
                 <td>
                   <div class="d-flex align-items-center">
-                    <div class="avatar-circle bg-light text-primary me-2 d-flex align-items-center justify-content-center">
+                    <div class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
                       <i class="bi bi-person"></i>
                     </div>
                     <div>{{ insc.usuario.nome }}</div>
@@ -115,7 +136,7 @@
                 </td>
                 <td>
                   <div class="d-flex align-items-center">
-                    <div class="avatar-circle bg-light text-primary me-2 d-flex align-items-center justify-content-center">
+                    <div class="avatar-circle bg-light text-primary me-2 d-flex justify-content-center align-items-center">
                       <i class="bi bi-book"></i>
                     </div>
                     <div>{{ insc.oficina.titulo }}</div>
@@ -123,22 +144,26 @@
                 </td>
                 <td>
                   <div class="d-flex gap-2 justify-content-center">
-                    <!-- Botão Gerenciar -->
-                    <a href="{{ url_for('routes.editar_participante', usuario_id=insc.usuario.id, oficina_id=insc.oficina.id) }}"
-                      class="btn btn-sm btn-outline-primary">
+                    <a href="{{ url_for('routes.editar_participante',
+                                        usuario_id=insc.usuario.id,
+                                        oficina_id=insc.oficina.id) }}"
+                       class="btn btn-sm btn-outline-primary">
                       <i class="bi bi-person-lines-fill me-1"></i> Gerenciar
                     </a>
-                    
-                    <!-- Botão Check-in -->
-                    <form method="POST" action="{{ url_for('routes.checkin_manual', usuario_id=insc.usuario.id, oficina_id=insc.oficina.id) }}">
+
+                    <form method="POST"
+                          action="{{ url_for('routes.checkin_manual',
+                                             usuario_id=insc.usuario.id,
+                                             oficina_id=insc.oficina.id) }}">
                       <button type="submit" class="btn btn-sm btn-success"
                               onclick="return confirm('Deseja registrar o check-in manual?');">
                         <i class="bi bi-check-circle me-1"></i> Check-in
                       </button>
                     </form>
-                    
-                    <!-- Botão Cancelar -->
-                    <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja cancelar esta inscrição?')">
+
+                    <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}"
+                          method="POST" style="display:inline;"
+                          onsubmit="return confirm('Cancelar esta inscrição?')">
                       <button type="submit" class="btn btn-sm btn-danger">
                         <i class="bi bi-x-circle me-1"></i> Cancelar
                       </button>
@@ -151,6 +176,7 @@
           </table>
         </div>
       </form>
+
       {% if not inscritos %}
       <div class="text-center py-5">
         <i class="bi bi-clipboard-x text-muted fs-1 mb-3"></i>
@@ -159,314 +185,287 @@
       </div>
       {% endif %}
     </div>
+
     <div class="card-footer bg-white text-muted p-3 d-flex justify-content-between align-items-center">
-      <span><i class="bi bi-info-circle me-1"></i> Selecione inscrições para realizar ações em lote</span>
+      <span><i class="bi bi-info-circle me-1"></i> Selecione inscrições para ações em lote</span>
       <span id="infoSelecao" class="badge bg-secondary">0 selecionados</span>
     </div>
   </div>
 
-  <!-- Modal para Mover Inscrições -->
-  <div class="modal fade" id="moverInscricoesModal" tabindex="-1" aria-labelledby="moverInscricoesModalLabel" aria-hidden="true">
+  <!-- =================================================== -->
+  <!-- MODAL MOVER / COPIAR ------------------------------->
+  <!-- =================================================== -->
+  <div class="modal fade" id="moverInscricoesModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content border-0 shadow">
+
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="moverInscricoesModalLabel">
-            <i class="bi bi-arrow-right-circle me-2"></i>Mover Inscrições
+          <h5 class="modal-title">
+            <i class="bi bi-arrow-right-circle me-2"></i>Mover ou Copiar Inscrições
           </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
+
         <div class="modal-body p-4">
-          <form id="formMoverInscricoes" action="{{ url_for('routes.mover_inscricoes_lote') }}" method="POST">
+          <form id="formMoverInscricoes"
+                action="{{ url_for('routes.inscricoes_lote') }}"
+                method="POST">
+
+            <!-- Ação: mover x copiar -->
             <div class="mb-4">
-              <label for="oficina_destino" class="form-label fw-medium mb-2">Oficina de Destino</label>
-              <select class="form-select form-select-lg" id="oficina_destino" name="oficina_destino" required>
-                <option value="">-- Selecione uma Oficina --</option>
-              </select>
-              <div class="form-text">Selecione a oficina para onde deseja transferir os participantes</div>
-            </div>
-            <div id="inscricoes_selecionadas_container" class="d-none">
-              <!-- Aqui serão inseridos os inputs hidden com os IDs das inscrições selecionadas -->
-            </div>
-            <div class="alert alert-info d-flex align-items-center">
-              <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-              <div>
-                <span class="fw-bold" id="num_selecionados">0</span> participante(s) selecionado(s) para transferência.
+              <label class="form-label fw-medium mb-2">O que deseja fazer?</label><br>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="acao"
+                       id="acaoMover" value="mover" checked>
+                <label class="form-check-label" for="acaoMover">Mover</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="acao"
+                       id="acaoCopiar" value="copiar">
+                <label class="form-check-label" for="acaoCopiar">Copiar</label>
               </div>
             </div>
-            <div id="alerta_vagas" class="alert alert-danger d-none d-flex align-items-center">
+
+            <!-- Evento origem (informativo) -->
+            <div class="mb-3">
+              <strong>Evento de Origem:</strong> <span id="modalEventoNome">–</span>
+            </div>
+
+            <!-- Evento destino -->
+            <div class="mb-4">
+              <label for="evento_destino" class="form-label fw-medium mb-2">Evento de Destino</label>
+              <select id="evento_destino" class="form-select form-select-lg" required>
+                <option value="">-- Selecione um Evento --</option>
+              </select>
+            </div>
+
+            <!-- Oficina destino -->
+            <div class="mb-4">
+              <label for="oficina_destino" class="form-label fw-medium mb-2">Oficina de Destino</label>
+              <select id="oficina_destino" name="oficina_destino"
+                      class="form-select form-select-lg" required disabled>
+                <option value="">-- Selecione uma Oficina --</option>
+              </select>
+              <div class="form-text">Escolha primeiro o evento, depois a oficina</div>
+            </div>
+
+            <!-- inputs hidden com IDs das inscrições -->
+            <div id="inscricoes_selecionadas_container" class="d-none"></div>
+
+            <!-- info + alerta -->
+            <div class="alert alert-info d-flex align-items-center">
+              <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+              <div><span class="fw-bold" id="num_selecionados">0</span>
+                   participante(s) selecionado(s).</div>
+            </div>
+            <div id="alerta_vagas"
+                 class="alert alert-danger d-none d-flex align-items-center">
               <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
               <div>Não há vagas suficientes na oficina selecionada.</div>
             </div>
           </form>
         </div>
+
         <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <button type="button" class="btn btn-outline-secondary"
+                  data-bs-dismiss="modal">
             <i class="bi bi-x me-1"></i>Cancelar
           </button>
-          <button type="submit" form="formMoverInscricoes" class="btn btn-primary" id="btnConfirmarMover" disabled>
-            <i class="bi bi-check2-circle me-1"></i>Confirmar Transferência
+          <button type="submit" form="formMoverInscricoes"
+                  class="btn btn-primary" id="btnConfirmarMover" disabled>
+            <i class="bi bi-check2-circle me-1"></i>Confirmar
           </button>
         </div>
+
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
+  <!-- =================================================== -->
+  <!-- SCRIPT -------------------------------------------- -->
+  <!-- =================================================== -->
   <script>
-    function debugFiltroParticipante() {
-      const filtro = document.getElementById('filtroParticipante').value;
-      console.log(`📌 [DEBUG] Filtro de Participante digitado: ${filtro}`);
-    }
-  
-    function debugFiltroOficina() {
-      const filtro = document.getElementById('filtroOficina').value;
-      console.log(`📌 [DEBUG] Oficina selecionada no filtro: ${filtro}`);
-    }
-  
-    function debugCancelarInscricao(inscricaoId) {
-      console.log(`❌ [DEBUG] Tentando cancelar inscrição com ID: ${inscricaoId}`);
+    /* utilitário simples */
+    function toggleClass(el, cls, cond){el.classList[cond?'add':'remove'](cls);}
+
+    /* ------------------------------------------------- */
+    /* SELEÇÃO / CONTADOR                               */
+    /* ------------------------------------------------- */
+    function atualizarBotaoMover(){
+      const qtd = document.querySelectorAll('.selecao-inscricao:checked').length;
+      document.getElementById('btnMoverInscricoes').disabled = qtd===0;
+      document.getElementById('num_selecionados').textContent = qtd;
+      const badge = document.getElementById('infoSelecao');
+      badge.textContent = `${qtd} selecionados`;
+      toggleClass(badge,'bg-primary',qtd>0);
+      toggleClass(badge,'bg-secondary',qtd===0);
     }
 
-    // Função para atualizar o botão de mover inscrições
-    function atualizarBotaoMover() {
-      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
-      const btnMover = document.getElementById('btnMoverInscricoes');
-      btnMover.disabled = checkboxes.length === 0;
-      
-      // Atualiza o contador no modal
-      document.getElementById('num_selecionados').textContent = checkboxes.length;
-      
-      // Atualiza o contador no footer
-      document.getElementById('infoSelecao').textContent = `${checkboxes.length} selecionados`;
-      
-      // Atualiza a classe do badge
-      const infoSelecao = document.getElementById('infoSelecao');
-      if (checkboxes.length > 0) {
-        infoSelecao.classList.remove('bg-secondary');
-        infoSelecao.classList.add('bg-primary');
-      } else {
-        infoSelecao.classList.remove('bg-primary');
-        infoSelecao.classList.add('bg-secondary');
+    /* ------------------------------------------------- */
+    /* VALIDAR VAGAS                                    */
+    /* ------------------------------------------------- */
+    function verificarVagas(){
+      const selOf = document.getElementById('oficina_destino');
+      const btn   = document.getElementById('btnConfirmarMover');
+      const al    = document.getElementById('alerta_vagas');
+      const qtdSel= document.querySelectorAll('.selecao-inscricao:checked').length;
+
+      if(!selOf.value){btn.disabled=true;al.classList.add('d-none');return;}
+
+      const vagas = parseInt(selOf[selOf.selectedIndex].dataset.vagas);
+      const ok    = vagas>=qtdSel;
+      btn.disabled=!ok;
+      toggleClass(al,'d-none',ok);
+      if(!ok){
+        al.innerHTML=
+        `<i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>`+
+        `Não há vagas suficientes. Disponíveis: ${vagas}, Necessárias: ${qtdSel}`;
       }
     }
 
-    // Função para verificar disponibilidade de vagas
-    function verificarVagas() {
-      const oficinaDestino = document.getElementById('oficina_destino');
-      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
-      const btnConfirmar = document.getElementById('btnConfirmarMover');
-      const alertaVagas = document.getElementById('alerta_vagas');
-      
-      if (oficinaDestino.value === '') {
-        btnConfirmar.disabled = true;
-        alertaVagas.classList.add('d-none');
-        return;
-      }
-      
-      const vagasDisponiveis = parseInt(oficinaDestino.options[oficinaDestino.selectedIndex].dataset.vagas);
-      const numSelecionados = checkboxes.length;
-      
-      // Verifica se há vagas suficientes
-      if (vagasDisponiveis < numSelecionados) {
-        btnConfirmar.disabled = true;
-        alertaVagas.textContent = `Não há vagas suficientes. Disponíveis: ${vagasDisponiveis}, Necessárias: ${numSelecionados}`;
-        alertaVagas.classList.remove('d-none');
-      } else {
-        btnConfirmar.disabled = false;
-        alertaVagas.classList.add('d-none');
-      }
-    }
-
-    // Função para preparar o formulário antes do envio
-    function prepararFormulario() {
-      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
-      const container = document.getElementById('inscricoes_selecionadas_container');
-      
-      // Limpa o container
-      container.innerHTML = '';
-      
-      // Adiciona inputs hidden para cada inscrição selecionada
-      checkboxes.forEach(checkbox => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'inscricao_ids';
-        input.value = checkbox.value;
-        container.appendChild(input);
+    /* ------------------------------------------------- */
+    /* PREPARA HIDDEN INPUTS                            */
+    /* ------------------------------------------------- */
+    function prepararFormulario(){
+      const cont = document.getElementById('inscricoes_selecionadas_container');
+      cont.innerHTML='';
+      document.querySelectorAll('.selecao-inscricao:checked').forEach(cb=>{
+        const inp=document.createElement('input');
+        inp.type='hidden';inp.name='inscricao_ids';inp.value=cb.value;
+        cont.appendChild(inp);
       });
     }
 
-    // Função para atualizar contador de inscrições visíveis
-    function atualizarContadorInscricoes() {
-      const rowsVisiveis = Array.from(document.querySelectorAll('#tabelaInscricoes tr')).filter(row => 
-        row.style.display !== 'none'
-      ).length;
-      document.getElementById('contadorInscricoes').textContent = rowsVisiveis;
+    /* ------------------------------------------------- */
+    /* CONTADOR VISÍVEIS                                */
+    /* ------------------------------------------------- */
+    function atualizarContadorInscricoes(){
+      const tot=[...document.querySelectorAll('#tabelaInscricoes tr')]
+                 .filter(r=>r.style.display!=='none').length;
+      document.getElementById('contadorInscricoes').textContent=tot;
     }
 
-    // Event Listeners
-    document.addEventListener('DOMContentLoaded', function() {
-      // Selecionar/Deselecionar todos
-      const selecionarTodos = document.getElementById('selecionarTodos');
-      selecionarTodos.addEventListener('change', function() {
-        const checkboxes = document.querySelectorAll('.selecao-inscricao');
-        checkboxes.forEach(checkbox => {
-          // Só seleciona os visíveis
-          if (checkbox.closest('tr').style.display !== 'none') {
-            checkbox.checked = selecionarTodos.checked;
-          }
-        });
-        atualizarBotaoMover();
+    /* ------------------------------------------------- */
+    /* FILTRO                                            */
+    /* ------------------------------------------------- */
+    function filtrarInscricoes(){
+      const nome=document.getElementById('filtroParticipante').value.toLowerCase();
+      const ofid=document.getElementById('filtroOficina').value;
+      document.querySelectorAll('#tabelaInscricoes tr').forEach(r=>{
+        const okNome=r.dataset.participanteNome.includes(nome);
+        const okOf=ofid===''||ofid===r.dataset.oficinaId;
+        r.style.display=okNome&&okOf?'':'none';
       });
-      
-      // Atualizar botão quando uma inscrição é selecionada/deseleccionada
-      document.querySelectorAll('.selecao-inscricao').forEach(checkbox => {
-        checkbox.addEventListener('change', atualizarBotaoMover);
-      });
-      
-      // Verificar vagas quando a oficina de destino é alterada
-      document.getElementById('oficina_destino').addEventListener('change', verificarVagas);
-      
-      // Preparar formulário antes do envio
-      document.getElementById('formMoverInscricoes').addEventListener('submit', function(e) {
-        prepararFormulario();
-      });
-      
-      // Quando o modal é aberto
-      const moverModal = document.getElementById('moverInscricoesModal');
-      moverModal.addEventListener('show.bs.modal', function() {
-        // Resetar o select de oficina
-        document.getElementById('oficina_destino').value = '';
-        // Atualizar contador
-        atualizarBotaoMover();
-        // Desabilitar botão de confirmar
-        document.getElementById('btnConfirmarMover').disabled = true;
-        // Esconder alerta de vagas
-        document.getElementById('alerta_vagas').classList.add('d-none');
-      });
-      
-      // Iniciar contagem
-      atualizarBotaoMover();
-    });
-
-    // Quando o modal é aberto, buscar oficinas do mesmo evento
-    document.getElementById('moverInscricoesModal').addEventListener('show.bs.modal', function () {
-      const checkboxes = document.querySelectorAll('.selecao-inscricao:checked');
-      if (checkboxes.length === 0) return;
-
-      // Pega o atributo data-event-id da primeira inscrição selecionada
-      const firstRow = checkboxes[0].closest('tr');
-      const oficinaId = firstRow.getAttribute('data-oficina-id');
-
-      // Buscar oficinas do mesmo evento via fetch
-      fetch(`/api/oficinas_mesmo_evento/${oficinaId}`)
-        .then(response => response.json())
-        .then(data => {
-          const select = document.getElementById('oficina_destino');
-          select.innerHTML = '<option value="">-- Selecione uma Oficina --</option>';
-          data.oficinas.forEach(oficina => {
-            const option = document.createElement('option');
-            option.value = oficina.id;
-            option.dataset.vagas = oficina.vagas;
-            option.textContent = `${oficina.titulo} (${oficina.vagas} vagas)`;
-            select.appendChild(option);
-          });
-        })
-        .catch(error => console.error('Erro ao buscar oficinas:', error));
-
-      // Resetar botão de confirmar e alertas
-      document.getElementById('btnConfirmarMover').disabled = true;
-      document.getElementById('alerta_vagas').classList.add('d-none');
-      atualizarBotaoMover();
-    });
-  </script>
-  
-  <!-- Script para filtrar as inscrições por participante e oficina -->
-  <script>
-    document.getElementById('filtroParticipante').addEventListener('input', function() {
-      filtrarInscricoes();
-    });
-  
-    document.getElementById('filtroOficina').addEventListener('change', function() {
-      filtrarInscricoes();
-    });
-  
-    function filtrarInscricoes() {
-      var filtroParticipante = document.getElementById('filtroParticipante').value.toLowerCase();
-      var filtroOficina = document.getElementById('filtroOficina').value;
-      var rows = document.querySelectorAll('#tabelaInscricoes tr');
-  
-      rows.forEach(function(row) {
-        var participanteNome = row.getAttribute('data-participante-nome');
-        var oficinaId = row.getAttribute('data-oficina-id');
-  
-        var correspondeParticipante = participanteNome.includes(filtroParticipante);
-        var correspondeOficina = filtroOficina === "" || oficinaId === filtroOficina;
-  
-        if (correspondeParticipante && correspondeOficina) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-      
-      // Atualiza o contador de inscrições visíveis
       atualizarContadorInscricoes();
-      
-      // Desmarca o checkbox "selecionar todos" quando filtra
-      document.getElementById('selecionarTodos').checked = false;
+      document.getElementById('selecionarTodos').checked=false;
     }
+
+    /* ------------------------------------------------- */
+    /* DOM READY                                         */
+    /* ------------------------------------------------- */
+    document.addEventListener('DOMContentLoaded',()=>{
+      /* checkboxes */
+      document.getElementById('selecionarTodos')
+        .addEventListener('change',function(){
+          const vis=document.querySelectorAll('#tabelaInscricoes tr')
+          .forEach(r=>{
+            const cb=r.querySelector('.selecao-inscricao');
+            if(r.style.display!=='none')cb.checked=this.checked;
+          });
+          atualizarBotaoMover();
+        });
+      document.querySelectorAll('.selecao-inscricao')
+        .forEach(cb=>cb.addEventListener('change',atualizarBotaoMover));
+
+      /* filtros */
+      document.getElementById('filtroParticipante').addEventListener('input',filtrarInscricoes);
+      document.getElementById('filtroOficina').addEventListener('change',filtrarInscricoes);
+
+      /* prepara form antes submit */
+      document.getElementById('formMoverInscricoes')
+        .addEventListener('submit',prepararFormulario);
+
+      /* modal logic */
+      const modal=document.getElementById('moverInscricoesModal');
+      const selEvento=document.getElementById('evento_destino');
+      const selOf=document.getElementById('oficina_destino');
+
+      /* ---------- abrir modal --------- */
+      modal.addEventListener('show.bs.modal',()=>{
+        /* reseta selects */
+        selEvento.innerHTML='<option value="">-- Selecione um Evento --</option>';
+        selOf.innerHTML   ='<option value="">-- Selecione uma Oficina --</option>';
+        selOf.disabled=true;
+
+        /* evento origem info */
+        const checked=document.querySelector('.selecao-inscricao:checked');
+        if(checked){
+          const linha=checked.closest('tr');
+          const evId=linha.dataset.eventId;
+          document.getElementById('modalEventoNome').textContent='…';
+          fetch('/api/eventos_com_oficinas')
+            .then(r=>r.json())
+            .then(list=>{
+              const ev=list.find(e=>e.id==evId);
+              if(ev)document.getElementById('modalEventoNome').textContent=ev.nome;
+            });
+        }
+
+        /* carrega eventos destino */
+        fetch('/api/eventos_com_oficinas')
+          .then(r=>r.json())
+          .then(list=>{
+            list.forEach(ev=>{
+              const opt=document.createElement('option');
+              opt.value=ev.id;
+              opt.textContent=ev.nome;
+              opt.dataset.oficinas=JSON.stringify(ev.oficinas);
+              selEvento.appendChild(opt);
+            });
+          });
+      });
+
+      /* ---------- change evento -> preenche oficinas ----- */
+      selEvento.addEventListener('change',()=>{
+        selOf.innerHTML='<option value="">-- Selecione uma Oficina --</option>';
+        selOf.disabled=true;
+        if(!selEvento.value)return;
+        const oficinas=JSON.parse(selEvento[selEvento.selectedIndex].dataset.oficinas);
+        oficinas.forEach(o=>{
+          const opt=document.createElement('option');
+          opt.value=o.id;
+          opt.dataset.vagas=o.vagas;
+          opt.textContent=`${o.titulo} (${o.vagas} vagas)`;
+          selOf.appendChild(opt);
+        });
+        selOf.disabled=false;
+        verificarVagas();
+      });
+
+      /* ---------- change oficina -> revalida ------------- */
+      selOf.addEventListener('change',verificarVagas);
+
+      atualizarBotaoMover();
+    });
   </script>
 
-  <!-- CSS Adicional -->
+  <!-- =================================================== -->
+  <!-- ESTILO -------------------------------------------- -->
+  <!-- =================================================== -->
   <style>
-    /* Estilização adicional */
-    .table th {
-      font-weight: 600;
-      vertical-align: middle;
+    .table th{font-weight:600;vertical-align:middle}
+    .table-hover tbody tr:hover{background-color:rgba(0,123,255,.08)}
+    .btn{font-weight:500;letter-spacing:.3px}
+    .card{border-radius:10px;overflow:hidden}
+    .form-control:focus,.form-select:focus{
+      border-color:#86b7fe;box-shadow:0 0 0 .25rem rgba(13,110,253,.25)
     }
-    
-    .table-hover tbody tr:hover {
-      background-color: rgba(0, 123, 255, 0.08);
-    }
-    
-    .btn {
-      font-weight: 500;
-      letter-spacing: 0.3px;
-    }
-    
-    .card {
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    
-    .form-control:focus, .form-select:focus {
-      border-color: #86b7fe;
-      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    }
-    
-    .alert {
-      border-radius: 8px;
-    }
-    
-    .avatar-circle {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
-    
-    /* Melhorias de responsividade */
-    @media (max-width: 768px) {
-      .btn {
-        font-size: 0.85rem;
-      }
-      
-      .table th, .table td {
-        padding: 0.5rem;
-      }
+    .alert{border-radius:8px}
+    .avatar-circle{width:32px;height:32px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:14px}
+    @media(max-width:768px){
+      .btn{font-size:.85rem}
+      .table th,.table td{padding:.5rem}
     }
   </style>
 {% endblock %}
