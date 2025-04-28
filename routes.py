@@ -5156,6 +5156,75 @@ def cancelar_inscricoes_lote():
 
     return redirect(url_for('routes.dashboard'))
 
+@routes.route('/inscricoes_lote', methods=['POST'])
+@login_required
+def inscricoes_lote():
+    if current_user.tipo not in ('admin', 'cliente'):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # ------------ dados vindos do formulário -----------------
+    inscricao_ids      = list(map(int, request.form.getlist('inscricao_ids')))
+    oficina_destino_id = int(request.form.get('oficina_destino', 0))
+    acao               = request.form.get('acao', 'mover')        # mover | copiar
+    # ----------------------------------------------------------
+
+    if not inscricao_ids or not oficina_destino_id:
+        flash("Selecione inscrições e oficina de destino.", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    oficina_destino = Oficina.query.get_or_404(oficina_destino_id)
+    inscricoes      = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+
+    # clientes só mexem no que é seu
+    if current_user.tipo == 'cliente' and any(i.cliente_id != current_user.id for i in inscricoes):
+        flash("Há inscrições de outro cliente selecionadas!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    if oficina_destino.vagas < len(inscricoes):
+        flash(f"Não há vagas suficientes! "
+              f"(Disponíveis: {oficina_destino.vagas}, Necessárias: {len(inscricoes)})",
+              "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    try:
+        for insc in inscricoes:
+            if acao == 'mover':
+                # devolve vaga para oficina de origem (se houver)
+                if insc.oficina:
+                    insc.oficina.vagas += 1
+
+                # ocupa vaga na oficina destino
+                oficina_destino.vagas -= 1
+
+                # atualiza inscrição existente
+                insc.oficina_id = oficina_destino.id
+                insc.evento_id  = oficina_destino.evento_id
+
+            elif acao == 'copiar':
+                # apenas ocupa vaga na oficina destino
+                oficina_destino.vagas -= 1
+
+                # cria nova inscrição clonando algumas infos
+                nova = Inscricao(
+                    usuario_id   = insc.usuario_id,
+                    cliente_id   = insc.cliente_id,
+                    oficina_id   = oficina_destino.id,
+                    evento_id    = oficina_destino.evento_id,
+                    status_pagamento = insc.status_pagamento
+                )
+                db.session.add(nova)
+
+        db.session.commit()
+        msg = "movida(s)" if acao == 'mover' else "copiada(s)"
+        flash(f"{len(inscricoes)} inscrição(ões) {msg} com sucesso!", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao processar inscrições: {e}", "danger")
+
+    return redirect(url_for('routes.gerenciar_inscricoes'))
+
 
 @routes.route('/mover_inscricoes_lote', methods=['POST'])
 @login_required
@@ -5164,123 +5233,93 @@ def mover_inscricoes_lote():
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
 
-    inscricao_ids = request.form.getlist('inscricao_ids')
-    if not inscricao_ids:
-        flash("Nenhuma inscrição selecionada!", "warning")
-        return redirect(url_for('routes.dashboard'))
-    
+    inscricao_ids     = list(map(int, request.form.getlist('inscricao_ids')))
     oficina_destino_id = request.form.get('oficina_destino')
-    if not oficina_destino_id:
-        flash("Nenhuma oficina de destino selecionada!", "warning")
+
+    if not inscricao_ids or not oficina_destino_id:
+        flash("Inscrições ou oficina destino não informadas.", "warning")
         return redirect(url_for('routes.dashboard'))
 
-    inscricao_ids = list(map(int, inscricao_ids))
     oficina_destino_id = int(oficina_destino_id)
+    oficina_destino    = Oficina.query.get_or_404(oficina_destino_id)
+
+    inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+
+    # (opcional) garante que todas as inscrições pertencem ao mesmo cliente
+    if current_user.tipo == 'cliente':
+        if any(insc.cliente_id != current_user.id for insc in inscricoes):
+            flash("Há inscrições de outro cliente selecionadas!", "danger")
+            return redirect(url_for('routes.dashboard'))
+
+    # verifica vagas
+    if oficina_destino.vagas < len(inscricoes):
+        flash(f"Não há vagas suficientes! (Disponíveis: {oficina_destino.vagas})", "danger")
+        return redirect(url_for('routes.dashboard'))
 
     try:
-        primeira_inscricao = Inscricao.query.get(inscricao_ids[0])
-        if not primeira_inscricao:
-            raise ValueError("Inscrição não encontrada")
-
-        evento_origem_id = primeira_inscricao.oficina.evento_id
-        if not evento_origem_id:
-            flash("A oficina de origem não pertence a nenhum evento!", "danger")
-            return redirect(url_for('routes.dashboard'))
-
-        oficina_destino = Oficina.query.get(oficina_destino_id)
-        if not oficina_destino or oficina_destino.evento_id != evento_origem_id:
-            flash("A oficina de destino deve pertencer ao mesmo evento!", "danger")
-            return redirect(url_for('routes.dashboard'))
-
-        inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
         for insc in inscricoes:
-            if insc.oficina.evento_id != evento_origem_id:
-                flash("Todas as inscrições devem pertencer ao mesmo evento!", "danger")
-                return redirect(url_for('routes.dashboard'))
+            # devolve vaga à oficina de origem
+            if insc.oficina:
+                insc.oficina.vagas += 1
 
-        if oficina_destino.vagas < len(inscricoes):
-            flash(f"Não há vagas suficientes na oficina de destino! (Disponível: {oficina_destino.vagas}, Necessário: {len(inscricoes)})", "danger")
-            return redirect(url_for('routes.dashboard'))
-
-        for insc in inscricoes:
-            insc.oficina.vagas += 1
+            # ocupa vaga da oficina destino
             oficina_destino.vagas -= 1
-            insc.oficina_id = oficina_destino_id
 
+            # atualiza relacionamentos
+            insc.oficina_id = oficina_destino.id
+            insc.evento_id  = oficina_destino.evento_id   # ← ESSENCIAL!
         db.session.commit()
-        flash(f"Foram movidas {len(inscricoes)} inscrições para a oficina {oficina_destino.titulo}!", "success")
+        flash(f"{len(inscricoes)} inscrição(ões) movida(s) com sucesso!", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao mover inscrições: {e}", "danger")
 
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('routes.gerenciar_inscricoes'))
+
 
 @routes.route('/api/oficinas_mesmo_evento/<int:oficina_id>')
 @login_required
-def get_oficinas_mesmo_evento(oficina_id):
+def oficinas_mesmo_evento(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
-    if not oficina.evento_id:
-        return jsonify({'oficinas': []})
-    oficinas = Oficina.query.filter_by(evento_id=oficina.evento_id).all()
+    evento = oficina.evento
+    oficinas = Oficina.query.filter(
+        Oficina.evento_id == oficina.evento_id,
+        Oficina.id != oficina_id
+    ).all()
     return jsonify({
-        'oficinas': [{
-            'id': ofc.id,
-            'titulo': ofc.titulo,
-            'vagas': ofc.vagas
-        } for ofc in oficinas if ofc.id != oficina_id]
+        'evento_nome': evento.nome if evento else 'Sem evento',
+        'oficinas': [
+            {
+                'id': o.id,
+                'titulo': o.titulo,
+                'vagas': o.vagas,
+                'evento_nome': evento.nome if evento else 'Sem evento'
+            } for o in oficinas
+        ]
     })
-    if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
-
-    inscricao_ids = request.form.getlist('inscricao_ids')
-    if not inscricao_ids:
-        flash("Nenhuma inscrição selecionada!", "warning")
-        return redirect(url_for('routes.dashboard'))
     
-    oficina_destino_id = request.form.get('oficina_destino')
-    if not oficina_destino_id:
-        flash("Nenhuma oficina de destino selecionada!", "warning")
-        return redirect(url_for('routes.dashboard'))
+# routes.py  (ou onde ficam suas rotas API)
+@routes.route('/api/eventos_com_oficinas')
+@login_required
+def eventos_com_oficinas():
+    # ① Se for cliente, mostra só os eventos dele.  Admin vê todos.
+    q = Evento.query
+    if current_user.tipo == 'cliente':
+        q = q.filter_by(cliente_id=current_user.id)
 
-    # Converte os ids
-    inscricao_ids = list(map(int, inscricao_ids))
-    oficina_destino_id = int(oficina_destino_id)
+    eventos = q.order_by(Evento.nome).all()
+    payload = []
+    for ev in eventos:
+        payload.append({
+            'id': ev.id,
+            'nome': ev.nome,
+            'oficinas': [
+                {'id': o.id, 'titulo': o.titulo, 'vagas': o.vagas}
+                for o in ev.oficinas
+            ]
+        })
+    return jsonify(payload)
 
-    # Verifica se a oficina existe
-    oficina_destino = Oficina.query.get(oficina_destino_id)
-    if not oficina_destino:
-        flash("Oficina de destino não encontrada!", "danger")
-        return redirect(url_for('routes.dashboard'))
-
-    try:
-        # Busca as inscrições
-        inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
-
-        # (Opcional) verifique se oficina_destino tem vagas suficientes, se for caso
-        # Exemplo: se oficina_destino.vagas < len(inscricoes), ...
-        # mas lembre que você pode já ter decrementado as vagas no momento em que
-        # usuário se inscreve. Precisaria de uma lógica de "vagas" robusta.
-
-        # Atualiza a oficina
-        for insc in inscricoes:
-            # 1) Incrementa a vaga na oficina atual (opcional, se você decrementou ao inscrever)
-            oficina_origem = insc.oficina
-            oficina_origem.vagas += 1  # se estiver usando contagem de vagas "ao vivo"
-
-            # 2) Decrementa a vaga na oficina destino
-            oficina_destino.vagas -= 1
-
-            # 3) Move a inscrição
-            insc.oficina_id = oficina_destino_id
-
-        db.session.commit()
-        flash(f"Foram movidas {len(inscricoes)} inscrições para a oficina {oficina_destino.titulo}!", "success")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Erro ao mover inscrições: {e}", "danger")
-
-    return redirect(url_for('routes.dashboard'))
 
 @routes.route('/cancelar_inscricao/<int:inscricao_id>', methods=['GET','POST'])
 @login_required
