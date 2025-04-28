@@ -8,6 +8,7 @@ import pytz
 from models import Usuario, Cliente, Ministrante  # ou só os que você precisa
 from extensions import socketio  # Importa a instância de SocketIO
 from flask_socketio import join_room
+from flask_cors import CORS
 
 
 def create_app():
@@ -30,10 +31,8 @@ def create_app():
     login_manager.init_app(app)
     migrate.init_app(app, db)  # Já inicializa o migrate importado de extensions
     mail.init_app(app)
+    CORS(app)  # No arquivo principal da aplicação
     
-    # REMOVA ESTA LINHA - você já está inicializando o migrate acima
-    # migrate = Migrate(app, db)  <- Este é o problema
-
     login_manager.login_view = "routes.login"
     login_manager.session_protection = "strong"
 
