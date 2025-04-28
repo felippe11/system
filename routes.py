@@ -123,8 +123,12 @@ routes = Blueprint("routes", __name__)
 # routes.py, logo após criar o Blueprint
 @routes.before_request
 def bloquear_usuarios_pendentes():
+
     # Todas as restrições de pagamento foram removidas
     # Agora todos os usuários podem acessar todas as funcionalidades, independentemente do status de pagamento
+    # Permitir que participantes com pagamento pendente tenham acesso a todas as funcionalidades.
+    # Código de bloqueio removido para permitir acesso irrestrito.
+
     return
 
        
