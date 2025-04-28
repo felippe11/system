@@ -123,9 +123,12 @@ routes = Blueprint("routes", __name__)
 # routes.py, logo após criar o Blueprint
 @routes.before_request
 def bloquear_usuarios_pendentes():
-    from flask_login import current_user
+
+    # Todas as restrições de pagamento foram removidas
+    # Agora todos os usuários podem acessar todas as funcionalidades, independentemente do status de pagamento
     # Permitir que participantes com pagamento pendente tenham acesso a todas as funcionalidades.
     # Código de bloqueio removido para permitir acesso irrestrito.
+
     return
 
        
@@ -314,9 +317,30 @@ def cadastro_participante(identifier: str | None = None):
         
         # Determinar as informações do evento para a oficina
         if oficina.evento_id:
-            if oficina.evento_id in eventos_info:
-                evento_nome = eventos_info[oficina.evento_id]['nome']
-                evento_status = eventos_info[oficina.evento_id]['status']
+            # Obter informações do evento diretamente
+            evento_obj = Evento.query.get(oficina.evento_id)
+            if evento_obj:
+                evento_nome = evento_obj.nome
+                # Determinar status do evento
+                data_atual = datetime.now().date()
+                ja_ocorreu = False
+                eh_futuro = False
+                
+                if evento_obj.data_fim:
+                    if hasattr(evento_obj.data_fim, 'date'):
+                        data_fim = evento_obj.data_fim.date()
+                    else:
+                        data_fim = evento_obj.data_fim
+                    ja_ocorreu = data_fim < data_atual
+                    
+                if evento_obj.data_inicio:
+                    if hasattr(evento_obj.data_inicio, 'date'):
+                        data_inicio = evento_obj.data_inicio.date()
+                    else:
+                        data_inicio = evento_obj.data_inicio
+                    eh_futuro = data_inicio > data_atual
+                
+                evento_status = 'Futuro' if eh_futuro else ('Encerrado' if ja_ocorreu else 'Atual')
             else:
                 evento_nome = "Evento Desconhecido"
                 evento_status = "Atual"

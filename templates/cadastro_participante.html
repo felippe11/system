@@ -251,15 +251,18 @@
 <style>
     /* Camada de fundo */
     .modal {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;                 /* espaço nas bordas para mobile */
-      background: rgba(0,0,0,.55);
-      z-index: 1050;
-      overflow-y: auto;              /* rolagem se o conteúdo for maior que a tela */
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+        overflow-y: auto; /* Ensure vertical scrolling works */
+        padding: 30px 0; /* Add padding top and bottom */
+        backdrop-filter: blur(5px);
+        transition: all 0.3s ease;
     }
     
     /* Caixa do modal */
@@ -464,18 +467,40 @@
               </div>
     
               <!-- Campos personalizados -->
-              {% for campo in evento.cliente.campos_personalizados %}
-                <div class="form-group{% if campo.full_width %} full-width{% endif %}">
-                  <label>{{ campo.nome }}</label>
-                  <input type="{{ campo.tipo }}"
-                         name="campo_{{ campo.id }}"
-                         placeholder="Digite aqui"
-                         {% if campo.obrigatorio %}required{% endif %}>
-                </div>
-              {% endfor %}
+              {% if evento and evento.cliente and evento.cliente.campos_personalizados %}
+                {% for campo in evento.cliente.campos_personalizados %}
+                  <div class="form-group{% if campo.full_width %} full-width{% endif %}">
+                    <label>{{ campo.nome }}</label>
+                    <input type="{{ campo.tipo }}"
+                           name="campo_{{ campo.id }}"
+                           placeholder="Digite aqui"
+                           {% if campo.obrigatorio %}required{% endif %}>
+                  </div>
+                {% endfor %}
+              {% endif %}
     
               <!-- Inscrição / Lotes -->
-              {% if evento and evento.habilitar_lotes and lote_vigente %}
+              {% if evento and evento.inscricao_gratuita %}
+              <!-- Cenário 3: Evento gratuito -->
+              <div class="form-group full-width">
+                <div class="alert alert-success d-flex align-items-center">
+                  <i class="fas fa-check-circle me-2"></i> Inscrição gratuita
+                </div>
+                {% if evento.tipos_inscricao and evento.tipos_inscricao|length > 0 %}
+                  <label for="tipo_inscricao">Tipo de Inscrição</label>
+                  <select id="tipo_inscricao" name="tipo_inscricao_id" required>
+                    <option value="">Selecione um tipo de inscrição</option>
+                    {% for tipo in evento.tipos_inscricao %}
+                      <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
+                    {% endfor %}
+                  </select>
+
+                {% else %}
+                  <input type="hidden" name="tipo_inscricao_id" value="{{ evento.tipos_inscricao[0].id if evento.tipos_inscricao and evento.tipos_inscricao|length > 0 else '' }}">
+                {% endif %}
+              </div>
+              {% elif evento and evento.habilitar_lotes and lote_vigente %}
+              <!-- Cenário 1: Evento com lotes habilitados -->
               <div class="form-group full-width">
                 <label for="lote_tipo_inscricao">Tipo de Inscrição</label>
                 <div class="lote-badge" id="lote-vigente-badge">
@@ -498,7 +523,7 @@
                               data-lote-id="{{ lote_vigente.id }}"
                               data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}"
                               data-preco="{{ lote_tipo.preco }}">
-                        {{ lote_tipo.tipo_inscricao.nome }} - R$ {{ lote_tipo.preco }}
+                        {{ lote_tipo.tipo_inscricao.nome }}{% if not evento.inscricao_gratuita %} - R$ {{ lote_tipo.preco }}{% endif %}
                       </option>
                     {% endfor %}
                   </optgroup>
@@ -509,22 +534,19 @@
                 <input type="hidden" id="lote_id" name="lote_id" value="{{ lote_vigente.id }}">
               </div>
               {% elif evento and evento.tipos_inscricao %}
+              <!-- Cenário 2: Evento sem lotes ou com lotes desabilitados (tipos de inscrição diretos) -->
               <div class="form-group full-width">
                 <label for="tipo_inscricao">Tipo de Inscrição</label>
                 <select id="tipo_inscricao" name="tipo_inscricao_id" required>
                   <option value="">Selecione um tipo de inscrição</option>
                   {% for tipo in evento.tipos_inscricao %}
-                    <option value="{{ tipo.id }}" data-preco="{{ tipo.preco }}">{{ tipo.nome }} - R$ {{ tipo.preco }}</option>
+                    <option value="{{ tipo.id }}" data-preco="{{ tipo.preco }}">
+                      {{ tipo.nome }}{% if not evento.inscricao_gratuita %} - R$ {{ tipo.preco }}{% endif %}
+                    </option>
                   {% endfor %}
                 </select>
                 <div id="valor_inscricao" class="mt-2 p-2 bg-light rounded">
                   <span id="texto_valor">Selecione um tipo de inscrição</span>
-                </div>
-              </div>
-              {% elif evento and evento.inscricao_gratuita %}
-              <div class="form-group full-width">
-                <div class="alert alert-success d-flex align-items-center">
-                  <i class="fas fa-check-circle me-2"></i> Inscrição gratuita
                 </div>
               </div>
               {% endif %}
@@ -804,13 +826,16 @@
 
     .modal-conteudo {
         background: white;
-        margin: 0 auto;
+        margin: 0 auto 40px auto; /* Add bottom margin */
         width: 90%;
-        max-width: 700px;
-        border-radius: 12px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        max-width: 750px;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
         position: relative;
-        margin-bottom: 40px; /* Added margin at bottom for better spacing */
+        overflow: visible; /* Changed from overflow: hidden */
+        animation: modalFadeIn 0.4s ease-out;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        max-height: none; /* Remove any max-height constraint */
     }
 
     .modal-header {
@@ -839,7 +864,9 @@
     }
 
     .modal-corpo {
-        padding: 25px;
+        padding: 30px;
+        overflow-y: visible;
+        max-height: none; /* Remove any max-height constraint */
     }
 
     /* Formulário */
@@ -929,8 +956,10 @@
         .atividade-horario::after {
             display: none;
         }
+        
         .modal {
-            padding-top: 60px;
+            padding: 20px 0;
+            align-items: flex-start;
         }
 
         .modal-conteudo {
@@ -1547,13 +1576,15 @@ input::placeholder {
     const eventoId = {% if evento %}{{ evento.id }}{% else %}null{% endif %};
     let currentLoteId = {% if lote_vigente %}{{ lote_vigente.id }}{% else %}null{% endif %};
     let loteCheckIntervalId = null;
+    // Verificar se o evento tem lotes habilitados
+    const eventoHabilitaLotes = {% if evento and evento.habilitar_lotes %}true{% else %}false{% endif %};
     
     // Controle do Modal
     function abrirModal() {
         document.getElementById("cadastroModal").style.display = "block";
         
-        // Verificar o status do lote ao abrir o modal
-        if (eventoId) {
+        // Verificar o status do lote ao abrir o modal apenas se o evento tiver lotes habilitados
+        if (eventoId && eventoHabilitaLotes) {
             verificarLoteVigente(true);
             
             // Iniciar verificação periódica apenas se ainda não estiver ativa
@@ -2041,6 +2072,7 @@ input::placeholder {
         }
     });
 
+    // Garantir que```html
     // Garantir que o evento_id seja enviado corretamente
     document.addEventListener('DOMContentLoaded', function() {
         const formulario = document.getElementById('formularioCadastro');
@@ -2059,4 +2091,5 @@ input::placeholder {
         }
     });
 </script>
+</div>
 {% endblock %}
