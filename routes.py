@@ -5226,55 +5226,111 @@ def inscricoes_lote():
     return redirect(url_for('routes.gerenciar_inscricoes'))
 
 
-@routes.route('/mover_inscricoes_lote', methods=['POST'])
+@routes.route("/mover_inscricoes_lote", methods=["POST"])
 @login_required
 def mover_inscricoes_lote():
-    if current_user.tipo not in ['admin', 'cliente']:
+    # ░░░ 1. Permissão --------------------------------------------------------
+    if current_user.tipo not in {"admin", "cliente"}:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for("routes.dashboard"))
 
-    inscricao_ids     = list(map(int, request.form.getlist('inscricao_ids')))
-    oficina_destino_id = request.form.get('oficina_destino')
+    # ░░░ 2. Coleta de parâmetros --------------------------------------------
+    inscricao_ids      = list(map(int, request.form.getlist("inscricao_ids")))
+    oficina_destino_id = request.form.get("oficina_destino", type=int)
 
-    if not inscricao_ids or not oficina_destino_id:
-        flash("Inscrições ou oficina destino não informadas.", "warning")
-        return redirect(url_for('routes.dashboard'))
+    if not inscricao_ids:
+        flash("Nenhuma inscrição selecionada!", "warning")
+        return redirect(url_for("routes.dashboard"))
 
-    oficina_destino_id = int(oficina_destino_id)
-    oficina_destino    = Oficina.query.get_or_404(oficina_destino_id)
-
-    inscricoes = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
-
-    # (opcional) garante que todas as inscrições pertencem ao mesmo cliente
-    if current_user.tipo == 'cliente':
-        if any(insc.cliente_id != current_user.id for insc in inscricoes):
-            flash("Há inscrições de outro cliente selecionadas!", "danger")
-            return redirect(url_for('routes.dashboard'))
-
-    # verifica vagas
-    if oficina_destino.vagas < len(inscricoes):
-        flash(f"Não há vagas suficientes! (Disponíveis: {oficina_destino.vagas})", "danger")
-        return redirect(url_for('routes.dashboard'))
+    if not oficina_destino_id:
+        flash("Nenhuma oficina de destino selecionada!", "warning")
+        return redirect(url_for("routes.dashboard"))
 
     try:
+        # ░░░ 3. Objetos de referência ---------------------------------------
+        primeira_insc   = Inscricao.query.get_or_404(inscricao_ids[0])
+        oficina_origem  = primeira_insc.oficina
+        evento_id       = oficina_origem.evento_id
+        oficina_destino = Oficina.query.get_or_404(oficina_destino_id)
+
+        # 3.1 – Garantir que destino pertence ao mesmo evento
+        if oficina_destino.evento_id != evento_id:
+            flash("A oficina de destino deve pertencer ao mesmo evento!", "danger")
+            return redirect(url_for("routes.dashboard"))
+
+        # 3.2 – Buscar inscrições a mover
+        inscricoes = (
+            Inscricao.query
+            .filter(Inscricao.id.in_(inscricao_ids))
+            .all()
+        )
+
+        # 3.3 – Checar se todas são do mesmo evento
+        if any(insc.oficina.evento_id != evento_id for insc in inscricoes):
+            flash("Todas as inscrições devem pertencer ao mesmo evento!", "danger")
+            return redirect(url_for("routes.dashboard"))
+
+        # 3.4 – Verificar vagas
+        if oficina_destino.vagas < len(inscricoes):
+            flash(
+                f"Não há vagas suficientes na oficina de destino! "
+                f"(Disponível: {oficina_destino.vagas}, Necessário: {len(inscricoes)})",
+                "danger",
+            )
+            return redirect(url_for("routes.dashboard"))
+
+        # ░░░ 4. Garante inscrição-evento para quem não tem -------------------
+        usuario_ids = {insc.usuario_id for insc in inscricoes}
+
+        existentes = (
+            Inscricao.query
+            .filter(
+                Inscricao.evento_id == evento_id,
+                Inscricao.oficina_id.is_(None),           # inscrição “geral” do evento
+                Inscricao.usuario_id.in_(usuario_ids)
+            )
+            .with_entities(Inscricao.usuario_id)
+            .all()
+        )
+        ja_inscritos_evento = {row.usuario_id for row in existentes}
+        faltantes = usuario_ids - ja_inscritos_evento
+
+        novas_inscricoes_evento = [
+            Inscricao(
+                usuario_id=u_id,
+                cliente_id=primeira_insc.cliente_id,
+                evento_id=evento_id,
+                status_pagamento="paid"   # ajuste conforme sua regra de cobrança
+            )
+            for u_id in faltantes
+        ]
+        db.session.add_all(novas_inscricoes_evento)
+
+        # ░░░ 5. Move as inscrições de oficina -------------------------------
         for insc in inscricoes:
-            # devolve vaga à oficina de origem
-            if insc.oficina:
-                insc.oficina.vagas += 1
-
-            # ocupa vaga da oficina destino
+            # devolve vaga na oficina de origem
+            insc.oficina.vagas += 1
+            # retira vaga da oficina destino
             oficina_destino.vagas -= 1
+            # efetiva a troca
+            insc.oficina_id = oficina_destino_id
+            # (mantém vínculo com o mesmo evento pela coerência)
+            insc.evento_id  = evento_id
 
-            # atualiza relacionamentos
-            insc.oficina_id = oficina_destino.id
-            insc.evento_id  = oficina_destino.evento_id   # ← ESSENCIAL!
         db.session.commit()
-        flash(f"{len(inscricoes)} inscrição(ões) movida(s) com sucesso!", "success")
+
+        flash(
+            f"{len(inscricoes)} inscrição(ões) movida(s) para "
+            f"“{oficina_destino.titulo}”. "
+            f"{len(novas_inscricoes_evento)} inscrição(ões) de evento criadas.",
+            "success"
+        )
+
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao mover inscrições: {e}", "danger")
 
-    return redirect(url_for('routes.gerenciar_inscricoes'))
+    return redirect(url_for("routes.gerenciar_inscricoes"))
 
 
 @routes.route('/api/oficinas_mesmo_evento/<int:oficina_id>')
