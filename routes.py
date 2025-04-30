@@ -5156,18 +5156,20 @@ def cancelar_inscricoes_lote():
 
     return redirect(url_for('routes.dashboard'))
 
+from models import Inscricao, Oficina, Usuario   # ➊ certifique-se do import
+
 @routes.route('/inscricoes_lote', methods=['POST'])
 @login_required
 def inscricoes_lote():
-    if current_user.tipo not in ('admin', 'cliente'):
+    # ─── 0. Permissão ──────────────────────────────────────────────
+    if current_user.tipo not in {'admin', 'cliente'}:
         flash("Acesso negado!", "danger")
         return redirect(url_for('routes.dashboard'))
 
-    # ------------ dados vindos do formulário -----------------
+    # ─── 1. Dados do formulário ────────────────────────────────────
     inscricao_ids      = list(map(int, request.form.getlist('inscricao_ids')))
-    oficina_destino_id = int(request.form.get('oficina_destino', 0))
-    acao               = request.form.get('acao', 'mover')        # mover | copiar
-    # ----------------------------------------------------------
+    oficina_destino_id = request.form.get('oficina_destino', type=int)
+    acao               = request.form.get('acao', 'mover')  # mover | copiar
 
     if not inscricao_ids or not oficina_destino_id:
         flash("Selecione inscrições e oficina de destino.", "warning")
@@ -5176,54 +5178,68 @@ def inscricoes_lote():
     oficina_destino = Oficina.query.get_or_404(oficina_destino_id)
     inscricoes      = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
 
-    # clientes só mexem no que é seu
+    # ─── 2. Restrições de cliente ─────────────────────────────────
     if current_user.tipo == 'cliente' and any(i.cliente_id != current_user.id for i in inscricoes):
         flash("Há inscrições de outro cliente selecionadas!", "danger")
         return redirect(url_for('routes.dashboard'))
 
+    # ─── 3. Verificar vagas de uma vez só ─────────────────────────
     if oficina_destino.vagas < len(inscricoes):
         flash(f"Não há vagas suficientes! "
               f"(Disponíveis: {oficina_destino.vagas}, Necessárias: {len(inscricoes)})",
               "danger")
         return redirect(url_for('routes.dashboard'))
 
+    # ─── 4. Processar lote ────────────────────────────────────────
     try:
+        usuarios_afetados = set()          # para atualizar evento_id depois
+
         for insc in inscricoes:
+            usuarios_afetados.add(insc.usuario_id)
+
             if acao == 'mover':
-                # devolve vaga para oficina de origem (se houver)
+                # devolve vaga na origem (se houver)
                 if insc.oficina:
                     insc.oficina.vagas += 1
 
-                # ocupa vaga na oficina destino
+                # ocupa vaga na destino
                 oficina_destino.vagas -= 1
 
                 # atualiza inscrição existente
                 insc.oficina_id = oficina_destino.id
                 insc.evento_id  = oficina_destino.evento_id
 
-            elif acao == 'copiar':
-                # apenas ocupa vaga na oficina destino
+            else:  # acao == 'copiar'
+                # ocupa vaga na destino
                 oficina_destino.vagas -= 1
 
-                # cria nova inscrição clonando algumas infos
+                # clona inscrição
                 nova = Inscricao(
-                    usuario_id   = insc.usuario_id,
-                    cliente_id   = insc.cliente_id,
-                    oficina_id   = oficina_destino.id,
-                    evento_id    = oficina_destino.evento_id,
+                    usuario_id       = insc.usuario_id,
+                    cliente_id       = insc.cliente_id,
+                    oficina_id       = oficina_destino.id,
+                    evento_id        = oficina_destino.evento_id,
                     status_pagamento = insc.status_pagamento
                 )
                 db.session.add(nova)
 
+        # ─── 5. Sincronizar usuario.evento_id ─────────────────────
+        for uid in usuarios_afetados:
+            usuario = Usuario.query.get(uid)
+            # se o sistema admite apenas 1 evento corrente por usuário:
+            if usuario and usuario.evento_id != oficina_destino.evento_id:
+                usuario.evento_id = oficina_destino.evento_id
+
         db.session.commit()
-        msg = "movida(s)" if acao == 'mover' else "copiada(s)"
-        flash(f"{len(inscricoes)} inscrição(ões) {msg} com sucesso!", "success")
+        verbo = "movida(s)" if acao == 'mover' else "copiada(s)"
+        flash(f"{len(inscricoes)} inscrição(ões) {verbo} com sucesso!", "success")
 
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao processar inscrições: {e}", "danger")
 
     return redirect(url_for('routes.gerenciar_inscricoes'))
+
 
 
 @routes.route("/mover_inscricoes_lote", methods=["POST"])
