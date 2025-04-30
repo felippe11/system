@@ -5156,67 +5156,74 @@ def cancelar_inscricoes_lote():
 
     return redirect(url_for('routes.dashboard'))
 
-# -------------------------------------------------------------
-# 2)  POST /inscricoes_lote  –  mover OU copiar
-# -------------------------------------------------------------
-@routes.route("/inscricoes_lote", methods=["POST"])
+@routes.route('/inscricoes_lote', methods=['POST'])
 @login_required
 def inscricoes_lote():
-    """
-    Recebe:
-      acao              -> mover | copiar
-      oficina_destino   -> ID da oficina
-      inscricao_ids[]   -> lista de IDs
-    """
-    acao            = request.form.get("acao", "mover")
-    oficina_dest_id = request.form.get("oficina_destino", type=int)
-    ids_escolhidos  = request.form.getlist("inscricao_ids", type=int)
+    if current_user.tipo not in ('admin', 'cliente'):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard'))
 
-    if not ids_escolhidos or not oficina_dest_id:
-        flash("Selecione oficina de destino e pelo menos uma inscrição.", "warning")
-        return redirect(url_for("routes.gerenciar_inscricoes"))
+    # ------------ dados vindos do formulário -----------------
+    inscricao_ids      = list(map(int, request.form.getlist('inscricao_ids')))
+    oficina_destino_id = int(request.form.get('oficina_destino', 0))
+    acao               = request.form.get('acao', 'mover')        # mover | copiar
+    # ----------------------------------------------------------
 
-    oficina_destino = Oficina.query.get_or_404(oficina_dest_id)
+    if not inscricao_ids or not oficina_destino_id:
+        flash("Selecione inscrições e oficina de destino.", "warning")
+        return redirect(url_for('routes.dashboard'))
 
-    # ----------------- 1. Checagem de vagas ------------------
-    vagas_atuais = Inscricao.query.filter_by(oficina_id=oficina_destino.id).count()
-    vagas_disp   = max(oficina_destino.vagas - vagas_atuais, 0)
-    if vagas_disp < len(ids_escolhidos):
-        flash("Não há vagas suficientes na oficina destino.", "danger")
-        return redirect(url_for("routes.gerenciar_inscricoes"))
+    oficina_destino = Oficina.query.get_or_404(oficina_destino_id)
+    inscricoes      = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
+
+    # clientes só mexem no que é seu
+    if current_user.tipo == 'cliente' and any(i.cliente_id != current_user.id for i in inscricoes):
+        flash("Há inscrições de outro cliente selecionadas!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    if oficina_destino.vagas < len(inscricoes):
+        flash(f"Não há vagas suficientes! "
+              f"(Disponíveis: {oficina_destino.vagas}, Necessárias: {len(inscricoes)})",
+              "danger")
+        return redirect(url_for('routes.dashboard'))
 
     try:
-        for insc_id in ids_escolhidos:
-            insc = Inscricao.query.get_or_404(insc_id)
+        for insc in inscricoes:
+            if acao == 'mover':
+                # devolve vaga para oficina de origem (se houver)
+                if insc.oficina:
+                    insc.oficina.vagas += 1
 
-            if acao == "copiar":
-                # ----------- COPIAR  → clona inscrição --------------
+                # ocupa vaga na oficina destino
+                oficina_destino.vagas -= 1
+
+                # atualiza inscrição existente
+                insc.oficina_id = oficina_destino.id
+                insc.evento_id  = oficina_destino.evento_id
+
+            elif acao == 'copiar':
+                # apenas ocupa vaga na oficina destino
+                oficina_destino.vagas -= 1
+
+                # cria nova inscrição clonando algumas infos
                 nova = Inscricao(
-                    usuario_id  = insc.usuario_id,
-                    cliente_id  = insc.cliente_id,
-                    oficina_id  = oficina_destino.id,
-                    evento_id   = oficina_destino.evento_id,
-                    status_pagamento = "approved"  # já paga / gratuita
+                    usuario_id   = insc.usuario_id,
+                    cliente_id   = insc.cliente_id,
+                    oficina_id   = oficina_destino.id,
+                    evento_id    = oficina_destino.evento_id,
+                    status_pagamento = insc.status_pagamento
                 )
                 db.session.add(nova)
 
-            else:  # acao == mover
-                # ------------- MOVER  → apenas troca FK --------------
-                insc.oficina_id = oficina_destino.id
-                insc.evento_id  = oficina_destino.evento_id
-                # (opcional) zera check-in caso já exista
-                insc.checkin_attempts = 0
-
         db.session.commit()
-        flash(f"{len(ids_escolhidos)} inscrição(ões) "
-              f"{'copiada(s)' if acao=='copiar' else 'movida(s)'} com sucesso!", "success")
+        msg = "movida(s)" if acao == 'mover' else "copiada(s)"
+        flash(f"{len(inscricoes)} inscrição(ões) {msg} com sucesso!", "success")
 
-    except SQLAlchemyError as e:
+    except Exception as e:
         db.session.rollback()
-        app.logger.exception("Falha ao mover/copiar inscrições")
-        flash("Erro interno ao processar. Nenhuma alteração aplicada.", "danger")
+        flash(f"Erro ao processar inscrições: {e}", "danger")
 
-    return redirect(url_for("routes.gerenciar_inscricoes"))
+    return redirect(url_for('routes.gerenciar_inscricoes'))
 
 
 @routes.route("/mover_inscricoes_lote", methods=["POST"])
@@ -5347,46 +5354,27 @@ def oficinas_mesmo_evento(oficina_id):
         ]
     })
     
-# routes.py  (adicione perto dos demais imports)
-from flask import Blueprint, request, jsonify, flash, redirect, url_for
-from flask_login import login_required, current_user
-from sqlalchemy.exc import SQLAlchemyError
-from extensions import db
-from models import Evento, Oficina, Inscricao
-
-routes = Blueprint("routes", __name__)
-
-# -------------------------------------------------------------
-# 1)  API: lista de eventos + oficinas (somente do mesmo cliente)
-# -------------------------------------------------------------
-@routes.route("/api/eventos_com_oficinas")
+# routes.py  (ou onde ficam suas rotas API)
+@routes.route('/api/eventos_com_oficinas')
 @login_required
-def api_eventos_com_oficinas():
-    """Retorna JSON: [{id, nome, oficinas:[{id,titulo,vagas}]}]"""
-    eventos = (Evento.query
-               .filter_by(cliente_id=current_user.cliente_id)
-               .order_by(Evento.nome)
-               .all())
+def eventos_com_oficinas():
+    # ① Se for cliente, mostra só os eventos dele.  Admin vê todos.
+    q = Evento.query
+    if current_user.tipo == 'cliente':
+        q = q.filter_by(cliente_id=current_user.id)
 
-    dados = []
+    eventos = q.order_by(Evento.nome).all()
+    payload = []
     for ev in eventos:
-        oficinas_livres = []
-        for of in ev.oficinas:
-            # vagas = limite – já_inscritos (apenas status!=cancelado)
-            usados = Inscricao.query.filter_by(oficina_id=of.id).count()
-            vagas_disp = max(of.vagas - usados, 0)
-            oficinas_livres.append({
-                "id": of.id,
-                "titulo": of.titulo,
-                "vagas": vagas_disp
-            })
-        dados.append({
-            "id": ev.id,
-            "nome": ev.nome,
-            "oficinas": oficinas_livres
+        payload.append({
+            'id': ev.id,
+            'nome': ev.nome,
+            'oficinas': [
+                {'id': o.id, 'titulo': o.titulo, 'vagas': o.vagas}
+                for o in ev.oficinas
+            ]
         })
-    return jsonify(dados)
-
+    return jsonify(payload)
 
 
 @routes.route('/cancelar_inscricao/<int:inscricao_id>', methods=['GET','POST'])
