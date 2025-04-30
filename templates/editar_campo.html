@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Editar Campo - Formulário{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow-sm border-0 rounded-lg">
+    <div class="card-header bg-primary text-white">
+      <h2 class="mb-0 fs-4"><i class="bi bi-pencil-square me-2"></i>Editar Campo</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        <!-- Nome do campo -->
+        <div class="mb-3">
+          <label class="form-label fw-bold" for="nome">Nome do Campo <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="nome" name="nome" value="{{ campo.nome }}" required>
+        </div>
+
+        <!-- Tipo do campo -->
+        <div class="mb-3">
+          <label class="form-label fw-bold" for="tipo-campo">Tipo <span class="text-danger">*</span></label>
+          <select class="form-select" id="tipo-campo" name="tipo" required>
+            {% set tipos = ['text','textarea','number','file','date','dropdown','checkbox','radio'] %}
+            {% for tipo in tipos %}
+              <option value="{{ tipo }}" {% if campo.tipo == tipo %}selected{% endif %}>{{ tipo|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Opções (mostrado dinamicamente) -->
+        <div class="mb-3" id="grupo-opcoes" style="display: none;">
+          <label class="form-label fw-bold" for="opcoes">Opções (separadas por vírgula)</label>
+          <textarea class="form-control" id="opcoes" name="opcoes" rows="2">{{ campo.opcoes }}</textarea>
+          <div class="form-text">Ex.: Opção A, Opção B, Opção C</div>
+        </div>
+
+        <!-- Obrigatório -->
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" role="switch" id="obrigatorio" name="obrigatorio" {% if campo.obrigatorio %}checked{% endif %}>
+          <label class="form-check-label" for="obrigatorio">Campo obrigatório</label>
+        </div>
+
+        <!-- Tamanho Máximo & Regex -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold" for="tamanho_max">Tamanho Máximo</label>
+            <input type="number" class="form-control" id="tamanho_max" name="tamanho_max" value="{{ campo.tamanho_max or '' }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold" for="regex_validacao">Regex de Validação</label>
+            <input type="text" class="form-control" id="regex_validacao" name="regex_validacao" value="{{ campo.regex_validacao or '' }}">
+          </div>
+        </div>
+
+        <!-- Descrição -->
+        <div class="mb-3 mt-3">
+          <label class="form-label fw-bold" for="descricao">Descrição</label>
+          <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ campo.descricao or '' }}</textarea>
+        </div>
+
+        <!-- Ações -->
+        <div class="d-grid gap-2 d-md-flex mt-4">
+          <a href="{{ url_for('routes.gerenciar_campos', formulario_id=campo.formulario_id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+          </a>
+          <button type="submit" class="btn btn-primary ms-auto">
+            <i class="bi bi-save me-1"></i> Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Script para mostrar/esconder campo de opcoes -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const tipoSelect = document.getElementById('tipo-campo');
+    const grupoOpcoes = document.getElementById('grupo-opcoes');
+    const opcoesTextarea = document.getElementById('opcoes');
+
+    const tiposComOpcoes = ['dropdown', 'checkbox', 'radio'];
+
+    function toggleOpcoes() {
+      if (tiposComOpcoes.includes(tipoSelect.value)) {
+        grupoOpcoes.style.display = 'block';
+        opcoesTextarea.required = true;
+      } else {
+        grupoOpcoes.style.display = 'none';
+        opcoesTextarea.required = false;
+      }
+    }
+
+    // Inicialização
+    toggleOpcoes();
+
+    // Atualiza quando mudar o select
+    tipoSelect.addEventListener('change', toggleOpcoes);
+  });
+</script>
+{% endblock %}
