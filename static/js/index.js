@@ -67,6 +67,9 @@ function getRandomColor() {
     return placeholderColors[Math.floor(Math.random() * placeholderColors.length)];
 }
 
+let eventosFiltrados = [];
+let todosEventos = []; // Armazenar todos os eventos originais
+
 // Carregar eventos em destaque via AJAX
 $(document).ready(function() {
     // Mostrar loader enquanto carrega
@@ -136,10 +139,25 @@ $(document).ready(function() {
             `);
         }
     });
+
+    // Atualizar handler do input de pesquisa para usar debounce
+    let timeoutId;
+    $('.search-input').on('input', function() {
+        clearTimeout(timeoutId);
+        const termo = $(this).val();
+        
+        timeoutId = setTimeout(() => {
+            aplicarFiltroAoDigitar(termo);
+        }, 300); // Espera 300ms após o último caractere digitado
+    });
 });
 
 // Função para renderizar os eventos no carrossel
 function renderizarEventos(eventos) {
+    if (!todosEventos.length) {
+        todosEventos = eventos; // Salva os eventos originais na primeira carga
+    }
+    eventosFiltrados = eventos;
     const container = $('#eventos-container');
     container.empty();
     
@@ -198,7 +216,12 @@ function renderizarEventos(eventos) {
                     <p class="event-description">${evento.descricao ? evento.descricao.substring(0, 150) + (evento.descricao.length > 150 ? '...' : '') : ''}</p>
                     <div class="event-footer">
                         <div class="event-price">${price}</div>
-                        <a href="/evento/${evento.id}/inscricao" class="btn-event">Inscrever-se</a>
+                        ${evento.preco_base !== undefined ? `
+                            <a href="/evento/${evento.id}/inscricao" class="btn-event">Inscrever-se</a>
+                        ` : `
+                            <span class="text-muted fw-bold">Inscrições em breve</span>
+                        `}
+                        
                     </div>
                 </div>
             </div>
@@ -220,9 +243,28 @@ function renderizarEventos(eventos) {
             img.src = evento.banner_url;
         }
     });
+
+    
     
     // Inicializa o carrossel após os eventos serem carregados
     initCarousel();
+}
+
+function aplicarFiltroAoDigitar(termo) {
+    const termoNormalizado = termo.trim().toLowerCase();
+
+    if (termoNormalizado === '') {
+        renderizarEventos(todosEventos); // Retorna à lista original
+        return;
+    }
+
+    const eventosFiltradosLocal = todosEventos.filter(evento =>
+        evento.nome.toLowerCase().includes(termoNormalizado) ||
+        (evento.descricao && evento.descricao.toLowerCase().includes(termoNormalizado)) ||
+        (evento.localizacao && evento.localizacao.toLowerCase().includes(termoNormalizado))
+    );
+
+    renderizarEventos(eventosFiltradosLocal);
 }
 
 // Função para inicializar o carrossel
@@ -325,3 +367,4 @@ function initCarousel() {
     handleResize();
 }
 
+    
