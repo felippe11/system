@@ -640,6 +640,18 @@ class Evento(db.Model):
                 if regra.tipo_inscricao_id == tipo_inscricao_id:
                     return regra
             return None
+        
+        def get_data_formatada(self):
+            if self.data_inicio:
+                if self.data_fim and self.data_fim != self.data_inicio:
+                    return f"{self.data_inicio.strftime('%d/%m/%Y')} - {self.data_fim.strftime('%d/%m/%Y')}"
+                return self.data_inicio.strftime('%d/%m/%Y')
+            return "Data a definir"
+    
+        def get_preco_base(self):
+            if self.tipos_inscricao:
+                return min(tipo.preco for tipo in self.tipos_inscricao)
+            return 0
 
 
 class FormularioTemplate(db.Model):
