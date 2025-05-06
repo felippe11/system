@@ -1,0 +1,65 @@
+.navbar {
+    padding: 12px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.navbar.scrolled {
+    padding: 8px 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+/* Container da imagem do evento */
+.event-img-container {
+    height: 200px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Estilo para quando a imagem não carrega */
+.event-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+/* Mensagem quando não há eventos */
+.no-events-message {
+    padding: 40px 0;
+    text-align: center;
+    color: #666;
+}
+
+.no-events-message h4 {
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+/* Melhorias no preço */
+.event-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+}
+
+/* Adaptação para telas pequenas */
+@media (max-width: 576px) {
+    .event-img-container {
+        height: 150px;
+    }
+    
+    .event-date, .event-location {
+        font-size: 0.85rem;
+    }
+    
+    .event-title {
+        font-size: 1.1rem;
+    }
+}
+
+/* Estilo para o fallback da imagem */
+img[src*="placeholder"] {
+    opacity: 0.7;
+    background-color: #f5f5f5;
+}

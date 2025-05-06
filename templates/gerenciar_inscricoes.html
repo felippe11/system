@@ -151,15 +151,27 @@
                       <i class="bi bi-person-lines-fill me-1"></i> Gerenciar
                     </a>
 
+                    {% set checkin_realizado = insc.usuario.checkins
+                      | selectattr('oficina_id', 'equalto', insc.oficina.id)
+                      | list
+                      | length > 0 %}
+                  
+                  {% if checkin_realizado %}
+                    <button class="btn btn-sm btn-outline-secondary" disabled>
+                      <i class="bi bi-check2-circle me-1"></i> Check-in Realizado
+                    </button>
+                  {% else %}
                     <form method="POST"
                           action="{{ url_for('routes.checkin_manual',
                                              usuario_id=insc.usuario.id,
                                              oficina_id=insc.oficina.id) }}">
                       <button type="submit" class="btn btn-sm btn-success"
                               onclick="return confirm('Deseja registrar o check-in manual?');">
-                        <i class="bi bi-check-circle me-1"></i> Check-in
+                        <i class="bi bi-check-circle me-1"></i> Habilitar Check-in
                       </button>
                     </form>
+                  {% endif %}
+                  
 
                     <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}"
                           method="POST" style="display:inline;"
