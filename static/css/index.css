@@ -96,10 +96,15 @@
         /* Hero Section */
         .hero-section {
             padding: 120px 0 100px;
-            background: linear-gradient(rgba(30, 136, 229, 0.8), rgba(33, 150, 243, 0.9)), url('/api/placeholder/1920/500') no-repeat center center;
+            background-image: linear-gradient(rgba(5, 36, 62, 0.6), rgba(33, 150, 243, 0.6)), url("/static/img/background.jpg");
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
             background-size: cover;
             color: var(--white);
+            text-align: center;
         }
+        
 
         .hero-title {
             font-size: 2.8rem;
