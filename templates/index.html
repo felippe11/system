@@ -3,998 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AppFiber - Criação de experiências memoráveis através de eventos excepcionais">
-    <title>AppFiber - Simplifique Seus Eventos</title>
+    <meta name="description" content="AppFiber - Plataforma completa para criação, gestão e participação em eventos">
+    <title>AppFiber - Simplifique a Gestão dos Seus Eventos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #2A2D72;
-            --secondary-color: #FF6B6B;
-            --accent-color: #4ECDC4;
-            --dark-color: #1a1c2c;
-            --light-color: #f8f9fa;
-            --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-        }
-
-        body {
-            font-family: 'Poppins', sans-serif;
-            overflow-x: hidden;
-            color: #333;
-            scroll-behavior: smooth;
-        }
-
-        .section-padding {
-            padding: 100px 0;
-        }
-
-        .section-title {
-            margin-bottom: 60px;
-            position: relative;
-        }
-
-        .section-title h2 {
-            font-weight: 700;
-            position: relative;
-            display: inline-block;
-            margin-bottom: 20px;
-            padding-bottom: 20px;
-        }
-
-        .section-title h2::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 50px;
-            height: 3px;
-            background: var(--gradient-primary);
-            margin: 0 auto;
-        }
-
-        .navbar {
-            background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            padding: 15px 0;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-scrolled {
-            padding: 10px 0;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--primary-color) !important;
-            font-size: 1.8rem;
-            letter-spacing: -1px;
-        }
-
-        .nav-link {
-            color: var(--dark-color) !important;
-            font-weight: 500;
-            margin: 0 15px;
-            padding: 8px 0;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--secondary-color);
-            transition: width 0.3s ease;
-        }
-
-        .nav-link:hover::after,
-        .nav-link.active::after {
-            width: 100%;
-        }
-
-        .nav-link.active {
-            color: var(--primary-color) !important;
-            font-weight: 600;
-        }
-
-        .login-btn {
-            background: var(--gradient-primary);
-            color: white !important;
-            padding: 10px 24px;
-            border-radius: 30px;
-            font-weight: 600;
-            margin-left: 15px;
-            border: none;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-            transition: all 0.3s ease;
-        }
-
-        .login-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--secondary-color);
-            z-index: -1;
-            transform: scaleX(0);
-            transform-origin: right;
-            transition: transform 0.3s ease;
-        }
-
-        .login-btn:hover::before {
-            transform: scaleX(1);
-            transform-origin: left;
-        }
-
-        .login-btn:hover {
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-            transform: translateY(-3px);
-        }
-
-        #hero {
-            position: relative;
-            height: 100vh;
-            min-height: 650px;
-            display: flex;
-            align-items: center;
-            background: linear-gradient(135deg, rgba(42, 45, 114, 0.92), rgba(78, 205, 197, 0.85)), url('/api/placeholder/1920/1080') no-repeat center center;
-            background-size: cover;
-            padding-top: 80px;
-            overflow: hidden;
-        }
-
-        #hero::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 150px;
-            background: linear-gradient(to top, #fff, transparent);
-            z-index: 1;
-        }
-
-        #hero .container {
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 25px;
-            letter-spacing: -1px;
-            color: white;
-            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        }
-
-        .hero-subtitle {
-            font-size: 1.4rem;
-            font-weight: 400;
-            margin-bottom: 40px;
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .hero-btn {
-            padding: 15px 40px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            border-radius: 50px;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary-custom {
-            background: var(--secondary-color);
-            color: white;
-            border: none;
-        }
-
-        .btn-outline-light-custom {
-            background: rgba(255, 255, 255, 0.95);
-            color: var(--primary-color);
-            border: none;
-        }
-
-        .hero-btn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
-        }
-
-        .hero-shapes {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            z-index: 0;
-        }
-
-        .shape {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .shape-1 {
-            width: 300px;
-            height: 300px;
-            right: -150px;
-            top: 20%;
-        }
-
-        .shape-2 {
-            width: 200px;
-            height: 200px;
-            left: 10%;
-            bottom: 10%;
-        }
-
-        .shape-3 {
-            width: 100px;
-            height: 100px;
-            left: 30%;
-            top: 20%;
-        }
-
-        /* Services Section */
-        #servicos {
-            padding: 100px 0;
-            background-color: var(--light-color);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .services-bg-shape {
-            position: absolute;
-            top: -100px;
-            right: -100px;
-            width: 400px;
-            height: 400px;
-            background: linear-gradient(135deg, rgba(78, 205, 197, 0.1), rgba(42, 45, 114, 0.05));
-            border-radius: 50%;
-            z-index: 0;
-        }
-
-        .service-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            transition: all 0.4s ease;
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-            height: 100%;
-            border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .service-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 5px;
-            background: var(--gradient-primary);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.4s ease;
-        }
-
-        .service-card:hover {
-            transform: translateY(-15px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-        }
-
-        .service-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .service-icon {
-            width: 70px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, rgba(42, 45, 114, 0.1), rgba(78, 205, 197, 0.1));
-            border-radius: 20px;
-            margin-bottom: 25px;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .service-card:hover .service-icon {
-            background: var(--gradient-primary);
-        }
-
-        .service-icon i {
-            color: var(--secondary-color);
-            font-size: 2rem;
-            transition: all 0.3s ease;
-        }
-
-        .service-card:hover .service-icon i {
-            color: white;
-        }
-
-        .service-title {
-            font-weight: 700;
-            font-size: 1.25rem;
-            margin-bottom: 15px;
-            color: var(--dark-color);
-        }
-
-        .service-desc {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-        }
-
-        .service-features {
-            margin-top: 20px;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .feature-icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(78, 205, 197, 0.15);
-            border-radius: 50%;
-            margin-right: 10px;
-            flex-shrink: 0;
-        }
-
-        .feature-icon i {
-            color: var(--accent-color);
-            font-size: 0.8rem;
-        }
-
-        .feature-text {
-            font-size: 0.9rem;
-            color: #555;
-        }
-
-        /* Portfolio Section */
-        #portfolio {
-            padding: 100px 0;
-            background: white;
-        }
-
-        .portfolio-filter {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 50px;
-        }
-
-        .filter-btn {
-            background: transparent;
-            border: none;
-            padding: 8px 20px;
-            margin: 5px;
-            color: #666;
-            font-weight: 500;
-            border-radius: 30px;
-            transition: all 0.3s ease;
-        }
-
-        .filter-btn.active,
-        .filter-btn:hover {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .portfolio-item {
-            position: relative;
-            overflow: hidden;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .portfolio-img {
-            width: 100%;
-            height: 280px;
-            object-fit: cover;
-            transition: all 0.5s ease;
-        }
-
-        .portfolio-info {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to top, rgba(42, 45, 114, 0.9), rgba(78, 205, 197, 0.7));
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s ease;
-        }
-
-        .portfolio-item:hover .portfolio-info {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .portfolio-item:hover .portfolio-img {
-            transform: scale(1.1);
-        }
-
-        .portfolio-title {
-            color: white;
-            font-weight: 600;
-            font-size: 1.3rem;
-            margin-bottom: 10px;
-        }
-
-        .portfolio-tag {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-        }
-
-        .portfolio-btn {
-            display: inline-block;
-            padding: 8px 20px;
-            background: white;
-            color: var(--primary-color);
-            font-weight: 500;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            width: fit-content;
-        }
-
-        .portfolio-btn:hover {
-            background: var(--secondary-color);
-            color: white;
-        }
-
-        /* Contact Section */
-        #contato {
-            padding: 100px 0;
-            background: linear-gradient(135deg, rgba(42, 45, 114, 0.05), rgba(78, 205, 197, 0.05));
-            position: relative;
-            overflow: hidden;
-        }
-
-        .contact-shape {
-            position: absolute;
-            bottom: -150px;
-            left: -150px;
-            width: 400px;
-            height: 400px;
-            background: linear-gradient(135deg, rgba(78, 205, 197, 0.1), rgba(42, 45, 114, 0.05));
-            border-radius: 50%;
-            z-index: 0;
-        }
-
-        .contact-card {
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-
-        .contact-form-wrap {
-            padding: 50px;
-        }
-
-        .form-title {
-            font-weight: 700;
-            font-size: 2rem;
-            margin-bottom: 30px;
-            color: var(--dark-color);
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-control {
-            height: 55px;
-            border-radius: 10px;
-            border: 1px solid #e5e5e5;
-            padding: 15px 20px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .form-control:focus {
-            box-shadow: none;
-            border-color: var(--accent-color);
-        }
-
-        textarea.form-control {
-            height: 150px;
-            resize: none;
-        }
-
-        .form-select {
-            height: 55px;
-            border-radius: 10px;
-            border: 1px solid #e5e5e5;
-            padding: 15px 20px;
-            font-size: 1rem;
-        }
-
-        .form-select:focus {
-            box-shadow: none;
-            border-color: var(--accent-color);
-        }
-
-        .submit-btn {
-            height: 55px;
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            font-weight: 600;
-            font-size: 1rem;
-            border-radius: 10px;
-            padding: 0 30px;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .submit-btn:hover {
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            transform: translateY(-3px);
-        }
-
-        .contact-info {
-            background: var(--primary-color);
-            padding: 50px;
-            height: 100%;
-        }
-
-        .info-title {
-            color: white;
-            font-weight: 700;
-            font-size: 1.8rem;
-            margin-bottom: 40px;
-        }
-
-        .info-item {
-            margin-bottom: 40px;
-        }
-
-        .info-item-title {
-            color: white;
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .info-item-title i {
-            margin-right: 15px;
-            font-size: 1.5rem;
-            color: var(--accent-color);
-        }
-
-        .info-item-content {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 1rem;
-            padding-left: 40px;
-        }
-
-        .social-links {
-            display: flex;
-            gap: 20px;
-            margin-top: 40px;
-        }
-
-        .social-link {
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .social-link i {
-            color: white;
-            font-size: 1.5rem;
-        }
-
-        .social-link:hover {
-            background: var(--accent-color);
-            transform: translateY(-5px);
-        }
-
-        /* Footer */
-        .footer {
-            background: var(--dark-color);
-            padding: 80px 0 30px;
-            color: rgba(255, 255, 255, 0.8);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .footer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gradient-primary);
-        }
-
-        .footer-logo {
-            font-size: 2rem;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 20px;
-            display: block;
-        }
-
-        .footer-about {
-            margin-bottom: 30px;
-            font-size: 0.95rem;
-            line-height: 1.7;
-        }
-
-        .footer-heading {
-            color: white;
-            font-weight: 600;
-            font-size: 1.2rem;
-            margin-bottom: 30px;
-            position: relative;
-            padding-bottom: 15px;
-        }
-
-        .footer-heading::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 50px;
-            height: 2px;
-            background: var(--accent-color);
-        }
-
-        .footer-links {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .footer-links li {
-            margin-bottom: 15px;
-        }
-
-        .footer-links a {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: all 0.3s ease;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .footer-links a i {
-            margin-right: 10px;
-            font-size: 0.9rem;
-            color: var(--accent-color);
-        }
-
-        .footer-links a:hover {
-            color: white;
-            padding-left: 5px;
-        }
-
-        .footer-social {
-            display: flex;
-            gap: 15px;
-            margin-top: 25px;
-        }
-
-        .footer-social a {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .footer-social a i {
-            color: white;
-            font-size: 1.2rem;
-        }
-
-        .footer-social a:hover {
-            background: var(--accent-color);
-            transform: translateY(-3px);
-        }
-
-        .copyright {
-            text-align: center;
-            padding-top: 30px;
-            margin-top: 60px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .back-to-top {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            background: var(--gradient-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-            z-index: 99;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .back-to-top.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .back-to-top:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        /* Animação para alternância entre "AppFiber" e "</Fiber>" */
-        .brand-text {
-            position: relative;
-            display: inline-block;
-            height: 1.8rem;
-            overflow: visible;
-            width: 150px;
-        }
-        
-        .color-primary {
-            color: var(--primary-color);
-        }
-
-        .text1, .text2 {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-        }
-
-        .text1 {
-            animation: fadeAppFiber 8s infinite;
-        }
-
-        .text2 {
-            animation: fadeFiber 8s infinite;
-        }
-
-        @keyframes fadeAppFiber {
-            0%, 45% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            50%, 95% {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeFiber {
-            0%, 45% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            50%, 95% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            100% {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-        }
-
-        /* Estilo para os elementos de animação */
-        .animate-on-scroll {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: all 0.6s ease;
-        }
-
-        .animate-on-scroll.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Animação para o contador de características/data */
-        .counter-box {
-            text-align: center;
-            background: white;
-            border-radius: 15px;
-            padding: 40px 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-        }
-
-        .counter-box::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: var(--gradient-primary);
-            z-index: -1;
-        }
-
-        .counter-value {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 15px;
-        }
-
-        .counter-title {
-            font-size: 1.1rem;
-            color: #666;
-            font-weight: 500;
-        }
-
-        /* Responsividade */
-        @media (max-width: 991px) {
-            .hero-title {
-                font-size: 2.8rem;
-            }
-            
-            .section-padding {
-                padding: 70px 0;
-            }
-            
-            .contact-form-wrap, 
-            .contact-info {
-                padding: 40px 30px;
-            }
-        }
-
-        @media (max-width: 767px) {
-            .hero-title {
-                font-size: 2.3rem;
-            }
-            
-            .hero-subtitle {
-                font-size: 1.1rem;
-            }
-            
-            .section-padding {
-                padding: 60px 0;
-            }
-            
-            .form-title,
-            .info-title {
-                font-size: 1.5rem;
-            }
-            
-            .contact-form-wrap {
-                padding: 30px 20px;
-            }
-            
-            .contact-info {
-                padding: 30px 20px;
-            }
-            
-            .back-to-top {
-                right: 15px;
-                bottom: 15px;
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-            }
-            
-            .navbar-collapse {
-                background: white;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-                margin-top: 15px;
-            }
-            
-            .nav-link {
-                padding: 10px 0;
-            }
-            
-            .login-btn {
-                margin: 10px 0 0;
-                display: inline-block;
-                text-align: center;
-            }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
-    <!-- Botão Voltar ao Topo -->
-    <a href="#" class="back-to-top">
-        <i class="fas fa-arrow-up"></i>
-    </a>
-
-    <!-- Cabeçalho / Navbar -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('routes.dashboard') }}">
-                <i class="bi bi-cpu me-2 fs-4 color-primary"></i>
-                <div class="brand-text">
-                    <span class="text1">AppFiber</span>
-                    <span class="text2">&lt;/Fiber&gt;</span>
-                </div>
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <a class="navbar-brand" href="#"><i class="bi bi-cpu"></i>App<span>Fiber</span></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                     <li class="nav-item">
                         <a class="nav-link active" href="#home">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#servicos">Serviços</a>
+                        <a class="nav-link" href="#eventos">Eventos</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#portfolio">Portfólio</a>
+                        <a class="nav-link" href="#recursos">Recursos</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#contato">Contato</a>
                     </li>
+                    <li class="nav-item ms-lg-3">
+                        <a class="btn btn-login" href="login">Entrar</a>
+                    </li>
                     <li class="nav-item">
-                        <a class="nav-link login-btn" href="login">Acessar</a>
+                        <a class="btn btn-register" href="cadastro_participante">Cadastrar</a>
                     </li>
                 </ul>
             </div>
@@ -1002,294 +44,196 @@
     </nav>
 
     <!-- Hero Section -->
-    <section id="home" class="hero-section">
-        <div id="hero">
-            <div class="hero-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
+    <section id="home" class="hero-section mt-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <h1 class="hero-title">Simplifique e Potencialize seus Eventos</h1>
+                    <p class="hero-subtitle">A plataforma completa para você criar, gerenciar e participar de eventos incríveis</p>
+                    <div class="search-box d-flex">
+                        <input type="text" class="search-input" placeholder="Pesquisar eventos...">
+                        <button class="btn-search">Buscar</button>
+                    </div>
+                </div>
             </div>
-            <div class="container text-center">
-                <div class="row justify-content-center">
-                    <div class="col-lg-9">
-                        <h1 class="hero-title animate__animated animate__fadeInUp">Simplifique a Gestão dos Seus Eventos</h1>
-                        <p class="hero-subtitle animate__animated animate__fadeInUp animate__delay-1s">Tudo o que você precisa para criar experiências memoráveis, em um só lugar.</p>
-                        <div class="animate__animated animate__fadeInUp animate__delay-2s d-flex flex-wrap justify-content-center">
-                            <a href="#contato" class="btn btn-primary-custom hero-btn me-3 mb-3">Comece Seu Evento</a>
-                            <a href="login" class="btn-outline-light-custom hero-btn mb-3">Acesso ao Sistema</a>
+        </div>
+    </section>
+
+    <!-- Eventos em Destaque com Carrossel Horizontal -->
+    <section id="eventos" class="events-section">
+        <div class="container">
+            <div class="section-title">
+                <h2>Eventos em Destaque</h2>
+                <p>Conheça os principais eventos disponíveis na plataforma</p>
+            </div>
+
+            <div class="events-carousel-container">
+                <button class="carousel-nav carousel-prev" id="prevBtn">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <div class="events-carousel-wrapper">
+                    <div class="events-carousel" id="eventos-container">
+                        <!-- Conteúdo será carregado via AJAX -->
+                        <div class="col-12 text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Carregando eventos...</p>
                         </div>
                     </div>
                 </div>
+                
+                <button class="carousel-nav carousel-next" id="nextBtn">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </section>
 
-    <!-- Estatísticas/Características -->
-    <section class="stats-section py-5">
+    <!-- Recursos/Funcionalidades -->
+    <section id="recursos" class="features-section">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-3 col-md-6">
-                    <div class="counter-box animate-on-scroll">
-                        <div class="counter-value">100+</div>
-                        <div class="counter-title">Eventos Realizados</div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="counter-box animate-on-scroll" data-delay="200">
-                        <div class="counter-value">5000+</div>
-                        <div class="counter-title">Participantes</div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="counter-box animate-on-scroll" data-delay="400">
-                        <div class="counter-value">98%</div>
-                        <div class="counter-title">Satisfação</div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="counter-box animate-on-scroll" data-delay="600">
-                        <div class="counter-value">24/7</div>
-                        <div class="counter-title">Suporte Técnico</div>
-                    </div>
-                </div>
+            <div class="section-title">
+                <h2>Recursos Poderosos</h2>
+                <p>Tudo o que você precisa para criar e gerenciar eventos excepcionais</p>
             </div>
-        </div>
-    </section>
 
-    <!-- Serviços -->
-    <section id="servicos" class="section-padding">
-        <div class="services-bg-shape"></div>
-        <div class="container">
-            <div class="section-title text-center">
-                <h2>Nossas Soluções</h2>
-                <p>Tecnologia inovadora para experiências memoráveis</p>
-            </div>
-            
             <div class="row">
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll">
-                        <div class="service-icon">
+                    <div class="feature-card">
+                        <div class="feature-icon">
                             <i class="fas fa-chalkboard-teacher"></i>
                         </div>
-                        <h4 class="service-title">Cadastro e Gestão de Oficinas</h4>
-                        <p class="service-desc">Gerencie suas oficinas de forma eficiente e profissional com nosso sistema completo.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Criação e edição de oficinas</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Controle automático de vagas</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Gestão completa de inscrições</span>
-                            </div>
-                        </div>
+                        <h3 class="feature-title">Gestão de Oficinas</h3>
+                        <p class="feature-desc">Controle completo das suas oficinas e atividades com ferramentas intuitivas.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Criação e edição de oficinas</span></li>
+                            <li><i class="fas fa-check"></i> <span>Controle automático de vagas</span></li>
+                            <li><i class="fas fa-check"></i> <span>Gestão de inscrições</span></li>
+                        </ul>
                     </div>
                 </div>
-                
+
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll" data-delay="200">
-                        <div class="service-icon">
+                    <div class="feature-card">
+                        <div class="feature-icon">
                             <i class="fas fa-users"></i>
                         </div>
-                        <h4 class="service-title">Gerenciamento de Participantes</h4>
-                        <p class="service-desc">Sistema completo para gestão de participantes com funcionalidades intuitivas.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Inscrição online simplificada</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Check-in via QR Code</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Registro automático de presença</span>
-                            </div>
-                        </div>
+                        <h3 class="feature-title">Gestão de Participantes</h3>
+                        <p class="feature-desc">Gerencie facilmente os participantes do seu evento com nosso sistema completo.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Inscrição online simplificada</span></li>
+                            <li><i class="fas fa-check"></i> <span>Check-in via QR Code</span></li>
+                            <li><i class="fas fa-check"></i> <span>Controle de presença</span></li>
+                        </ul>
                     </div>
                 </div>
-                
+
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll" data-delay="400">
-                        <div class="service-icon">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <h4 class="service-title">Sistema de Avaliação</h4>
-                        <p class="service-desc">Coleta e análise de feedback para garantir a melhoria contínua dos seus eventos.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Feedback dos participantes</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Avaliação dos ministrantes</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Análise detalhada de resultados</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll">
-                        <div class="service-icon">
+                    <div class="feature-card">
+                        <div class="feature-icon">
                             <i class="fas fa-certificate"></i>
                         </div>
-                        <h4 class="service-title">Emissão de Certificados</h4>
-                        <p class="service-desc">Certificados digitais personalizados gerados automaticamente com validação digital.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Geração automática pós-evento</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Personalização avançada</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Validação digital com QR Code</span>
-                            </div>
-                        </div>
+                        <h3 class="feature-title">Certificados Digitais</h3>
+                        <p class="feature-desc">Emita certificados digitais com validação e autenticidade garantidas.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Geração automática</span></li>
+                            <li><i class="fas fa-check"></i> <span>Personalização avançada</span></li>
+                            <li><i class="fas fa-check"></i> <span>Validação via QR Code</span></li>
+                        </ul>
                     </div>
                 </div>
-                
+
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll" data-delay="200">
-                        <div class="service-icon">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3 class="feature-title">Sistema de Avaliação</h3>
+                        <p class="feature-desc">Colete feedback valioso para melhorar continuamente seus eventos.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Avaliação de atividades</span></li>
+                            <li><i class="fas fa-check"></i> <span>Feedback dos participantes</span></li>
+                            <li><i class="fas fa-check"></i> <span>Análise de resultados</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
                             <i class="fas fa-clipboard-list"></i>
                         </div>
-                        <h4 class="service-title">Formulários Personalizados</h4>
-                        <p class="service-desc">Crie formulários dinâmicos adaptados às necessidades específicas do seu evento.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Construção dinâmica e intuitiva</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Campos totalmente customizáveis</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Coleta e exportação de dados</span>
-                            </div>
-                        </div>
+                        <h3 class="feature-title">Formulários Personalizados</h3>
+                        <p class="feature-desc">Crie formulários adaptados às necessidades específicas do seu evento.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Construção intuitiva</span></li>
+                            <li><i class="fas fa-check"></i> <span>Campos customizáveis</span></li>
+                            <li><i class="fas fa-check"></i> <span>Exportação de dados</span></li>
+                        </ul>
                     </div>
                 </div>
-                
+
                 <div class="col-lg-4 col-md-6 mb-4">
-                    <div class="service-card animate-on-scroll" data-delay="400">
-                        <div class="service-icon">
+                    <div class="feature-card">
+                        <div class="feature-icon">
                             <i class="fas fa-calendar-alt"></i>
                         </div>
-                        <h4 class="service-title">Agendamentos</h4>
-                        <p class="service-desc">Sistema completo para gestão de compromissos e cronogramas do seu evento.</p>
-                        <div class="service-features">
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Agendamento de visitas e reuniões</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Conferências e workshops</span>
-                            </div>
-                            <div class="feature-item">
-                                <div class="feature-icon"><i class="fas fa-check"></i></div>
-                                <span class="feature-text">Gestão inteligente de horários</span>
-                            </div>
-                        </div>
+                        <h3 class="feature-title">Agendamentos</h3>
+                        <p class="feature-desc">Controle todas as atividades e cronogramas do seu evento com facilidade.</p>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-check"></i> <span>Agendamento de visitas</span></li>
+                            <li><i class="fas fa-check"></i> <span>Organização de workshops</span></li>
+                            <li><i class="fas fa-check"></i> <span>Gestão inteligente de horários</span></li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Portfólio -->
-   <!-- <section id="portfolio" class="section-padding">
+    <!-- CTA Section -->
+    <section class="cta-section">
         <div class="container">
-            <div class="section-title text-center">
-                <h2>Nossos Trabalhos</h2>
-                <p>Conheça alguns dos nossos projetos de sucesso</p>
-            </div>
-            
-            <div class="portfolio-filter mb-5">
-                <button class="filter-btn active" data-filter="all">Todos</button>
-                <button class="filter-btn" data-filter="conferencia">Conferências</button>
-                <button class="filter-btn" data-filter="workshop">Workshops</button>
-                <button class="filter-btn" data-filter="formacao">Formações</button>
-            </div>
-            
-            <div class="row portfolio-container">
-                <div class="col-lg-4 col-md-6 portfolio-item conferencia animate-on-scroll">
-                    <img src="/api/placeholder/600/400" alt="Conferência Tech" class="portfolio-img">
-                    <div class="portfolio-info">
-                        <h3 class="portfolio-title">Conferência TechWeek</h3>
-                        <p class="portfolio-tag">2.500+ participantes</p>
-                        <a href="#" class="portfolio-btn">Ver Detalhes</a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 col-md-6 portfolio-item workshop animate-on-scroll" data-delay="200">
-                    <img src="/api/placeholder/600/400" alt="Workshop Inovação" class="portfolio-img">
-                    <div class="portfolio-info">
-                        <h3 class="portfolio-title">Workshop de Inovação</h3>
-                        <p class="portfolio-tag">12 oficinas paralelas</p>
-                        <a href="#" class="portfolio-btn">Ver Detalhes</a>
-                    </div>
-                </div>
-                
-                <div class="col-lg-4 col-md-6 portfolio-item formacao animate-on-scroll" data-delay="400">
-                    <img src="/api/placeholder/600/400" alt="Formação Educacional" class="portfolio-img">
-                    <div class="portfolio-info">
-                        <h3 class="portfolio-title">Formação Educacional</h3>
-                        <p class="portfolio-tag">500+ professores</p>
-                        <a href="#" class="portfolio-btn">Ver Detalhes</a>
-                    </div>
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <h2 class="cta-title">Pronto para criar seu próximo evento?</h2>
+                    <p class="cta-desc">Simplifique toda a gestão do seu evento com nossa plataforma completa e intuitiva.</p>
+                    <a href="#contato" class="btn btn-cta">Comece hoje mesmo</a>
                 </div>
             </div>
         </div>
-    </section> -->
+    </section>
 
     <!-- Contato -->
-    <section id="contato" class="section-padding">
-        <div class="contact-shape"></div>
+    <section id="contato" class="py-5">
         <div class="container">
             <div class="section-title text-center">
                 <h2>Entre em Contato</h2>
-                <p>Estamos prontos para transformar sua ideia em um evento excepcional</p>
+                <p>Estamos prontos para ajudar a tornar seu evento um sucesso</p>
             </div>
             
-            <div class="contact-card">
-                <div class="row g-0">
-                    <div class="col-lg-7">
-                        <div class="contact-form-wrap">
-                            <h3 class="form-title">Vamos Criar Algo Incrível</h3>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-4">
                             <form id="contactForm" action="enviar_proposta" method="POST">
                                 <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <input type="text" name="nome" class="form-control" placeholder="Seu nome completo" required>
-                                        </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="nome" class="form-label">Nome completo</label>
+                                        <input type="text" class="form-control" id="nome" name="nome" required>
                                     </div>
-                                    <div class="col-md-6">
-                                        <div class="form-group">
-                                            <input type="email" name="email" class="form-control" placeholder="Seu melhor e-mail" required>
-                                        </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">E-mail</label>
+                                        <input type="email" class="form-control" id="email" name="email" required>
                                     </div>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <select name="tipo_evento" class="form-select" required>
-                                        <option value="" selected disabled>Selecione o tipo de evento</option>
+                                <div class="mb-3">
+                                    <label for="tipo_evento" class="form-label">Tipo de evento</label>
+                                    <select class="form-select" id="tipo_evento" name="tipo_evento" required>
+                                        <option value="" selected disabled>Selecione uma opção</option>
                                         <option value="Formação Continuada">Formação Continuada</option>
                                         <option value="Congresso">Congresso</option>
                                         <option value="Encontro">Encontro</option>
@@ -1300,48 +244,15 @@
                                     </select>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <textarea name="descricao" class="form-control" placeholder="Descreva seu evento e suas necessidades" rows="5" required></textarea>
+                                <div class="mb-3">
+                                    <label for="descricao" class="form-label">Descreva seu evento</label>
+                                    <textarea class="form-control" id="descricao" name="descricao" rows="4" required></textarea>
                                 </div>
                                 
-                                <button type="submit" class="submit-btn">Enviar Proposta</button>
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-primary px-4 py-2" style="background-color: var(--primary-color); border-color: var(--primary-color);">Enviar proposta</button>
+                                </div>
                             </form>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-5">
-                        <div class="contact-info">
-                            <h3 class="info-title">Informações de Contato</h3>
-                            
-                            <div class="info-item">
-                                <h5 class="info-item-title">
-                                    <i class="fas fa-phone-alt"></i> Telefone
-                                </h5>
-                                <p class="info-item-content">(82) 98876-8310</p>
-                            </div>
-                            
-                            <div class="info-item">
-                                <h5 class="info-item-title">
-                                    <i class="fas fa-envelope"></i> Email
-                                </h5>
-                                <p class="info-item-content">contato@appfiber.com.br</p>
-                            </div>
-                            
-                            <div class="info-item">
-                                <h5 class="info-item-title">
-                                    <i class="fas fa-map-marker-alt"></i> Localização
-                                </h5>
-                                <p class="info-item-content">Maceió - AL, Brasil</p>
-                            </div>
-                            
-                            <div class="social-links">
-                                <a href="#" class="social-link">
-                                    <i class="fab fa-instagram"></i>
-                                </a>
-                                <a href="https://api.whatsapp.com/send/?phone=5582988768310" class="social-link" target="_blank">
-                                    <i class="fab fa-whatsapp"></i>
-                                </a>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1353,71 +264,60 @@
     <footer class="footer">
         <div class="container">
             <div class="row">
-                <div class="col-lg-4 col-md-6">
-                    <a href="#" class="footer-logo">AppFiber</a>
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <a href="#" class="footer-logo">App<span>Fiber</span></a>
                     <p class="footer-about">
-                        Somos especializados em criar soluções tecnológicas para simplificar a gestão de eventos, oferecendo ferramentas intuitivas para promover experiências memoráveis.
+                        Plataforma completa para gestão de eventos, criando experiências memoráveis e simplificando todos os processos administrativos.
                     </p>
                     <div class="footer-social">
-                        <a href="#">
-                            <i class="fab fa-facebook-f"></i>
-                        </a>
-                        <a href="#">
-                            <i class="fab fa-instagram"></i>
-                        </a>
-                        <a href="https://api.whatsapp.com/send/?phone=5582988768310" target="_blank">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
-                        <a href="#">
-                            <i class="fab fa-linkedin-in"></i>
-                        </a>
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="https://api.whatsapp.com/send/?phone=5582988768310" target="_blank"><i class="fab fa-whatsapp"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
                     </div>
                 </div>
                 
-                <div class="col-lg-4 col-md-6">
-                    <h4 class="footer-heading">Links Úteis</h4>
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h4 class="footer-heading">Empresa</h4>
                     <ul class="footer-links">
-                        <li>
-                            <a href="#home"><i class="fas fa-chevron-right"></i> Home</a>
-                        </li>
-                        <li>
-                            <a href="#servicos"><i class="fas fa-chevron-right"></i> Serviços</a>
-                        </li>
-                        <li>
-                            <a href="#portfolio"><i class="fas fa-chevron-right"></i> Portfólio</a>
-                        </li>
-                        <li>
-                            <a href="#contato"><i class="fas fa-chevron-right"></i> Contato</a>
-                        </li>
-                        <li>
-                            <a href="#"><i class="fas fa-chevron-right"></i> Política de Privacidade</a>
-                        </li>
-                        <li>
-                            <a href="#"><i class="fas fa-chevron-right"></i> Termos de Serviço</a>
-                        </li>
+                        <li><a href="#">Sobre nós</a></li>
+                        <li><a href="#">Nosso time</a></li>
+                        <li><a href="#">Carreiras</a></li>
+                        <li><a href="#">Blog</a></li>
                     </ul>
                 </div>
                 
-                <div class="col-lg-4 col-md-6">
-                    <h4 class="footer-heading">Acesso</h4>
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h4 class="footer-heading">Eventos</h4>
                     <ul class="footer-links">
-                        <li>
-                            <a href="login"><i class="fas fa-sign-in-alt"></i> Login</a>
-                        </li>
-                        <li>
-                            <a href="cadastro_participante"><i class="fas fa-user-plus"></i> Cadastre-se</a>
-                        </li>
-                        <li>
-                            <a href="#"><i class="fas fa-question-circle"></i> FAQ</a>
-                        </li>
-                        <li>
-                            <a href="#"><i class="fas fa-headset"></i> Suporte</a>
-                        </li>
+                        <li><a href="#">Conferências</a></li>
+                        <li><a href="#">Workshops</a></li>
+                        <li><a href="#">Formações</a></li>
+                        <li><a href="#">Seminários</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h4 class="footer-heading">Suporte</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Central de ajuda</a></li>
+                        <li><a href="#">Contato</a></li>
+                        <li><a href="#">Tutoriais</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-6">
+                    <h4 class="footer-heading">Legal</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Termos de uso</a></li>
+                        <li><a href="#">Privacidade</a></li>
+                        <li><a href="#">Cookies</a></li>
                     </ul>
                 </div>
             </div>
             
-            <div class="copyright">
+            <div class="footer-bottom">
                 <p>&copy; <span id="currentYear">2025</span> AppFiber. Todos os direitos reservados.</p>
             </div>
         </div>
@@ -1426,127 +326,8 @@
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Atualizar o ano atual no footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-        
-        // Navbar fixa com mudança de estilo ao rolar
-        window.addEventListener('scroll', function() {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('navbar-scrolled');
-            } else {
-                navbar.classList.remove('navbar-scrolled');
-            }
-            
-            // Botão voltar ao topo
-            const backToTop = document.querySelector('.back-to-top');
-            if (window.scrollY > 300) {
-                backToTop.classList.add('active');
-            } else {
-                backToTop.classList.remove('active');
-            }
-            
-            // Ativar animações ao scroll
-            const animateItems = document.querySelectorAll('.animate-on-scroll');
-            animateItems.forEach(item => {
-                const itemPosition = item.getBoundingClientRect().top;
-                const screenPosition = window.innerHeight / 1.2;
-                
-                if (itemPosition < screenPosition) {
-                    item.classList.add('active');
-                }
-            });
-        });
-        
-        // Scroll suave para âncoras
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const targetId = this.getAttribute('href');
-                if (targetId === '#') return;
-                
-                const targetElement = document.querySelector(targetId);
-                if (targetElement) {
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 80,
-                        behavior: 'smooth'
-                    });
-                    
-                    // Atualizar link ativo no navbar
-                    document.querySelectorAll('.nav-link').forEach(navLink => {
-                        navLink.classList.remove('active');
-                    });
-                    this.classList.add('active');
-                }
-            });
-        });
-        
-        // Filtro de portfólio
-        const filterButtons = document.querySelectorAll('.filter-btn');
-        const portfolioItems = document.querySelectorAll('.portfolio-item');
-        
-        filterButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                // Atualizar botão ativo
-                filterButtons.forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                
-                const filterValue = button.getAttribute('data-filter');
-                
-                portfolioItems.forEach(item => {
-                    if (filterValue === 'all' || item.classList.contains(filterValue)) {
-                        item.style.display = 'block';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-            });
-        });
-        
-        // Ativar link do menu correspondente à seção visível
-        window.addEventListener('scroll', function() {
-            const sections = document.querySelectorAll('section[id]');
-            let scrollPosition = window.scrollY + 100;
-            
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop - 100;
-                const sectionHeight = section.offsetHeight;
-                const sectionId = section.getAttribute('id');
-                
-                if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                    document.querySelectorAll('.nav-link').forEach(navLink => {
-                        navLink.classList.remove('active');
-                        if (navLink.getAttribute('href') === '#' + sectionId) {
-                            navLink.classList.add('active');
-                        }
-                    });
-                }
-            });
-        });
-        
-        // Inicializar todas as animações
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                document.querySelectorAll('.animate-on-scroll').forEach((item, index) => {
-                    const delay = item.getAttribute('data-delay') || index * 100;
-                    setTimeout(() => {
-                        if (isElementInViewport(item)) {
-                            item.classList.add('active');
-                        }
-                    }, delay);
-                });
-            }, 100);
-        });
-        
-        function isElementInViewport(el) {
-            const rect = el.getBoundingClientRect();
-            return (
-                rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
-                rect.bottom >= 0
-            );
-        }
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- Importação do arquivo JavaScript customizado -->
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 </html>

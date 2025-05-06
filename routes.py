@@ -21,6 +21,8 @@ from models import TrabalhoCientifico
 from flask_socketio import emit, join_room, leave_room
 from utils import formatar_brasilia
 from sqlalchemy import or_
+from PIL import Image, ImageDraw, ImageFont
+
 
 
 
@@ -88,6 +90,8 @@ from extensions import db
 from flask_login import login_required, current_user
 from collections import defaultdict
 from datetime import datetime
+from markupsafe import Markup
+from jinja2 import Environment, FileSystemLoader
 
 
 # ReportLab para PDFs
@@ -139,25 +143,146 @@ def register_routes(app):
 # ===========================
 #        ROTAS GERAIS
 # ===========================
-
 @routes.route('/')
 def home():
-    return render_template('index.html')
+    try:
+        # Buscar todos os eventos ativos e públicos, ordenados pela data de início
+        eventos_destaque = Evento.query.filter(
+            Evento.status == 'ativo',
+            Evento.publico == True,
+            Evento.data_inicio >= datetime.now()  # apenas eventos futuros
+        ).order_by(Evento.data_inicio.asc()).all()
+        
+        # Converter os eventos para um formato que pode ser enviado ao template
+        eventos_json = []
+        for evento in eventos_destaque:
+            evento_data = {
+                'id': evento.id,
+                'nome': evento.nome,
+                'descricao': evento.descricao,
+                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
+                'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                'localizacao': evento.localizacao or 'Local a definir',
+                'banner_url': evento.banner_url or url_for('static', filename='images/event-placeholder.jpg'),
+                'preco_base': 0  # valor padrão
+            }
+            
+            # Verifica se há tipos de inscrição e pega o menor preço
+            if evento.tipos_inscricao and len(evento.tipos_inscricao) > 0:
+                evento_data['preco_base'] = min(tipo.preco for tipo in evento.tipos_inscricao)
+            
+            eventos_json.append(evento_data)
+        
+        return render_template('index.html', eventos_destaque=eventos_json)
+    
+    except Exception as e:
+        # Log do erro (implemente seu sistema de logs)
+        print(f"Erro na rota home: {str(e)}")
+        # Retorna uma lista vazia em caso de erro
+        return render_template('index.html', eventos_destaque=[])
 
-class Proposta(db.Model):
-    __tablename__ = 'proposta'
+@routes.route('/api/eventos/destaque')
+def get_eventos_destaque():
+    try:
+        eventos = Evento.query.filter(
+            Evento.data_inicio >= datetime.now(),
+            Evento.status == 'ativo',
+            Evento.publico == True  # adicionado filtro de eventos públicos
+        ).order_by(Evento.data_inicio.asc()).limit(5).all()
+        
+        eventos_json = []
+        for evento in eventos:
+            evento_data = {
+                'id': evento.id,
+                'nome': evento.nome,
+                'descricao': evento.descricao,
+                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
+                'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                'localizacao': evento.localizacao or 'Local a definir',
+                'banner_url': evento.banner_url or url_for('static', filename='images/event-placeholder.jpg'),
+                'preco_base': 0  # valor padrão
+            }
+            
+            if evento.tipos_inscricao and len(evento.tipos_inscricao) > 0:
+                evento_data['preco_base'] = min(tipo.preco for tipo in evento.tipos_inscricao)
+            
+            eventos_json.append(evento_data)
+        
+        return jsonify(eventos_json)
+    
+    except Exception as e:
+        print(f"Erro em get_eventos_destaque: {str(e)}")
+        return jsonify([])
 
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(150))
-    email = db.Column(db.String(150), nullable=False)
-    tipo_evento = db.Column(db.String(50), nullable=False)
-    descricao = db.Column(db.Text, nullable=False)
-    data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default='Pendente')
-
-    def __repr__(self):
-        return f"<Proposta {self.tipo_evento} - {self.email}>"
-
+@routes.route('/eventos')
+def listar_eventos():
+    try:
+        # Lista completa de eventos
+        eventos = Evento.query.filter(
+            Evento.data_inicio >= datetime.now(),
+            Evento.status == 'ativo',
+            Evento.publico == True  # adicionado filtro de eventos públicos
+        ).order_by(Evento.data_inicio.asc()).all()
+        
+        # Processa os eventos para o template
+        eventos_processed = []
+        for evento in eventos:
+            evento_dict = {
+                'id': evento.id,
+                'nome': evento.nome,
+                # adicione outros campos necessários para o template eventos.html
+                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
+                'localizacao': evento.localizacao or 'Local a definir',
+                'preco_base': 0
+            }
+            
+            if evento.tipos_inscricao and len(evento.tipos_inscricao) > 0:
+                evento_dict['preco_base'] = min(tipo.preco for tipo in evento.tipos_inscricao)
+            
+            eventos_processed.append(evento_dict)
+        
+        return render_template('eventos.html', eventos=eventos_processed)
+    
+    except Exception as e:
+        print(f"Erro em listar_eventos: {str(e)}")
+        return render_template('eventos.html', eventos=[])
+    
+@routes.route('/api/placeholder/<int:width>/<int:height>')
+def placeholder_image(width, height):
+    try:
+        # Crie uma imagem placeholder
+        img = Image.new('RGB', (width, height), color=(200, 200, 200))
+        d = ImageDraw.Draw(img)
+        
+        # Tente carregar a fonte Arial ou use a fonte padrão se não estiver disponível
+        try:
+            font = ImageFont.truetype("arial.ttf", 30)
+        except IOError:
+            # Fallback para uma fonte que provavelmente existe no sistema
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+            except IOError:
+                # Se nenhuma fonte específica estiver disponível, use a fonte padrão
+                font = ImageFont.load_default()
+        
+        # Desenhe o texto na imagem
+        text = f"{width} x {height}"
+        text_width, text_height = d.textsize(text, font=font) if hasattr(d, 'textsize') else (100, 30)
+        d.text(((width-text_width)//2, (height-text_height)//2), text, fill=(80, 80, 80), font=font)
+        
+        # Salve a imagem em memória e a envie como resposta
+        img_io = io.BytesIO()
+        img.save(img_io, 'JPEG', quality=70)
+        img_io.seek(0)
+        return send_file(img_io, mimetype='image/jpeg')
+    except Exception as e:
+        # Em caso de erro, retorne uma imagem padrão muito simples
+        app.logger.error(f"Erro ao gerar imagem placeholder: {str(e)}")
+        img = Image.new('RGB', (width, height), color=(200, 200, 200))
+        img_io = io.BytesIO()
+        img.save(img_io, 'JPEG', quality=70)
+        img_io.seek(0)
+        return send_file(img_io, mimetype='image/jpeg')
 
 @routes.route('/enviar_proposta', methods=['POST'])
 def enviar_proposta():
@@ -201,120 +326,158 @@ def enviar_proposta():
 @routes.route('/cadastro_participante', methods=['GET', 'POST'])
 @routes.route('/inscricao/<path:identifier>', methods=['GET', 'POST'])  # Aceita slug ou token
 def cadastro_participante(identifier: str | None = None):
-    """Fluxo completo de cadastro de participante + checkout Mercado Pago.
-
-    1.  Valida link (token ou slug)
-    2.  Renderiza formulário (GET)
-    3.  Cria Usuario, Inscricao (status **pending**)
-    4.  Se gratuito  → approved  → login
-         Se pago      → gera preference  → redireciona init_point
+    """Fluxo completo de cadastro de participante com tratamento robusto de lotes e pagamento Mercado Pago.
+    
+    1. Valida link (token ou slug)
+    2. Verifica lote vigente com validação robusta
+    3. Renderiza formulário (GET)
+    4. Cria Usuario, Inscricao (status **pending**)
+    5. Se gratuito → approved → login
+       Se pago → gera preference → redireciona init_point
     """
-    # ────────────────────────────── imports locais ─────────────────────────────
+    # ────────────────────────────── Imports locais ─────────────────────────────
     from collections import defaultdict
     from datetime import datetime
+    from dateutil import parser
     import os, mercadopago, logging
-
-    # Configurar logging para debug
+    
+    # Configuração de logging
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
-
-    # SDK Mercado Pago (token vem de variável de ambiente)
+    
+    # ────────────────────────────── Verificação do SDK MP ─────────────────────────────
+    # Verificação do token do Mercado Pago
     mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
     if not mp_token:
-        logger.error("Token do Mercado Pago não encontrado nas variáveis de ambiente")
-        flash("Erro de configuração do sistema de pagamento", "danger")
+        logger.error("Token do Mercado Pago não configurado")
+        flash("Erro no sistema de pagamento", "danger")
         return redirect(url_for("routes.login"))
-        
-    sdk = mercadopago.SDK(mp_token)
 
-    # ────────────────────────────── Busca do link ──────────────────────────────
+    sdk = mercadopago.SDK(mp_token)
+    
+    # ────────────────────────────── Validação do link ─────────────────────────────
     token = request.args.get("token") if not identifier else identifier
     link = None
     if token:
         link = LinkCadastro.query.filter(
             (LinkCadastro.token == token) | (LinkCadastro.slug_customizado == token)
         ).first()
+    
     if not link:
-        flash("Erro: Link de cadastro inválido ou expirado!", "danger")
+        flash("Link de cadastro inválido ou expirado", "danger")
         return redirect(url_for("routes.login"))
 
-    cliente_id: int = link.cliente_id
+    cliente_id = link.cliente_id
     evento = Evento.query.get(link.evento_id) if link.evento_id else None
+
+    # ──────────────────── VERIFICAÇÃO DE LOTE VIGENTE (VERSÃO ROBUSTA) ────────────────
+    def lote_disponivel(lote: LoteInscricao) -> bool:
+        """Verifica se um lote ainda está disponível para inscrição"""
+        try:
+            now = datetime.utcnow()
+            
+            # Verificação de datas
+            if lote.data_inicio and lote.data_fim:
+                inicio = lote.data_inicio if isinstance(lote.data_inicio, datetime) else parser.parse(lote.data_inicio)
+                fim = lote.data_fim if isinstance(lote.data_fim, datetime) else parser.parse(lote.data_fim)
+                if not (inicio <= now <= fim):
+                    return False
+                    
+            # Verificação de quantidade
+            if lote.qtd_maxima is not None:
+                count = db.session.query(func.count(Inscricao.id)).filter(
+                    Inscricao.lote_id == lote.id,
+                    Inscricao.status_pagamento.in_(["approved", "pending"])
+                ).scalar()
+                if count >= lote.qtd_maxima:
+                    return False
+                    
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro ao verificar disponibilidade do lote {lote.id}: {str(e)}")
+            return False
     
-    # ────────────────────────────── Verificação de lote vigente ─────────────────────────────
     lote_vigente = None
+    lotes_ativos = []
     if evento and evento.habilitar_lotes:
-        lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).order_by(LoteInscricao.ordem).all()
+        lotes_ativos = LoteInscricao.query.filter_by(
+            evento_id=evento.id, 
+            ativo=True
+        ).order_by(LoteInscricao.ordem).all()
         
-        # Debug dos lotes
-        for lote in lotes:
-            count = Inscricao.query.filter_by(
-                evento_id=evento.id, 
-                lote_id=lote.id
-            ).filter(
+        # Debug de status dos lotes
+        for lote in lotes_ativos:
+            count = db.session.query(func.count(Inscricao.id)).filter(
+                Inscricao.evento_id == evento.id,
+                Inscricao.lote_id == lote.id,
                 Inscricao.status_pagamento.in_(["approved", "pending"])
-            ).count()
+            ).scalar()
             
             logger.debug(f"Lote: {lote.nome}, Máximo: {lote.qtd_maxima}, Contagem: {count}, Ativo: {lote.ativo}")
             
-            # Verificar cada critério explicitamente para debug
-            is_valid = True
-            now = datetime.utcnow()
-            
-            # Verificar por data
-            if lote.data_inicio and lote.data_fim:
-                if now < lote.data_inicio or now > lote.data_fim:
-                    is_valid = False
-                    logger.debug(f"  - Inválido por data: início={lote.data_inicio}, fim={lote.data_fim}, agora={now}")
-            
-            # Verificar por quantidade
-            if lote.qtd_maxima is not None:
-                if count >= lote.qtd_maxima:
-                    is_valid = False
-                    logger.debug(f"  - Inválido por quantidade: {count}/{lote.qtd_maxima}")
-                    
-            if is_valid:
-                lote_vigente = lote
-                logger.debug(f"  => Lote vigente: {lote.nome}")
-                break
-                
-        if not lote_vigente:
+            # Verificação robusta do lote
+            try:
+                # Contagem precisa de inscrições válidas
+                valid_date = True
+                if lote.data_inicio and lote.data_fim:
+                    inicio = lote.data_inicio if isinstance(lote.data_inicio, datetime) else parser.parse(lote.data_inicio)
+                    fim = lote.data_fim if isinstance(lote.data_fim, datetime) else parser.parse(lote.data_fim)
+                    valid_date = inicio <= datetime.utcnow() <= fim
+                    if not valid_date:
+                        logger.debug(f"  - Inválido por data: início={inicio}, fim={fim}, agora={datetime.utcnow()}")
+
+                # Verificação de vagas
+                valid_qtd = True
+                if lote.qtd_maxima is not None:
+                    valid_qtd = count < lote.qtd_maxima
+                    if not valid_qtd:
+                        logger.debug(f"  - Inválido por quantidade: {count}/{lote.qtd_maxima}")
+
+                if valid_date and valid_qtd:
+                    lote_vigente = lote
+                    logger.debug(f"  => Lote vigente: {lote.nome}")
+                    break
+
+            except Exception as e:
+                logger.error(f"Erro ao verificar lote {lote.id}: {str(e)}")
+                continue
+
+        if not lote_vigente and lotes_ativos:
             logger.warning("Nenhum lote válido encontrado!")
-            flash("Não há lotes disponíveis para inscrição no momento.", "warning")
+            flash("Nenhum lote disponível no momento", "warning")
             return redirect(url_for("routes.login"))
 
-    # ────────────────────────────── Carrega oficinas/ministrantes ──────────────
-    oficinas = (
-        Oficina.query.filter_by(evento_id=evento.id).all() if evento else Oficina.query.filter_by(cliente_id=cliente_id).all()
-    )
+    # ──────────────────── PREPARAÇÃO DE DADOS PARA O TEMPLATE ────────────────
+    oficinas = Oficina.query.filter_by(evento_id=evento.id).all() if evento else []
+    
+    # Carrega ministrantes
     ministrantes = (
         Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all() if evento else []
     )
-
-    # Agrupamento de oficinas por dia (para exibir programação)
-    grouped_oficinas: dict[str, list] = defaultdict(list)
-    for of in oficinas:
-        for dia in of.dias:
+    
+    # Agrupamento de oficinas por dia
+    grouped_oficinas = defaultdict(list)
+    for oficina in oficinas:
+        for dia in oficina.dias:
             data_str = dia.data.strftime("%d/%m/%Y")
-            grouped_oficinas[data_str].append(
-                {
-                    "oficina": of,
-                    "titulo": of.titulo,
-                    "descricao": of.descricao,
-                    "ministrante": of.ministrante_obj,
-                    "horario_inicio": dia.horario_inicio,
-                    "horario_fim": dia.horario_fim,
-                }
-            )
+            grouped_oficinas[data_str].append({
+                "oficina": oficina,
+                "titulo": oficina.titulo,
+                "descricao": oficina.descricao,
+                "ministrante": oficina.ministrante_obj,
+                "horario_inicio": dia.horario_inicio,
+                "horario_fim": dia.horario_fim,
+            })
+    
+    # Ordenação das oficinas por horário e das datas
     for lst in grouped_oficinas.values():
         lst.sort(key=lambda x: x["horario_inicio"])
     sorted_keys = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, "%d/%m/%Y"))
     
-    # CORREÇÃO 8: Garantir que todas as oficinas estejam devidamente processadas
+    # Garantir que todas as oficinas estejam devidamente processadas
     oficinas_formatadas = []
     for idx, oficina in enumerate(oficinas):
-        # ...existing code for processing other dados da oficina...
-        
         # Determinar as informações do evento para a oficina
         if oficina.evento_id:
             # Obter informações do evento diretamente
@@ -349,20 +512,27 @@ def cadastro_participante(identifier: str | None = None):
             evento_status = "Atuais"
             
         oficinas_formatadas.append({
-            # ...existing dados da oficina...
             'id': oficina.id,
             'titulo': oficina.titulo,
             'descricao': oficina.descricao,
-            # Use 'sem_evento' para oficinas sem evento
             'evento_id': oficina.evento_id if oficina.evento_id else 'sem_evento',
             'evento_nome': evento_nome,
             'evento_status': evento_status,
-            # ...demais campos já existentes...
         })
-
+    
+    # Patrocinadores e campos de cadastro
+    patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all() if evento else []
     campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente_id).all()
+    
+    # Garante lista completa de ministrantes (principal + extras)
+    all_ministrantes = set()
+    for of in oficinas:
+        if of.ministrante_obj:
+            all_ministrantes.add(of.ministrante_obj)
+        if hasattr(of, 'ministrantes_associados'):
+            all_ministrantes.update(of.ministrantes_associados)
 
-    # ────────────────────────────── POST  (cadastro) ───────────────────────────
+    # ──────────────────── TRATAMENTO DO FORMULÁRIO (POST) ────────────────
     if request.method == "POST":
         # Debug de todos os campos do formulário
         logger.debug(f"Dados do formulário: {request.form}")
@@ -394,7 +564,9 @@ def cadastro_participante(identifier: str | None = None):
                 sorted_keys=sorted_keys,
                 ministrantes=ministrantes,
                 grouped_oficinas=grouped_oficinas,
-                lote_vigente=lote_vigente
+                lote_vigente=lote_vigente,
+                patrocinadores=patrocinadores,
+                campos_personalizados=campos_personalizados
             )
 
         if Usuario.query.filter_by(email=email).first():
@@ -415,34 +587,14 @@ def cadastro_participante(identifier: str | None = None):
             lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).order_by(LoteInscricao.ordem).all()
             for l in lotes:
                 # Verificação explícita da validade
-                count = Inscricao.query.filter_by(
-                    evento_id=evento.id, 
-                    lote_id=l.id
-                ).filter(
-                    Inscricao.status_pagamento.in_(["approved", "pending"])
-                ).count()
-                
-                is_valid = True
-                now = datetime.utcnow()
-                
-                # Verificar por data
-                if l.data_inicio and l.data_fim:
-                    if now < l.data_inicio or now > l.data_fim:
-                        is_valid = False
-                
-                # Verificar por quantidade
-                if l.qtd_maxima is not None:
-                    if count >= l.qtd_maxima:
-                        is_valid = False
-                
-                if is_valid:
+                if lote_disponivel(l):
                     lotes_validos.append(l)
                     
                 if l.id == int(lote_id):
                     lote_atual = l
             
             # Se o lote enviado não for mais válido
-            if not lote_atual or not lote_atual in lotes_validos:
+            if not lote_atual or lote_atual not in lotes_validos:
                 logger.warning(f"Lote {lote_id} não é mais válido!")
                 
                 if lotes_validos:
@@ -476,7 +628,7 @@ def cadastro_participante(identifier: str | None = None):
                     
                     flash(f"O lote foi atualizado para '{lote_vigente.nome}' pois o lote anterior não está mais disponível.", "info")
                 else:
-                    flash("Não há lotes disponíveis para inscrição no momento.", "danger")
+                    flash("O lote selecionado não está mais disponível", "danger")
                     return redirect(request.url)
 
         # Cria usuário
@@ -633,25 +785,15 @@ def cadastro_participante(identifier: str | None = None):
         flash("Cadastro realizado com sucesso!", "success")
         return redirect(url_for("routes.login"))
 
-    # ────────────────────────────── GET  (render) ──────────────────────────────
-    patrocinadores = Patrocinador.query.filter_by(evento_id=evento.id).all() if evento else []
-
-    # garante lista completa de ministrantes (principal + extras)
-    all_ministrantes = set()
-    for of in oficinas:
-        if of.ministrante_obj:
-            all_ministrantes.add(of.ministrante_obj)
-        all_ministrantes.update(of.ministrantes_associados)
-
-    # Calcular estatísticas do lote vigente para exibição
+    # ──────────────────── PREPARAÇÃO DO RESPONSE (GET) ────────────────
+    # Estatísticas do lote vigente
     lote_stats = None
     if lote_vigente:
-        count = Inscricao.query.filter_by(
-            evento_id=evento.id, 
-            lote_id=lote_vigente.id
-        ).filter(
+        count = db.session.query(func.count(Inscricao.id)).filter(
+            Inscricao.evento_id == evento.id,
+            Inscricao.lote_id == lote_vigente.id,
             Inscricao.status_pagamento.in_(["approved", "pending"])
-        ).count()
+        ).scalar()
         
         vagas_disponiveis = lote_vigente.qtd_maxima - count if lote_vigente.qtd_maxima else "ilimitado"
         
@@ -659,90 +801,103 @@ def cadastro_participante(identifier: str | None = None):
             "nome": lote_vigente.nome,
             "vagas_totais": lote_vigente.qtd_maxima or "ilimitado",
             "vagas_usadas": count,
-            "vagas_disponiveis": vagas_disponiveis
+            "vagas_disponiveis": vagas_disponiveis,
+            "data_inicio": lote_vigente.data_inicio.strftime("%d/%m/%Y") if lote_vigente.data_inicio else "Imediato",
+            "data_fim": lote_vigente.data_fim.strftime("%d/%m/%Y") if lote_vigente.data_fim else "Não definido"
         }
         logger.debug(f"Estatísticas do lote: {lote_stats}")
-
+        
+         
+    # Renderiza o template com os dados necessários
     return render_template(
         "cadastro_participante.html",
         token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
-        ministrantes=list(all_ministrantes),
         grouped_oficinas=grouped_oficinas,
+        ministrantes=list(all_ministrantes) if all_ministrantes else ministrantes,
         patrocinadores=patrocinadores,
         campos_personalizados=campos_personalizados,
         lote_vigente=lote_vigente,
-        lote_stats=lote_stats
+        lote_stats=lote_stats,
+        lotes_ativos=lotes_ativos,
+        tipos_inscricao=EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all() if evento else []
     )
-
+   
+    
 @routes.route('/api/lote_vigente/<int:evento_id>', methods=['GET'])
 def api_lote_vigente(evento_id):
-    """API para verificar o lote vigente atual"""
+    """API para verificar o lote vigente atual com tratamento robusto de datas"""
     from datetime import datetime
     import logging
+    from dateutil import parser
     
     logger = logging.getLogger(__name__)
+    now = datetime.utcnow()
     
-    lotes = LoteInscricao.query.filter_by(evento_id=evento_id, ativo=True).order_by(LoteInscricao.ordem).all()
-    lote_vigente = None
-    
-    # Debug mais detalhado de cada lote
-    for lote in lotes:
-        # Contagem de inscrições no lote
-        count = Inscricao.query.filter_by(
-            evento_id=evento_id, 
-            lote_id=lote.id
-        ).filter(
-            Inscricao.status_pagamento.in_(["approved", "pending"])
-        ).count()
+    try:
+        lotes = LoteInscricao.query.filter_by(evento_id=evento_id, ativo=True).order_by(LoteInscricao.ordem).all()
+        lote_vigente = None
         
-        # Verificação explícita da validade
-        is_valid = True
-        now = datetime.utcnow()
-        
-        # Verificar por data
-        data_ok = True
-        if lote.data_inicio and lote.data_fim:
-            if now < lote.data_inicio or now > lote.data_fim:
-                data_ok = False
+        for lote in lotes:
+            # Contagem de inscrições no lote
+            count = Inscricao.query.filter_by(
+                evento_id=evento_id, 
+                lote_id=lote.id
+            ).filter(
+                Inscricao.status_pagamento.in_(["approved", "pending"])
+            ).count()
+            
+            # Verificação explícita da validade
+            is_valid = True
+            
+            # Verificação robusta de datas
+            if lote.data_inicio and lote.data_fim:
+                data_inicio = lote.data_inicio if isinstance(lote.data_inicio, datetime) else parser.parse(lote.data_inicio)
+                data_fim = lote.data_fim if isinstance(lote.data_fim, datetime) else parser.parse(lote.data_fim)
+                
+                if now < data_inicio or now > data_fim:
+                    is_valid = False
+            
+            # Verificação por quantidade
+            if lote.qtd_maxima is not None and count >= lote.qtd_maxima:
                 is_valid = False
+                
+            if is_valid:
+                lote_vigente = lote
+                break
+                
+        if lote_vigente:
+            count = Inscricao.query.filter_by(
+                evento_id=evento_id, 
+                lote_id=lote_vigente.id
+            ).filter(
+                Inscricao.status_pagamento.in_(["approved", "pending"])
+            ).count()
+            
+            return jsonify({
+                'success': True,
+                'lote_id': lote_vigente.id,
+                'nome': lote_vigente.nome,
+                'vagas_totais': lote_vigente.qtd_maxima,
+                'vagas_usadas': count,
+                'vagas_disponiveis': lote_vigente.qtd_maxima - count if lote_vigente.qtd_maxima else "ilimitado",
+                'data_inicio': lote_vigente.data_inicio.isoformat() if lote_vigente.data_inicio else None,
+                'data_fim': lote_vigente.data_fim.isoformat() if lote_vigente.data_fim else None
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum lote válido encontrado'
+            })
+            
+    except Exception as e:
+        logger.error(f"Erro na API lote_vigente: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao verificar lote vigente: {str(e)}'
+        })
         
-        # Verificar por quantidade
-        qtd_ok = True
-        if lote.qtd_maxima is not None:
-            if count >= lote.qtd_maxima:
-                qtd_ok = False
-                is_valid = False
-        
-        logger.debug(f"API - Verificando lote {lote.id} ({lote.nome}): Data OK: {data_ok}, Qtd OK: {qtd_ok}, Usado: {count}/{lote.qtd_maxima or 'ilimitado'}")
-        
-        if is_valid:
-            lote_vigente = lote
-            logger.debug(f"API - Lote vigente encontrado: {lote.nome}")
-            break
-    
-    # Retornar mais informações sobre o lote vigente
-    result = {
-        'lote_id': lote_vigente.id if lote_vigente else None,
-        'nome': lote_vigente.nome if lote_vigente else None,
-    }
-    
-    if lote_vigente:
-        # Contagem de inscrições para o lote vigente
-        count = Inscricao.query.filter_by(
-            evento_id=evento_id, 
-            lote_id=lote_vigente.id
-        ).filter(
-            Inscricao.status_pagamento.in_(["approved", "pending"])
-        ).count()
-        
-        result['vagas_totais'] = lote_vigente.qtd_maxima
-        result['vagas_usadas'] = count
-        result['vagas_disponiveis'] = lote_vigente.qtd_maxima - count if lote_vigente.qtd_maxima else "ilimitado"
-    
-    return jsonify(result)
-
 # ===========================
 #      EDITAR PARTICIPANTE
 # ===========================
@@ -795,19 +950,26 @@ def editar_participante(usuario_id=None, oficina_id=None):
 @routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
 @login_required
 def checkin_manual(usuario_id, oficina_id):
-    # Verifica se já existe check-in
     checkin_existente = Checkin.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
     if checkin_existente:
         flash('Participante já realizou check-in.', 'warning')
-        return redirect(url_for('routes.dashboard') + '#gerenciar')
+        return redirect(request.referrer or url_for('routes.gerenciar_inscricoes'))
 
-    # Cria check-in com palavra_chave obrigatória
-    checkin = Checkin(usuario_id=usuario_id, oficina_id=oficina_id, palavra_chave="manual")
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    checkin = Checkin(
+        usuario_id=usuario_id,
+        oficina_id=oficina_id,
+        palavra_chave="manual",
+        cliente_id=oficina.cliente_id,
+        evento_id=oficina.evento_id
+    )
     db.session.add(checkin)
     db.session.commit()
 
     flash('Check-in manual registrado com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard') + '#gerenciar')
+    return redirect(request.referrer or url_for('routes.gerenciar_inscricoes'))
+
 
 
 # ===========================
@@ -916,231 +1078,143 @@ def logout():
 @routes.route('/dashboard')
 @login_required
 def dashboard():
-    from sqlalchemy import func
+    from sqlalchemy import func, or_
 
-    propostas = Proposta.query.all()
-     # Buscando os agendamentos do professor logado
-    agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
-    
-    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()  # ou current_user.cliente_id
-    
-    configuracao = Configuracao.query.first() 
-
-    # Obtem filtros
-    estado_filter = request.args.get('estado', '').strip()
-    cidade_filter = request.args.get('cidade', '').strip()
-    cliente_filter = request.args.get('cliente_id', '').strip()
-
-    # Buscar eventos ativos
-    eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
-    total_eventos = len(eventos_ativos)
-
-    # Check-ins via QR
-    checkins_via_qr = Checkin.query.filter_by(palavra_chave='QR-AUTO').all()
-
-    # Lista de participantes (se quiser gerenciar)
-    participantes = Usuario.query.filter_by(tipo='participante').all()
-    inscricoes = Inscricao.query.all()
-    
-    msg_relatorio = None  # Adiciona um valor padrão
-
-    # Verifica o tipo de usuário
+    # Verificações iniciais
     is_admin = (current_user.tipo == 'admin')
     is_cliente = (current_user.tipo == 'cliente')
     is_professor = (current_user.tipo == 'professor')
+
+    propostas = Proposta.query.all()
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all() if is_cliente else Evento.query.all()
+    oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all() if is_cliente else Oficina.query.all()
+    participantes = Usuario.query.filter_by(tipo='participante').all()
+    ministrantes = Ministrante.query.all()
+    relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
+    inscritos = Inscricao.query.filter((Inscricao.cliente_id == current_user.id) | (Inscricao.cliente_id.is_(None))).all() if is_cliente else Inscricao.query.all()
     
-    # Se for admin, busca também os clientes
-    clientes = []
-    total_eventos = total_eventos
-    if is_admin:
-        clientes = Cliente.query.all()
-
-    # ========== 1) Dados gerais ==========    
-    if is_admin:
-        total_oficinas = Oficina.query.count()
-        # Buscar todas as oficinas para calcular o total de vagas considerando o tipo_inscricao
-        oficinas_all = Oficina.query.all()
-        # Novo cálculo do total_vagas considerando o tipo_inscricao
-        total_vagas = 0
-        for of in oficinas_all:
-            if of.tipo_inscricao == 'com_inscricao_com_limite':
-                total_vagas += of.vagas
-            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
-                total_vagas += len(of.inscritos)
-        total_inscricoes = Inscricao.query.count()
-        total_eventos = Evento.query.count()  # Count all events for admin
-    elif is_cliente:
-        total_oficinas = Oficina.query.filter_by(cliente_id=current_user.id).count()
-        # Buscar oficinas do cliente para calcular o total de vagas considerando o tipo_inscricao
-        oficinas_cliente = Oficina.query.filter_by(cliente_id=current_user.id).all()
-        # Novo cálculo do total_vagas considerando o tipo_inscricao
-        total_vagas = 0
-        for of in oficinas_cliente:
-            if of.tipo_inscricao == 'com_inscricao_com_limite':
-                total_vagas += of.vagas
-            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
-                total_vagas += len(of.inscritos)
-        total_inscricoes = Inscricao.query.join(Oficina)\
-                                          .filter(Oficina.cliente_id == current_user.id)\
-                                          .count()
-    else:
-        # Se for professor ou qualquer outro tipo, e você quiser fazer algo específico
-        total_oficinas = Oficina.query.count()
-        # Buscar todas as oficinas para calcular o total de vagas considerando o tipo_inscricao
-        oficinas_all = Oficina.query.all()
-        # Novo cálculo do total_vagas considerando o tipo_inscricao
-        total_vagas = 0
-        for of in oficinas_all:
-            if of.tipo_inscricao == 'com_inscricao_com_limite':
-                total_vagas += of.vagas
-            elif of.tipo_inscricao == 'com_inscricao_sem_limite':
-                total_vagas += len(of.inscritos)
-        total_inscricoes = Inscricao.query.count()
-
-    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
-
-    # ========== 2) Estatísticas por oficina ==========
-    if is_cliente:
-        oficinas_query = Oficina.query.filter_by(cliente_id=current_user.id)
-    else:
-        oficinas_query = Oficina.query
-
-    oficinas = oficinas_query.all()
-    lista_oficinas_info = []
-    for of in oficinas:
-        num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
-        perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
-
-        lista_oficinas_info.append({
-            'id': of.id, 
-            'titulo': of.titulo,
-            'vagas': of.vagas,
-            'inscritos': num_inscritos,
-            'ocupacao': perc_ocupacao
-        })
-
-    # ========== 3) Monta a string do relatório (somente UMA vez) ==========
-    msg_relatorio = (
-        "📊 *Relatório do Sistema*\n\n"
-        f"✅ *Total de Oficinas:* {total_oficinas}\n"
-        f"✅ *Vagas Ofertadas:* {total_vagas}\n"
-        f"✅ *Vagas Preenchidas:* {total_inscricoes}\n"
-        f"✅ *% de Adesão:* {percentual_adesao:.2f}%\n\n"
-        "----------------------------------------\n"
-        "📌 *DADOS POR OFICINA:*\n"
+    # Estatísticas básicas
+    total_oficinas = len(oficinas)
+    total_vagas = sum(
+        of.vagas if of.tipo_inscricao == 'com_inscricao_com_limite' else len(of.inscritos)
+        for of in oficinas
     )
+    total_inscricoes = len(inscritos)
+    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
+    eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all() if is_cliente else Evento.query.all()
+    total_eventos = len(eventos_ativos)
 
-    for info in lista_oficinas_info:
-        msg_relatorio += (
-            f"\n🎓 *Oficina:* {info['titulo']}\n"
-            f"🔹 *Vagas:* {info['vagas']}\n"
-            f"🔹 *Inscritos:* {info['inscritos']}\n"
-            f"🔹 *Ocupação:* {info['ocupacao']:.2f}%\n"
-        )
+    # Check-ins QR
+    checkins_via_qr = Checkin.query.outerjoin(Checkin.oficina)\
+        .outerjoin(Checkin.usuario)\
+        .filter(
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO']),
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id
+            ) if is_cliente else True
+        ).order_by(Checkin.data_hora.desc()).all()
 
-    # ========== 4) Mais lógica para dashboard (filtros, etc.) ==========
-    query = oficinas_query
-    if estado_filter:
-        query = query.filter(Oficina.estado == estado_filter)
-    if cidade_filter:
-        query = query.filter(Oficina.cidade == cidade_filter)
-    if is_admin and cliente_filter:
-        query = query.filter(Oficina.cliente_id == cliente_filter)
+    # Estatísticas por oficina
+    oficinas_estatisticas = []
+    oficinas_com_inscritos = []
+    for of in oficinas:
+        inscritos_oficina = Inscricao.query.filter_by(oficina_id=of.id).all()
+        perc_ocupacao = (len(inscritos_oficina) / of.vagas) * 100 if of.vagas > 0 else 0
 
-    oficinas_filtradas = query.all()
-
-    # Estatísticas de oficinas (aplicando filtro)
-    lista_oficinas_info = []
-    for of in oficinas_filtradas:
-        num_inscritos = Inscricao.query.filter_by(oficina_id=of.id).count()
-        perc_ocupacao = (num_inscritos / of.vagas) * 100 if of.vagas > 0 else 0
-
-        lista_oficinas_info.append({
+        oficinas_estatisticas.append({
             'id': of.id,
             'titulo': of.titulo,
             'vagas': of.vagas,
-            'inscritos': num_inscritos,
+            'inscritos': len(inscritos_oficina),
             'ocupacao': perc_ocupacao
         })
 
-    oficinas_com_inscritos = []
-    for oficina in oficinas_filtradas:
-        dias = OficinaDia.query.filter_by(oficina_id=oficina.id).all()
-        inscritos = Inscricao.query.filter_by(oficina_id=oficina.id).all()
-        
-        inscritos_info = []
-        for inscricao in inscritos:
-            usuario = Usuario.query.get(inscricao.usuario_id)
-            if usuario:
-                inscritos_info.append({
-                    'id': usuario.id,
-                    'nome': usuario.nome,
-                    'cpf': usuario.cpf,
-                    'email': usuario.email,
-                    'formacao': usuario.formacao
-                })
+        inscritos_info = [{
+            'id': u.id, 'nome': u.nome, 'cpf': u.cpf, 'email': u.email, 'formacao': u.formacao
+        } for i in inscritos_oficina if (u := Usuario.query.get(i.usuario_id))]
 
         oficinas_com_inscritos.append({
-            'id': oficina.id,
-            'titulo': oficina.titulo,
-            'descricao': oficina.descricao,
-           'ministrantes': [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else [],
-            'vagas': oficina.vagas,
-            'carga_horaria': oficina.carga_horaria,
-            'dias': dias,
+            'id': of.id, 'titulo': of.titulo, 'descricao': of.descricao,
+            'ministrantes': [m.nome for m in of.ministrantes_associados] if of.ministrantes_associados else [],
+            'vagas': of.vagas, 'carga_horaria': of.carga_horaria,
+            'dias': OficinaDia.query.filter_by(oficina_id=of.id).all(),
             'inscritos': inscritos_info
         })
 
-    # Busca ministrantes, relatorios, config...
-    ministrantes = Ministrante.query.all()
-    relatorios = RelatorioOficina.query.order_by(RelatorioOficina.enviado_em.desc()).all()
-    configuracao = Configuracao.query.first()
-    permitir_checkin_global = configuracao.permitir_checkin_global if configuracao else False
-    habilitar_feedback = configuracao.habilitar_feedback if configuracao else False
-    habilitar_certificado_individual = configuracao.habilitar_certificado_individual if configuracao else False
+    # Configuração do cliente
+    config_cliente = obter_configuracao_do_cliente(current_user.id) if is_cliente else None
 
-    # ========== 5) Seleciona o template de acordo com o tipo de usuário ==========
-    if is_admin:
-        template_dashboard = 'dashboard_admin.html'
-    elif is_cliente:
-        template_dashboard = 'dashboard_cliente.html'
-    elif is_professor:
-        template_dashboard = 'dashboard_professor.html'
-    else:
-        # Se quiser outro template para participantes ou outro tipo de usuário
-        template_dashboard = 'dashboard_participante.html'
-        # ou poderia redirecionar para outra rota:
-        # flash("Acesso restrito!"), etc.
+    # Dados extras para cliente (agendamento de visitas)
+    hoje = datetime.utcnow().date()
+    agendamentos_hoje = proximos_agendamentos = []
+    agendamentos_totais = agendamentos_confirmados = agendamentos_realizados = agendamentos_cancelados = total_visitantes = ocupacao_media = 0
 
-    # ========== 6) Renderiza o template ==========
+    if is_cliente:
+        base_agendamento = db.session.query(AgendamentoVisita.id).join(HorarioVisitacao).join(Evento).filter(Evento.cliente_id == current_user.id)
+
+        agendamentos_totais = base_agendamento.count()
+        agendamentos_confirmados = base_agendamento.filter(AgendamentoVisita.status == 'confirmado').count()
+        agendamentos_realizados = base_agendamento.filter(AgendamentoVisita.status == 'realizado').count()
+        agendamentos_cancelados = base_agendamento.filter(AgendamentoVisita.status == 'cancelado').count()
+        total_visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos))\
+            .join(HorarioVisitacao).join(Evento)\
+            .filter(Evento.cliente_id == current_user.id,
+                    AgendamentoVisita.status.in_(['confirmado', 'realizado'])).scalar() or 0
+
+        agendamentos_hoje = AgendamentoVisita.query.join(HorarioVisitacao).join(Evento)\
+            .filter(Evento.cliente_id == current_user.id,
+                    HorarioVisitacao.data == hoje,
+                    AgendamentoVisita.status == 'confirmado').all()
+
+        data_limite = hoje + timedelta(days=7)
+        proximos_agendamentos = AgendamentoVisita.query.join(HorarioVisitacao).join(Evento)\
+            .filter(Evento.cliente_id == current_user.id,
+                    HorarioVisitacao.data > hoje,
+                    HorarioVisitacao.data <= data_limite,
+                    AgendamentoVisita.status == 'confirmado').all()
+
+        ocupacao = db.session.query(
+            func.sum(HorarioVisitacao.capacidade_total - HorarioVisitacao.vagas_disponiveis).label('ocupadas'),
+            func.sum(HorarioVisitacao.capacidade_total).label('total')
+        ).join(Evento).filter(Evento.cliente_id == current_user.id, HorarioVisitacao.data >= hoje).first()
+
+        if ocupacao and ocupacao.total and ocupacao.total > 0:
+            ocupacao_media = (ocupacao.ocupadas / ocupacao.total) * 100
+
     return render_template(
-        template_dashboard,
-        participantes=participantes,
+        'dashboard_admin.html' if is_admin else
+        'dashboard_cliente.html' if is_cliente else
+        'dashboard_professor.html' if is_professor else
+        'dashboard_participante.html',
+
         usuario=current_user,
-        total_eventos=total_eventos,
+        participantes=participantes,
+        eventos=eventos,
         oficinas=oficinas_com_inscritos,
-        ministrantes=ministrantes,
-        relatorios=relatorios,
-        permitir_checkin_global=permitir_checkin_global,
-        habilitar_feedback=habilitar_feedback,
-        estado_filter=estado_filter,
-        cidade_filter=cidade_filter,
-        checkins_via_qr=checkins_via_qr,
-        propostas=propostas,
         total_oficinas=total_oficinas,
         total_vagas=total_vagas,
         total_inscricoes=total_inscricoes,
         percentual_adesao=percentual_adesao,
-        oficinas_estatisticas=lista_oficinas_info,
-        msg_relatorio=msg_relatorio,
-        inscricoes=inscricoes,
-        habilitar_certificado_individual=habilitar_certificado_individual,
-        clientes=clientes,
-        cliente_filter=cliente_filter,
-        agendamentos_professor=agendamentos_professor,
-        eventos=eventos,
-        configuracao=configuracao
+        oficinas_estatisticas=oficinas_estatisticas,
+        checkins_via_qr=checkins_via_qr,
+        ministrantes=ministrantes,
+        relatorios=relatorios,
+        inscritos=inscritos,
+        propostas=propostas,
+        config_cliente=config_cliente,
+        agendamentos_totais=agendamentos_totais,
+        agendamentos_confirmados=agendamentos_confirmados,
+        agendamentos_realizados=agendamentos_realizados,
+        agendamentos_cancelados=agendamentos_cancelados,
+        total_visitantes=total_visitantes,
+        agendamentos_hoje=agendamentos_hoje,
+        proximos_agendamentos=proximos_agendamentos,
+        ocupacao_media=ocupacao_media,
+        total_eventos=total_eventos
     )
+
 
 @routes.route('/dashboard_participante')
 @login_required
@@ -2869,54 +2943,53 @@ def gerar_certificados(oficina_id):
 @routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
 def checkin(oficina_id):
-    oficina = Oficina.query.get_or_404(oficina_id)  
-    
-    # Descobre a que cliente pertence essa oficina
+    oficina = Oficina.query.get_or_404(oficina_id)
     cliente_id_oficina = oficina.cliente_id
-    
-    # Pega a config do cliente
+
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id_oficina).first()
     if not config_cliente or not config_cliente.permitir_checkin_global:
-        # Caso não tenha config ou checkin não habilitado
         flash("Check-in indisponível para esta oficina!", "danger")
         return redirect(url_for('routes.dashboard_participante'))
-    
+
     if request.method == 'POST':
         palavra_escolhida = request.form.get('palavra_escolhida')
         if not palavra_escolhida:
             flash("Selecione uma opção de check-in.", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
-        
-        # Verifica se o usuário está inscrito na oficina
+
         inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
         if not inscricao:
             flash("Você não está inscrito nesta oficina!", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
-        
-        # Se o usuário já errou duas vezes, bloqueia o check-in
+
         if inscricao.checkin_attempts >= 2:
             flash("Você excedeu o número de tentativas de check-in.", "danger")
             return redirect(url_for('routes.dashboard_participante'))
-        
-        # Verifica se a alternativa escolhida é a correta
+
+        # ❗Verificar se já existe check-in anterior
+        checkin_existente = Checkin.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
+        if checkin_existente:
+            flash("Você já realizou o check-in!", "warning")
+            return redirect(url_for('routes.dashboard_participante'))
+
         if palavra_escolhida.strip() != oficina.palavra_correta.strip():
             inscricao.checkin_attempts += 1
             db.session.commit()
             flash("Palavra-chave incorreta!", "danger")
             return redirect(url_for('routes.checkin', oficina_id=oficina_id))
-        
-        # Se a resposta estiver correta, registra o check-in
+
         checkin = Checkin(
             usuario_id=current_user.id,
             oficina_id=oficina.id,
-            palavra_chave=palavra_escolhida
+            palavra_chave=palavra_escolhida,
+            cliente_id=oficina.cliente_id,
+            evento_id=oficina.evento_id
         )
         db.session.add(checkin)
         db.session.commit()
         flash("Check-in realizado com sucesso!", "success")
         return redirect(url_for('routes.dashboard_participante'))
-    
-    # Para o GET: extrai as opções configuradas (supondo que foram salvas como uma string separada por vírgulas)
+
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
     return render_template('checkin.html', oficina=oficina, opcoes=opcoes)
 
@@ -5637,9 +5710,7 @@ def obter_configuracao_do_cliente(cliente_id):
     return config
 
 
-
-
-@app.route('/oficinas_disponiveis')
+@routes.route('/oficinas_disponiveis')
 @login_required
 def oficinas_disponiveis():
     oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
@@ -5766,6 +5837,39 @@ def excluir_link():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Link excluído com sucesso'})
+
+@routes.route('/evento/<int:evento_id>/inscricao')
+def inscricao_evento(evento_id):
+    """
+    Redireciona para a página de inscrição do evento usando o LinkCadastro existente
+    ou para a inscrição direta caso o evento permita
+    """
+    evento = Evento.query.get_or_404(evento_id)
+    
+    # 1. Primeiro verifica se o evento está ativo
+    if evento.status != 'ativo':
+        flash('Este evento não está disponível para inscrições no momento.', 'warning')
+        return redirect(url_for('routes.visualizar_evento', evento_id=evento_id))
+    
+    # 2. Busca um link de cadastro para este evento
+    link = LinkCadastro.query.filter_by(evento_id=evento_id).first()
+    
+    if link:
+        # Se existe um link personalizado, usa ele
+        if link.slug_customizado:
+            return redirect(url_for('routes.inscricao', slug=link.slug_customizado))
+        # Senão, usa o token
+        return redirect(url_for('routes.cadastro_participante', token=link.token))
+    
+    # 3. Se não existe link, verifica se o evento permite inscrição direta
+    if evento.publico and not evento.requer_aprovacao:
+        # Aqui está a correção - não usamos mais link.token pois link é None
+        # Criamos um token temporário ou usamos um método alternativo
+        return redirect(url_for('routes.cadastro_participante', evento_id=evento_id))
+    
+    # 4. Fallback final
+    flash('Este evento não possui inscrições abertas no momento.', 'warning')
+    return redirect(url_for('routes.visualizar_evento', evento_id=evento_id))
     
 @routes.route('/inscricao/<slug_customizado>', methods=['GET'])
 def inscricao_personalizada(slug_customizado):
@@ -5912,11 +6016,47 @@ def editar_cliente(cliente_id):
     return render_template('editar_cliente.html', cliente=cliente)
 
 
+# imports extras no topo do arquivo -----------------------------------------
+from sqlalchemy.orm import joinedload
+
+# ----------------------------------------------------------------------------
 @routes.route('/formularios', methods=['GET'])
 @login_required
 def listar_formularios():
-    formularios = Formulario.query.filter_by(cliente_id=current_user.id).all()
-    return render_template('formularios.html', formularios=formularios)
+    """
+    •  Superusuário   → vê todos os formulários do sistema.
+    •  Demais perfis  → vê apenas formulários ligados ao seu cliente.
+    Cada formulário vem com TODAS as respostas + usuário de cada resposta
+    para evitar consultas N+1.
+    """
+    # Base query com eager-load das relações necessárias
+    q = (Formulario.query
+            .options(
+                joinedload(Formulario.respostas)
+                    .joinedload(RespostaFormulario.usuario)   # carrega o autor da resposta
+            )
+            .order_by(Formulario.nome)
+        )
+
+    # 1. Se o usuário for superadmin, não filtra nada
+    if getattr(current_user, "tipo", None) == "superadmin":
+        formularios = q.all()
+
+    # 2. Caso contrário, mostra apenas o que pertence ao cliente dele
+    else:
+        cliente_id = getattr(current_user, "cliente_id", None)
+
+        # fallback: se o modelo antigo gravou cliente_id = current_user.id
+        # usa o id do usuário como último recurso
+        if not cliente_id:
+            cliente_id = current_user.id
+
+        formularios = q.filter(Formulario.cliente_id == cliente_id).all()
+
+    # Envia tudo para o novo template que lista formulários + respostas
+    return render_template('formularios.html',
+                           formularios=formularios)
+
 
 @routes.route('/formularios/novo', methods=['GET', 'POST'])
 @login_required
