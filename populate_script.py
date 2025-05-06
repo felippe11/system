@@ -1,1116 +1,926 @@
-from app import app, db
-from models import (
-    Usuario, Oficina, OficinaDia, Inscricao, Checkin,
-    Feedback, Ministrante, Cliente, ConfiguracaoCliente,
-    Evento, LinkCadastro, Formulario, CampoFormulario,
-    RespostaFormulario, RespostaCampo, MaterialOficina,
-    RelatorioOficina, EventoInscricaoTipo, InscricaoTipo,
-    RegraInscricaoEvento
-)
-from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta
-import random
-import string
+"""
+Populate Script para o Sistema de Eventos e Inscrições
+Este script gera dados de teste abrangentes para o sistema de eventos.
+
+DESCRIÇÃO:
+-----------
+Este script cria centenas de registros de teste incluindo:
+- Clientes (organizadores de eventos)
+- Eventos com diferentes configurações
+- Ministrantes
+- Oficinas e palestras
+- Usuários (participantes, professores, clientes, administradores)
+- Inscrições em eventos e oficinas
+- Checkins
+- Feedbacks
+- Agendamentos de visitas escolares
+- Lotes de inscrição
+- Tipos de inscrição com preços variados
+- Sorteios e patrocinadores
+
+INSTRUÇÕES DE USO:
+------------------
+1. Certifique-se de que o ambiente virtual está ativado
+2. Certifique-se de ter instalado todas as dependências:
+   pip install faker
+
+3. Execute dentro do contexto do seu aplicativo Flask:
+   
+   from app import app, db
+   from populate_script import popular_banco
+   
+   with app.app_context():
+       dados = popular_banco()
+       
+4. Se quiser limpar o banco antes de popular, descomente as linhas
+   relacionadas ao comando "SET FOREIGN_KEY_CHECKS" na função popular_banco()
+
+PERSONALIZAÇÃO:
+---------------
+- Ajuste as quantidades modificando os parâmetros nas chamadas de função
+- Modifique as listas de constantes para personalizar os valores gerados
+"""
 import os
-from sqlalchemy.exc import IntegrityError
+import sys
+import random
+from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash
+from faker import Faker
+import uuid
 
-# Function to generate random strings
-def random_string(length):
-    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
+# Assumindo que o app flask está inicializado em outro arquivo
+# Você precisará importar seus modelos e extensões
+# Modifique estes caminhos conforme necessário
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# Function to generate random CPF
-def random_cpf():
-    return ''.join(random.choice(string.digits) for _ in range(11))
+# Importe suas extensões e modelos
+from extensions import db
+from models import (Cliente, Usuario, Evento, EventoInscricaoTipo, 
+                   Oficina, OficinaDia, Ministrante, Inscricao, 
+                   RegraInscricaoEvento, Checkin, Feedback, 
+                   LinkCadastro, ConfiguracaoCliente, LoteInscricao,
+                   LoteTipoInscricao, ConfiguracaoAgendamento, SalaVisitacao,
+                   HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
+                   CertificadoTemplate, MaterialOficina, Sorteio, Pagamento,
+                   Patrocinador, oficina_ministrantes_association)
 
-# Function to generate random date in the future
-def random_future_date(days_ahead_min=10, days_ahead_max=60):
-    days_ahead = random.randint(days_ahead_min, days_ahead_max)
-    return datetime.now().date() + timedelta(days=days_ahead)
+# Inicialize o Faker
+fake = Faker('pt_BR')
+Faker.seed(42)  # Para resultados consistentes
 
-# Function to generate start and end time
-def random_time_range():
-    start_hour = random.randint(8, 14)
-    end_hour = start_hour + random.randint(2, 4)
-    start_time = f"{start_hour:02d}:00"
-    end_time = f"{end_hour:02d}:00"
-    return start_time, end_time
+# Constantes e listas para geração de dados
+ESTADOS_BRASIL = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+    'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+    'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+]
 
-def create_directory_if_not_exists(path):
-    directory = os.path.dirname(path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+TIPOS_FORMACAO = [
+    'Graduação', 'Pós-graduação', 'Mestrado', 'Doutorado', 
+    'Especialização', 'Técnico', 'Ensino Médio'
+]
 
-# Populate the database
-def populate_database():
-    print("\U0001F680 Starting database population...")
-    
-    # Para prevenir erros de integridade, usar session.no_autoflush
-    # em seções críticas do código
-    db.session.autoflush = False
+TIPOS_OFICINA = [
+    'Oficina', 'Palestra', 'Conferência', 'Workshop', 
+    'Mesa redonda', 'Seminário', 'Curso', 'Minicurso'
+]
 
-    # Create Admin - verificando CPF e email para evitar erro de duplicidade
-    admin_by_email = Usuario.query.filter_by(email="admin@email.com").first()
-    admin_by_cpf = Usuario.query.filter_by(cpf="00000000000").first()
-    
-    if admin_by_email:
-        admin = admin_by_email
-        print("Admin user already exists with email admin@email.com")
-    elif admin_by_cpf:
-        admin = admin_by_cpf
-        print(f"Admin user already exists with CPF 00000000000")
-    else:
-        admin = Usuario(
-            nome="Admin User",
-            cpf="00000000000",
-            email="admin@email.com",
-            senha=generate_password_hash("admin123"),
-            formacao="System Administrator",
-            tipo="admin"
+TIPOS_USUARIO = [
+    'participante', 'professor', 'cliente', 'superadmin', 'ministrante'
+]
+
+AREAS_ATUACAO = [
+    'Educação', 'Tecnologia', 'Saúde', 'Artes', 'Ciências', 
+    'Engenharia', 'Humanidades', 'Negócios', 'Direito'
+]
+
+STATUS_PAGAMENTO = ['pending', 'approved', 'rejected', 'cancelled']
+
+def criar_clientes(quantidade=5):
+    """Cria clientes no sistema"""
+    clientes = []
+    for i in range(quantidade):
+        cliente = Cliente(
+            nome=fake.company(),
+            email=fake.company_email(),
+            senha=generate_password_hash(fake.password()),
+            ativo=True,
+            habilita_pagamento=random.choice([True, False])
         )
-        db.session.add(admin)
-        print("Created new admin user")
-        db.session.commit()
-
-    # Clients
-    clients = []
-    client_data = [
-        {"nome": "Educational Corp", "email": "educational@example.com", "habilita_pagamento": True},
-        {"nome": "Training Solutions", "email": "training@example.com", "habilita_pagamento": False},
-        {"nome": "Learn Forward", "email": "learn@example.com", "habilita_pagamento": True},
-        {"nome": "Academia de Ciências", "email": "acad.ciencias@example.com", "habilita_pagamento": True},
-        {"nome": "Instituto de Educação", "email": "instituto@example.com", "habilita_pagamento": True},
-    ]
-
-    for data in client_data:
-        client = Cliente.query.filter_by(email=data["email"]).first()
-        if not client:
-            client = Cliente(
-                nome=data["nome"],
-                email=data["email"],
-                senha=generate_password_hash("client123"),
-                habilita_pagamento=data["habilita_pagamento"],
-                ativo=True
-            )
-            db.session.add(client)
-            clients.append(client)
-            db.session.flush()
-
-            config = ConfiguracaoCliente(
-                cliente_id=client.id,
-                permitir_checkin_global=True,
-                habilitar_feedback=True,
-                habilitar_certificado_individual=True
-            )
-            db.session.add(config)
-        else:
-            clients.append(client)
-
-    db.session.commit()
-
-    # Events - Criar eventos maiores e mais diversos
-    events = []
-    event_data = [
-        {"nome": "Conferência Nacional de Educação", "inscricao_gratuita": False, "descricao": "Grande evento anual com mais de 5000 participantes", "dias": 5},
-        {"nome": "Semana de Tecnologia Educacional", "inscricao_gratuita": True, "descricao": "Exposição de novas tecnologias para educação", "dias": 7},
-        {"nome": "Congresso de Professores", "inscricao_gratuita": False, "descricao": "Evento para formação continuada de professores", "dias": 3},
-        {"nome": "Festival de Ciências", "inscricao_gratuita": True, "descricao": "Apresentação de projetos científicos e oficinas", "dias": 4},
-        {"nome": "Simpósio de Metodologias Ativas", "inscricao_gratuita": False, "descricao": "Debate sobre novas metodologias de ensino", "dias": 2},
-    ]
+        db.session.add(cliente)
+        
+        # Criar configuração para o cliente
+        config = ConfiguracaoCliente(
+            cliente=cliente,
+            permitir_checkin_global=random.choice([True, False]),
+            habilitar_feedback=random.choice([True, False]),
+            habilitar_certificado_individual=random.choice([True, False]),
+            habilitar_qrcode_evento_credenciamento=random.choice([True, False]),
+            habilitar_submissao_trabalhos=random.choice([True, False])
+        )
+        db.session.add(config)
+        
+        # Criar um template de certificado para o cliente
+        template = CertificadoTemplate(
+            cliente=cliente,
+            titulo=f"Certificado Padrão - {cliente.nome}",
+            conteudo=f"""
+            <h1>CERTIFICADO</h1>
+            <p>Certificamos que {{nome_participante}} participou do evento {{nome_evento}} 
+            realizado por {cliente.nome} com carga horária de {{carga_horaria}} horas.</p>
+            <p>Data: {{data_emissao}}</p>
+            <p>Assinatura: ___________________</p>
+            """,
+            ativo=True
+        )
+        db.session.add(template)
+        
+        clientes.append(cliente)
     
-    for client in clients:
-        for data in event_data:
-            event = Evento(
-                cliente_id=client.id,
-                nome=f"{data['nome']} - {client.nome}",
-                descricao=f"{data['descricao']}. Organizado por {client.nome}.",
-                programacao="Programação completa disponível no site.",
-                localizacao="Centro de Convenções",
-                link_mapa="https://maps.google.com",
-                inscricao_gratuita=data["inscricao_gratuita"],
-                data_inicio=datetime.now() + timedelta(days=5),
-                data_fim=datetime.now() + timedelta(days=5 + data["dias"])
-            )
-            db.session.add(event)
-            events.append(event)
-
     db.session.commit()
+    return clientes
+
+def criar_eventos(clientes, quantidade_por_cliente=5):
+    """Cria eventos para cada cliente"""
+    todos_eventos = []
     
-    # Criar tipos de inscrição para eventos não gratuitos
-    print("Criando tipos de inscrição para eventos...")
-    for event in events:
-        if not event.inscricao_gratuita:
-            # Criar 3 tipos de inscrição para cada evento não gratuito
-            tipos = [
-                {"nome": "Estudante", "preco": 50.0},
-                {"nome": "Professor", "preco": 80.0},
-                {"nome": "Profissional", "preco": 120.0}
-            ]
+    for cliente in clientes:
+        for i in range(quantidade_por_cliente):
+            # Define datas para o evento
+            dias_evento = random.randint(1, 5)
+            data_inicio = fake.date_between(start_date='-1y', end_date='+1y')
+            data_fim = data_inicio + timedelta(days=dias_evento-1)
             
-            for tipo in tipos:
-                inscricao_tipo = EventoInscricaoTipo(
-                    evento_id=event.id,
-                    nome=tipo["nome"],
-                    preco=tipo["preco"]
+            # Status baseado na data
+            hoje = datetime.now().date()
+            if data_fim < hoje:
+                status = 'encerrado'
+            elif data_inicio > hoje:
+                status = 'agendado'
+            else:
+                status = 'ativo'
+            
+            evento = Evento(
+                cliente_id=cliente.id,
+                nome=f"{fake.catch_phrase()} {random.choice(['2023', '2024', '2025'])}",
+                descricao=fake.paragraph(nb_sentences=5),
+                banner_url=f"banners/evento_{i}_{cliente.id}.jpg",
+                programacao=fake.paragraph(nb_sentences=3),
+                localizacao=fake.address(),
+                link_mapa="https://maps.google.com/?q=" + fake.latitude() + "," + fake.longitude(),
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                hora_inicio=datetime.strptime(f"{random.randint(8, 10)}:00", "%H:%M").time(),
+                hora_fim=datetime.strptime(f"{random.randint(16, 19)}:00", "%H:%M").time(),
+                status=status,
+                inscricao_gratuita=random.choice([True, False]),
+                capacidade_padrao=random.randint(50, 500),
+                requer_aprovacao=random.choice([True, False]),
+                publico=random.choice([True, False]),
+                habilitar_lotes=random.choice([True, False])
+            )
+            
+            db.session.add(evento)
+            db.session.flush()  # Para obter o ID
+            
+            # Criar patrocinadores simulados
+            for _ in range(random.randint(2, 5)):
+                patrocinador = Patrocinador(
+                    evento_id=evento.id,
+                    logo_path=f"logos/patrocinador_{uuid.uuid4()}.jpg",
+                    categoria=random.choice(['Realização', 'Patrocínio', 'Apoio'])
                 )
-                db.session.add(inscricao_tipo)
-                db.session.flush()  # Para obter o ID
+                db.session.add(patrocinador)
+            
+            # Criar tipos de inscrição para o evento
+            criar_tipos_inscricao_evento(evento)
+            
+            # Se o evento tem lotes habilitados, criar lotes
+            if evento.habilitar_lotes:
+                criar_lotes_evento(evento)
+            
+            # Criar um link de cadastro para o evento
+            link = LinkCadastro(
+                cliente_id=cliente.id,
+                evento_id=evento.id,
+                slug_customizado=fake.slug(),
+                token=str(uuid.uuid4())
+            )
+            db.session.add(link)
+            
+            # Configura agendamento se for um evento educacional
+            if random.choice([True, False]):
+                config = ConfiguracaoAgendamento(
+                    cliente_id=cliente.id,
+                    evento_id=evento.id,
+                    prazo_cancelamento=random.choice([24, 48, 72]),
+                    tempo_bloqueio=random.choice([7, 14, 30]),
+                    capacidade_padrao=random.randint(20, 50),
+                    intervalo_minutos=random.choice([60, 90, 120]),
+                    horario_inicio=datetime.strptime(f"{random.randint(8, 10)}:00", "%H:%M").time(),
+                    horario_fim=datetime.strptime(f"{random.randint(16, 19)}:00", "%H:%M").time(),
+                    dias_semana="1,2,3,4,5"
+                )
+                db.session.add(config)
                 
-                # Criar regra de inscrição para este tipo
+                # Cria salas de visitação
+                for j in range(random.randint(2, 5)):
+                    sala = SalaVisitacao(
+                        nome=f"Sala {j+1}",
+                        descricao=fake.sentence(),
+                        capacidade=random.randint(20, 40),
+                        evento_id=evento.id
+                    )
+                    db.session.add(sala)
+                
+                # Cria horários de visitação
+                for _ in range(random.randint(5, 10)):
+                    data_horario = fake.date_between_dates(date_start=data_inicio, date_end=data_fim)
+                    hora_inicio = datetime.strptime(f"{random.randint(8, 15)}:00", "%H:%M").time()
+                    hora_fim = datetime.strptime(f"{hora_inicio.hour + 1}:00", "%H:%M").time()
+                    
+                    capacidade = random.randint(20, 50)
+                    horario = HorarioVisitacao(
+                        evento_id=evento.id,
+                        data=data_horario,
+                        horario_inicio=hora_inicio,
+                        horario_fim=hora_fim,
+                        capacidade_total=capacidade,
+                        vagas_disponiveis=capacidade
+                    )
+                    db.session.add(horario)
+            
+            todos_eventos.append(evento)
+            
+            # Cria um sorteio para alguns eventos
+            if random.choice([True, False]):
+                sorteio = Sorteio(
+                    titulo=f"Sorteio {fake.word().capitalize()}",
+                    descricao=fake.paragraph(nb_sentences=2),
+                    premio=fake.sentence(nb_words=6),
+                    data_sorteio=fake.date_time_between(start_date=data_inicio, end_date=data_fim),
+                    cliente_id=cliente.id,
+                    evento_id=evento.id,
+                    status=random.choice(['pendente', 'realizado', 'cancelado'])
+                )
+                db.session.add(sorteio)
+    
+    db.session.commit()
+    return todos_eventos
+
+def criar_tipos_inscricao_evento(evento):
+    """Cria tipos de inscrição para um evento"""
+    tipos = []
+    categorias = ['Estudante', 'Professor', 'Profissional', 'Convidado']
+    
+    # Se o evento é gratuito, apenas um tipo de inscrição
+    if evento.inscricao_gratuita:
+        tipo = EventoInscricaoTipo(
+            evento_id=evento.id,
+            nome='Geral',
+            preco=0.0
+        )
+        db.session.add(tipo)
+        tipos.append(tipo)
+    else:
+        # Vários tipos de inscrição com preços diferentes
+        for categoria in random.sample(categorias, random.randint(2, len(categorias))):
+            preco_base = random.randint(50, 300)
+            # Desconto para estudantes e professores
+            if categoria in ['Estudante', 'Professor']:
+                preco = preco_base * 0.7
+            elif categoria == 'Convidado':
+                preco = 0.0
+            else:
+                preco = preco_base
+                
+            tipo = EventoInscricaoTipo(
+                evento_id=evento.id,
+                nome=categoria,
+                preco=preco
+            )
+            db.session.add(tipo)
+            tipos.append(tipo)
+            
+            # Criar regras de inscrição para alguns tipos
+            if random.choice([True, False]):
                 regra = RegraInscricaoEvento(
-                    evento_id=event.id,
-                    tipo_inscricao_id=inscricao_tipo.id,
-                    limite_oficinas=random.choice([0, 3, 5, 10])
+                    evento_id=evento.id,
+                    tipo_inscricao_id=tipo.id,
+                    limite_oficinas=random.choice([0, 2, 3, 5])
                 )
                 db.session.add(regra)
-                
-    db.session.commit()
-
-    # Ministrantes - Criar mais ministrantes
-    ministrantes = []
-    formacoes = ["Doutorado", "Mestrado", "Especialização", "MBA", "Graduação"]
-    areas = ["Educação", "Tecnologia", "Ciências", "Matemática", "Linguagens", "Artes", "Metodologias Ativas", "Gestão Educacional"]
     
-    # Primeiro, buscar ministrantes existentes para evitar duplicidades
-    existing_emails = set()
-    existing_cpfs = set()
-    for m in Ministrante.query.all():
-        existing_emails.add(m.email)
-        existing_cpfs.add(m.cpf)
-        ministrantes.append(m)
-    
-    # Determinar quantos ministrantes ainda precisamos criar
-    num_to_create = 30 - len(ministrantes)
-    print(f"Já existem {len(ministrantes)} ministrantes. Criando mais {num_to_create}...")
-    
-    for i in range(num_to_create):
-        formacao_escolhida = random.choice(formacoes)
-        area_escolhida = random.sample(areas, k=random.randint(1, 3))
-        
-        # Gerar um email único garantido
-        email = None
-        while email is None or email in existing_emails:
-            unique_id = random_string(8).lower()
-            email = f"min_{unique_id}@email.com"
-        
-        existing_emails.add(email)
-        
-        # Gerar um CPF único
-        cpf = None
-        while cpf is None or cpf in existing_cpfs:
-            cpf = random_cpf()
-        
-        existing_cpfs.add(cpf)
-        
-        m = Ministrante(
-            nome=f"Ministrante Novo {i+1}",
-            formacao=formacao_escolhida,
-            categorias_formacao=",".join(random.sample(formacoes, k=random.randint(1, 3))),
-            areas_atuacao=",".join(area_escolhida),
-            cpf=cpf,
-            pix=f"pix_{unique_id}@email.com",
-            cidade="Maceió",
-            estado="AL",
-            email=email,
-            senha=generate_password_hash("min123"),
-            cliente_id=random.choice(clients).id
-        )
-        db.session.add(m)
-        ministrantes.append(m)
+    db.session.flush()
+    return tipos
 
-    db.session.commit()
-
-    # Oficinas - Criar mais oficinas e com mais diversidade
-    oficinas = []
-    tipos_oficina = ["Oficina", "Curso", "Palestra", "Mesa Redonda", "Workshop", "Conferência", "Seminário", "outros"]
-    tipos_inscricao = ["com_inscricao_com_limite", "com_inscricao_sem_limite", "sem_inscricao"]
-    titulos_base = [
-        "Metodologias Ativas", "Inteligência Artificial na Educação", 
-        "Gamificação", "Tecnologias Educacionais", "Educação Inclusiva",
-        "Avaliação Formativa", "Gestão de Sala de Aula", "Educação STEM",
-        "Alfabetização", "Pensamento Computacional", "Criatividade",
-        "Educação Socioemocional", "Formação de Professores"
-    ]
+def criar_lotes_evento(evento):
+    """Cria lotes de inscrição para um evento"""
+    tipos_inscricao = evento.tipos_inscricao
     
-    # Criar 100 oficinas com grande diversidade
-    for i in range(100):
-        client = random.choice(clients)
-        event = random.choice([e for e in events if e.cliente_id == client.id])
-        
-        # Criar títulos mais interessantes
-        titulo_base = random.choice(titulos_base)
-        nivel = random.choice(["Básico", "Intermediário", "Avançado", "Masterclass"])
-        title = f"{titulo_base}: {nivel} - Turma {i+1}"
-        
-        tipo_oficina = random.choice(tipos_oficina)
-        
-        # Garantir uma boa mistura de oficinas que precisam ou não de inscrição
-        if i < 30:  # 30% sem inscrição
-            tipo_inscricao = "sem_inscricao"
-        elif i < 70:  # 40% com inscrição limitada
-            tipo_inscricao = "com_inscricao_com_limite"
-        else:  # 30% com inscrição sem limite
-            tipo_inscricao = "com_inscricao_sem_limite"
-        
-        # Variar significativamente o número de vagas
-        if tipo_inscricao == "com_inscricao_com_limite":
-            vagas = random.choice([15, 20, 30, 50, 100, 150, 200, 250, 500])
-        else:
-            vagas = 0 if tipo_inscricao == "sem_inscricao" else 9999
-        
-        oficina = Oficina(
-            titulo=title,
-            descricao=f"Descrição detalhada da {title}. Esta atividade oferece uma experiência imersiva em {titulo_base}.",
-            ministrante_id=random.choice(ministrantes).id,
-            vagas=vagas,
-            carga_horaria=str(random.choice([2, 4, 6, 8, 16, 20])),
-            estado="AL",
-            cidade="Maceió",
-            cliente_id=client.id,
-            evento_id=event.id,
-            tipo_inscricao=tipo_inscricao,
-            tipo_oficina=tipo_oficina,
-            tipo_oficina_outro="Encontro Temático" if tipo_oficina == "outros" else None,
-            opcoes_checkin="op1,op2,op3,op4,correct",
-            palavra_correta="correct"
-        )
-        # Definir inscrição gratuita como atributo após criação do objeto
-        # já que não está no __init__ da classe Oficina
-        oficina.inscricao_gratuita = random.choice([True, False])
-        db.session.add(oficina)
-        db.session.flush()
-
-        # Adicionar múltiplos dias para oficinas maiores
-        num_dias = 1
-        if oficina.carga_horaria in ["8", "16", "20"]:
-            num_dias = int(int(oficina.carga_horaria) / 4)  # Dividir em dias de 4 horas
-        
-        for j in range(num_dias):
-            data = random_future_date()
-            hi, hf = random_time_range()
-            dia = OficinaDia(oficina_id=oficina.id, data=data, horario_inicio=hi, horario_fim=hf)
-            db.session.add(dia)
-
-        oficinas.append(oficina)
-
-    db.session.commit()
-
-    # Para oficinas que não são gratuitas, criar tipos de inscrição
-    print("Criando tipos de inscrição para oficinas...")
-    for oficina in oficinas:
-        if not oficina.inscricao_gratuita:
-            tipos = [
-                {"nome": "Estudante", "preco": 20.0},
-                {"nome": "Professor", "preco": 35.0},
-                {"nome": "Profissional", "preco": 50.0}
-            ]
-            
-            for tipo in tipos:
-                tipo_inscricao = InscricaoTipo(
-                    oficina_id=oficina.id,
-                    nome=tipo["nome"],
-                    preco=tipo["preco"]
-                )
-                db.session.add(tipo_inscricao)
+    # Criar 3 lotes: primeiro, segundo e terceiro
+    data_base = evento.data_inicio - timedelta(days=90)
     
-    db.session.commit()
-
-    # Participantes - Criar muito mais participantes
-    participantes = []
-    cidades = ["Maceió", "Rio Largo", "Marechal Deodoro", "Arapiraca", "Palmeira dos Índios", "Penedo"]
-    formacoes_part = ["Estudante", "Professor", "Coordenador", "Diretor", "Pesquisador"]
-    
-    # Primeiro, buscar participantes existentes para evitar duplicidades
-    existing_emails = set()
-    existing_cpfs = set()
-    for p in Usuario.query.filter_by(tipo="participante").all():
-        existing_emails.add(p.email)
-        existing_cpfs.add(p.cpf)
-        participantes.append(p)
-    
-    # Determinar quantos participantes ainda precisamos criar
-    num_to_create = 2000 - len(participantes)
-    print(f"Já existem {len(participantes)} participantes. Criando mais {num_to_create}...")
-    
-    for i in range(num_to_create):
-        # Gerar um email único garantido
-        email = None
-        while email is None or email in existing_emails:
-            unique_id = random_string(8).lower()
-            email = f"part_{unique_id}@mail.com"
+    lotes = []
+    for i in range(3):
+        data_inicio = data_base + timedelta(days=i*30)
+        data_fim = data_inicio + timedelta(days=25)
         
-        existing_emails.add(email)
-        
-        # Gerar um CPF único garantido
-        cpf = None
-        while cpf is None or cpf in existing_cpfs:
-            cpf = random_cpf()
-        
-        existing_cpfs.add(cpf)
-        
-        # Escolher um cliente aleatório
-        cliente = random.choice(clients)
-        
-        # Escolher um evento deste cliente
-        evento = random.choice([e for e in events if e.cliente_id == cliente.id])
-        
-        # Escolher um tipo de inscrição aleatório se o evento não for gratuito
-        tipo_inscricao_id = None
-        if not evento.inscricao_gratuita:
-            tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
-            if tipos_inscricao:
-                tipo_inscricao_id = random.choice(tipos_inscricao).id
-        
-        p = Usuario(
-            nome=f"Participante Novo {i+1}",
-            cpf=cpf,
-            email=email,
-            senha=generate_password_hash("part123"),
-            formacao=random.choice(formacoes_part),
-            tipo="participante",
-            cliente_id=cliente.id,
+        lote = LoteInscricao(
             evento_id=evento.id,
-            tipo_inscricao_id=tipo_inscricao_id,
-            estados="AL",
-            cidades=random.choice(cidades)
+            nome=f"{i+1}º Lote",
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            qtd_maxima=random.randint(50, 100),
+            ordem=i+1,
+            ativo=True
         )
-        db.session.add(p)
-        participantes.append(p)
+        db.session.add(lote)
+        db.session.flush()
+        lotes.append(lote)
         
-        # Commit a cada 100 participantes para evitar problemas de memória
-        if i > 0 and i % 100 == 0:
-            db.session.commit()
-            print(f"   - {i} participantes criados...")
-
-    db.session.commit()
-
-    # Inscrições e Checkins - Criar muitas inscrições para simular eventos grandes
-    print("Criando inscrições...")
-    
-    # Armazenar pares (usuario_id, oficina_id) para evitar duplicidades
-    existing_inscricoes = set()
-    for ins in Inscricao.query.all():
-        existing_inscricoes.add((ins.usuario_id, ins.oficina_id))
-    
-    print(f"Já existem {len(existing_inscricoes)} inscrições no sistema.")
-    
-    inscricoes_count = 0
-    checkins_count = 0
-    
-    # Definir quantas inscrições criar para cada oficina com base em suas vagas
-    for oficina in oficinas:
-        # Pular oficinas sem inscrição
-        if oficina.tipo_inscricao == "sem_inscricao":
-            continue
+        # Criar preços para cada tipo de inscrição neste lote
+        for tipo in tipos_inscricao:
+            # Aumento progressivo de preço a cada lote (10%)
+            preco_base = tipo.preco
+            preco_lote = preco_base * (1 + i * 0.1)
             
-        # Obter tipos de inscrição para esta oficina (se não for gratuita)
-        tipos_inscricao = []
-        if not oficina.inscricao_gratuita:
-            tipos_inscricao = InscricaoTipo.query.filter_by(oficina_id=oficina.id).all()
-        
-        # Definir o número de inscrições a serem criadas
-        if oficina.tipo_inscricao == "com_inscricao_com_limite":
-            # Preencher entre 70% e 110% das vagas (algumas podem ficar em lista de espera)
-            num_inscricoes = int(oficina.vagas * random.uniform(0.7, 1.1))
-        else:  # com_inscricao_sem_limite
-            # Criar entre 50 e 300 inscrições para oficinas sem limite
-            num_inscricoes = random.randint(50, 300)
-        
-        # Garante que não ultrapasse o número de participantes disponíveis
-        num_inscricoes = min(num_inscricoes, len(participantes))
-        
-        # Escolher aleatoriamente participantes para esta oficina
-        selected_participants = random.sample(participantes, num_inscricoes)
-        
-        # Criar as inscrições
-        for part in selected_participants:
-            # Verificar se esta inscrição já existe
-            if (part.id, oficina.id) not in existing_inscricoes:
-                existing_inscricoes.add((part.id, oficina.id))
-                
-                try:
-                    ins = Inscricao(usuario_id=part.id, oficina_id=oficina.id, cliente_id=oficina.cliente_id)
-                    
-                    # Atribuir um tipo de inscrição se a oficina não for gratuita
-                    if not oficina.inscricao_gratuita and tipos_inscricao:
-                        ins.tipo_inscricao_id = random.choice(tipos_inscricao).id
-                    
-                    # Certificar que o usuário tenha tipo de inscrição no evento
-                    if oficina.evento_id:
-                        # Definir o evento no usuário
-                        if not part.evento_id:
-                            part.evento_id = oficina.evento_id
-                            db.session.add(part)
-                        
-                        # Se o evento não for gratuito, garantir que o usuário tenha um tipo de inscrição
-                        evento = Evento.query.get(oficina.evento_id)
-                        if not evento.inscricao_gratuita and not part.tipo_inscricao_id:
-                            tipos_evento = EventoInscricaoTipo.query.filter_by(evento_id=oficina.evento_id).all()
-                            if tipos_evento:
-                                part.tipo_inscricao_id = random.choice(tipos_evento).id
-                                db.session.add(part)
-                    
-                    db.session.add(ins)
-                    inscricoes_count += 1
-                    
-                    # Para cerca de 60% dos inscritos, criar um checkin também
-                    if random.random() < 0.6:
-                        ck = Checkin(
-                            usuario_id=part.id,
-                            oficina_id=oficina.id,
-                            data_hora=datetime.now() - timedelta(days=random.randint(1, 3)),
-                            palavra_chave="correct"
-                        )
-                        db.session.add(ck)
-                        checkins_count += 1
-                    
-                    # Commit a cada 200 inscrições para evitar sobrecarga
-                    if inscricoes_count % 200 == 0:
-                        try:
-                            db.session.commit()
-                            print(f"   - {inscricoes_count} novas inscrições criadas...")
-                        except IntegrityError as e:
-                            print(f"Erro de integridade ao criar inscrições: {e}")
-                            db.session.rollback()
-                
-                except Exception as e:
-                    print(f"Erro ao criar inscrição para usuario_id={part.id}, oficina_id={oficina.id}: {e}")
-                    db.session.rollback()
-
-    db.session.commit()
-    print(f"Total de inscrições criadas: {Inscricao.query.count()}")
-    print(f"Total de checkins criados: {Checkin.query.count()}")
-    
-    # Adicionar alguns feedbacks
-    print("Adicionando feedbacks...")
-    
-    # Armazenar pares (usuario_id, oficina_id) para evitar duplicidades em feedbacks
-    existing_feedbacks = set()
-    for fb in Feedback.query.all():
-        if fb.usuario_id and fb.oficina_id:
-            existing_feedbacks.add((fb.usuario_id, fb.oficina_id))
-    
-    print(f"Já existem {len(existing_feedbacks)} feedbacks no sistema.")
-    
-    feedback_count = 0
-    feedback_limit = 500
-    
-    # Obter todas as inscrições que têm checkin
-    checkins = Checkin.query.all()
-    print(f"Existem {len(checkins)} checkins para potenciais feedbacks.")
-    
-    if checkins:
-        # Embaralhar os checkins para selecionar aleatoriamente
-        random.shuffle(checkins)
-        
-        for checkin in checkins[:feedback_limit]:
-            # Verificar se já existe feedback para esta combinação usuário/oficina
-            if (checkin.usuario_id, checkin.oficina_id) not in existing_feedbacks:
-                try:
-                    # Adicionar feedback
-                    fb = Feedback(
-                        usuario_id=checkin.usuario_id,
-                        oficina_id=checkin.oficina_id,
-                        rating=random.randint(1, 5),
-                        comentario=f"Comentário sobre a oficina {checkin.oficina_id}. {'Muito bom!' if random.random() > 0.3 else 'Pode melhorar.'}"
-                    )
-                    db.session.add(fb)
-                    feedback_count += 1
-                    existing_feedbacks.add((checkin.usuario_id, checkin.oficina_id))
-                    
-                    # Commit a cada 50 feedbacks
-                    if feedback_count % 50 == 0:
-                        try:
-                            db.session.commit()
-                            print(f"   - {feedback_count} novos feedbacks criados...")
-                        except Exception as e:
-                            print(f"Erro ao commitar feedbacks: {e}")
-                            db.session.rollback()
-                
-                except Exception as e:
-                    print(f"Erro ao criar feedback: {e}")
-                    db.session.rollback()
-                
-                # Parar quando atingir o limite
-                if feedback_count >= feedback_limit:
-                    break
-    
-    db.session.commit()
-    print(f"Total de feedbacks criados: {Feedback.query.count()}")
-    
-    print("\u2705 População de banco concluída com sucesso!")
-    print(f"""
-    Resumo da população:
-    - Clientes: {Cliente.query.count()}
-    - Eventos: {Evento.query.count()}
-    - Tipos de Inscrição em Eventos: {EventoInscricaoTipo.query.count()}
-    - Regras de Inscrição: {RegraInscricaoEvento.query.count()}
-    - Ministrantes: {Ministrante.query.count()}
-    - Oficinas: {Oficina.query.count()}
-    - Tipos de Inscrição em Oficinas: {InscricaoTipo.query.count()}
-    - Participantes: {Usuario.query.filter_by(tipo="participante").count()}
-    - Inscrições: {Inscricao.query.count()}
-    - Checkins: {Checkin.query.count()}
-    - Feedbacks: {Feedback.query.count()}
-    """)
-
-if __name__ == "__main__":
-    with app.app_context():
-
-from app import app, db
-from models import (
-    Usuario, Oficina, OficinaDia, Inscricao, Checkin,
-    Feedback, Ministrante, Cliente, ConfiguracaoCliente,
-    Evento, LinkCadastro, Formulario, CampoFormulario,
-    RespostaFormulario, RespostaCampo, MaterialOficina,
-    RelatorioOficina, EventoInscricaoTipo, InscricaoTipo,
-    RegraInscricaoEvento
-)
-from werkzeug.security import generate_password_hash
-from datetime import datetime, timedelta
-import random
-import string
-import os
-from sqlalchemy.exc import IntegrityError
-
-# Function to generate random strings
-def random_string(length):
-    return ''.join(random.choice(string.ascii_letters) for _ in range(length))
-
-# Function to generate random CPF
-def random_cpf():
-    return ''.join(random.choice(string.digits) for _ in range(11))
-
-# Function to generate random date in the future
-def random_future_date(days_ahead_min=10, days_ahead_max=60):
-    days_ahead = random.randint(days_ahead_min, days_ahead_max)
-    return datetime.now().date() + timedelta(days=days_ahead)
-
-# Function to generate start and end time
-def random_time_range():
-    start_hour = random.randint(8, 14)
-    end_hour = start_hour + random.randint(2, 4)
-    start_time = f"{start_hour:02d}:00"
-    end_time = f"{end_hour:02d}:00"
-    return start_time, end_time
-
-def create_directory_if_not_exists(path):
-    directory = os.path.dirname(path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-# Populate the database
-def populate_database():
-    print("\U0001F680 Starting database population...")
-    
-    # Para prevenir erros de integridade, usar session.no_autoflush
-    # em seções críticas do código
-    db.session.autoflush = False
-
-    # Create Admin - verificando CPF e email para evitar erro de duplicidade
-    admin_by_email = Usuario.query.filter_by(email="admin@email.com").first()
-    admin_by_cpf = Usuario.query.filter_by(cpf="00000000000").first()
-    
-    if admin_by_email:
-        admin = admin_by_email
-        print("Admin user already exists with email admin@email.com")
-    elif admin_by_cpf:
-        admin = admin_by_cpf
-        print(f"Admin user already exists with CPF 00000000000")
-    else:
-        admin = Usuario(
-            nome="Admin User",
-            cpf="00000000000",
-            email="admin@email.com",
-            senha=generate_password_hash("admin123"),
-            formacao="System Administrator",
-            tipo="admin"
-        )
-        db.session.add(admin)
-        print("Created new admin user")
-        db.session.commit()
-
-    # Clients
-    clients = []
-    client_data = [
-        {"nome": "Educational Corp", "email": "educational@example.com", "habilita_pagamento": True},
-        {"nome": "Training Solutions", "email": "training@example.com", "habilita_pagamento": False},
-        {"nome": "Learn Forward", "email": "learn@example.com", "habilita_pagamento": True},
-        {"nome": "Academia de Ciências", "email": "acad.ciencias@example.com", "habilita_pagamento": True},
-        {"nome": "Instituto de Educação", "email": "instituto@example.com", "habilita_pagamento": True},
-    ]
-
-    for data in client_data:
-        client = Cliente.query.filter_by(email=data["email"]).first()
-        if not client:
-            client = Cliente(
-                nome=data["nome"],
-                email=data["email"],
-                senha=generate_password_hash("client123"),
-                habilita_pagamento=data["habilita_pagamento"],
-                ativo=True
+            lote_tipo = LoteTipoInscricao(
+                lote_id=lote.id,
+                tipo_inscricao_id=tipo.id,
+                preco=preco_lote
             )
-            db.session.add(client)
-            clients.append(client)
+            db.session.add(lote_tipo)
+    
+    return lotes
+
+def criar_ministrantes(clientes, quantidade=20):
+    """Cria ministrantes para as oficinas"""
+    ministrantes = []
+    
+    for i in range(quantidade):
+        cliente = random.choice(clientes)
+        
+        categorias = random.sample(TIPOS_FORMACAO, random.randint(1, 3))
+        categorias_formacao = ','.join(categorias)
+        
+        areas = random.sample(AREAS_ATUACAO, random.randint(1, 3))
+        areas_atuacao = ','.join(areas)
+        
+        ministrante = Ministrante(
+            nome=fake.name(),
+            formacao=random.choice(TIPOS_FORMACAO),
+            categorias_formacao=categorias_formacao,
+            foto=f"fotos/ministrante_{i}.jpg",
+            areas_atuacao=areas_atuacao,
+            cpf=fake.cpf(),
+            pix=fake.email(),
+            cidade=fake.city(),
+            estado=random.choice(ESTADOS_BRASIL),
+            email=fake.email(),
+            senha=generate_password_hash(fake.password()),
+            cliente_id=cliente.id
+        )
+        db.session.add(ministrante)
+        ministrantes.append(ministrante)
+    
+    db.session.commit()
+    return ministrantes
+
+def criar_oficinas(eventos, ministrantes, quantidade_por_evento=10):
+    """Cria oficinas para os eventos"""
+    todas_oficinas = []
+    
+    for evento in eventos:
+        # Seleciona ministrantes aleatórios para este evento
+        evento_ministrantes = random.sample(ministrantes, min(len(ministrantes), quantidade_por_evento))
+        
+        for i, ministrante in enumerate(evento_ministrantes):
+            # Decide se a oficina será grátis ou paga
+            inscricao_gratuita = random.choice([True, False])
+            
+            # Tipos de inscrição
+            tipo_inscricao = random.choice(['sem_inscricao', 'com_inscricao_sem_limite', 'com_inscricao_com_limite'])
+            
+            # Define vagas com base no tipo de inscrição
+            if tipo_inscricao == 'sem_inscricao':
+                vagas = 0
+            elif tipo_inscricao == 'com_inscricao_sem_limite':
+                vagas = 9999
+            else:
+                vagas = random.randint(20, 100)
+            
+            tipo_oficina = random.choice(TIPOS_OFICINA)
+            tipo_oficina_outro = None
+            if tipo_oficina == 'Outros':
+                tipo_oficina_outro = fake.word().capitalize()
+            
+            # Cria oficina
+            oficina = Oficina(
+                titulo=fake.sentence(nb_words=6),
+                descricao=fake.paragraph(nb_sentences=4),
+                ministrante_id=ministrante.id,
+                vagas=vagas,
+                carga_horaria=f"{random.randint(2, 8)}h",
+                estado=random.choice(ESTADOS_BRASIL),
+                cidade=fake.city(),
+                cliente_id=evento.cliente_id,
+                evento_id=evento.id,
+                qr_code=f"qrcode/oficina_{evento.id}_{i}.png",
+                opcoes_checkin=f"palavra1,palavra2,palavra3,palavra4,palavra5",
+                palavra_correta=f"palavra{random.randint(1, 5)}",
+                tipo_inscricao=tipo_inscricao,
+                tipo_oficina=tipo_oficina,
+                tipo_oficina_outro=tipo_oficina_outro,
+                inscricao_gratuita=inscricao_gratuita
+            )
+            db.session.add(oficina)
             db.session.flush()
-
-            config = ConfiguracaoCliente(
-                cliente_id=client.id,
-                permitir_checkin_global=True,
-                habilitar_feedback=True,
-                habilitar_certificado_individual=True
-            )
-            db.session.add(config)
-        else:
-            clients.append(client)
-
-    db.session.commit()
-
-    # Events - Criar eventos maiores e mais diversos
-    events = []
-    event_data = [
-        {"nome": "Conferência Nacional de Educação", "inscricao_gratuita": False, "descricao": "Grande evento anual com mais de 5000 participantes", "dias": 5},
-        {"nome": "Semana de Tecnologia Educacional", "inscricao_gratuita": True, "descricao": "Exposição de novas tecnologias para educação", "dias": 7},
-        {"nome": "Congresso de Professores", "inscricao_gratuita": False, "descricao": "Evento para formação continuada de professores", "dias": 3},
-        {"nome": "Festival de Ciências", "inscricao_gratuita": True, "descricao": "Apresentação de projetos científicos e oficinas", "dias": 4},
-        {"nome": "Simpósio de Metodologias Ativas", "inscricao_gratuita": False, "descricao": "Debate sobre novas metodologias de ensino", "dias": 2},
-    ]
-    
-    for client in clients:
-        for data in event_data:
-            event = Evento(
-                cliente_id=client.id,
-                nome=f"{data['nome']} - {client.nome}",
-                descricao=f"{data['descricao']}. Organizado por {client.nome}.",
-                programacao="Programação completa disponível no site.",
-                localizacao="Centro de Convenções",
-                link_mapa="https://maps.google.com",
-                inscricao_gratuita=data["inscricao_gratuita"],
-                data_inicio=datetime.now() + timedelta(days=5),
-                data_fim=datetime.now() + timedelta(days=5 + data["dias"])
-            )
-            db.session.add(event)
-            events.append(event)
-
-    db.session.commit()
-    
-    # Criar tipos de inscrição para eventos não gratuitos
-    print("Criando tipos de inscrição para eventos...")
-    for event in events:
-        if not event.inscricao_gratuita:
-            # Criar 3 tipos de inscrição para cada evento não gratuito
-            tipos = [
-                {"nome": "Estudante", "preco": 50.0},
-                {"nome": "Professor", "preco": 80.0},
-                {"nome": "Profissional", "preco": 120.0}
-            ]
             
-            for tipo in tipos:
-                inscricao_tipo = EventoInscricaoTipo(
-                    evento_id=event.id,
-                    nome=tipo["nome"],
-                    preco=tipo["preco"]
-                )
-                db.session.add(inscricao_tipo)
-                db.session.flush()  # Para obter o ID
-                
-                # Criar regra de inscrição para este tipo
-                regra = RegraInscricaoEvento(
-                    evento_id=event.id,
-                    tipo_inscricao_id=inscricao_tipo.id,
-                    limite_oficinas=random.choice([0, 3, 5, 10])
-                )
-                db.session.add(regra)
-                
-    db.session.commit()
-
-    # Ministrantes - Criar mais ministrantes
-    ministrantes = []
-    formacoes = ["Doutorado", "Mestrado", "Especialização", "MBA", "Graduação"]
-    areas = ["Educação", "Tecnologia", "Ciências", "Matemática", "Linguagens", "Artes", "Metodologias Ativas", "Gestão Educacional"]
-    
-    # Primeiro, buscar ministrantes existentes para evitar duplicidades
-    existing_emails = set()
-    existing_cpfs = set()
-    for m in Ministrante.query.all():
-        existing_emails.add(m.email)
-        existing_cpfs.add(m.cpf)
-        ministrantes.append(m)
-    
-    # Determinar quantos ministrantes ainda precisamos criar
-    num_to_create = 30 - len(ministrantes)
-    print(f"Já existem {len(ministrantes)} ministrantes. Criando mais {num_to_create}...")
-    
-    for i in range(num_to_create):
-        formacao_escolhida = random.choice(formacoes)
-        area_escolhida = random.sample(areas, k=random.randint(1, 3))
-        
-        # Gerar um email único garantido
-        email = None
-        while email is None or email in existing_emails:
-            unique_id = random_string(8).lower()
-            email = f"min_{unique_id}@email.com"
-        
-        existing_emails.add(email)
-        
-        # Gerar um CPF único
-        cpf = None
-        while cpf is None or cpf in existing_cpfs:
-            cpf = random_cpf()
-        
-        existing_cpfs.add(cpf)
-        
-        m = Ministrante(
-            nome=f"Ministrante Novo {i+1}",
-            formacao=formacao_escolhida,
-            categorias_formacao=",".join(random.sample(formacoes, k=random.randint(1, 3))),
-            areas_atuacao=",".join(area_escolhida),
-            cpf=cpf,
-            pix=f"pix_{unique_id}@email.com",
-            cidade="Maceió",
-            estado="AL",
-            email=email,
-            senha=generate_password_hash("min123"),
-            cliente_id=random.choice(clients).id
-        )
-        db.session.add(m)
-        ministrantes.append(m)
-
-    db.session.commit()
-
-    # Oficinas - Criar mais oficinas e com mais diversidade
-    oficinas = []
-    tipos_oficina = ["Oficina", "Curso", "Palestra", "Mesa Redonda", "Workshop", "Conferência", "Seminário", "outros"]
-    tipos_inscricao = ["com_inscricao_com_limite", "com_inscricao_sem_limite", "sem_inscricao"]
-    titulos_base = [
-        "Metodologias Ativas", "Inteligência Artificial na Educação", 
-        "Gamificação", "Tecnologias Educacionais", "Educação Inclusiva",
-        "Avaliação Formativa", "Gestão de Sala de Aula", "Educação STEM",
-        "Alfabetização", "Pensamento Computacional", "Criatividade",
-        "Educação Socioemocional", "Formação de Professores"
-    ]
-    
-    # Criar 100 oficinas com grande diversidade
-    for i in range(100):
-        client = random.choice(clients)
-        event = random.choice([e for e in events if e.cliente_id == client.id])
-        
-        # Criar títulos mais interessantes
-        titulo_base = random.choice(titulos_base)
-        nivel = random.choice(["Básico", "Intermediário", "Avançado", "Masterclass"])
-        title = f"{titulo_base}: {nivel} - Turma {i+1}"
-        
-        tipo_oficina = random.choice(tipos_oficina)
-        
-        # Garantir uma boa mistura de oficinas que precisam ou não de inscrição
-        if i < 30:  # 30% sem inscrição
-            tipo_inscricao = "sem_inscricao"
-        elif i < 70:  # 40% com inscrição limitada
-            tipo_inscricao = "com_inscricao_com_limite"
-        else:  # 30% com inscrição sem limite
-            tipo_inscricao = "com_inscricao_sem_limite"
-        
-        # Variar significativamente o número de vagas
-        if tipo_inscricao == "com_inscricao_com_limite":
-            vagas = random.choice([15, 20, 30, 50, 100, 150, 200, 250, 500])
-        else:
-            vagas = 0 if tipo_inscricao == "sem_inscricao" else 9999
-        
-        oficina = Oficina(
-            titulo=title,
-            descricao=f"Descrição detalhada da {title}. Esta atividade oferece uma experiência imersiva em {titulo_base}.",
-            ministrante_id=random.choice(ministrantes).id,
-            vagas=vagas,
-            carga_horaria=str(random.choice([2, 4, 6, 8, 16, 20])),
-            estado="AL",
-            cidade="Maceió",
-            cliente_id=client.id,
-            evento_id=event.id,
-            tipo_inscricao=tipo_inscricao,
-            tipo_oficina=tipo_oficina,
-            tipo_oficina_outro="Encontro Temático" if tipo_oficina == "outros" else None,
-            opcoes_checkin="op1,op2,op3,op4,correct",
-            palavra_correta="correct"
-        )
-        # Definir inscrição gratuita como atributo após criação do objeto
-        # já que não está no __init__ da classe Oficina
-        oficina.inscricao_gratuita = random.choice([True, False])
-        db.session.add(oficina)
-        db.session.flush()
-
-        # Adicionar múltiplos dias para oficinas maiores
-        num_dias = 1
-        if oficina.carga_horaria in ["8", "16", "20"]:
-            num_dias = int(int(oficina.carga_horaria) / 4)  # Dividir em dias de 4 horas
-        
-        for j in range(num_dias):
-            data = random_future_date()
-            hi, hf = random_time_range()
-            dia = OficinaDia(oficina_id=oficina.id, data=data, horario_inicio=hi, horario_fim=hf)
-            db.session.add(dia)
-
-        oficinas.append(oficina)
-
-    db.session.commit()
-
-    # Para oficinas que não são gratuitas, criar tipos de inscrição
-    print("Criando tipos de inscrição para oficinas...")
-    for oficina in oficinas:
-        if not oficina.inscricao_gratuita:
-            tipos = [
-                {"nome": "Estudante", "preco": 20.0},
-                {"nome": "Professor", "preco": 35.0},
-                {"nome": "Profissional", "preco": 50.0}
-            ]
-            
-            for tipo in tipos:
-                tipo_inscricao = InscricaoTipo(
+            # Associa mais ministrantes a esta oficina (aleatoriamente)
+            outros_ministrantes = random.sample(
+                [m for m in ministrantes if m.id != ministrante.id], 
+                random.randint(0, 2)
+            )
+            for outro_ministrante in outros_ministrantes:
+                associacao = oficina_ministrantes_association.insert().values(
                     oficina_id=oficina.id,
-                    nome=tipo["nome"],
-                    preco=tipo["preco"]
+                    ministrante_id=outro_ministrante.id
                 )
-                db.session.add(tipo_inscricao)
-    
-    db.session.commit()
-
-    # Participantes - Criar muito mais participantes
-    participantes = []
-    cidades = ["Maceió", "Rio Largo", "Marechal Deodoro", "Arapiraca", "Palmeira dos Índios", "Penedo"]
-    formacoes_part = ["Estudante", "Professor", "Coordenador", "Diretor", "Pesquisador"]
-    
-    # Primeiro, buscar participantes existentes para evitar duplicidades
-    existing_emails = set()
-    existing_cpfs = set()
-    for p in Usuario.query.filter_by(tipo="participante").all():
-        existing_emails.add(p.email)
-        existing_cpfs.add(p.cpf)
-        participantes.append(p)
-    
-    # Determinar quantos participantes ainda precisamos criar
-    num_to_create = 2000 - len(participantes)
-    print(f"Já existem {len(participantes)} participantes. Criando mais {num_to_create}...")
-    
-    for i in range(num_to_create):
-        # Gerar um email único garantido
-        email = None
-        while email is None or email in existing_emails:
-            unique_id = random_string(8).lower()
-            email = f"part_{unique_id}@mail.com"
-        
-        existing_emails.add(email)
-        
-        # Gerar um CPF único garantido
-        cpf = None
-        while cpf is None or cpf in existing_cpfs:
-            cpf = random_cpf()
-        
-        existing_cpfs.add(cpf)
-        
-        # Escolher um cliente aleatório
-        cliente = random.choice(clients)
-        
-        # Escolher um evento deste cliente
-        evento = random.choice([e for e in events if e.cliente_id == cliente.id])
-        
-        # Escolher um tipo de inscrição aleatório se o evento não for gratuito
-        tipo_inscricao_id = None
-        if not evento.inscricao_gratuita:
-            tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
-            if tipos_inscricao:
-                tipo_inscricao_id = random.choice(tipos_inscricao).id
-        
-        p = Usuario(
-            nome=f"Participante Novo {i+1}",
-            cpf=cpf,
-            email=email,
-            senha=generate_password_hash("part123"),
-            formacao=random.choice(formacoes_part),
-            tipo="participante",
-            cliente_id=cliente.id,
-            evento_id=evento.id,
-            tipo_inscricao_id=tipo_inscricao_id,
-            estados="AL",
-            cidades=random.choice(cidades)
-        )
-        db.session.add(p)
-        participantes.append(p)
-        
-        # Commit a cada 100 participantes para evitar problemas de memória
-        if i > 0 and i % 100 == 0:
-            db.session.commit()
-            print(f"   - {i} participantes criados...")
-
-    db.session.commit()
-
-    # Inscrições e Checkins - Criar muitas inscrições para simular eventos grandes
-    print("Criando inscrições...")
-    
-    # Armazenar pares (usuario_id, oficina_id) para evitar duplicidades
-    existing_inscricoes = set()
-    for ins in Inscricao.query.all():
-        existing_inscricoes.add((ins.usuario_id, ins.oficina_id))
-    
-    print(f"Já existem {len(existing_inscricoes)} inscrições no sistema.")
-    
-    inscricoes_count = 0
-    checkins_count = 0
-    
-    # Definir quantas inscrições criar para cada oficina com base em suas vagas
-    for oficina in oficinas:
-        # Pular oficinas sem inscrição
-        if oficina.tipo_inscricao == "sem_inscricao":
-            continue
+                db.session.execute(associacao)
             
-        # Obter tipos de inscrição para esta oficina (se não for gratuita)
-        tipos_inscricao = []
-        if not oficina.inscricao_gratuita:
-            tipos_inscricao = InscricaoTipo.query.filter_by(oficina_id=oficina.id).all()
-        
-        # Definir o número de inscrições a serem criadas
-        if oficina.tipo_inscricao == "com_inscricao_com_limite":
-            # Preencher entre 70% e 110% das vagas (algumas podem ficar em lista de espera)
-            num_inscricoes = int(oficina.vagas * random.uniform(0.7, 1.1))
-        else:  # com_inscricao_sem_limite
-            # Criar entre 50 e 300 inscrições para oficinas sem limite
-            num_inscricoes = random.randint(50, 300)
-        
-        # Garante que não ultrapasse o número de participantes disponíveis
-        num_inscricoes = min(num_inscricoes, len(participantes))
-        
-        # Escolher aleatoriamente participantes para esta oficina
-        selected_participants = random.sample(participantes, num_inscricoes)
-        
-        # Criar as inscrições
-        for part in selected_participants:
-            # Verificar se esta inscrição já existe
-            if (part.id, oficina.id) not in existing_inscricoes:
-                existing_inscricoes.add((part.id, oficina.id))
-                
-                try:
-                    ins = Inscricao(usuario_id=part.id, oficina_id=oficina.id, cliente_id=oficina.cliente_id)
-                    
-                    # Atribuir um tipo de inscrição se a oficina não for gratuita
-                    if not oficina.inscricao_gratuita and tipos_inscricao:
-                        ins.tipo_inscricao_id = random.choice(tipos_inscricao).id
-                    
-                    # Certificar que o usuário tenha tipo de inscrição no evento
-                    if oficina.evento_id:
-                        # Definir o evento no usuário
-                        if not part.evento_id:
-                            part.evento_id = oficina.evento_id
-                            db.session.add(part)
-                        
-                        # Se o evento não for gratuito, garantir que o usuário tenha um tipo de inscrição
-                        evento = Evento.query.get(oficina.evento_id)
-                        if not evento.inscricao_gratuita and not part.tipo_inscricao_id:
-                            tipos_evento = EventoInscricaoTipo.query.filter_by(evento_id=oficina.evento_id).all()
-                            if tipos_evento:
-                                part.tipo_inscricao_id = random.choice(tipos_evento).id
-                                db.session.add(part)
-                    
-                    db.session.add(ins)
-                    inscricoes_count += 1
-                    
-                    # Para cerca de 60% dos inscritos, criar um checkin também
-                    if random.random() < 0.6:
-                        ck = Checkin(
-                            usuario_id=part.id,
-                            oficina_id=oficina.id,
-                            data_hora=datetime.now() - timedelta(days=random.randint(1, 3)),
-                            palavra_chave="correct"
-                        )
-                        db.session.add(ck)
-                        checkins_count += 1
-                    
-                    # Commit a cada 200 inscrições para evitar sobrecarga
-                    if inscricoes_count % 200 == 0:
-                        try:
-                            db.session.commit()
-                            print(f"   - {inscricoes_count} novas inscrições criadas...")
-                        except IntegrityError as e:
-                            print(f"Erro de integridade ao criar inscrições: {e}")
-                            db.session.rollback()
-                
-                except Exception as e:
-                    print(f"Erro ao criar inscrição para usuario_id={part.id}, oficina_id={oficina.id}: {e}")
-                    db.session.rollback()
-
-    db.session.commit()
-    print(f"Total de inscrições criadas: {Inscricao.query.count()}")
-    print(f"Total de checkins criados: {Checkin.query.count()}")
-    
-    # Adicionar alguns feedbacks
-    print("Adicionando feedbacks...")
-    
-    # Armazenar pares (usuario_id, oficina_id) para evitar duplicidades em feedbacks
-    existing_feedbacks = set()
-    for fb in Feedback.query.all():
-        if fb.usuario_id and fb.oficina_id:
-            existing_feedbacks.add((fb.usuario_id, fb.oficina_id))
-    
-    print(f"Já existem {len(existing_feedbacks)} feedbacks no sistema.")
-    
-    feedback_count = 0
-    feedback_limit = 500
-    
-    # Obter todas as inscrições que têm checkin
-    checkins = Checkin.query.all()
-    print(f"Existem {len(checkins)} checkins para potenciais feedbacks.")
-    
-    if checkins:
-        # Embaralhar os checkins para selecionar aleatoriamente
-        random.shuffle(checkins)
-        
-        for checkin in checkins[:feedback_limit]:
-            # Verificar se já existe feedback para esta combinação usuário/oficina
-            if (checkin.usuario_id, checkin.oficina_id) not in existing_feedbacks:
-                try:
-                    # Adicionar feedback
-                    fb = Feedback(
-                        usuario_id=checkin.usuario_id,
-                        oficina_id=checkin.oficina_id,
-                        rating=random.randint(1, 5),
-                        comentario=f"Comentário sobre a oficina {checkin.oficina_id}. {'Muito bom!' if random.random() > 0.3 else 'Pode melhorar.'}"
+            # Cria dias para a oficina
+            criar_dias_oficina(oficina, evento)
+            
+            # Se for oficina paga, criar tipos de inscrição
+            if not inscricao_gratuita:
+                criar_tipos_inscricao_oficina(oficina)
+            
+            # Adiciona materiais para algumas oficinas
+            if random.choice([True, False]):
+                for j in range(random.randint(1, 3)):
+                    material = MaterialOficina(
+                        oficina_id=oficina.id,
+                        nome_arquivo=f"Material {j+1} - {oficina.titulo}.pdf",
+                        caminho_arquivo=f"materiais/oficina_{oficina.id}_material_{j}.pdf"
                     )
-                    db.session.add(fb)
-                    feedback_count += 1
-                    existing_feedbacks.add((checkin.usuario_id, checkin.oficina_id))
-                    
-                    # Commit a cada 50 feedbacks
-                    if feedback_count % 50 == 0:
-                        try:
-                            db.session.commit()
-                            print(f"   - {feedback_count} novos feedbacks criados...")
-                        except Exception as e:
-                            print(f"Erro ao commitar feedbacks: {e}")
-                            db.session.rollback()
-                
-                except Exception as e:
-                    print(f"Erro ao criar feedback: {e}")
-                    db.session.rollback()
-                
-                # Parar quando atingir o limite
-                if feedback_count >= feedback_limit:
-                    break
+                    db.session.add(material)
+            
+            todas_oficinas.append(oficina)
     
     db.session.commit()
-    print(f"Total de feedbacks criados: {Feedback.query.count()}")
-    
-    print("\u2705 População de banco concluída com sucesso!")
-    print(f"""
-    Resumo da população:
-    - Clientes: {Cliente.query.count()}
-    - Eventos: {Evento.query.count()}
-    - Tipos de Inscrição em Eventos: {EventoInscricaoTipo.query.count()}
-    - Regras de Inscrição: {RegraInscricaoEvento.query.count()}
-    - Ministrantes: {Ministrante.query.count()}
-    - Oficinas: {Oficina.query.count()}
-    - Tipos de Inscrição em Oficinas: {InscricaoTipo.query.count()}
-    - Participantes: {Usuario.query.filter_by(tipo="participante").count()}
-    - Inscrições: {Inscricao.query.count()}
-    - Checkins: {Checkin.query.count()}
-    - Feedbacks: {Feedback.query.count()}
-    """)
+    return todas_oficinas
 
+def criar_dias_oficina(oficina, evento):
+    """Cria dias para uma oficina, respeitando o período do evento"""
+    # Determina quantos dias a oficina terá
+    num_dias = random.randint(1, 3)
+    
+    # Se o evento tem datas definidas, usa-as como referência
+    if evento.data_inicio and evento.data_fim:
+        datas_possiveis = []
+        data_atual = evento.data_inicio
+        while data_atual <= evento.data_fim:
+            datas_possiveis.append(data_atual)
+            data_atual += timedelta(days=1)
+        
+        # Seleciona datas aleatórias para a oficina
+        if len(datas_possiveis) >= num_dias:
+            datas_selecionadas = random.sample(datas_possiveis, num_dias)
+        else:
+            datas_selecionadas = datas_possiveis
+    else:
+        # Se o evento não tem datas, cria datas aleatórias
+        data_base = fake.date_between(start_date='-1m', end_date='+3m')
+        datas_selecionadas = [data_base + timedelta(days=i) for i in range(num_dias)]
+    
+    # Cria os dias da oficina
+    for data in datas_selecionadas:
+        # Define horários aleatórios
+        hora_inicio = random.randint(8, 14)
+        duracao = random.randint(2, 4)
+        
+        dia = OficinaDia(
+            oficina_id=oficina.id,
+            data=data,
+            horario_inicio=f"{hora_inicio:02d}:00",
+            horario_fim=f"{hora_inicio + duracao:02d}:00",
+            palavra_chave_manha=fake.word(),
+            palavra_chave_tarde=fake.word()
+        )
+        db.session.add(dia)
+
+def criar_tipos_inscricao_oficina(oficina):
+    """Cria tipos de inscrição para oficinas pagas"""
+    categorias = ['Estudante', 'Professor', 'Profissional']
+    
+    for categoria in random.sample(categorias, random.randint(1, len(categorias))):
+        preco_base = random.randint(20, 100)
+        
+        # Descontos para certas categorias
+        if categoria == 'Estudante':
+            preco = preco_base * 0.6
+        elif categoria == 'Professor':
+            preco = preco_base * 0.8
+        else:
+            preco = preco_base
+            
+        tipo = InscricaoTipo(
+            oficina_id=oficina.id,
+            nome=categoria,
+            preco=preco
+        )
+        db.session.add(tipo)
+
+def criar_usuarios(quantidade=150):
+    """Cria usuários para o sistema"""
+    usuarios = []
+    
+    # Criar um superadmin
+    superadmin = Usuario(
+        nome="Administrador do Sistema",
+        cpf=fake.cpf(),
+        email="admin@sistema.com",
+        senha=generate_password_hash("admin123"),
+        formacao="Administrador de Sistemas",
+        tipo="superadmin"
+    )
+    db.session.add(superadmin)
+    usuarios.append(superadmin)
+    
+    # Criar usuários regulares
+    for i in range(quantidade):
+        # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
+        tipo = random.choices(
+            TIPOS_USUARIO, 
+            weights=[0.7, 0.15, 0.1, 0.0, 0.05], 
+            k=1
+        )[0]
+        
+        # Seleciona aleatoriamente estados e cidades
+        num_estados = random.randint(1, 3)
+        estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
+        cidades_usuario = [fake.city() for _ in range(num_estados)]
+        
+        usuario = Usuario(
+            nome=fake.name(),
+            cpf=fake.cpf(),
+            email=fake.email(),
+            senha=generate_password_hash(fake.password()),
+            formacao=random.choice(TIPOS_FORMACAO),
+            tipo=tipo,
+            estados=','.join(estados_usuario),
+            cidades=','.join(cidades_usuario)
+        )
+        db.session.add(usuario)
+        usuarios.append(usuario)
+    
+    db.session.commit()
+    return usuarios
+
+def criar_inscricoes(usuarios, eventos, oficinas):
+    """Cria inscrições para usuários em eventos e oficinas"""
+    # Filtra usuários que são participantes ou professores
+    participantes = [u for u in usuarios if u.tipo in ('participante', 'professor')]
+    
+    inscricoes = []
+    
+    # Inscrições em eventos
+    for evento in eventos:
+        # Seleciona aleatoriamente usuários para inscrever neste evento
+        num_inscritos = random.randint(10, min(len(participantes), 100))
+        inscritos_evento = random.sample(participantes, num_inscritos)
+        
+        # Lista de tipos de inscrição disponíveis
+        tipos_inscricao = evento.tipos_inscricao
+        
+        # Se o evento tem lotes, pega o lote ativo
+        lotes_ativos = [l for l in evento.lotes if l.ativo]
+        lote_atual = random.choice(lotes_ativos) if lotes_ativos else None
+        
+        for usuario in inscritos_evento:
+            # Escolhe um tipo de inscrição aleatório
+            tipo_inscricao = random.choice(tipos_inscricao) if tipos_inscricao else None
+            
+            # Define o status do pagamento
+            # Eventos gratuitos sempre têm pagamento aprovado
+            if evento.inscricao_gratuita:
+                status = 'approved'
+            else:
+                status = random.choices(
+                    STATUS_PAGAMENTO, 
+                    weights=[0.2, 0.6, 0.1, 0.1], 
+                    k=1
+                )[0]
+            
+            # Cria a inscrição
+            inscricao = Inscricao(
+                usuario_id=usuario.id,
+                cliente_id=evento.cliente_id,
+                evento_id=evento.id,
+                status_pagamento=status,
+                tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else None,
+                lote_id=lote_atual.id if lote_atual else None
+            )
+            db.session.add(inscricao)
+            inscricoes.append(inscricao)
+            
+            # Adiciona informações de pagamento para inscrições pagas
+            if not evento.inscricao_gratuita:
+                payment_id = str(uuid.uuid4())
+                inscricao.payment_id = payment_id
+                
+                # Para boletos, adiciona URL
+                if random.choice([True, False]):
+                    inscricao.boleto_url = f"https://exemplo.com/boletos/{payment_id}"
+                
+                # Cria registro de pagamento
+                pagamento = Pagamento(
+                    usuario_id=usuario.id,
+                    evento_id=evento.id,
+                    tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else 1,
+                    status=status,
+                    mercado_pago_id=f"MP-{uuid.uuid4()}"
+                )
+                db.session.add(pagamento)
+            
+            # Para alguns usuários, criar também inscrições em oficinas
+            if random.random() < 0.7:  # 70% de chance
+                # Pega oficinas deste evento
+                oficinas_evento = [o for o in oficinas if o.evento_id == evento.id]
+                
+                if oficinas_evento:
+                    # Número de oficinas que o usuário se inscreverá
+                    num_oficinas = min(random.randint(1, 3), len(oficinas_evento))
+                    oficinas_inscritas = random.sample(oficinas_evento, num_oficinas)
+                    
+                    for oficina in oficinas_inscritas:
+                        # Define status de pagamento para oficina
+                        if oficina.inscricao_gratuita:
+                            status_oficina = 'approved'
+                        else:
+                            status_oficina = random.choices(
+                                STATUS_PAGAMENTO, 
+                                weights=[0.2, 0.6, 0.1, 0.1], 
+                                k=1
+                            )[0]
+                        
+                        inscricao_oficina = Inscricao(
+                            usuario_id=usuario.id,
+                            cliente_id=evento.cliente_id,
+                            oficina_id=oficina.id,
+                            status_pagamento=status_oficina
+                        )
+                        db.session.add(inscricao_oficina)
+                        inscricoes.append(inscricao_oficina)
+    
+    db.session.commit()
+    
+    # Após criar inscrições, criar checkins para algumas delas
+    criar_checkins(inscricoes, oficinas, eventos)
+    
+    # Criar feedbacks para algumas oficinas
+    criar_feedbacks(inscricoes, oficinas)
+    
+    return inscricoes
+
+def criar_checkins(inscricoes, oficinas, eventos):
+    """Cria registros de checkin para inscrições"""
+    # Filtra inscrições com pagamento aprovado
+    inscricoes_validas = [i for i in inscricoes if i.status_pagamento == 'approved']
+    
+    for inscricao in inscricoes_validas:
+        # 70% de chance de ter checkin
+        if random.random() < 0.7:
+            if inscricao.oficina_id:
+                # Checkin em oficina
+                oficina = next((o for o in oficinas if o.id == inscricao.oficina_id), None)
+                if oficina and oficina.dias:
+                    # Pega um dia aleatório da oficina
+                    dia = random.choice(oficina.dias)
+                    
+                    # Decide se é checkin na palavra da manhã ou da tarde
+                    if random.choice([True, False]):
+                        palavra = dia.palavra_chave_manha
+                    else:
+                        palavra = dia.palavra_chave_tarde
+                    
+                    checkin = Checkin(
+                        usuario_id=inscricao.usuario_id,
+                        oficina_id=inscricao.oficina_id,
+                        data_hora=dia.data + timedelta(hours=random.randint(0, 8)),
+                        palavra_chave=palavra,
+                        cliente_id=inscricao.cliente_id
+                    )
+                    db.session.add(checkin)
+            
+            elif inscricao.evento_id:
+                # Checkin em evento
+                evento = next((e for e in eventos if e.id == inscricao.evento_id), None)
+                if evento:
+                    checkin = Checkin(
+                        usuario_id=inscricao.usuario_id,
+                        evento_id=inscricao.evento_id,
+                        data_hora=evento.data_inicio + timedelta(hours=random.randint(0, 8)),
+                        palavra_chave="EVENTO",
+                        cliente_id=inscricao.cliente_id
+                    )
+                    db.session.add(checkin)
+    
+    db.session.commit()
+
+def criar_feedbacks(inscricoes, oficinas):
+    """Cria feedbacks para oficinas"""
+    inscricoes_oficinas = [i for i in inscricoes if i.oficina_id and i.status_pagamento == 'approved']
+    
+    for inscricao in inscricoes_oficinas:
+        # 50% de chance de deixar feedback
+        if random.random() < 0.5:
+            oficina = next((o for o in oficinas if o.id == inscricao.oficina_id), None)
+            if oficina:
+                # Rating de 1 a 5 estrelas, com tendência para avaliações positivas
+                rating = random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.1, 0.2, 0.3, 0.35], k=1)[0]
+                
+                # Comentário baseado na avaliação
+                if rating >= 4:
+                    comentario = random.choice([
+                        f"Excelente oficina! {fake.sentence()}",
+                        f"Adorei o conteúdo apresentado. {fake.sentence()}",
+                        f"O ministrante {oficina.ministrante_obj.nome} foi muito didático. {fake.sentence()}"
+                    ])
+                elif rating == 3:
+                    comentario = random.choice([
+                        f"Oficina boa, mas poderia ser melhor. {fake.sentence()}",
+                        f"Conteúdo interessante, mas a didática pode melhorar. {fake.sentence()}"
+                    ])
+                else:
+                    comentario = random.choice([
+                        f"Não atendeu às minhas expectativas. {fake.sentence()}",
+                        f"Conteúdo muito básico para o que foi proposto. {fake.sentence()}"
+                    ])
+                
+                feedback = Feedback(
+                    usuario_id=inscricao.usuario_id,
+                    oficina_id=inscricao.oficina_id,
+                    rating=rating,
+                    comentario=comentario
+                )
+                db.session.add(feedback)
+    
+    db.session.commit()
+
+def criar_agendamentos_visita(eventos, usuarios):
+    """Cria agendamentos de visita para professores"""
+    professores = [u for u in usuarios if u.tipo == 'professor']
+    if not professores:
+        return []
+    
+    agendamentos = []
+    
+    # Seleciona eventos que têm configuração de agendamento
+    eventos_com_agendamento = []
+    for evento in eventos:
+        if hasattr(evento, 'configuracoes_agendamento') and evento.configuracoes_agendamento:
+            eventos_com_agendamento.append(evento)
+    
+    if not eventos_com_agendamento:
+        return []
+    
+    for evento in eventos_com_agendamento:
+        # Verifica se o evento possui horários de visitação
+        if not hasattr(evento, 'horarios_visitacao') or not evento.horarios_visitacao:
+            continue
+        
+        # Seleciona professores para este evento
+        num_professores = min(len(professores), random.randint(5, 20))
+        professores_evento = random.sample(professores, num_professores)
+        
+        for professor in professores_evento:
+            # Seleciona um horário aleatório
+            if evento.horarios_visitacao:
+                horario = random.choice(evento.horarios_visitacao)
+                
+                # Define quantos alunos virão
+                qtd_alunos = random.randint(10, min(30, horario.vagas_disponiveis))
+                
+                # Escolhe o status do agendamento
+                status = random.choices(
+                    ['confirmado', 'cancelado', 'realizado'], 
+                    weights=[0.7, 0.1, 0.2], 
+                    k=1
+                )[0]
+                
+                # Verifica se há check-in
+                checkin_realizado = status == 'realizado'
+                data_checkin = None
+                if checkin_realizado:
+                    data_checkin = horario.data + timedelta(minutes=random.randint(-30, 30))
+                
+                # Define se foi cancelado
+                data_cancelamento = None
+                if status == 'cancelado':
+                    data_cancelamento = horario.data - timedelta(days=random.randint(1, 10))
+                
+                # Cria o agendamento
+                agendamento = AgendamentoVisita(
+                    horario_id=horario.id,
+                    professor_id=professor.id,
+                    escola_nome=fake.company() + " " + random.choice(["Escola", "Colégio", "Instituto", "Centro Educacional"]),
+                    escola_codigo_inep=str(random.randint(10000000, 99999999)),
+                    turma=f"{random.choice(['1º', '2º', '3º', '4º', '5º', '6º', '7º', '8º', '9º'])} Ano {random.choice(['A', 'B', 'C', 'D'])}",
+                    nivel_ensino=random.choice(["Fundamental I", "Fundamental II", "Médio", "EJA"]),
+                    quantidade_alunos=qtd_alunos,
+                    status=status,
+                    checkin_realizado=checkin_realizado,
+                    data_checkin=data_checkin,
+                    data_cancelamento=data_cancelamento
+                )
+                db.session.add(agendamento)
+                db.session.flush()
+                
+                # Atualiza as vagas disponíveis se não for cancelado
+                if status != 'cancelado':
+                    horario.vagas_disponiveis -= qtd_alunos
+                
+                # Adiciona alunos ao agendamento
+                for _ in range(qtd_alunos):
+                    aluno = AlunoVisitante(
+                        agendamento_id=agendamento.id,
+                        nome=fake.name(),
+                        cpf=fake.cpf() if random.random() > 0.3 else None,  # 30% sem CPF (menores)
+                        presente=random.random() > 0.1 if checkin_realizado else False  # 90% presentes se houve check-in
+                    )
+                    db.session.add(aluno)
+                
+                agendamentos.append(agendamento)
+    
+    db.session.commit()
+    return agendamentos
+
+def popular_banco():
+    """Função principal para popular o banco de dados"""
+    print("Iniciando população do banco de dados...")
+    
+    # Limpa tabelas existentes (opcional - tenha cuidado em produção!)
+    # db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+    # Adicione comandos para limpar tabelas se necessário
+    # db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+    
+    print("Criando clientes...")
+    clientes = criar_clientes(5)
+    
+    print("Criando eventos...")
+    eventos = criar_eventos(clientes, 10)
+    
+    print("Criando ministrantes...")
+    ministrantes = criar_ministrantes(clientes, 20)
+    
+    print("Criando oficinas...")
+    oficinas = criar_oficinas(eventos, ministrantes, 10)
+    
+    print("Criando usuários...")
+    usuarios = criar_usuarios(200)
+    
+    print("Criando inscrições...")
+    inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
+    
+    print("Criando agendamentos de visita...")
+    agendamentos = criar_agendamentos_visita(eventos, usuarios)
+    
+    print("Banco de dados populado com sucesso!")
+    print(f"Foram criados:")
+    print(f"- {len(clientes)} clientes")
+    print(f"- {len(eventos)} eventos")
+    print(f"- {len(ministrantes)} ministrantes")
+    print(f"- {len(oficinas)} oficinas")
+    print(f"- {len(usuarios)} usuários")
+    print(f"- {len(inscricoes)} inscrições")
+    print(f"- {len(agendamentos)} agendamentos de visita")
+    
+    return {
+        'clientes': clientes,
+        'eventos': eventos,
+        'ministrantes': ministrantes,
+        'oficinas': oficinas,
+        'usuarios': usuarios,
+        'inscricoes': inscricoes,
+        'agendamentos': agendamentos
+    }
+
+# Se este script for executado diretamente, popula o banco
 if __name__ == "__main__":
-    with app.app_context():
-        populate_database()
+    # Aqui você deve importar seu app Flask e contexto
+    # from app import app, db
+    # with app.app_context():
+    #     popular_banco()
+    
+    # Se você estiver usando este script fora do aplicativo Flask, configure o contexto
+    print("Para executar este script, você deve importá-lo em seu aplicativo Flask")
+    print("e executá-lo dentro de um contexto de aplicativo.")
+    print("Exemplo:")
+    print("```")
+    print("from app import app, db")
+    print("from populate_script import popular_banco")
+    print("with app.app_context():")
+    print("    popular_banco()")
+    print("```")

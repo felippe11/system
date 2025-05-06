@@ -216,12 +216,11 @@ function renderizarEventos(eventos) {
                     <p class="event-description">${evento.descricao ? evento.descricao.substring(0, 150) + (evento.descricao.length > 150 ? '...' : '') : ''}</p>
                     <div class="event-footer">
                         <div class="event-price">${price}</div>
-                        ${evento.preco_base !== undefined ? `
-                            <a href="/evento/${evento.id}/inscricao" class="btn-event">Inscrever-se</a>
+                        ${evento.link_inscricao ? `
+                            <a href="${evento.link_inscricao}" class="btn-event">Inscrever-se</a>
                         ` : `
                             <span class="text-muted fw-bold">Inscrições em breve</span>
                         `}
-                        
                     </div>
                 </div>
             </div>
@@ -367,4 +366,3 @@ function initCarousel() {
     handleResize();
 }
 
-    
