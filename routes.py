@@ -146,73 +146,142 @@ def register_routes(app):
 @routes.route('/')
 def home():
     try:
-        # Buscar todos os eventos ativos e públicos, ordenados pela data de início
-        eventos_destaque = Evento.query.filter(
-            Evento.status == 'ativo',
-            Evento.publico == True,
-            Evento.data_inicio >= datetime.now()  # apenas eventos futuros
-        ).order_by(Evento.data_inicio.asc()).all()
-        
-        # Converter os eventos para um formato que pode ser enviado ao template
+        # Eventos ativos, públicos e futuros
+        eventos_destaque = (
+            Evento.query.filter(
+                Evento.status == 'ativo',
+                Evento.publico == True,
+                Evento.data_inicio >= datetime.now()
+            )
+            .order_by(Evento.data_inicio.asc())
+            .all()
+        )
+
         eventos_json = []
         for evento in eventos_destaque:
             evento_data = {
                 'id': evento.id,
                 'nome': evento.nome,
                 'descricao': evento.descricao,
-                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
-                'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y')
+                               if evento.data_inicio else 'Data a definir',
+                'data_fim': evento.data_fim.strftime('%d/%m/%Y')
+                            if evento.data_fim else '',
                 'localizacao': evento.localizacao or 'Local a definir',
-                'banner_url': evento.banner_url or url_for('static', filename='images/event-placeholder.jpg'),
-                'preco_base': 0  # valor padrão
+                'banner_url': evento.banner_url
+                              or url_for('static',
+                                         filename='images/event-placeholder.jpg'),
+                'preco_base': 0
             }
-            
-            # Verifica se há tipos de inscrição e pega o menor preço
-            if evento.tipos_inscricao and len(evento.tipos_inscricao) > 0:
-                evento_data['preco_base'] = min(tipo.preco for tipo in evento.tipos_inscricao)
-            
+
+            # menor preço (se houver tipos de inscrição)
+            if evento.tipos_inscricao:
+                evento_data['preco_base'] = min(
+                    tipo.preco for tipo in evento.tipos_inscricao
+                )
+
+            # ----------- gera link de inscrição -----------
+            link = evento.links_cadastro[0] if evento.links_cadastro else None
+            if link:
+                if link.slug_customizado:
+                    evento_data['link_inscricao'] = url_for(
+                        'routes.abrir_inscricao_customizada',
+                        slug=link.slug_customizado
+                    )
+                else:
+                    evento_data['link_inscricao'] = url_for(
+                        'routes.abrir_inscricao_token',
+                        token=link.token
+                    )
+            else:
+                evento_data['link_inscricao'] = None
+            # ----------------------------------------------
+
             eventos_json.append(evento_data)
-        
+
         return render_template('index.html', eventos_destaque=eventos_json)
-    
+
     except Exception as e:
-        # Log do erro (implemente seu sistema de logs)
-        print(f"Erro na rota home: {str(e)}")
-        # Retorna uma lista vazia em caso de erro
+        print(f"Erro na rota home: {e}")
         return render_template('index.html', eventos_destaque=[])
+
 
 @routes.route('/api/eventos/destaque')
 def get_eventos_destaque():
     try:
         eventos = Evento.query.filter(
-            Evento.data_inicio >= datetime.now(),
+            Evento.data_inicio >= datetime.now(),          # deixe como preferir
             Evento.status == 'ativo',
-            Evento.publico == True  # adicionado filtro de eventos públicos
-        ).order_by(Evento.data_inicio.asc()).limit(5).all()
-        
+            Evento.publico == True
+        ).order_by(Evento.data_inicio.asc()).all()
+
         eventos_json = []
         for evento in eventos:
             evento_data = {
                 'id': evento.id,
                 'nome': evento.nome,
                 'descricao': evento.descricao,
-                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
-                'data_fim': evento.data_fim.strftime('%d/%m/%Y') if evento.data_fim else '',
+                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y')
+                               if evento.data_inicio else 'Data a definir',
+                'data_fim': evento.data_fim.strftime('%d/%m/%Y')
+                            if evento.data_fim else '',
                 'localizacao': evento.localizacao or 'Local a definir',
-                'banner_url': evento.banner_url or url_for('static', filename='images/event-placeholder.jpg'),
-                'preco_base': 0  # valor padrão
+                'banner_url': evento.banner_url
+                              or url_for('static',
+                                         filename='images/event-placeholder.jpg'),
+                'preco_base': 0
             }
-            
-            if evento.tipos_inscricao and len(evento.tipos_inscricao) > 0:
-                evento_data['preco_base'] = min(tipo.preco for tipo in evento.tipos_inscricao)
-            
+
+            # preço mínimo
+            if evento.tipos_inscricao:
+                evento_data['preco_base'] = min(t.preco for t in evento.tipos_inscricao)
+
+            # ---------- gera link de inscrição ----------
+            link = evento.links_cadastro[0] if evento.links_cadastro else None
+            if link:
+                if link.slug_customizado:
+                    evento_data['link_inscricao'] = url_for(
+                        'routes.abrir_inscricao_customizada',
+                        slug=link.slug_customizado
+                    )
+                else:
+                    evento_data['link_inscricao'] = url_for(
+                        'routes.abrir_inscricao_token',
+                        token=link.token
+                    )
+            else:
+                evento_data['link_inscricao'] = None
+            # --------------------------------------------
+
             eventos_json.append(evento_data)
-        
+
         return jsonify(eventos_json)
-    
+
     except Exception as e:
-        print(f"Erro em get_eventos_destaque: {str(e)}")
-        return jsonify([])
+        print(f"[ERRO] em get_eventos_destaque: {e}")
+        return jsonify([]), 500
+
+    
+@routes.route('/inscricao/<slug>')
+def abrir_inscricao_customizada(slug):
+    link = LinkCadastro.query.filter_by(slug_customizado=slug).first()
+
+    if not link or not link.evento:
+        return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
+
+    evento = link.evento
+    return render_template('cadastro_participante.html', evento=evento)
+
+@routes.route('/inscricao/token/<token>')
+def abrir_inscricao_token(token):
+    link = LinkCadastro.query.filter_by(token=token).first()
+
+    if not link or not link.evento:
+        return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
+
+    evento = link.evento
+    return render_template('cadastro_participante.html', evento=evento)
+
 
 @routes.route('/eventos')
 def listar_eventos():
