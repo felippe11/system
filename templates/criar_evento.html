@@ -168,35 +168,189 @@
 
         <input type="hidden" id="pagamento_habilitado" value="{{ 1 if current_user.habilita_pagamento else 0 }}">
 
-        <!-- ——— STEP 4 —————————————————————————— -->
+        <!-- ——— STEP 4 —————————————————————————— -->
         <div class="step" id="step-4" style="display:none;">
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
-              <i class="bi bi-ticket-perforated me-2"></i>Inscrição
+              <i class="bi bi-ticket-perforated me-2"></i>Configurações de Inscrição
             </h5>
           </div>
 
+          <!-- Plano Gratuito Alert -->
           {% if not current_user.habilita_pagamento %}
-          <p class="alert alert-info">Seu plano não permite cobrança de inscrições. O evento será criado como gratuito.</p>
+          <div class="alert alert-info bg-info bg-opacity-10 border-info d-flex mb-4" role="alert">
+            <div class="me-3"><i class="bi bi-info-circle-fill fs-3 text-info"></i></div>
+            <div>
+              <h6 class="alert-heading fw-bold mb-1">Plano Gratuito</h6>
+              <p class="mb-0 text-muted">Seu plano atual permite apenas inscrições gratuitas. Para habilitar cobranças, faça upgrade do seu plano.</p>
+            </div>
+          </div>
           {% endif %}
 
-          <div class="mb-4">
-            <label class="form-label fw-bold">Tipo de Inscrição</label>
-            <input type="number" step="0.01" 
-                   class="form-control border border-secondary bg-white"
-                   name="preco_tipo[]" placeholder="0.00"
-                   {% if not current_user.habilita_pagamento %}disabled{% endif %}>
+          <!-- Opções de Tipo de Inscrição -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-6">
+              <div class="card h-100 hover-shadow cursor-pointer inscription-type-card" 
+                   onclick="document.getElementById('inscricaoGratuita').click()">
+                <div class="card-body p-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="tipo_inscricao" 
+                           id="inscricaoGratuita" value="gratuita" checked>
+                    <label class="form-check-label w-100" for="inscricaoGratuita">
+                      <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-ticket-fill fs-3 text-success me-2"></i>
+                        <h6 class="mb-0">Inscrição Gratuita</h6>
+                      </div>
+                      <p class="text-muted small mb-0">Evento sem cobrança de taxa de inscrição</p>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card h-100 hover-shadow cursor-pointer inscription-type-card"
+                   onclick="document.getElementById('inscricaoPaga').click()">
+                <div class="card-body p-4">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="tipo_inscricao" 
+                           id="inscricaoPaga" value="paga" 
+                           {% if not current_user.habilita_pagamento %}disabled{% endif %}>
+                    <label class="form-check-label w-100" for="inscricaoPaga">
+                      <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-credit-card-fill fs-3 text-primary me-2"></i>
+                        <h6 class="mb-0">Inscrição Paga</h6>
+                      </div>
+                      <p class="text-muted small mb-0">Evento com cobrança de taxa de inscrição</p>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
+          <!-- Configurações Adicionais (aparece dinamicamente) -->
+          <div id="configuracoesInscricao" class="mt-4">
+            <!-- Configurações para Inscrição Paga -->
+            <div id="configuracoesPreco" style="display:none;">
+              <div class="card bg-white border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                  <h6 class="mb-0"><i class="bi bi-tags me-2"></i>Configurações de Preço</h6>
+                </div>
+                <div class="card-body p-4">
+                  <!-- Valor da Inscrição -->
+                  <div class="mb-4">
+                    <label class="form-label fw-bold">Valor da Inscrição</label>
+                    <div class="input-group input-group-lg">
+                      <span class="input-group-text bg-primary text-white">R$</span>
+                      <input type="number" step="0.01" class="form-control" name="preco" 
+                             placeholder="0.00" {% if not current_user.habilita_pagamento %}disabled{% endif %}>
+                    </div>
+                    <div class="form-text">Digite o valor sem pontos ou vírgulas</div>
+                  </div>
+
+                  <!-- Configuração de Lotes -->
+                  <div class="form-check form-switch d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                    <div>
+                      <label class="form-check-label fw-bold" for="habilitarLotes">
+                        <i class="bi bi-boxes me-2"></i>Habilitar Lotes
+                      </label>
+                      <p class="text-muted small mb-0">Permitir valores diferentes por lote</p>
+                    </div>
+                    <input class="form-check-input" type="checkbox" id="habilitarLotes" 
+                           name="habilitar_lotes" style="width: 3em; height: 1.5em;">
+                  </div>
+
+                  <div id="configuracoesLotes" class="mt-3" style="display:none;">
+                    <div class="mb-3">
+                      <label class="form-label">Quantidade de Lotes</label>
+                      <input type="number" class="form-control" name="qtd_lotes" min="1" value="1">
+                    </div>
+                    <div id="lotesContainer" class="border rounded p-3 bg-light">
+                      <!-- Lotes serão adicionados dinamicamente via JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Configurações Comuns (para ambos os tipos) -->
+            <div class="card bg-white border-0 shadow-sm mt-4">
+              <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Configurações de Vagas</h6>
+              </div>
+              <div class="card-body p-4">
+                <div class="form-check form-switch d-flex justify-content-between align-items-center">
+                  <div>
+                    <label class="form-check-label fw-bold" for="limitarVagas">
+                      <i class="bi bi-person-lines-fill me-2"></i>Limitar Vagas
+                    </label>
+                    <p class="text-muted small mb-0">Definir número máximo de inscrições</p>
+                  </div>
+                  <input class="form-check-input" type="checkbox" id="limitarVagas" 
+                         name="limitar_vagas" style="width: 3em; height: 1.5em;">
+                </div>
+
+                <div id="limiteVagas" class="mt-3" style="display:none;">
+                  <label class="form-label">Número Máximo de Vagas</label>
+                  <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-success text-white">
+                      <i class="bi bi-person-plus"></i>
+                    </span>
+                    <input type="number" class="form-control" name="total_vagas" 
+                           min="1" placeholder="Ex: 100">
+                  </div>
+                  <div class="form-text">Deixe em branco para vagas ilimitadas</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botões de Navegação -->
           <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="3">
+            <button type="button" class="btn btn-outline-secondary btn-lg prev-step" data-prev="3">
               <i class="bi bi-arrow-left me-2"></i>Anterior
             </button>
-            <button type="submit" class="btn btn-success px-4">
-              <i class="bi bi-save me-2"></i>Criar Evento
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="bi bi-check-circle me-2"></i>Finalizar Cadastro
             </button>
           </div>
         </div>
+
+        <style>
+          .inscription-type-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+          }
+          .inscription-type-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+          }
+          .inscription-type-card .form-check-input:checked + .form-check-label {
+            color: var(--bs-primary);
+          }
+        </style>
+
+        <script>
+          // Mostrar/ocultar configurações de preço
+          document.querySelectorAll('input[name="tipo_inscricao"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+              document.getElementById('configuracoesPreco').style.display = 
+                this.value === 'paga' ? 'block' : 'none';
+            });
+          });
+
+          // Mostrar/ocultar configurações de lotes
+          document.getElementById('habilitarLotes').addEventListener('change', function() {
+            document.getElementById('configuracoesLotes').style.display = 
+              this.checked ? 'block' : 'none';
+          });
+
+          // Mostrar/ocultar limite de vagas
+          document.getElementById('limitarVagas').addEventListener('change', function() {
+            document.getElementById('limiteVagas').style.display = 
+              this.checked ? 'block' : 'none';
+          });
+        </script>
       </form>
     </div>
   </div>
@@ -221,7 +375,6 @@
     </div>
   </div>
 </div>
-
 
 <script src="/static/js/criar_evento.js"></script>
 <link rel="stylesheet" href="/static/css/criar_evento.css">
