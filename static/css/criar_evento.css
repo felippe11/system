@@ -1,0 +1,189 @@
+
+.suggestion-item {
+  padding: 8px 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.suggestion-item:hover {
+  background-color: #f0f7ff;
+}
+
+  /* Estilos adicionais para melhorar a experiência de usuário */
+  .step {
+    transition: opacity 0.3s ease;
+  }
+  
+  .form-control:focus, .form-check-input:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+  
+  /* Melhorias para dispositivos móveis */
+  @media (max-width: 768px) {
+    .container {
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    
+    h5.text-primary {
+      font-size: 1.1rem;
+    }
+    
+    .card-body {
+      padding: 1rem;
+    }
+    
+    .next-step, .prev-step {
+      width: 45%;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+      font-size: 0.9rem;
+    }
+    
+    .tipo-inscricao-item .col-md-4 {
+      margin-top: 10px;
+    }
+    
+    /* Ajuste para botões no mobile */
+    .remover-tipo-inscricao {
+      width: 100%;
+      margin-top: 10px;
+    }
+  }
+  
+/* Barra de progresso moderna */
+.progress-container {
+  margin: 30px 0;
+}
+
+.progress-steps-container {
+  position: relative;
+}
+
+.step-indicator-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.step-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+  max-width: 20%;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  color: #6c757d;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6;
+}
+
+.step-label {
+  font-size: 0.8rem;
+  text-align: center;
+  color: #6c757d;
+  transition: color 0.3s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.step-indicator.active .step-number {
+  background-color: var(--bs-primary);
+  color: white;
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+}
+
+.step-indicator.active .step-label {
+  color: var(--bs-primary);
+  font-weight: bold;
+}
+
+.step-indicator.completed .step-number {
+  background-color: #198754;
+  color: white;
+  border-color: #198754;
+}
+
+.progress-bar-modern {
+  height: 8px;
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  margin: 0 20px;
+}
+
+/* Para dispositivos móveis */
+@media (max-width: 768px) {
+  .step-label {
+    font-size: 0.7rem;
+  }
+  
+  .step-number {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+  
+  .progress-bar-modern {
+    top: 15px;
+  }
+}
+
+/* Para telas muito pequenas */
+@media (max-width: 576px) {
+  .step-label {
+    display: none;
+  }
+  
+  .progress-bar-modern {
+    margin: 0 15px;
+  }
+}
+  
+  /* Melhorias visuais para formulários */
+  .form-label {
+    margin-bottom: 0.3rem;
+  }
+  
+  .card {
+    border-radius: 0.5rem;
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .btn {
+    border-radius: 0.35rem;
+    transition: all 0.2s;
+  }
+  
+  /* Indicador de etapa atual */
+  .step:not([style*="display: none"]) {
+    animation: fadeIn 0.5s;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }

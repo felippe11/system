@@ -1,0 +1,45 @@
+/* Table Base Styles */
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.table tbody td {
+  vertical-align: middle;
+  padding: 0.75rem;
+}
+
+/* Hover Effects */
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Table Responsive */
+.table-responsive {
+  border-radius: 0.5rem;
+  box-shadow: 0 0 0.5rem rgba(0, 0, 0, 0.05);
+}
+
+/* Actions Column */
+.table .btn-group {
+  gap: 0.25rem;
+}
+
+.table .btn-sm {
+  padding: 0.25rem 0.5rem;
+}
+
+/* Sticky Header */
+.sticky-top {
+  top: 0;
+  z-index: 1020;
+  background: white;
+}

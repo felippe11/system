@@ -5951,36 +5951,6 @@ def inscricao_personalizada(slug_customizado):
     return redirect(url_for('routes.cadastro_participante', token=link.token))
 
 
-@app.route('/inscricao/<token>', methods=['GET', 'POST'])
-def inscricao(token):
-    cliente = Cliente.query.filter_by(token=token).first()
-    
-    if not cliente:
-        return "Link inválido", 404
-
-    if request.method == 'POST':
-        novo_usuario = Usuario(
-            email=request.form['email'],
-            senha_hash=generate_password_hash(request.form['senha']),
-            cliente_id=cliente.id,
-            tipo="usuario"
-        )
-        db.session.add(novo_usuario)
-        db.session.commit()
-        return redirect(url_for('login'))
-
-    return render_template('inscricao.html', cliente=cliente)
-
-@app.route('/superadmin_dashboard')
-@login_required
-def superadmin_dashboard():
-    if not current_user.is_superuser():
-        return abort(403)
-
-    clientes = Cliente.query.all()
-    return render_template('dashboard_superadmin.html', clientes=clientes)
-
-
 @routes.route('/toggle_cliente/<int:cliente_id>')
 @login_required
 def toggle_cliente(cliente_id):
