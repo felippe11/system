@@ -49,13 +49,12 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr>
-                            <th>Título</th>
+                        <tr>                            <th>Título</th>
                             <th>Prêmio</th>
                             <th>Evento/Oficina</th>
                             <th>Data</th>
                             <th>Status</th>
-                            <th>Ganhador</th>
+                            <th>Ganhadores</th>
                             <th class="text-center">Ações</th>
                         </tr>
                     </thead>
@@ -82,18 +81,20 @@
                                         {% elif sorteio.status == 'cancelado' %}
                                             <span class="badge bg-danger">Cancelado</span>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if sorteio.ganhador %}
-                                            {{ sorteio.ganhador.nome }}
+                                    </td>                                    <td>
+                                        {% if sorteio.ganhadores %}
+                                            {% if sorteio.ganhadores|length == 1 %}
+                                                {{ sorteio.ganhadores[0].nome }}
+                                            {% else %}
+                                                <span class="badge bg-success">{{ sorteio.ganhadores|length }} ganhadores</span>
+                                            {% endif %}
                                         {% elif sorteio.status == 'pendente' %}
                                             <span class="text-muted">Não realizado</span>
                                         {% else %}
                                             <span class="text-muted">Não aplicável</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <div class="d-flex justify-content-center gap-2">
+                                    <td>                                        <div class="d-flex justify-content-center gap-2">
                                             {% if sorteio.status == 'pendente' %}
                                                 <button 
                                                     class="btn btn-sm btn-success" 
@@ -116,6 +117,12 @@
                                                     <i class="bi bi-eye"></i>
                                                 </button>
                                             {% endif %}
+                                            <button 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="excluirSorteio({{ sorteio.id }})"
+                                                title="Excluir Sorteio">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -147,7 +154,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Você está prestes a realizar o sorteio. Esta ação escolherá um ganhador aleatório entre os participantes elegíveis.</p>
+                <p>Você está prestes a realizar o sorteio. Esta ação escolherá <span id="num_ganhadores_texto">um ganhador aleatório</span> entre os participantes elegíveis.</p>
                 <p class="mb-0 fw-bold">Esta ação não pode ser desfeita. Deseja continuar?</p>
             </div>
             <div class="modal-footer">
@@ -182,6 +189,28 @@
     </div>
 </div>
 
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Excluir Sorteio</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está prestes a <strong>excluir permanentemente</strong> este sorteio. Esta ação não pode ser desfeita.</p>
+                <p class="mb-0 fw-bold">Deseja realmente excluir este sorteio?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-2"></i>Excluir Sorteio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de Contagem Regressiva -->
 <div class="modal fade" id="contagemRegressivaModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
@@ -194,10 +223,9 @@
                     <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
                 </div>
                 <h3 class="mb-3">Realizando sorteio...</h3>
-                
-                <div class="countdown-container mt-4 mb-4">
+                  <div class="countdown-container mt-4 mb-4">
                     <div class="countdown-number display-1 fw-bold text-danger" id="countdown">5</div>
-                    <p class="text-muted">Selecionando um ganhador entre os participantes...</p>
+                    <p class="text-muted">Selecionando <span id="contagem_texto_ganhadores">um ganhador</span> entre os participantes...</p>
                 </div>
             </div>
         </div>
@@ -218,18 +246,20 @@
                 </div>
                 <h3 class="mb-2" id="sorteioTitulo">Título do Sorteio</h3>
                 <p class="text-muted mb-4" id="sorteioPremio">Prêmio</p>
-                
-                <div class="winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm">
-                    <h5 class="text-muted mb-3">Ganhador(a):</h5>
-                    <div class="d-flex justify-content-center align-items-center mb-3">
-                        <div class="me-3">
-                            <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 64px; height: 64px; font-size: 32px;">
-                                <i class="bi bi-person"></i>
+                  <h5 class="text-muted mb-3"><span id="titulo_ganhadores">Ganhador(a):</span></h5>
+                <div id="winners-container">
+                    <!-- Os cartões dos ganhadores serão inseridos aqui dinamicamente via JavaScript -->
+                    <div class="winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm">
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <div class="me-3">
+                                <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 64px; height: 64px; font-size: 32px;">
+                                    <i class="bi bi-person"></i>
+                                </div>
                             </div>
-                        </div>
-                        <div class="text-start">
-                            <h3 class="mb-0" id="ganhadorNome">Nome do Ganhador</h3>
-                            <p class="mb-0 text-muted" id="ganhadorEmail">email@exemplo.com</p>
+                            <div class="text-start">
+                                <h3 class="mb-0" id="ganhadorNome">Nome do Ganhador</h3>
+                                <p class="mb-0 text-muted" id="ganhadorEmail">email@exemplo.com</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -257,22 +287,30 @@
     let sorteioAtualId = null;
     let sorteioResultado = null;
     let confettiCanvas = null;
-    
-    // Função para mostrar modal de confirmação de sorteio
+      // Função para mostrar modal de confirmação de sorteio
     function realizarSorteio(sorteioId) {
         sorteioAtualId = sorteioId;
+        
+        // Atualizar o texto com o número de vencedores
+        atualizarTextoNumeroGanhadores(sorteioId);
+        
         const modal = new bootstrap.Modal(document.getElementById('confirmSorteioModal'));
         modal.show();
     }
-    
-    // Função para mostrar modal de confirmação de cancelamento
+      // Função para mostrar modal de confirmação de cancelamento
     function cancelarSorteio(sorteioId) {
         sorteioAtualId = sorteioId;
         const modal = new bootstrap.Modal(document.getElementById('confirmCancelModal'));
         modal.show();
     }
     
-    // Função para visualizar o resultado de um sorteio
+    // Função para mostrar modal de confirmação de exclusão
+    function excluirSorteio(sorteioId) {
+        sorteioAtualId = sorteioId;
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        modal.show();
+    }
+      // Função para visualizar o resultado de um sorteio
     function visualizarResultado(sorteioId) {
         // Fazer requisição para obter detalhes do sorteio
         fetch(`/api/sorteio/${sorteioId}`)
@@ -284,8 +322,35 @@
                     // Preencher informações no modal
                     document.getElementById('sorteioTitulo').textContent = sorteio.titulo;
                     document.getElementById('sorteioPremio').textContent = sorteio.premio;
-                    document.getElementById('ganhadorNome').textContent = sorteio.ganhador.nome;
-                    document.getElementById('ganhadorEmail').textContent = sorteio.ganhador.email;
+                    
+                    // Limpar e popular o container de ganhadores
+                    const winnersContainer = document.getElementById('winners-container');
+                    winnersContainer.innerHTML = ''; // Limpar conteúdo existente
+                    
+                    // Atualizar o título baseado no número de ganhadores
+                    const tituloGanhadores = document.getElementById('titulo_ganhadores');
+                    tituloGanhadores.textContent = sorteio.ganhadores.length > 1 ? 'Ganhadores:' : 'Ganhador(a):';
+                    
+                    // Para cada ganhador, criar um card
+                    sorteio.ganhadores.forEach(ganhador => {
+                        const winnerCard = document.createElement('div');
+                        winnerCard.className = 'winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm';
+                        winnerCard.innerHTML = `
+                            <div class="d-flex justify-content-center align-items-center mb-3">
+                                <div class="me-3">
+                                    <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" 
+                                         style="width: 64px; height: 64px; font-size: 32px;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                </div>
+                                <div class="text-start">
+                                    <h3 class="mb-0">${ganhador.nome}</h3>
+                                    <p class="mb-0 text-muted">${ganhador.email}</p>
+                                </div>
+                            </div>
+                        `;
+                        winnersContainer.appendChild(winnerCard);
+                    });
                     
                     // Formatar data
                     const dataFormatada = new Date(sorteio.data_sorteio).toLocaleDateString('pt-BR');
@@ -413,8 +478,7 @@
             }
         }, 1000);
     }
-    
-    // Função para mostrar o resultado após a contagem
+      // Função para mostrar o resultado após a contagem
     function mostrarResultado() {
         if (!sorteioResultado) return;
         
@@ -423,8 +487,35 @@
         // Exibir modal de resultado
         document.getElementById('sorteioTitulo').textContent = sorteio.titulo;
         document.getElementById('sorteioPremio').textContent = sorteio.premio;
-        document.getElementById('ganhadorNome').textContent = sorteio.ganhador.nome;
-        document.getElementById('ganhadorEmail').textContent = sorteio.ganhador.email;
+        
+        // Limpar e popular o container de ganhadores
+        const winnersContainer = document.getElementById('winners-container');
+        winnersContainer.innerHTML = ''; // Limpar conteúdo existente
+        
+        // Atualizar o título baseado no número de ganhadores
+        const tituloGanhadores = document.getElementById('titulo_ganhadores');
+        tituloGanhadores.textContent = sorteio.ganhadores.length > 1 ? 'Ganhadores:' : 'Ganhador(a):';
+        
+        // Para cada ganhador, criar um card
+        sorteio.ganhadores.forEach(ganhador => {
+            const winnerCard = document.createElement('div');
+            winnerCard.className = 'winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm';
+            winnerCard.innerHTML = `
+                <div class="d-flex justify-content-center align-items-center mb-3">
+                    <div class="me-3">
+                        <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" 
+                             style="width: 64px; height: 64px; font-size: 32px;">
+                            <i class="bi bi-person"></i>
+                        </div>
+                    </div>
+                    <div class="text-start">
+                        <h3 class="mb-0">${ganhador.nome}</h3>
+                        <p class="mb-0 text-muted">${ganhador.email}</p>
+                    </div>
+                </div>
+            `;
+            winnersContainer.appendChild(winnerCard);
+        });
         
         // Formatar data
         const dataFormatada = new Date(sorteio.data_sorteio).toLocaleDateString('pt-BR');
@@ -438,6 +529,32 @@
         setTimeout(() => {
             dispararConfetes();
         }, 300);
+    }
+      // Função para atualizar o texto baseado no número de ganhadores
+    function atualizarTextoNumeroGanhadores(sorteioId) {
+        // Fazer requisição para obter detalhes do sorteio
+        fetch(`/api/sorteio_info/${sorteioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const numVencedores = data.num_vencedores || 1;
+                    
+                    // Atualizar textos nos modais
+                    const numGanhadoresTexto = document.getElementById('num_ganhadores_texto');
+                    const contagemTextoGanhadores = document.getElementById('contagem_texto_ganhadores');
+                    
+                    if (numVencedores === 1) {
+                        numGanhadoresTexto.textContent = 'um ganhador aleatório';
+                        contagemTextoGanhadores.textContent = 'um ganhador';
+                    } else {
+                        numGanhadoresTexto.textContent = `${numVencedores} ganhadores aleatórios`;
+                        contagemTextoGanhadores.textContent = `${numVencedores} ganhadores`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao obter informações do sorteio:', error);
+            });
     }
     
     // Configurar botões de confirmação
@@ -478,8 +595,7 @@
                 alert('Erro ao realizar sorteio');
             });
         });
-        
-        // Botão de confirmar cancelamento
+          // Botão de confirmar cancelamento
         document.getElementById('confirmCancelBtn').addEventListener('click', function() {
             if (!sorteioAtualId) return;
             
@@ -503,6 +619,33 @@
             .catch(error => {
                 console.error('Erro:', error);
                 alert('Erro ao cancelar sorteio');
+            });
+        });
+        
+        // Botão de confirmar exclusão
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (!sorteioAtualId) return;
+            
+            // Enviar requisição para excluir o sorteio
+            fetch(`/excluir_sorteio/${sorteioAtualId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fechar modal e recarregar página
+                    bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+                    window.location.reload();
+                } else {
+                    alert('Erro ao excluir sorteio: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao excluir sorteio');
             });
         });
     });
