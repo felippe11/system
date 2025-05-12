@@ -1,0 +1,219 @@
+.table-responsive {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+
+@media (min-width: 576px) {
+  .w-sm-auto {
+    width: auto !important;
+  }
+}
+
+#linksExistentesList td {
+  vertical-align: middle;
+}
+
+.action-buttons .btn {
+  padding: 0.25rem 0.5rem;
+}
+.stat-card {
+  border: none;
+  border-radius: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
+}
+
+.bg-success-gradient {
+  background: linear-gradient(135deg, #00b4d8 0%, #0094c3 100%);
+}
+
+.bg-info-gradient {
+  background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+}
+
+.bg-warning-gradient {
+  background: linear-gradient(135deg, #ffd60a 0%, #ffc300 100%);
+}
+
+.bg-danger-gradient {
+  background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
+}
+
+.nav-tabs .nav-link {
+  font-weight: 500;
+  border: none;
+  color: #000 !important;
+  padding: 1rem 2rem;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0094c3 !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 3px solid #0094c3 !important;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 148, 195, 0.05);
+}
+
+
+  /* Gradiente para o cabeçalho */
+  .bg-gradient-primary-to-secondary {
+    background: linear-gradient(135deg, var(--bs-primary) 0%, #4a6fdc 100%);
+  }
+  
+  /* Efeito hover nos cards */
+  .hover-shadow {
+    transition: all 0.3s ease;
+  }
+  
+  .hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+  }
+  
+  /* Botões de content com hover */
+  .content-card {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+  }
+  
+  .content-card:hover {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+  }
+  
+  /* Melhorias para tabela responsiva */
+  .table-responsive {
+    scrollbar-width: thin;
+  }
+  
+  .sticky-top {
+    top: 0;
+    z-index: 999;
+  }
+  
+  /* Ajustes para botões de ação na tabela */
+  .btn-group .btn {
+    border-radius: 4px;
+    margin: 0 2px;
+  }
+
+  /* Cards com efeito hover */
+  .action-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+    border-radius: 10px;
+  }
+  
+  .action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+  }
+  
+  /* Ícones circulares */
+  .icon-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-size: 30px;
+  }
+  
+  /* Bullets numerados */
+  .icon-bullet {
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  
+  /* Cores de texto específicas para melhor contraste */
+  .btn-info {
+    color: white;
+  }
+  
+  /* Ajustes mobile */
+  @media (max-width: 768px) {
+    .icon-circle {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+    }
+  }
+
+
+      /* Estilos base para todos os botões */
+      .btn-padrao {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+      
+      .btn-padrao i {
+        margin-right: 0.5rem;
+      }
+      
+      /* Botões de alternância (toggle) */
+      .btn-toggle {
+        min-width: 120px;
+        padding: 0.5rem 1rem;
+      }
+      
+      /* Grupos de ação para agrupar botões relacionados */
+      .action-group {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+      
+      .action-group.action-between {
+        justify-content: space-between;
+      }
+      
+      .action-group.action-end {
+        justify-content: flex-end;
+      }
+      
+      /* Botões de download */
+      .btn-file {
+        padding: 0.75rem 1rem;
+      }
+      
+      .btn-file i {
+        font-size: 1.2em;
+      }
+      
+      /* Botões de navegação (tabs) */
+      .config-nav .nav-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1rem;
+      }
+      
+      .config-nav .nav-link i {
+        margin-right: 0.5rem;
+      }
+      
+      /* Botões de tabela */
+      .btn-table {
+        padding: 0.25rem 0.5rem;
+      }

@@ -1,0 +1,51 @@
+/* Responsive Breakpoints */
+@media (max-width: 1200px) {
+  .stat-card {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .config-nav .nav-link {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .card-footer .btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .stat-card .card-title {
+    font-size: 1.5rem;
+  }
+  
+  .action-group {
+    flex-direction: column;
+  }
+  
+  .table-responsive {
+    max-height: 400px;
+  }
+  
+  .btn-padrao {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .card-header h5 {
+    font-size: 1rem;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
