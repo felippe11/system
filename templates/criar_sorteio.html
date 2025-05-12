@@ -29,6 +29,16 @@
                         <label for="descricao" class="form-label">Descrição</label>
                         <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
                     </div>
+                    
+                    <!-- Número de Vencedores -->
+                    <div class="col-md-6">
+                        <label for="num_vencedores" class="form-label">Número de Vencedores</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="num_vencedores" name="num_vencedores" min="1" value="1" required>
+                            <span class="input-group-text"><i class="bi bi-people"></i></span>
+                        </div>
+                        <div class="form-text">Defina quantos ganhadores serão sorteados</div>
+                    </div>
 
                     <!-- Seleção de Evento ou Oficina -->
                     <div class="col-md-6">
@@ -127,16 +137,13 @@
             <div class="modal-body text-center py-5">
                 <div class="mb-4">
                     <i class="bi bi-stars text-warning" style="font-size: 4rem;"></i>
-                </div>
-                <h3 class="mb-3">Sorteio Concluído!</h3>
-                <div class="winner-container p-4 border rounded bg-light mb-4">
-                    <h5 class="text-muted mb-1">Ganhador(a):</h5>
-                    <h3 id="winnerName" class="text-danger">Nome do Ganhador</h3>
-                    <p class="mb-0"><span id="winnerEmail">email@exemplo.com</span></p>
+                </div>                <h3 class="mb-3">Sorteio Concluído!</h3>
+                <div id="winners-container">
+                    <!-- Área para exibir os ganhadores do sorteio -->
                 </div>
                 <p class="alert alert-info">
                     <i class="bi bi-info-circle me-2"></i>
-                    O ganhador será notificado por e-mail automaticamente.
+                    <span id="winner-notification-text">Os ganhadores serão notificados por e-mail automaticamente.</span>
                 </p>
             </div>
             <div class="modal-footer">
@@ -219,8 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fetchParticipantesInfo('oficina', this.value);
         }
     });
-    
-    // Função para buscar informações de participantes
+      // Função para buscar informações de participantes
     function fetchParticipantesInfo(tipo, id) {
         const infoContainer = document.getElementById('participantes_info');
         const contagemContainer = document.getElementById('participantes_contagem');
@@ -260,6 +266,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
                 contagemContainer.classList.add('d-none');
             });
+    }
+    
+    // Atualiza o texto no modal baseado no número de vencedores selecionados
+    document.getElementById('num_vencedores').addEventListener('change', function() {
+        const numVencedores = parseInt(this.value) || 1;
+        const notificationText = document.getElementById('winner-notification-text');
+        
+        if (numVencedores > 1) {
+            notificationText.textContent = `Os ${numVencedores} ganhadores serão notificados por e-mail automaticamente.`;
+        } else {
+            notificationText.textContent = 'O ganhador será notificado por e-mail automaticamente.';
+        }
+    });
+    
+    // Função para exibir resultados do sorteio recém-realizado
+    function exibirResultadoSorteio(sorteio) {
+        const winnersContainer = document.getElementById('winners-container');
+        winnersContainer.innerHTML = ''; // Limpar conteúdo anterior
+        
+        // Criar um cartão para cada ganhador
+        if (sorteio.ganhadores && sorteio.ganhadores.length > 0) {
+            sorteio.ganhadores.forEach((ganhador, index) => {
+                const winnerCard = document.createElement('div');
+                winnerCard.className = 'winner-container p-4 border rounded bg-light mb-3 shadow-sm';
+                
+                // Título baseado na posição (1º, 2º, 3º lugar, etc.)
+                let titulo = 'Ganhador(a)';
+                if (sorteio.ganhadores.length > 1) {
+                    const posicao = index + 1;
+                    const sufixo = posicao === 1 ? 'º' : posicao === 2 ? 'º' : 'º';
+                    titulo = `${posicao}${sufixo} Ganhador(a)`;
+                }
+                
+                winnerCard.innerHTML = `
+                    <h5 class="text-muted mb-1">${titulo}:</h5>
+                    <h3 class="text-danger">${ganhador.nome}</h3>
+                    <p class="mb-0"><span>${ganhador.email}</span></p>
+                `;
+                winnersContainer.appendChild(winnerCard);
+            });
+        } else {
+            winnersContainer.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Nenhum ganhador encontrado para este sorteio.
+                </div>
+            `;
+        }
     }
 });
 </script>
