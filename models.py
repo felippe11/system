@@ -908,6 +908,13 @@ class Pagamento(db.Model):
 
 
 
+# Tabela de associação para múltiplos ganhadores por sorteio
+sorteio_ganhadores = db.Table('sorteio_ganhadores',
+    db.Column('sorteio_id', db.Integer, db.ForeignKey('sorteio.id'), primary_key=True),
+    db.Column('usuario_id', db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+)
+
+
 class Sorteio(db.Model):
     __tablename__ = 'sorteio'
 
@@ -919,14 +926,19 @@ class Sorteio(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
     oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)
-    ganhador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    ganhador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)  # Mantido para compatibilidade
+    num_vencedores = db.Column(db.Integer, default=1)  # Número de vencedores do sorteio
     status = db.Column(db.String(20), default='pendente')  # pendente, realizado, cancelado
     
     # Relacionamentos
     cliente = db.relationship('Cliente', backref=db.backref('sorteios', lazy=True))
     evento = db.relationship('Evento', backref=db.backref('sorteios', lazy=True))
     oficina = db.relationship('Oficina', backref=db.backref('sorteios', lazy=True))
-    ganhador = db.relationship('Usuario', backref=db.backref('sorteios_ganhos', lazy=True))
+    ganhador = db.relationship('Usuario', backref=db.backref('sorteios_ganhos', lazy=True))  # Mantido para compatibilidade
+    
+    # Nova relação para múltiplos ganhadores
+    ganhadores = db.relationship('Usuario', secondary='sorteio_ganhadores', lazy='subquery',
+                                  backref=db.backref('sorteios_vencidos', lazy=True))
 
     def __repr__(self):
         return f"<Sorteio {self.titulo} - Prêmio: {self.premio}>"

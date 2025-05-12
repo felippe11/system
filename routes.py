@@ -138,6 +138,10 @@ def bloquear_usuarios_pendentes():
        
 def register_routes(app):
     app.register_blueprint(routes)
+    
+    # Registrar blueprint de rotas de sorteio
+    from routes.sorteio_routes import sorteio_routes
+    app.register_blueprint(sorteio_routes)
 
 
 # ===========================
@@ -3467,7 +3471,14 @@ def criar_sorteio():
         if not titulo or not premio or not evento_id:
             flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
             return render_template('criar_sorteio.html', eventos=eventos)
-        
+          # Obter número de vencedores
+        num_vencedores = request.form.get('num_vencedores', '1')
+        # Converter para inteiro e garantir valor mínimo de 1
+        try:
+            num_vencedores = max(1, int(num_vencedores))
+        except ValueError:
+            num_vencedores = 1
+            
         # Criar novo sorteio
         sorteio = Sorteio(
             titulo=titulo,
@@ -3476,6 +3487,7 @@ def criar_sorteio():
             cliente_id=current_user.id,
             evento_id=evento_id,
             oficina_id=oficina_id,
+            num_vencedores=num_vencedores,
             status='pendente'
         )
         
@@ -3606,8 +3618,17 @@ def get_sorteio(sorteio_id):
             return jsonify({'success': False, 'message': 'Acesso negado'})
         
         # Verificar se o sorteio foi realizado
-        if sorteio.status != 'realizado' or not sorteio.ganhador:
+        if sorteio.status != 'realizado' or not sorteio.ganhadores:
             return jsonify({'success': False, 'message': 'Este sorteio ainda não foi realizado'})
+        
+        # Buscar os ganhadores do sorteio
+        ganhadores_data = []
+        for ganhador in sorteio.ganhadores:
+            ganhadores_data.append({
+                'id': ganhador.id,
+                'nome': ganhador.nome,
+                'email': ganhador.email
+            })
         
         # Formatar dados do sorteio
         return jsonify({
@@ -3619,11 +3640,7 @@ def get_sorteio(sorteio_id):
                 'descricao': sorteio.descricao,
                 'data_sorteio': sorteio.data_sorteio.isoformat(),
                 'status': sorteio.status,
-                'ganhador': {
-                    'id': sorteio.ganhador.id,
-                    'nome': sorteio.ganhador.nome,
-                    'email': sorteio.ganhador.email
-                }
+                'ganhadores': ganhadores_data
             }
         })
     except Exception as e:
