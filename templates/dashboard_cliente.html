@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Dashboard do Cliente{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="/static/css/dashboard_cliente.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_responsive.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_modals.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_table.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_modals_responsive.css">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0 mt-0">
 
@@ -241,54 +250,7 @@
   </div>
 </div>
           
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add hover effect to button
-    const exportBtn = document.getElementById('btnExportarFiltrado');
-    exportBtn.addEventListener('mouseover', function() {
-      this.classList.add('shadow');
-    });
-    
-    exportBtn.addEventListener('mouseout', function() {
-      this.classList.remove('shadow');
-    });
-    
-    // Add animation on click
-    exportBtn.addEventListener('click', function() {
-      // Add spinner during export
-      const originalContent = this.innerHTML;
-      this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Exportando...';
-      this.disabled = true;
-      
-      // Get filter values
-      const eventoId = document.getElementById('filtroEvento').value;
-      const tipo = document.getElementById('filtroTipo').value;
-      const url = `/exportar_checkins_pdf_opcoes?evento_id=${eventoId}&tipo=${tipo}`;
-      
-      // Simulate delay before redirect (for UX feedback)
-      setTimeout(() => {
-        window.location.href = url;
-        // Reset button (in case export fails)
-        setTimeout(() => {
-          this.innerHTML = originalContent;
-          this.disabled = false;
-        }, 3000);
-      }, 800);
-    });
-    
-    // Improve select styling
-    const selects = document.querySelectorAll('.form-select');
-    selects.forEach(select => {
-      select.addEventListener('focus', function() {
-        this.classList.add('shadow-sm');
-      });
-      
-      select.addEventListener('blur', function() {
-        this.classList.remove('shadow-sm');
-      });
-    });
-  });
-</script>        </div><!-- /ABA 1: ESTATÍSTICAS -->
+        </div><!-- /ABA 1: ESTATÍSTICAS -->
 
 <!-- ABA 2: GERENCIAR -->
 <div class="tab-pane fade" id="gerenciar" role="tabpanel">
@@ -548,50 +510,6 @@
 </div>
 
 <!-- Estilos personalizados apenas para melhorar o visual sem afetar funcionalidades -->
-<style>
-  /* Gradiente para o cabeçalho */
-  .bg-gradient-primary-to-secondary {
-    background: linear-gradient(135deg, var(--bs-primary) 0%, #4a6fdc 100%);
-  }
-  
-  /* Efeito hover nos cards */
-  .hover-shadow {
-    transition: all 0.3s ease;
-  }
-  
-  .hover-shadow:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-  }
-  
-  /* Botões de content com hover */
-  .content-card {
-    transition: all 0.2s ease;
-    border-radius: 8px;
-  }
-  
-  .content-card:hover {
-    background-color: var(--bs-primary);
-    color: white;
-    border-color: var(--bs-primary);
-  }
-  
-  /* Melhorias para tabela responsiva */
-  .table-responsive {
-    scrollbar-width: thin;
-  }
-  
-  .sticky-top {
-    top: 0;
-    z-index: 999;
-  }
-  
-  /* Ajustes para botões de ação na tabela */
-  .btn-group .btn {
-    border-radius: 4px;
-    margin: 0 2px;
-  }
-</style>
 <!-- /ABA 2: GERENCIAR -->
         <!-- ABA 3: CRIAR NOVO -->
 <div class="tab-pane fade" id="criar" role="tabpanel">
@@ -783,123 +701,13 @@
 </div>
 
 <!-- Estilos específicos -->
-<style>
-  /* Cards com efeito hover */
-  .action-card {
-    transition: transform 0.3s, box-shadow 0.3s;
-    border-radius: 10px;
-  }
-  
-  .action-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
-  }
-  
-  /* Ícones circulares */
-  .icon-circle {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    font-size: 30px;
-  }
-  
-  /* Bullets numerados */
-  .icon-bullet {
-    min-width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-  }
-  
-  /* Cores de texto específicas para melhor contraste */
-  .btn-info {
-    color: white;
-  }
-  
-  /* Ajustes mobile */
-  @media (max-width: 768px) {
-    .icon-circle {
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-    }
-  }
-</style>
+
 <!-- /ABA 3: CRIAR NOVO -->
 
   <!-- ABA 4: CONFIGURAÇÕES -->
   <div class="tab-pane fade" id="configuracoes" role="tabpanel">
     <!-- CSS para padronização dos botões -->
-    <style>
-      /* Estilos base para todos os botões */
-      .btn-padrao {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-        transition: all 0.2s;
-      }
-      
-      .btn-padrao i {
-        margin-right: 0.5rem;
-      }
-      
-      /* Botões de alternância (toggle) */
-      .btn-toggle {
-        min-width: 120px;
-        padding: 0.5rem 1rem;
-      }
-      
-      /* Grupos de ação para agrupar botões relacionados */
-      .action-group {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-      }
-      
-      .action-group.action-between {
-        justify-content: space-between;
-      }
-      
-      .action-group.action-end {
-        justify-content: flex-end;
-      }
-      
-      /* Botões de download */
-      .btn-file {
-        padding: 0.75rem 1rem;
-      }
-      
-      .btn-file i {
-        font-size: 1.2em;
-      }
-      
-      /* Botões de navegação (tabs) */
-      .config-nav .nav-link {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.75rem 1rem;
-      }
-      
-      .config-nav .nav-link i {
-        margin-right: 0.5rem;
-      }
-      
-      /* Botões de tabela */
-      .btn-table {
-        padding: 0.25rem 0.5rem;
-      }
-    </style>
-
+    
     <!-- Menu de navegação para categorias (padronizado) -->
     <div class="bg-light p-2 rounded-3 mb-4 shadow-sm">
       <div class="nav nav-pills nav-fill config-nav">
@@ -1431,55 +1239,6 @@
   <!-- /ABA 4: CONFIGURAÇÕES -->
 <!-- Mantendo a integração com o script original sem modificações -->
 <!-- Javascript com ícones e labels melhorados -->
-<script>
-function gerarCamposUploads() {
-    const container = document.getElementById('containerPatrocinadores');
-    container.innerHTML = '';
-
-    const categorias = [
-        {id: 'realizacao', label: 'Realização', icon: 'fa-star', color: 'text-primary'},
-        {id: 'patrocinio', label: 'Patrocínio', icon: 'fa-handshake', color: 'text-success'},
-        {id: 'organizacao', label: 'Organização', icon: 'fa-users-cog', color: 'text-info'},
-        {id: 'apoio', label: 'Apoio', icon: 'fa-thumbs-up', color: 'text-secondary'},
-    ];
-
-    categorias.forEach(cat => {
-        const qtd = parseInt(document.getElementById(`qtd_${cat.id}`).value) || 0;
-        if (qtd > 0) {
-            const divCategoria = document.createElement('div');
-            divCategoria.className = 'card shadow-sm mb-3';
-
-            const headerCategoria = document.createElement('div');
-            headerCategoria.className = 'card-header d-flex align-items-center';
-
-            headerCategoria.innerHTML = `<i class="fas ${cat.icon} ${cat.color} me-2"></i>
-                                         <strong>${cat.label}</strong>`;
-
-            const bodyCategoria = document.createElement('div');
-            bodyCategoria.className = 'card-body';
-
-            for (let i = 0; i < qtd; i++) {
-                const label = document.createElement('label');
-                label.className = 'form-label';
-                label.innerText = `Logo ${cat.label} ${i + 1}`;
-
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.name = `${cat.id}_${i}`;
-                input.className = 'form-control mb-3';
-                input.accept = 'image/*';
-
-                bodyCategoria.appendChild(label);
-                bodyCategoria.appendChild(input);
-            }
-
-            divCategoria.appendChild(headerCategoria);
-            divCategoria.appendChild(bodyCategoria);
-            container.appendChild(divCategoria);
-        }
-    });
-}
-</script>
 
 
 <!-- MODALS -->
@@ -1577,81 +1336,6 @@ function gerarCamposUploads() {
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const filterOficina = document.getElementById('filterOficina');
-    const checkinsTable = document.getElementById('checkinsTable');
-    const noDataRow = document.getElementById('noDataRow');
-    const resetFilter = document.getElementById('resetFilter');
-
-    function filterCheckins() {
-        const selectedOficina = filterOficina.value;
-        let visibleRows = 0;
-
-        const rows = checkinsTable.querySelectorAll('tbody tr:not(#noDataRow)');
-        
-        rows.forEach(row => {
-            const oficinaId = row.dataset.oficina;
-            const matchOficina = !selectedOficina || oficinaId === selectedOficina;
-
-            if (matchOficina) {
-                row.style.display = '';
-                visibleRows++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        // Show/hide no data message
-        if (noDataRow) {
-            noDataRow.style.display = visibleRows === 0 ? '' : 'none';
-        }
-    }
-
-    // Add event listener for filter
-    if (filterOficina) {
-        filterOficina.addEventListener('change', filterCheckins);
-    }
-
-    // Reset filter button
-    if (resetFilter) {
-        resetFilter.addEventListener('click', function() {
-            filterOficina.value = '';
-            filterCheckins();
-        });
-    }
-});
-</script>
-
-<!-- Script para chamada AJAX -->
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const btnToggle = document.getElementById('btnToggleQrCredenciamento');
-    if (btnToggle) {
-      btnToggle.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        fetch("{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}", {
-          method: "POST",
-          headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Recarrega a página para refletir o novo estado (Ativo/Desativado)
-            window.location.reload();
-          } else {
-            alert("Erro ao alterar configuração: " + data.message);
-          }
-        })
-        .catch(err => {
-          console.error(err);
-          alert("Ocorreu um erro ao tentar alterar a configuração.");
-        });
-      });
-    }
-  });
-  </script>
 
 <!-- Modal Link de Inscrição (Otimizado) -->
 <div class="modal fade" id="modalLinkCadastro" tabindex="-1" aria-labelledby="modalLinkLabel" aria-hidden="true">
@@ -1666,34 +1350,50 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="modal-body">
         <!-- Seleção de Evento -->
         <div class="mb-3">
-          <label for="eventoSelect" class="form-label">Selecionar Evento</label>
-          <select id="eventoSelect" class="form-select" required>
+          <label for="eventoSelectModal" class="form-label">Selecionar Evento</label>
+          <select id="eventoSelectModal" class="form-select" required>
             <option value="">-- Selecione um Evento --</option>
-            <!-- Opções serão preenchidas via JavaScript -->
+            {% for evento in eventos %}
+              <option value="{{ evento.id }}">{{ evento.nome }}</option>
+            {% endfor %}
           </select>
         </div>
         
         <!-- Seção de links existentes -->
-        <div id="linksExistentesContainer" class="mb-4" style="display: none;">
-          <h6 class="border-bottom pb-2 mb-3">Links Existentes</h6>
-          <div id="linksExistentesLoader" class="text-center py-3">
-            <div class="spinner-border text-primary" role="status">
-              <span class="visually-hidden">Carregando...</span>
+        <div id="linksExistentesContainerModal" class="mb-4 bg-light rounded p-3" style="display: none;">
+          <h6 class="d-flex align-items-center border-bottom pb-2 mb-3">
+            <i class="bi bi-link-45deg me-2"></i>
+            Links Existentes
+          </h6>
+
+          <!-- Loader -->
+          <div id="linksExistentesLoaderModal" class="text-center py-4">
+            <div class="spinner-grow text-primary" role="status">
+              <span class="visually-hidden">Carregando links...</span>
+            </div>
+            <p class="text-muted mt-2 mb-0">Carregando links disponíveis...</p>
+          </div>
+
+          <!-- Empty State -->
+          <div id="linksExistentesEmptyModal" class="alert alert-info d-flex align-items-center" style="display: none;">
+            <i class="bi bi-info-circle-fill fs-5 me-3"></i>
+            <div>
+              <h6 class="alert-heading mb-1">Nenhum link encontrado</h6>
+              <p class="mb-0">Você ainda não gerou nenhum link para este evento.</p>
             </div>
           </div>
-          <div id="linksExistentesEmpty" class="alert alert-info" style="display: none;">
-            <i class="bi bi-info-circle me-2"></i>Nenhum link foi gerado para este evento.
-          </div>
+
+          <!-- Links Table -->
           <div class="table-responsive">
-            <table id="linksExistentesTable" class="table table-sm table-hover align-middle" style="display: none;">
+            <table id="linksExistentesTableModal" class="table table-hover align-middle mb-0" style="display: none;">
               <thead class="table-light">
                 <tr>
-                  <th>Identificador</th>
-                  <th>Data de Criação</th>
-                  <th>Ações</th>
+                  <th scope="col" class="border-bottom-0">Identificador</th>
+                  <th scope="col" class="border-bottom-0">Data de Criação</th>
+                  <th scope="col" class="text-end border-bottom-0">Ações</th>
                 </tr>
               </thead>
-              <tbody id="linksExistentesList">
+              <tbody id="linksExistentesListModal">
                 <!-- Links serão inseridos aqui via JavaScript -->
               </tbody>
             </table>
@@ -1737,6 +1437,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 </div>
+
 
 <!-- Modais de cada oficina (detalhes, inscritos, etc) -->
 {% for oficina in oficinas %}
@@ -1848,650 +1549,71 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 {% endfor %}
 
-
-<!-- Estilos CSS -->
-<style>
-  .table-responsive {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-
-@media (min-width: 576px) {
-  .w-sm-auto {
-    width: auto !important;
-  }
-}
-
-#linksExistentesList td {
-  vertical-align: middle;
-}
-
-.action-buttons .btn {
-  padding: 0.25rem 0.5rem;
-}
-.stat-card {
-  border: none;
-  border-radius: 1rem;
-  transition: transform 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-}
-
-.bg-primary-gradient {
-  background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
-}
-
-.bg-success-gradient {
-  background: linear-gradient(135deg, #00b4d8 0%, #0094c3 100%);
-}
-
-.bg-info-gradient {
-  background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
-}
-
-.bg-warning-gradient {
-  background: linear-gradient(135deg, #ffd60a 0%, #ffc300 100%);
-}
-
-.bg-danger-gradient {
-  background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
-}
-
-.nav-tabs .nav-link {
-  font-weight: 500;
-  border: none;
-  color: #6c757d;
-  padding: 1rem 2rem;
-}
-
-.nav-tabs .nav-link.active {
-  color: #0094c3;
-  border-bottom: 3px solid #0094c3;
-  background: transparent;
-}
-
-.table-hover tbody tr:hover {
-  background-color: rgba(0, 148, 195, 0.05);
-}
-</style>
-
 <!-- Scripts -->
-
+{% block scripts %}
+{{ super() }}
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const btnSubmissao = document.getElementById('btnToggleSubmissao');
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+      .map(function(el) { return new bootstrap.Tooltip(el) });
 
-    if (btnSubmissao) {
-      btnSubmissao.addEventListener('click', function () {
-        const toggleUrl = btnSubmissao.getAttribute('data-toggle-url');
+    // Handle link generation button
+    const gerarLinkBtn = document.getElementById('gerarLinkBtn');
+    const modalEl = document.getElementById('modalLinkCadastro');
+    
+    if (gerarLinkBtn && modalEl) {
+      // Properly configure modal with all options
+      const modal = new bootstrap.Modal(modalEl, {
+        backdrop: 'static', // Prevent closing when clicking outside
+        keyboard: true,     // Allow ESC key to close
+        focus: true        // Focus the modal when opened
+      });
 
-        fetch(toggleUrl)
-          .then(response => {
-            if (response.ok) {
-              location.reload(); // recarrega para refletir a mudança
-            } else {
-              alert("Erro ao atualizar a configuração.");
-            }
-          })
-          .catch(error => {
-            console.error("Erro na requisição:", error);
-            alert("Erro ao conectar com o servidor.");
-          });
+      // Clean up modal properly when it's hidden
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        document.body.classList.remove('modal-open');
+        const backdrops = document.getElementsByClassName('modal-backdrop');
+        while(backdrops.length > 0) {
+          backdrops[0].remove();
+        }
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      });
+
+      // Show modal when button is clicked
+      gerarLinkBtn.addEventListener('click', function() {
+        modal.show();
       });
     }
   });
 </script>
 
+<!-- ❶  Variáveis de configuração que o JS precisa -->
 <script>
-// Carregamento inicial - Estados e configurações
-document.addEventListener('DOMContentLoaded', function() {
-  // 1. Buscar estados do IBGE
-  const estadoSelect = document.getElementById('estadoSelect');
-  const cidadeSelect = document.getElementById('cidadeSelect');
-  const estadoFilter = "{{ estado_filter|default('') }}";
-  const cidadeFilter = "{{ cidade_filter|default('') }}";
+  /* geração e listagem de links de inscrição --------------------------- */
+  const URL_GERAR_LINK           = "{{ url_for('routes.gerar_link') }}";            // POST cria | GET lista
+  const URL_LISTAR_EVENTOS_MODAL = "{{ url_for('routes.gerar_link') }}";            // GET (sem parâmetro) → lista eventos
+  const URL_LISTAR_LINKS_EVENTO  = "{{ url_for('routes.gerar_link') }}";            // GET ?evento_id=123 → links do evento
 
-  fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
-    .then(response => response.json())
-    .then(data => {
-      data.sort((a, b) => a.nome.localeCompare(b.nome));
-      data.forEach(estado => {
-        const option = document.createElement('option');
-        option.value = estado.sigla;
-        option.text = estado.nome;
-        if (estado.sigla === estadoFilter) {
-          option.selected = true;
-        }
-        estadoSelect.add(option);
-      });
-      if (estadoSelect.value) {
-        estadoSelect.dispatchEvent(new Event('change'));
-      }
-    })
-    .catch(error => console.error('Erro ao buscar estados:', error));
-
-  // 2. Evento de mudança de estado
-  estadoSelect.addEventListener('change', function() {
-    const uf = this.value;
-    cidadeSelect.innerHTML = '<option value="">Todas as Cidades</option>';
-    if (uf) {
-      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf + '/municipios')
-        .then(response => response.json())
-        .then(data => {
-          data.sort((a, b) => a.nome.localeCompare(b.nome));
-          data.forEach(cidade => {
-            const option = document.createElement('option');
-            option.value = cidade.nome;
-            option.text = cidade.nome;
-            if (cidade.nome === cidadeFilter) {
-              option.selected = true;
-            }
-            cidadeSelect.add(option);
-          });
-        })
-        .catch(error => console.error('Erro ao buscar cidades:', error));
-    }
-  });
-
-  // 3. Buscar estado atual das configurações do cliente
-  fetch("{{ url_for('routes.configuracao_cliente_atual') }}")
-    .then(response => response.json())
-    .then(data => {
-      if (!data.success) {
-        console.warn("Não foi possível obter estado do cliente:", data);
-        return;
-      }
-      
-      const btnCheckin = document.getElementById('btnToggleCheckin');
-      const btnFeedback = document.getElementById('btnToggleFeedback');
-      const btnCertificado = document.getElementById('btnToggleCertificado');
-
-      if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
-      if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
-      if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
-    })
-    .catch(err => {
-      console.error("Erro ao buscar config do cliente:", err);
-    });
-
-  // 4. Configurar botões de toggle
-  const toggleButtons = [
-    document.getElementById('btnToggleCheckin'),
-    document.getElementById('btnToggleFeedback'),
-    document.getElementById('btnToggleCertificado')
-  ];
-
-  toggleButtons.forEach(button => {
-    if (!button) return;
-    const toggleUrl = button.dataset.toggleUrl;
-
-    button.addEventListener('click', function() {
-      fetch(toggleUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        body: JSON.stringify({})
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          atualizarBotao(button, data.value);
-        } else {
-          alert("Falha ao atualizar: " + data.message);
-        }
-      })
-      .catch(err => {
-        alert("Erro na requisição: " + err);
-      });
-    });
-  });
-});
-
-// Funções auxiliares
-function atualizarBotao(btn, valorAtivo) {
-  if (!btn) return;
-  if (valorAtivo) {
-    btn.classList.remove("btn-danger");
-    btn.classList.add("btn-success");
-    btn.textContent = "Ativo";
-  } else {
-    btn.classList.remove("btn-success");
-    btn.classList.add("btn-danger");
-    btn.textContent = "Desativado";
-  }
-}
-
-function carregarRelatorioMensagem() {
-  fetch("{{ url_for('routes.gerar_relatorio_mensagem') }}")
-    .then(response => response.text())
-    .then(data => {
-        document.getElementById("textoRelatorio").value = data;
-        var modalRelatorio = new bootstrap.Modal(document.getElementById("modalRelatorioMensagem"));
-        modalRelatorio.show();
-    })
-    .catch(error => {
-        console.error("Erro ao carregar relatório:", error);
-    });
-}
-
-function copiarMensagem() {
-  let texto = document.getElementById("textoRelatorio").value;
-  navigator.clipboard.writeText(texto).then(() => {
-    alert("Mensagem copiada com sucesso!");
-  }).catch(err => {
-    alert("Falha ao copiar: " + err);
-  });
-}
-
-function enviarWhatsAppRelatorio() {
-  let mensagem = document.getElementById("textoRelatorio").value;
-  let url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(mensagem);
-  window.open(url, "_blank");
-}
-
-// Configuração do modal de geração de link
-document.getElementById("gerarLinkBtn").addEventListener("click", function() {
-  var modal = new bootstrap.Modal(document.getElementById("modalLinkCadastro"));
-  modal.show();
-
-  // Limpar campos e seleções atuais
-  document.getElementById("slugInput").value = "";
-  document.getElementById("linkCadastro").value = "";
-  document.getElementById("linksExistentesContainer").style.display = "none";
+  /* link já existente – excluir --------------------------------------- */
+  const URL_EXCLUIR_LINK         = "{{ url_for('routes.excluir_link') }}";          // POST {link_id}
   
-  fetch("{{ url_for('routes.gerar_link') }}")
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Erro ao carregar eventos: ' + response.statusText);
-      }
-      return response.json();
-    })
-    .then(data => {
-      const eventoSelect = document.getElementById("eventoSelect");
-      eventoSelect.options.length = 0;
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "";
-      defaultOption.textContent = "-- Selecione um Evento --";
-      eventoSelect.appendChild(defaultOption);
+  /* configurações do cliente (check‑in, feedback, etc.) ---------------- */
+  const URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('routes.configuracao_cliente_atual') }}";
 
-      if (data.eventos && data.eventos.length > 0) {
-        data.eventos.forEach(evento => {
-          const option = document.createElement("option");
-          option.value = evento.id;
-          option.textContent = evento.nome;
-          eventoSelect.appendChild(option);
-        });
-      } else {
-        alert("Nenhum evento disponível para gerar links.");
-      }
-    })
-    .catch(error => {
-      console.error("Erro ao carregar eventos:", error);
-      alert("Erro ao carregar os eventos. Tente novamente mais tarde.");
-    });
-});
+  /* QR‑Code de credenciamento do evento -------------------------------- */
+  const URL_TOGGLE_QR_CREDENCIAMENTO = "{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}";
 
-// Função para carregar links existentes quando um evento é selecionado
-document.getElementById("eventoSelect").addEventListener("change", function() {
-  const eventoId = this.value;
-  const linksContainer = document.getElementById("linksExistentesContainer");
-  const linksTable = document.getElementById("linksExistentesTable");
-  const linksLoader = document.getElementById("linksExistentesLoader");
-  const linksEmpty = document.getElementById("linksExistentesEmpty");
-  
-  if (!eventoId) {
-    linksContainer.style.display = "none";
-    return;
-  }
-  
-  // Mostrar container e loader
-  linksContainer.style.display = "block";
-  linksLoader.style.display = "block";
-  linksTable.style.display = "none";
-  linksEmpty.style.display = "none";
-  
-  // Buscar links existentes para o evento selecionado
-  fetch(`{{ url_for('routes.gerar_link') }}?evento_id=${eventoId}`)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Erro ao carregar links: ' + response.statusText);
-      }
-      return response.json();
-    })
-    .then(data => {
-      linksLoader.style.display = "none";
-      
-      if (data.links && data.links.length > 0) {
-        // Temos links para mostrar
-        const linksList = document.getElementById("linksExistentesList");
-        linksList.innerHTML = ""; // Limpar lista atual
-        
-        data.links.forEach(link => {
-          const row = document.createElement("tr");
-          
-          // Coluna Identificador
-          const slugCell = document.createElement("td");
-          const slugSpan = document.createElement("span");
-          slugSpan.className = "d-inline-block text-truncate";
-          slugSpan.style.maxWidth = "300px";
-          slugSpan.textContent = link.slug || "Token: " + link.token.substring(0, 8) + "...";
-          slugSpan.title = link.slug || link.token;
-          slugCell.appendChild(slugSpan);
-          
-          // Coluna data
-          const dataCell = document.createElement("td");
-          const data = new Date(link.criado_em);
-          dataCell.textContent = data.toLocaleDateString('pt-BR');
-          
-          // Coluna ações
-          const acoesCell = document.createElement("td");
-          acoesCell.className = "d-flex gap-1";
-          
-          // Botão copiar
-          const btnCopiar = document.createElement("button");
-          btnCopiar.className = "btn btn-sm btn-outline-primary";
-          btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
-          btnCopiar.title = "Copiar link";
-          btnCopiar.addEventListener("click", function() {
-            navigator.clipboard.writeText(link.url)
-              .then(() => {
-                btnCopiar.innerHTML = '<i class="bi bi-check"></i>';
-                setTimeout(() => {
-                  btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
-                }, 1500);
-              });
-          });
-          
-          // Botão WhatsApp
-          const btnWhatsapp = document.createElement("a");
-          btnWhatsapp.className = "btn btn-sm btn-outline-success";
-          btnWhatsapp.innerHTML = '<i class="bi bi-whatsapp"></i>';
-          btnWhatsapp.title = "Compartilhar via WhatsApp";
-          btnWhatsapp.href = `https://api.whatsapp.com/send?text=${encodeURIComponent("Olá! Cadastre-se no evento através deste link: " + link.url)}`;
-          btnWhatsapp.target = "_blank";
-          
-          // Botão excluir
-          const btnExcluir = document.createElement("button");
-          btnExcluir.className = "btn btn-sm btn-outline-danger";
-          btnExcluir.innerHTML = '<i class="bi bi-trash"></i>';
-          btnExcluir.title = "Excluir link";
-          btnExcluir.addEventListener("click", function() {
-            if (confirm("Tem certeza que deseja excluir este link?")) {
-              fetch("{{ url_for('routes.excluir_link') }}", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Requested-With": "XMLHttpRequest"
-                },
-                body: JSON.stringify({
-                  link_id: link.id
-                })
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.success) {
-                  row.remove();
-                  if (linksList.children.length === 0) {
-                    linksTable.style.display = "none";
-                    linksEmpty.style.display = "block";
-                  }
-                } else {
-                  alert("Erro ao excluir: " + data.message);
-                }
-              })
-              .catch(error => {
-                console.error("Erro ao excluir link:", error);
-                alert("Erro ao excluir link. Tente novamente.");
-              });
-            }
-          });
-          
-          // Adicionar botões à célula
-          acoesCell.appendChild(btnCopiar);
-          acoesCell.appendChild(btnWhatsapp);
-          acoesCell.appendChild(btnExcluir);
-          
-          // Montar linha
-          row.appendChild(slugCell);
-          row.appendChild(dataCell);
-          row.appendChild(acoesCell);
-          
-          // Adicionar à tabela
-          linksList.appendChild(row);
-        });
-        
-        linksTable.style.display = "table";
-      } else {
-        // Sem links para mostrar
-        linksEmpty.style.display = "block";
-      }
-    })
-    .catch(error => {
-      console.error("Erro ao carregar links existentes:", error);
-      linksLoader.style.display = "none";
-      linksEmpty.textContent = "Erro ao carregar links. Tente novamente.";
-      linksEmpty.style.display = "block";
-    });
-});
+  /* texto de relatório para WhatsApp / e‑mail -------------------------- */
+  const URL_GERAR_RELATORIO_MENSAGEM = "{{ url_for('routes.gerar_relatorio_mensagem') }}";
 
-document.getElementById("gerarLinkConfirm").addEventListener("click", function() {
-  const eventoId = document.getElementById("eventoSelect").value;
-  const slugCustomizado = document.getElementById("slugInput").value;
-  const btnGerar = this; // Guardar referência ao botão
-  
-  // Validação
-  if (!eventoId) {
-    alert("Por favor, selecione um evento!");
-    return;
-  }
-  
-  // Mudar estado do botão para indicar processamento
-  btnGerar.disabled = true;
-  btnGerar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processando...';
-  
-  fetch("{{ url_for('routes.gerar_link') }}", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest"
-    },
-    body: JSON.stringify({
-      evento_id: eventoId,
-      slug_customizado: slugCustomizado
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    // Restaurar estado do botão
-    btnGerar.disabled = false;
-    btnGerar.innerHTML = '<i class="bi bi-magic me-2"></i>Gerar Link';
-    
-    if (data.success) {
-      const linkGerado = data.link;
-      document.getElementById("linkCadastro").value = linkGerado;
-      
-      // Mostrar o container do link gerado
-      document.getElementById("linkGeradoContainer").style.display = "block";
-      
-      // Atualizar a tabela manualmente em vez de disparar o evento change
-      atualizarTabelaLinks(eventoId);
-      
-      // Feedback de sucesso
-      const alertSuccess = document.createElement("div");
-      alertSuccess.className = "alert alert-success alert-dismissible fade show mt-3";
-      alertSuccess.innerHTML = `
-        <strong><i class="bi bi-check-circle me-2"></i>Sucesso!</strong> Link gerado com sucesso.
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      `;
-      document.getElementById("linkGeradoContainer").after(alertSuccess);
-      
-      // Auto-fechar o alerta após 3 segundos
-      setTimeout(() => {
-        alertSuccess.remove();
-      }, 3000);
-    } else {
-      alert("Erro: " + (data.message || "Não foi possível gerar o link"));
-    }
-  })
-  .catch(error => {
-    console.error("Erro ao gerar o link:", error);
-    
-    // Restaurar estado do botão
-    btnGerar.disabled = false;
-    btnGerar.innerHTML = '<i class="bi bi-magic me-2"></i>Gerar Link';
-    
-    alert("Erro ao comunicar com o servidor. Tente novamente.");
-  });
-});
-
-// Função para atualizar a tabela de links sem precisar disparar o evento change
-function atualizarTabelaLinks(eventoId) {
-  const linksContainer = document.getElementById("linksExistentesContainer");
-  const linksTable = document.getElementById("linksExistentesTable");
-  const linksLoader = document.getElementById("linksExistentesLoader");
-  const linksEmpty = document.getElementById("linksExistentesEmpty");
-  
-  // Mostrar container e loader
-  linksContainer.style.display = "block";
-  linksLoader.style.display = "block";
-  linksTable.style.display = "none";
-  linksEmpty.style.display = "none";
-  
-  fetch(`{{ url_for('routes.gerar_link') }}?evento_id=${eventoId}`)
-    .then(response => response.json())
-    .then(data => {
-      linksLoader.style.display = "none";
-      
-      if (data.links && data.links.length > 0) {
-        // Temos links para mostrar
-        const linksList = document.getElementById("linksExistentesList");
-        linksList.innerHTML = ""; // Limpar lista atual
-        
-        data.links.forEach(link => {
-          const row = document.createElement("tr");
-          
-          // Coluna Identificador
-          const slugCell = document.createElement("td");
-          const slugSpan = document.createElement("span");
-          slugSpan.className = "d-inline-block text-truncate";
-          slugSpan.style.maxWidth = "300px";
-          slugSpan.textContent = link.slug || "Token: " + link.token.substring(0, 8) + "...";
-          slugSpan.title = link.slug || link.token;
-          slugCell.appendChild(slugSpan);
-          
-          // Coluna data
-          const dataCell = document.createElement("td");
-          const data = new Date(link.criado_em);
-          dataCell.textContent = data.toLocaleDateString('pt-BR');
-          
-          // Coluna ações
-          const acoesCell = document.createElement("td");
-          acoesCell.className = "d-flex gap-1";
-          
-          // Botão copiar
-          const btnCopiar = document.createElement("button");
-          btnCopiar.className = "btn btn-sm btn-outline-primary";
-          btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
-          btnCopiar.title = "Copiar link";
-          btnCopiar.addEventListener("click", function() {
-            navigator.clipboard.writeText(link.url)
-              .then(() => {
-                btnCopiar.innerHTML = '<i class="bi bi-check"></i>';
-                setTimeout(() => {
-                  btnCopiar.innerHTML = '<i class="bi bi-clipboard"></i>';
-                }, 1500);
-              });
-          });
-          
-          // Botão WhatsApp
-          const btnWhatsapp = document.createElement("a");
-          btnWhatsapp.className = "btn btn-sm btn-outline-success";
-          btnWhatsapp.innerHTML = '<i class="bi bi-whatsapp"></i>';
-          btnWhatsapp.title = "Compartilhar via WhatsApp";
-          btnWhatsapp.href = `https://api.whatsapp.com/send?text=${encodeURIComponent("Olá! Cadastre-se no evento através deste link: " + link.url)}`;
-          btnWhatsapp.target = "_blank";
-          
-          // Botão excluir
-          const btnExcluir = document.createElement("button");
-          btnExcluir.className = "btn btn-sm btn-outline-danger";
-          btnExcluir.innerHTML = '<i class="bi bi-trash"></i>';
-          btnExcluir.title = "Excluir link";
-          btnExcluir.addEventListener("click", function() {
-            if (confirm("Tem certeza que deseja excluir este link?")) {
-              fetch("{{ url_for('routes.excluir_link') }}", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Requested-With": "XMLHttpRequest"
-                },
-                body: JSON.stringify({
-                  link_id: link.id
-                })
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.success) {
-                  row.remove();
-                  if (linksList.children.length === 0) {
-                    linksTable.style.display = "none";
-                    linksEmpty.style.display = "block";
-                  }
-                } else {
-                  alert("Erro ao excluir: " + data.message);
-                }
-              })
-              .catch(error => {
-                console.error("Erro ao excluir link:", error);
-                alert("Erro ao excluir link. Tente novamente.");
-              });
-            }
-          });
-          
-          // Adicionar botões à célula
-          acoesCell.appendChild(btnCopiar);
-          acoesCell.appendChild(btnWhatsapp);
-          acoesCell.appendChild(btnExcluir);
-          
-          // Montar linha
-          row.appendChild(slugCell);
-          row.appendChild(dataCell);
-          row.appendChild(acoesCell);
-          
-          // Adicionar à tabela
-          linksList.appendChild(row);
-        });
-        
-        linksTable.style.display = "table";
-      } else {
-        // Sem links para mostrar
-        linksEmpty.style.display = "block";
-      }
-    })
-    .catch(error => {
-      console.error("Erro ao carregar links existentes:", error);
-      linksLoader.style.display = "none";
-      linksEmpty.textContent = "Erro ao carregar links. Tente novamente.";
-      linksEmpty.style.display = "block";
-    });
-}
-
-function copiarLink() {
-  const linkInput = document.getElementById("linkCadastro");
-  linkInput.select();
-  document.execCommand("copy");
-  
-  // Feedback visual
-  const btnCopy = linkInput.nextElementSibling;
-  const originalHTML = btnCopy.innerHTML;
-  btnCopy.innerHTML = '<i class="bi bi-check"></i>';
-  setTimeout(() => {
-    btnCopy.innerHTML = originalHTML;
-  }, 1500);
-}
+  /* filtros iniciais de estado / cidade -------------------------------- */
+  const ESTADO_FILTER_INICIAL = "{{ request.args.get('estado', '') }}";
+  const CIDADE_FILTER_INICIAL = "{{ request.args.get('cidade', '') }}";
 </script>
+
+<!-- ❷  Agora sim carregue o JS principal -->
+<script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
+{% endblock %}
 {% endblock %}
