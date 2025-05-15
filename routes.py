@@ -5,6 +5,13 @@ import pytz
 from flask import Response
 from datetime import datetime
 import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,  # Ensure debug messages are shown
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 import pandas as pd
 import qrcode
 import requests
@@ -518,12 +525,19 @@ def cadastro_participante(identifier: str | None = None):
 
         if not lote_vigente and lotes_ativos:
             logger.warning("Nenhum lote válido encontrado!")
+            logger.debug(f"Lotes ativos encontrados: {[lote.nome for lote in lotes_ativos]}")
             flash("Nenhum lote disponível no momento", "warning")
             return redirect(url_for("routes.login"))
+        else:
+            logger.debug(f"Lote vigente: {lote_vigente.nome if lote_vigente else 'Nenhum lote vigente'}")
 
     # ──────────────────── PREPARAÇÃO DE DADOS PARA O TEMPLATE ────────────────
     oficinas = Oficina.query.filter_by(evento_id=evento.id).all() if evento else []
     
+    # Debug: Check if evento is fetched correctly
+    logger.debug(f"Evento: {evento.nome if evento else 'Nenhum evento encontrado'}")
+    logger.debug(f"Habilitar Lotes: {evento.habilitar_lotes if evento else 'Nenhum evento'}")
+
     # Carrega ministrantes
     ministrantes = (
         Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all() if evento else []
@@ -604,6 +618,9 @@ def cadastro_participante(identifier: str | None = None):
             all_ministrantes.add(of.ministrante_obj)
         if hasattr(of, 'ministrantes_associados'):
             all_ministrantes.update(of.ministrantes_associados)
+
+    # Debug: Check if campos_personalizados are fetched
+    logger.debug(f"Campos personalizados: {[campo.nome for campo in campos_personalizados]}")
 
     # ──────────────────── TRATAMENTO DO FORMULÁRIO (POST) ────────────────
     if request.method == "POST":
@@ -860,6 +877,20 @@ def cadastro_participante(identifier: str | None = None):
 
     # ──────────────────── PREPARAÇÃO DO RESPONSE (GET) ────────────────
     # Estatísticas do lote vigente
+    tipos_inscricao = []
+    if evento:
+        if evento.habilitar_lotes and lote_vigente:
+            # Carrega apenas os tipos de inscrição associados ao lote vigente
+            tipos_inscricao = [lote_tipo.tipo_inscricao for lote_tipo in lote_vigente.tipos_inscricao]
+            logger.debug(f"Tipos de inscrição no lote vigente: {[tipo.nome for tipo in tipos_inscricao]}")
+        elif not evento.habilitar_lotes:
+            # Carrega todos os tipos de inscrição do evento quando lotes estão desabilitados
+            tipos_inscricao = EventoInscricaoTipo.query.filter_by(
+                evento_id=evento.id
+            ).order_by(EventoInscricaoTipo.ordem).all()
+            logger.debug(f"Tipos de inscrição no evento: {[tipo.nome for tipo in tipos_inscricao]}")
+
+    # Estatísticas do lote vigente
     lote_stats = None
     if lote_vigente:
         count = db.session.query(func.count(Inscricao.id)).filter(
@@ -879,8 +910,9 @@ def cadastro_participante(identifier: str | None = None):
             "data_fim": lote_vigente.data_fim.strftime("%d/%m/%Y") if lote_vigente.data_fim else "Não definido"
         }
         logger.debug(f"Estatísticas do lote: {lote_stats}")
-        
-         
+    else:
+        logger.debug("Nenhuma estatística de lote disponível.")
+
     # Renderiza o template com os dados necessários
     return render_template(
         "cadastro_participante.html",
@@ -894,7 +926,7 @@ def cadastro_participante(identifier: str | None = None):
         lote_vigente=lote_vigente,
         lote_stats=lote_stats,
         lotes_ativos=lotes_ativos,
-        tipos_inscricao=EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all() if evento else []
+        tipos_inscricao=tipos_inscricao
     )
    
     
