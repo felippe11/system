@@ -24,6 +24,29 @@
         </div>
     </section>
 
+    <!-- DEBUG: Seção temporária para verificar dados -->
+    <div class="debug-section" style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
+        <h3>DEBUG - Dados Recebidos</h3>
+        <p>Evento: {{ evento.nome if evento else 'Nenhum' }}</p>
+        <p>Habilitar Lotes: {{ evento.habilitar_lotes if evento else 'Nenhum' }}</p>
+        <p>Inscrição Gratuita: {{ evento.inscricao_gratuita if evento else 'Nenhum' }}</p>
+        
+        <h4>Tipos de Inscrição ({{ tipos_inscricao|length }})</h4>
+        <ul>
+            {% for tipo in tipos_inscricao %}
+            <li>{{ tipo.nome }} - R$ {{ tipo.preco }} (ID: {{ tipo.id }})</li>
+            {% else %}
+            <li>Nenhum tipo de inscrição disponível</li>
+            {% endfor %}
+        </ul>
+        
+        {% if lote_vigente %}
+        <h4>Lote Vigente</h4>
+        <p>{{ lote_vigente.nome }} (ID: {{ lote_vigente.id }})</p>
+        <p>Tipos associados: {{ lote_vigente.tipos_inscricao|length }}</p>
+        {% endif %}
+    </div>
+
     <!-- Seção de Informações do Evento -->
     <section class="event-details">
         {% if evento.descricao %}
@@ -208,7 +231,7 @@
                 {% if evento and evento.habilitar_lotes and not lote_vigente %}
                 <div class="alert-message warning">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <span>Não há lotes disponíveis para inscrição no momento.</span>
+                    <span>Nenhum lote disponível para inscrição no momento.</span>
                 </div>
                 {% else %}
                 <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}" id="registrationForm">
@@ -247,8 +270,8 @@
                         </div>
                         
                         <!-- Campos Personalizados -->
-                        {% if evento and evento.cliente and evento.cliente.campos_personalizados %}
-                            {% for campo in evento.cliente.campos_personalizados %}
+                        {% if campos_personalizados %}
+                            {% for campo in campos_personalizados %}
                             <div class="form-group{% if campo.full_width %} full-width{% endif %}">
                                 <label>{{ campo.nome }}</label>
                                 {% if campo.tipo == 'textarea' %}
@@ -266,104 +289,86 @@
                         {% endif %}
                         
                         <!-- Tipo de Inscrição -->
-<div class="form-group full-width">
-    <label>Tipo de Inscrição</label>
-    
-    {% if evento and evento.habilitar_lotes and lote_vigente %}
-    <div class="lote-info">
-        <h3>Lote Atual: {{ lote_vigente.nome }}</h3>
-        <p>Vagas: {{ lote_stats.vagas_usadas }}/{{ lote_stats.vagas_totais if lote_stats.vagas_totais != "ilimitado" else "Ilimitadas" }}</p>
-        <p>Período: {{ lote_stats.data_inicio }} a {{ lote_stats.data_fim }}</p>
-    </div>
-    
-    {% if lotes_ativos|length > 1 %}
-    <div class="outros-lotes">
-        <h4>Outros lotes disponíveis:</h4>
-        <ul>
-            {% for lote in lotes_ativos %}
-                {% if lote.id != lote_vigente.id %}
-                <!-- Usando apenas os objetos já formatados como string -->
-                <li>{{ lote.nome }} ({{ lote.data_inicio_str }} a {{ lote.data_fim_str }})</li>
-                {% endif %}
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-    
-    <!-- Resto do código permanece igual -->
-    <div class="ticket-options">
-        {% for lote_tipo in lote_vigente.tipos_inscricao %}
-        <div class="ticket-option">
-            <input type="radio" 
-                   id="lote_tipo_{{ lote_tipo.id }}" 
-                   name="lote_tipo_inscricao_id" 
-                   value="{{ lote_tipo.id }}"
-                   data-lote-id="{{ lote_vigente.id }}"
-                   data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}"
-                   data-preco="{{ lote_tipo.preco }}"
-                   required>
-            <label for="lote_tipo_{{ lote_tipo.id }}">
-                <span class="ticket-name">{{ lote_tipo.tipo_inscricao.nome }}</span>
-                {% if not evento.inscricao_gratuita %}
-                <span class="ticket-price">R$ {{ lote_tipo.preco }}</span>
-                {% endif %}
-            </label>
-        </div>
-        {% endfor %}
-    </div>
-    <input type="hidden" id="lote_id" name="lote_id" value="{{ lote_vigente.id }}">
-    
-    <!-- Por esta versão corrigida -->
-{% elif evento and tipos_inscricao %}
-<div class="ticket-options">
-    {% for tipo in tipos_inscricao %}
-    <div class="ticket-option">
-        <input type="radio" 
-               id="tipo_{{ tipo.id }}" 
-               name="tipo_inscricao_id" 
-               value="{{ tipo.id }}"
-               data-preco="{{ tipo.preco }}"
-               required>
-        <label for="tipo_{{ tipo.id }}">
-            <span class="ticket-name">{{ tipo.nome }}</span>
-            {% if not evento.inscricao_gratuita %}
-            <span class="ticket-price">R$ {{ tipo.preco }}</span>
-            {% endif %}
-        </label>
-    </div>
-    {% endfor %}
-</div>
-    
-    {% elif evento and evento.inscricao_gratuita %}
-    <div class="free-registration">
-        <i class="fas fa-check-circle"></i>
-        <span>Inscrição gratuita</span>
-    </div>
-    
-    {% if evento.tipos_inscricao and evento.tipos_inscricao|length > 0 %}
-    <div class="ticket-options">
-        {% for tipo in evento.tipos_inscricao %}
-        <div class="ticket-option">
-            <input type="radio" 
-                   id="tipo_{{ tipo.id }}" 
-                   name="tipo_inscricao_id" 
-                   value="{{ tipo.id }}"
-                   required>
-            <label for="tipo_{{ tipo.id }}">
-                <span class="ticket-name">{{ tipo.nome }}</span>
-            </label>
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <input type="hidden" name="tipo_inscricao_id" value="{{ evento.tipos_inscricao[0].id if evento.tipos_inscricao and evento.tipos_inscricao|length > 0 else '' }}">
-    {% endif %}
-    {% endif %}
-    
-    <div class="selected-ticket-display">
-        <span id="selectedTicketText">Nenhum tipo selecionado</span>
-    </div>
-</div>
+                        <div class="form-group full-width">
+                            <label>Tipo de Inscrição</label>
+
+                            {% if evento and evento.habilitar_lotes and lote_vigente %}
+                            <div class="lote-info">
+                                <h3>Lote Atual: {{ lote_vigente.nome }}</h3>
+                                <p>Vagas: {{ lote_stats.vagas_usadas }}/{{ lote_stats.vagas_totais if lote_stats.vagas_totais != "ilimitado" else "Ilimitadas" }}</p>
+                                <p>Período: {{ lote_stats.data_inicio }} a {{ lote_stats.data_fim }}</p>
+                            </div>
+
+                            <div class="ticket-options">
+                                {% for lote_tipo in lote_vigente.tipos_inscricao %}
+                                <div class="ticket-option">
+                                    <input type="radio" 
+                                           id="lote_tipo_{{ lote_tipo.id }}" 
+                                           name="lote_tipo_inscricao_id" 
+                                           value="{{ lote_tipo.id }}"
+                                           data-lote-id="{{ lote_vigente.id }}"
+                                           data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}"
+                                           data-preco="{{ lote_tipo.preco }}"
+                                           required>
+                                    <label for="lote_tipo_{{ lote_tipo.id }}">
+                                        <span class="ticket-name">{{ lote_tipo.tipo_inscricao.nome }}</span>
+                                        {% if not evento.inscricao_gratuita %}
+                                        <span class="ticket-price">R$ {{ lote_tipo.preco }}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" id="lote_id" name="lote_id" value="{{ lote_vigente.id }}">
+
+                            {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
+                            <div class="ticket-options">
+                                {% for tipo in tipos_inscricao %}
+                                <div class="ticket-option">
+                                    <input type="radio" 
+                                           id="tipo_{{ tipo.id }}" 
+                                           name="tipo_inscricao_id" 
+                                           value="{{ tipo.id }}"
+                                           data-preco="{{ tipo.preco }}"
+                                           required>
+                                    <label for="tipo_{{ tipo.id }}">
+                                        <span class="ticket-name">{{ tipo.nome }}</span>
+                                        {% if not evento.inscricao_gratuita %}
+                                        <span class="ticket-price">R$ {{ tipo.preco }}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            {% elif evento and evento.inscricao_gratuita %}
+                            <div class="free-registration">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Inscrição gratuita</span>
+                            </div>
+
+                            {% if tipos_inscricao and tipos_inscricao|length > 0 %}
+                            <div class="ticket-options">
+                                {% for tipo in tipos_inscricao %}
+                                <div class="ticket-option">
+                                    <input type="radio" 
+                                           id="tipo_{{ tipo.id }}" 
+                                           name="tipo_inscricao_id" 
+                                           value="{{ tipo.id }}"
+                                           required>
+                                    <label for="tipo_{{ tipo.id }}">
+                                        <span class="ticket-name">{{ tipo.nome }}</span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% endif %}
+
+                            <div class="selected-ticket-display">
+                                <span id="selectedTicketText">Nenhum tipo selecionado</span>
+                            </div>
+                        </div>
                         
                         <!-- Endereço -->
                         <div class="form-group full-width address-group">
@@ -800,24 +805,5 @@
         }
         tipoInput.value = tipoId;
     }
-
-    // This should remain the same if your selectors haven't changed
-document.querySelectorAll('input[type="radio"][name^="lote_tipo"], input[type="radio"][name^="tipo_inscricao"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        if (this.checked) {
-            const preco = this.getAttribute('data-preco');
-            const display = document.getElementById('selectedTicketText');
-            
-            if (preco) {
-                display.textContent = `Valor: R$ ${preco}`;
-            } else {
-                display.textContent = 'Inscrição selecionada';
-            }
-            
-            // Atualizar campos ocultos
-            updateHiddenFields(this);
-        }
-    });
-});
 </script>
 {% endblock %}
