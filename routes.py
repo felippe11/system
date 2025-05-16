@@ -154,124 +154,75 @@ def register_routes(app):
 # ===========================
 #        ROTAS GERAIS
 # ===========================
+from datetime import date, time, datetime
+from sqlalchemy import cast, Date
+# … demais imports (Blueprint routes, models, etc.) …
+
 @routes.route('/')
 def home():
+    """Renderiza index.html e já passa eventos ativos, públicos e de hoje em diante."""
     try:
-        # Eventos ativos, públicos e futuros
-        eventos_destaque = (
-            Evento.query.filter(
-                Evento.status == 'ativo',
-                Evento.publico == True,
-                Evento.data_inicio >= datetime.now()
-            )
-            .order_by(Evento.data_inicio.asc())
-            .all()
-        )
+        eventos = (Evento.query
+                   .filter(Evento.status == 'ativo',
+                           Evento.publico == True,
+                           # ⬇️ compara apenas a parte da data
+                           cast(Evento.data_inicio, Date) >= date.today())
+                   .order_by(Evento.data_inicio.asc())
+                   .all())
 
-        eventos_json = []
-        for evento in eventos_destaque:
-            evento_data = {
-                'id': evento.id,
-                'nome': evento.nome,
-                'descricao': evento.descricao,
-                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y')
-                               if evento.data_inicio else 'Data a definir',
-                'data_fim': evento.data_fim.strftime('%d/%m/%Y')
-                            if evento.data_fim else '',
-                'localizacao': evento.localizacao or 'Local a definir',
-                'banner_url': evento.banner_url
-                              or url_for('static',
-                                         filename='images/event-placeholder.jpg'),
-                'preco_base': 0
-            }
-
-            # menor preço (se houver tipos de inscrição)
-            if evento.tipos_inscricao:
-                evento_data['preco_base'] = min(
-                    tipo.preco for tipo in evento.tipos_inscricao
-                )
-
-            # ----------- gera link de inscrição -----------
-            link = evento.links_cadastro[0] if evento.links_cadastro else None
-            if link:
-                if link.slug_customizado:
-                    evento_data['link_inscricao'] = url_for(
-                        'routes.abrir_inscricao_customizada',
-                        slug=link.slug_customizado
-                    )
-                else:
-                    evento_data['link_inscricao'] = url_for(
-                        'routes.abrir_inscricao_token',
-                        token=link.token
-                    )
-            else:
-                evento_data['link_inscricao'] = None
-            # ----------------------------------------------
-
-            eventos_json.append(evento_data)
-
-        return render_template('index.html', eventos_destaque=eventos_json)
-
+        return render_template('index.html',
+                               eventos_destaque=_serializa_eventos(eventos))
     except Exception as e:
-        print(f"Erro na rota home: {e}")
+        print(f"[ERRO] home(): {e}")
         return render_template('index.html', eventos_destaque=[])
 
-
 @routes.route('/api/eventos/destaque')
-def get_eventos_destaque():
+def api_eventos_destaque():
+    """Retorna JSON de eventos futuros (data de início ≥ hoje)."""
     try:
-        eventos = Evento.query.filter(
-            Evento.data_inicio >= datetime.now(),          # deixe como preferir
-            Evento.status == 'ativo',
-            Evento.publico == True
-        ).order_by(Evento.data_inicio.asc()).all()
+        eventos = (Evento.query
+                   .filter(Evento.status == 'ativo',
+                           Evento.publico == True,
+                           cast(Evento.data_inicio, Date) >= date.today())
+                   .order_by(Evento.data_inicio.asc())
+                   .all())
 
-        eventos_json = []
-        for evento in eventos:
-            evento_data = {
-                'id': evento.id,
-                'nome': evento.nome,
-                'descricao': evento.descricao,
-                'data_inicio': evento.data_inicio.strftime('%d/%m/%Y')
-                               if evento.data_inicio else 'Data a definir',
-                'data_fim': evento.data_fim.strftime('%d/%m/%Y')
-                            if evento.data_fim else '',
-                'localizacao': evento.localizacao or 'Local a definir',
-                'banner_url': evento.banner_url
-                              or url_for('static',
-                                         filename='images/event-placeholder.jpg'),
-                'preco_base': 0
-            }
-
-            # preço mínimo
-            if evento.tipos_inscricao:
-                evento_data['preco_base'] = min(t.preco for t in evento.tipos_inscricao)
-
-            # ---------- gera link de inscrição ----------
-            link = evento.links_cadastro[0] if evento.links_cadastro else None
-            if link:
-                if link.slug_customizado:
-                    evento_data['link_inscricao'] = url_for(
-                        'routes.abrir_inscricao_customizada',
-                        slug=link.slug_customizado
-                    )
-                else:
-                    evento_data['link_inscricao'] = url_for(
-                        'routes.abrir_inscricao_token',
-                        token=link.token
-                    )
-            else:
-                evento_data['link_inscricao'] = None
-            # --------------------------------------------
-
-            eventos_json.append(evento_data)
-
-        return jsonify(eventos_json)
-
+        return jsonify(_serializa_eventos(eventos))
     except Exception as e:
-        print(f"[ERRO] em get_eventos_destaque: {e}")
+        print(f"[ERRO] api_eventos_destaque(): {e}")
         return jsonify([]), 500
 
+# ------------------------------------------------------------------
+# Função auxiliar DRY
+def _serializa_eventos(eventos):
+    lista = []
+    for ev in eventos:
+        dado = {
+            'id':          ev.id,
+            'nome':        ev.nome,
+            'descricao':   ev.descricao,
+            'data_inicio': ev.data_inicio.strftime('%d/%m/%Y')
+                           if ev.data_inicio else 'Data a definir',
+            'data_fim':    ev.data_fim.strftime('%d/%m/%Y')
+                           if ev.data_fim else '',
+            'localizacao': ev.localizacao or 'Local a definir',
+            'banner_url':  ev.banner_url or url_for('static',
+                                                    filename='images/event-placeholder.jpg'),
+            'preco_base':  min((t.preco for t in ev.tipos_inscricao), default=0),
+            'link_inscricao': None
+        }
+
+        # link de inscrição (se houver)
+        if ev.links_cadastro:
+            link = ev.links_cadastro[0]
+            dado['link_inscricao'] = (
+                url_for('routes.abrir_inscricao_customizada', slug=link.slug_customizado)
+                if link.slug_customizado else
+                url_for('routes.abrir_inscricao_token', token=link.token)
+            )
+
+        lista.append(dado)
+    return lista
     
 @routes.route('/inscricao/<slug>')
 def abrir_inscricao_customizada(slug):
