@@ -6978,6 +6978,7 @@ def inscrever_participantes_lote():
 @routes.route('/configurar_evento', methods=['GET', 'POST'])
 @login_required
 def configurar_evento():
+    from datetime import time  # Importação local para manipulação de horários
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('routes.dashboard_cliente'))
@@ -7006,6 +7007,12 @@ def configurar_evento():
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
         
+        # Processar datas e horários
+        data_inicio = request.form.get('data_inicio')
+        data_fim = request.form.get('data_fim')
+        hora_inicio = request.form.get('hora_inicio')
+        hora_fim = request.form.get('hora_fim')
+        
         banner = request.files.get('banner')
         banner_url = evento.banner_url if evento else None
         
@@ -7017,8 +7024,7 @@ def configurar_evento():
             banner_url = url_for('static', filename=f'banners/{filename}', _external=True)
 
         try:
-            if evento:  # Atualizar evento existente
-                evento.nome = nome
+            if evento:  # Atualizar evento existente                evento.nome = nome
                 evento.descricao = descricao
                 evento.programacao = programacao
                 evento.localizacao = localizacao
@@ -7027,6 +7033,20 @@ def configurar_evento():
                 evento.habilitar_lotes = habilitar_lotes  # Novo campo
                 if banner_url:
                     evento.banner_url = banner_url
+                    
+                # Processar datas e horários do evento
+                if data_inicio:
+                    evento.data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
+                if data_fim:
+                    evento.data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+                    
+                # Processar horários, combinando com as datas correspondentes
+                if hora_inicio and evento.data_inicio:
+                    hora, minuto = map(int, hora_inicio.split(':'))
+                    evento.hora_inicio = datetime.combine(evento.data_inicio.date(), time(hora, minuto))
+                if hora_fim and evento.data_fim:
+                    hora, minuto = map(int, hora_fim.split(':'))
+                    evento.hora_fim = datetime.combine(evento.data_fim.date(), time(hora, minuto))
 
                 # Remover regras de inscrição associadas para evitar violação de chave estrangeira
                 RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
@@ -7232,7 +7252,24 @@ def configurar_evento():
                                         )
                                         db.session.add(novo_lote_tipo)
                 
-            else:  # Criar novo evento
+            else:  # Criar novo evento                # Preparar objetos datetime para datas e horários
+                evento_data_inicio = None
+                evento_data_fim = None
+                evento_hora_inicio = None
+                evento_hora_fim = None
+                
+                if data_inicio:
+                    evento_data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
+                if data_fim:
+                    evento_data_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+                
+                if hora_inicio and evento_data_inicio:
+                    hora, minuto = map(int, hora_inicio.split(':'))
+                    evento_hora_inicio = datetime.combine(evento_data_inicio.date(), time(hora, minuto))
+                if hora_fim and evento_data_fim:
+                    hora, minuto = map(int, hora_fim.split(':'))
+                    evento_hora_fim = datetime.combine(evento_data_fim.date(), time(hora, minuto))
+                
                 evento = Evento(
                     cliente_id=current_user.id,
                     nome=nome,
@@ -7242,7 +7279,11 @@ def configurar_evento():
                     link_mapa=link_mapa,
                     banner_url=banner_url,
                     inscricao_gratuita=inscricao_gratuita,
-                    habilitar_lotes=habilitar_lotes  # Novo campo
+                    habilitar_lotes=habilitar_lotes,  # Novo campo
+                    data_inicio=evento_data_inicio,
+                    data_fim=evento_data_fim,
+                    hora_inicio=evento_hora_inicio,
+                    hora_fim=evento_hora_fim
                 )
                 db.session.add(evento)
                 db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
