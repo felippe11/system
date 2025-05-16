@@ -768,13 +768,18 @@ function updateProgressBar(step) {
   const lotesSection = document.getElementById('lotes-section');
   
   function toggleLotesVisibility() {
-    lotesSection.style.display = habilitarLotes.checked ? 'block' : 'none';
+    console.log('Habilitar Lotes:', habilitarLotes.checked); // Debugging
+    if (habilitarLotes.checked) {
+      lotesSection.style.display = 'block';
+    } else {
+      lotesSection.style.display = 'none';
+    }
   }
   
-  habilitarLotes.addEventListener('change', toggleLotesVisibility);
-  
-  // Verificar estado inicial da opção lotes
+  // Ensure visibility is updated on page load
   toggleLotesVisibility();
+  
+  habilitarLotes.addEventListener('change', toggleLotesVisibility);
   
   // Function to update price fields visibility and values
   function updatePriceFields() {

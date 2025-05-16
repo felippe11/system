@@ -928,7 +928,7 @@ def cadastro_participante(identifier: str | None = None):
         lotes_ativos=lotes_ativos,
         tipos_inscricao=tipos_inscricao
     )
-   
+
     
 @routes.route('/api/lote_vigente/<int:evento_id>', methods=['GET'])
 def api_lote_vigente(evento_id):
@@ -7358,8 +7358,12 @@ def configurar_evento():
             import traceback
             traceback.print_exc()
 
-    return render_template('configurar_evento.html', eventos=eventos, evento=evento)
-
+    return render_template(
+    "configurar_evento.html",
+    eventos=eventos,
+    evento=evento,
+    habilita_pagamento=current_user.habilita_pagamento   #  <-- acrescente isto
+)
 
 from collections import defaultdict
 from datetime import datetime
