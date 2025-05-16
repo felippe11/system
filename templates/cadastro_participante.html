@@ -320,6 +320,31 @@
                                 {% endfor %}
                             </div>
                             <input type="hidden" id="lote_id" name="lote_id" value="{{ lote_vigente.id }}">
+                            
+                            {% elif evento and evento.habilitar_lotes and not lote_vigente and tipos_inscricao %}
+                            <div class="lote-info alert-message">
+                                <h3>Nenhum lote disponível no momento</h3>
+                                <p>Mostrando todos os tipos de inscrição disponíveis</p>
+                            </div>
+                            
+                            <div class="ticket-options">
+                                {% for tipo in tipos_inscricao %}
+                                <div class="ticket-option">
+                                    <input type="radio" 
+                                           id="tipo_{{ tipo.id }}" 
+                                           name="tipo_inscricao_id" 
+                                           value="{{ tipo.id }}"
+                                           data-preco="{{ tipo.preco }}"
+                                           required>
+                                    <label for="tipo_{{ tipo.id }}">
+                                        <span class="ticket-name">{{ tipo.nome }}</span>
+                                        {% if not evento.inscricao_gratuita %}
+                                        <span class="ticket-price">R$ {{ tipo.preco }}</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
 
                             {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
                             <div class="ticket-options">
@@ -727,11 +752,17 @@
                 if (this.checked) {
                     const preco = this.getAttribute('data-preco');
                     const display = document.getElementById('selectedTicketText');
-                    
-                    if (preco) {
-                        display.textContent = `Valor: R$ ${preco}`;
+                      if (preco) {
+                        if (parseFloat(preco) === 0) {
+                            display.textContent = 'Inscrição gratuita';
+                            display.style.color = 'green';
+                        } else {
+                            display.textContent = `Valor: R$ ${preco}`;
+                            display.style.color = ''; // Restaura cor padrão
+                        }
                     } else {
                         display.textContent = 'Inscrição selecionada';
+                        display.style.color = ''; // Restaura cor padrão
                     }
                     
                     // Atualizar campos ocultos

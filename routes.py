@@ -824,9 +824,7 @@ def cadastro_participante(identifier: str | None = None):
         inscricao.status_pagamento = "approved"
         db.session.commit()
         flash("Cadastro realizado com sucesso!", "success")
-        return redirect(url_for("routes.login"))
-
-    # ──────────────────── PREPARAÇÃO DO RESPONSE (GET) ────────────────
+        return redirect(url_for("routes.login"))    # ──────────────────── PREPARAÇÃO DO RESPONSE (GET) ────────────────
     # Estatísticas do lote vigente
     tipos_inscricao = []
     if evento:
@@ -834,7 +832,15 @@ def cadastro_participante(identifier: str | None = None):
             # Carrega apenas os tipos de inscrição associados ao lote vigente
             tipos_inscricao = [lote_tipo.tipo_inscricao for lote_tipo in lote_vigente.tipos_inscricao]
             logger.debug(f"Tipos de inscrição no lote vigente: {[tipo.nome for tipo in tipos_inscricao]}")
-        elif not evento.habilitar_lotes:            # Carrega todos os tipos de inscrição do evento quando lotes estão desabilitados
+        elif evento.habilitar_lotes and not lote_vigente:
+            # Carrega todos os tipos de inscrição se não tiver lote vigente, mas lotes estão habilitados
+            logger.debug("Nenhum lote vigente encontrado, carregando todos os tipos de inscrição do evento")
+            tipos_inscricao = EventoInscricaoTipo.query.filter_by(
+                evento_id=evento.id
+            ).order_by(EventoInscricaoTipo.nome).all()
+            logger.debug(f"Tipos de inscrição no evento (sem lote vigente): {[tipo.nome for tipo in tipos_inscricao]}")
+        elif not evento.habilitar_lotes:
+            # Carrega todos os tipos de inscrição do evento quando lotes estão desabilitados
             tipos_inscricao = EventoInscricaoTipo.query.filter_by(
                 evento_id=evento.id
             ).order_by(EventoInscricaoTipo.nome).all()
