@@ -37,6 +37,8 @@
         :root {
             /* Paleta de cores principal */
             --primary-color: #2A2D72;
+            --primary-color-light: #3C40A0;
+            --primary-color-rgb: 42, 45, 114;
             --secondary-color: #FF6B6B;
             --accent-color: #4ECDC4;
             --text-light: rgba(255, 255, 255, 0.95);
@@ -52,35 +54,119 @@
             
             /* Transições */
             --transition-normal: all 0.3s ease;
-        }
-
-        /* Modo escuro */
+        }        /* Modo escuro */
         [data-bs-theme="dark"] {
-            --primary-color: #3C40A0;
+            --primary-color: #8F94FB;
+            --primary-color-light: #a5a9ff;
             --shadow-sm: 0 2px 15px rgba(0, 0, 0, 0.3);
             --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
             color-scheme: dark;
         }
-        
-        /* Ajustes para modo escuro na navbar */
+          /* Ajustes para modo escuro na navbar */
         [data-bs-theme="dark"] .navbar {
-            background: rgba(30, 30, 50, 0.8) !important;
+            background: rgba(23, 25, 50, 0.9) !important;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
         
         [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.85);
+            color: rgba(255, 255, 255, 0.9);
         }
         
         [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: #fff;
+            background-color: rgba(255, 255, 255, 0.15);
+            color: var(--primary-color-light);
+            transform: translateY(-2px);
+        }
+        
+        /* Ajuste do botão de tema para modo escuro */
+        [data-bs-theme="dark"] .theme-toggle {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        [data-bs-theme="dark"] .theme-toggle:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(143, 148, 251, 0.3);
+        }
+        
+        /* Ajuste para usuario dropdown no modo escuro */
+        [data-bs-theme="dark"] .nav-item.dropdown .nav-link {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        [data-bs-theme="dark"] .nav-link.btn-outline-primary {
+            color: var(--primary-color-light) !important;
+            border-color: var(--primary-color-light);
+        }
+        
+        [data-bs-theme="dark"] .nav-link.btn-outline-primary:hover {
+            background-color: rgba(143, 148, 251, 0.2);
+            border-color: var(--primary-color-light);
+            color: #ffffff !important;
+            box-shadow: 0 0 15px rgba(143, 148, 251, 0.3);
+        }
+        
+        /* Destaque para o botão "Entrar" */
+        .nav-link.btn-outline-primary {
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        .nav-link.btn-outline-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(42, 45, 114, 0.05);
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        
+        .nav-link.btn-outline-primary:hover::before {
+            left: 0;
+        }
+        
+        /* Estilo para o dropdown do perfil */
+        .dropdown-menu {
+            border-radius: 0.5rem;
+            overflow: hidden;
+            transition: var(--transition-normal);
+        }
+        
+        .dropdown-item {
+            transition: all 0.2s ease;
+        }
+        
+        .dropdown-item:hover {
+            background-color: rgba(42, 45, 114, 0.1);
+            transform: translateX(5px);
+        }
+        
+        [data-bs-theme="dark"] .dropdown-item:hover {
+            background-color: rgba(143, 148, 251, 0.15);
         }
         
         [data-bs-theme="dark"] .navbar-brand .gradient-text {
             background: linear-gradient(90deg, #8F94FB, #FFFFFF);
             -webkit-background-clip: text;
             background-clip: text;
+        }
+          /* Efeito de brilho sutil para a logo no hover */
+        .navbar-brand:hover .gradient-text {
+            text-shadow: 0 0 8px rgba(var(--primary-color-rgb, 42, 45, 114), 0.3);
+        }
+        
+        [data-bs-theme="dark"] .navbar-brand:hover .gradient-text {
+            text-shadow: 0 0 8px rgba(143, 148, 251, 0.4);
+        }
+        
+        /* Garantir que o texto secundário se posicione corretamente */
+        .navbar-brand .animated-text {
+            min-width: 100px;
         }
 
         body {
@@ -96,33 +182,70 @@
         /* Background para modo escuro */
         [data-bs-theme="dark"] body {
             background-image: linear-gradient(to bottom right, #1a1a2e, #16213e, #1a1a2e);
-        }
-
-        /* Navbar styling com efeito glassmorphism */
+        }        /* Navbar styling com efeito glassmorphism */
         .navbar {
-            background: rgba(255, 255, 255, 0.8) !important;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: rgba(71, 125, 162, 0.9) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
             border-bottom: 1px solid rgba(255, 255, 255, 0.3);
             height: var(--navbar-height);
             transition: var(--transition-normal);
-        }
-
-        .navbar-light .navbar-nav .nav-link {
+        }.navbar-light .navbar-nav .nav-link {
             color: var(--primary-color);
             font-weight: 500;
             padding: 0.5rem 1rem;
             border-radius: 0.375rem;
             transition: var(--transition-normal);
         }
-        
-        .navbar-light .navbar-nav .nav-link:hover {
-            background-color: rgba(42, 45, 114, 0.1);
-            color: #000;
+          .navbar-light .navbar-nav .nav-link:hover {
+            background-color: rgba(42, 45, 114, 0.15);
+            color: var(--primary-color);
+            transform: translateY(-2px);
         }
         
-        /* Ajuste para o texto da marca ficar com gradiente de azul para preto */
+        /* Ajustes para botões no navbar modo claro */
+        .theme-toggle, .nav-item.dropdown .nav-link {
+            color: var(--primary-color);
+        }
+        
+        /* Efeito para links e botões */
+        .nav-link.btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .nav-link.btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(42, 45, 114, 0.3);
+        }
+        
+        [data-bs-theme="dark"] .nav-link.btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(143, 148, 251, 0.4);
+        }
+        
+        /* Efeito especial para botão de instalar app */
+        #pwa-install-btn .nav-link {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #pwa-install-btn .nav-link::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 20px;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(30deg);
+            transition: all 0.6s;
+            opacity: 0;
+        }
+        
+        #pwa-install-btn .nav-link:hover::after {
+            left: 120%;
+            opacity: 1;
+        }        /* Ajuste para o texto da marca ficar com gradiente de azul para preto */
         .navbar-brand .gradient-text {
             background: linear-gradient(90deg, var(--primary-color), #000);
             -webkit-background-clip: text;
@@ -130,16 +253,33 @@
             color: transparent !important;
             font-weight: 600;
         }
-
-        .navbar-brand .gradient-text {
+        
+        .navbar-brand .text1, 
+        .navbar-brand .text2 {
+            background: linear-gradient(90deg, var(--primary-color), #000);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent !important;
+        }
+        
+        [data-bs-theme="dark"] .navbar-brand .text1,
+        [data-bs-theme="dark"] .navbar-brand .text2 {
+            background: linear-gradient(90deg, #8F94FB, #FFFFFF);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }.navbar-brand .gradient-text {
             position: relative;
             display: inline-block;
         }
         
-        .animated-text .text1,
+        .animated-text {
+            position: relative;
+            display: inline-block;
+        }
+          .animated-text .text1,
         .animated-text .text2 {
             display: inline-block;
-            transition: opacity 0.5s ease, transform 0.5s ease;
+            transition: all 0.4s ease;
         }
         
         .animated-text .text2 {
@@ -210,9 +350,7 @@
         footer .social-links a:hover {
             background-color: var(--primary-color);
             color: white;
-        }
-
-        /* Botão de tema com animação */
+        }        /* Botão de tema com animação */
         .theme-toggle {
             cursor: pointer;
             width: 38px;
@@ -222,10 +360,23 @@
             align-items: center;
             justify-content: center;
             transition: var(--transition-normal);
+            color: var(--primary-color);
+            font-size: 1.1rem;
         }
         
         .theme-toggle:hover {
             background-color: rgba(42, 45, 114, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(42, 45, 114, 0.25);
+            color: var(--primary-color-light);
+        }
+        
+        .theme-toggle i {
+            transition: transform 0.5s ease;
+        }
+        
+        .theme-toggle:hover i {
+            transform: rotate(15deg);
         }
 
         /* Mensagens Flash aprimoradas */
@@ -239,8 +390,7 @@
 <body>
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top">
-        <div class="container">
-            <!-- Logo e Marca -->
+        <div class="container">            <!-- Logo e Marca -->
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('routes.dashboard') }}">
                 <span class="gradient-text animated-text">
                     <span class="text1">AppFiber</span>
@@ -256,38 +406,33 @@
             
             <!-- Menu -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center">
-                    <!-- Botão de Instalação PWA -->
+                <ul class="navbar-nav ms-auto align-items-lg-center">                    <!-- Botão de Instalação PWA -->
                     <li class="nav-item me-2" id="pwa-install-btn">
-                        <a class="nav-link btn btn-primary text-white px-3" href="#">
+                        <a class="nav-link btn btn-primary text-white px-3" href="#" style="transition: all 0.3s ease;">
                             <i class="bi bi-download me-1"></i> Instalar App
                         </a>
                     </li>
-                    
-                    <!-- Botão de Tema -->
+                      <!-- Botão de Tema -->
                     <li class="nav-item me-2">
-                        <div class="theme-toggle nav-link" id="theme-toggle" style="color: #000;">
+                        <div class="theme-toggle nav-link" id="theme-toggle">
                             <i class="bi bi-sun-fill" id="theme-icon"></i>
                         </div>
                     </li>
                     
-                    <!-- Login / Perfil -->
-                    {% if not current_user.is_authenticated %}
+                    <!-- Login / Perfil -->                    {% if not current_user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link btn btn-outline-primary px-4" href="{{ url_for('routes.login') }}">
+                            <a class="nav-link btn btn-outline-primary px-4 text-primary" href="{{ url_for('routes.login') }}">
                                 <i class="bi bi-box-arrow-in-right me-1"></i> Entrar
                             </a>
                         </li>
-                    {% else %}
-                        <li class="nav-item dropdown">
+                    {% else %}                        <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" 
-                               href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="color: #000; font-weight: 500;">
+                               href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
                                 <i class="bi bi-person-circle me-2 fs-5"></i>
                                 <div>
                                     <div class="fw-500">{{ current_user.nome }}</div>
                                 </div>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                            </a>                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
                                 {% if current_user.tipo == 'participante' %}
                                     <li>
                                         <a class="dropdown-item py-2" href="{{ url_for('routes.editar_participante') }}">

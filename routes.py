@@ -883,11 +883,10 @@ def cadastro_participante(identifier: str | None = None):
             # Carrega apenas os tipos de inscrição associados ao lote vigente
             tipos_inscricao = [lote_tipo.tipo_inscricao for lote_tipo in lote_vigente.tipos_inscricao]
             logger.debug(f"Tipos de inscrição no lote vigente: {[tipo.nome for tipo in tipos_inscricao]}")
-        elif not evento.habilitar_lotes:
-            # Carrega todos os tipos de inscrição do evento quando lotes estão desabilitados
+        elif not evento.habilitar_lotes:            # Carrega todos os tipos de inscrição do evento quando lotes estão desabilitados
             tipos_inscricao = EventoInscricaoTipo.query.filter_by(
                 evento_id=evento.id
-            ).order_by(EventoInscricaoTipo.ordem).all()
+            ).order_by(EventoInscricaoTipo.nome).all()
             logger.debug(f"Tipos de inscrição no evento: {[tipo.nome for tipo in tipos_inscricao]}")
 
     # Estatísticas do lote vigente
