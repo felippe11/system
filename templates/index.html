@@ -330,5 +330,48 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <!-- Importação do arquivo JavaScript customizado -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const eventosContainer = document.getElementById('eventos-container');
+
+            fetch('/api/eventos-destaque')
+                .then(response => response.json())
+                .then(data => {
+                    eventosContainer.innerHTML = ''; // limpa spinner
+
+                    if (data.length > 0) {
+                        data.forEach(evento => {
+                            // formata a data para pt-BR
+                            const dt = new Date(evento.data_inicio);
+                            const dataFmt = dt.toLocaleDateString('pt-BR', {
+                                day:   '2-digit',
+                                month: '2-digit',
+                                year:  'numeric'
+                            });
+
+                            const card = `
+                                <div class="event-card">
+                                    <img src="${evento.banner_url}" alt="${evento.nome}" class="event-banner"/>
+                                    <h3>${evento.nome}</h3>
+                                    <p>${evento.descricao}</p>
+                                    <p><strong>Data:</strong> ${dataFmt}</p>
+                                    ${evento.link_inscricao
+                                        ? `<a href="${evento.link_inscricao}" class="btn btn-primary">Inscreva-se</a>`
+                                        : ''
+                                    }
+                                </div>
+                            `;
+                            eventosContainer.insertAdjacentHTML('beforeend', card);
+                        });
+                    } else {
+                        eventosContainer.innerHTML = '<p class="text-center">Nenhum evento disponível no momento.</p>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar eventos:', err);
+                    eventosContainer.innerHTML = '<p class="text-center text-danger">Erro ao carregar eventos.</p>';
+                });
+        });
+    </script>
 </body>
 </html>
