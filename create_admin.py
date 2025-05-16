@@ -8,7 +8,7 @@ with app.app_context():  # ✅ Criando um contexto da aplicação Flask
         # Criar o administrador
         admin = Usuario(
             nome="Administrador",
-            cpf="00000000000",
+            cpf="00000000001",
             email="admin@email.com",
             senha=generate_password_hash("admin123"),
             formacao="Administrador",
