@@ -160,13 +160,17 @@ from sqlalchemy import cast, Date
 
 @routes.route('/')
 def home():
-    """Renderiza index.html e já passa eventos ativos, públicos e de hoje em diante."""
+    """Renderiza index.html mostrando eventos cujo período AINDA não acabou."""
     try:
+        hoje = date.today()
         eventos = (Evento.query
-                   .filter(Evento.status == 'ativo',
-                           Evento.publico == True,
-                           # ⬇️ compara apenas a parte da data
-                           cast(Evento.data_inicio, Date) >= date.today())
+                   .filter(
+                       Evento.status == 'ativo',
+                       Evento.publico.is_(True),
+                       # ⬇️ critério novo
+                       or_(Evento.data_fim == None,
+                           cast(Evento.data_fim, Date) >= hoje)
+                   )
                    .order_by(Evento.data_inicio.asc())
                    .all())
 
@@ -176,22 +180,25 @@ def home():
         print(f"[ERRO] home(): {e}")
         return render_template('index.html', eventos_destaque=[])
 
+
+# -----------------------------------------------------------
+from sqlalchemy import func, or_
+from datetime import date
+
 @routes.route('/api/eventos/destaque')
 def api_eventos_destaque():
-    """Retorna JSON de eventos futuros (data de início ≥ hoje)."""
-    try:
-        eventos = (Evento.query
-                   .filter(Evento.status == 'ativo',
-                           Evento.publico == True,
-                           cast(Evento.data_inicio, Date) >= date.today())
-                   .order_by(Evento.data_inicio.asc())
-                   .all())
+    hoje = date.today()
+    eventos = (Evento.query
+               .filter(
+                   Evento.status == 'ativo',
+                   Evento.publico.is_(True),
+                   or_(Evento.data_fim == None,
+                       func.date(Evento.data_fim) >= hoje)
+               )
+               .order_by(Evento.data_inicio))
+    return jsonify(_serializa_eventos(eventos))
 
-        return jsonify(_serializa_eventos(eventos))
-    except Exception as e:
-        print(f"[ERRO] api_eventos_destaque(): {e}")
-        return jsonify([]), 500
-
+    
 # ------------------------------------------------------------------
 # Função auxiliar DRY
 def _serializa_eventos(eventos):
@@ -5819,6 +5826,14 @@ def obter_configuracao_do_cliente(cliente_id):
 def oficinas_disponiveis():
     oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
     return render_template('oficinas.html', oficinas=oficinas)
+
+# routes/links_ui.py  (ou no mesmo arquivo se preferir)
+@routes.route("/links/gerar", methods=["GET"])
+@login_required
+def gerar_link_ui():
+    """Página HTML para criar/gerenciar links – usa a API JSON existente."""
+    return render_template("links/gerar.html")
+
 
 @routes.route('/gerar_link', methods=['GET', 'POST'])
 @login_required
