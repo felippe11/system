@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Gerar Link de Inscrição{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+  /* Pequenos ajustes visuais */
+  .page-header   { box-shadow:0 0.125rem 0.5rem rgba(0,0,0,.05); }
+  .card-step h6  { font-size:1rem;margin-bottom:.5rem }
+  .card-step .badge-step { width:36px;height:36px;font-size:1rem; }
+  .table-links   { min-width:600px }
+  .toast-custom  { position:fixed;bottom:1rem;right:1rem;z-index:1080 }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <!-- Cabeçalho -->
+  <div class="d-flex justify-content-between align-items-center page-header bg-white p-3 rounded-3 mb-4">
+    <h2 class="mb-0 d-flex align-items-center">
+      <i class="bi bi-link-45deg me-2"></i>Gerar Link de Inscrição
+    </h2>
+    <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>Voltar
+    </a>
+  </div>
+
+  <!-- PASSO 1 -->
+  <div class="card card-step shadow-sm mb-4">
+    <div class="card-body">
+      <h6 class="fw-bold d-flex align-items-center">
+        <span class="badge bg-primary text-white rounded-circle badge-step d-flex align-items-center justify-content-center me-2">1</span>
+        Selecione o Evento e (opcional) o Slug
+      </h6>
+      <form id="linkForm" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Evento</label>
+          <select name="evento_id" id="eventoSelect" class="form-select" required>
+            <option value="">Carregando...</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Slug personalizado</label>
+          <div class="input-group">
+            <span class="input-group-text">/inscricao/</span>
+            <input type="text" name="slug_customizado" class="form-control" placeholder="meu-evento">
+          </div>
+          <small class="text-muted">Use letras, números e hífens – deixe em branco para gerar token.</small>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary w-100" id="btnCriar">
+            <i class="bi bi-magic me-2"></i>Criar Link
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PASSO 2 -->
+  <div id="linksArea" style="display:none">
+    <div class="card shadow-sm">
+      <div class="card-header bg-light">
+        <h6 class="mb-0 d-flex align-items-center">
+          <span class="badge bg-primary text-white rounded-circle badge-step d-flex align-items-center justify-content-center me-2">2</span>
+          Links Existentes
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-links">
+          <thead class="table-light">
+            <tr>
+              <th>Identificador</th>
+              <th>Criado em</th>
+              <th style="width:40%">URL</th>
+              <th class="text-end">Copiar</th>
+              <th class="text-end">Excluir</th>
+            </tr>
+          </thead>
+          <tbody id="linksBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container toast-custom"></div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+const API        = "{{ url_for('routes.gerar_link') }}";
+const API_DELETE = "{{ url_for('routes.excluir_link') }}";
+
+/* ===== Bootstrap Toast helper ===== */
+function toast(msg, type='info') {
+  const icons = {info:'bi-info-circle',success:'bi-check-circle',danger:'bi-exclamation-circle'};
+  const toastHtml = `
+    <div class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body"><i class="bi ${icons[type]} me-2"></i>${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>`;
+  const container = document.querySelector('.toast-custom');
+  container.insertAdjacentHTML('beforeend', toastHtml);
+  const t = new bootstrap.Toast(container.lastElementChild,{delay:3500});
+  t.show();
+}
+
+/* ===== Main logic ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const eventoSelect = document.getElementById('eventoSelect');
+  const linksArea    = document.getElementById('linksArea');
+  const linksBody    = document.getElementById('linksBody');
+
+  /* 1. Carrega eventos */
+  fetch(API)
+    .then(r=>r.json()).then(d=>{
+      eventoSelect.innerHTML='<option value="">-- selecione --</option>';
+      d.eventos.forEach(ev=>{
+        eventoSelect.insertAdjacentHTML('beforeend',`<option value="${ev.id}">${ev.nome}</option>`);
+      });
+    });
+
+  /* 2. Listar links */
+  eventoSelect.addEventListener('change', listarLinks);
+  function listarLinks(){
+    const id = eventoSelect.value;
+    if(!id){ linksArea.style.display='none'; return; }
+    fetch(`${API}?evento_id=${id}`)
+      .then(r=>r.json()).then(d=>{
+        linksBody.innerHTML='';
+        if(d.success && d.links.length){
+          d.links.forEach(lk=>{
+            linksBody.insertAdjacentHTML('beforeend',`
+              <tr data-link-id="${lk.id}">
+                <td>${lk.slug || lk.token.slice(0,8)+'…'}</td>
+                <td>${new Date(lk.criado_em).toLocaleDateString('pt-BR')}</td>
+                <td class="text-truncate" style="max-width:250px">${lk.url}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-primary btn-copy" data-url="${lk.url}">
+                    <i class="bi bi-clipboard"></i>
+                  </button>
+                </td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-danger btn-excluir">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>`);
+          });
+          linksArea.style.display='';
+        }else{
+          linksArea.style.display='none';
+        }
+      });
+  }
+
+  /* 3. Criar link */
+  document.getElementById('linkForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+      .then(r=>r.json()).then(d=>{
+        if(d.success){
+          toast('Link criado com sucesso!','success');
+          listarLinks();
+          e.target.slug_customizado.value='';
+        }else{
+          toast(d.message || 'Erro','danger');
+        }
+      }).catch(()=>toast('Falha na comunicação','danger'));
+  });
+
+  /* 4. Delegação copiar / excluir */
+  linksBody.addEventListener('click',e=>{
+    const row=e.target.closest('tr');
+    if(!row) return;
+    /* copiar */
+    if(e.target.closest('.btn-copy')){
+      navigator.clipboard.writeText(e.target.closest('.btn-copy').dataset.url)
+        .then(()=>toast('Copiado!','info'));
+      return;
+    }
+    /* excluir */
+    if(e.target.closest('.btn-excluir')){
+      if(!confirm('Excluir este link?')) return;
+      fetch(API_DELETE,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({link_id:row.dataset.linkId})})
+        .then(r=>r.json()).then(d=>{
+          if(d.success){
+            row.remove();
+            if(!linksBody.children.length) linksArea.style.display='none';
+            toast('Link excluído','success');
+          }else{
+            toast(d.message || 'Erro ao excluir','danger');
+          }
+        }).catch(()=>toast('Erro de comunicação','danger'));
+    }
+  });
+});
+</script>
+{% endblock %}

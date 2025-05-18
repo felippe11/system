@@ -384,6 +384,34 @@
             border-radius: 10px;
             box-shadow: var(--shadow-sm);
         }
+
+        /* ---------- Hover suave só no texto (modo claro) ---------- */
+        .navbar-light .navbar-nav .nav-link,
+        .nav-link.btn {
+            transition: color .3s ease, text-shadow .3s ease, transform .3s ease;
+        }
+
+        .navbar-light .navbar-nav .nav-link:hover,
+        .nav-link.btn:hover {
+            /* tira o fundo e a sombra */
+            background-color: transparent !important;
+            box-shadow: none !important;
+
+            /* realce apenas no texto */
+            color: var(--primary-color-light) !important;          /* azul mais claro */
+            text-shadow: 0 0 6px rgba(var(--primary-color-rgb), .35);
+            transform: translateY(-2px);                           /* opcional – mantém leve “lift” */
+        }
+
+        /* ---------- Hover suave só no texto (modo escuro) ---------- */
+        [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover,
+        [data-bs-theme="dark"] .nav-link.btn:hover {
+            background-color: transparent !important;
+            box-shadow: none !important;
+
+            color: #ffffff !important;
+            text-shadow: 0 0 6px rgba(143,148,251,.45);            /* a mesma cor do gradiente da logo */
+        }
     </style>
 </head>
 
