@@ -598,12 +598,13 @@
             <i class="bi bi-link-45deg fs-1"></i>
           </div>
           <h5 class="card-title fw-bold">Link de Inscrição</h5>
-          <p class="card-text text-muted ">Gere links personalizados para compartilhar</p>
-          <button id="gerarLinkBtn" class="btn btn-warning mt-2 w-100">
+          <p class="card-text text-muted">Gere links personalizados para compartilhar</p>
+          <a href="{{ url_for('routes.gerar_link_ui') }}"
+             class="btn btn-warning mt-2 w-100">
             <i class="bi bi-link-45deg me-2"></i> Gerar Link
-          </button>
+          </a>
         </div>
-      </div>
+      </div>  
     </div>
     
     <div class="col-lg-6 col-xl-3">
@@ -1337,108 +1338,6 @@
 </div>
 
 
-<!-- Modal Link de Inscrição (Otimizado) -->
-<div class="modal fade" id="modalLinkCadastro" tabindex="-1" aria-labelledby="modalLinkLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
-    <div class="modal-content">
-      <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title" id="modalLinkLabel">
-          <i class="bi bi-link-45deg me-2"></i>Gerar Link de Inscrição
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Seleção de Evento -->
-        <div class="mb-3">
-          <label for="eventoSelectModal" class="form-label">Selecionar Evento</label>
-          <select id="eventoSelectModal" class="form-select" required>
-            <option value="">-- Selecione um Evento --</option>
-            {% for evento in eventos %}
-              <option value="{{ evento.id }}">{{ evento.nome }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        
-        <!-- Seção de links existentes -->
-        <div id="linksExistentesContainerModal" class="mb-4 bg-light rounded p-3" style="display: none;">
-          <h6 class="d-flex align-items-center border-bottom pb-2 mb-3">
-            <i class="bi bi-link-45deg me-2"></i>
-            Links Existentes
-          </h6>
-
-          <!-- Loader -->
-          <div id="linksExistentesLoaderModal" class="text-center py-4">
-            <div class="spinner-grow text-primary" role="status">
-              <span class="visually-hidden">Carregando links...</span>
-            </div>
-            <p class="text-muted mt-2 mb-0">Carregando links disponíveis...</p>
-          </div>
-
-          <!-- Empty State -->
-          <div id="linksExistentesEmptyModal" class="alert alert-info d-flex align-items-center" style="display: none;">
-            <i class="bi bi-info-circle-fill fs-5 me-3"></i>
-            <div>
-              <h6 class="alert-heading mb-1">Nenhum link encontrado</h6>
-              <p class="mb-0">Você ainda não gerou nenhum link para este evento.</p>
-            </div>
-          </div>
-
-          <!-- Links Table -->
-          <div class="table-responsive">
-            <table id="linksExistentesTableModal" class="table table-hover align-middle mb-0" style="display: none;">
-              <thead class="table-light">
-                <tr>
-                  <th scope="col" class="border-bottom-0">Identificador</th>
-                  <th scope="col" class="border-bottom-0">Data de Criação</th>
-                  <th scope="col" class="text-end border-bottom-0">Ações</th>
-                </tr>
-              </thead>
-              <tbody id="linksExistentesListModal">
-                <!-- Links serão inseridos aqui via JavaScript -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-        
-        <!-- Formulário para novo link -->
-        <div class="card mb-3">
-          <div class="card-header bg-light">
-            <h6 class="m-0"><i class="bi bi-plus-circle me-2"></i>Criar Novo Link</h6>
-          </div>
-          <div class="card-body">
-            <div class="mb-3">
-              <label for="slugInput" class="form-label">URL Personalizada (opcional)</label>
-              <div class="mb-2 small text-muted">
-                <code>https://appfiber.com.br/inscricao/</code><span class="text-dark fw-bold">seu-evento-aqui</span>
-              </div>
-              <input type="text" id="slugInput" class="form-control">
-              <small class="form-text text-muted">Use letras, números e hífens. Deixe em branco para um link aleatório.</small>
-            </div>
-            
-            <div class="mb-3" id="linkGeradoContainer" style="display: none;">
-              <label for="linkCadastro" class="form-label">Link Gerado</label>
-              <div class="input-group">
-                <input type="text" id="linkCadastro" class="form-control" readonly>
-                <button class="btn btn-outline-secondary" type="button" onclick="copiarLink()">
-                  <i class="bi bi-clipboard"></i>
-                </button>
-              </div>
-            </div>
-            
-            <button id="gerarLinkConfirm" class="btn btn-primary w-100">
-              <i class="bi bi-magic me-2"></i>Gerar Link
-            </button>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
 <!-- Modais de cada oficina (detalhes, inscritos, etc) -->
 {% for oficina in oficinas %}
 <div class="modal fade" id="modalOficina{{ oficina.id }}" tabindex="-1"
@@ -1549,71 +1448,4 @@
 </div>
 {% endfor %}
 
-<!-- Scripts -->
-{% block scripts %}
-{{ super() }}
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
-    [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-      .map(function(el) { return new bootstrap.Tooltip(el) });
-
-    // Handle link generation button
-    const gerarLinkBtn = document.getElementById('gerarLinkBtn');
-    const modalEl = document.getElementById('modalLinkCadastro');
-    
-    if (gerarLinkBtn && modalEl) {
-      // Properly configure modal with all options
-      const modal = new bootstrap.Modal(modalEl, {
-        backdrop: 'static', // Prevent closing when clicking outside
-        keyboard: true,     // Allow ESC key to close
-        focus: true        // Focus the modal when opened
-      });
-
-      // Clean up modal properly when it's hidden
-      modalEl.addEventListener('hidden.bs.modal', function () {
-        document.body.classList.remove('modal-open');
-        const backdrops = document.getElementsByClassName('modal-backdrop');
-        while(backdrops.length > 0) {
-          backdrops[0].remove();
-        }
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-      });
-
-      // Show modal when button is clicked
-      gerarLinkBtn.addEventListener('click', function() {
-        modal.show();
-      });
-    }
-  });
-</script>
-
-<!-- ❶  Variáveis de configuração que o JS precisa -->
-<script>
-  /* geração e listagem de links de inscrição --------------------------- */
-  const URL_GERAR_LINK           = "{{ url_for('routes.gerar_link') }}";            // POST cria | GET lista
-  const URL_LISTAR_EVENTOS_MODAL = "{{ url_for('routes.gerar_link') }}";            // GET (sem parâmetro) → lista eventos
-  const URL_LISTAR_LINKS_EVENTO  = "{{ url_for('routes.gerar_link') }}";            // GET ?evento_id=123 → links do evento
-
-  /* link já existente – excluir --------------------------------------- */
-  const URL_EXCLUIR_LINK         = "{{ url_for('routes.excluir_link') }}";          // POST {link_id}
-  
-  /* configurações do cliente (check‑in, feedback, etc.) ---------------- */
-  const URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('routes.configuracao_cliente_atual') }}";
-
-  /* QR‑Code de credenciamento do evento -------------------------------- */
-  const URL_TOGGLE_QR_CREDENCIAMENTO = "{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}";
-
-  /* texto de relatório para WhatsApp / e‑mail -------------------------- */
-  const URL_GERAR_RELATORIO_MENSAGEM = "{{ url_for('routes.gerar_relatorio_mensagem') }}";
-
-  /* filtros iniciais de estado / cidade -------------------------------- */
-  const ESTADO_FILTER_INICIAL = "{{ request.args.get('estado', '') }}";
-  const CIDADE_FILTER_INICIAL = "{{ request.args.get('cidade', '') }}";
-</script>
-
-<!-- ❷  Agora sim carregue o JS principal -->
-<script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
-{% endblock %}
 {% endblock %}

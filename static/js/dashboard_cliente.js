@@ -251,17 +251,13 @@ function enviarWhatsAppRelatorio() {
 }
 
 // Configuração do modal de geração de link
-const btnAbrirModalLink = document.getElementById("gerarLinkBtn");
-if (btnAbrirModalLink) {
-  btnAbrirModalLink.addEventListener("click", function() {
+document.querySelectorAll('.gerar-link-btn').forEach(btn => {
+  btn.addEventListener("click", function() {
     const modalElement = document.getElementById("modalLinkCadastro");
-    if (!modalElement) {
-        console.error("Modal 'modalLinkCadastro' não encontrado.");
-        alert("Erro ao tentar abrir o gerador de links.");
-        return;
+    if (modalElement) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement); // Ensure compatibility with Bootstrap 5
+        modalInstance.show();
     }
-    var modal = new bootstrap.Modal(modalElement);
-    modal.show();
 
     // Limpar campos e seleções atuais
     const slugInput = document.getElementById("slugInput");
@@ -329,9 +325,7 @@ if (btnAbrirModalLink) {
         eventoSelectModal.appendChild(errorOption);
       });
   });
-} else {
-    console.warn("Botão com ID 'gerarLinkBtn' para abrir o modal de links não encontrado.");
-}
+});
 
 // Função para carregar links existentes quando um evento é selecionado no modal
 const eventoSelectModalGlobal = document.getElementById("eventoSelectModal"); // ID do select de eventos DENTRO DO MODAL
@@ -850,5 +844,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// Adicionar botão para gerar link
+const buttonContainer = document.getElementById('buttonContainer'); // Replace with the appropriate container ID
+if (buttonContainer) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-warning mt-2 w-100 gerar-link-btn';
+    button.innerHTML = '<i class="bi bi-link-45deg me-2"></i> Gerar Link';
+    buttonContainer.appendChild(button);
+}
 
 console.log("dashboard_cliente.js carregado e pronto.");
