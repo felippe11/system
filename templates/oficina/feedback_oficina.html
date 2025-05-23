@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Feedbacks - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Feedbacks da Oficina: {{ oficina.titulo }}</h2>
+   
+  <!-- Filtros -->
+  <form method="get" class="mb-4">
+    <div class="row">
+      {% if is_admin %}
+      <div class="col-md-4">
+        <label for="clienteSelect">Filtrar por Cliente:</label>
+        <select name="cliente_id" id="clienteSelect" class="form-control">
+          <option value="">Todos os Clientes</option>
+          {% for cliente in clientes %}
+            <option value="{{ cliente.id }}" {% if cliente.id|string == cliente_filter %}selected{% endif %}>
+              {{ cliente.nome }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-md-3">
+        <label for="tipo">Tipo:</label>
+        <select name="tipo" id="tipo" class="form-control">
+          <option value="">Todos</option>
+          <option value="usuario" {% if request.args.get('tipo') == 'usuario' %}selected{% endif %}>Usuário</option>
+          <option value="ministrante" {% if request.args.get('tipo') == 'ministrante' %}selected{% endif %}>Ministrante</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="estrelas">Número de Estrelas:</label>
+        <select name="estrelas" id="estrelas" class="form-control">
+          <option value="">Todas</option>
+          {% for i in range(1, 6) %}
+            <option value="{{ i }}" {% if request.args.get('estrelas') == i|string %}selected{% endif %}>{{ i }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 align-self-end">
+        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+      </div>
+    </div>
+  </form>
+  
+  <!-- Estatísticas -->
+  <div class="mb-4">
+    <!-- Feedbacks Totais -->
+    {% set full_stars_total = total_avg|float|round(0, 'floor')|int %}
+    {% set empty_stars_total = 5 - full_stars_total %}
+    <p>
+      <strong>Total de feedbacks:</strong> {{ total_count }} - Média: {{ "%.2f"|format(total_avg) }} 
+      {% for i in range(full_stars_total) %}
+        <span class="text-warning">&#9733;</span>
+      {% endfor %}
+      {% for i in range(empty_stars_total) %}
+        <span class="text-muted">&#9733;</span>
+      {% endfor %}
+    </p>
+  
+    <!-- Feedbacks de Usuários -->
+    {% set full_stars_usuarios = avg_usuarios|float|round(0, 'floor')|int %}
+    {% set empty_stars_usuarios = 5 - full_stars_usuarios %}
+    <p>
+      <strong>Feedbacks de usuários:</strong> {{ count_usuarios }} - Média: {{ "%.2f"|format(avg_usuarios) }} 
+      {% for i in range(full_stars_usuarios) %}
+        <span class="text-warning">&#9733;</span>
+      {% endfor %}
+      {% for i in range(empty_stars_usuarios) %}
+        <span class="text-muted">&#9733;</span>
+      {% endfor %}
+    </p>
+  
+    <!-- Feedbacks de Ministrantes -->
+    {% set full_stars_ministrantes = avg_ministrantes|float|round(0, 'floor')|int %}
+    {% set empty_stars_ministrantes = 5 - full_stars_ministrantes %}
+    <p>
+      <strong>Feedbacks de ministrantes:</strong> {{ count_ministrantes }} - Média: {{ "%.2f"|format(avg_ministrantes) }} 
+      {% for i in range(full_stars_ministrantes) %}
+        <span class="text-warning">&#9733;</span>
+      {% endfor %}
+      {% for i in range(empty_stars_ministrantes) %}
+        <span class="text-muted">&#9733;</span>
+      {% endfor %}
+    </p>
+  </div>
+  
+  
+  {% if feedbacks %}
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Avaliação</th>
+          <th>Comentário</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fb in feedbacks %}
+        <tr>
+          <td>
+            {% if fb.usuario %}
+              {{ fb.usuario.nome }}
+            {% elif fb.ministrante %}
+              {{ fb.ministrante.nome }}
+            {% else %}
+              Desconhecido
+            {% endif %}
+          </td>
+          <td>
+            {% if fb.usuario %}
+              Usuário
+            {% elif fb.ministrante %}
+              Ministrante
+            {% else %}
+              Desconhecido
+            {% endif %}
+          </td>
+          <td>
+            {% for i in range(1,6) %}
+              {% if i <= fb.rating %}
+                <span class="text-warning">&#9733;</span>
+              {% else %}
+                <span class="text-muted">&#9733;</span>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td>{{ fb.comentario }}</td>
+          <td>{{ fb.created_at|brasilia }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="text-center mt-4">
+      <a href="{{ url_for('routes.gerar_pdf_feedback_route', oficina_id=oficina.id, tipo=request.args.get('tipo'), estrelas=request.args.get('estrelas')) }}" class="btn btn-secondary">
+        Imprimir Feedbacks (PDF)
+      </a>
+      <p class="text-muted small mt-2">
+        Observação: Os filtros aplicados (Tipo e Número de Estrelas) influenciarão o PDF gerado.
+      </p>
+    </div>
+  {% else %}
+    <p class="text-center">Nenhum feedback enviado para essa oficina.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

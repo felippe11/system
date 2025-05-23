@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <!-- Card principal -->
+      <div class="card shadow-sm border-0 rounded-3 mb-4">
+        <div class="card-header bg-white border-0 pt-4 pb-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <h2 class="fs-4 mb-0">{{ resposta.formulario.nome }}</h2>
+            
+            <!-- Status da avaliação -->
+            {% set status_color = {
+              'Não Avaliada': 'secondary',
+              'Aprovada': 'success',
+              'Aprovada com ressalvas': 'warning',
+              'Aprovada para pôster': 'info',
+              'Aprovada para apresentação oral': 'primary',
+              'Negada': 'danger'
+            }.get(resposta.status_avaliacao, 'secondary') %}
+            
+            <span class="badge bg-{{ status_color }} px-3 py-2">
+              {{ resposta.status_avaliacao }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <!-- Informações da resposta -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-person-circle text-secondary me-2"></i>
+                <div>
+                  <small class="text-muted d-block">Resposta enviada por</small>
+                  <span class="fw-medium">{{ resposta.usuario.nome }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-calendar-event text-secondary me-2"></i>
+                <div>
+                  <small class="text-muted d-block">Data de envio</small>
+                  <span class="fw-medium">{{ resposta.data_submissao.strftime('%d/%m/%Y às %H:%M') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="border-top pt-4">
+            <h3 class="fs-5 mb-4">Respostas e Feedbacks</h3>
+            
+            <!-- Accordion para respostas -->
+            <div class="accordion" id="respostas-accordion">
+              {% for rcampo in resposta.respostas_campos %}
+              <div class="accordion-item border mb-3 rounded-3 shadow-sm">
+                <h2 class="accordion-header">
+                  <button class="accordion-button rounded-3 collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ loop.index }}">
+                    <span class="fw-medium">{{ rcampo.campo.nome }}</span>
+                  </button>
+                </h2>
+                <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse show">
+                  <div class="accordion-body">
+                    <!-- Resposta do usuário -->
+                    <div class="mb-4">
+                      <h6 class="text-muted mb-3">Sua resposta:</h6>
+                      <div class="ps-3">
+                        {% if rcampo.campo.tipo == 'file' %}
+                          <a href="{{ url_for('routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark me-2"></i>Visualizar Anexo
+                          </a>
+                        {% else %}
+                          <div class="p-3 bg-light rounded">
+                            {{ rcampo.valor }}
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                    
+                    <!-- Feedbacks -->
+                    <div>
+                      <h6 class="text-muted mb-3">Feedback dos Ministrantes:</h6>
+                      {% if rcampo.feedbacks_campo %}
+                        <div class="ps-3">
+                          {% for f in rcampo.feedbacks_campo %}
+                            <div class="card border-0 bg-light-subtle mb-3">
+                              <div class="card-body">
+                                <div class="d-flex align-items-center mb-2">
+                                  <i class="bi bi-person-circle text-primary me-2"></i>
+                                  <div>
+                                    <span class="fw-medium">{{ f.ministrante.nome }}</span>
+                                    <small class="text-muted ms-2">{{ f.criado_em.strftime('%d/%m/%Y às %H:%M') }}</small>
+                                  </div>
+                                </div>
+                                <p class="mb-0 ps-4">{{ f.texto_feedback }}</p>
+                              </div>
+                            </div>
+                          {% endfor %}
+                        </div>
+                      {% else %}
+                        <div class="alert alert-light text-center py-3 border-0">
+                          <i class="bi bi-chat-left text-secondary d-block mb-2 fs-4"></i>
+                          <p class="text-secondary mb-0">Ainda não há feedback para este campo.</p>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        
+        <div class="card-footer bg-white border-0 pt-0 pb-4">
+          <a href="{{ url_for('routes.dashboard_participante', formulario_id=resposta.formulario.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

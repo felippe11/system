@@ -16,10 +16,9 @@ def register_routes(app):
     # Importações e registros dos Blueprints de módulos organizados
     from .auth_routes import auth_routes
     from .dashboard_routes import dashboard_routes
-    from .dashboard_cliente import dashboard_cliente
-    from .dashboard_participante import dashboard_participante
-    from .dashboard_professor import dashboard_professor
-    from .dashboard_ministrante import dashboard_ministrante
+    from .dashboard_participante import dashboard_participante_routes
+    from .dashboard_professor import dashboard_professor_routes
+    from .dashboard_ministrante import dashboard_ministrante_routes
 
     from .evento_routes import evento_routes
     from .oficina_routes import oficina_routes
@@ -45,15 +44,13 @@ def register_routes(app):
     from .mercadopago_routes import mercadopago_routes
     from .util_routes import util_routes
     from .relatorio_pdf_routes import relatorio_pdf_routes 
-    from .dashboard_professor import dashboard_professor
 
     # Registro dos Blueprints
     app.register_blueprint(auth_routes)
     app.register_blueprint(dashboard_routes)
-    app.register_blueprint(dashboard_cliente)
-    app.register_blueprint(dashboard_participante)
-    app.register_blueprint(dashboard_professor)
-    app.register_blueprint(dashboard_ministrante)
+    app.register_blueprint(dashboard_participante_routes)
+    app.register_blueprint(dashboard_professor_routes)
+    app.register_blueprint(dashboard_ministrante_routes)
 
     app.register_blueprint(evento_routes)
     app.register_blueprint(oficina_routes)
@@ -79,4 +76,5 @@ def register_routes(app):
     app.register_blueprint(mercadopago_routes)
     app.register_blueprint(util_routes)
     app.register_blueprint(relatorio_pdf_routes) 
-    app.register_blueprint(dashboard_professor)
+
+
