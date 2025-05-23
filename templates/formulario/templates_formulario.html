@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-file-earmark-ruled me-2"></i>Templates de Formulários
+        </h2>
+        <a href="{{ url_for('routes.criar_template') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i> Criar Novo Template
+        </a>
+    </div>
+
+    {% if templates %}
+    <div class="row g-4">
+        {% for template in templates %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm border {% if template.is_default %}border-primary{% endif %}">
+                <div class="card-header {% if template.is_default %}bg-primary text-white{% else %}bg-white{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-truncate" title="{{ template.nome }}">
+                            {% if template.is_default %}
+                            <i class="bi bi-star-fill me-2"></i>
+                            {% else %}
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            {% endif %}
+                            {{ template.nome }}
+                        </h5>
+                        {% if template.is_default %}
+                        <span class="badge bg-warning text-dark">
+                            <i class="bi bi-check-circle-fill me-1"></i>Padrão
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if template.descricao %}
+                        <p class="card-text">{{ template.descricao }}</p>
+                        {% else %}
+                        <p class="card-text text-muted fst-italic">Sem descrição</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-tag text-muted me-2"></i>
+                            <span class="text-muted">Categoria:</span>
+                        </div>
+                        <span class="badge bg-light text-dark">
+                            {{ template.categoria or "N/A" }}
+                        </span>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-list-ul text-muted me-2"></i>
+                            <span class="text-muted">Campos:</span>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">
+                            {{ template.campos|length }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-white">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('routes.gerenciar_campos_template', template_id=template.id) }}" 
+                           class="btn btn-outline-primary flex-grow-1">
+                            <i class="bi bi-pencil-square me-1"></i> Gerenciar Campos
+                        </a>
+                        <a href="{{ url_for('routes.usar_template', template_id=template.id) }}" 
+                           class="btn btn-success flex-grow-1">
+                            <i class="bi bi-check-circle me-1"></i> Usar Template
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="position-absolute top-0 end-0 m-2 dropdown">
+                    <button class="btn btn-sm btn-light rounded-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="bi bi-pencil me-2"></i>Editar Template
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="bi bi-files me-2"></i>Duplicar Template
+                            </a>
+                        </li>
+                        {% if not template.is_default %}
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="bi bi-star me-2"></i>Definir como Padrão
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteTemplateModal{{ template.id }}">
+                                <i class="bi bi-trash me-2"></i>Excluir Template
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Modal de exclusão -->
+            <div class="modal fade" id="deleteTemplateModal{{ template.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Confirmar exclusão</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Tem certeza que deseja excluir o template <strong>{{ template.nome }}</strong>?</p>
+                            <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <form action="#" method="POST" class="d-inline">
+                                <button type="submit" class="btn btn-danger">Excluir Template</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-file-earmark-x text-muted fs-1 mb-3"></i>
+            <h4 class="text-muted">Nenhum template disponível</h4>
+            <p class="text-muted mb-4">Crie um novo template ou utilize os templates padrão do sistema.</p>
+            <a href="{{ url_for('routes.criar_template') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Criar seu primeiro template
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Inicializar tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

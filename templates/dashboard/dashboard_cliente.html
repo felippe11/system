@@ -1,0 +1,1451 @@
+{% extends "base.html" %}
+{% block title %}Dashboard do Cliente{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="/static/css/dashboard_cliente.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_responsive.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_modals.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_table.css">
+<link rel="stylesheet" href="/static/css/dashboard_cliente_modals_responsive.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 mt-0">
+
+  <!-- Cabeçalho da seção -->
+  <div class="bg-gradient-primary-to-secondary text-white p-4 rounded-3 mb-4 shadow-sm">
+    <div class="d-flex align-items-center">
+      <div class="display-6 me-3">
+        <i class="bi bi-speedometer2"></i>
+      </div>
+      <div>
+        <h4 class="fw-bold mb-1">Painel de Gerenciamento do Cliente</h4>
+        <p class="mb-0 opacity-75">Gerencie suas atividades, ministrantes, inscrições e conteúdos</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtro de Estado e Cidade -->
+  <form method="GET" action="{{ url_for('routes.dashboard') }}" class="mb-4">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label for="estadoSelect" class="form-label">Filtrar por Estado</label>
+        <select id="estadoSelect" name="estado" class="form-select">
+          <option value="">Todos os Estados</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="cidadeSelect" class="form-label">Filtrar por Cidade</label>
+        <select id="cidadeSelect" name="cidade" class="form-select">
+          <option value="">Todas as Cidades</option>
+        </select>
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-funnel-fill me-1"></i> Aplicar Filtros
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- Card Principal que contém as abas -->
+  <div class="card shadow">
+    <div class="card-body p-0">
+      <!-- Abas (Nav Tabs) -->
+      <ul class="nav nav-tabs nav-justified" id="clientTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="estatisticas-tab" data-bs-toggle="tab"
+                  data-bs-target="#estatisticas" type="button">
+            <i class="bi bi-bar-chart-fill me-1"></i> Estatísticas
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="gerenciar-tab" data-bs-toggle="tab"
+                  data-bs-target="#gerenciar" type="button">
+            <i class="bi bi-kanban me-1"></i> Gerenciar
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="criar-tab" data-bs-toggle="tab"
+                  data-bs-target="#criar" type="button">
+            <i class="bi bi-plus-circle me-1"></i> Criar Novo
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab"
+                  data-bs-target="#configuracoes" type="button">
+            <i class="bi bi-gear-fill me-1"></i> Configurações
+          </button>
+        </li>
+      </ul>
+
+      <!-- Conteúdo das Abas -->
+      <div class="tab-content p-4">
+
+        <!-- ABA 1: ESTATÍSTICAS -->
+        <div class="tab-pane fade show active" id="estatisticas" role="tabpanel">
+          <!-- Painel de estatísticas em cards -->
+          <div class="row g-4 mb-4">
+            <div class="col">
+              <div class="card stat-card bg-success-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Eventos</h5>
+                      <h2 class="card-title mb-0">{{ total_eventos }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-event fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card stat-card bg-primary-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Atividades</h5>
+                      <h2 class="card-title mb-0">{{ total_oficinas }}</h2>
+                    </div>
+                    <i class="bi bi-journal-bookmark fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card stat-card bg-info-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Vagas</h5>
+                      <h2 class="card-title mb-0">{{ total_vagas }}</h2>
+                    </div>
+                    <i class="bi bi-person-workspace fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card stat-card bg-warning-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">Adesão</h5>
+                      <h2 class="card-title mb-0">{{ total_inscricoes }}</h2>
+                    </div>
+                    <i class="bi bi-people fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card stat-card bg-danger-gradient text-white">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <h5 class="card-subtitle mb-2">% de Adesão</h5>
+                      <h2 class="card-title mb-0">{{ "%.2f"|format(percentual_adesao) }}%</h2>
+                    </div>
+                    <i class="bi bi-graph-up fs-1 opacity-25"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalhes das oficinas com tabela e gráficos -->
+          <!-- Detalhes das oficinas com tabela e gráficos -->
+<div class="card shadow">
+  <div class="card-header">
+    <h5 class="m-0 fw-bold">Detalhes das Atividades</h5>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Título</th>
+            <th>Vagas</th>
+            <th>Inscritos</th>
+            <th>Ocupação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ofst in oficinas %}
+          <tr>
+            <td>{{ ofst.titulo }}</td>
+            <td>{% if ofst.vagas == 9999 %} ∞ {% else %}{{ ofst.vagas }}{% endif %}</td>
+            <td>{{ ofst.inscritos|length }}</td>
+            <td>
+              <div class="progress" style="height: 20px;">
+                {% if ofst.vagas == 9999 %}
+                <div class="progress-bar bg-info" role="progressbar" 
+                     style="width: 100%;" 
+                     aria-valuenow="100" 
+                     aria-valuemin="0" aria-valuemax="100">
+                  Ilimitado
+                </div>
+                {% else %}
+                <div class="progress-bar" role="progressbar" 
+                     style="width: {{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}%;" 
+                     aria-valuenow="{{ (ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0 }}" 
+                     aria-valuemin="0" aria-valuemax="100">
+                  {{ "%.2f"|format((ofst.inscritos|length / ofst.vagas) * 100 if ofst.vagas else 0) }}%
+                </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Filtrar Check-ins - Harmonizado com o estilo de cima -->
+<div class="card shadow mt-4">
+  <div class="card-header">
+    <h5 class="m-0 fw-bold">Filtrar Check-ins</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <!-- Evento Select -->
+      <div class="col-12 col-md-6">
+        <label class="form-label fw-bold text-secondary">
+          <i class="bi bi-calendar-event me-2"></i>Selecionar Evento
+        </label>
+        <select id="filtroEvento" class="form-select border-0 bg-light">
+          <option value="todos">Todos os Eventos</option>
+          {% for evento in eventos %}
+            <option value="{{ evento.id }}">{{ evento.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <!-- Tipo Select -->
+      <div class="col-12 col-md-6">
+        <label class="form-label fw-bold text-secondary">
+          <i class="bi bi-qr-code me-2"></i>Tipo de Check-in
+        </label>
+        <select id="filtroTipo" class="form-select border-0 bg-light">
+          <option value="todos">Todos os Tipos</option>
+          <option value="QR-EVENTO">
+            <i class="bi bi-person-badge"></i> Credenciamento (QR-EVENTO)
+          </option>
+          <option value="QR-AUTO">QR-AUTO</option>
+          <option value="PALAVRA">PALAVRA</option>
+        </select>
+      </div>
+      
+      <!-- Export Button -->
+      <div class="col-12 mt-4">
+        <button id="btnExportarFiltrado" class="btn btn-danger w-100 py-2 shadow-sm d-flex align-items-center justify-content-center">
+          <i class="bi bi-file-earmark-pdf fs-5 me-3"></i>
+          <span class="fw-bold">Exportar Check-ins Filtrados</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        </div><!-- /ABA 1: ESTATÍSTICAS -->
+
+<!-- ABA 2: GERENCIAR -->
+<div class="tab-pane fade" id="gerenciar" role="tabpanel">
+  
+
+  <div class="container-fluid px-0">
+    <!-- Cards de acesso rápido -->
+    <div class="row g-4 mb-4">
+      <!-- Acesso rápido QR Codes e Check-ins -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-primary mb-3">
+              <i class="bi bi-qr-code fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">QR Code & Check-in</h5>
+            <p class="card-text text-muted">Escaneie QR Codes e visualize check-ins realizados</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <div class="d-flex gap-2">
+              <a href="{{ url_for('routes.admin_scan') }}" class="btn btn-sm btn-primary flex-grow-1">
+                <i class="bi bi-qr-code-scan me-1"></i> Escanear
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modalCheckinsQR">
+                <i class="bi bi-list-check me-1"></i> Listar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gerenciar Inscrições -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-warning mb-3">
+              <i class="bi bi-clipboard-check fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Inscrições</h5>
+            <p class="card-text text-muted">Gerencie as inscrições dos participantes</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <a href="{{ url_for('routes.gerenciar_inscricoes') }}" class="btn btn-warning w-100">
+              <i class="bi bi-clipboard-check me-2"></i> Gerenciar Inscrições
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gerenciar Ministrantes -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-success mb-3">
+              <i class="bi bi-person-badge fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Ministrantes</h5>
+            <p class="card-text text-muted">Gerencie os palestrantes e facilitadores</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <a href="{{ url_for('routes.gerenciar_ministrantes') }}" class="btn btn-success w-100">
+              <i class="bi bi-person-badge me-2"></i> Gerenciar Ministrantes
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Etiquetas -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-secondary mb-3">
+              <i class="bi bi-printer fs-1"></i>
+            </div>
+            <h5 class="card-title fw-bold">Etiquetas</h5>
+            <p class="card-text text-muted">Gere e imprima etiquetas para os participantes</p>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <a href="{{ url_for('routes.gerar_etiquetas', cliente_id=current_user.id) }}" class="btn btn-secondary w-100">
+              <i class="bi bi-printer me-2"></i> Imprimir Etiquetas
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gerenciamento de conteúdo -->
+    <div class="row g-4 mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-light border-0">
+            <h5 class="fw-bold m-0 d-flex align-items-center">
+              <i class="bi bi-folder-fill me-2 text-primary"></i> Gerenciar Conteúdo
+            </h5>
+          </div>
+          <div class="card-body">
+            <!-- Navegação por abas para telas pequenas -->
+            <div class="d-lg-none mb-3">
+              <select class="form-select" id="contentManagementMobile" onchange="window.location.href=this.value">
+                <option value="">Selecione uma opção...</option>
+                <option value="{{ url_for('routes.listar_formularios') }}">Formulários</option>
+                <option value="{{ url_for('routes.listar_respostas') }}">Respostas</option>
+                <option value="{{ url_for('routes.listar_templates') }}">Templates</option>
+              </select>
+            </div>
+            
+            <!-- Botões para telas grandes -->
+            <div class="d-none d-lg-flex justify-content-between gap-3">
+              <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-outline-primary flex-fill content-card">
+                <div class="text-center py-2">
+                  <i class="bi bi-ui-checks fs-2 d-block mb-2"></i>
+                  <span>Formulários</span>
+                </div>
+              </a>
+              
+              <a href="{{ url_for('routes.listar_respostas') }}" class="btn btn-outline-primary flex-fill content-card">
+                <div class="text-center py-2">
+                  <i class="bi bi-chat-square-text fs-2 d-block mb-2"></i>
+                  <span>Respostas</span>
+                </div>
+              </a>
+              
+              <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-primary flex-fill content-card">
+                <div class="text-center py-2">
+                  <i class="bi bi-file-earmark-ruled fs-2 d-block mb-2"></i>
+                  <span>Templates</span>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de Atividades -->
+    <div class="row g-4">
+      <div class="col-12">
+        <div class="card border-0 shadow">
+          <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+            <h5 class="fw-bold m-0">
+              <i class="bi bi-list-ul me-2 text-primary"></i> Atividades Cadastradas
+            </h5>
+            <div class="d-flex">
+              <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#tabelaAtividades">
+                <i class="bi bi-chevron-down"></i> <span class="d-none d-md-inline">Mostrar/Ocultar</span>
+              </button>
+            </div>
+          </div>
+
+
+          
+          <div class="collapse show" id="tabelaAtividades">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th scope="col" class="ps-3">Título</th>
+                      <th scope="col" class="d-none d-md-table-cell">Descrição</th>
+                      <th scope="col" width="200" class="text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if oficinas %}
+                      {% for oficina in oficinas %}
+                      <tr>
+                        <td class="ps-3 fw-medium">
+                          {{ oficina.titulo }}
+                          <!-- Mobile: Descrição truncada visível apenas em telas pequenas -->
+                          <div class="small text-muted d-md-none">
+                            {{ oficina.descricao|truncate(30) }}
+                          </div>
+                        </td>
+                        <td class="d-none d-md-table-cell">{{ oficina.descricao|truncate(50) }}</td>
+                        <td>
+                          <div class="btn-group d-flex justify-content-center">
+                            <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" 
+                               class="btn btn-sm btn-outline-warning" 
+                               data-bs-toggle="tooltip" 
+                               title="Editar atividade">
+                              <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-outline-info"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#modalOficina{{ oficina.id }}"
+                                    title="Participantes">
+                              <i class="bi bi-people-fill"></i>
+                            </button>
+                            <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" 
+                               class="btn btn-sm btn-outline-primary"
+                               data-bs-toggle="tooltip" 
+                               title="Checkins">
+                              <i class="bi bi-card-checklist"></i>
+                            </a>
+                            <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}" 
+                               class="btn btn-sm btn-outline-success"
+                               data-bs-toggle="tooltip" 
+                               title="Feedback">
+                              <i class="bi bi-chat-square-text"></i>
+                            </a>
+                            <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" class="d-inline">
+                              <button type="submit" class="btn btn-sm btn-outline-danger"
+                                      onclick="return confirm('Tem certeza que deseja excluir esta oficina?');"
+                                      data-bs-toggle="tooltip" 
+                                      title="Excluir">
+                                <i class="bi bi-trash-fill"></i>
+                              </button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="3" class="text-center py-4">
+                          <div class="py-5">
+                            <i class="bi bi-journal-x text-muted fs-1 d-block mb-3"></i>
+                            <p class="lead">Nenhuma atividade cadastrada</p>
+                            <small class="text-muted">Adicione atividades na aba "Cadastrar"</small>
+                          </div>
+                        </td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div class="card-footer bg-white py-3">
+              <!-- Legenda de ícones -->
+              <div class="row justify-content-center text-center">
+                <div class="col-12">
+                  <small class="text-muted">Ações disponíveis:</small>
+                </div>
+                <div class="col-auto">
+                  <small><i class="bi bi-pencil-square text-warning me-1"></i> Editar</small>
+                </div>
+                <div class="col-auto">
+                  <small><i class="bi bi-people-fill text-info me-1"></i> Participantes</small>
+                </div>
+                <div class="col-auto">
+                  <small><i class="bi bi-card-checklist text-primary me-1"></i> Check-ins</small>
+                </div>
+                <div class="col-auto">
+                  <small><i class="bi bi-chat-square-text text-success me-1"></i> Feedback</small>
+                </div>
+                <div class="col-auto">
+                  <small><i class="bi bi-trash-fill text-danger me-1"></i> Excluir</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Estilos personalizados apenas para melhorar o visual sem afetar funcionalidades -->
+<!-- /ABA 2: GERENCIAR -->
+        <!-- ABA 3: CRIAR NOVO -->
+<div class="tab-pane fade" id="criar" role="tabpanel">
+  <!-- Cabeçalho informativo -->
+  <div class="alert alert-info d-flex align-items-center mb-4 shadow-sm">
+    <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+    <div>
+      <h5 class="alert-heading mb-1">Área de Criação</h5>
+      <p class="mb-0">Utilize esta área para criar novos eventos, atividades e configurar certificados</p>
+    </div>
+  </div>
+
+  <!-- Cards principais -->
+  <div class="row g-4">
+    <!-- Ações Rápidas -->
+    <div class="col-12 mb-2">
+      <h5 class="border-start border-success border-4 ps-2">
+        <i class="bi bi-lightning-fill text-success me-2"></i>Ações Rápidas
+      </h5>
+    </div>
+    
+    <!-- Cards de Criação -->
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-primary mb-3">
+            <i class="bi bi-calendar-event fs-1"></i>
+          </div>
+    
+          <h5 class="card-title fw-bold">Criar Evento</h5>
+          <p class="card-text text-muted">
+            Crie um novo evento com data, local e inscrições
+          </p>
+    
+          <!-- Botões -->
+          <div class="d-grid gap-2 d-md-flex">
+            <a href="{{ url_for('routes.criar_evento') }}"
+               class="btn btn-primary w-100 w-md-auto">
+              <i class="bi bi-calendar-event me-2"></i> Novo
+            </a>
+    
+            <a href="{{ url_for('routes.configurar_evento', habilitar_pagamento=True) }}"
+               class="btn btn-padrao btn-secondary w-100 w-md-auto">
+               <i class="bi bi-gear me-2"></i> Editar
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-success mb-3">
+            <i class="bi bi-journal-plus fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Criar Atividade</h5>
+          <p class="card-text text-muted">Adicione palestras, oficinas e outras atividades</p>
+          <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-success mt-2 w-100">
+            <i class="bi bi-journal-plus me-2"></i> Nova Atividade
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-info mb-3">
+            <i class="bi bi-person-plus fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Adicionar Ministrante</h5>
+          <p class="card-text text-muted">Cadastre palestrantes e facilitadores</p>
+          <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-info mt-2 w-100 text-white">
+            <i class="bi bi-person-plus me-2"></i> Novo Ministrante
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-warning mb-3">
+            <i class="bi bi-link-45deg fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Link de Inscrição</h5>
+          <p class="card-text text-muted">Gere links personalizados para compartilhar</p>
+          <a href="{{ url_for('routes.gerar_link_ui') }}"
+             class="btn btn-warning mt-2 w-100">
+            <i class="bi bi-link-45deg me-2"></i> Gerar Link
+          </a>
+        </div>
+      </div>  
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-secondary mb-3">
+            <i class="bi bi-journal-bookmark fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Agendamentos</h5>
+          <p class="card-text text-muted ">Acesse o dashboard de agendamentos</p>
+          <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-secondary mt-2 w-100">
+            <i class="bi bi-journal-bookmark me-2"></i> Agendamentos
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-success mb-3">
+            <i class="bi bi-image fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Certificados</h5>
+          <p class="card-text text-muted ">Personalize a aparência dos certificados</p>
+          <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" class="btn btn-success mt-2 w-100">
+            <i class="bi bi-image me-2"></i> Personalizar
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-lg-6 col-xl-3">
+      <div class="card h-100 shadow-sm hover-shadow border-0">
+        <div class="card-body">
+          <div class="text-danger mb-3">
+            <i class="bi bi-trophy fs-1"></i>
+          </div>
+          <h5 class="card-title fw-bold">Realizar Sorteio</h5>
+          <p class="card-text text-muted ">Sorteie prêmios entre os participantes</p>
+          <a href="{{ url_for('routes.gerenciar_sorteios') }}" class="btn btn-danger mt-2 w-100">
+            <i class="bi bi-gift me-2"></i> Gerenciar Sorteios
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configurações e Instruções -->
+  <div class="row mt-5">
+    <div class="col-12 mb-2">
+      <h5 class="border-start border-primary border-4 ps-2">
+        <i class="bi bi-gear-fill text-primary me-2"></i>Configurações e Instruções
+      </h5>
+    </div>
+
+    <div class="col-md-6">
+      <!-- Regras de Inscrição -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="mb-0 fw-bold"><i class="bi bi-gear-fill text-primary me-2"></i>Regras de Inscrição</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Configure limites de inscrições, restrições e outras regras para os participantes</p>
+          <a href="{{ url_for('routes.configurar_regras_inscricao') }}" class="btn btn-warning w-100">
+            <i class="bi bi-gear-fill me-2"></i> Configurar Regras
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <!-- Guia de Certificados -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="mb-0 fw-bold"><i class="bi bi-award text-success me-2"></i>Guia de Certificados</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-start mb-3">
+            <div class="icon-bullet bg-success text-white me-3 mt-1">1</div>
+            <p class="mb-0 small">Acesse a lista de atividades na aba Gerenciar</p>
+          </div>
+          <div class="d-flex align-items-start mb-3">
+            <div class="icon-bullet bg-success text-white me-3 mt-1">2</div>
+            <p class="mb-0 small">Selecione a atividade desejada e clique em "Certificados"</p>
+          </div>
+          <div class="d-flex align-items-start">
+            <div class="icon-bullet bg-success text-white me-3 mt-1">3</div>
+            <p class="mb-0 small">Você pode gerar certificados em lote ou individuais para os participantes</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Estilos específicos -->
+
+<!-- /ABA 3: CRIAR NOVO -->
+
+  <!-- ABA 4: CONFIGURAÇÕES -->
+  <div class="tab-pane fade" id="configuracoes" role="tabpanel">
+    <!-- CSS para padronização dos botões -->
+    
+    <!-- Menu de navegação para categorias (padronizado) -->
+    <div class="bg-light p-2 rounded-3 mb-4 shadow-sm">
+      <div class="nav nav-pills nav-fill config-nav">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-config-global" type="button">
+          <i class="bi bi-sliders"></i> Configurações Globais
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-campos" type="button">
+          <i class="bi bi-ui-checks-grid"></i> Campos Personalizados
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-import" type="button">
+          <i class="bi bi-upload"></i> Importações
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-sponsor" type="button">
+          <i class="fas fa-handshake"></i> Patrocinadores
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-content">
+      <!-- TAB: Configurações Globais -->
+      <div class="tab-pane fade show active" id="tab-config-global">
+        <div class="row g-4">
+          <!-- Configurações Globais Card -->
+          <div class="col-md-7">
+            <div class="card border-primary border-top border-4 shadow-sm mb-4">
+              <div class="card-header bg-primary text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-gear-fill me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Configurações Globais</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <!-- Check-in Global -->
+                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                  <div>
+                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                      <i class="bi bi-qr-code-scan text-primary me-2"></i>
+                      Check-in Global
+                    </h6>
+                    <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
+                  </div>
+                  <button type="button" 
+                          id="btnToggleCheckin"
+                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
+                          data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.permitir_checkin_global else 'x-circle-fill' }}"></i>
+                    {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
+                  </button>
+                </div>
+
+                <!-- QR Code de Evento -->
+                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                  <div>
+                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                      <i class="bi bi-qr-code text-primary me-2"></i>
+                      QR Code de Credenciamento
+                    </h6>
+                    <p class="text-muted small mb-0">Habilita uso de QR code para credenciamento em eventos</p>
+                  </div>
+                  <button type="button" 
+                          id="btnToggleQrCredenciamento"
+                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'danger' }}"
+                          data-toggle-url="{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'x-circle-fill' }}"></i>
+                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'Desativado' }}
+                  </button>
+                </div>
+
+                <!-- Feedback -->
+                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                  <div>
+                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                      <i class="bi bi-chat-square-text text-primary me-2"></i>
+                      Feedback dos Participantes
+                    </h6>
+                    <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
+                  </div>
+                  <button type="button"
+                          id="btnToggleFeedback"
+                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
+                          data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_feedback else 'x-circle-fill' }}"></i>
+                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
+                  </button>
+                </div>
+
+                <!-- Certificado -->
+                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                  <div>
+                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                      <i class="bi bi-award text-primary me-2"></i>
+                      Download de Certificado
+                    </h6>
+                    <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
+                  </div>
+                  <button type="button" 
+                          id="btnToggleCertificado"
+                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
+                          data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}">
+                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_certificado_individual else 'x-circle-fill' }}"></i>
+                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modelos e Manutenção Cards -->
+          <div class="col-md-5">
+            <!-- Baixar Modelos Excel Card -->
+            <div class="card border-success border-top border-4 shadow-sm mb-4">
+              <div class="card-header bg-success text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-download me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Modelos Excel</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                  <div class="d-flex">
+                    <div class="me-3"><i class="bi bi-lightbulb-fill fs-4"></i></div>
+                    <div>Baixe os modelos para importação de dados em massa.</div>
+                  </div>
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('routes.gerar_modelo', tipo='usuarios') }}"
+                    class="btn btn-padrao btn-file btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    <span>Modelo de Usuários</span>
+                  </a>
+                  <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}"
+                    class="btn btn-padrao btn-file btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    <span>Modelo de Atividades</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Manutenção do Sistema Card -->
+            <div class="card border-danger border-top border-4 shadow-sm mb-4">
+              <div class="card-header bg-danger text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-shield-exclamation me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Manutenção</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="alert alert-danger d-flex" role="alert">
+                  <div class="me-3 fs-4"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                  <div>
+                    <h6 class="alert-heading fw-bold mb-1">Atenção!</h6>
+                    <p class="mb-0 small">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
+                  </div>
+                </div>
+
+                <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
+                      onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');">
+                  <button type="submit" class="btn btn-padrao btn-danger w-100">
+                    <i class="bi bi-trash-fill"></i> Excluir Todas as Atividades
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Campos Personalizados -->
+      <div class="tab-pane fade" id="tab-campos">
+        <div class="card border-primary border-top border-4 shadow-sm mb-4">
+          <div class="card-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-ui-checks-grid me-2 fs-5"></i>
+              <h5 class="fw-bold mb-0">Campos Personalizados para Cadastro</h5>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="alert alert-info d-flex" role="alert">
+              <div class="me-3 fs-4"><i class="bi bi-info-circle-fill"></i></div>
+              <div>
+                <h6 class="alert-heading fw-bold mb-1">O que são campos personalizados?</h6>
+                <p class="mb-0 small">Adicione campos específicos para coletar informações adicionais durante a inscrição dos participantes.</p>
+              </div>
+            </div>
+            
+            <!-- Formulário para adicionar campo com melhor visual -->
+            <div class="bg-light p-4 rounded-3 mb-4">
+              <h6 class="fw-bold mb-3 d-flex align-items-center">
+                <span class="badge bg-primary rounded-circle p-2 me-2">1</span>
+                Adicionar Novo Campo
+              </h6>
+              <form method="POST" action="{{ url_for('routes.adicionar_campo_personalizado') }}" class="mb-0">
+                <div class="row g-3">
+                  <div class="col-md-5">
+                    <label for="nome_campo" class="form-label fw-medium">Nome do Campo</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-primary text-white">
+                        <i class="bi bi-type"></i>
+                      </span>
+                      <input type="text" class="form-control" id="nome_campo" name="nome_campo" placeholder="Ex: Profissão" required>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="tipo_campo" class="form-label fw-medium">Tipo de Campo</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-primary text-white">
+                        <i class="bi bi-list"></i>
+                      </span>
+                      <select class="form-select" id="tipo_campo" name="tipo_campo" required>
+                        <option value="text">Texto</option>
+                        <option value="email">Email</option>
+                        <option value="number">Número</option>
+                        <option value="date">Data</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="col-md-3 d-flex flex-column justify-content-end">
+                    <div class="form-check form-switch d-flex align-items-center">
+                      <input class="form-check-input me-2" type="checkbox" id="obrigatorio" name="obrigatorio" style="width: 3em; height: 1.5em;">
+                      <label class="form-check-label fw-medium" for="obrigatorio">Obrigatório</label>
+                    </div>
+                  </div>
+                </div>
+                <div class="d-grid mt-3">
+                  <button class="btn btn-padrao btn-primary" type="submit">
+                    <i class="bi bi-plus-circle"></i> Adicionar Campo
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Tabela de campos existentes com design mais limpo -->
+            <div class="mt-4">
+              <h6 class="fw-bold mb-3 d-flex align-items-center">
+                <span class="badge bg-primary rounded-circle p-2 me-2">2</span>
+                Campos Cadastrados <span class="badge bg-primary ms-2">{{ current_user.campos_personalizados|length if current_user.campos_personalizados else '0' }}</span>
+              </h6>
+              
+              <div class="table-responsive border rounded">
+                <table class="table table-striped table-hover mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col" style="width: 40%">Nome</th>
+                      <th scope="col" style="width: 20%">Tipo</th>
+                      <th scope="col" style="width: 20%">Status</th>
+                      <th scope="col" style="width: 20%" class="text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for campo in current_user.campos_personalizados %}
+                      <tr>
+                        <td class="fw-medium">{{ campo.nome }}</td>
+                        <td>
+                          {% if campo.tipo == 'text' %}
+                            <span class="badge bg-secondary text-white"><i class="bi bi-fonts me-1"></i> Texto</span>
+                          {% elif campo.tipo == 'email' %}
+                            <span class="badge bg-info text-white"><i class="bi bi-envelope me-1"></i> Email</span>
+                          {% elif campo.tipo == 'number' %}
+                            <span class="badge bg-warning text-dark"><i class="bi bi-123 me-1"></i> Número</span>
+                          {% elif campo.tipo == 'date' %}
+                            <span class="badge bg-success text-white"><i class="bi bi-calendar-date me-1"></i> Data</span>
+                          {% else %}
+                            <span class="badge bg-light text-dark">{{ campo.tipo }}</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% if campo.obrigatorio %}
+                            <span class="badge bg-danger"><i class="bi bi-asterisk me-1"></i> Obrigatório</span>
+                          {% else %}
+                            <span class="badge bg-success"><i class="bi bi-check me-1"></i> Opcional</span>
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                          <form method="POST" action="{{ url_for('routes.remover_campo_personalizado', campo_id=campo.id) }}" 
+                                onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
+                            <button class="btn btn-padrao btn-table btn-sm btn-danger" type="submit">
+                              <i class="bi bi-trash-fill"></i> Remover
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% else %}
+                      <tr>
+                        <td colspan="4" class="text-center py-4 bg-light">
+                          <div class="text-muted">
+                            <i class="bi bi-info-circle me-2 fs-5"></i>
+                            Nenhum campo personalizado cadastrado
+                          </div>
+                          <small class="d-block mt-2">Adicione um campo usando o formulário acima</small>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Importar Dados -->
+      <div class="tab-pane fade" id="tab-import">
+        <div class="card border-primary border-top border-4 shadow-sm mb-4">
+          <div class="card-header bg-primary text-white">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-upload me-2 fs-5"></i>
+              <h5 class="fw-bold mb-0">Importar Atividades</h5>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="row">
+              <div class="col-md-4 mb-4 mb-md-0">
+                <div class="sticky-top pt-2" style="top: 20px;">
+                  <div class="bg-primary bg-opacity-10 p-3 rounded-3 mb-4">
+                    <h6 class="fw-bold text-primary mb-3"><i class="bi bi-question-circle-fill me-2"></i>Como funciona?</h6>
+                    <ol class="ps-3 mb-0">
+                      <li class="mb-2"><strong>Baixe o modelo</strong> Excel para atividades</li>
+                      <li class="mb-2"><strong>Preencha</strong> os dados conforme orientações</li>
+                      <li class="mb-2"><strong>Importe</strong> o arquivo preenchido</li>
+                      <li><strong>Pronto!</strong> Todas as atividades serão cadastradas automaticamente</li>
+                    </ol>
+                  </div>
+                  
+                  <div class="d-grid">
+                    <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}" 
+                      class="btn btn-padrao btn-file btn-success">
+                      <i class="bi bi-file-earmark-excel"></i>
+                      <span>Baixar Modelo Excel</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-8">
+                <div class="bg-light p-4 rounded-3 mb-4">
+                  <h6 class="fw-bold text-primary mb-3"><i class="bi bi-list-check me-2"></i>Colunas Obrigatórias</h6>
+                  <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="badge bg-primary">titulo</span>
+                    <span class="badge bg-primary">descricao</span>
+                    <span class="badge bg-primary">ministrante_id</span>
+                    <span class="badge bg-primary">vagas</span>
+                    <span class="badge bg-primary">carga_horaria</span>
+                    <span class="badge bg-primary">estado</span>
+                    <span class="badge bg-primary">cidade</span>
+                    <span class="badge bg-primary">datas</span>
+                    <span class="badge bg-primary">horarios_inicio</span>
+                    <span class="badge bg-primary">horarios_fim</span>
+                  </div>
+                  
+                  <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-calendar-date me-2"></i>Formato para Múltiplos Dias</h6>
+                  <div class="bg-white p-3 rounded-3 border mb-3">
+                    <code class="d-block mb-1">datas = 01/05/2025,02/05/2025</code>
+                    <code class="d-block mb-1">horarios_inicio = 08:00,09:00</code>
+                    <code class="d-block">horarios_fim = 12:00,13:00</code>
+                  </div>
+                  <div class="alert alert-warning py-2 px-3 small mb-0">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    As listas "datas", "horarios_inicio" e "horarios_fim" devem ter a mesma quantidade de itens.
+                  </div>
+                </div>
+              
+                <!-- Formulário de Upload -->
+                <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
+                  <div class="file-drop-area bg-white p-4 rounded-3 border-2 border-primary border-dashed text-center">
+                    <div class="mb-3 text-primary">
+                      <i class="bi bi-cloud-upload fs-1"></i>
+                    </div>
+                    <h6 class="mb-2">Selecione ou arraste o arquivo Excel</h6>
+                    <p class="text-muted small mb-3">Formato .xlsx contendo as informações das atividades</p>
+                    <div class="input-group">
+                      <input type="file" name="arquivo" id="fileUpload" accept=".xlsx" class="form-control" required>
+                      <button type="submit" class="btn btn-padrao btn-success">
+                        <i class="bi bi-upload"></i> Importar Agora
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Patrocinadores -->
+      <div class="tab-pane fade" id="tab-sponsor">
+        <div class="card border-warning border-top border-4 shadow-sm mb-4">
+          <div class="card-header bg-warning text-dark">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-handshake me-2 fs-5"></i>
+              <h5 class="fw-bold mb-0">Patrocinadores</h5>
+            </div>
+          </div>
+          <div class="card-body p-4">
+            <div class="alert alert-warning d-flex" role="alert">
+              <div class="me-3 fs-4"><i class="bi bi-lightbulb-fill"></i></div>
+              <div>
+                <h6 class="alert-heading fw-bold mb-1">Adicione patrocinadores por categoria</h6>
+                <p class="mb-0 small">Os patrocinadores aparecerão na página do evento de acordo com suas categorias.</p>
+              </div>
+            </div>
+            
+            <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores_categorizados') }}" enctype="multipart/form-data">
+              <!-- Selecionar evento -->
+              <div class="bg-light p-4 rounded-3 mb-4">
+                <label for="evento_id" class="form-label fw-bold d-flex align-items-center mb-3">
+                  <span class="badge bg-warning rounded-circle p-2 me-2 text-dark">1</span>
+                  Selecione o Evento
+                </label>
+                <select name="evento_id" id="evento_id" class="form-select form-select-lg" required>
+                  <option value="">-- Selecione o evento --</option>
+                  {% for ev in usuario.eventos %}
+                    <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <!-- Categorias de patrocinadores -->
+              <div class="bg-light p-4 rounded-3 mb-4">
+                <h6 class="fw-bold mb-3 d-flex align-items-center">
+                  <span class="badge bg-warning rounded-circle p-2 me-2 text-dark">2</span>
+                  Quantidade de Logos por Categoria
+                </h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="card border-primary h-100">
+                      <div class="card-body">
+                        <h6 class="card-title text-primary mb-3 d-flex align-items-center">
+                          <i class="fas fa-star me-2"></i> Realização
+                        </h6>
+                        <div class="input-group input-group-lg">
+                          <span class="input-group-text bg-primary text-white">
+                            <i class="fas fa-star"></i>
+                          </span>
+                          <input type="number" class="form-control" id="qtd_realizacao" name="qtd_realizacao" min="0" value="0">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="card border-success h-100">
+                      <div class="card-body">
+                        <h6 class="card-title text-success mb-3 d-flex align-items-center">
+                          <i class="fas fa-handshake me-2"></i> Patrocínio
+                        </h6>
+                        <div class="input-group input-group-lg">
+                          <span class="input-group-text bg-success text-white">
+                            <i class="fas fa-handshake"></i>
+                          </span>
+                          <input type="number" class="form-control" id="qtd_patrocinio" name="qtd_patrocinio" min="0" value="0">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="card border-info h-100">
+                      <div class="card-body">
+                        <h6 class="card-title text-info mb-3 d-flex align-items-center">
+                          <i class="fas fa-users-cog me-2"></i> Organização
+                        </h6>
+                        <div class="input-group input-group-lg">
+                          <span class="input-group-text bg-info text-white">
+                            <i class="fas fa-users-cog"></i>
+                          </span>
+                          <input type="number" class="form-control" id="qtd_organizacao" name="qtd_organizacao" min="0" value="0">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="card border-secondary h-100">
+                      <div class="card-body">
+                        <h6 class="card-title text-secondary mb-3 d-flex align-items-center">
+                          <i class="fas fa-thumbs-up me-2"></i> Apoio
+                        </h6>
+                        <div class="input-group input-group-lg">
+                          <span class="input-group-text bg-secondary text-white">
+                            <i class="fas fa-thumbs-up"></i>
+                          </span>
+                          <input type="number" class="form-control" id="qtd_apoio" name="qtd_apoio" min="0" value="0">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Área para gerar campos -->
+              <div class="bg-light p-4 rounded-3 mb-4">
+                <h6 class="fw-bold mb-3 d-flex align-items-center">
+                  <span class="badge bg-warning rounded-circle p-2 me-2 text-dark">3</span>
+                  Gerar Campos para Upload
+                </h6>
+                
+                <!-- Botão para gerar inputs - com estilo padronizado -->
+                <button type="button" class="btn btn-padrao btn-warning w-100" onclick="gerarCamposUploads()">
+                  <i class="fas fa-plus-circle"></i> Gerar Campos de Upload
+                </button>
+                
+                <!-- Área onde aparecem os campos de upload - mantendo o ID original -->
+                <div id="containerPatrocinadores" class="mt-3 p-4 border rounded bg-white">
+                  <div class="text-center text-muted">
+                    <i class="bi bi-arrow-up-circle fs-1 d-block mb-2"></i>
+                    <p class="mb-0">Defina as quantidades acima e clique em "Gerar Campos de Upload"</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botões de ação agrupados -->
+              <div class="action-group d-flex flex-column flex-md-row justify-content-center gap-3">
+                <a href="{{ url_for('routes.gerenciar_patrocinadores') }}" class="btn btn-padrao btn-outline-primary btn-lg mb-2 mb-md-0">
+                  <i class="bi bi-card-image"></i> Gerenciar Logos Existentes
+                </a>
+                <button type="submit" class="btn btn-padrao btn-success btn-lg">
+                  <i class="fas fa-save"></i> Salvar Patrocinadores
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- /ABA 4: CONFIGURAÇÕES -->
+<!-- Mantendo a integração com o script original sem modificações -->
+<!-- Javascript com ícones e labels melhorados -->
+
+
+<!-- MODALS -->
+<!-- Modal do Relatório de Mensagem -->
+<div class="modal fade" id="modalRelatorioMensagem" tabindex="-1"
+     aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="modalRelatorioMensagemLabel">
+          <i class="bi bi-whatsapp me-2"></i>Relatório - Mensagem de Texto
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="textoRelatorio" class="form-control" rows="8">{{ msg_relatorio }}</textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="copiarMensagem()">
+          <i class="bi bi-clipboard me-2"></i> Copiar
+        </button>
+        <button type="button" class="btn btn-success" onclick="enviarWhatsAppRelatorio()">
+          <i class="bi bi-whatsapp me-2"></i> Enviar via WhatsApp
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para exibir Check-ins via QR Code -->
+<div class="modal fade" id="modalCheckinsQR" tabindex="-1"
+     aria-labelledby="modalCheckinsQRLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title"><i class="bi bi-qr-code-scan me-2"></i>Check-ins via QR Code</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Filter section -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <label for="filterOficina" class="form-label">Filtrar por Atividade</label>
+            <select id="filterOficina" class="form-select">
+              <option value="">Todas as Atividades</option>
+              {% for oficina in oficinas %}
+              <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Table container -->
+        <div class="table-responsive">
+          <table id="checkinsTable" class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Nome</th>
+                <th>Atividade</th>
+                <th>Data/Hora</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if checkins_via_qr and checkins_via_qr|length > 0 %}
+                {% for checkin in checkins_via_qr %}
+                <tr data-oficina="{{ checkin.oficina.id }}">
+                  <td>{{ checkin.usuario.nome }}</td>
+                  <td>{{ checkin.oficina.titulo }}</td>
+                  <td>{{ checkin.data_hora|brasilia }}</td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr id="noDataRow">
+                  <td colspan="3" class="text-center text-muted">
+                    <i class="bi bi-info-circle me-2"></i>Nenhum check-in registrado via QR Code ainda.
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" id="resetFilter">
+          <i class="bi bi-arrow-counterclockwise me-2"></i>Limpar Filtro
+        </button>
+        <a href="{{ url_for('routes.gerar_pdf_checkins_qr') }}" class="btn btn-primary">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Baixar PDF
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modais de cada oficina (detalhes, inscritos, etc) -->
+{% for oficina in oficinas %}
+<div class="modal fade" id="modalOficina{{ oficina.id }}" tabindex="-1"
+   aria-labelledby="modalLabel{{ oficina.id }}" aria-hidden="true">
+<div class="modal-dialog modal-lg">
+  <div class="modal-content">
+    <div class="modal-header bg-primary text-white">
+      <h5 class="modal-title fw-bold" id="modalLabel{{ oficina.id }}">
+        <i class="bi bi-people me-2"></i>Inscritos - {{ oficina.titulo }}
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+      {% if oficina.inscritos | length > 0 %}
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Nome</th>
+                <th>CPF</th>
+                <th>E-mail</th>
+                <th>Formação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inscricao in oficina.inscritos %}
+              <tr>
+                {% if inscricao is mapping %}
+                  <td>{{ inscricao['nome'] }}</td>
+                  <td>{{ inscricao['cpf'] }}</td>
+                  <td>{{ inscricao['email'] }}</td>
+                  <td>{{ inscricao['formacao'] }}</td>
+                {% else %}
+                  <td>{{ inscricao.usuario.nome }}</td>
+                  <td>{{ inscricao.usuario.cpf }}</td>
+                  <td>{{ inscricao.usuario.email }}</td>
+                  <td>{{ inscricao.usuario.formacao }}</td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>Nenhum participante inscrito nesta atividade ainda.
+        </div>
+      {% endif %}
+    </div>
+    <div class="modal-footer d-flex justify-content-center gap-2 flex-wrap">
+      <a href="{{ url_for('routes.gerar_pdf_inscritos_pdf', oficina_id=oficina.id) }}" class="btn btn-outline-primary">
+        <i class="bi bi-file-earmark-text me-2"></i>Lista de Inscritos
+      </a>
+      <a href="{{ url_for('routes.gerar_lista_frequencia', oficina_id=oficina.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-file-earmark-spreadsheet me-2"></i>Lista de Frequência
+      </a>
+      <a href="{{ url_for('routes.gerar_certificados', oficina_id=oficina.id) }}" class="btn btn-outline-success">
+        <i class="bi bi-award-fill me-2"></i>Gerar Certificados
+      </a>
+      <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
+              data-bs-target="#modalCertificadoIndividual{{ oficina.id }}">
+        <i class="bi bi-award me-2"></i>Certificado Individual
+      </button>
+      <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}"
+         class="btn btn-outline-info">
+        <i class="bi bi-chat-text me-2"></i>Feedback
+      </a>
+    </div>
+  </div>
+</div>
+</div>
+
+    
+    
+  </div>
+</div>
+
+<!-- Modal de Certificado Individual -->
+<div class="modal fade" id="modalCertificadoIndividual{{ oficina.id }}" tabindex="-1"
+   aria-hidden="true">
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header bg-success text-white">
+      <h5 class="modal-title">Certificado Individual</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+      <form action="{{ url_for('routes.gerar_certificado_individual_admin') }}" method="POST">
+        <input type="hidden" name="oficina_id" value="{{ oficina.id }}">
+        <div class="mb-3">
+          <label class="form-label">Selecione o participante</label>
+          <select name="usuario_id" class="form-select" required>
+            <option value="">-- Selecione --</option>
+            {% for inscricao in oficina.inscritos %}
+              {% if inscricao is mapping %}
+                <option value="{{ inscricao['id'] }}">{{ inscricao['nome'] }} - {{ inscricao['email'] }}</option>
+              {% else %}
+                <option value="{{ inscricao.id }}">{{ inscricao.usuario.nome }} - {{ inscricao.usuario.email }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Gerar Certificado</button>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endfor %}
+
+{% endblock %}

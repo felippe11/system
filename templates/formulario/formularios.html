@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-file-earmark-text me-2"></i>Formulários Criados
+        </h2>
+        <a href="{{ url_for('routes.criar_formulario') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i> Criar Novo Formulário
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if formularios %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col" class="border-0">Nome</th>
+                                <th scope="col" class="border-0">Descrição</th>
+                                <th scope="col" class="border-0 text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for formulario in formularios %}
+                            <tr>
+                                <td class="fw-medium">{{ formulario.nome }}</td>
+                                <td>{{ formulario.descricao or "Sem descrição" }}</td>
+                                <td>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <a href="{{ url_for('routes.gerenciar_campos', formulario_id=formulario.id) }}" 
+                                           class="btn btn-outline-primary btn-sm" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Gerenciar Campos">
+                                            <i class="bi bi-list-check"></i>
+                                        </a>
+                                        <a href="{{ url_for('routes.editar_formulario', formulario_id=formulario.id) }}" 
+                                           class="btn btn-outline-warning btn-sm"
+                                           data-bs-toggle="tooltip" 
+                                           title="Editar Formulário">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-outline-danger btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteModal{{ formulario.id }}"
+                                                title="Excluir Formulário">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Modal de confirmação para exclusão -->
+                                    <div class="modal fade" id="deleteModal{{ formulario.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Confirmar exclusão</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Tem certeza que deseja excluir o formulário <strong>{{ formulario.nome }}</strong>?</p>
+                                                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                    <form action="{{ url_for('routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
+                                                        <button type="submit" class="btn btn-danger">
+                                                            Excluir Formulário
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-clipboard-x fs-1 text-muted mb-3"></i>
+                    <p class="lead text-muted">Nenhum formulário criado ainda.</p>
+                    <a href="{{ url_for('routes.criar_formulario') }}" class="btn btn-primary mt-2">
+                        Criar seu primeiro formulário
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+    });
+</script>
+{% endblock %}

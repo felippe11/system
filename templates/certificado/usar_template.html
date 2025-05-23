@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Criar Formulário a partir do Template</h2>
+    <h4>Template selecionado: {{ template.nome }}</h4>
+
+    <form method="POST">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Novo Formulário</label>
+            <input type="text" id="nome" name="nome" class="form-control" value="{{ template.nome }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="descricao" class="form-label">Descrição</label>
+            <textarea id="descricao" name="descricao" class="form-control">{{ template.descricao }}</textarea>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Prévia dos Campos</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                {% for campo in template.campos|sort(attribute='ordem') %}
+                    <div class="list-group-item">
+                        <h5>{{ campo.nome }} {% if campo.obrigatorio %}<span class="text-danger">*</span>{% endif %}</h5>
+                        <p class="text-muted small">Tipo: {{ campo.tipo }}</p>
+                        {% if campo.opcoes %}
+                        <p class="text-muted small">Opções: {{ campo.opcoes }}</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">Criar Formulário</button>
+        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

@@ -8,7 +8,11 @@ import os
 from extensions import db
 from models import Usuario
 from flask import current_app
-from utils import arquivo_permitido  # se for função customizada
+from utils.arquivo_utils import arquivo_permitido
+
+
+
+
 
 importar_usuarios_routes = Blueprint('importar_usuarios_routes', __name__)
 

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Gerenciar Patrocinadores / Realização / Organização / Apoio</h2>
+  <p class="text-muted">Aqui você pode remover qualquer logo cadastrada, independentemente da categoria.</p>
+
+  <!-- Botões no topo: Voltar e Remover Selecionadas -->
+  <div class="mb-2 d-flex align-items-center">
+    <!-- Botão Voltar -->
+    <a href="{{ url_for('routes.dashboard_cliente') }}" class="btn btn-secondary me-2">
+      Voltar
+    </a>
+    <!-- Form e botão "Remover Selecionadas" -->
+    <form action="{{ url_for('routes.remover_fotos_selecionadas') }}" method="POST"
+          onsubmit="return confirm('Deseja realmente remover as imagens selecionadas?');">
+      <button type="submit" class="btn btn-danger">
+        Remover Selecionadas
+      </button>
+    </form>
+  </div>
+
+  <table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>
+          <!-- Checkbox para selecionar/deselecionar todas -->
+          <input type="checkbox" id="checkAll" />
+        </th>
+        <th>ID</th>
+        <th>Evento</th>
+        <th>Categoria</th>
+        <th>Logo</th>
+        <th width="15%">Ações Individuais</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pat in patrocinadores %}
+      <tr>
+        <!-- Checkbox individual para cada registro -->
+        <td>
+          <input type="checkbox" class="checkItem" form="bulkRemoveForm" name="fotos_selecionadas" value="{{ pat.id }}">
+        </td>
+        <td>{{ pat.id }}</td>
+        <td>
+          {% if pat.evento %}
+            {{ pat.evento.nome }}
+          {% else %}
+            <em>Sem Evento</em>
+          {% endif %}
+        </td>
+        <td>{{ pat.categoria }}</td>
+        <td>
+          <img src="{{ url_for('static', filename=pat.logo_path) }}"
+               style="max-width:120px;"
+               alt="Logo da categoria {{ pat.categoria }}">
+        </td>
+        <td>
+          <!-- Botão individual de remoção (já existente) -->
+          <form action="{{ url_for('routes.remover_foto_patrocinador', patrocinador_id=pat.id) }}"
+                method="POST"
+                onsubmit="return confirm('Deseja realmente remover esta logo?');">
+            <button type="submit" class="btn btn-danger btn-sm">
+              <i class="bi bi-trash"></i> Remover
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Form oculto para remover em lote (bulk), usado pelos checkboxes -->
+<form id="bulkRemoveForm" action="{{ url_for('routes.remover_fotos_selecionadas') }}" method="POST">
+  <!-- Este form é usado pelos checkboxes via atributo form="bulkRemoveForm" -->
+</form>
+
+<!-- Script para "Selecionar/Deselecionar todas" -->
+<script>
+  const checkAll = document.getElementById("checkAll");
+  const checkItems = document.querySelectorAll(".checkItem");
+
+  checkAll.addEventListener("change", function() {
+    checkItems.forEach(item => {
+      item.checked = this.checked;
+    });
+  });
+</script>
+{% endblock %}
