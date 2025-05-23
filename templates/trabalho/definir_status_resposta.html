@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-4">
+  <h3>Definir Status da Resposta</h3>
+  <p><strong>Formulário:</strong> {{ resposta.formulario.nome }}</p>
+  <p><strong>Participante:</strong> {{ resposta.usuario.nome }}</p>
+  <p><strong>Data de Submissão:</strong> {{ resposta.data_submissao }}</p>
+
+  <form method="POST">
+    <!-- Se estiver usando Flask-WTF, inclua o CSRF -->
+    <!-- {{ form.csrf_token() }} -->
+
+    <div class="mb-3">
+      <label for="status_avaliacao" class="form-label">Status da Resposta</label>
+      <select id="status_avaliacao" name="status_avaliacao" class="form-select">
+        <option value="Não Avaliada"
+          {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>
+          Não Avaliada
+        </option>
+        <option value="Aprovada"
+          {% if resposta.status_avaliacao == 'Aprovada' %} selected {% endif %}>
+          Aprovada
+        </option>
+        <option value="Aprovada com ressalvas"
+          {% if resposta.status_avaliacao == 'Aprovada com ressalvas' %} selected {% endif %}>
+          Aprovada com ressalvas
+        </option>
+        <option value="Aprovada para pôster"
+          {% if resposta.status_avaliacao == 'Aprovada para pôster' %} selected {% endif %}>
+          Aprovada para pôster
+        </option>
+        <option value="Aprovada para apresentação oral"
+          {% if resposta.status_avaliacao == 'Aprovada para apresentação oral' %} selected {% endif %}>
+          Aprovada para apresentação oral
+        </option>
+        <option value="Negada"
+          {% if resposta.status_avaliacao == 'Negada' %} selected {% endif %}>
+          Negada
+        </option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <a href="{{ url_for('routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id) }}"
+       class="btn btn-secondary">
+      Cancelar
+    </a>
+  </form>
+</div>
+{% endblock %}

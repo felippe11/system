@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}Editar Atividade{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h2 class="mb-0 text-center">Editar Atividade</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% if current_user.tipo == 'admin' %}
+          <div class="mb-3">
+            <label for="cliente_id" class="form-label">Cliente:</label>
+            <select name="cliente_id" id="cliente_id" class="form-select">
+              <option value="">-- Selecione um Cliente --</option>
+              {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" {% if oficina.cliente_id == cliente.id %} selected {% endif %}>
+                  {{ cliente.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
+
+        <!-- Campo para selecionar o Evento -->
+        <div class="mb-3">
+          <label for="evento_id" class="form-label">Evento:</label>
+          <select name="evento_id" id="evento_id" class="form-select" required>
+            <option value="">-- Selecione um Evento --</option>
+            {% for evento in eventos %}
+              <option value="{{ evento.id }}" {% if oficina.evento_id == evento.id %} selected {% endif %}>
+                {{ evento.nome }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="titulo" class="form-label">Título da Atividade</label>
+          <input type="text" class="form-control" id="titulo" name="titulo" value="{{ oficina.titulo }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="descricao" class="form-label">Descrição</label>
+          <textarea class="form-control" id="descricao" name="descricao" rows="4" required>{{ oficina.descricao }}</textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="ministrantes_search" class="form-label">Ministrantes:</label>
+          <input type="text" class="form-control mb-2" id="ministrantes_search" placeholder="Buscar ministrante...">
+          
+          <div class="ministrantes-container border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+            {% for minist in ministrantes %}
+              <div class="ministrante-card mb-2 p-2 border rounded" data-nome="{{ minist.nome.lower() }}">
+                <div class="form-check">
+                  <input class="form-check-input ministrante-checkbox" type="checkbox" value="{{ minist.id }}" 
+                         id="ministrante_{{ minist.id }}" name="ministrantes_ids[]"
+                         {% if minist.id == oficina.ministrante_id or minist in oficina.ministrantes_associados %}checked{% endif %}>
+                  <label class="form-check-label w-100" for="ministrante_{{ minist.id }}">
+                    {{ minist.nome }}
+                  </label>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <small class="text-muted">Selecione os ministrantes clicando nos cards</small>
+        </div>
+        
+        <script>
+          document.addEventListener('DOMContentLoaded', function() {
+            // Filtro de busca para ministrantes
+            const searchInput = document.getElementById('ministrantes_search');
+            const ministranteCards = document.querySelectorAll('.ministrante-card');
+            
+            searchInput.addEventListener('input', function() {
+              const searchTerm = this.value.toLowerCase().trim();
+              
+              ministranteCards.forEach(card => {
+                const nome = card.dataset.nome;
+                if (nome.includes(searchTerm)) {
+                  card.style.display = 'block';
+                } else {
+                  card.style.display = 'none';
+                }
+              });
+            });
+            
+            // Melhorar a experiência de seleção
+            ministranteCards.forEach(card => {
+              // Configurar estilo inicial baseado no estado do checkbox
+              const checkbox = card.querySelector('.ministrante-checkbox');
+              if (checkbox.checked) {
+                card.classList.add('bg-light');
+                card.style.borderColor = '#0d6efd';
+              }
+              
+              card.addEventListener('click', function(e) {
+                // Não acione quando o clique for diretamente no checkbox
+                if (e.target.type !== 'checkbox') {
+                  const checkbox = this.querySelector('.ministrante-checkbox');
+                  checkbox.checked = !checkbox.checked;
+                  
+                  // Atualizar estilo do card
+                  if (checkbox.checked) {
+                    this.classList.add('bg-light');
+                    this.style.borderColor = '#0d6efd';
+                  } else {
+                    this.classList.remove('bg-light');
+                    this.style.borderColor = '';
+                  }
+                }
+              });
+              
+              // Configura estilo para os checkboxes quando mudarem
+              checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                  card.classList.add('bg-light');
+                  card.style.borderColor = '#0d6efd';
+                } else {
+                  card.classList.remove('bg-light');
+                  card.style.borderColor = '';
+                }
+              });
+            });
+          });
+        </script>
+        
+        <style>
+          .ministrante-card {
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          .ministrante-card:hover {
+            background-color: #f8f9fa;
+          }
+          .ministrante-card.selected {
+            background-color: #e2f0ff;
+            border-color: #0d6efd !important;
+          }
+        </style>
+
+        <div class="mb-3">
+          <label for="tipo_oficina" class="form-label">Tipo de Atividade:</label>
+          <select class="form-select" id="tipo_oficina" name="tipo_oficina" required onchange="toggleOutroTipo()">
+            <option value="Oficina" {% if oficina.tipo_oficina == 'Oficina' %}selected{% endif %}>Oficina</option>
+            <option value="Palestra" {% if oficina.tipo_oficina == 'Palestra' %}selected{% endif %}>Palestra</option>
+            <option value="Conferência" {% if oficina.tipo_oficina == 'Conferência' %}selected{% endif %}>Conferência</option>
+            <option value="Mesa-redonda" {% if oficina.tipo_oficina == 'Mesa-redonda' %}selected{% endif %}>Mesa-redonda</option>
+            <option value="Apresentação de trabalho" {% if oficina.tipo_oficina == 'Apresentação de trabalho' %}selected{% endif %}>Apresentação de trabalho</option>
+            <option value="Minicurso" {% if oficina.tipo_oficina == 'Minicurso' %}selected{% endif %}>Minicurso</option>
+            <option value="Painéis" {% if oficina.tipo_oficina == 'Painéis' %}selected{% endif %}>Painéis</option>
+            <option value="Exposição" {% if oficina.tipo_oficina == 'Exposição' %}selected{% endif %}>Exposição</option>
+            <option value="Atividade cultural" {% if oficina.tipo_oficina == 'Atividade cultural' %}selected{% endif %}>Atividade cultural</option>
+            <option value="Sessão plenária" {% if oficina.tipo_oficina == 'Sessão plenária' %}selected{% endif %}>Sessão plenária</option>
+            <option value="outros" {% if oficina.tipo_oficina == 'outros' %}selected{% endif %}>Outros</option>
+          </select>
+        </div>
+        
+        <div class="mb-3" id="outro_tipo_div" style="display: {% if oficina.tipo_oficina == 'outros' %}block{% else %}none{% endif %};">
+          <label for="tipo_oficina_outro" class="form-label">Especifique o tipo:</label>
+          <input type="text" class="form-control" id="tipo_oficina_outro" name="tipo_oficina_outro" value="{{ oficina.tipo_oficina_outro }}">
+        </div>
+
+        <div class="mb-3">
+          <label for="tipo_inscricao" class="form-label">Inscrição:</label>
+          <select class="form-select" id="tipo_inscricao" name="tipo_inscricao" required>
+            <option value="sem_inscricao" {% if oficina.tipo_inscricao == 'sem_inscricao' %}selected{% endif %}>Não é necessário se inscrever</option>
+            <option value="com_inscricao_sem_limite" {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' %}selected{% endif %}>Sem limite de vagas</option>
+            <option value="com_inscricao_com_limite" {% if oficina.tipo_inscricao == 'com_inscricao_com_limite' %}selected{% endif %}>Com limite de vagas</option>
+          </select>
+          <small class="text-muted"> Atenção, os certificados ficam disponiveis apenas para as opções com inscrição.</small>
+        </div>
+        
+        <div class="row">
+          <div class="mb-3 col-md-6" id="vagas-container" {% if oficina.tipo_inscricao != 'com_inscricao_com_limite' %}style="display: none;"{% endif %}>
+            <label for="vagas" class="form-label">Número de Vagas:</label>
+            <input type="number" class="form-control" id="vagas" name="vagas" value="{{ oficina.vagas }}" min="0" required>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="carga_horaria" class="form-label">Carga Horária (em horas)</label>
+            <input type="number" class="form-control" id="carga_horaria" name="carga_horaria" value="{{ oficina.carga_horaria }}" required>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="mb-3 col-md-6">
+            <label for="opcoes_checkin" class="form-label">Opções de Check-in:</label>
+            <input type="text" class="form-control" id="opcoes_checkin" name="opcoes_checkin" value="{{ oficina.opcoes_checkin }}" placeholder="Ex: chave1,chave2,chave3,chave4,chave5">
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="palavra_correta" class="form-label">Palavra-correta para Check-in:</label>
+            <input type="text" class="form-control" id="palavra_correta" name="palavra_correta" value="{{ oficina.palavra_correta }}" placeholder="Informe a palavra correta">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Datas e Horários:</label>
+          <div id="datas-container">
+            {% for dia in oficina.dias %}
+            <div class="data-item mb-2">
+              <div class="row g-2 align-items-center">
+                <div class="col-md-4">
+                  <input type="date" name="data[]" class="form-control" value="{{ dia.data.strftime('%Y-%m-%d') }}" required>
+                </div>
+                <div class="col-md-4">
+                  <input type="time" name="horario_inicio[]" class="form-control" value="{{ dia.horario_inicio }}" required>
+                </div>
+                <div class="col-md-3">
+                  <input type="time" name="horario_fim[]" class="form-control" value="{{ dia.horario_fim }}" required>
+                </div>
+                <div class="col-md-1">
+                  <button type="button" class="btn btn-danger btn-sm" onclick="removerData(this)">Remover</button>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="button" class="btn btn-info btn-sm mt-2" onclick="adicionarData()">+ Adicionar Dia</button>
+        </div>
+
+        <div class="row">
+          <div class="mb-3 col-md-6">
+            <label for="estado" class="form-label">Estado:</label>
+            <select name="estado" id="estado" class="form-select" required>
+              <option value="">Selecione um estado</option>
+              {% for sigla, nome in estados %}
+                <option value="{{ sigla }}" {% if oficina.estado == sigla %} selected {% endif %}>{{ nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3 col-md-6">
+            <label for="cidade" class="form-label">Cidade:</label>
+            <select name="cidade" id="cidade" class="form-select" required>
+              <option value="{{ oficina.cidade }}">{{ oficina.cidade }}</option>
+            </select>
+          </div>
+        </div>
+
+        {% if current_user.habilita_pagamento %}
+        <!-- Configuração de Inscrição para Clientes com Pagamento Habilitado -->
+        <div class="mb-3">
+          <label class="form-label">Configuração de Inscrição:</label>
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita" {% if oficina.inscricao_gratuita %}checked{% endif %}>
+            <label class="form-check-label" for="inscricao_gratuita">
+              Inscrição Gratuita
+            </label>
+          </div>
+        </div>
+        
+        <!-- Container para Tipos de Inscrição e Preços -->
+        <div id="tipos-inscricao-container" {% if oficina.inscricao_gratuita %}style="display: none;"{% endif %}>
+          <div id="tipos-inscricao-list">
+            {% for tipo in oficina.tipos_inscricao %}
+            <div class="row mb-2 align-items-center">
+              <div class="col-md-4">
+                <label class="form-label">Tipo de Inscrição:</label>
+                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição" value="{{ tipo.nome }}">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Preço:</label>
+                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço" value="{{ tipo.preco }}">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+              </div>
+            </div>
+            {% endfor %}
+            {% if oficina.tipos_inscricao|length == 0 %}
+            <div class="row mb-2 align-items-center">
+              <div class="col-md-4">
+                <label class="form-label">Tipo de Inscrição:</label>
+                <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Preço:</label>
+                <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">+ Adicionar Tipo de Inscrição</button>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-success w-100 mt-3">Salvar Alterações</button>
+      </form>
+      <a href="{{ url_for('routes.dashboard') }}" class="btn btn-danger w-100 mt-3">Cancelar</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Controle de exibição do campo de vagas baseado no tipo de inscrição
+  document.getElementById('tipo_inscricao').addEventListener('change', function() {
+    const vagasContainer = document.getElementById('vagas-container');
+    const vagasInput = document.getElementById('vagas');
+    
+    if (this.value === 'com_inscricao_com_limite') {
+      vagasContainer.style.display = 'block';
+      vagasInput.required = true;
+    } else {
+      vagasContainer.style.display = 'none';
+      vagasInput.required = false;
+      if (this.value === 'com_inscricao_sem_limite') {
+        vagasInput.value = '9999'; // Um valor alto para representar "sem limite"
+      } else {
+        vagasInput.value = '0'; // Para 'sem_inscricao'
+      }
+    }
+  });
+
+  document.getElementById("estado").addEventListener("change", function() {
+    var estado = this.value;
+    var cidadeSelect = document.getElementById("cidade");
+
+    if (!estado) {
+      cidadeSelect.innerHTML = "<option value=''>Selecione um estado primeiro</option>";
+      return;
+    }
+
+    cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
+
+    fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estado)
+      .then(response => response.json())
+      .then(data => {
+        cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
+        data.forEach(cidade => {
+          var option = document.createElement("option");
+          option.value = cidade;
+          option.textContent = cidade;
+          cidadeSelect.appendChild(option);
+        });
+      })
+      .catch(error => {
+        console.error("Erro ao buscar cidades:", error);
+        cidadeSelect.innerHTML = "<option value=''>Erro ao carregar cidades</option>";
+      });
+  });
+
+  document.addEventListener("DOMContentLoaded", function() {
+    var estadoAtual = document.getElementById("estado").value;
+    var cidadeAtual = "{{ oficina.cidade }}";
+
+    if (estadoAtual) {
+      fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estadoAtual)
+        .then(response => response.json())
+        .then(data => {
+          var cidadeSelect = document.getElementById("cidade");
+          cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
+          data.forEach(cidade => {
+            var option = document.createElement("option");
+            option.value = cidade;
+            option.textContent = cidade;
+            if (cidade === cidadeAtual) {
+              option.selected = true;
+            }
+            cidadeSelect.appendChild(option);
+          });
+        })
+        .catch(error => console.error("Erro ao carregar cidades iniciais:", error));
+    }
+  });
+
+  // Função para mostrar/ocultar o campo de tipo personalizado
+  function toggleOutroTipo() {
+    const tipoSelect = document.getElementById('tipo_oficina');
+    const outroTipoDiv = document.getElementById('outro_tipo_div');
+    
+    if (tipoSelect.value === 'outros') {
+      outroTipoDiv.style.display = 'block';
+    } else {
+      outroTipoDiv.style.display = 'none';
+    }
+  }
+  
+  function adicionarData() {
+    const container = document.getElementById("datas-container");
+    const div = document.createElement("div");
+    div.className = "data-item mb-2";
+    div.innerHTML = `
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+          <input type="date" name="data[]" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <input type="time" name="horario_inicio[]" class="form-control" required>
+        </div>
+        <div class="col-md-3">
+          <input type="time" name="horario_fim[]" class="form-control" required>
+        </div>
+        <div class="col-md-1">
+          <button type="button" class="btn btn-danger btn-sm" onclick="removerData(this)">Remover</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+
+  function removerData(button) {
+    button.closest('.data-item').remove();
+  }
+
+  {% if current_user.habilita_pagamento %}
+  document.getElementById('inscricao_gratuita').addEventListener('change', function(){
+    var container = document.getElementById('tipos-inscricao-container');
+    if(this.checked){
+      container.style.display = 'none';
+    } else {
+      container.style.display = 'block';
+    }
+  });
+
+  document.getElementById('adicionar-tipo-inscricao').addEventListener('click', function(){
+    var container = document.getElementById('tipos-inscricao-list');
+    var div = document.createElement('div');
+    div.className = 'row mb-2 align-items-center';
+    div.innerHTML = `
+      <div class="col-md-4">
+        <label class="form-label">Tipo de Inscrição:</label>
+        <input type="text" class="form-control" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Preço:</label>
+        <input type="number" step="0.01" class="form-control" name="preco_tipo[]" placeholder="Preço">
+      </div>
+      <div class="col-md-2">
+        <button type="button" class="btn btn-danger remover-tipo-inscricao">Remover</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  document.getElementById('tipos-inscricao-list').addEventListener('click', function(e){
+    if(e.target && e.target.classList.contains('remover-tipo-inscricao')){
+      e.target.parentElement.parentElement.remove();
+    }
+  });
+  {% endif %}
+
+  document.querySelector("form").addEventListener("submit", function(event) {
+    var estado = document.getElementById("estado").value;
+    var cidade = document.getElementById("cidade").value;
+    var evento = document.getElementById("evento_id").value;
+    if (!estado || !cidade || !evento) {
+      event.preventDefault();
+      alert("❌ ERRO: Selecione um evento, estado e cidade antes de continuar.");
+    }
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+{% endblock %}
