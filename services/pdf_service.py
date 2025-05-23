@@ -1,0 +1,4084 @@
+from flask_login import login_required
+
+def gerar_lista_frequencia_pdf(oficina, pdf_path):
+    """
+    Generates a modern and professional attendance list PDF for a workshop.
+    
+    Args:
+        oficina: The workshop object containing all relevant information
+        pdf_path: The file path where the PDF will be saved
+    """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm, inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    import os
+    from datetime import datetime
+
+    # Create custom styles
+    styles = getSampleStyleSheet()
+    
+    # Custom title style
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
+    
+    # Custom heading styles
+    heading_style = ParagraphStyle(
+        name='CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor("#023E8A"),
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    
+    # Custom normal text style
+    normal_style = ParagraphStyle(
+        name='CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        spaceBefore=6,
+        spaceAfter=6
+    )
+    
+    # Info style for workshop details
+    info_style = ParagraphStyle(
+        name='InfoStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        leftIndent=5 * mm,
+        textColor=colors.HexColor("#444444")
+    )
+    
+    # Setup document with proper margins
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm
+    )
+    
+    elements = []
+    
+    # Add header with logo (if available)
+    logo_path = os.path.join("static", "logos", "company_logo.png")
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=50 * mm, height=15 * mm, hAlign='CENTER'))
+        elements.append(Spacer(1, 5 * mm))
+    
+    # Add title and current date
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    elements.append(Paragraph(f"LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>Gerado em {current_date}</i>", ParagraphStyle(
+        name='date_style', parent=normal_style, alignment=TA_CENTER, fontSize=8, textColor=colors.gray
+    )))
+    elements.append(Spacer(1, 10 * mm))
+    
+    # Workshop information in a visually appealing box
+    workshop_info = [
+        [Paragraph("<b>INFORMAÇÕES DA OFICINA</b>", ParagraphStyle(
+            name='workshop_header_style', parent=heading_style, textColor=colors.white, alignment=TA_CENTER
+        ))]
+    ]
+    
+    workshop_info_table = Table(workshop_info, colWidths=[doc.width])
+    workshop_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('ROUNDEDCORNERS', [5, 5, 5, 5]),
+    ]))
+    elements.append(workshop_info_table)
+    elements.append(Spacer(1, 2 * mm))
+    
+    # Workshop details
+    elements.append(Paragraph(f"<b>Título:</b> {oficina.titulo}", info_style))
+    
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", info_style))
+    
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", info_style))
+    
+    elements.append(Paragraph("<b>Carga Horária:</b> {0} horas".format(oficina.carga_horaria), info_style))
+    
+    # Dates and times
+    if oficina.dias:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", info_style))
+        
+        dates_data = []
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            horario = f"{dia.horario_inicio} às {dia.horario_fim}"
+            dates_data.append([
+                Paragraph(data_formatada, normal_style),
+                Paragraph(horario, normal_style)
+            ])
+        
+        if dates_data:
+            dates_table = Table(dates_data, colWidths=[doc.width/2 - 10*mm, doc.width/2 - 10*mm])
+            dates_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8F9FA")),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(dates_table)
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", info_style))
+    
+    elements.append(Spacer(1, 15 * mm))
+    
+    # Attendance list header
+    elements.append(Paragraph("LISTA DE PRESENÇA", heading_style))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Attendance table with signature column
+    table_data = [
+        [
+            Paragraph("<b>Nº</b>", normal_style),
+            Paragraph("<b>Nome Completo</b>", normal_style),
+            Paragraph("<b>Assinatura</b>", normal_style)
+        ]
+    ]
+    
+    # Add rows for each participant
+    for i, inscricao in enumerate(oficina.inscritos, 1):
+        table_data.append([
+            Paragraph(str(i), normal_style),
+            Paragraph(inscricao.usuario.nome, normal_style),
+            ""  # Signature space
+        ])
+    
+    # Add empty rows if needed (to ensure at least 15 rows)
+    current_rows = len(table_data) - 1  # Exclude header
+    if current_rows < 15:
+        for i in range(current_rows + 1, 16):
+            table_data.append([
+                Paragraph(str(i), normal_style),
+                "",  # Empty name
+                ""   # Signature space
+            ])
+    
+    # Create the table with appropriate width distribution
+    table = Table(table_data, colWidths=[15*mm, 85*mm, 70*mm])
+    
+    # Apply styles to the table
+    table.setStyle(TableStyle([
+        # Header row styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        
+        # Data rows styling
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Center the numbers
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Left-align the names
+        
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#023E8A")),
+        
+        # Alternating row colors for better readability
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
+        
+        # Cell padding
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        
+        # Line height for signature spaces
+        ('LINEBELOW', (2, 1), (2, -1), 0.5, colors.HexColor("#AAAAAA")),
+    ]))
+    
+    elements.append(table)
+    
+    # Footer with signature fields
+    elements.append(Spacer(1, 30 * mm))
+    
+    # Create signature lines
+    signature_data = [
+        [
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER))
+        ],
+        [
+            Paragraph("Ministrante", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("Coordenador", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER))
+        ]
+    ]
+    
+    signature_table = Table(signature_data, colWidths=[doc.width/3, doc.width/3, doc.width/3])
+    signature_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    
+    elements.append(signature_table)
+    
+    # Add page numbers
+    def add_page_number(canvas, doc):
+        page_num = canvas.getPageNumber()
+        text = f"Página {page_num}"
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.grey)
+        canvas.drawRightString(
+            doc.pagesize[0] - doc.rightMargin, 
+            doc.bottomMargin/2, 
+            text
+        )
+    
+    # Build the PDF with page numbers
+    doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)    
+    
+
+def gerar_pdf_inscritos_pdf(oficina_id):
+    """
+    Gera um PDF com a lista de inscritos para uma oficina específica,
+    com layout moderno e organizado.
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm, cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import PageBreak, Flowable
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    import os
+    from flask import send_file
+    from datetime import datetime
+    
+    # Busca a oficina no banco de dados
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Preparar o diretório para salvar o PDF
+    pdf_filename = f"inscritos_oficina_{oficina.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    diretorio = os.path.join("static", "comprovantes")
+    os.makedirs(diretorio, exist_ok=True)
+    pdf_path = os.path.join(diretorio, pdf_filename)
+
+    # Configurar estilos personalizados
+    styles = getSampleStyleSheet()
+    
+    # Estilo de título modernizado
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=18,
+        alignment=TA_CENTER,
+        spaceAfter=6 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#023E8A')
+    )
+    
+    # Estilo para subtítulos
+    subtitle_style = ParagraphStyle(
+        name='CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        alignment=TA_LEFT,
+        spaceAfter=3 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#0077B6')
+    )
+    
+    # Estilo para texto normal
+    normal_style = ParagraphStyle(
+        name='CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=2 * mm,
+        fontName='Helvetica'
+    )
+    
+    # Estilo para texto em tabelas (para permitir quebra de linha)
+    table_text_style = ParagraphStyle(
+        name='TableText',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica',
+        leading=12,
+        wordWrap='CJK'
+    )
+    
+    # Estilo para rodapé
+    footer_style = ParagraphStyle(
+        name='Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.darkgrey,
+        alignment=TA_CENTER
+    )
+
+    # Crie uma classe personalizada para linha horizontal
+    class HorizontalLine(Flowable):
+        def __init__(self, width, thickness=1):
+            Flowable.__init__(self)
+            self.width = width
+            self.thickness = thickness
+        
+        def draw(self):
+            self.canv.setStrokeColor(colors.HexColor('#0077B6'))
+            self.canv.setLineWidth(self.thickness)
+            self.canv.line(0, 0, self.width, 0)
+    
+    # Criar um documento PDF
+    doc = SimpleDocTemplate(
+        pdf_path, 
+        pagesize=A4,
+        leftMargin=2.5*cm, 
+        rightMargin=2.5*cm, 
+        topMargin=2*cm, 
+        bottomMargin=2*cm
+    )
+    
+    # Lista para armazenar elementos do PDF
+    elements = []
+    
+    # Verificar se há um logo personalizado para o cliente
+    # Se a oficina estiver associada a um cliente e o cliente tiver um logo
+    logo_path = None
+    if oficina.cliente_id:
+        cliente = Cliente.query.get(oficina.cliente_id)
+        if cliente and hasattr(cliente, 'logo_certificado') and cliente.logo_certificado:
+            logo_path = cliente.logo_certificado
+    
+    # Se encontrou logo personalizado, adiciona ao PDF
+    if logo_path and os.path.exists(logo_path):
+        logo = Image(logo_path)
+        logo.drawHeight = 2 * cm
+        logo.drawWidth = 5 * cm
+        elements.append(logo)
+        elements.append(Spacer(1, 5 * mm))
+    
+    # Título principal
+    elements.append(Paragraph(f"Lista de Inscritos", title_style))
+    elements.append(Paragraph(f"{oficina.titulo}", subtitle_style))
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Informações da oficina em formato mais elegante
+    elements.append(Paragraph("<b>Detalhes da Oficina</b>", subtitle_style))
+    
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'Não atribuído'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
+    elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", normal_style))
+    
+    # Criar uma tabela para as datas e horários se houver dados
+    if oficina.dias and len(oficina.dias) > 0:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", normal_style))
+        
+        date_data = [["Data", "Início", "Término"]]
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            # Convertendo os valores para Paragraph para permitir quebra de linha
+            date_data.append([
+                Paragraph(data_formatada, table_text_style),
+                Paragraph(dia.horario_inicio, table_text_style),
+                Paragraph(dia.horario_fim, table_text_style)
+            ])
+        
+        date_table = Table(date_data, colWidths=[doc.width * 0.4, doc.width * 0.3, doc.width * 0.3])
+        date_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EBF2FA')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            # Define que o texto pode quebrar dentro das células
+            ('WORDWRAP', (0, 0), (-1, -1), True),
+        ]))
+        elements.append(date_table)
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", normal_style))
+    
+    elements.append(Spacer(1, 8 * mm))
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 8 * mm))
+    
+    # Adicionar contador de inscritos
+    total_inscritos = len(oficina.inscritos) if oficina.inscritos else 0
+    elements.append(Paragraph(f"<b>Total de Inscritos:</b> {total_inscritos}", subtitle_style))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Tabela de inscritos com estilo moderno
+    if oficina.inscritos and len(oficina.inscritos) > 0:
+        table_data = [["#", "Nome", "CPF", "E-mail"]]
+        
+        for idx, inscricao in enumerate(oficina.inscritos, 1):
+            # Verifica se é um objeto mapeado ou um objeto de modelo regular
+            if hasattr(inscricao, 'usuario'):
+                nome = inscricao.usuario.nome
+                cpf = inscricao.usuario.cpf
+                email = inscricao.usuario.email
+            else:
+                nome = inscricao.get('nome', 'N/A')
+                cpf = inscricao.get('cpf', 'N/A')
+                email = inscricao.get('email', 'N/A')
+                
+            # Formatação de CPF se necessário (adicionar pontos e traço)
+            if cpf and len(cpf) == 11 and cpf.isdigit():
+                cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+                
+            # Usando Paragraph para permitir quebra de linha em cada coluna
+            table_data.append([
+                Paragraph(str(idx), table_text_style),
+                Paragraph(nome, table_text_style),
+                Paragraph(cpf, table_text_style),
+                Paragraph(email, table_text_style)
+            ])
+        
+        # Definir larguras das colunas para melhor distribuição
+        col_widths = [doc.width * 0.05, doc.width * 0.35, doc.width * 0.25, doc.width * 0.35]
+        
+        # Criar tabela com estilo moderno
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            # Cabeçalho com cor de fundo
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Centraliza a coluna de números
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),    # Alinha nomes à esquerda
+            ('ALIGN', (2, 0), (2, -1), 'CENTER'),  # Centraliza CPFs
+            ('ALIGN', (3, 0), (3, -1), 'LEFT'),    # Alinha e-mails à esquerda
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            # Linhas alternadas para melhor legibilidade
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+            # Bordas mais sutis
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            # Configuração para permitir quebra de linha
+            ('WORDWRAP', (0, 0), (-1, -1), True),
+        ]))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("Não há inscritos nesta oficina.", normal_style))
+    
+    # Adiciona espaço para assinatura
+    elements.append(Spacer(1, 2 * cm))
+    elements.append(HorizontalLine(doc.width * 0.4))
+    elements.append(Paragraph("Assinatura do Coordenador", footer_style))
+    
+    # Adiciona rodapé com data de geração
+    elements.append(Spacer(1, 2 * cm))
+    current_date = datetime.now().strftime("%d/%m/%Y %H:%M")
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(Paragraph(f"Documento gerado em {current_date} | AppFiber", footer_style))
+    
+    # Construir o PDF
+    doc.build(elements)
+    
+    # Retorna o arquivo para download
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
+    
+def gerar_lista_frequencia(oficina_id, pdf_path=None):
+    """
+    Generates a modern and professional attendance list PDF for a workshop.
+    
+    Args:
+        oficina_id: The ID of the workshop
+        pdf_path: The file path where the PDF will be saved (optional)
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    import os
+    from datetime import datetime
+    from flask import send_file
+    from models import Oficina, Inscricao
+
+    # Obter a oficina real pelo ID
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        raise ValueError("Oficina não encontrada!")
+
+    # Se pdf_path não for fornecido, gere um caminho padrão
+    if pdf_path is None:
+        import tempfile
+        pdf_path = os.path.join(tempfile.gettempdir(), f"lista_frequencia_{oficina_id}.pdf")
+
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
+
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements = []
+
+    # Cabeçalho
+    elements.append(Paragraph("LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>{oficina.titulo}</i>", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Dados da oficina
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Tabela de frequência
+    table_data = [["Nº", "Nome Completo", "Assinatura"]]
+
+    # Buscando participantes reais inscritos
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+
+    for i, inscricao in enumerate(inscricoes, 1):
+        nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
+        # Observe que usamos Paragraph para permitir a quebra de linha no nome
+        table_data.append([
+            Paragraph(str(i), styles['Normal']),
+            Paragraph(nome_participante, styles['Normal']),
+            ""
+        ])
+
+    table = Table(table_data, colWidths=[30*mm, 100*mm, 60*mm])
+
+    # Aplica estilos, incluindo WORDWRAP
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+
+    # Rodapé para assinaturas
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Ministrante", styles['Normal']))
+
+    elements.append(Spacer(1, 48))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Coordenador", styles['Normal']))
+
+    # Gera PDF
+    doc.build(elements)
+
+    return send_file(pdf_path)
+
+
+def gerar_comprovante_pdf(usuario, oficina, inscricao):
+    """
+    Gera um comprovante de inscrição em PDF com design moderno e organizado.
+    """
+    # Configurar nomes e caminhos de arquivo
+    pdf_filename = f"comprovante_{usuario.id}_{oficina.id}.pdf"
+    pdf_path = os.path.join("static/comprovantes", pdf_filename)
+    os.makedirs("static/comprovantes", exist_ok=True)
+
+    # Gera o QR Code da inscrição
+    qr_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
+    
+    # Inicializa o PDF com a página em portrait
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    width, height = letter
+    
+    # ----- DESIGN DO CABEÇALHO -----
+    
+    # Gradiente de fundo do cabeçalho (de azul escuro para azul médio)
+    # Método manual para criar um efeito de gradiente
+    header_height = 120
+    gradient_steps = 40
+    step_height = header_height / gradient_steps
+    
+    for i in range(gradient_steps):
+        # Interpolação de cores: de #023E8A (azul escuro) para #0077B6 (azul médio)
+        r1, g1, b1 = 0.01, 0.24, 0.54  # #023E8A
+        r2, g2, b2 = 0.00, 0.47, 0.71  # #0077B6
+        
+        # Calcular cor intermediária
+        ratio = i / gradient_steps
+        r = r1 + (r2 - r1) * ratio
+        g = g1 + (g2 - g1) * ratio
+        b = b1 + (b2 - b1) * ratio
+        
+        y_pos = height - (i * step_height)
+        c.setFillColorRGB(r, g, b)
+        c.rect(0, y_pos - step_height, width, step_height, fill=True, stroke=False)
+    
+    # Logo ou texto estilizado (lado esquerdo)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(1 * inch, height - 40, "AppFiber")
+    
+    # Linha fina decorativa 
+    c.setStrokeColor(colors.white)
+    c.setLineWidth(1)
+    c.line(1 * inch, height - 45, 2 * inch, height - 45)
+    
+    # Título centralizado
+    c.setFont("Helvetica-Bold", 24)
+    c.drawCentredString(width / 2, height - 70, "Comprovante de Inscrição")
+    
+    # Data no cabeçalho (lado direito)
+    from datetime import datetime
+    data_atual = datetime.now().strftime("%d/%m/%Y")
+    c.setFont("Helvetica", 10)
+    c.drawRightString(width - 1 * inch, height - 40, f"Emitido em: {data_atual}")
+    
+    # ----- CORPO DO DOCUMENTO -----
+    
+    # Fundo do corpo com cor suave
+    c.setFillColor(colors.white)
+    c.rect(0, 0, width, height - header_height, fill=True, stroke=False)
+    
+    # Área de informações principais com borda arredondada
+    info_box_y = height - 200
+    info_box_height = 150
+    
+    # Borda e fundo do box de informações
+    c.setFillColor(colors.whitesmoke)
+    c.setStrokeColor(colors.lightgrey)
+    c.roundRect(0.8 * inch, info_box_y - info_box_height, width - 1.6 * inch, 
+               info_box_height, 10, fill=1, stroke=1)
+    
+    # Título da seção
+    c.setFillColor(colors.HexColor("#0077B6"))
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(1 * inch, info_box_y - 25, "Informações do Participante")
+    
+    # Linhas de informação com ícones simulados
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 12)
+    
+    # Posição inicial do texto
+    y_position = info_box_y - 50
+    line_spacing = 22
+    
+    # Informações com pequenos marcadores
+    infos = [
+        (f"Nome: {usuario.nome}", "👤"),
+        (f"CPF: {usuario.cpf}", "🆔"),
+        (f"E-mail: {usuario.email}", "✉️"),
+        (f"Oficina: {oficina.titulo}", "📚")
+    ]
+    
+    for texto, icone in infos:
+        c.drawString(1.1 * inch, y_position, f"{icone} {texto}")
+        y_position -= line_spacing
+    
+    # ----- SEÇÃO DE DETALHES DA OFICINA -----
+    
+    details_y = info_box_y - info_box_height - 20
+    
+    # Título da seção de detalhes
+    c.setFillColor(colors.HexColor("#0077B6"))
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(1 * inch, details_y, "Detalhes da Oficina")
+    
+    # Detalhes da oficina
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 12)
+    
+    # Verifica se existem dias associados à oficina
+    if hasattr(oficina, 'dias') and oficina.dias:
+        y_position = details_y - 25
+        c.drawString(1.1 * inch, y_position, "📅 Datas e Horários:")
+        
+        # Lista cada dia da oficina
+        for i, dia in enumerate(oficina.dias):
+            if i < 3:  # Limita para mostrar apenas 3 datas para não sobrecarregar
+                data_formatada = dia.data.strftime('%d/%m/%Y')
+                c.drawString(1.3 * inch, y_position - ((i+1) * line_spacing), 
+                           f"{data_formatada} | {dia.horario_inicio} às {dia.horario_fim}")
+            elif i == 3:
+                c.drawString(1.3 * inch, y_position - ((i+1) * line_spacing), "...")
+                break
+    
+    # ----- QR CODE -----
+    
+    # Box para QR Code com sombra suave
+    qr_size = 120
+    qr_x = width - qr_size - 1.2 * inch
+    qr_y = height - 220
+    
+    # Sombra (um retângulo cinza levemente deslocado)
+    c.setFillColor(colors.grey)
+    c.setFillAlpha(0.3)  # Transparência
+    c.roundRect(qr_x + 3, qr_y - 3, qr_size, qr_size, 5, fill=True, stroke=False)
+    
+    # Restaura a transparência
+    c.setFillAlpha(1)
+    
+    # Fundo branco para o QR
+    c.setFillColor(colors.white)
+    c.roundRect(qr_x, qr_y, qr_size, qr_size, 5, fill=True, stroke=False)
+    
+    # Desenhando o QR Code
+    qr_img = ImageReader(qr_path)
+    c.drawImage(qr_img, qr_x + 10, qr_y + 10, width=qr_size - 20, height=qr_size - 20)
+    
+    # Legenda do QR
+    c.setFillColor(colors.dimgrey)
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(qr_x + qr_size/2, qr_y - 15, "Escaneie para check-in")
+    
+    # ----- RODAPÉ -----
+    
+    # Linha divisória
+    c.setStrokeColor(colors.lightgrey)
+    c.setLineWidth(1)
+    c.line(1 * inch, 1.2 * inch, width - 1 * inch, 1.2 * inch)
+    
+    # Texto de validação
+    c.setFillColor(colors.grey)
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(width / 2, 1 * inch, 
+                      f"Este comprovante é válido para a oficina '{oficina.titulo}'")
+    c.drawCentredString(width / 2, 0.8 * inch, 
+                      f"ID do Participante: {usuario.id} | ID da Inscrição: {inscricao.id}")
+    
+    # Rodapé com informações do sistema
+    c.setFillColor(colors.dimgrey)
+    c.drawCentredString(width / 2, 0.5 * inch, "AppFiber - Sistema Integrado de Gerenciamento de Eventos")
+    
+    # Finaliza o PDF
+    c.save()
+    
+    return pdf_path
+
+
+
+@login_required
+def gerar_certificados(oficina_id):
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Apenas administradores podem gerar certificados.", "danger")
+        
+
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash("Oficina não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    inscritos = oficina.inscritos
+    if not inscritos:
+        flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # Agora chama a função ajustada
+    gerar_certificados_pdf(oficina, inscritos, pdf_path)
+
+    flash("Certificados gerados com sucesso!", "success")
+    return send_file(pdf_path, as_attachment=True)
+
+def gerar_lista_frequencia_pdf(oficina, pdf_path):
+    """
+    Generates a modern and professional attendance list PDF for a workshop.
+    
+    Args:
+        oficina: The workshop object containing all relevant information
+        pdf_path: The file path where the PDF will be saved
+    """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm, inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    import os
+    from datetime import datetime
+
+    # Create custom styles
+    styles = getSampleStyleSheet()
+    
+    # Custom title style
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
+    
+    # Custom heading styles
+    heading_style = ParagraphStyle(
+        name='CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=12,
+        textColor=colors.HexColor("#023E8A"),
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    
+    # Custom normal text style
+    normal_style = ParagraphStyle(
+        name='CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        spaceBefore=6,
+        spaceAfter=6
+    )
+    
+    # Info style for workshop details
+    info_style = ParagraphStyle(
+        name='InfoStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        leftIndent=5 * mm,
+        textColor=colors.HexColor("#444444")
+    )
+    
+    # Setup document with proper margins
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm
+    )
+    
+    elements = []
+    
+    # Add header with logo (if available)
+    logo_path = os.path.join("static", "logos", "company_logo.png")
+    if os.path.exists(logo_path):
+        elements.append(Image(logo_path, width=50 * mm, height=15 * mm, hAlign='CENTER'))
+        elements.append(Spacer(1, 5 * mm))
+    
+    # Add title and current date
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    elements.append(Paragraph(f"LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>Gerado em {current_date}</i>", ParagraphStyle(
+        name='date_style', parent=normal_style, alignment=TA_CENTER, fontSize=8, textColor=colors.gray
+    )))
+    elements.append(Spacer(1, 10 * mm))
+    
+    # Workshop information in a visually appealing box
+    workshop_info = [
+        [Paragraph("<b>INFORMAÇÕES DA OFICINA</b>", ParagraphStyle(
+            name='workshop_header_style', parent=heading_style, textColor=colors.white, alignment=TA_CENTER
+        ))]
+    ]
+    
+    workshop_info_table = Table(workshop_info, colWidths=[doc.width])
+    workshop_info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('ROUNDEDCORNERS', [5, 5, 5, 5]),
+    ]))
+    elements.append(workshop_info_table)
+    elements.append(Spacer(1, 2 * mm))
+    
+    # Workshop details
+    elements.append(Paragraph(f"<b>Título:</b> {oficina.titulo}", info_style))
+    
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", info_style))
+    
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", info_style))
+    
+    elements.append(Paragraph("<b>Carga Horária:</b> {0} horas".format(oficina.carga_horaria), info_style))
+    
+    # Dates and times
+    if oficina.dias:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", info_style))
+        
+        dates_data = []
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            horario = f"{dia.horario_inicio} às {dia.horario_fim}"
+            dates_data.append([
+                Paragraph(data_formatada, normal_style),
+                Paragraph(horario, normal_style)
+            ])
+        
+        if dates_data:
+            dates_table = Table(dates_data, colWidths=[doc.width/2 - 10*mm, doc.width/2 - 10*mm])
+            dates_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#F8F9FA")),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+            elements.append(dates_table)
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", info_style))
+    
+    elements.append(Spacer(1, 15 * mm))
+    
+    # Attendance list header
+    elements.append(Paragraph("LISTA DE PRESENÇA", heading_style))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Attendance table with signature column
+    table_data = [
+        [
+            Paragraph("<b>Nº</b>", normal_style),
+            Paragraph("<b>Nome Completo</b>", normal_style),
+            Paragraph("<b>Assinatura</b>", normal_style)
+        ]
+    ]
+    
+    # Add rows for each participant
+    for i, inscricao in enumerate(oficina.inscritos, 1):
+        table_data.append([
+            Paragraph(str(i), normal_style),
+            Paragraph(inscricao.usuario.nome, normal_style),
+            ""  # Signature space
+        ])
+    
+    # Add empty rows if needed (to ensure at least 15 rows)
+    current_rows = len(table_data) - 1  # Exclude header
+    if current_rows < 15:
+        for i in range(current_rows + 1, 16):
+            table_data.append([
+                Paragraph(str(i), normal_style),
+                "",  # Empty name
+                ""   # Signature space
+            ])
+    
+    # Create the table with appropriate width distribution
+    table = Table(table_data, colWidths=[15*mm, 85*mm, 70*mm])
+    
+    # Apply styles to the table
+    table.setStyle(TableStyle([
+        # Header row styling
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        
+        # Data rows styling
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Center the numbers
+        ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Left-align the names
+        
+        # Grid styling
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#023E8A")),
+        
+        # Alternating row colors for better readability
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
+        
+        # Cell padding
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        
+        # Line height for signature spaces
+        ('LINEBELOW', (2, 1), (2, -1), 0.5, colors.HexColor("#AAAAAA")),
+    ]))
+    
+    elements.append(table)
+    
+    # Footer with signature fields
+    elements.append(Spacer(1, 30 * mm))
+    
+    # Create signature lines
+    signature_data = [
+        [
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("_______________________________", ParagraphStyle(name="signature_line", parent=normal_style, alignment=TA_CENTER))
+        ],
+        [
+            Paragraph("Ministrante", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER)),
+            "",
+            Paragraph("Coordenador", ParagraphStyle(name="signature_label", parent=normal_style, alignment=TA_CENTER))
+        ]
+    ]
+    
+    signature_table = Table(signature_data, colWidths=[doc.width/3, doc.width/3, doc.width/3])
+    signature_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    
+    elements.append(signature_table)
+    
+    # Add page numbers
+    def add_page_number(canvas, doc):
+        page_num = canvas.getPageNumber()
+        text = f"Página {page_num}"
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.grey)
+        canvas.drawRightString(
+            doc.pagesize[0] - doc.rightMargin, 
+            doc.bottomMargin/2, 
+            text
+        )
+    
+    # Build the PDF with page numbers
+    doc.build(elements, onFirstPage=add_page_number, onLaterPages=add_page_number)    
+
+def gerar_pdf_inscritos_pdf(oficina_id):
+    """
+    Gera um PDF com a lista de inscritos para uma oficina específica,
+    com layout moderno e organizado.
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm, cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import PageBreak, Flowable
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    import os
+    from flask import send_file
+    from datetime import datetime
+    
+    # Busca a oficina no banco de dados
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Preparar o diretório para salvar o PDF
+    pdf_filename = f"inscritos_oficina_{oficina.id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    diretorio = os.path.join("static", "comprovantes")
+    os.makedirs(diretorio, exist_ok=True)
+    pdf_path = os.path.join(diretorio, pdf_filename)
+
+    # Configurar estilos personalizados
+    styles = getSampleStyleSheet()
+    
+    # Estilo de título modernizado
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=18,
+        alignment=TA_CENTER,
+        spaceAfter=6 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#023E8A')
+    )
+    
+    # Estilo para subtítulos
+    subtitle_style = ParagraphStyle(
+        name='CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        alignment=TA_LEFT,
+        spaceAfter=3 * mm,
+        fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#0077B6')
+    )
+    
+    # Estilo para texto normal
+    normal_style = ParagraphStyle(
+        name='CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        spaceAfter=2 * mm,
+        fontName='Helvetica'
+    )
+    
+    # Estilo para texto em tabelas (para permitir quebra de linha)
+    table_text_style = ParagraphStyle(
+        name='TableText',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica',
+        leading=12,
+        wordWrap='CJK'
+    )
+    
+    # Estilo para rodapé
+    footer_style = ParagraphStyle(
+        name='Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.darkgrey,
+        alignment=TA_CENTER
+    )
+
+    # Crie uma classe personalizada para linha horizontal
+    class HorizontalLine(Flowable):
+        def __init__(self, width, thickness=1):
+            Flowable.__init__(self)
+            self.width = width
+            self.thickness = thickness
+        
+        def draw(self):
+            self.canv.setStrokeColor(colors.HexColor('#0077B6'))
+            self.canv.setLineWidth(self.thickness)
+            self.canv.line(0, 0, self.width, 0)
+    
+    # Criar um documento PDF
+    doc = SimpleDocTemplate(
+        pdf_path, 
+        pagesize=A4,
+        leftMargin=2.5*cm, 
+        rightMargin=2.5*cm, 
+        topMargin=2*cm, 
+        bottomMargin=2*cm
+    )
+    
+    # Lista para armazenar elementos do PDF
+    elements = []
+    
+    # Verificar se há um logo personalizado para o cliente
+    # Se a oficina estiver associada a um cliente e o cliente tiver um logo
+    logo_path = None
+    if oficina.cliente_id:
+        cliente = Cliente.query.get(oficina.cliente_id)
+        if cliente and hasattr(cliente, 'logo_certificado') and cliente.logo_certificado:
+            logo_path = cliente.logo_certificado
+    
+    # Se encontrou logo personalizado, adiciona ao PDF
+    if logo_path and os.path.exists(logo_path):
+        logo = Image(logo_path)
+        logo.drawHeight = 2 * cm
+        logo.drawWidth = 5 * cm
+        elements.append(logo)
+        elements.append(Spacer(1, 5 * mm))
+    
+    # Título principal
+    elements.append(Paragraph(f"Lista de Inscritos", title_style))
+    elements.append(Paragraph(f"{oficina.titulo}", subtitle_style))
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Informações da oficina em formato mais elegante
+    elements.append(Paragraph("<b>Detalhes da Oficina</b>", subtitle_style))
+    
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'Não atribuído'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", normal_style))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", normal_style))
+    elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", normal_style))
+    
+    # Criar uma tabela para as datas e horários se houver dados
+    if oficina.dias and len(oficina.dias) > 0:
+        elements.append(Paragraph("<b>Datas e Horários:</b>", normal_style))
+        
+        date_data = [["Data", "Início", "Término"]]
+        for dia in oficina.dias:
+            data_formatada = dia.data.strftime('%d/%m/%Y')
+            # Convertendo os valores para Paragraph para permitir quebra de linha
+            date_data.append([
+                Paragraph(data_formatada, table_text_style),
+                Paragraph(dia.horario_inicio, table_text_style),
+                Paragraph(dia.horario_fim, table_text_style)
+            ])
+        
+        date_table = Table(date_data, colWidths=[doc.width * 0.4, doc.width * 0.3, doc.width * 0.3])
+        date_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EBF2FA')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            # Define que o texto pode quebrar dentro das células
+            ('WORDWRAP', (0, 0), (-1, -1), True),
+        ]))
+        elements.append(date_table)
+    else:
+        elements.append(Paragraph("<b>Datas:</b> Nenhuma data registrada", normal_style))
+    
+    elements.append(Spacer(1, 8 * mm))
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 8 * mm))
+    
+    # Adicionar contador de inscritos
+    total_inscritos = len(oficina.inscritos) if oficina.inscritos else 0
+    elements.append(Paragraph(f"<b>Total de Inscritos:</b> {total_inscritos}", subtitle_style))
+    elements.append(Spacer(1, 5 * mm))
+    
+    # Tabela de inscritos com estilo moderno
+    if oficina.inscritos and len(oficina.inscritos) > 0:
+        table_data = [["#", "Nome", "CPF", "E-mail"]]
+        
+        for idx, inscricao in enumerate(oficina.inscritos, 1):
+            # Verifica se é um objeto mapeado ou um objeto de modelo regular
+            if hasattr(inscricao, 'usuario'):
+                nome = inscricao.usuario.nome
+                cpf = inscricao.usuario.cpf
+                email = inscricao.usuario.email
+            else:
+                nome = inscricao.get('nome', 'N/A')
+                cpf = inscricao.get('cpf', 'N/A')
+                email = inscricao.get('email', 'N/A')
+                
+            # Formatação de CPF se necessário (adicionar pontos e traço)
+            if cpf and len(cpf) == 11 and cpf.isdigit():
+                cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+                
+            # Usando Paragraph para permitir quebra de linha em cada coluna
+            table_data.append([
+                Paragraph(str(idx), table_text_style),
+                Paragraph(nome, table_text_style),
+                Paragraph(cpf, table_text_style),
+                Paragraph(email, table_text_style)
+            ])
+        
+        # Definir larguras das colunas para melhor distribuição
+        col_widths = [doc.width * 0.05, doc.width * 0.35, doc.width * 0.25, doc.width * 0.35]
+        
+        # Criar tabela com estilo moderno
+        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        table.setStyle(TableStyle([
+            # Cabeçalho com cor de fundo
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#023E8A')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),  # Centraliza a coluna de números
+            ('ALIGN', (1, 0), (1, -1), 'LEFT'),    # Alinha nomes à esquerda
+            ('ALIGN', (2, 0), (2, -1), 'CENTER'),  # Centraliza CPFs
+            ('ALIGN', (3, 0), (3, -1), 'LEFT'),    # Alinha e-mails à esquerda
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            # Linhas alternadas para melhor legibilidade
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+            # Bordas mais sutis
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 3),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            # Configuração para permitir quebra de linha
+            ('WORDWRAP', (0, 0), (-1, -1), True),
+        ]))
+        elements.append(table)
+    else:
+        elements.append(Paragraph("Não há inscritos nesta oficina.", normal_style))
+    
+    # Adiciona espaço para assinatura
+    elements.append(Spacer(1, 2 * cm))
+    elements.append(HorizontalLine(doc.width * 0.4))
+    elements.append(Paragraph("Assinatura do Coordenador", footer_style))
+    
+    # Adiciona rodapé com data de geração
+    elements.append(Spacer(1, 2 * cm))
+    current_date = datetime.now().strftime("%d/%m/%Y %H:%M")
+    elements.append(HorizontalLine(doc.width))
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(Paragraph(f"Documento gerado em {current_date} | AppFiber", footer_style))
+    
+    # Construir o PDF
+    doc.build(elements)
+    
+    # Retorna o arquivo para download
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
+    
+
+def gerar_lista_frequencia(oficina_id, pdf_path=None):
+    """
+    Generates a modern and professional attendance list PDF for a workshop.
+    
+    Args:
+        oficina_id: The ID of the workshop
+        pdf_path: The file path where the PDF will be saved (optional)
+    """
+    # Importações necessárias
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    import os
+    from datetime import datetime
+    from flask import send_file
+    from models import Oficina, Inscricao
+
+    # Obter a oficina real pelo ID
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        raise ValueError("Oficina não encontrada!")
+
+    # Se pdf_path não for fornecido, gere um caminho padrão
+    if pdf_path is None:
+        import tempfile
+        pdf_path = os.path.join(tempfile.gettempdir(), f"lista_frequencia_{oficina_id}.pdf")
+
+    # Estilos
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=10,
+        alignment=TA_CENTER
+    )
+
+    doc = SimpleDocTemplate(pdf_path, pagesize=letter)
+    elements = []
+
+    # Cabeçalho
+    elements.append(Paragraph("LISTA DE FREQUÊNCIA", title_style))
+    elements.append(Paragraph(f"<i>{oficina.titulo}</i>", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Dados da oficina
+    ministrante_nome = oficina.ministrante_obj.nome if oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"<b>Ministrante:</b> {ministrante_nome}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Local:</b> {oficina.cidade}, {oficina.estado}", styles['Normal']))
+    elements.append(Paragraph(f"<b>Carga Horária:</b> {oficina.carga_horaria} horas", styles['Normal']))
+    elements.append(Spacer(1, 12))
+
+    # Tabela de frequência
+    table_data = [["Nº", "Nome Completo", "Assinatura"]]
+
+    # Buscando participantes reais inscritos
+    inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
+
+    for i, inscricao in enumerate(inscricoes, 1):
+        nome_participante = inscricao.usuario.nome if inscricao.usuario else 'N/A'
+        # Observe que usamos Paragraph para permitir a quebra de linha no nome
+        table_data.append([
+            Paragraph(str(i), styles['Normal']),
+            Paragraph(nome_participante, styles['Normal']),
+            ""
+        ])
+
+    table = Table(table_data, colWidths=[30*mm, 100*mm, 60*mm])
+
+    # Aplica estilos, incluindo WORDWRAP
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#DDDDDD")),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8F9FA")]),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+    ]))
+
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+
+    # Rodapé para assinaturas
+    elements.append(Spacer(1, 24))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Ministrante", styles['Normal']))
+
+    elements.append(Spacer(1, 48))
+    elements.append(Paragraph("________________________", styles['Normal']))
+    elements.append(Paragraph("Coordenador", styles['Normal']))
+
+    # Gera PDF
+    doc.build(elements)
+
+    return send_file(pdf_path)
+
+
+
+def gerar_certificados(oficina_id):
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Apenas administradores podem gerar certificados.", "danger")
+        
+
+    oficina = Oficina.query.get(oficina_id)
+    if not oficina:
+        flash("Oficina não encontrada!", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    inscritos = oficina.inscritos
+    if not inscritos:
+        flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    # Agora chama a função ajustada
+    gerar_certificados_pdf(oficina, inscritos, pdf_path)
+
+    flash("Certificados gerados com sucesso!", "success")
+    return send_file(pdf_path, as_attachment=True)
+
+def gerar_pdf_feedback(oficina, feedbacks, pdf_path):
+    """
+    Gera um PDF elegante com os feedbacks de uma oficina.
+    
+    Args:
+        oficina: Objeto da oficina com informações como título
+        feedbacks: Lista de objetos de feedback contendo avaliações e comentários
+        pdf_path: Caminho onde o PDF será salvo
+    """
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, SimpleDocTemplate, PageBreak, Image
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, mm
+    from datetime import datetime
+    import pytz
+    import os
+    
+    # Função para converter um datetime para o fuso de Brasília
+    def convert_to_brasilia(dt):
+        brasilia_tz = pytz.timezone("America/Sao_Paulo")
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+    
+    # Criar estilos personalizados
+    styles = getSampleStyleSheet()
+    
+    # Título com estilo moderno
+    title_style = ParagraphStyle(
+        'TitleStyle',
+        parent=styles['Title'],
+        fontSize=24,
+        fontName='Helvetica-Bold',
+        alignment=1,  # Centralizado
+        spaceAfter=20,
+        textColor=colors.HexColor('#1A365D')  # Azul escuro elegante
+    )
+    
+    # Estilo para o subtítulo
+    subtitle_style = ParagraphStyle(
+        'SubtitleStyle',
+        parent=styles['Heading2'],
+        fontSize=16,
+        fontName='Helvetica-Bold',
+        alignment=1,
+        spaceAfter=15,
+        textColor=colors.HexColor('#2A4365')  # Azul médio
+    )
+    
+    # Estilo para o texto normal
+    normal_style = ParagraphStyle(
+        'NormalStyle',
+        parent=styles['Normal'],
+        fontSize=11,
+        leading=14,
+        fontName='Helvetica'
+    )
+    
+    # Estilo para o cabeçalho da tabela
+    header_style = ParagraphStyle(
+        'HeaderStyle',
+        parent=styles['Heading4'],
+        fontSize=12,
+        fontName='Helvetica-Bold',
+        alignment=1,
+        textColor=colors.white,
+        leading=14
+    )
+    
+    # Estilo para o rodapé
+    footer_style = ParagraphStyle(
+        'FooterStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        fontName='Helvetica-Oblique',
+        textColor=colors.HexColor('#4A5568'),  # Cinza escuro
+        alignment=1
+    )
+    
+    # Estilo para comentários
+    comment_style = ParagraphStyle(
+        'CommentStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        fontName='Helvetica',
+        firstLineIndent=0,
+        spaceBefore=3,
+        spaceAfter=3
+    )
+    
+    # Cria o documento em modo paisagem com margens aprimoradas
+    doc = SimpleDocTemplate(
+        pdf_path, 
+        pagesize=landscape(letter), 
+        leftMargin=0.75*inch, 
+        rightMargin=0.75*inch,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch
+    )
+    
+    available_width = doc.width  # largura disponível após as margens
+    
+    elements = []
+    
+    # Adicionar logotipo ou imagem header (opcional)
+    logo_path = os.path.join("static", "logo.png")
+    if os.path.exists(logo_path):
+        # Adiciona um espaço antes do logo
+        elements.append(Spacer(1, 0.2 * inch))
+        
+        # Centraliza o logo
+        logo = Image(logo_path, width=1.5*inch, height=0.75*inch)
+        elements.append(logo)
+        
+        # Adiciona um espaço após o logo
+        elements.append(Spacer(1, 0.3 * inch))
+    
+    # Título principal
+    elements.append(Paragraph(f"Relatório de Feedback", title_style))
+    
+    # Subtítulo com informações da oficina
+    elements.append(Paragraph(f"Oficina: {oficina.titulo}", subtitle_style))
+    
+    # Adicionar informações da data de geração
+    now = convert_to_brasilia(datetime.utcnow())
+    elements.append(Paragraph(f"Gerado em: {now.strftime('%d/%m/%Y às %H:%M')}", normal_style))
+    
+    # Informações gerais (pode-se adicionar ministrate, datas, etc.)
+    ministrante_nome = oficina.ministrante_obj.nome if hasattr(oficina, 'ministrante_obj') and oficina.ministrante_obj else 'N/A'
+    elements.append(Paragraph(f"Ministrante: {ministrante_nome}", normal_style))
+    
+    # Verificar se oficina tem atributo 'cidade' e 'estado'
+    if hasattr(oficina, 'cidade') and hasattr(oficina, 'estado'):
+        elements.append(Paragraph(f"Local: {oficina.cidade}, {oficina.estado}", normal_style))
+    
+    # Calcular estatísticas de avaliação
+    if feedbacks:
+        total_ratings = len(feedbacks)
+        avg_rating = sum(fb.rating for fb in feedbacks) / total_ratings if total_ratings > 0 else 0
+        elements.append(Paragraph(f"Avaliação média: {avg_rating:.1f}/5.0 ({total_ratings} avaliações)", normal_style))
+    
+    # Adicionar espaço antes da tabela
+    elements.append(Spacer(1, 0.4 * inch))
+    
+    # Linha decorativa antes da tabela
+    elements.append(Table([['']], colWidths=[doc.width], 
+                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 1, colors.HexColor('#3182CE'))])))
+    elements.append(Spacer(1, 0.3 * inch))
+    
+    # Título da seção de feedbacks
+    elements.append(Paragraph("Detalhes dos Feedbacks", subtitle_style))
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    # Cabeçalho da tabela com Paragraph para melhor formatação
+    header = [
+        Paragraph("Usuário", header_style),
+        Paragraph("Avaliação", header_style),
+        Paragraph("Comentário", header_style),
+        Paragraph("Data", header_style)
+    ]
+    table_data = [header]
+    
+    # Prepara os dados da tabela convertendo os horários para o fuso local
+    for fb in feedbacks:
+        # Criar string de estrelas
+        filled_star = "★"  # Estrela preenchida
+        empty_star = "☆"   # Estrela vazia
+        rating_str = filled_star * fb.rating + empty_star * (5 - fb.rating)
+        
+        # Formatar data local
+        dt_local = convert_to_brasilia(fb.created_at)
+        data_str = dt_local.strftime('%d/%m/%Y %H:%M')
+        
+        # Determinar o nome do autor
+        nome_autor = fb.usuario.nome if hasattr(fb, 'usuario') and fb.usuario is not None else (
+                     fb.ministrante.nome if hasattr(fb, 'ministrante') and fb.ministrante is not None else "Desconhecido")
+        
+        # Garante que o comentário não seja None
+        comentario_text = fb.comentario or "Sem comentários adicionais."
+        
+        # Utiliza Paragraph para permitir quebra de linha em comentários longos
+        comentario_paragraph = Paragraph(comentario_text, comment_style)
+        
+        row = [
+            Paragraph(nome_autor, normal_style),
+            Paragraph(rating_str, normal_style),
+            comentario_paragraph,
+            Paragraph(data_str, normal_style)
+        ]
+        table_data.append(row)
+    
+    # Cria o documento em modo paisagem com margens aprimoradas
+    doc = SimpleDocTemplate(
+        pdf_path, 
+        pagesize=landscape(letter), 
+        leftMargin=0.75*inch, 
+        rightMargin=0.75*inch,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch
+    )
+    
+    available_width = doc.width  # largura disponível após as margens
+    
+    # Define as larguras das colunas em porcentagem da largura disponível
+    col_widths = [
+        available_width * 0.20,  # Usuário
+        available_width * 0.15,  # Avaliação
+        available_width * 0.45,  # Comentário
+        available_width * 0.20   # Data
+    ]
+    
+    # Cria e estiliza a tabela
+    table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    
+    # Cores suaves e modernas
+    header_bg_color = colors.HexColor('#2C5282')  # Azul escuro
+    alt_row_color = colors.HexColor('#EBF8FF')    # Azul bem claro
+    grid_color = colors.HexColor('#CBD5E0')       # Cinza claro
+    
+    table.setStyle(TableStyle([
+        # Cabeçalho
+        ('BACKGROUND', (0, 0), (-1, 0), header_bg_color),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        
+        # Linhas alternadas para facilitar a leitura
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, alt_row_color]),
+        
+        # Grade fina e elegante
+        ('GRID', (0, 0), (-1, -1), 0.5, grid_color),
+        
+        # Alinhamento
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),       # Cabeçalho centralizado
+        ('ALIGN', (1, 1), (1, -1), 'CENTER'),       # Coluna de avaliação centralizada
+        ('ALIGN', (0, 1), (0, -1), 'LEFT'),         # Coluna de usuários à esquerda
+        ('ALIGN', (3, 1), (3, -1), 'CENTER'),       # Coluna de datas centralizada
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),     # Alinhamento vertical no meio
+        
+        # Espaçamento interno
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 10),
+    ]))
+    
+    elements.append(table)
+    
+    # Adiciona espaço antes do rodapé
+    elements.append(Spacer(1, 0.4 * inch))
+    
+    # Linha decorativa antes do rodapé
+    elements.append(Table([['']], colWidths=[doc.width], 
+                          style=TableStyle([('LINEABOVE', (0, 0), (-1, 0), 0.5, colors.HexColor('#CBD5E0'))])))
+    
+    # Adiciona espaço após a linha
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    # Rodapé com horário local e informações adicionais
+    footer_text = "Este relatório é um documento confidencial e de uso interno. "
+    footer_text += f"Gerado via AppFiber em {now.strftime('%d/%m/%Y às %H:%M')}."
+    elements.append(Paragraph(footer_text, footer_style))
+    
+    # Construir o PDF
+    doc.build(elements)
+
+
+
+def gerar_pdf_feedback_route(oficina_id):
+    if current_user.tipo != 'admin' and current_user.tipo != 'cliente':
+        flash('Acesso Autorizado!', 'danger')
+        
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Replicar a lógica de filtragem usada na rota feedback_oficina
+    query = Feedback.query.filter(Feedback.oficina_id == oficina_id)
+    tipo = request.args.get('tipo')
+    if tipo == 'usuario':
+        query = query.filter(Feedback.usuario_id.isnot(None))
+    elif tipo == 'ministrante':
+        query = query.filter(Feedback.ministrante_id.isnot(None))
+    estrelas = request.args.get('estrelas')
+    if estrelas and estrelas.isdigit():
+        query = query.filter(Feedback.rating == int(estrelas))
+    
+    feedbacks = query.order_by(Feedback.created_at.desc()).all()
+    
+    pdf_folder = os.path.join("static", "feedback_pdfs")
+    os.makedirs(pdf_folder, exist_ok=True)
+    pdf_filename = f"feedback_{oficina.id}.pdf"
+    pdf_path = os.path.join(pdf_folder, pdf_filename)
+    gerar_pdf_feedback(oficina, feedbacks, pdf_path)
+    return send_file(pdf_path, as_attachment=True)
+
+
+def gerar_pdf_checkins_qr():
+    import os
+    import pytz
+    from datetime import datetime
+    from collections import defaultdict
+    from flask import flash, redirect, url_for, send_file
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, LongTable, TableStyle
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+    from models import Checkin, Usuario, Oficina
+    from extensions import db
+    from flask_login import current_user
+    from sqlalchemy import or_
+
+    print(f"\n📥 DEBUG: Cliente logado: {current_user.id} ({current_user.nome})")
+
+    checkins_qr = (
+        Checkin.query
+        .outerjoin(Checkin.oficina)
+        .outerjoin(Checkin.usuario)
+        .filter(
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO', 'QR-OFICINA', 'QR‑OFICINA']),
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id
+            )
+        )
+        .order_by(Checkin.data_hora.desc())
+        .all()
+    )
+
+    print(f"📊 DEBUG: Total de check-ins encontrados: {len(checkins_qr)}")
+    for i, ck in enumerate(checkins_qr, start=1):
+        print(f" - Checkin {i}: Usuario={ck.usuario.nome if ck.usuario else 'N/A'} | "
+              f"Email={ck.usuario.email if ck.usuario else 'N/A'} | "
+              f"Palavra={ck.palavra_chave} | "
+              f"Oficina={'N/A' if not ck.oficina else ck.oficina.titulo} | "
+              f"ClienteID={ck.cliente_id}")
+
+    if not checkins_qr:
+        flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
+        return redirect(url_for('routes.dashboard'))
+
+    # (continua com sua lógica atual do PDF sem alterações)
+    # 2. Configuração do documento
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pdf_filename = f"checkins_qr_{current_time}.pdf"
+    pdf_dir = os.path.join("static", "relatorios")
+    os.makedirs(pdf_dir, exist_ok=True)
+    pdf_path = os.path.join(pdf_dir, pdf_filename)
+
+    # 3. Definição de estilos personalizados
+    styles = getSampleStyleSheet()
+    
+    # Estilo para o título principal
+    title_style = ParagraphStyle(
+        name='CustomTitle',
+        parent=styles['Title'],
+        fontSize=16,
+        textColor=colors.HexColor("#023E8A"),
+        spaceAfter=12,
+        alignment=TA_CENTER
+    )
+    
+    # Estilo para subtítulos (oficinas)
+    subtitle_style = ParagraphStyle(
+        name='CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor("#1A75CF"),
+        spaceBefore=15,
+        spaceAfter=10,
+        borderWidth=1,
+        borderColor=colors.HexColor("#1A75CF"),
+        borderPadding=5,
+        borderRadius=3
+    )
+    
+    # Estilo para o rodapé
+    footer_style = ParagraphStyle(
+        name='Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.gray,
+        alignment=TA_RIGHT
+    )
+
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=landscape(A4),
+        rightMargin=15*mm,
+        leftMargin=15*mm,
+        topMargin=20*mm,
+        bottomMargin=15*mm
+    )
+    elements = []
+
+    # 5. Cabeçalho do relatório
+    elements.append(Paragraph("Relatório de Check-ins via QR Code", title_style))
+    elements.append(Paragraph(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", footer_style))
+    elements.append(Spacer(1, 10*mm))
+
+    # 6. Configuração do fuso horário (Brasil)
+    brasilia_tz = pytz.timezone("America/Sao_Paulo")
+    
+    def convert_to_brasilia(dt):
+        """Converte datetime para horário de Brasília."""
+        if dt is None:
+            return None
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+
+    # 7. Agrupamento dos check-ins por oficina
+    oficinas_grupos = defaultdict(list)
+    for checkin in checkins_qr:
+        oficina_titulo = checkin.oficina.titulo if checkin.oficina else "Oficina não especificada"
+        oficinas_grupos[oficina_titulo].append(checkin)
+
+    # 8. Definição do estilo de tabela
+    table_style = TableStyle([
+        # Cabeçalho
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#8ecde6")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        
+        # Corpo da tabela
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        
+        # Linhas zebradas
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
+        
+        # Bordas
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+        ('BOX', (0, 0), (-1, -1), 1, colors.grey),
+        
+        # Repetir cabeçalho em novas páginas
+        ('REPEATROWS', (0, 0), (0, 0)),
+        
+        # Habilitar quebra de linha
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+    ])
+
+    # 9. Gerar tabelas para cada oficina
+    total_checkins = 0
+    
+    for oficina_titulo, checkins in oficinas_grupos.items():
+        total_oficina = len(checkins)
+        total_checkins += total_oficina
+        
+        # Adicionar subtítulo da oficina
+        elements.append(Paragraph(f"Oficina: {oficina_titulo} ({total_oficina} check-ins)", subtitle_style))
+        
+        # Preparar dados da tabela
+        # Usamos Paragraph para cada célula, o que permite o WORDWRAP aplicado acima.
+        table_data = [[
+            Paragraph("Nome do Participante", styles["Normal"]),
+            Paragraph("E-mail", styles["Normal"]),
+            Paragraph("Data/Hora do Check-in", styles["Normal"])
+        ]]
+        
+        for ck in checkins:
+            usuario = ck.usuario
+            nome = usuario.nome if usuario else "N/A"
+            email = usuario.email if usuario else "N/A"
+            
+            # Converter para horário de Brasília
+            dt_local = convert_to_brasilia(ck.data_hora)
+            data_str = dt_local.strftime('%d/%m/%Y %H:%M') if dt_local else "N/A"
+            
+            table_data.append([
+                Paragraph(nome, styles["Normal"]),
+                Paragraph(email, styles["Normal"]),
+                Paragraph(data_str, styles["Normal"])
+            ])
+        
+        # Definir larguras das colunas
+        col_widths = [
+            doc.width * 0.35,
+            doc.width * 0.35,
+            doc.width * 0.3
+        ]
+        
+        table = LongTable(table_data, colWidths=col_widths)
+        table.setStyle(table_style)
+        elements.append(table)
+        elements.append(Spacer(1, 8*mm))
+
+    # 10. Resumo final
+    elements.append(Spacer(1, 10*mm))
+    elements.append(Paragraph(f"Total de check-ins: {total_checkins}", styles["Heading3"]))
+    
+    # 11. Rodapé com informações do sistema
+    footer_text = f"Documento gerado pelo sistema AppFiber em {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"
+    elements.append(Spacer(1, 20*mm))
+    elements.append(Paragraph(footer_text, footer_style))
+
+    # 12. Gerar o PDF
+    doc.build(elements)
+    
+    # 13. Retornar o arquivo para download
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+
+def gerar_pdf_respostas(formulario_id):
+    """
+    Gera um PDF formatado e organizado das respostas de um formulário específico.
+    
+    Args:
+        formulario_id: ID do formulário para buscar as respostas
+        
+    Returns:
+        Um arquivo PDF para download
+    """
+    # Importações necessárias
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle, Paragraph, 
+        Spacer, Image, PageBreak
+    )
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    import pytz
+    import os
+    from flask import send_file, current_app
+    import time
+    from datetime import datetime
+    
+    # Busca o formulário e as respostas
+    formulario = Formulario.query.get_or_404(formulario_id)
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+    
+    # Verifica se há respostas
+    if not respostas:
+        return None, "Não existem respostas para este formulário"
+
+    # Define nome e caminho do arquivo PDF
+    timestamp = int(time.time())
+    pdf_filename = f"respostas_{formulario.id}_{timestamp}.pdf"
+    pdf_folder = os.path.join(current_app.static_folder, "reports")
+    os.makedirs(pdf_folder, exist_ok=True)
+    pdf_path = os.path.join(pdf_folder, pdf_filename)
+    
+    # Configura o documento com margens adequadas
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36,
+        title=f"Respostas - {formulario.nome}"
+    )
+    
+    # Configuração de estilos customizados
+    styles = getSampleStyleSheet()
+    
+    # Estilo para o título
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles["Title"],
+        fontSize=18,
+        spaceAfter=20,
+        textColor=colors.HexColor("#023E8A"),
+        alignment=TA_CENTER
+    )
+    
+    # Estilo para cabeçalhos
+    header_style = ParagraphStyle(
+        'HeaderStyle',
+        parent=styles["Heading2"],
+        fontSize=14,
+        textColor=colors.white,
+        alignment=TA_LEFT
+    )
+    
+    # Estilo para o conteúdo
+    content_style = ParagraphStyle(
+        'ContentStyle',
+        parent=styles["Normal"],
+        fontSize=10,
+        leading=14,
+        spaceAfter=6
+    )
+    
+    # Estilo para o rodapé
+    footer_style = ParagraphStyle(
+        'FooterStyle',
+        parent=styles["Normal"],
+        fontSize=8,
+        textColor=colors.gray,
+        alignment=TA_CENTER
+    )
+
+    # Lista para armazenar os elementos do PDF
+    elements = []
+    
+    # Tenta adicionar um logo se existir
+    logo_path = os.path.join(current_app.static_folder, "img", "logo.png")
+    if os.path.exists(logo_path):
+        # Configura o logo centralizado
+        logo = Image(logo_path)
+        logo.drawHeight = 0.8 * inch
+        logo.drawWidth = 2 * inch
+        elements.append(logo)
+        elements.append(Spacer(1, 0.25 * inch))
+    
+    # Título do PDF
+    title = Paragraph(f"Respostas do Formulário: {formulario.nome}", title_style)
+    elements.append(title)
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    # Adiciona informações sobre o formulário
+    if formulario.descricao:
+        desc = Paragraph(f"<i>{formulario.descricao}</i>", content_style)
+        elements.append(desc)
+        elements.append(Spacer(1, 0.2 * inch))
+    
+    # Data de geração do relatório
+    report_date = Paragraph(
+        f"Relatório gerado em: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}",
+        content_style
+    )
+    elements.append(report_date)
+    elements.append(Spacer(1, 0.3 * inch))
+    
+    # Função para converter datetime para o horário de Brasília
+    def convert_to_brasilia(dt):
+        brasilia_tz = pytz.timezone("America/Sao_Paulo")
+        # Se o datetime não for "aware", assume-se que está em UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        return dt.astimezone(brasilia_tz)
+    
+    # Cria tabela
+    data = []
+    header = [
+        Paragraph("<b>Participante</b>", header_style),
+        Paragraph("<b>Data de Envio</b>", header_style),
+        Paragraph("<b>Respostas</b>", header_style)
+    ]
+    data.append(header)
+    
+    # Preenche as linhas da tabela com cada resposta
+    for resposta in respostas:
+        # Informações do usuário
+        usuario = resposta.usuario.nome if resposta.usuario else "N/A"
+        
+        # Conversão de data para horário local
+        dt_local = convert_to_brasilia(resposta.data_submissao)
+        data_envio = dt_local.strftime('%d/%m/%Y %H:%M')
+        
+        # Formatação do status, se disponível
+        status_text = ""
+        if hasattr(resposta, 'status_avaliacao') and resposta.status_avaliacao:
+            status_color = {
+                'Aprovada': '#28a745',
+                'Aprovada com ressalvas': '#ffc107',
+                'Negada': '#dc3545',
+                'Não Avaliada': '#6c757d'
+            }.get(resposta.status_avaliacao, '#6c757d')
+            
+            status_text = f"<br/><b>Status:</b> <font color='{status_color}'>{resposta.status_avaliacao}</font>"
+        
+        # Formatação das respostas com melhor estruturação
+        resposta_text = f"<b>Respostas de {usuario}</b>{status_text}<br/><br/>"
+        
+        for campo in resposta.respostas_campos:
+            valor = campo.valor if campo.valor else "N/A"
+            
+            # Se for caminho de arquivo, mostra apenas o nome do arquivo
+            if campo.campo.tipo == 'file' and valor and '/' in valor:
+                arquivo = valor.split('/')[-1]
+                valor = f"<i>Arquivo: {arquivo}</i>"
+                
+            resposta_text += f"<b>{campo.campo.nome}:</b><br/>{valor}<br/><br/>"
+        
+        # Criação dos parágrafos para a tabela
+        usuario_cell = Paragraph(f"<b>{usuario}</b>", content_style)
+        data_cell = Paragraph(data_envio, content_style)
+        resposta_cell = Paragraph(resposta_text, content_style)
+        
+        # Adiciona a linha à tabela
+        data.append([usuario_cell, data_cell, resposta_cell])
+    
+    # Define a largura das colunas (distribuição percentual)
+    available_width = doc.width
+    col_widths = [
+        available_width * 0.25,  # Nome (25%)
+        available_width * 0.15,  # Data (15%)
+        available_width * 0.60   # Respostas (60%)
+    ]
+    
+    # Criação da tabela com os dados e larguras definidas
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    
+    # Estilo da tabela
+    table_style = TableStyle([
+        # Cabeçalho
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#023E8A")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        
+        # Bordas externas da tabela
+        ('BOX', (0, 0), (-1, -1), 1, colors.black),
+        
+        # Linhas horizontais mais finas
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.grey),
+        
+        # Alinhamento do texto
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        
+        # Configurações de padding
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        
+        # Zebra striping para facilitar a leitura
+        ('BACKGROUND', (0, 1), (-1, -1), colors.whitesmoke),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+    ])
+    
+    table.setStyle(table_style)
+    elements.append(table)
+    
+    # Adicionando rodapé
+    elements.append(Spacer(1, 0.5 * inch))
+    footer = Paragraph(
+        f"© {datetime.now().year} - Documento gerado pelo sistema AppFiber - Página 1",
+        footer_style
+    )
+    elements.append(footer)
+    
+    # Constrói o PDF
+    doc.build(
+        elements,
+        onFirstPage=lambda canvas, doc: add_page_number(canvas, doc, 1),
+        onLaterPages=lambda canvas, doc: add_page_number(canvas, doc)
+    )
+    
+    # Retorna o arquivo para download
+    return send_file(pdf_path, as_attachment=True)
+
+def add_page_number(canvas, doc, page_num=None):
+    """
+    Adiciona o número de página ao rodapé.
+    
+    Args:
+        canvas: O canvas do ReportLab
+        doc: O documento
+        page_num: Número específico de página (opcional)
+    """
+    page = page_num if page_num else canvas._pageNumber
+    text = f"© {datetime.now().year} - Documento gerado pelo sistema AppFiber - Página {page}"
+    
+    # Define estilo e posição
+    canvas.saveState()
+    canvas.setFont("Helvetica", 8)
+    canvas.setFillColor(colors.grey)
+    
+    # Posiciona na parte inferior central
+    text_width = canvas.stringWidth(text, "Helvetica", 8)
+    x = (doc.pagesize[0] - text_width) / 2
+    canvas.drawString(x, 20, text)
+    canvas.restoreState()
+
+from flask import request, send_file, redirect, url_for, flash
+from io import BytesIO
+from datetime import datetime
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from flask_login import login_required, current_user
+from models import Checkin, Evento
+import unicodedata
+
+
+
+def exportar_checkins_pdf_opcoes():
+    from flask import request
+    import unicodedata
+    from io import BytesIO
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from models import Checkin, Evento, Oficina
+
+    def normalizar(texto):
+        return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode("utf-8").strip()
+
+    tipo = normalizar(request.args.get('tipo', '').upper())
+    evento_id = request.args.get('evento_id')
+
+    if not current_user.is_cliente():
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('routes.dashboard'))
+
+    # Query base
+    base_query = Checkin.query.filter(Checkin.cliente_id == current_user.id)
+
+    if evento_id and evento_id != 'todos':
+        base_query = base_query.filter(Checkin.evento_id == int(evento_id))
+
+    if tipo and tipo != 'TODOS':
+        base_query = base_query.filter(Checkin.palavra_chave == tipo)
+
+    checkins = base_query.order_by(Checkin.data_hora.desc()).all()
+
+    if not checkins:
+        flash("Nenhum check-in encontrado para os filtros aplicados.", "info")
+        return redirect(url_for('routes.dashboard'))
+
+    # Gerar PDF
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Cores modernas
+    azul_principal = colors.HexColor('#2196F3')
+    azul_claro = colors.HexColor('#BBDEFB')
+    cinza_escuro = colors.HexColor('#424242')
+    cinza_claro = colors.HexColor('#EEEEEE')
+    
+    def adicionar_cabecalho_rodape(pagina, num_pagina, total_paginas):
+        # Cabeçalho
+        pagina.setFillColor(azul_principal)
+        pagina.rect(0, height - 2*cm, width, 2*cm, fill=1)
+        
+        pagina.setFillColor(colors.white)
+        pagina.setFont("Helvetica-Bold", 16)
+        titulo_relatorio = "Relatório de Check-ins"
+        if tipo != 'TODOS':
+            titulo_relatorio += f" - {tipo}"
+        pagina.drawCentredString(width/2, height - 1.2*cm, titulo_relatorio)
+        
+        pagina.setFont("Helvetica", 10)
+        data_relatorio = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        pagina.drawString(width - 5*cm, height - 1.7*cm, data_relatorio)
+        
+        # Rodapé
+        pagina.setFillColor(cinza_escuro)
+        pagina.rect(0, 0, width, 1*cm, fill=1)
+        pagina.setFillColor(colors.white)
+        pagina.setFont("Helvetica", 8)
+        pagina.drawString(1*cm, 0.4*cm, f"Página {num_pagina} de {total_paginas}")
+        pagina.drawRightString(width - 1*cm, 0.4*cm, "Sistema de Check-ins")
+    
+    # Função para criar nova página
+    def nova_pagina(num_pagina, total_paginas):
+        p.showPage()
+        adicionar_cabecalho_rodape(p, num_pagina, total_paginas)
+        return height - 3*cm  # Retornar posição Y após o cabeçalho
+    
+    # Calcular número total de páginas (estimativa)
+    # Vamos estimar 15 itens por página
+    total_paginas = 1 + (len(checkins) // 15)
+    
+    # Agrupando check-ins por evento e oficina
+    agrupados = {}
+    for c in checkins:
+        chave = f"EVENTO: {c.evento.nome}" if c.evento else f"OFICINA: {c.oficina.titulo if c.oficina else 'Sem título'}"
+        if chave not in agrupados:
+            agrupados[chave] = []
+        agrupados[chave].append(c)
+    
+    # Iniciar primeira página
+    pagina_atual = 1
+    adicionar_cabecalho_rodape(p, pagina_atual, total_paginas)
+    y = height - 3*cm  # Posição inicial após o cabeçalho
+    
+    for secao, lista in agrupados.items():
+        # Verificar se tem espaço na página
+        if y < 8*cm:
+            y = nova_pagina(pagina_atual, total_paginas)
+            pagina_atual += 1
+        
+        # Desenhar cabeçalho da seção
+        p.setFont("Helvetica-Bold", 12)
+        p.setFillColor(azul_principal)
+        p.drawString(1*cm, y, secao)
+        y -= 0.8*cm
+        
+        # Desenhar cabeçalho da tabela
+        p.setFillColor(azul_principal)
+        p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
+        
+        p.setFillColor(colors.white)
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(1.2*cm, y - 0.4*cm, "Participante")
+        p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
+        p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+        
+        y -= 0.7*cm
+        
+        # Listar check-ins desta seção
+        linha_alternada = True
+        for c in lista:
+            # Verificar se tem espaço na página
+            if y < 2*cm:
+                y = nova_pagina(pagina_atual, total_paginas)
+                pagina_atual += 1
+                
+                # Redesenhar cabeçalho da tabela
+                p.setFillColor(azul_principal)
+                p.rect(1*cm, y - 0.7*cm, width - 2*cm, 0.7*cm, fill=1)
+                
+                p.setFillColor(colors.white)
+                p.setFont("Helvetica-Bold", 10)
+                p.drawString(1.2*cm, y - 0.4*cm, "Participante")
+                p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
+                p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+                
+                y -= 0.7*cm
+            
+            # Alternar cores de fundo para linhas
+            if linha_alternada:
+                p.setFillColor(cinza_claro)
+                p.rect(1*cm, y - 0.5*cm, width - 2*cm, 0.5*cm, fill=1)
+            linha_alternada = not linha_alternada
+            
+            # Desenhar dados
+            p.setFillColor(cinza_escuro)
+            p.setFont("Helvetica", 9)
+            p.drawString(1.2*cm, y - 0.3*cm, c.usuario.nome[:28])
+            p.drawString(7*cm, y - 0.3*cm, c.palavra_chave[:20])
+            p.drawString(13*cm, y - 0.3*cm, c.data_hora.strftime('%d/%m/%Y %H:%M'))
+            
+            # Descer para próxima linha
+            y -= 0.5*cm
+        
+        # Espaço entre seções
+        y -= 1*cm
+    
+    # Finalizar PDF
+    p.save()
+    buffer.seek(0)
+    
+    nome_arquivo = f"checkins_{evento_id or 'todos'}_{tipo or 'todos'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype='application/pdf')
+
+
+
+@login_required
+def exportar_checkins_evento_pdf(evento_id):
+    import os
+    from io import BytesIO
+    from flask import send_file, flash, redirect, url_for
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm, mm
+    from reportlab.lib import colors
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus.flowables import Image
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    from reportlab.platypus.doctemplate import SimpleDocTemplate
+    from reportlab.platypus.frames import Frame
+    from reportlab.platypus.tableofcontents import TableOfContents
+
+    print(f"[DEBUG] Usuário acessou exportação de check-ins do evento ID {evento_id}")
+
+    if current_user.is_cliente():
+            evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+            if not evento:
+                flash("Evento não encontrado ou não pertence ao seu acesso.", "danger")
+                print("[DEBUG] Evento não pertence ao cliente logado.")
+                return redirect(url_for("routes.dashboard_cliente"))
+    else:
+        evento = Evento.query.get_or_404(evento_id)
+
+    print(f"[DEBUG] Evento encontrado: {evento.nome} (ID: {evento.id})")
+
+    checkins = (
+        Checkin.query
+        .filter_by(evento_id=evento.id)
+        .filter(Checkin.palavra_chave == 'QR-EVENTO')
+        .all()
+    )
+    print(f"[DEBUG] Total de check-ins encontrados: {len(checkins)}")
+
+    if not checkins:
+        flash("Nenhum check-in encontrado para este evento.", "warning")
+        return redirect(url_for("routes.dashboard_cliente"))
+
+    # DEBUG de alguns dados dos check-ins
+    for c in checkins[:5]:
+        print(f"[DEBUG] Check-in: Nome={c.usuario.nome}, Data={c.data_hora}, Palavra-chave={c.palavra_chave}")
+
+    # ...continua o restante da geração do PDF normalmente
+
+    # Cria PDF em memória
+    buffer = BytesIO()
+    
+    # Define cores do tema do relatório
+    cor_primaria = colors.HexColor("#1E88E5")  # Azul moderno
+    cor_secundaria = colors.HexColor("#E0E0E0")  # Cinza claro
+    cor_destaque = colors.HexColor("#FF5722")   # Laranja para destaques
+    cor_texto = colors.HexColor("#333333")      # Cinza escuro para texto
+    
+    # Configuração do documento
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        title=f"Check-ins do Evento: {evento.nome}",
+        author="Sistema de Eventos",
+        leftMargin=2*cm,
+        rightMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name='Titulo',
+        parent=styles['Heading1'],
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        textColor=cor_primaria,
+        spaceAfter=12,
+        spaceBefore=12,
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='Subtitulo',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        textColor=cor_primaria,
+        spaceAfter=6,
+    ))
+    
+    # Modificar o estilo Normal existente em vez de adicionar um novo
+    styles['Normal'].fontName = 'Helvetica'
+    styles['Normal'].fontSize = 10
+    styles['Normal'].textColor = cor_texto
+    styles['Normal'].spaceAfter = 6
+    
+    styles.add(ParagraphStyle(
+        name='InfoEvento',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique',
+        fontSize=10,
+        textColor=cor_texto,
+        spaceAfter=10,
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='Rodape',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8,
+        textColor=cor_texto,
+        alignment=TA_CENTER,
+    ))
+    
+    # Lista para elementos do documento
+    elementos = []
+    
+    # Função para cabeçalho e rodapé
+    def adicionar_cabecalho_rodape(canvas, doc):
+        canvas.saveState()
+        largura, altura = A4
+        
+        # Cabeçalho
+        canvas.setFillColor(cor_primaria)
+        canvas.rect(0, altura - 1.5*cm, largura, 1.5*cm, fill=1)
+        
+        canvas.setFillColor(colors.white)
+        canvas.setFont('Helvetica-Bold', 14)
+        canvas.drawString(2*cm, altura - 1*cm, "RELATÓRIO DE CHECK-INS")
+        
+        # Rodapé
+        canvas.setFillColor(cor_secundaria)
+        canvas.rect(0, 0, largura, 1*cm, fill=1)
+        
+        canvas.setFillColor(cor_texto)
+        canvas.setFont('Helvetica', 8)
+        canvas.drawString(2*cm, 0.5*cm, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        canvas.drawString(largura/2, 0.5*cm, f"Página {doc.page}")
+        
+        # Logo ou ícone (exemplo)
+        # Se tiver um logo, substituir a linha abaixo
+        canvas.setFillColor(cor_destaque)
+        canvas.circle(largura - 3*cm, altura - 0.75*cm, 0.5*cm, fill=1)
+        
+        canvas.restoreState()
+    
+    # Título do relatório
+    elementos.append(Paragraph(f"Relatório de Check-ins", styles['Titulo']))
+    
+    # Informações do evento
+    elementos.append(Paragraph(f"<b>Evento:</b> {evento.nome}", styles['Subtitulo']))
+    
+    # Adicionar mais informações do evento se disponíveis
+    if hasattr(evento, 'data'):
+        elementos.append(Paragraph(f"<b>Data do evento:</b> {evento.data.strftime('%d/%m/%Y')}", styles['InfoEvento']))
+    if hasattr(evento, 'local'):
+        elementos.append(Paragraph(f"<b>Local:</b> {evento.local}", styles['InfoEvento']))
+    
+    elementos.append(Paragraph(f"<b>Total de check-ins:</b> {len(checkins)}", styles['InfoEvento']))
+    elementos.append(Spacer(1, 0.5*cm))
+    
+    # Resumo estatístico se houver dados suficientes
+    if len(checkins) > 1:
+        # Dados para tabela de resumo
+        resumo_data = []
+        
+        # Exemplo: distribuição por hora (ajuste conforme necessário)
+        hora_counts = {}
+        for checkin in checkins:
+            hora = checkin.data_hora.hour
+            hora_counts[hora] = hora_counts.get(hora, 0) + 1
+        
+        # Mostrar distribuição por horas se relevante
+        if len(hora_counts) > 1:
+            elementos.append(Paragraph("Distribuição de check-ins por hora:", styles['Subtitulo']))
+            
+            # Criar dados para tabela de distribuição
+            hora_data = [["Hora", "Quantidade", "Percentual"]]
+            for hora in sorted(hora_counts.keys()):
+                qtd = hora_counts[hora]
+                percentual = (qtd / len(checkins)) * 100
+                hora_str = f"{hora}:00 - {hora+1}:00"
+                hora_data.append([hora_str, str(qtd), f"{percentual:.1f}%"])
+            
+            # Criar e estilizar tabela de distribuição
+            tabela_horas = Table(hora_data, colWidths=[5*cm, 3*cm, 3*cm])
+            tabela_horas.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), cor_primaria),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.5, cor_texto),
+                ('BOX', (0, 0), (-1, -1), 1, cor_primaria),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_secundaria.clone(alpha=0.3)]),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ]))
+            
+            elementos.append(tabela_horas)
+            elementos.append(Spacer(1, 0.5*cm))
+    
+    # Tabela principal de check-ins
+    elementos.append(Paragraph("Lista de Check-ins Realizados:", styles['Subtitulo']))
+    elementos.append(Spacer(1, 0.2*cm))
+    
+    # Dados para tabela principal
+    dados_tabela = [["Nome", "CPF", "Data/Hora", "Palavra-chave"]]
+    
+    # Preencher dados na tabela
+    for checkin in checkins:
+        usuario = checkin.usuario
+        dados_tabela.append([
+            usuario.nome[:40],
+            usuario.cpf or "-",
+            checkin.data_hora.strftime('%d/%m/%Y %H:%M'),
+            checkin.palavra_chave or "-"
+        ])
+    
+    # Criar e estilizar tabela
+    tabela = Table(dados_tabela, colWidths=[5*cm, 3*cm, 4*cm, 4*cm])
+    tabela.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), cor_primaria),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, cor_texto),
+        ('BOX', (0, 0), (-1, -1), 1, cor_primaria),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, cor_secundaria.clone(alpha=0.2)]),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    elementos.append(tabela)
+    
+    # Adicionar informações finais ou observações
+    elementos.append(Spacer(1, 1*cm))
+    elementos.append(Paragraph("* Este relatório é gerado automaticamente pelo sistema de eventos.", styles['Rodape']))
+    
+    # Construir documento com cabeçalho e rodapé personalizados
+    doc.build(elementos, onFirstPage=adicionar_cabecalho_rodape, onLaterPages=adicionar_cabecalho_rodape)
+    
+    buffer.seek(0)
+
+    filename = f"checkins_evento_{evento.id}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+@login_required
+def gerar_evento_qrcode_pdf(evento_id):
+    """
+    Gera um PDF contendo o QR Code do evento para credenciamento.
+    O PDF terá informações do evento e do participante, além do código QR.
+    """
+
+    import os
+    import uuid
+    from datetime import datetime
+    from flask import send_file, flash, redirect, url_for
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    import qrcode
+
+    # 1) Verifica se há configuração do cliente e se está habilitado o QR Code de evento
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
+    if not config_cliente or not config_cliente.habilitar_qrcode_evento_credenciamento:
+        flash("A geração de QR Code para credenciamento de evento está desabilitada para este cliente.", "danger")
+        return redirect(url_for('routes.dashboard_participante'))
+
+    # 2) Localiza o evento
+    evento = Evento.query.get_or_404(evento_id)
+
+    # 3) Verifica se o participante está inscrito nesse evento, senão cria a inscrição automaticamente
+    inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento_id).first()
+    if not inscricao:
+        inscricao = Inscricao(
+            usuario_id=current_user.id,
+            cliente_id=current_user.cliente_id,
+            evento_id=evento_id
+        )
+        db.session.add(inscricao)
+        db.session.commit()
+
+    # 4) Caso não tenha token gerado, gera agora
+    if not inscricao.qr_code_token:
+        novo_token = str(uuid.uuid4())
+        inscricao.qr_code_token = novo_token
+        db.session.commit()
+
+    token = inscricao.qr_code_token
+
+    # 5) Gera a imagem do QR Code
+    output_dir = os.path.join("static", "tmp")
+    os.makedirs(output_dir, exist_ok=True)
+    qr_filename = f"qr_evento_{evento_id}_user_{current_user.id}.png"
+    qr_path = os.path.join(output_dir, qr_filename)
+
+    # Criando QR code com estilo
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(token)
+    qr.make(fit=True)
+
+    # Criando QR code colorido
+    qr_img = qr.make_image(fill_color="#0066CC", back_color="white")
+    qr_img.save(qr_path)
+
+    # 6) Cria um PDF com ReportLab
+    pdf_filename = f"evento_{evento_id}_qrcode_{current_user.id}.pdf"
+    pdf_output_dir = os.path.join("static", "comprovantes")
+    os.makedirs(pdf_output_dir, exist_ok=True)
+    pdf_path = os.path.join(pdf_output_dir, pdf_filename)
+
+    # Registro de fontes personalizadas (se disponíveis)
+    # Descomente as linhas abaixo se tiver arquivos de fontes
+    # pdfmetrics.registerFont(TTFont('Montserrat', 'static/fonts/Montserrat-Regular.ttf'))
+    # pdfmetrics.registerFont(TTFont('MontserratBold', 'static/fonts/Montserrat-Bold.ttf'))
+
+    # Cores e estilos
+    cor_primaria = colors.HexColor("#0066CC")  # Azul
+    cor_secundaria = colors.HexColor("#333333")  # Cinza escuro
+    cor_destaque = colors.HexColor("#FF9900")  # Laranja
+
+    # Configurações do PDF
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+    c.setTitle("Comprovante de Inscrição - " + evento.nome)
+
+    # Fundo do cabeçalho
+    c.setFillColor(cor_primaria)
+    c.rect(0, height-4*cm, width, 4*cm, fill=True, stroke=False)
+
+    # Título no cabeçalho
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 22)
+    c.drawCentredString(width/2, height-2.5*cm, "COMPROVANTE DE INSCRIÇÃO")
+
+    # Logo da organização (se disponível)
+    # c.drawImage("static/img/logo.png", 1*cm, height-3*cm, width=2*cm, height=2*cm)
+
+    # Data e hora de geração do comprovante
+    import datetime
+    data_geracao = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+    c.setFont("Helvetica", 9)
+    c.drawRightString(width-1*cm, height-3.5*cm, f"Gerado em: {data_geracao}")
+
+    # Caixa principal de conteúdo
+    c.setFillColor(colors.white)
+    c.roundRect(1*cm, 5*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+
+    # Sombra sutil para a caixa
+    c.setFillColor(colors.HexColor("#EEEEEE"))
+    c.roundRect(1.1*cm, 4.9*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+    c.setFillColor(colors.white)
+    c.roundRect(1*cm, 5*cm, width-2*cm, height-10*cm, 10, fill=True, stroke=False)
+
+    # Informações do evento
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(2*cm, height-5.5*cm, evento.nome)
+
+    # Linha decorativa
+    c.setStrokeColor(cor_destaque)
+    c.setLineWidth(3)
+    c.line(2*cm, height-5.8*cm, width-2*cm, height-5.8*cm)
+
+    # Informações detalhadas
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(2*cm, height-7*cm, "DETALHES DO EVENTO:")
+
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica", 12)
+    data_evento = evento.data_inicio.strftime("%d/%m/%Y") if evento.data_inicio else "Data indefinida"
+    hora_evento = evento.hora_inicio.strftime("%H:%M") if hasattr(evento, 'hora_inicio') and evento.hora_inicio else "Horário não especificado"
+    localizacao = evento.localizacao or "Local não especificado"
+
+    y_position = height-8*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Data:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, data_evento)
+
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Horário:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, hora_evento)
+
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Local:")
+    c.setFont("Helvetica", 10)
+    # Gerencia texto de localização longo para não sobrepor o QR code
+    # Calcula a largura máxima disponível para o texto (evitando a área do QR code)
+    texto_max_largura = width - 15*cm  # Deixa margem para o QR code à direita
+
+    # Importa ferramentas para texto multilinha
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+
+    # Define o estilo do parágrafo
+    style = ParagraphStyle(
+        name='Normal',
+        fontName='Helvetica',
+        fontSize=10,
+        leading=12  # Espaçamento entre linhas
+    )
+
+    # Cria o parágrafo com o texto da localização
+    p = Paragraph(localizacao, style)
+
+    # Organiza o parágrafo dentro do espaço disponível
+    text_width, text_height = p.wrapOn(c, texto_max_largura, 4*cm)
+
+    # Desenha o parágrafo
+    p.drawOn(c, 4*cm, y_position - text_height + 10)
+
+    # Ajusta a posição vertical baseada na altura do texto
+    y_position -= (text_height + 0.3*cm)
+
+    # Informações do participante
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(2*cm, y_position, "DADOS DO PARTICIPANTE:")
+    y_position -= 0.7*cm
+
+    c.setFillColor(cor_secundaria)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Nome:")
+    c.setFont("Helvetica", 10)
+    c.drawString(4*cm, y_position, current_user.nome)
+
+    # Adicionar e-mail se disponível
+    if hasattr(current_user, 'email'):
+        y_position -= 0.7*cm
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(2*cm, y_position, "E-mail:")
+        c.setFont("Helvetica", 10)
+        c.drawString(4*cm, y_position, current_user.email)
+
+    # Código de inscrição
+    y_position -= 0.7*cm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(2*cm, y_position, "Código:")
+    c.setFont("Helvetica", 10)
+    codigo_inscricao = token[:8].upper()  # Primeiros 8 caracteres do token
+    c.drawString(4*cm, y_position, codigo_inscricao)
+
+    # QR Code com título
+    c.setFont("Helvetica-Bold", 12)
+    c.setFillColor(cor_primaria)
+    c.drawString(width-7*cm, height-7*cm, "QR CODE DE ACESSO")
+
+    # Borda decorativa ao redor do QR Code
+    c.setStrokeColor(cor_destaque)
+    c.setLineWidth(2)
+    c.roundRect(width-7*cm, height-13*cm, 5*cm, 5*cm, 5, fill=False, stroke=True)
+
+    # Inserir o QR Code
+    c.drawImage(qr_path, width-6.5*cm, height-12.5*cm, width=4*cm, height=4*cm)
+
+    # Instruções
+    c.setFont("Helvetica-Oblique", 9)
+    c.setFillColor(cor_secundaria)
+    c.drawCentredString(width-4.5*cm, height-13.5*cm, "Apresente este QR Code na entrada do evento")
+
+    # Rodapé
+    c.setFillColor(cor_primaria)
+    c.rect(0, 0, width, 2*cm, fill=True, stroke=False)
+
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(width/2, 1*cm, "Este é um comprovante oficial de inscrição. Em caso de dúvidas, entre em contato conosco.")
+
+    # Número da inscrição
+    numero_inscricao = f"#{current_user.id:06d}"
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(width-3*cm, 1*cm, numero_inscricao)
+
+    # Finaliza o PDF
+    c.showPage()
+    c.save()
+
+    # 7) Retorna o PDF para download
+    return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+
+
+def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, alunos, caminho_pdf):
+    """
+    Gera um PDF com o comprovante de agendamento para o professor.
+    
+    Args:
+        agendamento: Objeto AgendamentoVisita
+        horario: Objeto HorarioVisitacao
+        evento: Objeto Evento
+        salas: Lista de objetos SalaVisitacao
+        alunos: Lista de objetos AlunoVisitante
+        caminho_pdf: Caminho onde o PDF será salvo
+    """
+    
+    # 1) Obter todos os agendamentos do professor para compor o relatório
+    agendamentos = AgendamentoVisita.query.filter_by(professor_id=agendamento.professor_id).all()
+    
+    # 2) Cria objeto PDF
+    pdf = FPDF()
+    pdf.add_page()
+
+    # 3) -------------------------------
+    #    SEÇÃO: Relatório de Agendamentos
+    # 3.1) Título
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
+    
+    # 3.2) Cabeçalho do evento
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
+    
+    pdf.set_font('Arial', '', 12)
+    if evento.data_inicio and evento.data_fim:
+        pdf.cell(
+            190, 10,
+            f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} a {evento.data_fim.strftime("%d/%m/%Y")}',
+            0, 1
+        )
+    else:
+        pdf.cell(190, 10, 'Período: não informado', 0, 1)
+
+    pdf.cell(190, 10, f'Local: {evento.localizacao or "Não informado"}', 0, 1)
+
+    # 3.3) Total de agendamentos
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, f'Total de agendamentos: {len(agendamentos)}', 0, 1)
+    
+    # 3.4) Resumo por status
+    status_count = {'confirmado': 0, 'cancelado': 0, 'realizado': 0}
+    alunos_esperados = 0
+    alunos_presentes = 0
+    
+    for ag in agendamentos:
+        status = ag.status
+        status_count[status] = status_count.get(status, 0) + 1
+        
+        # Contar alunos
+        alunos_esperados += ag.quantidade_alunos
+        if ag.status == 'realizado':
+            presentes = sum(1 for aluno in ag.alunos if aluno.presente)
+            alunos_presentes += presentes
+    
+    pdf.cell(190, 10, f'Confirmados: {status_count["confirmado"]}', 0, 1)
+    pdf.cell(190, 10, f'Cancelados: {status_count["cancelado"]}', 0, 1)
+    pdf.cell(190, 10, f'Realizados: {status_count["realizado"]}', 0, 1)
+    pdf.cell(190, 10, f'Total de alunos esperados: {alunos_esperados}', 0, 1)
+    
+    if alunos_presentes > 0:
+        presenca = (alunos_presentes / alunos_esperados) * 100 if alunos_esperados > 0 else 0
+        pdf.cell(
+            190, 10,
+            f'Total de alunos presentes: {alunos_presentes} ({presenca:.1f}%)',
+            0, 1
+        )
+    
+    # 3.5) Listagem de agendamentos
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(190, 10, 'Listagem de Agendamentos', 0, 1, 'C')
+    
+    # Cabeçalho da tabela
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(20, 10, 'ID', 1, 0, 'C')
+    pdf.cell(30, 10, 'Data', 1, 0, 'C')
+    pdf.cell(30, 10, 'Horário', 1, 0, 'C')
+    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
+    pdf.cell(30, 10, 'Alunos', 1, 0, 'C')
+    pdf.cell(30, 10, 'Status', 1, 1, 'C')
+    
+    pdf.set_font('Arial', '', 9)
+    for ag in agendamentos:
+        h = ag.horario  # HorarioVisitacao
+        escola_nome = ag.escola_nome
+        if len(escola_nome) > 20:
+            escola_nome = escola_nome[:17] + '...'
+        
+        pdf.cell(20, 10, str(ag.id), 1, 0, 'C')
+        if h and h.data:
+            pdf.cell(30, 10, h.data.strftime('%d/%m/%Y'), 1, 0, 'C')
+        else:
+            pdf.cell(30, 10, '--/--/----', 1, 0, 'C')
+        
+        if h and h.horario_inicio and h.horario_fim:
+            pdf.cell(
+                30, 10,
+                f"{h.horario_inicio.strftime('%H:%M')} - {h.horario_fim.strftime('%H:%M')}",
+                1, 0, 'C'
+            )
+        else:
+            pdf.cell(30, 10, '---', 1, 0, 'C')
+        
+        pdf.cell(50, 10, escola_nome, 1, 0, 'L')
+        pdf.cell(30, 10, str(ag.quantidade_alunos), 1, 0, 'C')
+        pdf.cell(30, 10, ag.status.capitalize(), 1, 1, 'C')
+    
+    # Rodapé do relatório
+    pdf.ln(10)
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(
+        190, 10,
+        f'Relatório gerado em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+        0, 1, 'C'
+    )
+
+    # 4) --------------------------------
+    #    SEÇÃO: Comprovante de Agendamento (para este agendamento específico)
+    # Precisamos de nova página para não escrever em cima do relatório
+    pdf.add_page()
+
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(190, 10, 'Comprovante de Agendamento', 0, 1, 'C')
+
+    # Informações do evento
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, f'Evento: {evento.nome}', 0, 1)
+    
+    # Informações do agendamento
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(190, 10, f'Cód. do Agendamento: #{agendamento.id}', 0, 1)
+
+    if horario and horario.data:
+        pdf.cell(190, 10, f'Data: {horario.data.strftime("%d/%m/%Y")}', 0, 1)
+    else:
+        pdf.cell(190, 10, 'Data: não informada', 0, 1)
+
+    if horario and horario.horario_inicio and horario.horario_fim:
+        pdf.cell(
+            190, 10,
+            f'Horário: {horario.horario_inicio.strftime("%H:%M")} às {horario.horario_fim.strftime("%H:%M")}',
+            0, 1
+        )
+    else:
+        pdf.cell(190, 10, 'Horário: não informado', 0, 1)
+    
+    if agendamento.professor:
+        pdf.cell(190, 10, f'Professor: {agendamento.professor.nome}', 0, 1)
+    else:
+        pdf.cell(190, 10, 'Professor: --', 0, 1)
+
+    pdf.cell(190, 10, f'Escola: {agendamento.escola_nome}', 0, 1)
+    pdf.cell(190, 10, f'Turma: {agendamento.turma} - {agendamento.nivel_ensino}', 0, 1)
+    pdf.cell(190, 10, f'Total de Alunos: {agendamento.quantidade_alunos}', 0, 1)
+    
+    if agendamento.data_agendamento:
+        pdf.cell(
+            190, 10,
+            f'Agendado em: {agendamento.data_agendamento.strftime("%d/%m/%Y %H:%M")}',
+            0, 1
+        )
+    else:
+        pdf.cell(190, 10, 'Agendado em: --/--/---- --:--', 0, 1)
+    
+    # Status do agendamento
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, f'Status: {agendamento.status.upper()}', 0, 1)
+    
+    # Salas selecionadas
+    if salas:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(190, 10, 'Salas selecionadas:', 0, 1)
+        pdf.set_font('Arial', '', 12)
+        for sala in salas:
+            pdf.cell(190, 10, f'- {sala.nome}', 0, 1)
+    
+    # Informações de check-in
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(190, 10, 'Informações para Check-in:', 0, 1)
+    pdf.set_font('Arial', '', 12)
+    if agendamento.checkin_realizado and agendamento.data_checkin:
+        pdf.cell(
+            190, 10,
+            f'Check-in realizado em: {agendamento.data_checkin.strftime("%d/%m/%Y %H:%M")}',
+            0, 1
+        )
+    else:
+        pdf.cell(
+            190, 10,
+            'Apresente este comprovante no dia da visita para realizar o check-in.',
+            0, 1
+        )
+    
+    # 5) QR Code para check-in
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(agendamento.qr_code_token)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Salvar imagem QR em buffer
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    buffer.seek(0)
+    
+    # Adicionar QR Code
+    pdf.ln(10)
+    pdf.cell(190, 10, 'QR Code para Check-in:', 0, 1, 'C')
+    # FPDF não aceita BytesIO diretamente como caminho
+    # Precisamos salvar em arquivo temporário OU usar a abordagem "tempfile"
+    # Abaixo, exemplificamos salvando em um arquivo temporário
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_img:
+        temp_img.write(buffer.getvalue())
+        temp_img_path = temp_img.name
+
+    pdf.image(temp_img_path, x=75, y=pdf.get_y(), w=60)
+    
+    # Rodapé do comprovante
+    pdf.ln(65)
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(
+        190, 10,
+        'Este documento é seu comprovante oficial de agendamento.',
+        0, 1, 'C'
+    )
+    pdf.cell(
+        190, 10,
+        f'Emitido em {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+        0, 1, 'C'
+    )
+    
+    # 6) Finalmente, salvar o PDF (apenas uma vez!)
+    pdf.output(caminho_pdf)
+
+
+def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
+    """
+    Gera um PDF com o relatório de agendamentos para o cliente/organizador.
+    
+    Args:
+        evento: Objeto Evento
+        agendamentos: Lista de objetos AgendamentoVisita
+        caminho_pdf: Caminho onde o PDF será salvo
+    """
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Configurações iniciais
+    pdf.set_font('Arial', 'B', 16)
+    
+# Funções para manipulação de QR Code e checkin
+import qrcode
+from PIL import Image
+import io
+import os
+from flask import send_file
+
+def gerar_qrcode_url(token, tamanho=200):
+    """
+    Gera uma imagem QR Code para um token de agendamento
+    
+    Args:
+        token: Token único do agendamento
+        tamanho: Tamanho da imagem em pixels
+        
+    Returns:
+        BytesIO: Buffer contendo a imagem do QR Code em formato PNG
+    """
+    # Preparar a URL para o QR Code (pode ser um endpoint de check-in)
+    url = f"/checkin?token={token}"
+    
+    # Gerar QR Code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    
+    # Criar imagem
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Salvar em um buffer em memória
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    
+    return buffer
+
+
+
+def gerar_qrcode_token(token):
+    """
+    Endpoint para gerar e retornar uma imagem QR Code para um token
+    """
+    buffer = gerar_qrcode_url(token)
+    return send_file(buffer, mimetype='image/png')
+
+
+
+def gerar_etiquetas(cliente_id):
+    """Gera um PDF de etiquetas para o cliente"""
+    if current_user.tipo != 'cliente' or current_user.id != cliente_id:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    pdf_path = gerar_etiquetas_pdf(cliente_id)
+    if not pdf_path:
+        flash("Nenhum usuário encontrado para gerar etiquetas!", "warning")
+        return redirect(url_for('routes.dashboard_cliente'))
+
+    return send_file(pdf_path, as_attachment=True)
+
+
+import requests
+from reportlab.lib.units import inch
+import os
+import base64
+import google.auth
+import google.auth.transport.requests
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from datetime import datetime
+import qrcode
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from models import CertificadoTemplate, Oficina, Usuario, Cliente, Inscricao
+from flask_mail import Message
+from extensions import mail
+import logging
+from models import CertificadoTemplate
+
+
+# ReportLab para PDFs
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, landscape, A4
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+# Configuração de logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Escopo necessário para envio de e-mails
+SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+# Caminhos dos arquivos JSON
+CREDENTIALS_FILE = "credentials.json"
+TOKEN_FILE = "token.json"
+
+from decimal import Decimal, ROUND_HALF_UP
+from models import Configuracao
+
+def preco_com_taxa(base):
+    """
+    Recebe o preço digitado pelo cliente (Decimal, str ou float)
+    e devolve o valor acrescido do percentual configurado.
+    """
+    base = Decimal(str(base))
+    cfg  = Configuracao.query.first()
+    perc = Decimal(str(cfg.taxa_percentual_inscricao or 0))
+    valor = base * (1 + perc/100)
+    # duas casas, arredondamento comercial
+    return valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
+def gerar_qr_code_inscricao(qr_code_token):
+    """Gera o QR Code para a inscrição com base no token único."""
+    caminho_pasta = os.path.join('static', 'qrcodes_inscricoes')
+    os.makedirs(caminho_pasta, exist_ok=True)
+    
+    nome_arquivo = f'inscricao_{qr_code_token}.png'
+    caminho_completo = os.path.join(caminho_pasta, nome_arquivo)
+    
+    # Se quiser testar localmente, use http://127.0.0.1:5000
+    # Em produção, use seu domínio real, ex.: https://www.appfiber.com.br
+    #qr_data = f"http://127.0.0.1:5000/leitor_checkin?token={qr_code_token}"
+    qr_data = f"https://www.appfiber.com.br/leitor_checkin?token={qr_code_token}"
+
+    # IMPORTANTE: a URL/URI que será codificada aponta para uma rota
+    # que faz o check-in ao ser acessada, ou que o app web decodifica e chama.
+    # Se estiver testando localmente:
+   
+
+    # Se quiser usar a URL definitiva de produção:
+    # QR_DATA= f"https://www.appfiber.com.br/leitor_checkin?token={qr_code_token}"
+    
+    img_qr = qrcode.make(qr_data)
+    img_qr.save(caminho_completo)
+
+    return caminho_completo
+
+def obter_estados():
+    url = "https://servicodados.ibge.gov.br/api/v1/localidades/estados"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        estados = response.json()
+        return sorted([(estado["sigla"], estado["nome"]) for estado in estados], key=lambda x: x[1])
+    return []
+
+def obter_cidades(estado_sigla):
+    url = f"https://servicodados.ibge.gov.br/api/v1/localidades/estados/{estado_sigla}/municipios"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        cidades = response.json()
+        return sorted([cidade["nome"] for cidade in cidades])
+    return []
+
+def gerar_qr_code(oficina_id):
+    caminho_pasta = os.path.join('static', 'qrcodes')
+    os.makedirs(caminho_pasta, exist_ok=True)  # Garante que a pasta exista
+    
+    nome_arquivo = f'checkin_{oficina_id}.png'
+    caminho_completo = os.path.join(caminho_pasta, nome_arquivo)
+
+    qr = qrcode.make(f'http://127.0.0.1:5000/checkin/{oficina_id}')
+    qr.save(caminho_completo)
+
+    return os.path.join("qrcodes", nome_arquivo)
+
+
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import Image
+from reportlab.lib.utils import ImageReader
+import os
+from datetime import datetime
+
+def gerar_etiquetas_pdf(cliente_id, evento_id=None):
+    """
+    Gera um PDF com etiquetas modernas contendo Nome, ID, QR Code e informações do evento.
+    Se evento_id for fornecido, apenas gera etiquetas para os usuários inscritos nesse evento.
+    """
+    
+    # Configurações de layout
+    etiqueta_largura = 85 * mm
+    etiqueta_altura = 54 * mm
+    margem_esquerda = 15 * mm
+    margem_superior = 20 * mm
+    margem_inferior = 15 * mm
+    espacamento_x = 10 * mm
+    espacamento_y = 8 * mm
+    
+    # Paleta de cores moderna
+    cor_primaria = colors.HexColor("#3498DB")  # Azul moderno
+    cor_texto_escuro = colors.HexColor("#2C3E50")  # Quase preto
+    cor_texto_claro = colors.HexColor("#ECF0F1")  # Branco off-white
+    cor_detalhe = colors.HexColor("#1ABC9C")  # Verde-água
+    
+    # Buscar informações do evento se o evento_id foi fornecido
+    evento = None
+    if evento_id:
+        evento = Evento.query.get(evento_id)
+        if not evento:
+            return None
+    
+    # Nome do arquivo baseado no evento ou cliente
+    if evento:
+        pdf_filename = f"etiquetas_evento_{evento.id}_{evento.nome.replace(' ', '_')}.pdf"
+    else:
+        pdf_filename = f"etiquetas_cliente_{cliente_id}.pdf"
+    
+    pdf_path = os.path.join("static", "etiquetas", pdf_filename)
+    os.makedirs("static/etiquetas", exist_ok=True)
+    
+    # Documento em landscape
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    largura_pagina, altura_pagina = landscape(A4)
+    
+    # Calcular quantidade de colunas/linhas por página
+    max_colunas = int((largura_pagina - margem_esquerda * 2) // (etiqueta_largura + espacamento_x))
+    espaco_vertical = altura_pagina - margem_superior - margem_inferior
+    max_linhas = int(espaco_vertical // (etiqueta_altura + espacamento_y))
+    
+    # Buscar usuários com base no evento ou cliente
+    usuarios = []
+    if evento_id:
+        # Buscar apenas usuários inscritos no evento específico
+        inscricoes = Inscricao.query.filter_by(evento_id=evento_id, cliente_id=cliente_id).all()
+        usuario_ids = [insc.usuario_id for insc in inscricoes]
+        if usuario_ids:
+            usuarios = Usuario.query.filter(Usuario.id.in_(usuario_ids)).all()
+    else:
+        # Buscar todos os usuários do cliente
+        usuarios = Usuario.query.filter_by(cliente_id=cliente_id).all()
+    
+    if not usuarios:
+        return None
+    
+    linha = 0
+    coluna = 0
+    
+    # Cabeçalho minimalista no topo da página
+    def desenhar_cabecalho():
+        # Retângulo fino na parte superior
+        c.setFillColor(cor_primaria)
+        c.rect(0, altura_pagina - 15*mm, largura_pagina, 8*mm, fill=1, stroke=0)
+        
+        # Texto do cabeçalho
+        c.setFillColor(cor_texto_claro)
+        c.setFont("Helvetica-Bold", 11)
+        
+        if evento:
+            # Limitar o tamanho do nome do evento no cabeçalho
+            nome_evento = evento.nome
+            if len(nome_evento) > 40:
+                nome_evento = nome_evento[:37] + "..."
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS • {nome_evento}")
+        else:
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS • CLIENTE {cliente_id}")
+        
+        # Data gerada à direita
+        data_atual = datetime.utcnow().strftime('%d/%m/%Y')
+        c.drawRightString(largura_pagina - margem_esquerda, altura_pagina - 10*mm, f"{data_atual}")
+    
+    desenhar_cabecalho()
+    
+    # Contador de etiquetas geradas
+    total_etiquetas = 0
+    
+    for usuario in usuarios:
+        # Obter a inscrição específica do usuário para este evento
+        if evento_id:
+            inscricao = Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento_id).first()
+            if not inscricao:
+                continue  # Pula para o próximo usuário se não tiver inscrição para este evento
+        else:
+            inscricao = Inscricao.query.filter_by(usuario_id=usuario.id).first()
+        
+        # Verifica se precisa mudar de coluna/linha
+        if coluna >= max_colunas:
+            coluna = 0
+            linha += 1
+        
+        # Verifica se precisa de uma nova página
+        if linha >= max_linhas:
+            c.showPage()
+            desenhar_cabecalho()
+            linha = 0
+            coluna = 0
+        
+        # Posição do canto superior esquerdo da etiqueta
+        x = margem_esquerda + coluna * (etiqueta_largura + espacamento_x)
+        y = altura_pagina - margem_superior - linha * (etiqueta_altura + espacamento_y)
+        
+        # Design moderno com faixa lateral colorida
+        # Base branca com cantos arredondados suaves
+        c.setFillColor(colors.white)
+        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, 2*mm, fill=1, stroke=0)
+        
+        # Faixa vertical colorida à esquerda (design moderno)
+        c.setFillColor(cor_primaria)
+        c.rect(x, y - etiqueta_altura, 5*mm, etiqueta_altura, fill=1, stroke=0)
+        
+        # Linha fina horizontal abaixo do nome para separação visual
+        c.setStrokeColor(cor_detalhe)
+        c.setLineWidth(0.5)
+        linha_y = y - 14*mm
+        c.line(x + 12*mm, linha_y, x + etiqueta_largura - 7*mm, linha_y)
+        
+        # Nome do usuário (com tipografia moderna)
+        nome = usuario.nome
+        if len(nome) > 22:  # Limite um pouco menor para nomes muito compridos
+            nome = nome[:20] + "..."
+        
+        c.setFillColor(cor_texto_escuro)
+        c.setFont("Helvetica-Bold", 14)
+        # Alinhado à esquerda com recuo após a faixa colorida
+        nome_x = x + 12*mm
+        nome_y = y - 10*mm
+        c.drawString(nome_x, nome_y, nome)
+        
+        # ID com estilo mais discreto e moderno
+        token_curto = inscricao.qr_code_token[:6] if inscricao and inscricao.qr_code_token else ""
+        
+        # ID combinado com início do token para identificação rápida
+        if token_curto:
+            id_str = f"#{usuario.id} • {token_curto}"
+        else:
+            id_str = f"#{usuario.id}"
+            
+        c.setFont("Helvetica", 9)
+        c.setFillColor(cor_primaria)
+        c.drawString(nome_x, nome_y - 8*mm, id_str)
+        
+        # Adicionar informações do evento à etiqueta
+        if evento:
+            # Formatação da data de início do evento
+            data_evento = ""
+            if evento.data_inicio:
+                data_evento = evento.data_inicio.strftime('%d/%m/%Y')
+                if evento.data_fim and evento.data_fim != evento.data_inicio:
+                    data_evento += f" - {evento.data_fim.strftime('%d/%m/%Y')}"
+            
+            c.setFont("Helvetica-Bold", 8)
+            c.setFillColor(cor_detalhe)
+            evento_str = evento.nome
+            if len(evento_str) > 28:  # Limite para o nome do evento
+                evento_str = evento_str[:26] + "..."
+            c.drawString(nome_x, nome_y - 16*mm, evento_str)
+            
+            if data_evento:
+                c.setFont("Helvetica", 7)
+                c.setFillColor(cor_texto_escuro)
+                c.drawString(nome_x, nome_y - 22*mm, data_evento)
+        
+        # QR Code com posicionamento e tamanho otimizados
+        if inscricao and inscricao.qr_code_token:
+            qr_size = 28 * mm  # Tamanho um pouco maior
+            qr_code_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
+            
+            try:
+                qr_image = ImageReader(qr_code_path)
+                # Posicionado à direita para design assimétrico moderno
+                qr_x = x + etiqueta_largura - qr_size - 7*mm
+                qr_y = y - etiqueta_altura + 6*mm  # Mais próximo da base
+                
+                c.drawImage(qr_image, qr_x, qr_y, qr_size, qr_size)
+                
+                # Pequeno indicador "SCAN" acima do QR
+                c.setFont("Helvetica-Bold", 7)
+                c.setFillColor(cor_detalhe)
+                c.drawString(qr_x, qr_y + qr_size + 2*mm, "SCAN")
+            except Exception:
+                # Fallback de texto se não for possível desenhar o QR
+                c.setFont("Helvetica", 8)
+                c.setFillColor(colors.gray)
+                c.drawString(x + 12*mm, (y - etiqueta_altura) + 10*mm,
+                           f"QR: {inscricao.qr_code_token[:10]}...")
+        
+        # Próxima coluna e incrementa contador
+        coluna += 1
+        total_etiquetas += 1
+    
+    # Adicionar página final com resumo
+    c.showPage()
+    c.setFont("Helvetica-Bold", 16)
+    c.setFillColor(cor_texto_escuro)
+    
+    resumo_texto = f"Total de etiquetas geradas: {total_etiquetas}"
+    if evento:
+        resumo_texto = f"Etiquetas geradas para o evento: {evento.nome}\n\n{resumo_texto}"
+    
+    c.drawString(largura_pagina/2 - 80*mm, altura_pagina/2, resumo_texto)
+    
+    c.save()
+    return pdf_path
+
+def gerar_qr_code_inscricao(token):
+    """Gera QR Code preto e branco com tamanho reduzido e boa qualidade"""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=7,  # **Reduzi ainda mais**
+        border=2,  # **Menos margem branca**
+    )
+    qr.add_data(token)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_path = os.path.join("static", "qrcodes", f"{token}.png")
+    os.makedirs(os.path.dirname(img_path), exist_ok=True)
+    img.save(img_path)
+    return img_path
+
+def obter_credenciais():
+    """Autentica e retorna credenciais OAuth 2.0 para envio de e-mails"""
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CREDENTIALS_FILE, SCOPES,
+                redirect_uri="https://appfiber.com.br/"
+            )
+
+            # Exibir o link de autenticação manualmente
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            print(f"🔗 Acesse este link para autenticação manual:\n{auth_url}")
+
+            # Executar autenticação manual (esperar código do usuário)
+            creds = flow.run_console()
+
+        with open(TOKEN_FILE, "w") as token:
+            token.write(creds.to_json())
+
+    return creds
+
+
+def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
+    """Envia um e-mail personalizado via API do Gmail usando OAuth 2.0"""
+    creds = obter_credenciais()
+
+    if not creds or not creds.valid:
+        logger.error("❌ Erro ao obter credenciais OAuth 2.0.")
+        return
+
+    try:
+        # Criar o serviço Gmail API
+        service = build("gmail", "v1", credentials=creds)
+
+        remetente = "seuemail@gmail.com"  # Substitua pelo seu e-mail
+
+        # Criar corpo do e-mail em HTML
+        corpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
+                <p>Olá, <b>{nome_participante}</b>!</p>
+                <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
+                <p>Aguardamos você no evento!</p>
+                
+                <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
+                    <p><b>Detalhes da Oficina:</b></p>
+                    <p><b>Nome:</b> {nome_oficina}</p>
+                </div>
+
+                <p>Caso tenha dúvidas, entre em contato conosco.</p>
+                <p style="text-align: center;">
+                    <b>Equipe Organizadora</b>
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        msg = MIMEMultipart()
+        msg["From"] = remetente
+        msg["To"] = destinatario
+        msg["Subject"] = assunto
+
+        # Adiciona corpo em texto puro e HTML
+        msg.attach(MIMEText(corpo_texto, "plain"))
+        msg.attach(MIMEText(corpo_html, "html"))
+
+        # Adiciona anexo se existir
+        if anexo_path:
+            with open(anexo_path, "rb") as anexo:
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(anexo.read())
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(anexo_path)}")
+                msg.attach(part)
+
+        # Converte a mensagem para base64
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        message = {"raw": raw_message}
+
+        # Enviar e-mail via Gmail API
+        enviado = service.users().messages().send(userId="me", body=message).execute()
+        logger.info(f"✅ E-mail enviado com sucesso para {destinatario}! ID: {enviado['id']}")
+
+    except HttpError as error:
+        logger.error(f"❌ ERRO ao enviar e-mail: {error}", exc_info=True)
+        
+
+def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_personalizado, template_conteudo, cliente):
+    """
+    Gera um certificado personalizado em PDF para o usuário.
+
+    Args:
+        usuario: Objeto usuário com atributos id e nome
+        oficinas: Lista de objetos oficina com atributo titulo e datas
+        total_horas: Total de horas do evento
+        texto_personalizado: Texto adicional personalizado 
+        template_conteudo: Template com placeholders para o conteúdo
+        cliente: Objeto cliente com atributos para imagens do certificado
+
+    Returns:
+        str: Caminho do arquivo PDF gerado
+    """
+    import os
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+
+    # Configuração do arquivo de saída
+    pdf_filename = f"certificado_evento_{usuario.id}.pdf"
+    pdf_path = os.path.join("static/certificados", pdf_filename)
+
+    # Criação do canvas com tamanho A4 paisagem
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    # Determinar o conteúdo do certificado
+    if template_conteudo:
+        conteudo_final = template_conteudo
+    elif cliente and cliente.texto_personalizado:
+        conteudo_final = cliente.texto_personalizado
+    else:
+        conteudo_final = (
+            "Certificamos que {NOME_PARTICIPANTE} participou das atividades {LISTA_OFICINAS}, "
+            "com carga horária total de {CARGA_HORARIA} horas nas datas {DATAS_OFICINAS}. {TEXTO_PERSONALIZADO}"
+        )
+
+    # Extração das datas das oficinas
+    datas_oficinas = ', '.join(
+        ', '.join(data.strftime('%d/%m/%Y') for data in of.datas) if hasattr(of, 'datas') else ''
+        for of in oficinas
+    )
+
+    # Substituição das variáveis no template
+    conteudo_final = conteudo_final.replace("{NOME_PARTICIPANTE}", usuario.nome)\
+                                   .replace("{CARGA_HORARIA}", str(total_horas))\
+                                   .replace("{LISTA_OFICINAS}", ', '.join(of.titulo for of in oficinas))\
+                                   .replace("{TEXTO_PERSONALIZADO}", texto_personalizado)\
+                                   .replace("{DATAS_OFICINAS}", datas_oficinas)
+
+    # ===== RENDERIZAÇÃO DO CERTIFICADO =====
+
+    # 1. Imagem de fundo (ocupa toda a página)
+    fundo_path = caminho_absoluto_arquivo(cliente.fundo_certificado)
+    if fundo_path:
+        fundo = ImageReader(fundo_path)
+        c.drawImage(fundo, 0, 0, width=width, height=height)
+
+    # 2. Título
+    c.setFont("Helvetica-Bold", 24)
+    titulo = "CERTIFICADO"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
+    c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
+
+    # 3. Texto principal (centralizado e justificado no meio da página)
+    styles = getSampleStyleSheet()
+    estilo_paragrafo = ParagraphStyle(
+        'EstiloCertificado',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12
+    )
+
+    # Processando quebras de linha explícitas
+    paragrafos = conteudo_final.split('\n')
+    texto_formatado = '<br/>'.join(paragrafos)
+    p = Paragraph(texto_formatado, estilo_paragrafo)
+
+    margem_lateral = width * 0.15
+    largura_texto = width - 2 * margem_lateral
+    altura_texto = height * 0.3
+    posicao_y_texto = height * 0.4
+
+    frame = Frame(margem_lateral, posicao_y_texto, largura_texto, altura_texto, showBoundary=0)
+    frame.addFromList([p], c)
+
+    # 4. Logo (posicionada na parte inferior da página)
+    logo_path = caminho_absoluto_arquivo(cliente.logo_certificado)
+    if logo_path:
+        logo_largura = 180
+        logo_altura = 100
+        margem_inferior = 50
+
+        logo = ImageReader(logo_path)
+        c.drawImage(logo, 
+                   (width - logo_largura) / 2,
+                   margem_inferior,
+                   width=logo_largura, 
+                   height=logo_altura,
+                   preserveAspectRatio=True)
+
+    # 5. Assinatura (posicionada acima da logo na parte inferior)
+    assinatura_path = caminho_absoluto_arquivo(cliente.assinatura_certificado)
+    if assinatura_path:
+        assinatura_largura = 200
+        assinatura_altura = 60
+
+        if logo_path:
+            assinatura_posicao_y = margem_inferior + logo_altura + 20
+        else:
+            assinatura_posicao_y = 30
+
+        assinatura = ImageReader(assinatura_path)
+        c.drawImage(
+            assinatura,
+            (width - assinatura_largura) / 2,
+            assinatura_posicao_y,
+            width=assinatura_largura,
+            height=assinatura_altura,
+            preserveAspectRatio=True,
+            mask='auto'
+        )
+
+    c.save()
+    return pdf_path
+
+
+
+def gerar_certificados_pdf(oficina, inscritos, pdf_path):
+    """
+    Gera certificados em PDF para múltiplos inscritos de uma oficina.
+
+    Args:
+        oficina: Objeto oficina com atributos titulo, carga_horaria e cliente
+        inscritos: Lista de objetos inscricao com atributo usuario
+        pdf_path: Caminho onde o arquivo PDF será salvo
+
+    Returns:
+        str: Caminho do arquivo PDF gerado
+    """
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+
+    # Obter o template de certificado
+    template = CertificadoTemplate.query.filter_by(cliente_id=oficina.cliente_id, ativo=True).first()
+    cliente = oficina.cliente
+
+    # Determinar o conteúdo do certificado
+    if template and template.conteudo:
+        texto_certificado = template.conteudo
+    elif cliente and cliente.texto_personalizado:
+        texto_certificado = cliente.texto_personalizado
+    else:
+        texto_certificado = (
+            "Certificamos que {NOME_PARTICIPANTE} participou da oficina {LISTA_OFICINAS}, "
+            "com uma carga horária total de {CARGA_HORARIA} horas nas datas {DATAS_OFICINAS}."
+        )
+    
+    datas_oficina = ', '.join(dia.data.strftime('%d/%m/%Y') for dia in sorted(oficina.dias, key=lambda x: x.data)) if hasattr(oficina, 'dias') and oficina.dias else ''
+
+    # Inicializar o canvas
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    # Criar estilos de parágrafo para texto formatado
+    styles = getSampleStyleSheet()
+    estilo_paragrafo = ParagraphStyle(
+        'EstiloCertificado',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=18,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+
+    # Gerar um certificado para cada inscrito
+    for inscricao in inscritos:
+        # Substituir as variáveis no template
+        texto_final = (
+            texto_certificado.replace("{NOME_PARTICIPANTE}", inscricao.usuario.nome)
+                             .replace("{CARGA_HORARIA}", str(oficina.carga_horaria))
+                             .replace("{LISTA_OFICINAS}", oficina.titulo)
+                             .replace("{DATAS_OFICINAS}", datas_oficina)
+        )
+
+        # 1. Desenhar a imagem de fundo
+        fundo_path = caminho_absoluto_arquivo(cliente.fundo_certificado)
+        if fundo_path:
+            fundo = ImageReader(fundo_path)
+            c.drawImage(fundo, 0, 0, width=width, height=height)
+
+        # 2. Adicionar título
+        c.setFont("Helvetica-Bold", 24)
+        titulo = "CERTIFICADO"
+        titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
+        c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
+
+        # 3. Texto principal do certificado (centralizado e formatado)
+        paragrafos = texto_final.split('\n')
+        texto_formatado = '<br/>'.join(paragrafos)
+        p = Paragraph(texto_formatado, estilo_paragrafo)
+
+        margem_lateral = width * 0.15
+        largura_texto = width - 2 * margem_lateral
+        altura_texto = height * 0.3
+        posicao_y_texto = height * 0.4
+
+        frame = Frame(margem_lateral, posicao_y_texto, largura_texto, altura_texto, showBoundary=0)
+        frame.addFromList([p], c)
+
+        # 4. Logo (posicionada na parte inferior da página)
+        logo_path = caminho_absoluto_arquivo(cliente.logo_certificado)
+        if logo_path:
+            logo_largura = 180
+            logo_altura = 100
+            margem_inferior = 50
+
+            logo = ImageReader(logo_path)
+            c.drawImage(logo,
+                      (width - logo_largura) / 2,
+                      margem_inferior,
+                      width=logo_largura,
+                      height=logo_altura,
+                      preserveAspectRatio=True)
+
+        # 5. Assinatura
+        assinatura_path = caminho_absoluto_arquivo(cliente.assinatura_certificado)
+        if assinatura_path:
+            assinatura_largura = 200
+            assinatura_altura = 60
+
+            if logo_path:
+                assinatura_posicao_y = margem_inferior + logo_altura + 20
+            else:
+                assinatura_posicao_y = 30
+
+            assinatura = ImageReader(assinatura_path)
+            c.drawImage(
+                assinatura,
+                (width - assinatura_largura) / 2,
+                assinatura_posicao_y,
+                width=assinatura_largura,
+                height=assinatura_altura,
+                preserveAspectRatio=True,
+                mask='auto'
+            )
+
+        c.showPage()
+
+    c.save()
+    return pdf_path
+
+def caminho_absoluto_arquivo(imagem_relativa):
+    """Retorna o caminho absoluto corrigido para leitura de imagem"""
+    if not imagem_relativa:
+        return None
+
+    # Evita duplicar 'static/static/...'
+    if imagem_relativa.startswith('static/'):
+        return imagem_relativa
+    return os.path.join('static', imagem_relativa)
+
+import mercadopago
+import os
+
+token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+if not token:
+    raise RuntimeError(
+        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
+        "Exporte a variável de ambiente antes de iniciar o servidor."
+    )
+
+sdk = mercadopago.SDK(token)
+
+def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
+    preference_data = {
+        "payer": {"name": nome, "email": email, "last_name": nome},
+        "items": [{
+            "title": descricao,
+            "description": descricao,
+            "quantity": 1,
+            "currency_id": "BRL",
+            "unit_price": float(valor),
+            "category_id": "evento"
+        }],
+        "back_urls": {
+            "success": return_url,
+            "failure": return_url,
+            "pending": return_url
+        },
+        "auto_return": "approved"
+    }
+    preference_response = sdk.preference().create(preference_data)
+    return preference_response["response"]["init_point"]
+
+# utils.py ou dentro da mesma função
+def criar_preference_mp(usuario, tipo_inscricao, evento):
+    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
+    valor_com_taxa = float(preco_com_taxa(tipo_inscricao.preco))
+
+    preference_data = {
+        "items": [{
+            "id": str(tipo_inscricao.id),
+            "title": f"Inscrição – {tipo_inscricao.nome} – {evento.nome}",
+            "description": f"Inscrição para {evento.nome} - {tipo_inscricao.nome}",
+            "quantity": 1,
+            "currency_id": "BRL",
+            "unit_price": valor_com_taxa,    # ← preço já com taxa
+            "category_id": "evento"
+        }],
+        "payer": {"email": usuario.email},
+        "external_reference": str(usuario.id),
+        "back_urls": {
+            "success": url_for("routes.pagamento_sucesso", _external=True),
+            "failure": url_for("routes.pagamento_falhou", _external=True),
+            "pending": url_for("routes.pagamento_pendente", _external=True)
+        },
+        "auto_return": "approved",
+        "notification_url": url_for("routes.webhook_mp", _external=True)
+    }
+    pref = sdk.preference().create(preference_data)
+    return pref["response"]["init_point"]
+
+
+# utils.py  (ou um novo arquivo helpers.py)
+from functools import wraps
+from flask_login import current_user
+from flask import flash, redirect, url_for, request
+
+def pagamento_necessario(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # Todas as restrições de pagamento foram removidas
+        # Agora todos os usuários podem realizar ações independentemente do status de pagamento
+        return f(*args, **kwargs)
+    return wrapper
+
+import pytz
+from datetime import datetime
+
+def formatar_brasilia(dt):
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.utc)
+    brasilia = pytz.timezone("America/Sao_Paulo")
+    return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
+
