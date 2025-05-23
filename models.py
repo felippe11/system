@@ -301,7 +301,6 @@ class EventoInscricaoTipo(db.Model):
     preco = db.Column(db.Float, nullable=False)
 
     # Relação com Evento - removendo backref para evitar conflito
-    evento = db.relationship("Evento")
 
     def __init__(self, evento_id, nome, preco):
         self.evento_id = evento_id
@@ -643,7 +642,11 @@ class Evento(db.Model):
 
         cliente = db.relationship('Cliente', backref=db.backref('eventos', lazy=True))
         # Modificando o relacionamento para evitar conflito de backref
-        tipos_inscricao = db.relationship('EventoInscricaoTipo', foreign_keys=[EventoInscricaoTipo.evento_id], lazy=True)
+        tipos_inscricao = db.relationship(
+            "EventoInscricaoTipo", 
+            backref="evento", 
+            overlaps="evento"
+        )
         
         @property
         def tipos_inscricao_evento(self):

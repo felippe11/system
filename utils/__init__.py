@@ -1003,3 +1003,9 @@ def formatar_brasilia(dt):
     brasilia = pytz.timezone("America/Sao_Paulo")
     return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
 
+from pytz import timezone
+
+def brasilia_filter(value):
+    if value:
+        return value.astimezone(timezone("America/Sao_Paulo")).strftime('%d/%m/%Y %H:%M')
+    return ""

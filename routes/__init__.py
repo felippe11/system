@@ -1,23 +1,82 @@
-# Este arquivo permite que o diretório routes seja tratado como um pacote Python
+from flask import Blueprint
+
+# Cria o Blueprint principal
+routes = Blueprint("routes", __name__)
+
+# Middleware para permitir acesso a usuários pendentes (ajustável conforme regra de negócio)
+@routes.before_request
+def bloquear_usuarios_pendentes():
+    # Atualmente o acesso é liberado para todos os usuários
+    return
 
 def register_routes(app):
-    # Primeiro, registrar as rotas de sorteio
-    from routes.sorteio_routes import sorteio_routes
+    # Registra o blueprint principal
+    app.register_blueprint(routes)
+
+    # Importações e registros dos Blueprints de módulos organizados
+    from .auth_routes import auth_routes
+    from .dashboard_routes import dashboard_routes
+    from .dashboard_cliente import dashboard_cliente
+    from .dashboard_participante import dashboard_participante
+    from .dashboard_professor import dashboard_professor
+    from .dashboard_ministrante import dashboard_ministrante
+
+    from .evento_routes import evento_routes
+    from .oficina_routes import oficina_routes
+    from .inscricao_routes import inscricao_routes
+    from .participante_routes import participante_routes
+    from .ministrante_routes import ministrante_routes
+    from .proposta_routes import proposta_routes
+    from .formularios_routes import formularios_routes
+    from .trabalho_routes import trabalho_routes
+    from .patrocinador_routes import patrocinador_routes
+    from .campo_routes import campo_routes
+    from .checkin_routes import checkin_routes
+    from .feedback_routes import feedback_routes
+    from .config_cliente_routes import config_cliente_routes
+    from .relatorio_routes import relatorio_routes
+    from .gerar_link_routes import gerar_link_routes
+    from .comprovante_routes import comprovante_routes
+    from .agendamento_routes import agendamento_routes
+    from .cliente_routes import cliente_routes
+    from .importar_usuarios_routes import importar_usuarios_routes
+    from .sorteio_routes import sorteio_routes
+    from .api_cidades import api_cidades
+    from .mercadopago_routes import mercadopago_routes
+    from .util_routes import util_routes
+    from .relatorio_pdf_routes import relatorio_pdf_routes 
+    from .dashboard_professor import dashboard_professor
+
+    # Registro dos Blueprints
+    app.register_blueprint(auth_routes)
+    app.register_blueprint(dashboard_routes)
+    app.register_blueprint(dashboard_cliente)
+    app.register_blueprint(dashboard_participante)
+    app.register_blueprint(dashboard_professor)
+    app.register_blueprint(dashboard_ministrante)
+
+    app.register_blueprint(evento_routes)
+    app.register_blueprint(oficina_routes)
+    app.register_blueprint(inscricao_routes)
+    app.register_blueprint(participante_routes)
+    app.register_blueprint(ministrante_routes)
+    app.register_blueprint(proposta_routes)
+    app.register_blueprint(formularios_routes)
+    app.register_blueprint(trabalho_routes)
+    app.register_blueprint(patrocinador_routes)
+    app.register_blueprint(campo_routes)
+    app.register_blueprint(checkin_routes)
+    app.register_blueprint(feedback_routes)
+    app.register_blueprint(config_cliente_routes)
+    app.register_blueprint(relatorio_routes)
+    app.register_blueprint(gerar_link_routes)
+    app.register_blueprint(comprovante_routes)
+    app.register_blueprint(agendamento_routes)
+    app.register_blueprint(cliente_routes)
+    app.register_blueprint(importar_usuarios_routes)
     app.register_blueprint(sorteio_routes)
-    
-    # Depois, importar o módulo routes diretamente do diretório pai
-    # para evitar conflitos de nome com o pacote routes
-    import sys
-    import os
-    import importlib.util
-    
-    # Caminho para o arquivo routes.py no diretório raiz
-    routes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'routes.py')
-    
-    # Carregar o módulo routes.py como um módulo separado
-    spec = importlib.util.spec_from_file_location('main_routes', routes_path)
-    main_routes = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(main_routes)
-    
-    # Registrar o blueprint de rotas principais
-    app.register_blueprint(main_routes.routes)
+    app.register_blueprint(api_cidades)
+    app.register_blueprint(mercadopago_routes)
+    app.register_blueprint(util_routes)
+    app.register_blueprint(relatorio_pdf_routes) 
+    app.register_blueprint(dashboard_professor)
