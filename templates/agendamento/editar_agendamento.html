@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Editar Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Editar Agendamento</h4>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="horario_id" class="form-label">Horário de Visitação</label>
+                <select class="form-select" id="horario_id" name="horario_id" required>
+                  <option value="">Selecione um horário</option>
+                  {% for horario in horarios %}
+                    <option value="{{ horario.id }}" {% if horario.id == agendamento.horario_id %}selected{% endif %}>
+                      {{ horario.data.strftime('%d/%m/%Y') }} | {{ horario.hora_inicio }} - {{ horario.hora_fim }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="escola_nome" class="form-label">Nome da Escola</label>
+                <input type="text" class="form-control" id="escola_nome" name="escola_nome" 
+                       value="{{ agendamento.escola_nome }}" required>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="escola_codigo_inep" class="form-label">Código INEP (opcional)</label>
+                <input type="text" class="form-control" id="escola_codigo_inep" name="escola_codigo_inep"
+                       value="{{ agendamento.escola_codigo_inep or '' }}">
+              </div>
+              <div class="col-md-6">
+                <label for="turma" class="form-label">Turma</label>
+                <input type="text" class="form-control" id="turma" name="turma" 
+                       value="{{ agendamento.turma }}" required>
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="nivel_ensino" class="form-label">Nível de Ensino</label>
+                <select class="form-select" id="nivel_ensino" name="nivel_ensino" required>
+                  <option value="">Selecione um nível</option>
+                  <option value="Anos Iniciais" {% if agendamento.nivel_ensino == 'Anos Iniciais' %}selected{% endif %}>Anos Iniciais</option>
+                  <option value="Anos Finais" {% if agendamento.nivel_ensino == 'Anos Finais' %}selected{% endif %}>Anos Finais</option>
+                  <option value="Ensino Médio" {% if agendamento.nivel_ensino == 'Ensino Médio' %}selected{% endif %}>Ensino Médio</option>
+                  <option value="Ensino Superior" {% if agendamento.nivel_ensino == 'Ensino Superior' %}selected{% endif %}>Ensino Superior</option>
+                  <option value="Outro" {% if agendamento.nivel_ensino == 'Outro' %}selected{% endif %}>Outro</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="quantidade_alunos" class="form-label">Quantidade de Alunos</label>
+                <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" 
+                       value="{{ agendamento.quantidade_alunos }}" min="1" max="100" required>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label for="salas" class="form-label">Salas para Visitação</label>
+              <div class="row">
+                {% for sala in salas %}
+                <div class="col-md-4 mb-2">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="sala_{{ sala.id }}" 
+                           name="salas" value="{{ sala.id }}"
+                           {% if sala.id in salas_selecionadas %}checked{% endif %}>
+                    <label class="form-check-label" for="sala_{{ sala.id }}">
+                      {{ sala.nome }} - {{ sala.descricao }}
+                    </label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{{ url_for('routes.listar_agendamentos') }}" class="btn btn-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

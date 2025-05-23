@@ -6,10 +6,10 @@ import os
 import mercadopago
 from decimal import Decimal
 
-mercado_pago_routes = Blueprint("mercado_pago_routes", __name__)
+mercadopago_routes = Blueprint('mercadopago_routes', __name__)
 
 
-@mercado_pago_routes.route("/pagamento_sucesso")
+@mercadopago_routes.route("/pagamento_sucesso")
 def pagamento_sucesso():
     payment_id        = request.args.get("payment_id")
     external_ref      = request.args.get("external_reference")  # id da inscrição
@@ -29,19 +29,19 @@ def pagamento_sucesso():
 
 
 
-@mercado_pago_routes.route("/pagamento_pendente")
+@mercadopago_routes.route("/pagamento_pendente")
 def pagamento_pendente():
     flash("Pagamento pendente. Você poderá concluir mais tarde.", "warning")
     return redirect(url_for("routes.login"))
 
 
-@mercado_pago_routes.route("/pagamento_falha")
+@mercadopago_routes.route("/pagamento_falha")
 def pagamento_falha():
     flash("Pagamento não foi concluído. Tente novamente.", "danger")
     return redirect(url_for("routes.login"))
 
 
-@mercado_pago_routes.route("/webhook_mp", methods=["POST"])
+@mercadopago_routes.route("/webhook_mp", methods=["POST"])
 def webhook_mp():
     data = request.get_json(silent=True) or {}
     if data.get("type") == "payment":
@@ -56,7 +56,7 @@ def webhook_mp():
                 db.session.commit()
     return "", 200  
 
-@mercado_pago_routes.route("/atualizar_taxa", methods=["POST"])
+@mercadopago_routes.route("/atualizar_taxa", methods=["POST"])
 @login_required
 def atualizar_taxa():
     if current_user.tipo != "cliente":

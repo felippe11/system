@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+{% block title %}Gerenciar Sorteios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-trophy me-2 text-danger"></i>Gerenciar Sorteios</h2>
+        <a href="{{ url_for('routes.criar_sorteio') }}" class="btn btn-danger">
+            <i class="bi bi-plus-circle me-2"></i>Novo Sorteio
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('routes.gerenciar_sorteios') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="evento_filter" class="form-label">Evento</label>
+                    <select name="evento_id" id="evento_filter" class="form-select">
+                        <option value="">Todos os eventos</option>
+                        {% for evento in eventos %}
+                            <option value="{{ evento.id }}" {% if request.args.get('evento_id')|int == evento.id %}selected{% endif %}>
+                                {{ evento.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="status_filter" class="form-label">Status</label>
+                    <select name="status" id="status_filter" class="form-select">
+                        <option value="">Todos os status</option>
+                        <option value="pendente" {% if request.args.get('status') == 'pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="realizado" {% if request.args.get('status') == 'realizado' %}selected{% endif %}>Realizado</option>
+                        <option value="cancelado" {% if request.args.get('status') == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-2"></i>Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Sorteios -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>                            <th>Título</th>
+                            <th>Prêmio</th>
+                            <th>Evento/Oficina</th>
+                            <th>Data</th>
+                            <th>Status</th>
+                            <th>Ganhadores</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if sorteios %}
+                            {% for sorteio in sorteios %}
+                                <tr>
+                                    <td>{{ sorteio.titulo }}</td>
+                                    <td>{{ sorteio.premio }}</td>
+                                    <td>
+                                        {% if sorteio.evento %}
+                                            <span class="badge bg-primary">{{ sorteio.evento.nome }}</span>
+                                        {% endif %}
+                                        {% if sorteio.oficina %}
+                                            <br><small class="text-muted">{{ sorteio.oficina.titulo }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ sorteio.data_sorteio.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        {% if sorteio.status == 'pendente' %}
+                                            <span class="badge bg-warning text-dark">Pendente</span>
+                                        {% elif sorteio.status == 'realizado' %}
+                                            <span class="badge bg-success">Realizado</span>
+                                        {% elif sorteio.status == 'cancelado' %}
+                                            <span class="badge bg-danger">Cancelado</span>
+                                        {% endif %}
+                                    </td>                                    <td>
+                                        {% if sorteio.ganhadores %}
+                                            {% if sorteio.ganhadores|length == 1 %}
+                                                {{ sorteio.ganhadores[0].nome }}
+                                            {% else %}
+                                                <span class="badge bg-success">{{ sorteio.ganhadores|length }} ganhadores</span>
+                                            {% endif %}
+                                        {% elif sorteio.status == 'pendente' %}
+                                            <span class="text-muted">Não realizado</span>
+                                        {% else %}
+                                            <span class="text-muted">Não aplicável</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>                                        <div class="d-flex justify-content-center gap-2">
+                                            {% if sorteio.status == 'pendente' %}
+                                                <button 
+                                                    class="btn btn-sm btn-success" 
+                                                    onclick="realizarSorteio({{ sorteio.id }})"
+                                                    title="Realizar Sorteio">
+                                                    <i class="bi bi-trophy"></i>
+                                                </button>
+                                                <button 
+                                                    class="btn btn-sm btn-danger" 
+                                                    onclick="cancelarSorteio({{ sorteio.id }})"
+                                                    title="Cancelar Sorteio">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            {% endif %}
+                                            {% if sorteio.status == 'realizado' %}
+                                                <button 
+                                                    class="btn btn-sm btn-info text-white" 
+                                                    onclick="visualizarResultado({{ sorteio.id }})"
+                                                    title="Ver Resultado">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                            {% endif %}
+                                            <button 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="excluirSorteio({{ sorteio.id }})"
+                                                title="Excluir Sorteio">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="py-5 text-muted">
+                                        <i class="bi bi-trophy fs-1 d-block mb-3"></i>
+                                        <p class="lead">Nenhum sorteio encontrado</p>
+                                        <p>Crie um novo sorteio para premiar os participantes do seu evento!</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Sorteio -->
+<div class="modal fade" id="confirmSorteioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Sorteio</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está prestes a realizar o sorteio. Esta ação escolherá <span id="num_ganhadores_texto">um ganhador aleatório</span> entre os participantes elegíveis.</p>
+                <p class="mb-0 fw-bold">Esta ação não pode ser desfeita. Deseja continuar?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmSorteioBtn">
+                    <i class="bi bi-trophy me-2"></i>Realizar Sorteio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Cancelamento -->
+<div class="modal fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Cancelar Sorteio</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está prestes a cancelar este sorteio. Esta ação não pode ser desfeita.</p>
+                <p class="mb-0 fw-bold">Deseja realmente cancelar este sorteio?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-danger" id="confirmCancelBtn">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar Sorteio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Excluir Sorteio</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você está prestes a <strong>excluir permanentemente</strong> este sorteio. Esta ação não pode ser desfeita.</p>
+                <p class="mb-0 fw-bold">Deseja realmente excluir este sorteio?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-2"></i>Excluir Sorteio
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Contagem Regressiva -->
+<div class="modal fade" id="contagemRegressivaModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-stopwatch me-2"></i>Sorteio em andamento</h5>
+            </div>
+            <div class="modal-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="mb-3">Realizando sorteio...</h3>
+                  <div class="countdown-container mt-4 mb-4">
+                    <div class="countdown-number display-1 fw-bold text-danger" id="countdown">5</div>
+                    <p class="text-muted">Selecionando <span id="contagem_texto_ganhadores">um ganhador</span> entre os participantes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Resultado -->
+<div class="modal fade" id="resultadoSorteioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-trophy me-2"></i>Resultado do Sorteio</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-5">
+                <div class="mb-4">
+                    <i class="bi bi-trophy text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="mb-2" id="sorteioTitulo">Título do Sorteio</h3>
+                <p class="text-muted mb-4" id="sorteioPremio">Prêmio</p>
+                  <h5 class="text-muted mb-3"><span id="titulo_ganhadores">Ganhador(a):</span></h5>
+                <div id="winners-container">
+                    <!-- Os cartões dos ganhadores serão inseridos aqui dinamicamente via JavaScript -->
+                    <div class="winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm">
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <div class="me-3">
+                                <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" style="width: 64px; height: 64px; font-size: 32px;">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                            </div>
+                            <div class="text-start">
+                                <h3 class="mb-0" id="ganhadorNome">Nome do Ganhador</h3>
+                                <p class="mb-0 text-muted" id="ganhadorEmail">email@exemplo.com</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info d-inline-block">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span id="dataRealizacao">Sorteio realizado em 01/01/2025</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Elemento para os confetes ficar na frente do modal -->
+<div id="confetti-container" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2000;"></div>
+
+<!-- Adiciona a biblioteca de confetes -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+<script>
+    // Variáveis globais para IDs dos sorteios
+    let sorteioAtualId = null;
+    let sorteioResultado = null;
+    let confettiCanvas = null;
+      // Função para mostrar modal de confirmação de sorteio
+    function realizarSorteio(sorteioId) {
+        sorteioAtualId = sorteioId;
+        
+        // Atualizar o texto com o número de vencedores
+        atualizarTextoNumeroGanhadores(sorteioId);
+        
+        const modal = new bootstrap.Modal(document.getElementById('confirmSorteioModal'));
+        modal.show();
+    }
+      // Função para mostrar modal de confirmação de cancelamento
+    function cancelarSorteio(sorteioId) {
+        sorteioAtualId = sorteioId;
+        const modal = new bootstrap.Modal(document.getElementById('confirmCancelModal'));
+        modal.show();
+    }
+    
+    // Função para mostrar modal de confirmação de exclusão
+    function excluirSorteio(sorteioId) {
+        sorteioAtualId = sorteioId;
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        modal.show();
+    }
+      // Função para visualizar o resultado de um sorteio
+    function visualizarResultado(sorteioId) {
+        // Fazer requisição para obter detalhes do sorteio
+        fetch(`/api/sorteio/${sorteioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const sorteio = data.sorteio;
+                    
+                    // Preencher informações no modal
+                    document.getElementById('sorteioTitulo').textContent = sorteio.titulo;
+                    document.getElementById('sorteioPremio').textContent = sorteio.premio;
+                    
+                    // Limpar e popular o container de ganhadores
+                    const winnersContainer = document.getElementById('winners-container');
+                    winnersContainer.innerHTML = ''; // Limpar conteúdo existente
+                    
+                    // Atualizar o título baseado no número de ganhadores
+                    const tituloGanhadores = document.getElementById('titulo_ganhadores');
+                    tituloGanhadores.textContent = sorteio.ganhadores.length > 1 ? 'Ganhadores:' : 'Ganhador(a):';
+                    
+                    // Para cada ganhador, criar um card
+                    sorteio.ganhadores.forEach(ganhador => {
+                        const winnerCard = document.createElement('div');
+                        winnerCard.className = 'winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm';
+                        winnerCard.innerHTML = `
+                            <div class="d-flex justify-content-center align-items-center mb-3">
+                                <div class="me-3">
+                                    <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" 
+                                         style="width: 64px; height: 64px; font-size: 32px;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                </div>
+                                <div class="text-start">
+                                    <h3 class="mb-0">${ganhador.nome}</h3>
+                                    <p class="mb-0 text-muted">${ganhador.email}</p>
+                                </div>
+                            </div>
+                        `;
+                        winnersContainer.appendChild(winnerCard);
+                    });
+                    
+                    // Formatar data
+                    const dataFormatada = new Date(sorteio.data_sorteio).toLocaleDateString('pt-BR');
+                    document.getElementById('dataRealizacao').textContent = `Sorteio realizado em ${dataFormatada}`;
+                    
+                    // Mostrar modal
+                    const modal = new bootstrap.Modal(document.getElementById('resultadoSorteioModal'));
+                    modal.show();
+
+                    // Dispara confetes ao mostrar o resultado
+                    setTimeout(() => {
+                        dispararConfetes();
+                    }, 300);
+                } else {
+                    alert('Erro ao carregar resultado do sorteio: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao carregar resultado do sorteio');
+            });
+    }
+
+    // Função para disparar confetes na tela
+    function dispararConfetes() {
+        // Configuração dos confetes
+        const duracaoConfetes = 5 * 1000; // 5 segundos
+        const fimConfetes = Date.now() + duracaoConfetes;
+        
+        // Cores vibrantes para os confetes
+        const cores = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ff9900', '#9900ff'];
+        
+        // Inicializa o canvas para confetes se ainda não existir
+        if (!confettiCanvas) {
+            const container = document.getElementById('confetti-container');
+            
+            // Cria um canvas para os confetes com z-index alto
+            confettiCanvas = document.createElement('canvas');
+            confettiCanvas.style.position = 'fixed';
+            confettiCanvas.style.top = '0';
+            confettiCanvas.style.left = '0';
+            confettiCanvas.style.width = '100%';
+            confettiCanvas.style.height = '100%';
+            confettiCanvas.style.pointerEvents = 'none';
+            confettiCanvas.style.zIndex = '2000';
+            
+            container.appendChild(confettiCanvas);
+            
+            // Configura confetti para usar esse canvas
+            window.confettiInstance = confetti.create(confettiCanvas);
+        }
+        
+        // Usar a instância personalizada de confetti
+        const myConfetti = window.confettiInstance;
+        
+        // Cria um intervalo para lançar confetes
+        const interval = setInterval(function() {
+            if (Date.now() > fimConfetes) {
+                return clearInterval(interval);
+            }
+            
+            // Configurações aleatórias para cada rajada de confete com tamanho reduzido
+            myConfetti({
+                particleCount: 50,
+                angle: 60,
+                spread: 70,
+                origin: { x: 0 },
+                colors: cores,
+                disableForReducedMotion: true,
+                scalar: 0.6, // Reduz o tamanho dos confetes para 60% do tamanho original
+                shapes: ['square', 'circle'], // Limita às formas mais simples
+                gravity: 1.2, // Aumenta ligeiramente a gravidade para uma queda mais natural
+                drift: 0, // Reduz o desvio horizontal
+                ticks: 200 // Reduz a duração da animação de cada partícula
+            });
+            
+            myConfetti({
+                particleCount: 50,
+                angle: 120,
+                spread: 70,
+                origin: { x: 1 },
+                colors: cores,
+                disableForReducedMotion: true,
+                scalar: 0.6,
+                shapes: ['square', 'circle'],
+                gravity: 1.2,
+                drift: 0,
+                ticks: 200
+            });
+        }, 250);
+        
+        // Lança mais confetes no centro
+        myConfetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.6 },
+            disableForReducedMotion: true,
+            scalar: 0.6,
+            shapes: ['square', 'circle'],
+            gravity: 1.2,
+            ticks: 200
+        });
+    }
+
+    // Função para iniciar a contagem regressiva
+    function iniciarContagemRegressiva() {
+        const contagemModal = new bootstrap.Modal(document.getElementById('contagemRegressivaModal'));
+        contagemModal.show();
+        
+        const countdownElement = document.getElementById('countdown');
+        let contador = 5;
+        
+        countdownElement.textContent = contador;
+        
+        const intervalo = setInterval(() => {
+            contador--;
+            countdownElement.textContent = contador;
+            
+            if (contador <= 0) {
+                clearInterval(intervalo);
+                contagemModal.hide();
+                
+                // Mostrar resultado após a contagem
+                mostrarResultado();
+            }
+        }, 1000);
+    }
+      // Função para mostrar o resultado após a contagem
+    function mostrarResultado() {
+        if (!sorteioResultado) return;
+        
+        const sorteio = sorteioResultado;
+        
+        // Exibir modal de resultado
+        document.getElementById('sorteioTitulo').textContent = sorteio.titulo;
+        document.getElementById('sorteioPremio').textContent = sorteio.premio;
+        
+        // Limpar e popular o container de ganhadores
+        const winnersContainer = document.getElementById('winners-container');
+        winnersContainer.innerHTML = ''; // Limpar conteúdo existente
+        
+        // Atualizar o título baseado no número de ganhadores
+        const tituloGanhadores = document.getElementById('titulo_ganhadores');
+        tituloGanhadores.textContent = sorteio.ganhadores.length > 1 ? 'Ganhadores:' : 'Ganhador(a):';
+        
+        // Para cada ganhador, criar um card
+        sorteio.ganhadores.forEach(ganhador => {
+            const winnerCard = document.createElement('div');
+            winnerCard.className = 'winner-card p-4 border rounded-3 bg-light mb-4 shadow-sm';
+            winnerCard.innerHTML = `
+                <div class="d-flex justify-content-center align-items-center mb-3">
+                    <div class="me-3">
+                        <div class="avatar bg-success text-white rounded-circle d-flex justify-content-center align-items-center" 
+                             style="width: 64px; height: 64px; font-size: 32px;">
+                            <i class="bi bi-person"></i>
+                        </div>
+                    </div>
+                    <div class="text-start">
+                        <h3 class="mb-0">${ganhador.nome}</h3>
+                        <p class="mb-0 text-muted">${ganhador.email}</p>
+                    </div>
+                </div>
+            `;
+            winnersContainer.appendChild(winnerCard);
+        });
+        
+        // Formatar data
+        const dataFormatada = new Date(sorteio.data_sorteio).toLocaleDateString('pt-BR');
+        document.getElementById('dataRealizacao').textContent = `Sorteio realizado em ${dataFormatada}`;
+        
+        // Mostrar modal
+        const resultModal = new bootstrap.Modal(document.getElementById('resultadoSorteioModal'));
+        resultModal.show();
+        
+        // Dispara confetes ao mostrar o resultado
+        setTimeout(() => {
+            dispararConfetes();
+        }, 300);
+    }
+      // Função para atualizar o texto baseado no número de ganhadores
+    function atualizarTextoNumeroGanhadores(sorteioId) {
+        // Fazer requisição para obter detalhes do sorteio
+        fetch(`/api/sorteio_info/${sorteioId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const numVencedores = data.num_vencedores || 1;
+                    
+                    // Atualizar textos nos modais
+                    const numGanhadoresTexto = document.getElementById('num_ganhadores_texto');
+                    const contagemTextoGanhadores = document.getElementById('contagem_texto_ganhadores');
+                    
+                    if (numVencedores === 1) {
+                        numGanhadoresTexto.textContent = 'um ganhador aleatório';
+                        contagemTextoGanhadores.textContent = 'um ganhador';
+                    } else {
+                        numGanhadoresTexto.textContent = `${numVencedores} ganhadores aleatórios`;
+                        contagemTextoGanhadores.textContent = `${numVencedores} ganhadores`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao obter informações do sorteio:', error);
+            });
+    }
+    
+    // Configurar botões de confirmação
+    document.addEventListener('DOMContentLoaded', function() {
+        // Botão de confirmar sorteio
+        document.getElementById('confirmSorteioBtn').addEventListener('click', function() {
+            if (!sorteioAtualId) return;
+            
+            // Fechar modal de confirmação
+            bootstrap.Modal.getInstance(document.getElementById('confirmSorteioModal')).hide();
+            
+            // Enviar requisição para realizar o sorteio
+            fetch(`/realizar_sorteio/${sorteioAtualId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Salvar resultado para usar após a contagem regressiva
+                    sorteioResultado = data.sorteio;
+                    
+                    // Iniciar contagem regressiva
+                    iniciarContagemRegressiva();
+                    
+                    // Recarregar a página após fechar o modal de resultado
+                    document.getElementById('resultadoSorteioModal').addEventListener('hidden.bs.modal', function() {
+                        window.location.reload();
+                    });
+                } else {
+                    alert('Erro ao realizar sorteio: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao realizar sorteio');
+            });
+        });
+          // Botão de confirmar cancelamento
+        document.getElementById('confirmCancelBtn').addEventListener('click', function() {
+            if (!sorteioAtualId) return;
+            
+            // Enviar requisição para cancelar o sorteio
+            fetch(`/cancelar_sorteio/${sorteioAtualId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fechar modal e recarregar página
+                    bootstrap.Modal.getInstance(document.getElementById('confirmCancelModal')).hide();
+                    window.location.reload();
+                } else {
+                    alert('Erro ao cancelar sorteio: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao cancelar sorteio');
+            });
+        });
+        
+        // Botão de confirmar exclusão
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+            if (!sorteioAtualId) return;
+            
+            // Enviar requisição para excluir o sorteio
+            fetch(`/excluir_sorteio/${sorteioAtualId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fechar modal e recarregar página
+                    bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+                    window.location.reload();
+                } else {
+                    alert('Erro ao excluir sorteio: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao excluir sorteio');
+            });
+        });
+    });
+</script>
+{% endblock %}

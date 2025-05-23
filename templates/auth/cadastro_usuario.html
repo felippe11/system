@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Participante{% endblock %}
+
+{% block content %}
+<style>
+  .auth-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    display: flex;
+    align-items: center;
+    padding: 2rem;
+  }
+
+  .register-card {
+    max-width: 720px;
+    width: 100%;
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+  }
+
+  .card-header {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .card-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .card-body {
+    padding: 2rem;
+    background: white;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .location-block {
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    position: relative;
+    margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+  }
+
+  .remove-location-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-add-location {
+    width: 100%;
+    margin-top: 1rem;
+  }
+
+  .alert-custom {
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+</style>
+
+<div class="auth-container">
+  <div class="register-card">
+    <div class="card-header">
+      <h1 class="card-title">Cadastro de Participante</h1>
+    </div>
+    
+    <div class="card-body">
+      {% with msgs = get_flashed_messages(with_categories=True, category_filter=['participante']) %}
+        {% if msgs %}
+          {% for category, message in msgs %}
+            <div class="alert alert-info alert-custom alert-dismissible fade show">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('routes.cadastro_participante', token=token) if token else url_for('routes.cadastro_participante') }}">
+        <div class="form-grid">
+          <div>
+            <label for="nome" class="form-label fw-semibold">Nome Completo</label>
+            <input type="text" class="form-control form-control-lg" name="nome" id="nome" required>
+          </div>
+
+          <div>
+            <label for="cpf" class="form-label fw-semibold">CPF</label>
+            <input type="text" class="form-control form-control-lg" name="cpf" id="cpf" placeholder="000.000.000-00" required>
+          </div>
+
+          <div>
+            <label for="email" class="form-label fw-semibold">E-mail</label>
+            <input type="email" class="form-control form-control-lg" name="email" id="email" required>
+          </div>
+
+          <div>
+            <label for="senha" class="form-label fw-semibold">Senha</label>
+            <input type="password" class="form-control form-control-lg" name="senha" id="senha" required>
+          </div>
+
+          <div class="col-span-2">
+            <label for="formacao" class="form-label fw-semibold">Formação Acadêmica</label>
+            <input type="text" class="form-control form-control-lg" name="formacao" id="formacao" required>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label fw-semibold mb-3">Locais de Atuação</label>
+          <div id="locations-container">
+            <!-- Blocos serão adicionados aqui -->
+          </div>
+          <button type="button" id="add-location-btn" class="btn btn-outline-primary btn-add-location">
+            <i class="bi bi-plus-circle me-2"></i>Adicionar Local
+          </button>
+        </div>
+
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="bi bi-person-check me-2"></i>Finalizar Cadastro
+          </button>
+        </div>
+
+        <div class="text-center mt-4">
+          <p class="text-muted mb-0">Já possui conta?
+            <a href="{{ url_for('routes.login') }}" class="text-primary fw-semibold">Acesse aqui</a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts mantidos originais -->
+<script>
+  // CPF Mask
+  document.getElementById("cpf").addEventListener("input", function() {
+    let value = this.value.replace(/\D/g, '');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2')
+                 .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+                 .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+    this.value = value.substring(0, 14);
+  });
+</script>
+
+<script>
+  // Location Blocks
+  document.addEventListener('DOMContentLoaded', function() {
+    let statesData = [];
+    
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+      .then(response => response.json())
+      .then(data => {
+        statesData = data.sort((a, b) => a.nome.localeCompare(b.nome));
+        addLocationBlock();
+      });
+
+    const locationsContainer = document.getElementById('locations-container');
+    const addLocationBtn = document.getElementById('add-location-btn');
+
+    addLocationBtn.addEventListener('click', addLocationBlock);
+
+    function addLocationBlock() {
+      const block = document.createElement('div');
+      block.className = 'location-block';
+      block.innerHTML = `
+        <button type="button" class="btn btn-danger remove-location-btn">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label">Estado</label>
+            <select class="form-select" name="estados[]" required>
+              <option value="">Selecione...</option>
+              ${statesData.map(state => 
+                `<option value="${state.sigla}">${state.nome}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Cidade</label>
+            <select class="form-select" name="cidades[]" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+        </div>
+      `;
+
+      block.querySelector('select[name="estados[]"]').addEventListener('change', function() {
+        const uf = this.value;
+        const citySelect = block.querySelector('select[name="cidades[]"]');
+        citySelect.innerHTML = '<option value="">Selecione...</option>';
+        
+        if(uf) {
+          fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
+            .then(response => response.json())
+            .then(cities => {
+              cities.sort((a, b) => a.nome.localeCompare(b.nome))
+                    .forEach(city => {
+                citySelect.innerHTML += `<option value="${city.nome}">${city.nome}</option>`;
+              });
+            });
+        }
+      });
+
+      block.querySelector('.remove-location-btn').addEventListener('click', () => {
+        locationsContainer.removeChild(block);
+      });
+
+      locationsContainer.appendChild(block);
+    }
+  });
+</script>
+{% endblock %}

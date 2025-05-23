@@ -1,0 +1,53 @@
+<!-- templates/listar_patrocinadores.html -->
+{% extends "base.html" %}
+{% block title %}Patrocinadores{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <h1 class="mb-3">Gerenciar Patrocinadores</h1>
+
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Evento</th>
+        <th>Categoria</th>
+        <th>Logo</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for pat in patrocinadores %}
+      <tr>
+        <td>{{ pat.id }}</td>
+        <td>
+          {% if pat.evento %}
+            {{ pat.evento.nome }}
+          {% else %}
+            <em>Sem evento</em>
+          {% endif %}
+        </td>
+        <td>{{ pat.categoria }}</td>
+        <td>
+          <img src="{{ url_for('static', filename=pat.logo_path) }}" 
+               alt="Logo patrocinador {{ pat.id }}" 
+               style="max-width: 120px;"/>
+        </td>
+        <td>
+          <form action="{{ url_for('routes.remover_patrocinador', patrocinador_id=pat.id) }}" 
+                method="POST" 
+                onsubmit="return confirm('Deseja realmente remover este patrocinador?');"
+                class="d-inline">
+            <button type="submit" class="btn btn-danger btn-sm">
+              <i class="bi bi-trash"></i> Remover
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+</div>
+{% endblock %}

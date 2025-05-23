@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard do Superadmin{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Painel do Superadmin</h2>
+
+    <h3>Gerenciar Clientes</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td>{{ cliente.id }}</td>
+                <td>{{ cliente.nome }}</td>
+                <td>{{ cliente.email }}</td>
+                <td>
+                    {% if cliente.ativo %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-danger">Desativado</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('routes.toggle_cliente', cliente_id=cliente.id) }}" class="btn btn-sm {% if cliente.ativo %}btn-danger{% else %}btn-success{% endif %}">
+                        {% if cliente.ativo %}Desativar{% else %}Ativar{% endif %}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

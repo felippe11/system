@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #0057b8, #009688);
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        input {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            outline: none;
+            color: white;
+        }
+
+        .btn-cadastrar {
+            background-color: #28a745;
+            border: none;
+            padding: 12px;
+            font-size: 18px;
+            border-radius: 30px;
+            color: white;
+            text-transform: uppercase;
+            transition: 0.3s ease-in-out;
+        }
+
+        .btn-cadastrar:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 class="text-center">Cadastro de Participante</h2>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="nome" class="form-label">Nome Completo</label>
+                <input type="text" class="form-control" name="nome" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="cpf" class="form-label">CPF</label>
+                <input type="text" class="form-control" name="cpf" placeholder="000.000.000-00" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="senha" class="form-label">Senha</label>
+                <input type="password" class="form-control" name="senha" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="formacao" class="form-label">Formação</label>
+                <input type="text" class="form-control" name="formacao" required>
+            </div>
+
+            <button type="submit" class="btn btn-cadastrar w-100">Cadastrar</button>
+        </form>
+
+        <p class="text-center mt-3">
+            Já tem uma conta? <a href="{{ url_for('login') }}" class="text-white">Faça login</a>.
+        </p>
+    </div>
+
+</body>
+</html>

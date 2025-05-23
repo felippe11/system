@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Check-ins - {{ oficina.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section with Workshop Info -->
+    <div class="card shadow-sm mb-4 border-0 bg-light">
+        <div class="card-body">
+            <div class="text-center">
+                <h1 class="display-5 fw-bold text-primary mb-3">{{ oficina.titulo }}</h1>
+                <!-- Badges redesenhados - mais harmoniosos e adaptativos -->
+                <div class="badges-container">
+                    <div class="info-badge">
+                        <i class="fas fa-chalkboard-teacher badge-icon"></i>
+                        <div class="badge-text">
+                            <strong>Ministrantes:</strong>
+                            {% if ministrantes %}
+                              {{ ministrantes | join(', ') }}
+                            {% else %}
+                              Nenhum associado
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-badge">
+                        <i class="fas fa-map-marker-alt badge-icon"></i>
+                        <div class="badge-text">
+                            <strong>Local:</strong> {{ oficina.cidade }}, {{ oficina.estado }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-ins Stats Summary -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body d-flex align-items-center">
+                    <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                        <i class="fas fa-users text-primary fs-3"></i>
+                    </div>
+                    <div>
+                        <h2 class="h4 mb-0">Lista de Participantes</h2>
+                        <p class="text-muted mb-0">Usuários que realizaram check-in nesta oficina</p>
+                    </div>
+                    <div class="ms-auto">
+                        <span class="badge bg-primary rounded-pill fs-6">{{ usuarios_checkin|length }} participante(s)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-ins Table Card -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="h5 mb-0"><i class="fas fa-clipboard-check me-2 text-primary"></i>Registros de Check-in</h3>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="exportOptions" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-file-export me-1"></i> Exportar
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="exportOptions">
+                        <li><a class="dropdown-item" href="{{ url_for('routes.gerar_pdf_checkins', oficina_id=oficina.id) }}"><i class="fas fa-file-pdf me-2 text-danger"></i>Gerar PDF</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user me-2 text-primary"></i>Nome
+                                </div>
+                            </th>
+                            <th class="border-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-id-card me-2 text-primary"></i>CPF
+                                </div>
+                            </th>
+                            <th class="border-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-envelope me-2 text-primary"></i>E-mail
+                                </div>
+                            </th>
+                            <th class="border-0">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-clock me-2 text-primary"></i>Data e Hora
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios_checkin %}
+                        <tr>
+                            <td>{{ usuario.nome }}</td>
+                            <td>{{ usuario.cpf }}</td>
+                            <td>
+                                <a href="mailto:{{ usuario.email }}" class="text-decoration-none">
+                                    {{ usuario.email }}
+                                </a>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    <i class="far fa-calendar-check me-1"></i>
+                                    {{ usuario.data_hora|brasilia }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="fas fa-user-clock text-muted fs-1 mb-3 d-block"></i>
+                                    <p class="text-muted mb-0">Nenhum check-in realizado até o momento.</p>
+                                    <p class="text-muted small">Os participantes aparecerão aqui quando realizarem check-in.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white border-top py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
+                </a>
+                <div>
+                    <a href="{{ url_for('routes.gerar_pdf_checkins', oficina_id=oficina.id) }}" class="btn btn-primary">
+                        <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Font Awesome if not already in base.html -->
+{% if not is_fontawesome_loaded %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endif %}
+
+<!-- Estilos personalizados com foco nos novos balões -->
+<style>
+    /* Estilos para os cartões */
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    /* Estilos para os novos balões/badges */
+    .badges-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin-bottom: 1rem;
+    }
+    
+    .info-badge {
+        display: flex;
+        align-items: flex-start;
+        background-color: rgba(13, 202, 240, 0.15);
+        border-radius: 18px;
+        padding: 12px 16px;
+        margin: 0 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        max-width: 100%;
+        border: 1px solid rgba(13, 202, 240, 0.3);
+    }
+    
+    .info-badge:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: rgba(13, 202, 240, 0.2);
+    }
+    
+    .badge-icon {
+        color: #0dcaf0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 10px;
+        background-color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    
+    .badge-text {
+        color: #212529;
+        text-align: left;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+    
+    /* Responsividade para os balões */
+    @media (max-width: 768px) {
+        .badges-container {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .info-badge {
+            width: 100%;
+            max-width: 400px;
+        }
+    }
+    
+    /* Badges tradicionais */
+    .badge {
+        transition: all 0.3s ease;
+    }
+    
+    .badge:hover {
+        transform: scale(1.05);
+    }
+    
+    /* Estilos para a tabela */
+    .table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    /* Animação para carregamento da tabela */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .table tbody tr {
+        animation: fadeIn 0.5s ease-out forwards;
+        opacity: 0;
+    }
+    
+    .table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+    .table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+    .table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+    .table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+    .table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+    .table tbody tr:nth-child(n+6) { animation-delay: 0.6s; }
+</style>
+{% endblock %}

@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 from datetime import datetime
 from collections import defaultdict
 import os
+from datetime import date
+
 
 from extensions import db
 from models import (
@@ -110,7 +112,7 @@ def _serializa_eventos(eventos):
             dado['link_inscricao'] = (
                 url_for('evento_routes.abrir_inscricao_customizada', slug=link.slug_customizado)
                 if link.slug_customizado else
-                url_for('evento_routes.abrir_inscricao_token', token=link.token)
+                url_for('inscricao_routes.abrir_inscricao_token', token=link.token)  # Corrigido o blueprint
             )
 
         lista.append(dado)

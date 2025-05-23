@@ -1,0 +1,612 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Ministrante{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card shadow border-0 overflow-hidden">
+        <div class="card-header bg-primary text-white p-3">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-person-plus-fill fs-3 me-3"></i>
+            <h2 class="mb-0 fw-bold">Cadastro de Ministrante</h2>
+          </div>
+          <p class="mb-0 mt-2 text-white-50">Preencha os dados abaixo para se cadastrar no sistema</p>
+        </div>
+        
+        <!-- Barra de progresso moderna com indicadores de etapa -->
+        <div class="progress-container py-3 px-4 bg-light border-bottom">
+          <div class="progress-steps-container">
+            <div class="step-indicator-container">
+              <div class="step-indicator active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-label">Informações Pessoais</div>
+              </div>
+              <div class="step-indicator" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-label">Formação</div>
+              </div>
+              <div class="step-indicator" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-label">Localização</div>
+              </div>
+              <div class="step-indicator" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-label">Acesso</div>
+              </div>
+            </div>
+            <div class="progress progress-bar-modern">
+              <div id="progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card-body p-4">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                  <div class="d-flex align-items-center">
+                    {% if category == 'success' %}
+                      <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                    {% elif category == 'danger' %}
+                      <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    {% else %}
+                      <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                    {% endif %}
+                    <div>{{ message }}</div>
+                  </div>
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="form-ministrante">
+            <!-- Etapa 1: Informações Pessoais -->
+            <div class="step" id="step-1">
+              <div class="row g-4">
+                <div class="col-12">
+                  <h5 class="text-primary border-bottom pb-2 mb-3">
+                    <i class="bi bi-person-badge me-2"></i>Informações Pessoais
+                  </h5>
+                </div>
+                
+                <div class="col-md-8">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="nome" name="nome" placeholder="Nome Completo" required>
+                    <label for="nome"><i class="bi bi-person me-2"></i>Nome Completo</label>
+                    <div class="invalid-feedback">Por favor, informe seu nome completo.</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="mb-3">
+                    <label for="foto" class="form-label fw-medium mb-2">Foto de Perfil:</label>
+                    <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
+                    <div class="form-text">Imagem de perfil (opcional)</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+                    <label for="cpf"><i class="bi bi-card-text me-2"></i>CPF</label>
+                    <div class="invalid-feedback">Por favor, informe um CPF válido.</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="pix" name="pix" placeholder="Chave PIX" required>
+                    <label for="pix"><i class="bi bi-cash me-2"></i>PIX</label>
+                    <div class="invalid-feedback">Por favor, informe sua chave PIX.</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-end mt-4">
+                <button type="button" class="btn btn-primary next-step px-4" data-next="2">
+                  Próximo <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Etapa 2: Formação -->
+            <div class="step" id="step-2" style="display: none;">
+              <div class="row g-4">
+                <div class="col-12">
+                  <h5 class="text-primary border-bottom pb-2 mb-3">
+                    <i class="bi bi-mortarboard-fill me-2"></i>Formação e Áreas
+                  </h5>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="categorias_formacao" class="form-label fw-medium mb-2">Categorias de Formação Acadêmica:</label>
+                  <select multiple class="form-select form-select-lg" id="categorias_formacao" name="categorias_formacao" style="height: 150px;">
+                    {% for categoria in [
+                      "Bacharelado", "Licenciatura", "Tecnólogo",
+                      "Especialização", "MBA", "Mestrado", "Doutorado",
+                      "Curso Técnico", "Curso Profissionalizante", "Curso Sequencial"
+                    ] %}
+                      <option value="{{ categoria }}">{{ categoria }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">Segure Ctrl para selecionar múltiplas opções</div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="mb-3 h-100">
+                    <label for="formacao" class="form-label fw-medium mb-2">Observações da Formação:</label>
+                    <textarea class="form-control h-75" id="formacao" name="formacao" placeholder="Detalhes sobre sua formação acadêmica"></textarea>
+                    <div class="form-text">Informações adicionais (opcional)</div>
+                  </div>
+                </div>
+                
+                <div class="col-12">
+                  <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="areas" name="areas" placeholder="Áreas de Atuação" required>
+                    <label for="areas"><i class="bi bi-briefcase me-2"></i>Áreas de Atuação</label>
+                    <div class="form-text">Separe as áreas por vírgula (ex: Desenvolvimento Web, UX/UI, Marketing Digital)</div>
+                    <div class="invalid-feedback">Por favor, informe pelo menos uma área de atuação.</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="1">
+                  <i class="bi bi-arrow-left me-2"></i> Anterior
+                </button>
+                <button type="button" class="btn btn-primary next-step px-4" data-next="3">
+                  Próximo <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Etapa 3: Localização -->
+            <div class="step" id="step-3" style="display: none;">
+              <div class="row g-4">
+                <div class="col-12">
+                  <h5 class="text-primary border-bottom pb-2 mb-3">
+                    <i class="bi bi-geo-alt-fill me-2"></i>Localização
+                  </h5>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <select class="form-select" id="estado" name="estado" required>
+                      <option value="">Selecione o Estado</option>
+                    </select>
+                    <label for="estado"><i class="bi bi-map me-2"></i>Estado</label>
+                    <div class="invalid-feedback">Por favor, selecione um estado.</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <select class="form-select" id="cidade" name="cidade" required>
+                      <option value="">Selecione o Estado primeiro</option>
+                    </select>
+                    <label for="cidade"><i class="bi bi-building me-2"></i>Cidade</label>
+                    <div class="invalid-feedback">Por favor, selecione uma cidade.</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-between mt-4">
+                <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="2">
+                  <i class="bi bi-arrow-left me-2"></i> Anterior
+                </button>
+                <button type="button" class="btn btn-primary next-step px-4" data-next="4">
+                  Próximo <i class="bi bi-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Etapa 4: Acesso -->
+            <div class="step" id="step-4" style="display: none;">
+              <div class="row g-4">
+                <div class="col-12">
+                  <h5 class="text-primary border-bottom pb-2 mb-3">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Dados de Acesso
+                  </h5>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="nome@exemplo.com" required>
+                    <label for="email"><i class="bi bi-envelope me-2"></i>E-mail</label>
+                    <div class="invalid-feedback">Por favor, informe um e-mail válido.</div>
+                  </div>
+                </div>
+                
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="senha" name="senha" placeholder="Senha" required>
+                    <label for="senha"><i class="bi bi-key me-2"></i>Senha</label>
+                    <div class="form-text">Mínimo de 8 caracteres, incluindo letras e números</div>
+                    <div class="invalid-feedback">Por favor, crie uma senha segura.</div>
+                  </div>
+                </div>
+                
+                <!-- Botões de Ação -->
+                <div class="col-12 mt-4">
+                  <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary prev-step px-4" data-prev="3">
+                      <i class="bi bi-arrow-left me-2"></i> Anterior
+                    </button>
+                    <button type="submit" class="btn btn-success px-4">
+                      <i class="bi bi-check-circle me-2"></i>Finalizar Cadastro
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        
+        <div class="card-footer bg-light p-3">
+          <div class="d-flex align-items-center text-muted">
+            <i class="bi bi-shield-check me-2"></i>
+            <small>Seus dados estão protegidos e não serão compartilhados com terceiros.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Barra de progresso moderna */
+  .progress-container {
+    margin-bottom: 20px;
+  }
+
+  .progress-steps-container {
+    position: relative;
+  }
+
+  .step-indicator-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    flex: 1;
+    max-width: 25%;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: #6c757d;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+    border: 2px solid #dee2e6;
+  }
+
+  .step-label {
+    font-size: 0.8rem;
+    text-align: center;
+    color: #6c757d;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .step-indicator.active .step-number {
+    background-color: var(--bs-primary);
+    color: white;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+  }
+
+  .step-indicator.active .step-label {
+    color: var(--bs-primary);
+    font-weight: bold;
+  }
+
+  .step-indicator.completed .step-number {
+    background-color: #198754;
+    color: white;
+    border-color: #198754;
+  }
+
+  .progress-bar-modern {
+    height: 8px;
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    z-index: 0;
+    margin: 0 20px;
+  }
+
+  /* Estilos para etapas e transições */
+  .step {
+    transition: opacity 0.3s ease;
+  }
+
+  /* Para dispositivos móveis */
+  @media (max-width: 768px) {
+    .step-label {
+      font-size: 0.7rem;
+    }
+    
+    .step-number {
+      width: 30px;
+      height: 30px;
+      font-size: 0.8rem;
+    }
+    
+    .progress-bar-modern {
+      top: 15px;
+    }
+    
+    .next-step, .prev-step {
+      width: 45%;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+      font-size: 0.9rem;
+    }
+  }
+
+  /* Para telas muito pequenas */
+  @media (max-width: 576px) {
+    .step-label {
+      display: none;
+    }
+    
+    .progress-bar-modern {
+      margin: 0 15px;
+    }
+  }
+
+  /* Animações e efeitos visuais */
+  .step:not([style*="display: none"]) {
+    animation: fadeIn 0.5s;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>
+
+<script>
+  // Form validation
+  (function() {
+    'use strict';
+    window.addEventListener('load', function() {
+      var forms = document.getElementsByClassName('needs-validation');
+      Array.prototype.filter.call(forms, function(form) {
+        form.addEventListener('submit', function(event) {
+          if (form.checkValidity() === false) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        }, false);
+      });
+    }, false);
+  })();
+
+  // Estados e cidades
+  document.addEventListener("DOMContentLoaded", function() {
+    // Controle de etapas
+    const progressBar = document.getElementById('progress-bar');
+    const steps = document.querySelectorAll('.step');
+    let currentStep = 1;
+
+    // Atualizar barra de progresso e indicadores
+    function updateProgressBar(step) {
+      const totalSteps = steps.length;
+      const percent = (step / totalSteps) * 100;
+      
+      // Atualizar a barra de progresso
+      progressBar.style.width = percent + '%';
+      progressBar.setAttribute('aria-valuenow', percent);
+      
+      // Atualizar os indicadores de etapa
+      document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+        if (index + 1 < step) {
+          indicator.classList.add('completed');
+          indicator.classList.remove('active');
+        } else if (index + 1 === step) {
+          indicator.classList.add('active');
+          indicator.classList.remove('completed');
+        } else {
+          indicator.classList.remove('active', 'completed');
+        }
+      });
+    }
+
+    // Navegar para próxima etapa
+    document.querySelectorAll('.next-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const nextStep = parseInt(this.getAttribute('data-next'));
+        
+        // Validar etapa atual antes de prosseguir
+        if (!validateStep(currentStep)) {
+          return;
+        }
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar próxima etapa
+        document.getElementById(`step-${nextStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = nextStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
+    // Navegar para etapa anterior
+    document.querySelectorAll('.prev-step').forEach(button => {
+      button.addEventListener('click', function() {
+        const prevStep = parseInt(this.getAttribute('data-prev'));
+        
+        // Esconder etapa atual
+        document.getElementById(`step-${currentStep}`).style.display = 'none';
+        
+        // Mostrar etapa anterior
+        document.getElementById(`step-${prevStep}`).style.display = 'block';
+        
+        // Atualizar etapa atual
+        currentStep = prevStep;
+        
+        // Atualizar barra de progresso
+        updateProgressBar(currentStep);
+        
+        // Rolar para o topo do formulário
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+    });
+
+    // Validação de cada etapa
+    function validateStep(step) {
+      let isValid = true;
+      const form = document.getElementById('form-ministrante');
+      
+      switch(step) {
+        case 1:
+          // Validar campos da etapa 1
+          const nome = document.getElementById('nome');
+          const cpf = document.getElementById('cpf');
+          const pix = document.getElementById('pix');
+          
+          if (!nome.value.trim()) {
+            nome.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            nome.classList.remove('is-invalid');
+          }
+          
+          if (!cpf.value.trim()) {
+            cpf.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            cpf.classList.remove('is-invalid');
+          }
+          
+          if (!pix.value.trim()) {
+            pix.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            pix.classList.remove('is-invalid');
+          }
+          
+          break;
+          
+        case 2:
+          // Validar campos da etapa 2
+          const areas = document.getElementById('areas');
+          
+          if (!areas.value.trim()) {
+            areas.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            areas.classList.remove('is-invalid');
+          }
+          
+          break;
+          
+        case 3:
+          // Validar campos da etapa 3
+          const estado = document.getElementById('estado');
+          const cidade = document.getElementById('cidade');
+          
+          if (!estado.value) {
+            estado.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            estado.classList.remove('is-invalid');
+          }
+          
+          if (!cidade.value) {
+            cidade.classList.add('is-invalid');
+            isValid = false;
+          } else {
+            cidade.classList.remove('is-invalid');
+          }
+          
+          break;
+      }
+      
+      if (!isValid) {
+        // Se houver campos inválidos, exibe validação do formulário
+        form.classList.add('was-validated');
+      }
+      
+      return isValid;
+    }
+
+    // Inicializar a barra de progresso
+    updateProgressBar(1);
+
+    // Carregar estados
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
+      .then(response => response.json())
+      .then(data => {
+        data.sort((a, b) => a.nome.localeCompare(b.nome));
+        const estadoSelect = document.getElementById('estado');
+        data.forEach(uf => {
+          estadoSelect.add(new Option(uf.nome, uf.sigla));
+        });
+      });
+
+    document.getElementById('estado').addEventListener('change', function() {
+      const uf = this.value;
+      fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
+        .then(response => response.json())
+        .then(cities => {
+          const cidadeSelect = document.getElementById('cidade');
+          cidadeSelect.innerHTML = '<option value="">Selecione uma cidade</option>';
+          cities.sort((a, b) => a.nome.localeCompare(b.nome));
+          cities.forEach(city => {
+            cidadeSelect.add(new Option(city.nome, city.nome));
+          });
+        });
+    });
+    
+    // Máscara para CPF
+    const cpfInput = document.getElementById('cpf');
+    cpfInput.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length > 11) value = value.slice(0, 11);
+      
+      if (value.length > 9) {
+        value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+      } else if (value.length > 6) {
+        value = value.replace(/^(\d{3})(\d{3})(\d{1,3})$/, "$1.$2.$3");
+      } else if (value.length > 3) {
+        value = value.replace(/^(\d{3})(\d{1,3})$/, "$1.$2");
+      }
+      
+      e.target.value = value;
+    });
+  });
+</script>
+{% endblock %}
