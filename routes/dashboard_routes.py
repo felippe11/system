@@ -1,8 +1,11 @@
-
 from flask import Blueprint, render_template, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 
-dashboard_routes = Blueprint('dashboard_routes', __name__)
+dashboard_routes = Blueprint(
+    'dashboard_routes',
+    __name__,
+    template_folder="dashboard"
+)
 # ────────────────────────────────────────
 # DASHBOARD GERAL (admin, cliente, participante, professor)
 # ────────────────────────────────────────

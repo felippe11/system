@@ -1,7 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 
-trabalho_routes = Blueprint("trabalho_routes", __name__)
+trabalho_routes = Blueprint(
+    'trabalho_routes',
+    __name__,
+    template_folder="trabalho"
+)
 
 
 @trabalho_routes.route('/submeter_trabalho', methods=['GET', 'POST'])
@@ -39,7 +43,7 @@ def submeter_trabalho():
         flash("Trabalho submetido com sucesso!", "success")
         return redirect(url_for('routes.dashboard_participante'))
 
-    return render_template('submeter_trabalho.html')
+    return render_template("trabalho/submeter_trabalho.html")
 
 
 @trabalho_routes.route('/avaliar_trabalhos')

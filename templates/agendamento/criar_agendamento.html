@@ -2,164 +2,201 @@
 {% block title %}Criar Agendamento{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="container-fluid px-0 mt-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-primary mb-0">
+      <i class="bi bi-calendar-plus me-2"></i>Criar Novo Agendamento
+    </h1>
+    <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+    </a>
+  </div>
+
   <div class="card shadow">
-    <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 text-center">
-        <i class="bi bi-calendar-plus me-2"></i>Criar Novo Agendamento
-      </h2>
-    </div>
     <div class="card-body">
+      {% if form_erro %}
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ form_erro }}
+      </div>
+      {% endif %}
+
       <form method="POST" action="{{ url_for('routes.criar_agendamento') }}">
-        <!-- Linha 1: Oficina e Participante -->
-        <div class="row mb-3">
-          <!-- Campo de Oficina -->
+        <div class="row">
+          <!-- Coluna 1: Informações do Evento -->
           <div class="col-md-6">
-            <label for="oficina_id" class="form-label fw-bold">Oficina:</label>
-            <select name="oficina_id" id="oficina_id" class="form-select" required>
-              <option value="">-- Selecione uma Oficina --</option>
-              {% for oficina in oficinas %}
-                <option value="{{ oficina.id }}">{{ oficina.titulo }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          
-          <!-- Campo de Participante (visível apenas para admin ou cliente) -->
-          <div class="col-md-6">
-            <label for="usuario_id" class="form-label fw-bold">Participante:</label>
-            {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
-              <select name="usuario_id" id="usuario_id" class="form-select" required>
-                <option value="">-- Selecione um Participante --</option>
-                {% for participante in participantes %}
-                  <option value="{{ participante.id }}">{{ participante.nome }}</option>
+            <h5 class="mb-3 border-bottom pb-2">Informações do Evento</h5>
+            
+            <!-- Evento -->
+            <div class="mb-3">
+              <label for="evento_id" class="form-label">Evento <span class="text-danger">*</span></label>
+              <select class="form-select" id="evento_id" name="evento_id" required>
+                <option value="">Selecione um evento</option>
+                {% for evento in eventos %}
+                <option value="{{ evento.id }}">{{ evento.nome }}</option>
                 {% endfor %}
               </select>
-            {% else %}
-              <input type="text" class="form-control" value="{{ current_user.nome }}" readonly>
-              <input type="hidden" name="usuario_id" value="{{ current_user.id }}">
-            {% endif %}
-          </div>
-        </div>
-
-        <!-- Linha 2: Data e Horários -->
-        <div class="row mb-3">
-          <!-- Campo de Data -->
-          <div class="col-md-4">
-            <label for="data" class="form-label fw-bold">Data:</label>
-            <input type="date" name="data" id="data" class="form-control" required>
-          </div>
-          
-          <!-- Campo de Horário de Início -->
-          <div class="col-md-4">
-            <label for="horario_inicio" class="form-label fw-bold">Horário de Início:</label>
-            <input type="time" name="horario_inicio" id="horario_inicio" class="form-control" required>
+            </div>
+            
+            <!-- Data -->
+            <div class="mb-3">
+              <label for="data" class="form-label">Data <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="data" name="data" required>
+            </div>
+            
+            <!-- Horário (será preenchido via JavaScript após selecionar data/evento) -->
+            <div class="mb-3">
+              <label for="horario_id" class="form-label">Horário <span class="text-danger">*</span></label>
+              <select class="form-select" id="horario_id" name="horario_id" required disabled>
+                <option value="">Selecione a data e o evento primeiro</option>
+              </select>
+            </div>
           </div>
           
-          <!-- Campo de Horário de Fim -->
-          <div class="col-md-4">
-            <label for="horario_fim" class="form-label fw-bold">Horário de Fim:</label>
-            <input type="time" name="horario_fim" id="horario_fim" class="form-control" required>
+          <!-- Coluna 2: Informações da Escola/Visitante -->
+          <div class="col-md-6">
+            <h5 class="mb-3 border-bottom pb-2">Informações da Escola/Visitante</h5>
+            
+            <!-- Nome da Escola -->
+            <div class="mb-3">
+              <label for="escola_nome" class="form-label">Nome da Escola/Instituição <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="escola_nome" name="escola_nome" required>
+            </div>
+            
+            <!-- Nome do Responsável -->
+            <div class="mb-3">
+              <label for="nome_responsavel" class="form-label">Nome do Responsável</label>
+              <input type="text" class="form-control" id="nome_responsavel" name="nome_responsavel">
+            </div>
+            
+            <!-- Email do Responsável -->
+            <div class="mb-3">
+              <label for="email_responsavel" class="form-label">Email do Responsável</label>
+              <input type="email" class="form-control" id="email_responsavel" name="email_responsavel">
+            </div>
+            
+            <!-- Telefone da Escola -->
+            <div class="mb-3">
+              <label for="telefone_escola" class="form-label">Telefone para Contato</label>
+              <input type="tel" class="form-control" id="telefone_escola" name="telefone_escola">
+            </div>
           </div>
         </div>
-
-        <!-- Linha 3: Status -->
-        <div class="mb-3">
-          <label for="status" class="form-label fw-bold">Status:</label>
-          <select name="status" id="status" class="form-select" required>
-            <option value="pendente">Pendente</option>
-            {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
-              <option value="confirmado">Confirmado</option>
-              <option value="realizado">Realizado</option>
-              <option value="cancelado">Cancelado</option>
-            {% endif %}
-          </select>
+        
+        <div class="row mt-3">
+          <!-- Informações da Turma -->
+          <div class="col-12">
+            <h5 class="mb-3 border-bottom pb-2">Informações da Turma</h5>
+            
+            <div class="row">
+              <div class="col-md-4">
+                <!-- Turma -->
+                <div class="mb-3">
+                  <label for="turma" class="form-label">Turma/Identificação</label>
+                  <input type="text" class="form-control" id="turma" name="turma">
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <!-- Quantidade de Alunos -->
+                <div class="mb-3">
+                  <label for="quantidade_alunos" class="form-label">Quantidade de Alunos <span class="text-danger">*</span></label>
+                  <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" required>
+                </div>
+              </div>
+              
+              <div class="col-md-4">
+                <!-- Faixa Etária -->
+                <div class="mb-3">
+                  <label for="faixa_etaria" class="form-label">Faixa Etária</label>
+                  <select class="form-select" id="faixa_etaria" name="faixa_etaria">
+                    <option value="">Selecione</option>
+                    <option value="4-6">4 a 6 anos</option>
+                    <option value="7-10">7 a 10 anos</option>
+                    <option value="11-14">11 a 14 anos</option>
+                    <option value="15-17">15 a 17 anos</option>
+                    <option value="18+">18 anos ou mais</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Observações -->
+            <div class="mb-3">
+              <label for="observacoes" class="form-label">Observações</label>
+              <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+            </div>
+          </div>
         </div>
-
-        <!-- Linha 4: Observações -->
-        <div class="mb-3">
-          <label for="observacoes" class="form-label fw-bold">Observações:</label>
-          <textarea name="observacoes" id="observacoes" rows="4" class="form-control"></textarea>
-        </div>
-
-        <!-- Linha de Botões -->
-        <div class="d-flex justify-content-end gap-2 mt-4">
-          <a href="{{ url_for('routes.listar_agendamentos') }}" class="btn btn-secondary">
-            <i class="bi bi-x-circle me-2"></i>Cancelar
-          </a>
-          <button type="submit" class="btn btn-success">
-            <i class="bi bi-check-circle me-2"></i>Salvar Agendamento
-          </button>
+        
+        <div class="row mt-4">
+          <div class="col-12 d-flex justify-content-between">
+            <a href="{{ url_for('routes.dashboard_agendamentos') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-calendar-plus me-2"></i>Criar Agendamento</button>
+          </div>
         </div>
       </form>
     </div>
   </div>
 </div>
 
+<!-- JavaScript para carregar horários disponíveis baseado na data e evento selecionados -->
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Define a data mínima como hoje
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('data').setAttribute('min', today);
-
-    // Quando selecionar uma oficina, verificar horários disponíveis
-    const oficinaSelect = document.getElementById('oficina_id');
-    const dataInput = document.getElementById('data');
+document.addEventListener('DOMContentLoaded', function() {
+  const eventoSelect = document.getElementById('evento_id');
+  const dataInput = document.getElementById('data');
+  const horarioSelect = document.getElementById('horario_id');
+  
+  // Função para atualizar horários disponíveis
+  function atualizarHorarios() {
+    const eventoId = eventoSelect.value;
+    const data = dataInput.value;
     
-    [oficinaSelect, dataInput].forEach(element => {
-      element.addEventListener('change', function() {
-        const oficinaId = oficinaSelect.value;
-        const dataEscolhida = dataInput.value;
-        
-        if (oficinaId && dataEscolhida) {
-          // Fazer uma requisição AJAX para verificar horários disponíveis
-          fetch(`/api/horarios-disponiveis?oficina_id=${oficinaId}&data=${dataEscolhida}`)
-            .then(response => response.json())
-            .then(data => {
-              if (data.success) {
-                // Se houver horários sugeridos, pode-se popular um select
-                // ou mostrar uma mensagem com os horários disponíveis
-                console.log('Horários disponíveis:', data.horarios);
-                // Implementar lógica conforme necessário
-              } else {
-                alert('Erro ao buscar horários disponíveis: ' + data.message);
-              }
-            })
-            .catch(error => {
-              console.error('Erro ao buscar horários:', error);
+    // Resetar e desabilitar o select de horários
+    horarioSelect.innerHTML = '<option value="">Carregando horários...</option>';
+    horarioSelect.disabled = true;
+    
+    // Verificar se temos evento e data selecionados
+    if (eventoId && data) {
+      // Fazer requisição AJAX para buscar horários disponíveis
+      fetch(`/api/horarios-disponiveis?evento_id=${eventoId}&data=${data}`)
+        .then(response => response.json())
+        .then(data => {
+          // Limpar opções atuais
+          horarioSelect.innerHTML = '';
+          
+          if (data.success && data.horarios && data.horarios.length > 0) {
+            // Adicionar horários disponíveis
+            data.horarios.forEach(horario => {
+              const option = document.createElement('option');
+              option.value = horario.id;
+              option.textContent = `${horario.horario_inicio} - ${horario.horario_fim} (${horario.vagas_disponiveis} vagas)`;
+              horarioSelect.appendChild(option);
             });
-        }
-      });
-    });
-
-    // Validar que horário de fim é posterior ao de início
-    const inicioInput = document.getElementById('horario_inicio');
-    const fimInput = document.getElementById('horario_fim');
-    
-    fimInput.addEventListener('change', function() {
-      if (inicioInput.value && fimInput.value && inicioInput.value >= fimInput.value) {
-        alert('O horário de fim deve ser posterior ao horário de início.');
-        fimInput.value = '';
-      }
-    });
-
-    // Validar formulário antes de enviar
-    const form = document.querySelector('form');
-    form.addEventListener('submit', function(event) {
-      const oficina = oficinaSelect.value;
-      const data = dataInput.value;
-      const inicio = inicioInput.value;
-      const fim = fimInput.value;
-      
-      if (!oficina || !data || !inicio || !fim) {
-        event.preventDefault();
-        alert('Por favor, preencha todos os campos obrigatórios.');
-      }
-      
-      if (inicio >= fim) {
-        event.preventDefault();
-        alert('O horário de fim deve ser posterior ao horário de início.');
-      }
-    });
-  });
+            
+            // Habilitar o select
+            horarioSelect.disabled = false;
+          } else {
+            // Nenhum horário disponível
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Nenhum horário disponível para esta data';
+            horarioSelect.appendChild(option);
+          }
+        })
+        .catch(error => {
+          console.error('Erro ao buscar horários:', error);
+          // Mensagem de erro
+          horarioSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
+        });
+    } else {
+      // Se não tiver evento ou data, mostrar mensagem padrão
+      horarioSelect.innerHTML = '<option value="">Selecione a data e o evento primeiro</option>';
+    }
+  }
+  
+  // Atualizar horários quando o evento ou a data mudar
+  eventoSelect.addEventListener('change', atualizarHorarios);
+  dataInput.addEventListener('change', atualizarHorarios);
+});
 </script>
 {% endblock %}

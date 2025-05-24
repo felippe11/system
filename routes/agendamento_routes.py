@@ -1,7 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
-agendamento_routes = Blueprint('agendamento_routes', __name__)
+agendamento_routes = Blueprint(
+    'agendamento_routes',
+    __name__,
+    template_folder="agendamento"
+)
 
 class NotificacaoAgendamento:
     """
@@ -2965,7 +2969,7 @@ def checkin_qr_agendamento():
             flash('Agendamento não encontrado. Verifique o token e tente novamente.', 'danger')
     
     # Renderiza a página do scanner QR Code
-    return render_template('checkin_qr_agendamento.html')
+    return render_template("checkin/checkin_qr_agendamento.html")
 
 # Adicione isto ao seu arquivo routes.py
 @agendamento_routes.route('/professor/eventos_disponiveis')
@@ -2994,7 +2998,7 @@ def cadastro_professor():
 
         if usuario_existente:
             flash('Email ou CPF já cadastrado!', 'danger')
-            return render_template('cadastro_professor.html')
+            return render_template("auth/cadastro_professor.html")
 
         # Criar novo usuário professor
         novo_professor = Usuario(
@@ -3015,7 +3019,7 @@ def cadastro_professor():
             db.session.rollback()
             flash(f'Erro ao cadastrar: {str(e)}', 'danger')
 
-    return render_template('cadastro_professor.html')
+    return render_template("auth/cadastro_professor.html")
 
 @agendamento_routes.route('/agendar_visita/<int:horario_id>', methods=['GET', 'POST'])
 @login_required

@@ -73,7 +73,7 @@
         {% endif %}
       </div>
       
-      <form action="{{ url_for('routes.login') }}" method="POST" class="login-form">
+      <form action="{{ url_for('auth_routes.login') }}" method="POST" class="login-form">
         <div class="form-group">
           <label for="email">E-mail</label>
           <div class="input-wrapper">
@@ -99,7 +99,7 @@
         </button>
         
         <div class="helper-links">
-          <a href="{{ url_for('routes.esqueci_senha_cpf') }}" class="link">Esqueceu sua senha?</a>
+          <a href="{{ url_for('auth_routes.esqueci_senha_cpf') }}" class="link">Esqueceu sua senha?</a>
         </div>
       </form>
       

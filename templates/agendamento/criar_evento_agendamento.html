@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Criar Evento para Agendamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 mt-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-primary mb-0">
+      <i class="bi bi-calendar-plus me-2"></i>Criar Evento para Agendamento
+    </h1>
+    <a href="{{ url_for('routes.dashboard') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
+    </a>
+  </div>
+
+  <div class="card shadow">
+    <div class="card-body">
+      {% if form_erro %}
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ form_erro }}
+      </div>
+      {% endif %}
+
+      <form method="POST" action="{{ url_for('routes.configurar_evento') }}" enctype="multipart/form-data">
+        <div class="row">
+          <!-- Coluna 1: Informações Básicas -->
+          <div class="col-md-6">
+            <h5 class="mb-3 border-bottom border-primary pb-2 text-primary">Informações Básicas</h5>
+            
+            <!-- Nome do Evento -->
+            <div class="mb-3">
+              <label for="nome" class="form-label">Nome do Evento <span class="text-danger">*</span></label>
+              <input type="text" class="form-control border border-secondary bg-white" id="nome" name="nome" required>
+            </div>
+            
+            <!-- Descrição -->
+            <div class="mb-3">
+              <label for="descricao" class="form-label">Descrição</label>
+              <textarea class="form-control border border-secondary bg-white" id="descricao" name="descricao" rows="4"></textarea>
+              <div class="form-text">Descreva o evento, informações importantes para os visitantes, etc.</div>
+            </div>
+            
+            <!-- Local 
+            <div class="mb-3">
+              <label for="local" class="form-label">Local</label>
+              <input type="text" class="form-control" id="local" name="local">
+            </div>
+            -->
+            
+            <!-- Imagem do Evento -->
+            <div class="mb-4">
+              <label for="banner" class="form-label">Banner do Evento</label>
+              <input type="file" class="form-control border border-secondary bg-white" id="banner" name="banner" accept="image/*">
+              <div class="form-text">Imagem que será exibida na página de agendamento. (Opcional) <br> Recomendado: Imagem no formato 1200 x 600px</div>
+            </div>
+          </div>
+          
+          <!-- Coluna 2: Configurações -->
+          <div class="col-md-6">
+            <h5 class="mb-3 border-bottom border-primary pb-2 text-primary">Configurações</h5>
+            
+            <!-- Período do Evento -->
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="data_inicio" class="form-label">Data de Início <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control border border-secondary bg-white" id="data_inicio" name="data_inicio" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="data_fim" class="form-label">Data de Término <span class="text-danger">*</span></label>
+                  <input type="date" class="form-control border border-secondary bg-white" id="data_fim" name="data_fim" required>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Capacidade Padrão -->
+            <div class="mb-3">
+              <label for="capacidade_padrao" class="form-label">Capacidade Padrão <span class="text-danger">*</span></label>
+              <input type="number" class="form-control border border-secondary bg-white" id="capacidade_padrao" name="capacidade_padrao" min="1" required>
+              <div class="form-text">Número padrão de pessoas por horário. Você poderá personalizar por horário depois.</div>
+            </div>
+            
+            <!-- Opções -->
+            <div class="mb-3">
+              <label class="form-label">Opções</label>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="requer_aprovacao" name="requer_aprovacao">
+                <label class="form-check-label" for="requer_aprovacao">
+                  Requer aprovação manual de agendamentos
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="publico" name="publico" checked>
+                <label class="form-check-label" for="publico">
+                  Evento público (visível para agendamento externo)
+                </label>
+              </div>
+            </div>
+            
+            <!-- Formulário de Inscrição -->
+            <div class="mb-3">
+              <label for="formulario_id" class="form-label">Formulário de Inscrição</label>
+              <select class="form-select border border-secondary bg-white" id="formulario_id" name="formulario_id">
+                <option value="">Sem formulário adicional</option>
+                <option value="1">Formulário Básico</option>
+                <option value="2">Formulário Completo</option>
+                <option value="3">Formulário para Escolas</option>
+              </select>
+              <div class="form-text">Formulário adicional a ser preenchido durante o agendamento. (Opcional)</div>
+            </div>
+          </div>
+        </div>
+
+
+                  {% if current_user.habilita_pagamento %}
+                <div class="row">
+                  <!-- Location Section -->
+                  <div class="col-md-6">
+                    <div class="border-bottom border-primary pb-2 mb-3">
+                      <h5 class="text-primary"><i class="bi bi-geo-alt me-2"></i>Localização</h5>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="localizacao" class="form-label">Endereço</label>
+                      <input type="text" class="form-control border border-secondary bg-white" id="localizacao" name="localizacao"
+                            placeholder="Ex: Av. Paulista, 1000 - São Paulo, SP">
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label for="link_mapa" class="form-label">Link do Google Maps</label>
+                      <div class="input-group">
+                        <input type="url" class="form-control border border-secondary bg-white" id="link_mapa" name="link_mapa"
+                              placeholder="https://maps.google.com/...">
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Registration Options Section -->
+                  <div class="col-md-6">
+                    <div class="border-bottom border-primary pb-2 mb-3">
+                      <h5 class="text-primary"><i class="bi bi-cash-coin me-2"></i>Opções de Inscrição</h5>
+                    </div>
+                    
+                    <div class="card bg-white border border-secondary mb-4">
+                      <div class="card-body">
+                        <div class="form-check form-switch mb-3">
+                          <input type="checkbox" class="form-check-input" id="inscricao_gratuita" name="inscricao_gratuita">
+                          <label class="form-check-label" for="inscricao_gratuita">
+                            Evento com Inscrição Gratuita
+                          </label>
+                        </div>
+        
+                        <div id="tipos-inscricao-container">
+                          <p class="text-muted small mb-3">Configure os tipos de inscrição e seus respectivos valores:</p>
+                          
+                          <div id="tipos-inscricao-list">
+                            <div class="row mb-3 align-items-end tipo-inscricao-item">
+                              <div class="col-md-5">
+                                <label class="form-label">Tipo de Inscrição</label>
+                                <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" 
+                                      placeholder="Ex: Estudante, Profissional...">
+                              </div>
+                              <div class="col-md-3">
+                                <label class="form-label">Preço (R$)</label>
+                                <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
+                                      placeholder="0.00">
+                              </div>
+                              <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-danger remover-tipo-inscricao">
+                                  <i class="bi bi-trash"></i> Remover
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <button type="button" id="adicionar-tipo-inscricao" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Adicionar Tipo de Inscrição
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                </div>
+        
+        <div class="row mt-4">
+          <div class="col-12 d-flex justify-content-between">
+            <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-calendar-plus me-2"></i>Criar Evento
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript para validar formulários -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Validar datas
+  const dataInicioInput = document.getElementById('data_inicio');
+  const dataFimInput = document.getElementById('data_fim');
+  
+  if (dataInicioInput && dataFimInput) {
+    // Add validation when the end date input loses focus
+    dataFimInput.addEventListener('blur', function() {
+      // Only validate if both dates are completely filled
+      if (dataInicioInput.value && dataFimInput.value && 
+          dataInicioInput.value.length === 10 && dataFimInput.value.length === 10) {
+        
+        const dataInicio = new Date(dataInicioInput.value + 'T00:00:00');
+        const dataFim = new Date(dataFimInput.value + 'T00:00:00');
+        
+        if (dataFim < dataInicio) {
+          alert('A data de término não pode ser anterior à data de início!');
+          dataFimInput.value = '';
+        }
+      }
+    });
+  }
+  
+  // Validar tamanho da imagem
+  const imagemInput = document.getElementById('imagem');
+  if (imagemInput) {
+    imagemInput.addEventListener('change', function() {
+      if (this.files.length > 0) {
+        const file = this.files[0];
+        // Verificar tamanho do arquivo (limite de 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('A imagem deve ter menos de 5MB.');
+          this.value = '';
+        }
+      }
+    });
+  }
+});
+</script>
+
+{% if current_user.habilita_pagamento %}
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Toggle registration types visibility
+    const inscricaoGratuita = document.getElementById('inscricao_gratuita');
+    const tiposContainer = document.getElementById('tipos-inscricao-container');
+    
+    // Check initial state
+    tiposContainer.style.display = inscricaoGratuita.checked ? 'none' : 'block';
+    
+    // Add event listener
+    inscricaoGratuita.addEventListener('change', function() {
+      tiposContainer.style.display = this.checked ? 'none' : 'block';
+    });
+  
+    // Add new registration type
+    const addButton = document.getElementById('adicionar-tipo-inscricao');
+    const tiposList = document.getElementById('tipos-inscricao-list');
+    
+    addButton.addEventListener('click', function() {
+      const newItem = document.createElement('div');
+      newItem.className = 'row mb-3 align-items-end tipo-inscricao-item';
+      newItem.innerHTML = `
+                              <div class="col-md-5">
+                                <label class="form-label">Tipo de Inscrição</label>
+                                <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" 
+                                      placeholder="Ex: Estudante, Profissional...">
+                              </div>
+                              <div class="col-md-3">
+                                <label class="form-label">Preço (R$)</label>
+                                <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
+                                      placeholder="0.00">
+                              </div>
+                              <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-danger remover-tipo-inscricao">
+                                  <i class="bi bi-trash"></i> Remover
+                                </button>
+                              </div>
+      `;
+      tiposList.appendChild(newItem);
+    });
+  
+    // Remove registration type
+    tiposList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remover-tipo-inscricao') || 
+          e.target.closest('.remover-tipo-inscricao')) {
+        const button = e.target.classList.contains('remover-tipo-inscricao') ? 
+                      e.target : e.target.closest('.remover-tipo-inscricao');
+        const row = button.closest('.tipo-inscricao-item');
+        row.remove();
+      }
+    });
+  });
+</script>
+{% endif %}
+{% endblock %}
