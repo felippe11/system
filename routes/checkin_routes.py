@@ -499,4 +499,4 @@ def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
         flash("Acesso Autorizado!", "danger")
         
-    return render_template("scan_qr.html")
+    return render_template("checkin/scan_qr.html")

@@ -7,7 +7,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from models import Usuario, Ministrante, Cliente
 from extensions import login_manager, db
 
-auth_routes = Blueprint('auth_routes', __name__)
+auth_routes = Blueprint(
+    'auth_routes',
+    __name__,
+    template_folder="auth"
+)
 
 # =======================================
 # Função de carregamento de usuário
@@ -43,16 +47,16 @@ def login():
 
         if not usuario:
             flash('E-mail ou senha incorretos!', 'danger')
-            return render_template('login.html')
+            return render_template("auth/login.html")
 
         if isinstance(usuario, Cliente) and not usuario.ativo:
             logout_user()
             flash('Sua conta está desativada. Contate o administrador.', 'danger')
-            return render_template('login.html')
+            return render_template("auth/login.html")
 
         if not check_password_hash(usuario.senha, senha):
             flash('E-mail ou senha incorretos!', 'danger')
-            return render_template('login.html')
+            return render_template("auth/login.html")
 
         # Autenticar e guardar o tipo de usuário
         login_user(usuario)
@@ -77,7 +81,7 @@ def login():
 
         return redirect(url_for(destino))
 
-    return render_template('login.html')
+    return render_template("auth/login.html")
 
 # ===========================
 #   RESET DE SENHA VIA CPF
@@ -93,7 +97,7 @@ def esqueci_senha_cpf():
         else:
             flash('CPF não encontrado!', 'danger')
             return redirect(url_for('routes.esqueci_senha_cpf'))
-    return render_template('esqueci_senha_cpf.html')
+    return render_template("auth/esqueci_senha_cpf.html")
 
 @auth_routes.route('/reset_senha_cpf', methods=['GET', 'POST'])
 def reset_senha_cpf():

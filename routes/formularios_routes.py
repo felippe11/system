@@ -1,7 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 
-formularios_routes = Blueprint("formularios_routes", __name__)
+formularios_routes = Blueprint(
+    'formularios_routes',
+    __name__,
+    template_folder="formulario"
+)
 
 @formularios_routes.route('/formularios', methods=['GET'])
 @login_required
@@ -58,7 +62,7 @@ def criar_formulario():
         flash('Formulário criado com sucesso!', 'success')
         return redirect(url_for('routes.listar_formularios'))
     
-    return render_template('criar_formulario.html')
+    return render_template("formulario/criar_formulario.html")
 
 @formularios_routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -438,7 +442,7 @@ def criar_template():
         flash('Template criado com sucesso!', 'success')
         return redirect(url_for('routes.gerenciar_campos_template', template_id=novo_template.id))
     
-    return render_template('criar_template.html')
+    return render_template("certificado/criar_template.html")
 
 @formularios_routes.route('/formulario_templates/<int:template_id>/campos', methods=['GET', 'POST'])
 @login_required

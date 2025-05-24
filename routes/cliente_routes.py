@@ -39,7 +39,7 @@ def cadastrar_cliente():
         flash("Cliente cadastrado com sucesso!", "success")
         return redirect(url_for('cliente_routes.dashboard'))
 
-    return render_template('cadastrar_cliente.html')
+    return render_template("auth/cadastrar_cliente.html")
 
 
 
