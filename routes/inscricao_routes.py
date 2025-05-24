@@ -84,11 +84,8 @@ def cadastro_participante(identifier: str | None = None):
     # 5) Carregar outras variáveis para o template (como oficinas, programação etc.)
     # ---------------------------------------------------------------------
     grouped_oficinas = {}  # ajustar conforme sua lógica
-    sorted_keys = []       # idem
-    ministrantes = []      # idem
-    campos_personalizados = []  # se houver
-
-    return render_template("cadastro_participante.html",
+    sorted_keys = []      
+    return render_template("auth/cadastro_participante.html",
                            evento=evento,
                            tipos_inscricao=tipos_inscricao,
                            lote_vigente=lote_vigente,
@@ -248,8 +245,7 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
             "data_fim": lote_vigente.data_fim.strftime("%d/%m/%Y") if lote_vigente.data_fim else "Não definido",
         }
 
-    return render_template(
-        "cadastro_participante.html",
+    return render_template("auth/cadastro_participante.html",
         token=link.token,
         evento=evento,
         sorted_keys=sorted_keys,
@@ -320,7 +316,7 @@ def listar_inscritos_evento(evento_id):
     evento = Evento.query.get_or_404(evento_id)
     inscricoes = Inscricao.query.filter_by(evento_id=evento.id).all()
 
-    return render_template('listar_inscritos_evento.html', evento=evento, inscricoes=inscricoes)
+    return render_template("evento/listar_inscritos_evento.html", evento=evento, inscricoes=inscricoes)
 
 
 
@@ -514,7 +510,7 @@ def abrir_inscricao_customizada(slug):
         return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
 
     evento = link.evento
-    return render_template('cadastro_participante.html', evento=evento)
+    return render_template("auth/cadastro_participante.html", evento=evento)
 
 @inscricao_routes.route('/inscricao/token/<token>')
 def abrir_inscricao_token(token):
@@ -524,7 +520,7 @@ def abrir_inscricao_token(token):
         return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
 
     evento = link.evento
-    return render_template('cadastro_participante.html', evento=evento)
+    return render_template("auth/cadastro_participante.html", evento=evento)
 
 @inscricao_routes.route('/configurar_regras_inscricao', methods=['GET', 'POST'])
 @login_required
@@ -586,8 +582,7 @@ def configurar_regras_inscricao():
             db.session.rollback()
             flash(f'Erro ao configurar regras: {str(e)}', 'danger')
     
-    return render_template(
-        'configurar_regras_inscricao.html', 
+    return render_template("inscricao/configurar_regras_inscricao.html", 
         eventos=eventos, 
         evento=evento, 
         oficinas=oficinas,
@@ -919,8 +914,6 @@ def excluir_inscricao_evento(inscricao_id):
     evento_id = inscricao.evento_id
     db.session.delete(inscricao)
     db.session.commit()
-    flash("Inscrição excluída com sucesso.", "warning")
-    return redirect(url_for('listar_inscritos_evento', evento_id=evento_id))
 
 
 @inscricao_routes.route('/gerenciar_inscricoes', methods=['GET', 'POST'])

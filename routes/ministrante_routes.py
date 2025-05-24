@@ -4,12 +4,12 @@ from werkzeug.utils import secure_filename
 from models import Ministrante, Cliente, Oficina, RelatorioOficina, MaterialOficina
 from extensions import db
 from werkzeug.security import generate_password_hash
-import os
-import uuid
-from flask import jsonify
-from flask import abort
 
-ministrante_routes = Blueprint("ministrante_routes", __name__)
+ministrante_routes = Blueprint(
+    "ministrante_routes",
+    __name__,
+    template_folder="ministrante"
+)
 
 
 @ministrante_routes.route('/cadastro_ministrante', methods=['GET', 'POST'])

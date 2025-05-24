@@ -7,7 +7,11 @@ from services.pdf_service import gerar_certificado_personalizado  # ajuste confo
 
 import os
 
-certificado_routes = Blueprint('certificado_routes', __name__)
+certificado_routes = Blueprint(
+    'certificado_routes',
+    __name__,
+    template_folder="certificado"
+)
 
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
