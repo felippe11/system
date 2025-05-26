@@ -296,7 +296,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
             flash("Perfil atualizado com sucesso!", "success")
             if usuario_id:
                 return redirect(url_for('routes.editar_participante', usuario_id=usuario.id, oficina_id=oficina_id))
-            return redirect(url_for('routes.dashboard_participante'))
+            return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         except Exception as e:
             db.session.rollback()
             flash("Erro ao atualizar o perfil: " + str(e), "danger")
@@ -459,7 +459,7 @@ def remover_inscricao(oficina_id):
     inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina_id).first()
     if not inscricao:
         flash('Você não está inscrito nesta oficina!', 'warning')
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     oficina = Oficina.query.get(oficina_id)
     if oficina:
@@ -468,7 +468,7 @@ def remover_inscricao(oficina_id):
     db.session.delete(inscricao)
     db.session.commit()
     flash('Inscrição removida com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard_participante'))
+    return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
 @inscricao_routes.route('/cancelar_inscricao/<int:inscricao_id>', methods=['GET','POST'])
 @login_required
@@ -486,7 +486,7 @@ def cancelar_inscricao(inscricao_id):
         oficina = Oficina.query.get(insc.oficina_id)
         if oficina.cliente_id != current_user.id:
             flash("Você não tem permissão para cancelar esta inscrição!", "danger")
-            return redirect(url_for('routes.dashboard_cliente'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     try:
         db.session.delete(insc)
@@ -500,7 +500,7 @@ def cancelar_inscricao(inscricao_id):
     if current_user.tipo == 'admin':
         return redirect(url_for('routes.dashboard'))
     else:
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
 @inscricao_routes.route('/inscricao/<slug>')
 def abrir_inscricao_customizada(slug):
@@ -527,7 +527,7 @@ def abrir_inscricao_token(token):
 def configurar_regras_inscricao():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Lista todos os eventos do cliente
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
@@ -576,7 +576,7 @@ def configurar_regras_inscricao():
             
             db.session.commit()
             flash('Regras de inscrição configuradas com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_cliente'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
             
         except Exception as e:
             db.session.rollback()

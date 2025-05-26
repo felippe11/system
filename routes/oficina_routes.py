@@ -178,7 +178,7 @@ def editar_oficina(oficina_id):
 
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash('Você não tem permissão para editar esta atividade.', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     estados = obter_estados()
     if current_user.tipo == 'cliente':
@@ -312,7 +312,7 @@ def excluir_oficina(oficina_id):
     # 🚨 Cliente só pode excluir oficinas que ele criou
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash('Você não tem permissão para excluir esta oficina.', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     try:
         print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")

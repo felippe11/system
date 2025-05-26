@@ -147,7 +147,7 @@ def checkin(oficina_id):
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id_oficina).first()
     if not config_cliente or not config_cliente.permitir_checkin_global:
         flash("Check-in indisponível para esta oficina!", "danger")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     if request.method == 'POST':
         palavra_escolhida = request.form.get('palavra_escolhida')
@@ -162,13 +162,13 @@ def checkin(oficina_id):
 
         if inscricao.checkin_attempts >= 2:
             flash("Você excedeu o número de tentativas de check-in.", "danger")
-            return redirect(url_for('routes.dashboard_participante'))
+            return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
         # ❗Verificar se já existe check-in anterior
         checkin_existente = Checkin.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
         if checkin_existente:
             flash("Você já realizou o check-in!", "warning")
-            return redirect(url_for('routes.dashboard_participante'))
+            return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
         if palavra_escolhida.strip() != oficina.palavra_correta.strip():
             inscricao.checkin_attempts += 1
@@ -186,7 +186,7 @@ def checkin(oficina_id):
         db.session.add(checkin)
         db.session.commit()
         flash("Check-in realizado com sucesso!", "success")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
     return render_template('checkin.html', oficina=oficina, opcoes=opcoes)
@@ -248,7 +248,7 @@ def checkin_token():
     
     if not agendamento:
         flash('Agendamento não encontrado', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Verificar se o agendamento pertence a um evento do cliente
     evento_id = agendamento.horario.evento_id
@@ -256,7 +256,7 @@ def checkin_token():
     
     if evento.cliente_id != current_user.id:
         flash('Este agendamento não pertence a um evento seu', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Verificar se já foi realizado check-in
     if agendamento.checkin_realizado:
