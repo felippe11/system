@@ -72,12 +72,12 @@ def login():
 
         # Redirecionamento baseado no tipo
         destino = {
-            'admin': 'routes.dashboard',
-            'cliente': 'routes.dashboard_cliente',
-            'participante': 'routes.dashboard_participante',
-            'ministrante': 'routes.dashboard_ministrante',
-            'professor': 'routes.dashboard_professor'
-        }.get(session.get('user_type'), 'routes.dashboard')
+            'admin':        'dashboard_routes.dashboard',
+            'cliente':      'dashboard_routes.dashboard',
+            'participante': 'dashboard_routes.dashboard_participante',
+            'ministrante':  'dashboard_routes.dashboard_ministrante',
+            'professor':    'dashboard_routes.dashboard_professor'
+        }.get(session.get('user_type'), 'dashboard_routes.dashboard')
 
         return redirect(url_for(destino))
 

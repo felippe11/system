@@ -15,13 +15,13 @@ def baixar_comprovante(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash('Oficina não encontrada!', 'danger')
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # Busca a inscrição do usuário logado nessa oficina
     inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
     if not inscricao:
         flash('Você não está inscrito nesta oficina.', 'danger')
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # Agora chamamos a função com o parâmetro adicional "inscricao"
     pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
@@ -37,13 +37,13 @@ def gerar_certificado_individual(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # Verifica se o usuário está inscrito na oficina
     inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
     if not inscricao:
         flash("Você não está inscrito nesta oficina!", "danger")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # Define o caminho do certificado
     pdf_path = f"static/certificados/certificado_{current_user.id}_{oficina.id}.pdf"

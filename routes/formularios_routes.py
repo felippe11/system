@@ -182,7 +182,7 @@ def preencher_formulario(formulario_id):
 
         db.session.commit()
         flash("Formulário enviado com sucesso!", "success")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     return render_template('preencher_formulario.html', formulario=formulario)
 
@@ -200,7 +200,7 @@ def listar_formularios_participante():
     
     if not cliente_id:
         flash("Você não está associado a nenhum cliente.", "warning")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         
     # Busca formulários criados pelo cliente do participante
     formularios = Formulario.query.filter_by(cliente_id=cliente_id).all()
@@ -210,7 +210,7 @@ def listar_formularios_participante():
 
     if not formularios:
         flash("Nenhum formulário disponível no momento.", "warning")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     return render_template('formularios_participante.html', formularios=formularios)
 
@@ -222,7 +222,7 @@ def visualizar_resposta(resposta_id):
     # Se quiser, confira se o current_user é o dono da resposta
     if resposta.usuario_id != current_user.id:
         flash("Você não tem permissão para ver esta resposta.", "danger")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     return render_template('visualizar_resposta.html', resposta=resposta)
 
@@ -339,7 +339,7 @@ def listar_respostas_ministrante(formulario_id):
     # 1) Verifica se o current_user é ministrante
     if not isinstance(current_user, Ministrante):
         flash('Apenas ministrantes têm acesso a esta tela.', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
 
     formulario = Formulario.query.get_or_404(formulario_id)
     # 2) Carrega as respostas

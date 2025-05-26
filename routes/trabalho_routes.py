@@ -13,7 +13,7 @@ trabalho_routes = Blueprint(
 def submeter_trabalho():
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem submeter trabalhos.', 'danger')
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -41,7 +41,7 @@ def submeter_trabalho():
         db.session.commit()
 
         flash("Trabalho submetido com sucesso!", "success")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     return render_template("trabalho/submeter_trabalho.html")
 
@@ -90,7 +90,7 @@ def avaliar_trabalho(trabalho_id):
 @login_required
 def meus_trabalhos():
     if current_user.tipo != 'participante':
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     trabalhos = TrabalhoCientifico.query.filter_by(usuario_id=current_user.id).all()
     return render_template('meus_trabalhos.html', trabalhos=trabalhos)
