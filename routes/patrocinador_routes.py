@@ -20,7 +20,7 @@ def adicionar_patrocinadores_categorizados():
     evento_id = request.form.get('evento_id')
     if not evento_id:
         flash("Evento não selecionado!", "danger")
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     qtd_realizacao = int(request.form.get('qtd_realizacao', 0))
     qtd_patrocinio = int(request.form.get('qtd_patrocinio', 0))
@@ -60,7 +60,7 @@ def adicionar_patrocinadores_categorizados():
     db.session.commit()
 
     flash(f"Patrocinadores adicionados com sucesso! Total: {total_importados}", "success")
-    return redirect(url_for('routes.dashboard_cliente'))
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
 @patrocinador_routes.route('/remover_patrocinador/<int:patrocinador_id>', methods=['POST'])

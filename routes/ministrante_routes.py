@@ -91,7 +91,7 @@ def editar_ministrante(ministrante_id):
 
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else None
     ids_extras = request.form.getlist('ministrantes_ids[]')
@@ -143,7 +143,7 @@ def excluir_ministrante(ministrante_id):
 
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     db.session.delete(ministrante)
     db.session.commit()
@@ -175,7 +175,7 @@ def enviar_relatorio(oficina_id):
 
     if oficina.ministrante_id != ministrante_logado.id:
         flash('Você não é responsável por esta oficina!', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
 
     if request.method == 'POST':
         metodologia = request.form.get('metodologia')
@@ -203,7 +203,7 @@ def enviar_relatorio(oficina_id):
         db.session.commit()
 
         flash("Relatório enviado com sucesso!", "success")
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
 
     return render_template('enviar_relatorio.html', oficina=oficina)
 
@@ -221,7 +221,7 @@ def upload_material(oficina_id):
     ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
     if not ministrante_logado or oficina.ministrante_id != ministrante_logado.id:
         flash('Você não é responsável por esta oficina!', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
     
     if request.method == 'POST':
         arquivo = request.files.get('arquivo')
@@ -241,7 +241,7 @@ def upload_material(oficina_id):
             db.session.commit()
             
             flash('Material anexado com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_ministrante'))
+            return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
         else:
             flash('Nenhum arquivo foi enviado.', 'danger')
     

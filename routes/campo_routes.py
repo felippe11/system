@@ -22,7 +22,7 @@ def adicionar_campo_personalizado():
     db.session.commit()
 
     flash('Campo personalizado adicionado com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard_cliente'))
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 @campo_routes.route('/remover_campo_personalizado/<int:campo_id>', methods=['POST'])
 @login_required
@@ -31,13 +31,13 @@ def remover_campo_personalizado(campo_id):
 
     if campo.cliente_id != current_user.id:
         flash('Você não tem permissão para remover este campo.', 'danger')
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     db.session.delete(campo)
     db.session.commit()
 
     flash('Campo personalizado removido com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard_cliente'))
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
 

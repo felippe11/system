@@ -12,7 +12,7 @@ def feedback_ministrante(oficina_id):
     # Verifica se o usuário é um ministrante
     if current_user.tipo != 'ministrante':
         flash('Apenas ministrantes podem enviar feedback por aqui.', 'danger')
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
     
     oficina = Oficina.query.get_or_404(oficina_id)
     
@@ -35,7 +35,7 @@ def feedback_ministrante(oficina_id):
         db.session.add(novo_feedback)
         db.session.commit()
         flash('Feedback enviado com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard_ministrante'))
+        return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
     
     # Reaproveita o template existente (feedback.html) ou crie um específico se desejar
     return render_template('feedback.html', oficina=oficina)
@@ -66,7 +66,7 @@ def feedback(oficina_id):
         db.session.add(novo_feedback)
         db.session.commit()
         flash('Feedback enviado com sucesso!', 'success')
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
     return render_template('feedback.html', oficina=oficina)
 
 @feedback_routes.route('/feedback_oficina/<int:oficina_id>')
