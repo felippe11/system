@@ -17,7 +17,7 @@ ministrante_routes = Blueprint(
 def cadastro_ministrante():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
 
@@ -77,7 +77,7 @@ def cadastro_ministrante():
             db.session.commit()
             flash('Cadastro realizado com sucesso!', 'success')
             # Redireciona para o dashboard adequado (admin / cliente)
-            return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cadastrar ministrante: {str(e)}', 'danger')
@@ -156,7 +156,7 @@ def excluir_ministrante(ministrante_id):
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
 

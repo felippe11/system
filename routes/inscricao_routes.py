@@ -267,7 +267,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
     if usuario_id:
         if not hasattr(current_user, 'tipo') or current_user.tipo != 'cliente':
             flash('Acesso negado!', 'danger')
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         usuario = Usuario.query.get_or_404(usuario_id)
         oficina = Oficina.query.get_or_404(oficina_id)
@@ -275,7 +275,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
         # Participante editando a si mesmo
         if not hasattr(current_user, 'tipo') or current_user.tipo != 'participante':
             flash('Acesso negado!', 'danger')
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard'))
         usuario = current_user
         oficina = None  # Não necessário nesse caso
 
@@ -311,7 +311,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
 def listar_inscritos_evento(evento_id):
     if current_user.tipo != 'cliente':
         flash("Acesso restrito.", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     evento = Evento.query.get_or_404(evento_id)
     inscricoes = Inscricao.query.filter_by(evento_id=evento.id).all()
@@ -476,7 +476,7 @@ def cancelar_inscricao(inscricao_id):
     # Allow both admin and client access
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Get inscription
     insc = Inscricao.query.get_or_404(inscricao_id)
@@ -498,7 +498,7 @@ def cancelar_inscricao(inscricao_id):
 
     # Redirect to appropriate dashboard based on user type
     if current_user.tipo == 'admin':
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     else:
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
@@ -603,13 +603,13 @@ def inscrever_participantes_lote():
     if not oficina_id or not usuario_ids:
         flash('Oficina ou participantes não selecionados corretamente.', 'warning')
         print("❌ [DEBUG] Erro: Oficina ou participantes não foram selecionados corretamente.")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash('Oficina não encontrada!', 'danger')
         print("❌ [DEBUG] Erro: Oficina não encontrada no banco de dados.")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     inscritos_sucesso = 0
     erros = 0
@@ -652,7 +652,7 @@ def inscrever_participantes_lote():
         flash(f"Erro ao inscrever participantes em lote: {str(e)}", "danger")
         print(f"❌ [DEBUG] Erro ao inscrever participantes: {e}")
 
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 
 @inscricao_routes.route('/cancelar_inscricoes_lote', methods=['POST'])
@@ -661,13 +661,13 @@ def cancelar_inscricoes_lote():
     # Verifica se é admin
     if current_user.tipo != 'admin':
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Pega os IDs marcados
     inscricao_ids = request.form.getlist('inscricao_ids')
     if not inscricao_ids:
         flash("Nenhuma inscrição selecionada!", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Converte para int
     inscricao_ids = list(map(int, inscricao_ids))
@@ -685,7 +685,7 @@ def cancelar_inscricoes_lote():
         db.session.rollback()
         flash(f"Erro ao cancelar inscrições: {e}", "danger")
 
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 from models import Inscricao, Oficina, Usuario   # ➊ certifique-se do import
 
@@ -695,7 +695,7 @@ def inscricoes_lote():
     # ─── 0. Permissão ──────────────────────────────────────────────
     if current_user.tipo not in {'admin', 'cliente'}:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # ─── 1. Dados do formulário ────────────────────────────────────
     inscricao_ids      = list(map(int, request.form.getlist('inscricao_ids')))
@@ -704,7 +704,7 @@ def inscricoes_lote():
 
     if not inscricao_ids or not oficina_destino_id:
         flash("Selecione inscrições e oficina de destino.", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     oficina_destino = Oficina.query.get_or_404(oficina_destino_id)
     inscricoes      = Inscricao.query.filter(Inscricao.id.in_(inscricao_ids)).all()
@@ -712,14 +712,14 @@ def inscricoes_lote():
     # ─── 2. Restrições de cliente ─────────────────────────────────
     if current_user.tipo == 'cliente' and any(i.cliente_id != current_user.id for i in inscricoes):
         flash("Há inscrições de outro cliente selecionadas!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # ─── 3. Verificar vagas de uma vez só ─────────────────────────
     if oficina_destino.vagas < len(inscricoes):
         flash(f"Não há vagas suficientes! "
               f"(Disponíveis: {oficina_destino.vagas}, Necessárias: {len(inscricoes)})",
               "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # ─── 4. Processar lote ────────────────────────────────────────
     try:
@@ -779,7 +779,7 @@ def mover_inscricoes_lote():
     # ░░░ 1. Permissão --------------------------------------------------------
     if current_user.tipo not in {"admin", "cliente"}:
         flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # ░░░ 2. Coleta de parâmetros --------------------------------------------
     inscricao_ids      = list(map(int, request.form.getlist("inscricao_ids")))
@@ -787,11 +787,11 @@ def mover_inscricoes_lote():
 
     if not inscricao_ids:
         flash("Nenhuma inscrição selecionada!", "warning")
-        return redirect(url_for("routes.dashboard"))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     if not oficina_destino_id:
         flash("Nenhuma oficina de destino selecionada!", "warning")
-        return redirect(url_for("routes.dashboard"))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     try:
         # ░░░ 3. Objetos de referência ---------------------------------------
@@ -803,7 +803,7 @@ def mover_inscricoes_lote():
         # 3.1 – Garantir que destino pertence ao mesmo evento
         if oficina_destino.evento_id != evento_id:
             flash("A oficina de destino deve pertencer ao mesmo evento!", "danger")
-            return redirect(url_for("routes.dashboard"))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         # 3.2 – Buscar inscrições a mover
         inscricoes = (
@@ -815,7 +815,7 @@ def mover_inscricoes_lote():
         # 3.3 – Checar se todas são do mesmo evento
         if any(insc.oficina.evento_id != evento_id for insc in inscricoes):
             flash("Todas as inscrições devem pertencer ao mesmo evento!", "danger")
-            return redirect(url_for("routes.dashboard"))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         # 3.4 – Verificar vagas
         if oficina_destino.vagas < len(inscricoes):
@@ -824,7 +824,7 @@ def mover_inscricoes_lote():
                 f"(Disponível: {oficina_destino.vagas}, Necessário: {len(inscricoes)})",
                 "danger",
             )
-            return redirect(url_for("routes.dashboard"))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         # ░░░ 4. Garante inscrição-evento para quem não tem -------------------
         usuario_ids = {insc.usuario_id for insc in inscricoes}

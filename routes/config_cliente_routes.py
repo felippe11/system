@@ -122,14 +122,14 @@ def toggle_certificado_individual():
 
     status = "ativado" if config.habilitar_certificado_individual else "desativado"
     flash(f"Certificado individual {status} com sucesso!", "success")
-    return redirect(url_for("routes.dashboard_cliente"))
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 @config_cliente_routes.route("/toggle_feedback", methods=["POST"])
 @login_required
 def toggle_feedback():
     if current_user.tipo != "admin":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("routes.dashboard_participante"))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
     config = Configuracao.query.first()
     if not config:
         config = Configuracao(permitir_checkin_global=False, habilitar_feedback=False)
@@ -137,14 +137,14 @@ def toggle_feedback():
     config.habilitar_feedback = not config.habilitar_feedback
     db.session.commit()
     flash(f"Feedback global {'ativado' if config.habilitar_feedback else 'desativado'} com sucesso!", "success")
-    return redirect(url_for("routes.dashboard"))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @config_cliente_routes.route('/toggle_cliente/<int:cliente_id>')
 @login_required
 def toggle_cliente(cliente_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     cliente = Cliente.query.get_or_404(cliente_id)
     print(f"Antes: {cliente.ativo}")
@@ -154,25 +154,25 @@ def toggle_cliente(cliente_id):
 
     db.session.commit()
     flash(f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success")
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @config_cliente_routes.route('/toggle_submissao_trabalhos')
 @login_required
 def toggle_submissao_trabalhos_cliente():
     if current_user.tipo != 'cliente':
         flash("Apenas clientes podem alterar essa configuração.", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     config = current_user.configuracao
 
     if not config:
         flash("Cliente sem configuração associada.", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
     db.session.commit()
     flash("Configuração de submissão de trabalhos atualizada!", "success")
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @config_cliente_routes.route("/api/configuracao_cliente_atual", methods=["GET"])
 @login_required

@@ -25,7 +25,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
     print(f"➡️ Inscricao encontrada: {inscricao} (ID: {inscricao.id if inscricao else 'None'})")
@@ -36,7 +36,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Verifica se é check-in de evento ou oficina
     if inscricao.evento_id:
@@ -51,7 +51,7 @@ def leitor_checkin():
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         novo_checkin = Checkin(
             usuario_id=inscricao.usuario_id,
@@ -77,7 +77,7 @@ def leitor_checkin():
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
-            return redirect(url_for('routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard'))
 
         novo_checkin = Checkin(
             usuario_id=inscricao.usuario_id,
@@ -97,7 +97,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     db.session.add(novo_checkin)
     db.session.commit()
@@ -113,7 +113,7 @@ def leitor_checkin():
 
     flash("Check-in realizado com sucesso!", "success")
     print("➡️ Check-in concluído e flash exibido, redirecionando para dashboard.")
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @checkin_routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
 @login_required
@@ -229,7 +229,7 @@ def checkin_token():
     
     if not token:
         flash('Token inválido ou não fornecido', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Se não estiver logado, redirecionar para login
     if not current_user.is_authenticated:
@@ -241,7 +241,7 @@ def checkin_token():
     # Verificar se é um cliente (organizador)
     if current_user.tipo != 'cliente':
         flash('Apenas organizadores podem realizar check-in', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Buscar o agendamento pelo token
     agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
@@ -407,7 +407,7 @@ def confirmar_checkin(agendamento_id):
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     

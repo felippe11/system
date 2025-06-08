@@ -18,7 +18,7 @@ oficina_routes = Blueprint('oficina_routes', __name__)
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     estados = obter_estados()
     ministrantes_disponiveis = (
@@ -144,7 +144,7 @@ def criar_oficina():
             db.session.commit()
             flash('Atividade criada com sucesso!', 'success')
             return redirect(
-                url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard')
+                url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard')
             )
 
         except Exception as e:
@@ -281,7 +281,7 @@ def editar_oficina(oficina_id):
 
             db.session.commit()
             flash('Oficina editada com sucesso!', 'success')
-            return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
 
         except Exception as e:
             db.session.rollback()
@@ -356,7 +356,7 @@ def excluir_oficina(oficina_id):
         print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
-    return redirect(url_for('routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
 
 
 @oficina_routes.route("/excluir_todas_oficinas", methods=["POST"])
@@ -374,7 +374,7 @@ def excluir_todas_oficinas():
 
         if not oficinas:
             flash("Não há oficinas para excluir.", "warning")
-            return redirect(url_for("routes.dashboard_cliente" if current_user.tipo == 'cliente' else "routes.dashboard"))
+            return redirect(url_for("dashboard_routes.dashboard_cliente" if current_user.tipo == 'cliente' else "dashboard_routes.dashboard"))
 
         for oficina in oficinas:
             db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete()
@@ -391,7 +391,7 @@ def excluir_todas_oficinas():
         db.session.rollback()
         flash(f"Erro ao excluir oficinas: {str(e)}", "danger")
 
-    return redirect(url_for("routes.dashboard_cliente" if current_user.tipo == 'cliente' else "routes.dashboard"))
+    return redirect(url_for("dashboard_routes.dashboard_cliente" if current_user.tipo == 'cliente' else "dashboard_routes.dashboard"))
 
 @oficina_routes.route('/api/oficinas_mesmo_evento/<int:oficina_id>')
 @login_required
