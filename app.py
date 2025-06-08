@@ -97,13 +97,6 @@ def index():
     now = datetime.utcnow()
     return f"Horário de Brasília: {brasilia_filter(now)}"
 
-
-# Loader do usuário
-@login_manager.user_loader
-def load_user(user_id):
-    return Usuario.query.get(user_id) or Cliente.query.get(user_id) or Ministrante.query.get(user_id)
-
-
 # Execução da aplicação
 if __name__ == '__main__':
     socketio.run(app, debug=True)
