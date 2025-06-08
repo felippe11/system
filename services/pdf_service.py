@@ -814,12 +814,12 @@ def gerar_certificados(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     inscritos = oficina.inscritos
     if not inscritos:
         flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
@@ -1462,12 +1462,12 @@ def gerar_certificados(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     inscritos = oficina.inscritos
     if not inscritos:
         flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
@@ -1823,7 +1823,7 @@ def gerar_pdf_checkins_qr():
 
     if not checkins_qr:
         flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # (continua com sua lógica atual do PDF sem alterações)
     # 2. Configuração do documento
@@ -2292,7 +2292,7 @@ def exportar_checkins_pdf_opcoes():
 
     if not current_user.is_cliente():
         flash("Acesso negado.", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Query base
     base_query = Checkin.query.filter(Checkin.cliente_id == current_user.id)
@@ -2307,7 +2307,7 @@ def exportar_checkins_pdf_opcoes():
 
     if not checkins:
         flash("Nenhum check-in encontrado para os filtros aplicados.", "info")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Gerar PDF
     buffer = BytesIO()
@@ -2464,7 +2464,7 @@ def exportar_checkins_evento_pdf(evento_id):
             if not evento:
                 flash("Evento não encontrado ou não pertence ao seu acesso.", "danger")
                 print("[DEBUG] Evento não pertence ao cliente logado.")
-                return redirect(url_for("routes.dashboard_cliente"))
+                return redirect(url_for('dashboard_routes.dashboard_cliente'))
     else:
         evento = Evento.query.get_or_404(evento_id)
 
@@ -2480,7 +2480,7 @@ def exportar_checkins_evento_pdf(evento_id):
 
     if not checkins:
         flash("Nenhum check-in encontrado para este evento.", "warning")
-        return redirect(url_for("routes.dashboard_cliente"))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     # DEBUG de alguns dados dos check-ins
     for c in checkins[:5]:
@@ -2709,7 +2709,7 @@ def gerar_evento_qrcode_pdf(evento_id):
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.cliente_id).first()
     if not config_cliente or not config_cliente.habilitar_qrcode_evento_credenciamento:
         flash("A geração de QR Code para credenciamento de evento está desabilitada para este cliente.", "danger")
-        return redirect(url_for('routes.dashboard_participante'))
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     # 2) Localiza o evento
     evento = Evento.query.get_or_404(evento_id)
@@ -3251,12 +3251,12 @@ def gerar_etiquetas(cliente_id):
     """Gera um PDF de etiquetas para o cliente"""
     if current_user.tipo != 'cliente' or current_user.id != cliente_id:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     pdf_path = gerar_etiquetas_pdf(cliente_id)
     if not pdf_path:
         flash("Nenhum usuário encontrado para gerar etiquetas!", "warning")
-        return redirect(url_for('routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     return send_file(pdf_path, as_attachment=True)
 
