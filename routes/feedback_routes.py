@@ -47,7 +47,7 @@ def feedback(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem enviar feedback.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     if request.method == 'POST':
         try:
             rating = int(request.form.get('rating', 0))

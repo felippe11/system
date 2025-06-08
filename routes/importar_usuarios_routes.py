@@ -21,11 +21,11 @@ importar_usuarios_routes = Blueprint('importar_usuarios_routes', __name__)
 def importar_usuarios():
     if "arquivo" not in request.files:
         flash("Nenhum arquivo enviado!", "danger")
-        return redirect(url_for("routes.dashboard"))
+        return redirect(url_for('dashboard_routes.dashboard'))
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
         flash("Nenhum arquivo selecionado.", "danger")
-        return redirect(url_for("routes.dashboard"))
+        return redirect(url_for('dashboard_routes.dashboard'))
     if arquivo and arquivo_permitido(arquivo.filename):
         filename = secure_filename(arquivo.filename)
         filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -37,7 +37,7 @@ def importar_usuarios():
             colunas_obrigatorias = ["nome", "cpf", "email", "senha", "formacao", "tipo"]
             if not all(col in df.columns for col in colunas_obrigatorias):
                 flash("Erro: O arquivo deve conter as colunas: " + ", ".join(colunas_obrigatorias), "danger")
-                return redirect(url_for("routes.dashboard"))
+                return redirect(url_for('dashboard_routes.dashboard'))
             total_importados = 0
             for _, row in df.iterrows():
                 cpf_str = str(row["cpf"]).strip()
@@ -70,6 +70,6 @@ def importar_usuarios():
         os.remove(filepath)
     else:
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
-    return redirect(url_for("routes.dashboard"))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 

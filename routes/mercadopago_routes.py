@@ -25,7 +25,7 @@ def pagamento_sucesso():
     session['user_type'] = 'participante'
 
     flash("Pagamento aprovado! Bem‑vindo(a) 😉", "success")
-    return redirect(url_for("routes.dashboard_participante"))
+    return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
 
 
@@ -68,7 +68,7 @@ def atualizar_taxa():
         assert 0 <= perc <= 100
     except:
         flash("Percentual inválido", "danger")
-        return redirect(request.referrer or url_for("routes.dashboard_admin"))
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
 
     cfg = Configuracao.query.first()
     if not cfg:
@@ -78,4 +78,4 @@ def atualizar_taxa():
     cfg.taxa_percentual_inscricao = perc
     db.session.commit()
     flash("Percentual salvo!", "success")
-    return redirect(request.referrer or url_for("routes.dashboard_admin"))
+    return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
