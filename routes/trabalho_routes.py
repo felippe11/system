@@ -51,7 +51,7 @@ def submeter_trabalho():
 def avaliar_trabalhos():
     if current_user.tipo != 'cliente' and not current_user.is_superuser():
         flash('Apenas administradores ou avaliadores têm acesso.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     trabalhos = TrabalhoCientifico.query.filter(TrabalhoCientifico.status != 'aceito').all()
     return render_template('avaliar_trabalhos.html', trabalhos=trabalhos)
@@ -100,7 +100,7 @@ def meus_trabalhos():
 def nova_submissao():
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem submeter trabalhos.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')

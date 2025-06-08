@@ -75,7 +75,7 @@ def criar_sorteio():
     # Verificar se o usuário é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado. Apenas clientes podem gerenciar sorteios.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Listar eventos do cliente para o formulário
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
@@ -132,7 +132,7 @@ def gerenciar_sorteios():
     # Verificar se o usuário é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado. Apenas clientes podem gerenciar sorteios.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Filtros da URL
     evento_id = request.args.get('evento_id', type=int)
