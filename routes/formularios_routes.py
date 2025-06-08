@@ -192,7 +192,7 @@ def preencher_formulario(formulario_id):
 def listar_formularios_participante():
     if current_user.tipo != 'participante':
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Busca apenas formulários disponíveis para o participante
     # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
@@ -361,7 +361,7 @@ def dar_feedback_resposta(resposta_id):
     # só Ministrantes ou Clientes
     if not (isinstance(current_user, Ministrante) or current_user.tipo == 'cliente'):
         flash('Apenas clientes e ministrantes podem dar feedback.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
     lista_campos = resposta.formulario.campos
@@ -398,7 +398,7 @@ def dar_feedback_resposta(resposta_id):
 def listar_templates():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Filter by cliente if not admin
     if current_user.tipo == 'cliente':
@@ -416,7 +416,7 @@ def listar_templates():
 def criar_template():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -519,7 +519,7 @@ def listar_respostas():
     # Verifica se o usuário é cliente ou ministrante
     if current_user.tipo not in ['cliente', 'ministrante']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # --- Se for cliente ---
     if current_user.tipo == 'cliente':
@@ -551,7 +551,7 @@ def listar_respostas():
     # Se não houver respostas
     if not respostas:
         flash('Não há respostas disponíveis no momento.', 'info')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     formulario = respostas[0].formulario
 
@@ -574,13 +574,13 @@ def definir_status_inline():
     # 2) Valida
     if not resposta_id or not novo_status:
         flash("Dados incompletos!", "danger")
-        return redirect(request.referrer or url_for('routes.dashboard'))
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
     # 3) Busca a resposta no banco
     resposta = RespostaFormulario.query.get(resposta_id)
     if not resposta:
         flash("Resposta não encontrada!", "warning")
-        return redirect(request.referrer or url_for('routes.dashboard'))
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
     # 4) Atualiza
     resposta.status_avaliacao = novo_status

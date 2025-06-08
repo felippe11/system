@@ -7,7 +7,7 @@ dashboard_professor_routes = Blueprint("dashboard_professor", __name__)
 @login_required
 def dashboard_professor():
     if current_user.tipo != 'professor':
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Buscando os agendamentos do professor logado
     agendamentos_professor = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
