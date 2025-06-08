@@ -21,14 +21,14 @@ def load_user(user_id):
     user_type = session.get('user_type')
 
     if user_type == 'ministrante':
-        return Ministrante.query.get(int(user_id))
+        return db.session.get(Ministrante, int(user_id))
     elif user_type in ['admin', 'participante']:
-        return Usuario.query.get(int(user_id))
+        return db.session.get(Usuario, int(user_id))
     elif user_type == 'cliente':
-        return Cliente.query.get(int(user_id))
+        return db.session.get(Cliente, int(user_id))
 
     # Fallback
-    return Usuario.query.get(int(user_id)) or Ministrante.query.get(int(user_id))
+    return db.session.get(Usuario, int(user_id)) or db.session.get(Ministrante, int(user_id))
 
 
 # =======================================
@@ -105,7 +105,7 @@ def reset_senha_cpf():
     if not user_id:
         flash('Nenhum usuário selecionado para redefinição!', 'danger')
         return redirect(url_for('routes.esqueci_senha_cpf'))
-    usuario = Usuario.query.get(user_id)
+    usuario = db.session.get(Usuario, user_id)
     if not usuario:
         flash('Usuário não encontrado no banco de dados!', 'danger')
         return redirect(url_for('routes.esqueci_senha_cpf'))
