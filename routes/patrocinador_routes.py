@@ -15,7 +15,7 @@ from flask import jsonify
 def adicionar_patrocinadores_categorizados():
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     evento_id = request.form.get('evento_id')
     if not evento_id:
@@ -68,7 +68,7 @@ def adicionar_patrocinadores_categorizados():
 def remover_patrocinador(patrocinador_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     patrocinador = Patrocinador.query.get_or_404(patrocinador_id)
 
@@ -96,7 +96,7 @@ def listar_patrocinadores():
     # Verifica se é admin ou cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     # Se for admin, traz todos; se for cliente, traz só do cliente
     if current_user.tipo == 'admin':
@@ -119,7 +119,7 @@ def gerenciar_patrocinadores():
     """Lista todos os patrocinadores, de todas as categorias."""
     if current_user.tipo not in ['admin','cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Se for admin, traz todos. Se for cliente, filtra pelos eventos do cliente
     if current_user.tipo == 'admin':
@@ -138,7 +138,7 @@ def remover_foto_patrocinador(patrocinador_id):
     """Remove a foto de patrocinador (categoria: Realização, Organização, Apoio, Patrocínio)."""
     if current_user.tipo not in ['admin','cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     pat = Patrocinador.query.get_or_404(patrocinador_id)
 

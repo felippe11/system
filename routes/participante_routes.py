@@ -13,7 +13,7 @@ def gerenciar_participantes():
     # Verifique se é admin
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Busca todos os usuários cujo tipo é 'participante'
     participantes = Usuario.query.filter_by(tipo='participante').all()
@@ -27,29 +27,29 @@ def gerenciar_participantes():
 def excluir_participante(participante_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     participante = Usuario.query.get_or_404(participante_id)
     if participante.tipo != 'participante':
         flash('Esse usuário não é um participante.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     db.session.delete(participante)
     db.session.commit()
     flash('Participante excluído com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @participante_routes.route('/editar_participante_admin/<int:participante_id>', methods=['POST'])
 @login_required
 def editar_participante_admin(participante_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     participante = Usuario.query.get_or_404(participante_id)
     if participante.tipo != 'participante':
         flash('Esse usuário não é um participante.', 'danger')
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     # Captura os dados do form
     nome = request.form.get('nome')
@@ -68,4 +68,4 @@ def editar_participante_admin(participante_id):
 
     db.session.commit()
     flash('Participante atualizado com sucesso!', 'success')
-    return redirect(url_for('routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))

@@ -14,7 +14,7 @@ dashboard_routes = Blueprint('dashboard_routes', __name__)
 @login_required
 def dashboard_cliente():
     if current_user.tipo != 'cliente':
-        return redirect(url_for('routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
     print("Usuário logado:", current_user.email)
