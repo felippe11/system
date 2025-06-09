@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 ministrante_routes = Blueprint(
     "ministrante_routes",
     __name__,
-    template_folder="ministrante"
+    template_folder="../templates/ministrante"
 )
 
 
