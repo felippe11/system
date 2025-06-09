@@ -3996,12 +3996,27 @@ def caminho_absoluto_arquivo(imagem_relativa):
     return os.path.join('static', imagem_relativa)
 
 import os
+import logging
 
-from services.mp_service import get_sdk
+# Configuração do logger para mensagens de pagamento
+payment_logger = logging.getLogger("payment")
 
-sdk = get_sdk()
+token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
+if not token:
+    raise RuntimeError(
+        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
+        "Exporte a variável de ambiente antes de iniciar o servidor."
+    )
+
+sdk = mercadopago.SDK(token)
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
+    if sdk is None:
+        payment_logger.warning(
+            "Tentativa de criar preferência de pagamento com SDK não inicializado"
+        )
+        return None
+
     preference_data = {
         "payer": {"name": nome, "email": email, "last_name": nome},
         "items": [{
@@ -4019,14 +4034,16 @@ def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
         },
         "auto_return": "approved"
     }
-    preference_response = sdk.preference().create(preference_data)
-    return preference_response["response"]["init_point"]
+    try:
+        preference_response = sdk.preference().create(preference_data)
+        return preference_response["response"]["init_point"]
+    except Exception as e:
+        payment_logger.error(f"Erro ao criar preferência de pagamento: {e}")
+        return None
 
 # utils.py ou dentro da mesma função
 def criar_preference_mp(usuario, tipo_inscricao, evento):
-    sdk = get_sdk()
-    if not sdk:
-        raise RuntimeError("Serviço de pagamento desativado.")
+    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
 
     valor_com_taxa = float(preco_com_taxa(tipo_inscricao.preco))
 
@@ -4050,8 +4067,12 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "auto_return": "approved",
         "notification_url": url_for("routes.webhook_mp", _external=True)
     }
-    pref = sdk.preference().create(preference_data)
-    return pref["response"]["init_point"]
+    try:
+        pref = sdk.preference().create(preference_data)
+        return pref["response"]["init_point"]
+    except Exception as e:
+        payment_logger.error(f"Erro ao criar preferência MP: {e}")
+        return None
 
 
 # utils.py  (ou um novo arquivo helpers.py)
