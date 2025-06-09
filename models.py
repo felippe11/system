@@ -494,7 +494,7 @@ class Formulario(db.Model):
     
     cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
-    # 🔴 POSSÍVEL CAUSA DO ERRO: Renomeie o `backref` para evitar conflito
+    # Relacionamento com respostas do formulário.
     respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
 
 
