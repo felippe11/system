@@ -4,7 +4,7 @@ from flask_login import login_required
 formularios_routes = Blueprint(
     'formularios_routes',
     __name__,
-    template_folder="formulario"
+    template_folder="../templates/formulario"
 )
 
 @formularios_routes.route('/formularios', methods=['GET'])
@@ -62,7 +62,7 @@ def criar_formulario():
         flash('Formulário criado com sucesso!', 'success')
         return redirect(url_for('routes.listar_formularios'))
     
-    return render_template("formulario/criar_formulario.html")
+    return render_template("criar_formulario.html")
 
 @formularios_routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
 @login_required
