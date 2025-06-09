@@ -440,7 +440,7 @@ def eventos_com_oficinas():
 @login_required
 def oficinas_disponiveis():
     oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
-    return render_template('oficinas.html', oficinas=oficinas)
+    return render_template('oficina/oficinas.html', oficinas=oficinas)
 
 # routes/links_ui.py  (ou no mesmo arquivo se preferir)
 @oficina_routes.route("/links/gerar", methods=["GET"])
@@ -457,5 +457,5 @@ def listar_oficinas():
     else:
         oficinas = Oficina.query.all()
 
-    return render_template('oficinas.html', oficinas=oficinas)
+    return render_template('oficina/oficinas.html', oficinas=oficinas)
 
