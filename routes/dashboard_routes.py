@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, session
+from flask import Blueprint, render_template, redirect, url_for, flash, session, abort
 from flask_login import login_required, current_user
 
 dashboard_routes = Blueprint(
@@ -43,9 +43,3 @@ def dashboard_admin():
     return render_template("dashboard/dashboard_admin.html")
 
 
-@dashboard_routes.route("/dashboard_cliente")
-@login_required
-def dashboard_cliente():
-    if current_user.tipo != "cliente":
-        abort(403)
-    return render_template("dashboard/dashboard_cliente.html")
