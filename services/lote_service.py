@@ -1,8 +1,9 @@
-# app/services/lote_service.py
+# services/lote_service.py
 from datetime import datetime
 from sqlalchemy import func
-from app.extensions import db
-from app.models import Inscricao
+from extensions import db
+from models import Inscricao
+from routes import routes
 
 def lote_disponivel(lote):
     now = datetime.utcnow()
@@ -23,7 +24,7 @@ def api_lote_vigente(evento_id):
     from datetime import datetime
     from extensions import db
     from flask import jsonify
-    from app.models import LoteInscricao, Inscricao
+    from models import LoteInscricao, Inscricao
     import logging
 
     logger = logging.getLogger(__name__)
