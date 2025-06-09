@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 dashboard_routes = Blueprint(
     'dashboard_routes',
     __name__,
-    template_folder="dashboard"
+    template_folder="../templates/dashboard"
 )
 # ────────────────────────────────────────
 # DASHBOARD GERAL (admin, cliente, participante, professor)
@@ -40,6 +40,6 @@ def dashboard():
 def dashboard_admin():
     if current_user.tipo != "admin":
         abort(403)
-    return render_template("dashboard/dashboard_admin.html")
+    return render_template("dashboard_admin.html")
 
 

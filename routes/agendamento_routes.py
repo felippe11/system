@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 agendamento_routes = Blueprint(
     'agendamento_routes',
     __name__,
-    template_folder="agendamento"
+    template_folder="../templates/agendamento"
 )
 
 class NotificacaoAgendamento:
@@ -2535,7 +2535,7 @@ def visualizar_agendamento(agendamento_id):
     
     # Resposta HTML para interface web
     return render_template(
-        'agendamento/visualizar.html',
+        'visualizar.html',
         agendamento=agendamento,
         salas_ids=salas_ids
     )
