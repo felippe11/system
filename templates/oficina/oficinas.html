@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Oficinas{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Oficinas</h2>
+  {% if oficinas %}
+  <ul class="list-group">
+    {% for oficina in oficinas %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ oficina.titulo }}
+        <span class="badge bg-primary">{{ oficina.vagas }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Nenhuma oficina encontrada.</p>
+  {% endif %}
+</div>
+{% endblock %}

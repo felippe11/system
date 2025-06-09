@@ -3064,7 +3064,7 @@ def agendar_visita(horario_id):
             db.session.rollback()
             flash(f'Erro ao agendar: {str(e)}', 'danger')
 
-    return render_template('agendar_visita.html', horario=horario)
+    return render_template('agendamento/agendar_visita.html', horario=horario)
 
 @agendamento_routes.route('/adicionar_alunos', methods=['GET', 'POST'])
 @login_required
@@ -3184,7 +3184,7 @@ def adicionar_alunos():
 
     # GET: Renderiza o formulário
     estados = obter_estados()
-    return render_template('adicionar_alunos.html', estados=estados)
+    return render_template('professor/adicionar_alunos.html', estados=estados)
 
 @agendamento_routes.route('/importar_alunos', methods=['GET', 'POST'])
 @login_required
