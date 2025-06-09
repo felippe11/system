@@ -23,7 +23,7 @@ def submeter_trabalho():
 
         if not all([titulo, resumo, area_tematica, arquivo]):
             flash('Todos os campos são obrigatórios!', 'danger')
-            return redirect(url_for('routes.submeter_trabalho'))
+            return redirect(url_for('trabalho_routes.submeter_trabalho'))
 
         filename = secure_filename(arquivo.filename)
         caminho_pdf = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -81,7 +81,7 @@ def avaliar_trabalho(trabalho_id):
         db.session.commit()
 
         flash("Avaliação registrada!", "success")
-        return redirect(url_for('routes.avaliar_trabalhos'))
+        return redirect(url_for('trabalho_routes.avaliar_trabalhos'))
 
     return render_template('avaliar_trabalho.html', trabalho=trabalho)
 
@@ -110,7 +110,7 @@ def nova_submissao():
 
         if not all([titulo, resumo, area_tematica, arquivo]):
             flash('Todos os campos são obrigatórios!', 'warning')
-            return redirect(url_for('routes.nova_submissao'))
+            return redirect(url_for('trabalho_routes.nova_submissao'))
 
         # Garante diretório e salva o arquivo PDF
         filename = secure_filename(arquivo.filename)
@@ -132,6 +132,6 @@ def nova_submissao():
         db.session.commit()
 
         flash('Trabalho submetido com sucesso!', 'success')
-        return redirect(url_for('routes.meus_trabalhos'))
+        return redirect(url_for('trabalho_routes.meus_trabalhos'))
 
 
