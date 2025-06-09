@@ -1,4 +1,4 @@
-# app/services/lote_service.py
+# services/lote_service.py
 from datetime import datetime
 from sqlalchemy import func
 from extensions import db
