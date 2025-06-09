@@ -8,7 +8,8 @@ from models import (
     ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao
 )
 
-dashboard_routes = Blueprint('dashboard_routes', __name__)
+# Importa o blueprint central para registrar as rotas deste módulo
+from .dashboard_routes import dashboard_routes
 
 @dashboard_routes.route('/dashboard_cliente')
 @login_required
