@@ -38,6 +38,9 @@ def register_routes(app):
     from .relatorio_routes import relatorio_routes
     from .gerar_link_routes import gerar_link_routes
     from .comprovante_routes import comprovante_routes
+    from .certificado_routes import certificado_routes
+    from .placeholder_routes import placeholder_routes
+    from . import professor_routes  # noqa: F401
     from .agendamento_routes import agendamento_routes
     from .cliente_routes import cliente_routes
     from .importar_usuarios_routes import importar_usuarios_routes
@@ -77,6 +80,8 @@ def register_routes(app):
     app.register_blueprint(api_cidades)
     app.register_blueprint(mercadopago_routes)
     app.register_blueprint(util_routes)
-    app.register_blueprint(relatorio_pdf_routes) 
+    app.register_blueprint(relatorio_pdf_routes)
+    app.register_blueprint(certificado_routes)
+    app.register_blueprint(placeholder_routes)
 
 

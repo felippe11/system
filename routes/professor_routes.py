@@ -1,3 +1,21 @@
+# -*- coding: utf-8 -*-
+
+from flask import render_template, redirect, url_for, flash, request, send_file
+from flask_login import login_required, current_user
+from datetime import datetime, timedelta
+import os
+import io
+import qrcode
+from fpdf import FPDF
+from PIL import Image
+
+from extensions import db
+from models import (
+    Evento, ProfessorBloqueado, SalaVisitacao, HorarioVisitacao,
+    AgendamentoVisita, AlunoVisitante,
+)
+from services.pdf_service import gerar_pdf_comprovante_agendamento
+from . import routes
 
 # Rotas para gerenciamento de agendamentos (para professores/participantes)
 @routes.route('/professor/eventos_disponiveis')
@@ -399,18 +417,3 @@ def qrcode_agendamento_professor(agendamento_id):
         token=agendamento.qr_code_token
     )
     
-    # Funções utilitárias para geração de PDFs
-
-from datetime import datetime
-from fpdf import FPDF # type: ignore
-import qrcode # type: ignore
-from PIL import Image # type: ignore
-import io
-
-import io
-import qrcode
-from fpdf import FPDF
-from datetime import datetime
-from models import AgendamentoVisita  # Ajuste conforme a sua importação
-
-
