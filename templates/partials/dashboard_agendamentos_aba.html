@@ -1,0 +1,13 @@
+<div class="mb-3">
+  <h5>Resumo dos Agendamentos</h5>
+  <ul class="list-group">
+    <li class="list-group-item">Totais: {{ agendamentos_totais }}</li>
+    <li class="list-group-item">Confirmados: {{ agendamentos_confirmados }}</li>
+    <li class="list-group-item">Realizados: {{ agendamentos_realizados }}</li>
+    <li class="list-group-item">Cancelados: {{ agendamentos_cancelados }}</li>
+  </ul>
+</div>
+<div class="mt-4">
+  {% include 'partials/agendamentos_hoje_lista.html' %}
+  {% include 'partials/proximos_agendamentos_lista.html' %}
+</div>

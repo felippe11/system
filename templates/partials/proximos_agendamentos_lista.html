@@ -1,0 +1,9 @@
+<ul class="list-group list-group-flush">
+{% for ag in proximos_agendamentos %}
+  <li class="list-group-item">
+    {{ ag.professor.nome }} - {{ ag.horario.data.strftime('%d/%m/%Y') }} {{ ag.horario.horario_inicio.strftime('%H:%M') }}
+  </li>
+{% else %}
+  <li class="list-group-item">Nenhum agendamento encontrado.</li>
+{% endfor %}
+</ul>
