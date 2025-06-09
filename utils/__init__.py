@@ -918,27 +918,17 @@ def caminho_absoluto_arquivo(imagem_relativa):
 
 import mercadopago
 import os
-import logging
 
-# Configurando logger para mensagens relacionadas a pagamentos
-payment_logger = logging.getLogger("payment")
-
-# Obtém o token do Mercado Pago
 token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
 if not token:
-    payment_logger.warning(
-        "⚠️ MERCADOPAGO_ACCESS_TOKEN não definido. "
-        "Funções de pagamento estarão desativadas."
+    raise RuntimeError(
+        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
+        "Exporte a variável de ambiente antes de iniciar o servidor."
     )
-    sdk = None
-else:
-    sdk = mercadopago.SDK(token)
+
+sdk = mercadopago.SDK(token)
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
-    if sdk is None:
-        payment_logger.warning("Tentativa de criar preferência de pagamento com SDK não inicializado")
-        return None
-        
     preference_data = {
         "payer": {"name": nome, "email": email, "last_name": nome},
         "items": [{
@@ -956,21 +946,13 @@ def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
         },
         "auto_return": "approved"
     }
-    try:
-        preference_response = sdk.preference().create(preference_data)
-        return preference_response["response"]["init_point"]
-    except Exception as e:
-        payment_logger.error(f"Erro ao criar preferência de pagamento: {e}")
-        return None
+    preference_response = sdk.preference().create(preference_data)
+    return preference_response["response"]["init_point"]
 
 # utils.py ou dentro da mesma função
 def criar_preference_mp(usuario, tipo_inscricao, evento):
-    from flask import url_for
-    
-    if sdk is None:
-        payment_logger.warning(f"Tentativa de criar preferência MP para usuário {usuario.id} sem SDK inicializado")
-        return None
-        
+    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+
     valor_com_taxa = float(preco_com_taxa(tipo_inscricao.preco))
 
     preference_data = {
@@ -993,13 +975,8 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "auto_return": "approved",
         "notification_url": url_for("routes.webhook_mp", _external=True)
     }
-    
-    try:
-        pref = sdk.preference().create(preference_data)
-        return pref["response"]["init_point"]
-    except Exception as e:
-        payment_logger.error(f"Erro ao criar preferência MP: {e}")
-        return None
+    pref = sdk.preference().create(preference_data)
+    return pref["response"]["init_point"]
 
 
 # utils.py  (ou um novo arquivo helpers.py)

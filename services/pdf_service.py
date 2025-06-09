@@ -3995,17 +3995,11 @@ def caminho_absoluto_arquivo(imagem_relativa):
         return imagem_relativa
     return os.path.join('static', imagem_relativa)
 
-import mercadopago
 import os
 
-token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
-if not token:
-    raise RuntimeError(
-        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
-        "Exporte a variável de ambiente antes de iniciar o servidor."
-    )
+from services.mp_service import get_sdk
 
-sdk = mercadopago.SDK(token)
+sdk = get_sdk()
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     preference_data = {
@@ -4030,7 +4024,9 @@ def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
 
 # utils.py ou dentro da mesma função
 def criar_preference_mp(usuario, tipo_inscricao, evento):
-    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+    sdk = get_sdk()
+    if not sdk:
+        raise RuntimeError("Serviço de pagamento desativado.")
 
     valor_com_taxa = float(preco_com_taxa(tipo_inscricao.preco))
 

@@ -12,7 +12,8 @@ from utils import brasilia_filter
 import logging
 import os
 import pytz
-import mercadopago
+
+from services.mp_service import get_sdk
 
 
 def create_app():
@@ -63,7 +64,9 @@ app = create_app()
 
 # Função para reconciliar pagamentos pendentes
 def reconciliar_pendentes():
-    sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+    sdk = get_sdk()
+    if not sdk:
+        return
     ontem = datetime.utcnow() - timedelta(hours=24)
     pendentes = Inscricao.query.filter(
         Inscricao.status_pagamento == "pending",
