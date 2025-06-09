@@ -2335,7 +2335,7 @@ def excluir_sala_visitacao(sala_id):
     # Verificar permissões do usuário (apenas administradores)
     if current_user.perfil.lower() != 'administrador':
         flash('Você não tem permissão para excluir salas de visitação.', 'danger')
-        return redirect(url_for('routes.index'))
+        return redirect(url_for('evento_routes.home'))
     
     # Buscar a sala pelo ID
     sala = SalaVisitacao.query.get_or_404(sala_id)

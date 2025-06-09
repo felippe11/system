@@ -130,4 +130,4 @@ def reset_senha_cpf():
 def logout():
     logout_user()
     flash('Logout realizado com sucesso!', 'info')
-    return redirect(url_for('routes.home'))
+    return redirect(url_for('evento_routes.home'))

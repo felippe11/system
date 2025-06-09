@@ -168,7 +168,7 @@ def gerenciar_ministrantes():
 def enviar_relatorio(oficina_id):
     if current_user.tipo != 'ministrante':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.home'))
+        return redirect(url_for('evento_routes.home'))
 
     oficina = Oficina.query.get_or_404(oficina_id)
     ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
@@ -214,7 +214,7 @@ def upload_material(oficina_id):
     from models import Ministrante  # Certifique-se de importar se necessário
     if not hasattr(current_user, 'tipo') or current_user.tipo != 'ministrante':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.home'))
+        return redirect(url_for('evento_routes.home'))
     
     # Buscar a oficina e verificar se o ministrante logado é responsável por ela
     oficina = Oficina.query.get_or_404(oficina_id)

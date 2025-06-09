@@ -36,13 +36,13 @@ def cadastro_participante(identifier: str | None = None):
 
     if not link:
         flash("Link de inscrição inválido.", "danger")
-        return redirect(url_for("routes.index"))
+        return redirect(url_for("evento_routes.home"))
 
     evento = link.evento
 
     if not evento:
         flash("Evento não encontrado.", "danger")
-        return redirect(url_for("routes.index"))
+        return redirect(url_for("evento_routes.home"))
 
     # ---------------------------------------------------------------------
     # 2) Buscar tipos de inscrição diretos (sem lote)
