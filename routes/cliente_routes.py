@@ -80,7 +80,7 @@ def editar_cliente(cliente_id):
             flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
         return redirect(url_for('cliente_routes.dashboard'))
     
-    return render_template('editar_cliente.html', cliente=cliente)
+    return render_template('auth/editar_cliente.html', cliente=cliente)
 
 
 @cliente_routes.route('/excluir_cliente/<int:cliente_id>', methods=['POST'])

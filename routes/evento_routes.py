@@ -562,7 +562,7 @@ def exibir_evento(evento_id):
 
     # 4) Renderiza o template passando o evento e a programação agrupada
     return render_template(
-        'exibir_evento.html',
+        'evento/exibir_evento.html',
         evento=evento,
         sorted_keys=sorted_keys,
         grouped_oficinas=grouped_oficinas
@@ -771,4 +771,4 @@ def detalhes_evento(evento_id):
     # Carrega as oficinas associadas ao evento
     oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo).all()
 
-    return render_template('detalhes_evento.html', evento=evento, oficinas=oficinas)
+    return render_template('professor/detalhes_evento.html', evento=evento, oficinas=oficinas)
