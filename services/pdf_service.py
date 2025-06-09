@@ -4000,15 +4000,17 @@ import logging
 
 # Configuração do logger para mensagens de pagamento
 payment_logger = logging.getLogger("payment")
+import mercadopago
 
 token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
-if not token:
-    raise RuntimeError(
-        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
-        "Exporte a variável de ambiente antes de iniciar o servidor."
-    )
-
-sdk = mercadopago.SDK(token)
+sdk = None
+if token:
+    try:
+        sdk = mercadopago.SDK(token)
+    except Exception as e:
+        payment_logger.warning(f"⚠️ Erro ao inicializar SDK do Mercado Pago: {e}")
+else:
+    payment_logger.warning("⚠️ AVISO: MERCADOPAGO_ACCESS_TOKEN não definido. Funcionalidades de pagamento estarão indisponíveis.")
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     if sdk is None:
