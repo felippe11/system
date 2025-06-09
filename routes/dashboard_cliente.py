@@ -5,7 +5,7 @@ from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
 from models import (
     Evento, Oficina, Inscricao, Checkin,
-    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao
+    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario
 )
 
 # Importa o blueprint central para registrar as rotas deste módulo
