@@ -16,6 +16,8 @@ def register_routes(app):
     # Importações e registros dos Blueprints de módulos organizados
     from .auth_routes import auth_routes
     from .dashboard_routes import dashboard_routes
+    # Importa rotas adicionais do cliente que utilizam o mesmo blueprint
+    from . import dashboard_cliente  # noqa: F401
     from .dashboard_participante import dashboard_participante_routes
     from .dashboard_professor import dashboard_professor_routes
     from .dashboard_ministrante import dashboard_ministrante_routes
