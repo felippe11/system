@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}{{ evento.nome }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>{{ evento.nome }}</h2>
+  <p>{{ evento.descricao }}</p>
+  {% for data in sorted_keys %}
+    <h4 class="mt-4">{{ data }}</h4>
+    <ul class="list-group mb-3">
+      {% for of in grouped_oficinas[data] %}
+        <li class="list-group-item">
+          <strong>{{ of.titulo }}</strong> - {{ of.ministrante.nome }}
+          <div class="small text-muted">
+            {{ of.horario_inicio.strftime('%H:%M') }} - {{ of.horario_fim.strftime('%H:%M') }}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+</div>
+{% endblock %}
