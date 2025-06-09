@@ -920,13 +920,14 @@ import mercadopago
 import os
 
 token = os.getenv("MERCADOPAGO_ACCESS_TOKEN")
-if not token:
-    raise RuntimeError(
-        "❌ MERCADOPAGO_ACCESS_TOKEN não definido. "
-        "Exporte a variável de ambiente antes de iniciar o servidor."
-    )
-
-sdk = mercadopago.SDK(token)
+sdk = None
+if token:
+    try:
+        sdk = mercadopago.SDK(token)
+    except Exception as e:
+        print(f"⚠️ Erro ao inicializar SDK do Mercado Pago: {e}")
+else:
+    print("⚠️ AVISO: MERCADOPAGO_ACCESS_TOKEN não definido. Funcionalidades de pagamento estarão indisponíveis.")
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     preference_data = {

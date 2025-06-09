@@ -3,7 +3,8 @@ from flask_login import login_user, login_required, current_user
 from extensions import db
 from models import Inscricao, Configuracao
 import os
-import mercadopago
+
+from services.mp_service import get_sdk
 from decimal import Decimal
 
 mercadopago_routes = Blueprint('mercadopago_routes', __name__)
@@ -45,7 +46,9 @@ def pagamento_falha():
 def webhook_mp():
     data = request.get_json(silent=True) or {}
     if data.get("type") == "payment":
-        sdk = mercadopago.SDK(os.getenv("MERCADOPAGO_ACCESS_TOKEN"))
+        sdk = get_sdk()
+        if not sdk:
+            return "", 200
         pay = sdk.payment().get(data["data"]["id"])["response"]
 
         if pay["status"] == "approved":
