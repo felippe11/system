@@ -10,7 +10,7 @@ import os
 certificado_routes = Blueprint(
     'certificado_routes',
     __name__,
-    template_folder="certificado"
+    template_folder="../templates/certificado"
 )
 
 
