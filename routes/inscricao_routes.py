@@ -930,4 +930,4 @@ def gerenciar_inscricoes():
         # Se for admin, mostra todos os registros
         oficinas = Oficina.query.all()
         inscritos = Inscricao.query.all()
-    return render_template('gerenciar_inscricoes.html', oficinas=oficinas, inscritos=inscritos)
+    return render_template('inscricao/gerenciar_inscricoes.html', oficinas=oficinas, inscritos=inscritos)
