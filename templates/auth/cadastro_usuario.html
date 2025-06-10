@@ -91,7 +91,7 @@
         {% endif %}
       {% endwith %}
 
-      <form method="POST" action="{{ url_for('routes.cadastro_participante', token=token) if token else url_for('routes.cadastro_participante') }}">
+      <form method="POST" action="{{ url_for('inscricao_routes.cadastro_participante', token=token) if token else url_for('inscricao_routes.cadastro_participante') }}">
         <div class="form-grid">
           <div>
             <label for="nome" class="form-label fw-semibold">Nome Completo</label>
