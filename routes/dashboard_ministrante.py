@@ -17,14 +17,14 @@ def dashboard_ministrante():
     if not isinstance(current_user, Ministrante):
         print("current_user não é uma instância de Ministrante")
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.home'))
+        return redirect(url_for('evento_routes.home'))
 
     # Busca o ministrante logado com base no email (ou use current_user diretamente)
     ministrante_logado = Ministrante.query.filter_by(email=current_user.email).first()
     if not ministrante_logado:
         print("Ministrante não encontrado no banco de dados")
         flash('Ministrante não encontrado!', 'danger')
-        return redirect(url_for('routes.home'))
+        return redirect(url_for('evento_routes.home'))
 
     # Buscar as oficinas deste ministrante
     oficinas_do_ministrante = Oficina.query.filter_by(ministrante_id=ministrante_logado.id).all()
