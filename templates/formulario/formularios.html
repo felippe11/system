@@ -5,7 +5,7 @@
         <h2 class="mb-0">
             <i class="bi bi-file-earmark-text me-2"></i>Formulários Criados
         </h2>
-        <a href="{{ url_for('routes.criar_formulario') }}" class="btn btn-success">
+        <a href="{{ url_for('formularios_routes.criar_formulario') }}" class="btn btn-success">
             <i class="bi bi-plus-circle me-1"></i> Criar Novo Formulário
         </a>
     </div>
@@ -29,13 +29,13 @@
                                 <td>{{ formulario.descricao or "Sem descrição" }}</td>
                                 <td>
                                     <div class="d-flex justify-content-center gap-2">
-                                        <a href="{{ url_for('routes.gerenciar_campos', formulario_id=formulario.id) }}" 
+                                        <a href="{{ url_for('formularios_routes.gerenciar_campos', formulario_id=formulario.id) }}" 
                                            class="btn btn-outline-primary btn-sm" 
                                            data-bs-toggle="tooltip" 
                                            title="Gerenciar Campos">
                                             <i class="bi bi-list-check"></i>
                                         </a>
-                                        <a href="{{ url_for('routes.editar_formulario', formulario_id=formulario.id) }}" 
+                                        <a href="{{ url_for('formularios_routes.editar_formulario', formulario_id=formulario.id) }}" 
                                            class="btn btn-outline-warning btn-sm"
                                            data-bs-toggle="tooltip" 
                                            title="Editar Formulário">
@@ -64,7 +64,7 @@
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                    <form action="{{ url_for('routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
+                                                    <form action="{{ url_for('formularios_routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
                                                         <button type="submit" class="btn btn-danger">
                                                             Excluir Formulário
                                                         </button>
@@ -83,7 +83,7 @@
                 <div class="text-center py-5">
                     <i class="bi bi-clipboard-x fs-1 text-muted mb-3"></i>
                     <p class="lead text-muted">Nenhum formulário criado ainda.</p>
-                    <a href="{{ url_for('routes.criar_formulario') }}" class="btn btn-primary mt-2">
+                    <a href="{{ url_for('formularios_routes.criar_formulario') }}" class="btn btn-primary mt-2">
                         Criar seu primeiro formulário
                     </a>
                 </div>

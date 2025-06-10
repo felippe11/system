@@ -5,7 +5,7 @@
         <h2 class="mb-0">
             <i class="bi bi-file-earmark-ruled me-2"></i>Templates de Formulários
         </h2>
-        <a href="{{ url_for('routes.criar_template') }}" class="btn btn-success">
+        <a href="{{ url_for('formularios_routes.criar_template') }}" class="btn btn-success">
             <i class="bi bi-plus-circle me-1"></i> Criar Novo Template
         </a>
     </div>
@@ -65,11 +65,11 @@
                 
                 <div class="card-footer bg-white">
                     <div class="d-flex gap-2">
-                        <a href="{{ url_for('routes.gerenciar_campos_template', template_id=template.id) }}" 
+                        <a href="{{ url_for('formularios_routes.gerenciar_campos_template', template_id=template.id) }}" 
                            class="btn btn-outline-primary flex-grow-1">
                             <i class="bi bi-pencil-square me-1"></i> Gerenciar Campos
                         </a>
-                        <a href="{{ url_for('routes.usar_template', template_id=template.id) }}" 
+                        <a href="{{ url_for('formularios_routes.usar_template', template_id=template.id) }}" 
                            class="btn btn-success flex-grow-1">
                             <i class="bi bi-check-circle me-1"></i> Usar Template
                         </a>
@@ -138,7 +138,7 @@
             <i class="bi bi-file-earmark-x text-muted fs-1 mb-3"></i>
             <h4 class="text-muted">Nenhum template disponível</h4>
             <p class="text-muted mb-4">Crie um novo template ou utilize os templates padrão do sistema.</p>
-            <a href="{{ url_for('routes.criar_template') }}" class="btn btn-primary">
+            <a href="{{ url_for('formularios_routes.criar_template') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Criar seu primeiro template
             </a>
         </div>
