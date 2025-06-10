@@ -121,7 +121,7 @@ def checkin_manual(usuario_id, oficina_id):
     checkin_existente = Checkin.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
     if checkin_existente:
         flash('Participante já realizou check-in.', 'warning')
-        return redirect(request.referrer or url_for('routes.gerenciar_inscricoes'))
+        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
 
     oficina = Oficina.query.get_or_404(oficina_id)
     
@@ -136,7 +136,7 @@ def checkin_manual(usuario_id, oficina_id):
     db.session.commit()
 
     flash('Check-in manual registrado com sucesso!', 'success')
-    return redirect(request.referrer or url_for('routes.gerenciar_inscricoes'))
+    return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
 
 @checkin_routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
@@ -153,12 +153,12 @@ def checkin(oficina_id):
         palavra_escolhida = request.form.get('palavra_escolhida')
         if not palavra_escolhida:
             flash("Selecione uma opção de check-in.", "danger")
-            return redirect(url_for('routes.checkin', oficina_id=oficina_id))
+            return redirect(url_for('checkin_routes.checkin', oficina_id=oficina_id))
 
         inscricao = Inscricao.query.filter_by(usuario_id=current_user.id, oficina_id=oficina.id).first()
         if not inscricao:
             flash("Você não está inscrito nesta oficina!", "danger")
-            return redirect(url_for('routes.checkin', oficina_id=oficina_id))
+            return redirect(url_for('checkin_routes.checkin', oficina_id=oficina_id))
 
         if inscricao.checkin_attempts >= 2:
             flash("Você excedeu o número de tentativas de check-in.", "danger")
@@ -174,7 +174,7 @@ def checkin(oficina_id):
             inscricao.checkin_attempts += 1
             db.session.commit()
             flash("Palavra-chave incorreta!", "danger")
-            return redirect(url_for('routes.checkin', oficina_id=oficina_id))
+            return redirect(url_for('checkin_routes.checkin', oficina_id=oficina_id))
 
         checkin = Checkin(
             usuario_id=current_user.id,
@@ -270,7 +270,7 @@ def checkin_token():
         ))
     
     # Redirecionar para detalhes do agendamento
-    return redirect(url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id))
+    return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
 
 
 @checkin_routes.route('/leitor_checkin_json', methods=['POST'])
@@ -398,6 +398,13 @@ def lista_checkins_json():
     return jsonify(status='success', checkins=resultado)
 
 
+@checkin_routes.route('/fazer_checkin/<int:agendamento_id>')
+@login_required
+def fazer_checkin(agendamento_id):
+    """Redireciona para a página de confirmação de check-in."""
+    return redirect(url_for('checkin_routes.confirmar_checkin', agendamento_id=agendamento_id))
+
+
 @checkin_routes.route('/confirmar_checkin/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def confirmar_checkin(agendamento_id):
@@ -415,12 +422,12 @@ def confirmar_checkin(agendamento_id):
     evento = agendamento.horario.evento
     if evento.cliente_id != current_user.id:
         flash('Este agendamento não pertence a um evento seu!', 'danger')
-        return redirect(url_for('routes.checkin_qr_agendamento'))
+        return redirect(url_for('agendamento_routes.checkin_qr_agendamento'))
     
     # Verificar se já foi feito check-in
     if agendamento.checkin_realizado:
         flash('Check-in já foi realizado para este agendamento!', 'warning')
-        return redirect(url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id))
+        return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
     
     if request.method == 'POST':
         # Realizar check-in
@@ -438,7 +445,7 @@ def confirmar_checkin(agendamento_id):
         try:
             db.session.commit()
             flash('Check-in realizado com sucesso!', 'success')
-            return redirect(url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id))
+            return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao realizar check-in: {str(e)}', 'danger')
@@ -483,14 +490,14 @@ def processar_qrcode():
         return jsonify({
             'success': False, 
             'message': 'Check-in já realizado!',
-            'redirect': url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id)
+            'redirect': url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id)
         })
     
     # Retornar sucesso e URL para confirmação
     return jsonify({
         'success': True,
         'message': 'Agendamento encontrado!',
-        'redirect': url_for('routes.confirmar_checkin', agendamento_id=agendamento.id)
+        'redirect': url_for('checkin_routes.confirmar_checkin', agendamento_id=agendamento.id)
     })
 
 @checkin_routes.route('/admin_scan')

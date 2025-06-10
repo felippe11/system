@@ -218,7 +218,7 @@ def adicionar_alunos_agendamento(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     # Lista de alunos já adicionados
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
@@ -273,7 +273,7 @@ def remover_aluno_agendamento(aluno_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este aluno não pertence a um agendamento seu.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     try:
         db.session.delete(aluno)
@@ -299,7 +299,7 @@ def importar_alunos_agendamento(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     if request.method == 'POST':
         # Verificar se foi enviado um arquivo
@@ -372,7 +372,7 @@ def imprimir_agendamento_professor(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     horario = agendamento.horario
     evento = horario.evento
@@ -408,7 +408,7 @@ def qrcode_agendamento_professor(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     # Página que exibe o QR Code para check-in
     return render_template(

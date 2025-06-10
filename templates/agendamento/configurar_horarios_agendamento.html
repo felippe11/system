@@ -80,7 +80,7 @@
               </td>
               <td>
                 <div class="btn-group btn-group-sm">
-                  <a href="{{ url_for('routes.editar_horario', horario_id=horario.id) if has_editar_horario else '#' }}" class="btn btn-warning">
+                  <a href="{{ url_for('agendamento_routes.editar_horario_agendamento', horario_id=horario.id) if has_editar_horario else '#' }}" class="btn btn-warning">
                     <i class="bi bi-pencil"></i>
                   </a>
                   <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este horário?');">
