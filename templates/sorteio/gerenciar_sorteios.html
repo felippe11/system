@@ -5,7 +5,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-trophy me-2 text-danger"></i>Gerenciar Sorteios</h2>
-        <a href="{{ url_for('routes.criar_sorteio') }}" class="btn btn-danger">
+        <a href="{{ url_for('sorteio_routes.criar_sorteio') }}" class="btn btn-danger">
             <i class="bi bi-plus-circle me-2"></i>Novo Sorteio
         </a>
     </div>
@@ -13,7 +13,7 @@
     <!-- Filtros -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ url_for('routes.gerenciar_sorteios') }}" class="row g-3">
+            <form method="GET" action="{{ url_for('sorteio_routes.gerenciar_sorteios') }}" class="row g-3">
                 <div class="col-md-4">
                     <label for="evento_filter" class="form-label">Evento</label>
                     <select name="evento_id" id="evento_filter" class="form-select">
