@@ -75,7 +75,7 @@
         <p>No dia da visita, apresente o QR Code ou o comprovante impresso para agilizar o check-in.</p>
         
         <center>
-            <a href="{{ url_for('routes.meus_agendamentos', _external=True) }}" class="btn">Acessar Meus Agendamentos</a>
+            <a href="{{ url_for('agendamento_routes.meus_agendamentos', _external=True) }}" class="btn">Acessar Meus Agendamentos</a>
         </center>
         
         <p>Se precisar cancelar ou modificar seu agendamento, faça isso com pelo menos {{ evento.configuracoes_agendamento[0].prazo_cancelamento if evento.configuracoes_agendamento else 24 }} horas de antecedência para evitar bloqueios temporários.</p>
@@ -284,7 +284,7 @@
         <p>Se por algum motivo você não puder comparecer, por favor cancele o agendamento o quanto antes para liberar a vaga para outros interessados.</p>
         
         <center>
-            <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id, _external=True) }}" class="btn">Ver Detalhes do Agendamento</a>
+            <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id, _external=True) }}" class="btn">Ver Detalhes do Agendamento</a>
         </center>
         
         <p>Estamos ansiosos para recebê-los amanhã!</p>
@@ -374,7 +374,7 @@
         <p>Você pode visualizar todos os detalhes deste agendamento no sistema.</p>
         
         <center>
-            <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id, _external=True) }}" class="btn">Ver Detalhes do Agendamento</a>
+            <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id, _external=True) }}" class="btn">Ver Detalhes do Agendamento</a>
         </center>
         
         <div class="footer">

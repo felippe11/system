@@ -370,7 +370,7 @@
   {% if config_cliente and config_cliente.habilitar_submissao_trabalhos %}
   <div class="container-fluid px-4 mt-5">
     <div class="d-flex justify-content-end mb-4">
-      <a href="{{ url_for('routes.nova_submissao') }}" class="btn btn-success btn-lg">
+      <a href="{{ url_for('trabalho_routes.nova_submissao') }}" class="btn btn-success btn-lg">
         <i class="bi bi-upload me-2"></i> Submeter Trabalho
       </a>
     </div>
@@ -387,7 +387,7 @@
   {% if formularios_disponiveis %}
     <div class="formularios-card">
       <strong>Formulários Disponíveis</strong>
-      <a href="{{ url_for('routes.listar_formularios_participante') }}" class="btn btn-primary">
+      <a href="{{ url_for('formularios_routes.listar_formularios_participante') }}" class="btn btn-primary">
         <i class="fas fa-clipboard-list"></i> Acessar Formulários
       </a>
     </div>
@@ -480,26 +480,26 @@
                         <div class="d-flex flex-column gap-2">
                             <!-- Check-in (só aparece se permitir_checkin_global == True) -->
                             {% if permitir_checkin_global %}
-                            <a href="{{ url_for('routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
+                            <a href="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
                               <i class="fas fa-clipboard-check"></i> Realizar Check-in
                             </a>
                             {% endif %}
                         
                             <!-- Botão para cancelar inscrição -->
-                            <form action="{{ url_for('routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
+                            <form action="{{ url_for('inscricao_routes.remover_inscricao', oficina_id=oficina.id) }}" method="post">
                                 <button type="submit" class="btn btn-danger w-100">
                                   <i class="fas fa-times-circle"></i> Cancelar Inscrição
                                 </button>
                             </form>
 
                             <!-- Comprovante de Inscrição -->
-                            <a href="{{ url_for('routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
+                            <a href="{{ url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id) }}" class="btn btn-primary w-100">
                                 <i class="fas fa-file-download"></i> Baixar Comprovante
                             </a>
 
                             <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
                             {% if habilitar_certificado_individual %}
-                            <a href="{{ url_for('routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
+                            <a href="{{ url_for('comprovante_routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
                               class="btn btn-success w-100">
                               <i class="fas fa-graduation-cap"></i> Baixar Certificado
                             </a>
@@ -507,7 +507,7 @@
                           
                             <!-- Feedback (só aparece se habilitar_feedback == True) -->
                             {% if habilitar_feedback %}
-                            <a href="{{ url_for('routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
+                            <a href="{{ url_for('feedback_routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
                                 <i class="fas fa-comment-dots"></i> Enviar Feedback
                             </a>
                             {% endif %}

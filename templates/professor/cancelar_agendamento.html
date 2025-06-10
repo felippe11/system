@@ -55,12 +55,12 @@
         <div class="card-body">
             <p>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</p>
             
-            <form method="POST" action="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}">
+            <form method="POST" action="{{ url_for('agendamento_routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}">
                 <div class="mt-4 d-flex gap-2">
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-times"></i> Confirmar Cancelamento
                     </button>
-                    <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-secondary">
+                    <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
                         <i class="fas fa-chevron-left"></i> Voltar
                     </a>
                 </div>

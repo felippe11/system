@@ -48,7 +48,7 @@
         <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
             <i class="fas fa-print"></i> Imprimir Comprovante
         </a>
-        <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-secondary">
+        <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
     </div>
@@ -60,7 +60,7 @@
     {% endif %}
     
     <div class="mt-4">
-        <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-primary">
+        <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-primary">
             <i class="fas fa-calendar-alt"></i> Meus Agendamentos
         </a>
         <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="btn btn-secondary">

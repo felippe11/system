@@ -5,7 +5,7 @@
         <h2 class="mb-0">
             <i class="bi bi-layout-text-window me-2"></i>Gerenciar Campos do Template
         </h2>
-        <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('formularios_routes.listar_templates') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar para Templates
         </a>
     </div>
@@ -103,7 +103,7 @@
                 </div>
                 {% if template.campos %}
                 <div class="card-footer bg-white text-center">
-                    <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-primary">
+                    <a href="{{ url_for('formularios_routes.listar_templates') }}" class="btn btn-primary">
                         <i class="bi bi-check-circle me-1"></i> Finalizar e Salvar
                     </a>
                 </div>

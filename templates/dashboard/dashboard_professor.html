@@ -25,16 +25,16 @@
         </div>
         <div class="card-body">
           <div class="list-group list-group-flush border-0">
-            <a href="{{ url_for('routes.criar_agendamento') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+            <a href="{{ url_for('agendamento_routes.criar_agendamento') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
               <i class="bi bi-calendar-plus me-3 fs-5 text-success"></i>
               <span>Criar Agendamento</span>
             </a>
-            <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+            <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
               <i class="bi bi-calendar-week me-3 fs-5 text-success"></i>
               <span>Meus Agendamentos</span>
             </a>
             {% for agendamento in agendamentos %}
-              <form action="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" method="POST" style="display:inline;">
+              <form action="{{ url_for('agendamento_routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" method="POST" style="display:inline;">
                 <button class="btn btn-danger btn-sm" type="submit">
                   Cancelar Agendamento (#{{ agendamento.id }})
                 </button>
@@ -56,12 +56,12 @@
         </div>
         <div class="card-body">
           <div class="list-group list-group-flush border-0">
-            <a href="{{ url_for('routes.listar_eventos_disponiveis') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+            <a href="{{ url_for('agendamento_routes.listar_eventos_disponiveis') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
               <i class="bi bi-calendar-event me-3 fs-5 text-info"></i>
               <span>Eventos Disponíveis</span>
             </a>
             {% for evento in eventos %}
-              <a href="{{ url_for('routes.detalhes_evento', evento_id=evento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+              <a href="{{ url_for('evento_routes.detalhes_evento', evento_id=evento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
                 <i class="bi bi-stars me-3 fs-5 text-info"></i>
                 <span>{{ evento.nome }}</span>
               </a>
@@ -82,7 +82,7 @@
         <div class="card-body">
           <div class="list-group list-group-flush border-0">
             {% for agendamento in agendamentos %}
-              <a href="{{ url_for('routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+              <a href="{{ url_for('agendamento_routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
                 <i class="bi bi-qr-code-scan me-3 fs-5 text-warning"></i>
                 <span>Ver QR Code - Agendamento #{{ agendamento.id }}</span>
               </a>

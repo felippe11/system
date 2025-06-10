@@ -21,13 +21,13 @@
       </div>
       
       <div class="d-flex justify-content-end mb-4">
-        <a href="{{ url_for('routes.gerar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-success me-2">
+        <a href="{{ url_for('agendamento_routes.gerar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-success me-2">
           <i class="bi bi-calendar-plus"></i> Gerar Novos Horários
         </a>
-        <a href="{{ url_for('routes.salas_visitacao', evento_id=evento.id) }}" class="btn btn-info me-2">
+        <a href="{{ url_for('agendamento_routes.salas_visitacao', evento_id=evento.id) }}" class="btn btn-info me-2">
           <i class="bi bi-door-open"></i> Gerenciar Salas
         </a>
-        <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-warning">
+        <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-warning">
           <i class="bi bi-gear"></i> Configurações
         </a>
       </div>
@@ -109,7 +109,7 @@
       </div>
       
       <div class="mt-4">
-        <a href="{{ url_for('routes.eventos_agendamento') }}" class="btn btn-secondary">
+        <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}" class="btn btn-secondary">
           <i class="bi bi-arrow-left"></i> Voltar
         </a>
       </div>
@@ -125,7 +125,7 @@
         <h5 class="modal-title" id="editarHorarioModalLabel">Editar Horário</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form id="editarHorarioForm" method="POST" action="{{ url_for('routes.editar_horario_agendamento') }}">
+      <form id="editarHorarioForm" method="POST" action="{{ url_for('agendamento_routes.editar_horario_agendamento') }}">
         <div class="modal-body">
           <input type="hidden" id="horario_id" name="horario_id">
           
@@ -179,7 +179,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <form id="excluirHorarioForm" method="POST" action="{{ url_for('routes.excluir_horario_agendamento') }}">
+        <form id="excluirHorarioForm" method="POST" action="{{ url_for('agendamento_routes.excluir_horario_agendamento') }}">
           <input type="hidden" id="excluir_horario_id" name="horario_id">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>

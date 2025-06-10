@@ -71,17 +71,17 @@
                                                     <td>
                                                         <div class="btn-group">
                                                             {% if evento.configuracoes_agendamento %}
-                                                                <a href="{{ url_for('routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-success">
+                                                                <a href="{{ url_for('agendamento_routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-success">
                                                                     <i class="fas fa-list"></i> Agendamentos
                                                                 </a>
-                                                                <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-sm btn-info">
+                                                                <a href="{{ url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-sm btn-info">
                                                                     <i class="fas fa-clock"></i> Horários
                                                                 </a>
-                                                                <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-warning">
+                                                                <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-warning">
                                                                     <i class="fas fa-cog"></i> Editar
                                                                 </a>
                                                             {% else %}
-                                                                <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
+                                                                <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
                                                                     <i class="fas fa-plus-circle"></i> Configurar Agendamento
                                                                 </a>
                                                             {% endif %}
@@ -118,14 +118,14 @@
                                                     <td>
                                                         <div class="btn-group">
                                                             {% if evento.configuracoes_agendamento %}
-                                                                <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-sm btn-info">
+                                                                <a href="{{ url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-sm btn-info">
                                                                     <i class="fas fa-clock"></i> Horários
                                                                 </a>
-                                                                <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-warning">
+                                                                <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-warning">
                                                                     <i class="fas fa-cog"></i> Editar
                                                                 </a>
                                                             {% else %}
-                                                                <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
+                                                                <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
                                                                     <i class="fas fa-plus-circle"></i> Configurar Agendamento
                                                                 </a>
                                                             {% endif %}
@@ -170,10 +170,10 @@
                                                     <td>
                                                         <div class="btn-group">
                                                             {% if evento.agendamentos_count %}
-                                                                <a href="{{ url_for('routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-success">
+                                                                <a href="{{ url_for('agendamento_routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-success">
                                                                     <i class="fas fa-list"></i> Ver Agendamentos
                                                                 </a>
-                                                                <a href="{{ url_for('routes.gerar_relatorio_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
+                                                                <a href="{{ url_for('agendamento_routes.gerar_relatorio_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
                                                                     <i class="fas fa-file-pdf"></i> Relatório
                                                                 </a>
                                                             {% else %}
@@ -206,7 +206,7 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group mb-3">
-                        <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('agendamento_routes.checkin_qr_agendamento') }}" class="list-group-item list-group-item-action">
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-qrcode fa-2x me-3 text-primary"></i>
                                 <div>
@@ -216,7 +216,7 @@
                             </div>
                         </a>
                         
-                        <a href="{{ url_for('routes.relatorio_geral_agendamentos') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}" class="list-group-item list-group-item-action">
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-chart-bar fa-2x me-3 text-success"></i>
                                 <div>

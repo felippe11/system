@@ -89,7 +89,7 @@
               {% else %}
                 <div class="alert alert-info">
                   <i class="bi bi-info-circle me-2"></i>Nenhum tipo de inscrição configurado para este evento.
-                  <a href="{{ url_for('routes.configurar_evento') }}" class="alert-link">Clique aqui</a> para configurar os tipos de inscrição.
+                  <a href="{{ url_for('evento_routes.configurar_evento') }}" class="alert-link">Clique aqui</a> para configurar os tipos de inscrição.
                 </div>
               {% endif %}
             </div>
@@ -118,7 +118,7 @@
 <script>
 function carregarEvento(eventoId) {
   if (eventoId) {
-    window.location.href = "{{ url_for('routes.configurar_regras_inscricao') }}?evento_id=" + eventoId;
+    window.location.href = "{{ url_for('inscricao_routes.configurar_regras_inscricao') }}?evento_id=" + eventoId;
   } else {
     document.getElementById('regras-container').classList.add('d-none');
     document.getElementById('sem-evento-msg').classList.remove('d-none');

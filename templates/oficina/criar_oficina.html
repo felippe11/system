@@ -44,7 +44,7 @@
   <!-- Main form card -->
   <div class="card border-0 shadow">
     <div class="card-body p-4 bg-light rounded-3">
-      <form action="{{ url_for('routes.criar_oficina') }}" method="POST" id="form-oficina">
+      <form action="{{ url_for('oficina_routes.criar_oficina') }}" method="POST" id="form-oficina">
         
         <!-- Etapa 1: Informações Básicas -->
         <div class="step" id="step-1">
@@ -801,7 +801,7 @@
 
       cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
 
-      fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estado)
+      fetch("{{ url_for('api_cidades.get_cidades', estado_sigla='') }}" + estado)
         .then(response => response.json())
         .then(data => {
           cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";

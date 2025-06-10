@@ -234,7 +234,7 @@
                     <span>Nenhum lote disponível para inscrição no momento.</span>
                 </div>
                 {% else %}
-                <form method="POST" action="{{ url_for('routes.cadastro_participante', identifier=token) }}" id="registrationForm">
+                <form method="POST" action="{{ url_for('inscricao_routes.cadastro_participante', identifier=token) }}" id="registrationForm">
                     <input type="hidden" id="evento_id" name="evento_id" value="{{ evento.id if evento else '' }}">
                     
                     <div class="form-grid">
@@ -396,7 +396,7 @@
                             </button>
                             
                             <div class="login-prompt">
-                                Já possui uma conta? <a href="{{ url_for('routes.login') }}">Faça login aqui</a>
+                                Já possui uma conta? <a href="{{ url_for('auth_routes.login') }}">Faça login aqui</a>
                             </div>
                         </div>
                     </div>
