@@ -29,7 +29,7 @@
               <i class="bi bi-calendar-plus me-3 fs-5 text-success"></i>
               <span>Criar Agendamento</span>
             </a>
-            <a href="{{ url_for('routes.meus_agendamentos') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
+            <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="list-group-item list-group-item-action border-0 py-3 px-0 d-flex align-items-center">
               <i class="bi bi-calendar-week me-3 fs-5 text-success"></i>
               <span>Meus Agendamentos</span>
             </a>
@@ -119,7 +119,7 @@
           title: '{{ agendamento.escola_nome }} ({{ agendamento.turma }})',
           start: '{{ agendamento.data_inicio }}',
           end: '{{ agendamento.data_fim }}',
-          url: '{{ url_for("routes.detalhes_agendamento", agendamento_id=agendamento.id) }}'
+          url: '{{ url_for("agendamento_routes.detalhes_agendamento", agendamento_id=agendamento.id) }}'
         }{% if not loop.last %},{% endif %}
         {% endfor %}
       ],
