@@ -1,5 +1,17 @@
 from flask_login import login_required
-from services.pdf_service import gerar_etiquetas
+from flask import request, send_file, redirect, url_for, flash
+import os
+from services.pdf_service import (
+    gerar_etiquetas,
+    gerar_pdf_checkins_qr as gerar_pdf_checkins_qr_service,
+    gerar_pdf_feedback_route,
+    gerar_pdf_inscritos_pdf,
+    gerar_lista_frequencia,
+    gerar_certificados,
+    gerar_certificados_pdf,
+    gerar_evento_qrcode_pdf,
+    gerar_qrcode_token,
+)
 from . import routes
 
 
@@ -8,3 +20,70 @@ from . import routes
 def gerar_etiquetas_route(cliente_id):
     """Endpoint para gerar etiquetas em PDF para um cliente."""
     return gerar_etiquetas(cliente_id)
+
+
+@routes.route('/gerar_pdf_checkins/<int:oficina_id>')
+@login_required
+def gerar_pdf_checkins(oficina_id):
+    """Gera relatório de check-ins em PDF."""
+    # A função existente não usa o ID da oficina, mas mantemos o parâmetro
+    return gerar_pdf_checkins_qr_service()
+
+
+@routes.route('/gerar_pdf_checkins_qr')
+@login_required
+def gerar_pdf_checkins_qr():
+    """Relatório de check-ins via QR Code."""
+    return gerar_pdf_checkins_qr_service()
+
+
+@routes.route('/gerar_pdf_inscritos/<int:oficina_id>')
+@login_required
+def gerar_pdf_inscritos_pdf_route(oficina_id):
+    return gerar_pdf_inscritos_pdf(oficina_id)
+
+
+@routes.route('/gerar_lista_frequencia/<int:oficina_id>')
+@login_required
+def gerar_lista_frequencia_route(oficina_id):
+    return gerar_lista_frequencia(oficina_id)
+
+
+@routes.route('/gerar_certificados/<int:oficina_id>')
+@login_required
+def gerar_certificados_route(oficina_id):
+    return gerar_certificados(oficina_id)
+
+
+@routes.route('/gerar_certificado_individual_admin', methods=['POST'])
+@login_required
+def gerar_certificado_individual_admin():
+    oficina_id = request.form.get('oficina_id', type=int)
+    usuario_id = request.form.get('usuario_id', type=int)
+    from models import Oficina, Inscricao
+
+    oficina = Oficina.query.get_or_404(oficina_id)
+    inscricao = Inscricao.query.filter_by(usuario_id=usuario_id, oficina_id=oficina.id).first_or_404()
+
+    pdf_path = f"static/certificados/certificado_{usuario_id}_{oficina.id}.pdf"
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+    gerar_certificados_pdf(oficina, [inscricao], pdf_path)
+    return send_file(pdf_path, as_attachment=True)
+
+
+@routes.route('/gerar_evento_qrcode_pdf/<int:evento_id>')
+@login_required
+def gerar_evento_qrcode_pdf_route(evento_id):
+    return gerar_evento_qrcode_pdf(evento_id)
+
+
+@routes.route('/gerar_qrcode_token/<token>')
+def gerar_qrcode_token_route(token):
+    return gerar_qrcode_token(token)
+
+
+@routes.route('/gerar_folder_evento/<int:evento_id>')
+@login_required
+def gerar_folder_evento(evento_id):
+    flash('Funcionalidade de geração de folder ainda não implementada.', 'warning')
+    return redirect(url_for('evento_routes.visualizar_evento', evento_id=evento_id))

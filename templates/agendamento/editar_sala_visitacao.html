@@ -13,7 +13,7 @@
           <i class="bi bi-door-open"></i> Dados da Sala
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('routes.editar_sala_visitacao', sala_id=sala.id) }}">
+          <form method="POST" action="{{ url_for('agendamento_routes.editar_sala_visitacao', sala_id=sala.id) }}">
             <div class="row mb-3">
               <div class="col-md-6">
                 <label for="nome" class="form-label">Nome da Sala *</label>
