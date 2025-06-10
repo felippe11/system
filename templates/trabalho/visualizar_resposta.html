@@ -67,7 +67,9 @@
                       <h6 class="text-muted mb-3">Sua resposta:</h6>
                       <div class="ps-3">
                         {% if rcampo.campo.tipo == 'file' %}
-                          <a href="{{ url_for('formularios_routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}" class="btn btn-sm btn-outline-primary">
+
+                          <a href="{{ url_for('trabalho_routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}" class="btn btn-sm btn-outline-primary">
+
                             <i class="bi bi-file-earmark me-2"></i>Visualizar Anexo
                           </a>
                         {% else %}

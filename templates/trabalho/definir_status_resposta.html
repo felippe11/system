@@ -41,7 +41,9 @@
     </div>
 
     <button type="submit" class="btn btn-primary">Salvar</button>
-    <a href="{{ url_for('formularios_routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id) }}"
+
+    <a href="{{ url_for('trabalho_routes.listar_respostas_ministrante', formulario_id=resposta.formulario_id) }}"
+
        class="btn btn-secondary">
       Cancelar
     </a>

@@ -10,9 +10,6 @@ def bloquear_usuarios_pendentes():
     return
 
 def register_routes(app):
-    # Registra o blueprint principal
-    app.register_blueprint(routes)
-
     # Importações e registros dos Blueprints de módulos organizados
     from .auth_routes import auth_routes
     from .dashboard_routes import dashboard_routes
@@ -48,7 +45,10 @@ def register_routes(app):
     from .api_cidades import api_cidades
     from .mercadopago_routes import mercadopago_routes
     from .util_routes import util_routes
-    from .relatorio_pdf_routes import relatorio_pdf_routes 
+    from .relatorio_pdf_routes import relatorio_pdf_routes
+
+    # Registra o blueprint principal somente após importar rotas que o utilizam
+    app.register_blueprint(routes)
 
     # Registro dos Blueprints
     app.register_blueprint(auth_routes)
