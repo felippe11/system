@@ -434,11 +434,11 @@ def editar_horario_agendamento():
         
         if capacidade_total < agendamentos_alunos:
             flash(f'Não é possível reduzir a capacidade para {capacidade_total}. Já existem {agendamentos_alunos} alunos agendados.', 'danger')
-            return redirect(url_for('routes.listar_horarios_agendamento', evento_id=evento.id))
+            return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id))
         
         if vagas_disponiveis > capacidade_total:
             flash('As vagas disponíveis não podem ser maiores que a capacidade total!', 'danger')
-            return redirect(url_for('routes.listar_horarios_agendamento', evento_id=evento.id))
+            return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id))
         
         # Atualizar horário
         horario.capacidade_total = capacidade_total
@@ -453,7 +453,7 @@ def editar_horario_agendamento():
     else:
         flash('Preencha todos os campos!', 'danger')
     
-    return redirect(url_for('routes.listar_horarios_agendamento', evento_id=evento.id))
+    return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id))
 
 
 @agendamento_routes.route('/excluir_horario_agendamento', methods=['POST'])
@@ -502,7 +502,7 @@ def excluir_horario_agendamento():
         db.session.rollback()
         flash(f'Erro ao excluir horário: {str(e)}', 'danger')
     
-    return redirect(url_for('routes.listar_horarios_agendamento', evento_id=evento_id))
+    return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
 
 
 def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, caminho_pdf):
@@ -820,7 +820,7 @@ def configurar_agendamentos(evento_id):
         try:
             db.session.commit()
             flash('Configurações de agendamento salvas com sucesso!', 'success')
-            return redirect(url_for('routes.gerar_horarios_agendamento', evento_id=evento_id))
+            return redirect(url_for('agendamento_routes.gerar_horarios_agendamento', evento_id=evento_id))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao salvar configurações: {str(e)}', 'danger')
@@ -911,7 +911,7 @@ def gerar_horarios_agendamento(evento_id):
         try:
             db.session.commit()
             flash(f'{horarios_criados} horários de visitação foram criados com sucesso!', 'success')
-            return redirect(url_for('routes.listar_horarios_agendamento', evento_id=evento_id))
+            return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao gerar horários: {str(e)}', 'danger')
@@ -1258,7 +1258,7 @@ def configurar_horarios_agendamento():
                     flash(f"Horário adicionado com sucesso para o dia {data} das {horario_inicio} às {horario_fim}!", "success")
                     
                     # Redirecionar para a mesma página com o evento selecionado
-                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
+                    return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
             
             elif acao == 'excluir':
                 # Obter ID do horário a ser excluído
@@ -1285,7 +1285,7 @@ def configurar_horarios_agendamento():
                         flash("Horário não encontrado.", "danger")
                     
                     # Redirecionar para a mesma página com o evento selecionado
-                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
+                    return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
             
             elif acao == 'adicionar_periodo':
                 # Obter dados do formulário para adicionar vários horários em um período
@@ -1348,7 +1348,7 @@ def configurar_horarios_agendamento():
                         flash("Nenhum horário novo foi criado. Verifique se já existem horários para as datas selecionadas.", "warning")
                     
                     # Redirecionar para a mesma página com o evento selecionado
-                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
+                    return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
                 
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
@@ -1480,7 +1480,7 @@ def criar_evento_agendamento():
                     
                     db.session.commit()
                     flash(f"Evento '{nome}' criado com sucesso! Você pode agora configurar os horários.", "success")
-                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=novo_evento.id))
+                    return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=novo_evento.id))
                 
                 except Exception as e:
                     db.session.rollback()
@@ -1610,7 +1610,7 @@ def download_modelo_importacao():
         
     except Exception as e:
         flash(f"Erro ao gerar o modelo: {str(e)}", "danger")
-        return redirect(url_for('routes.importar_agendamentos'))
+        return redirect(url_for('agendamento_routes.importar_agendamentos'))
 
 
 @agendamento_routes.route('/exportar-log-importacao')
@@ -1653,7 +1653,7 @@ def exportar_log_importacao():
         
     except Exception as e:
         flash(f"Erro ao gerar o log: {str(e)}", "danger")
-        return redirect(url_for('routes.importar_agendamentos'))
+        return redirect(url_for('agendamento_routes.importar_agendamentos'))
     
 @agendamento_routes.route('/api/toggle-agendamento-publico', methods=['POST'])
 @login_required
@@ -1957,7 +1957,7 @@ def criar_periodo_agendamento():
                     flash(f"Período de agendamento criado com sucesso! Horários configurados para {dias_texto} das {hora_inicio} às {hora_fim}.", "success")
                     
                     # Redirecionar para a página de configuração de horários
-                    return redirect(url_for('routes.configurar_horarios_agendamento', evento_id=evento_id))
+                    return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
                 
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
@@ -2344,7 +2344,7 @@ def excluir_sala_visitacao(sala_id):
     agendamentos = Agendamento.query.filter_by(sala_id=sala_id).count()
     if agendamentos > 0:
         flash(f'Não é possível excluir esta sala pois existem {agendamentos} agendamentos associados a ela.', 'warning')
-        return redirect(url_for('routes.salas_visitacao', evento_id=sala.evento_id))
+        return redirect(url_for('agendamento_routes.salas_visitacao', evento_id=sala.evento_id))
     
     # Guardar o evento_id para usar no redirecionamento
     evento_id = sala.evento_id
@@ -2359,7 +2359,7 @@ def excluir_sala_visitacao(sala_id):
         flash(f'Erro ao excluir sala: {str(e)}', 'danger')
     
     # Redirecionar para a lista de salas do evento
-    return redirect(url_for('routes.salas_visitacao', evento_id=evento_id))
+    return redirect(url_for('agendamento_routes.salas_visitacao', evento_id=evento_id))
 
 
 @agendamento_routes.route('/agendamentos/exportar/pdf', methods=['GET'])
@@ -2549,7 +2549,7 @@ def editar_agendamento(agendamento_id):
     # Verifica permissões (apenas o próprio professor, administradores ou clientes podem editar)
     if current_user.tipo not in ['admin', 'cliente'] and current_user.id != agendamento.professor_id:
         flash('Você não tem permissão para editar este agendamento.', 'danger')
-        return redirect(url_for('routes.listar_agendamentos'))
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
     
     # Busca horários disponíveis para edição
     horarios_disponiveis = HorarioVisitacao.query.filter_by(disponivel=True).all()
@@ -2601,7 +2601,7 @@ def editar_agendamento(agendamento_id):
             
             db.session.commit()
             flash('Agendamento atualizado com sucesso!', 'success')
-            return redirect(url_for('routes.listar_agendamentos'))
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
             
         except Exception as e:
             db.session.rollback()
@@ -2884,14 +2884,14 @@ def processar_qrcode_agendamento():
             return jsonify({
                 'success': False,
                 'message': 'Check-in já realizado para este agendamento.',
-                'redirect': url_for('routes.confirmar_checkin_agendamento', token=token)
+                'redirect': url_for('agendamento_routes.confirmar_checkin_agendamento', token=token)
             }), 200
         
         # Redireciona para a página de confirmação de check-in
         return jsonify({
             'success': True,
             'message': 'Agendamento encontrado!',
-            'redirect': url_for('routes.confirmar_checkin_agendamento', token=token)
+            'redirect': url_for('agendamento_routes.confirmar_checkin_agendamento', token=token)
         }), 200
     
     except Exception as e:
@@ -2913,7 +2913,7 @@ def confirmar_checkin_agendamento(token):
     
     if not agendamento:
         flash('Agendamento não encontrado. Verifique o QR Code e tente novamente.', 'danger')
-        return redirect(url_for('routes.checkin_qr_agendamento'))
+        return redirect(url_for('agendamento_routes.checkin_qr_agendamento'))
     
     # Busca informações relacionadas
     evento = Evento.query.get(agendamento.horario.evento_id)
@@ -2964,7 +2964,7 @@ def checkin_qr_agendamento():
     if token:
         agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
         if agendamento:
-            return redirect(url_for('routes.confirmar_checkin_agendamento', token=token))
+            return redirect(url_for('agendamento_routes.confirmar_checkin_agendamento', token=token))
         else:
             flash('Agendamento não encontrado. Verifique o token e tente novamente.', 'danger')
     
@@ -3040,7 +3040,7 @@ def agendar_visita(horario_id):
         # Validar vagas disponíveis
         if quantidade_alunos > horario.vagas_disponiveis:
             flash('Quantidade de alunos excede vagas disponíveis.', 'danger')
-            return redirect(url_for('routes.agendar_visita', horario_id=horario_id))
+            return redirect(url_for('agendamento_routes.agendar_visita', horario_id=horario_id))
 
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
@@ -3099,7 +3099,7 @@ def adicionar_alunos():
                 colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
                 if not all(col in df.columns for col in colunas_obrigatorias):
                     flash(f"Erro: O arquivo deve conter as colunas: {', '.join(colunas_obrigatorias)}", "danger")
-                    return redirect(url_for('routes.adicionar_alunos'))
+                    return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
                 # Processamento em lote
                 alunos_adicionados = 0
@@ -3141,7 +3141,7 @@ def adicionar_alunos():
                 db.session.rollback()
                 flash(f"Erro ao processar arquivo: {str(e)}", "danger")
                 print(f"❌ Erro na importação: {e}")
-                return redirect(url_for('routes.adicionar_alunos'))
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
         # Processamento de entrada manual
         elif nome and cpf and email and formacao:
@@ -3153,7 +3153,7 @@ def adicionar_alunos():
 
                 if usuario_existente:
                     flash(f"Usuário com CPF {cpf} ou email {email} já existe.", "warning")
-                    return redirect(url_for('routes.adicionar_alunos'))
+                    return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
                 novo_usuario = Usuario(
                     nome=nome,
@@ -3176,11 +3176,11 @@ def adicionar_alunos():
                 db.session.rollback()
                 flash(f"Erro ao adicionar aluno: {str(e)}", "danger")
                 print(f"❌ Erro na adição manual: {e}")
-                return redirect(url_for('routes.adicionar_alunos'))
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
         else:
             flash("Dados insuficientes para adicionar aluno.", "warning")
-            return redirect(url_for('routes.adicionar_alunos'))
+            return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
     # GET: Renderiza o formulário
     estados = obter_estados()
@@ -3203,7 +3203,7 @@ def importar_alunos():
         
         if not arquivo or not arquivo.filename:
             flash('Nenhum arquivo selecionado.', 'warning')
-            return redirect(url_for('routes.importar_alunos'))
+            return redirect(url_for('agendamento_routes.importar_alunos'))
 
         try:
             # Determina o tipo de arquivo e usa a biblioteca correta
@@ -3213,7 +3213,7 @@ def importar_alunos():
                 df = pd.read_csv(arquivo, dtype={'cpf': str})
             else:
                 flash('Formato de arquivo não suportado. Use .xlsx, .xls ou .csv', 'danger')
-                return redirect(url_for('routes.importar_alunos'))
+                return redirect(url_for('agendamento_routes.importar_alunos'))
             
             # Verificar colunas obrigatórias
             colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
@@ -3221,7 +3221,7 @@ def importar_alunos():
             
             if colunas_faltantes:
                 flash(f"Erro: Colunas faltantes no arquivo: {', '.join(colunas_faltantes)}", "danger")
-                return redirect(url_for('routes.importar_alunos'))
+                return redirect(url_for('agendamento_routes.importar_alunos'))
 
             # Processamento em lote
             alunos_adicionados = 0
@@ -3311,7 +3311,7 @@ def importar_alunos():
             db.session.rollback()
             flash(f"Erro ao processar arquivo: {str(e)}", "danger")
             print(f"❌ Erro na importação: {e}")
-            return redirect(url_for('routes.importar_alunos'))
+            return redirect(url_for('agendamento_routes.importar_alunos'))
 
     # GET: Renderiza o formulário de importação
     return render_template('importar_alunos.html')
@@ -3439,17 +3439,17 @@ def cancelar_agendamento_professor(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar se o agendamento já foi cancelado
     if agendamento.status == 'cancelado':
         flash('Este agendamento já foi cancelado!', 'warning')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar se o agendamento já foi realizado
     if agendamento.status == 'realizado':
         flash('Este agendamento já foi realizado e não pode ser cancelado!', 'warning')
-        return redirect(url_for('routes.meus_agendamentos'))
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar prazo de cancelamento
     horario = agendamento.horario
@@ -3487,7 +3487,7 @@ def cancelar_agendamento_professor(agendamento_id):
         try:
             db.session.commit()
             flash('Agendamento cancelado com sucesso!', 'success')
-            return redirect(url_for('routes.meus_agendamentos'))
+            return redirect(url_for('agendamento_routes.meus_agendamentos'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
@@ -3538,7 +3538,7 @@ def marcar_presenca_aluno(aluno_id):
         db.session.rollback()
         flash(f'Erro ao marcar presença: {str(e)}', 'danger')
     
-    return redirect(url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id))
+    return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
 
 
 @agendamento_routes.route('/qrcode_agendamento/<int:agendamento_id>', methods=['GET'])
@@ -3577,7 +3577,7 @@ def horarios_disponiveis_api():
             "title": f"Disponível ({horario.vagas_disponiveis} vagas)",
             "start": f"{horario.data}T{horario.horario_inicio}",
             "end": f"{horario.data}T{horario.horario_fim}",
-            "url": url_for('routes.agendar_visita', horario_id=horario.id)
+            "url": url_for('agendamento_routes.agendar_visita', horario_id=horario.id)
         })
 
     return jsonify(eventos)

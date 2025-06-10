@@ -124,7 +124,7 @@
                           {% if agendamentos_hoje %}
                             <div class="list-group">
                               {% for agendamento in agendamentos_hoje %}
-                                <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                                <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
                                   <div class="d-flex w-100 justify-content-between">
                                     <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
                                     <small>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</small>
@@ -159,7 +159,7 @@
                           {% if proximos_agendamentos %}
                             <div class="list-group">
                               {% for agendamento in proximos_agendamentos %}
-                                <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
+                                <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
                                   <div class="d-flex w-100 justify-content-between">
                                     <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
                                     <small>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</small>
@@ -190,7 +190,7 @@
                 </div>
                 <div class="card-body">
                   <div class="list-group mb-4">
-                    <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="list-group-item list-group-item-action">
+                    <a href="{{ url_for('agendamento_routes.checkin_qr_agendamento') }}" class="list-group-item list-group-item-action">
                       <div class="d-flex align-items-center">
                         <i class="bi bi-qrcode fs-4 me-3 text-primary"></i>
                         <div>
@@ -219,13 +219,13 @@
                         <div class="list-group-item">
                           <h6>{{ evento.nome }}</h6>
                           <div class="btn-group btn-group-sm w-100 mt-2">
-                            <a href="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-primary">
+                            <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-primary">
                               <i class="bi bi-gear"></i> Configurar
                             </a>
-                            <a href="{{ url_for('routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-outline-info">
+                            <a href="{{ url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-outline-info">
                               <i class="bi bi-clock"></i> Horários
                             </a>
-                            <a href="{{ url_for('routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-success">
+                            <a href="{{ url_for('agendamento_routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-outline-success">
                               <i class="bi bi-list-check"></i> Agendamentos
                             </a>
                           </div>
@@ -403,7 +403,7 @@
                       <i class="bi bi-calendar-plus me-2"></i> Criar Novo Agendamento
                     </a>
                     
-                    <a href="{{ url_for('routes.configurar_horarios_agendamento') }}" class="btn btn-info btn-lg">
+                    <a href="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="btn btn-info btn-lg">
                       <i class="bi bi-clock me-2"></i> Configurar Horários
                     </a>
                     
@@ -422,11 +422,11 @@
                 </div>
                 <div class="card-body">
                   <div class="d-grid gap-3">
-                    <a href="{{ url_for('routes.checkin_qr_agendamento') }}" class="btn btn-dark btn-lg">
+                    <a href="{{ url_for('agendamento_routes.checkin_qr_agendamento') }}" class="btn btn-dark btn-lg">
                       <i class="bi bi-qr-code-scan me-2"></i> Check-in com QR Code
                     </a>
                     
-                    <a href="{{ url_for('routes.importar_agendamentos') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('agendamento_routes.importar_agendamentos') }}" class="btn btn-primary btn-lg">
                       <i class="bi bi-upload me-2"></i> Importar Agendamentos
                     </a>
 

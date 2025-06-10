@@ -14,7 +14,7 @@
       <h5 class="mb-0">Filtros</h5>
     </div>
     <div class="card-body">
-      <form method="GET" action="{{ url_for('routes.listar_agendamentos') }}">
+      <form method="GET" action="{{ url_for('agendamento_routes.listar_agendamentos') }}">
         <div class="row g-3">
           <div class="col-md-4">
             <label for="data_inicio" class="form-label">Data Inicial</label>
@@ -77,7 +77,7 @@
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-funnel-fill me-1"></i>Filtrar
             </button>
-            <a href="{{ url_for('routes.listar_agendamentos') }}" class="btn btn-outline-secondary">Limpar</a>
+            <a href="{{ url_for('agendamento_routes.listar_agendamentos') }}" class="btn btn-outline-secondary">Limpar</a>
           </div>
         </div>
       </form>
@@ -282,7 +282,7 @@
       <nav aria-label="Navegação de páginas">
         <ul class="pagination justify-content-center mb-0">
           <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
-            <a class="page-link" href="{{ url_for('routes.listar_agendamentos', page=pagination.page-1, **request.args) if pagination.page > 1 else '#' }}">
+            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page-1, **request.args) if pagination.page > 1 else '#' }}">
               <span aria-hidden="true">&laquo;</span>
             </a>
           </li>
@@ -290,7 +290,7 @@
           {% for p in range(1, pagination.pages + 1) %}
             {% if p >= pagination.page - 2 and p <= pagination.page + 2 %}
               <li class="page-item {{ 'active' if p == pagination.page else '' }}">
-                <a class="page-link" href="{{ url_for('routes.listar_agendamentos', page=p, **request.args) }}">
+                <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=p, **request.args) }}">
                   {{ p }}
                 </a>
               </li>
@@ -298,7 +298,7 @@
           {% endfor %}
           
           <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
-            <a class="page-link" href="{{ url_for('routes.listar_agendamentos', page=pagination.page+1, **request.args) if pagination.page < pagination.pages else '#' }}">
+            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page+1, **request.args) if pagination.page < pagination.pages else '#' }}">
               <span aria-hidden="true">&raquo;</span>
             </a>
           </li>
