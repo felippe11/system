@@ -888,7 +888,7 @@ def inscricao_personalizada(slug_customizado):
         return "Link inválido ou sem evento associado", 404
 
     # Redireciona para a rota cadastro_participante com o token
-    return redirect(url_for('routes.cadastro_participante', token=link.token))
+    return redirect(url_for('inscricao_routes.cadastro_participante', token=link.token))
 
 
 @inscricao_routes.route('/admin/inscricao/<int:inscricao_id>/editar', methods=['GET', 'POST'])
