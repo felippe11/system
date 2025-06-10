@@ -1964,9 +1964,23 @@ def criar_periodo_agendamento():
             flash(form_erro, "danger")
     
     # Renderizar o template com o formulário
-    return render_template('criar_periodo_agendamento.html', 
+    return render_template('criar_periodo_agendamento.html',
                           eventos=eventos,
                           form_erro=form_erro)
+
+
+@agendamento_routes.route('/editar_periodo/<int:periodo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_periodo(periodo_id):
+    flash('Funcionalidade de edição de período ainda não implementada.', 'info')
+    return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+
+
+@agendamento_routes.route('/editar_sala_visitacao/<int:sala_id>', methods=['GET', 'POST'])
+@login_required
+def editar_sala_visitacao(sala_id):
+    flash('Funcionalidade de edição de sala ainda não implementada.', 'info')
+    return redirect(url_for('agendamento_routes.salas_visitacao', evento_id=sala_id))
 
 @agendamento_routes.route('/excluir-todos-agendamentos', methods=['POST'])
 @login_required
@@ -2335,7 +2349,7 @@ def excluir_sala_visitacao(sala_id):
     # Verificar permissões do usuário (apenas administradores)
     if current_user.perfil.lower() != 'administrador':
         flash('Você não tem permissão para excluir salas de visitação.', 'danger')
-        return redirect(url_for('routes.index'))
+        return redirect(url_for('evento_routes.home'))
     
     # Buscar a sala pelo ID
     sala = SalaVisitacao.query.get_or_404(sala_id)
@@ -3014,7 +3028,7 @@ def cadastro_professor():
             db.session.add(novo_professor)
             db.session.commit()
             flash('Cadastro realizado com sucesso!', 'success')
-            return redirect(url_for('routes.login'))
+            return redirect(url_for('auth_routes.login'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cadastrar: {str(e)}', 'danger')
@@ -3397,7 +3411,7 @@ def meus_agendamentos():
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('routes.login'))
+        return redirect(url_for('auth_routes.login'))
     
     # Filtros
     status = request.args.get('status')

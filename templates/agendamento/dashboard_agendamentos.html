@@ -356,7 +356,7 @@
                               <i class="bi bi-pencil"></i>
                             </a>
                             {% if not agendamento.checkin_realizado and agendamento.status != 'cancelado' %}
-                            <a href="{{ url_for('routes.fazer_checkin', agendamento_id=agendamento.id) }}" 
+                            <a href="{{ url_for('checkin_routes.fazer_checkin', agendamento_id=agendamento.id) }}" 
                                class="btn btn-success">
                               <i class="bi bi-check-circle"></i>
                             </a>
@@ -556,7 +556,7 @@
                               </td>
                               <td>
                                 <div class="btn-group btn-group-sm">
-                                  <a href="{{ url_for('routes.editar_periodo', periodo_id=periodo.id) }}" class="btn btn-warning">
+                                  <a href="{{ url_for('agendamento_routes.editar_periodo', periodo_id=periodo.id) }}" class="btn btn-warning">
                                     <i class="bi bi-pencil"></i>
                                   </a>
                                   <button type="button" class="btn btn-{{ 'danger' if periodo.ativo else 'success' }}" onclick="togglePeriodoStatus({{ periodo.id }})">

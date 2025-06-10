@@ -295,7 +295,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
             db.session.commit()
             flash("Perfil atualizado com sucesso!", "success")
             if usuario_id:
-                return redirect(url_for('routes.editar_participante', usuario_id=usuario.id, oficina_id=oficina_id))
+                return redirect(url_for('inscricao_routes.editar_participante', usuario_id=usuario.id, oficina_id=oficina_id))
             return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         except Exception as e:
             db.session.rollback()
@@ -442,7 +442,7 @@ def inscrever(oficina_id):
         return jsonify({
             'success': True,
             'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': url_for('routes.baixar_comprovante', oficina_id=oficina.id)
+            'pdf_url': url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id)
         })
         
     except Exception as e:
@@ -769,7 +769,7 @@ def inscricoes_lote():
         db.session.rollback()
         flash(f"Erro ao processar inscrições: {e}", "danger")
 
-    return redirect(url_for('routes.gerenciar_inscricoes'))
+    return redirect(url_for('inscricao_routes.gerenciar_inscricoes'))
 
 
 
@@ -877,7 +877,7 @@ def mover_inscricoes_lote():
         db.session.rollback()
         flash(f"Erro ao mover inscrições: {e}", "danger")
 
-    return redirect(url_for("routes.gerenciar_inscricoes"))
+    return redirect(url_for("inscricao_routes.gerenciar_inscricoes"))
 
 
 @inscricao_routes.route('/inscricao/<slug_customizado>', methods=['GET'])
