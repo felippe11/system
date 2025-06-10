@@ -13,7 +13,9 @@
                     <li><a class="dropdown-item" href="{{ url_for('trabalho_routes.gerar_pdf_respostas', formulario_id=formulario.id) }}">
                         <i class="bi bi-file-pdf"></i> PDF
                     </a></li>
+
                     <li><a class="dropdown-item" href="{{ url_for('trabalho_routes.exportar_csv', formulario_id=formulario.id) }}">
+
                         <i class="bi bi-file-excel"></i> CSV
                     </a></li>
                 </ul>
@@ -79,7 +81,9 @@
                     
                     <!-- Hidden status form (revealed by button click) -->
                     <div class="status-form mt-3" id="status-form-{{ resposta.id }}" style="display: none;">
+
                         <form method="POST" action="{{ url_for('trabalho_routes.definir_status_inline') }}" class="d-flex gap-2">
+
                             <input type="hidden" name="resposta_id" value="{{ resposta.id }}">
                             <select name="status_avaliacao" class="form-select form-select-sm">
                                 <option value="Não Avaliada" {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>Não Avaliada</option>

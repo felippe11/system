@@ -1,3 +1,4 @@
+
 <!-- Template: professor/meus_agendamentos.html -->
 {% extends 'base.html' %}
 
@@ -83,7 +84,7 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-wrap justify-content-center gap-1">
-                                                    <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}"
+                                                    <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
                                                        class="btn btn-sm btn-outline-info" title="Detalhes">
                                                         <i class="fas fa-info-circle me-1"></i>Detalhes
                                                     </a>
@@ -94,7 +95,7 @@
                                                             <i class="fas fa-user-plus me-1"></i>Adicionar
                                                         </a>
                                                         
-                                                        <a href="{{ url_for('routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" 
+                                                        <a href="{{ url_for('agendamento_routes.cancelar_agendamento_professor', agendamento_id=agendamento.id) }}" 
                                                            class="btn btn-sm btn-outline-danger" title="Cancelar">
                                                             <i class="fas fa-times me-1"></i>Cancelar
                                                         </a>
@@ -121,4 +122,3 @@
         </div>
     </div>
 </div>
-{% endblock %}

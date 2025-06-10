@@ -144,7 +144,7 @@
                 </td>
                 <td>
                   <div class="d-flex gap-2 justify-content-center">
-                    <a href="{{ url_for('routes.editar_participante',
+                    <a href="{{ url_for('inscricao_routes.editar_participante',
                                         usuario_id=insc.usuario.id,
                                         oficina_id=insc.oficina.id) }}"
                        class="btn btn-sm btn-outline-primary">
@@ -162,7 +162,7 @@
                     </button>
                   {% else %}
                     <form method="POST"
-                          action="{{ url_for('routes.checkin_manual',
+                          action="{{ url_for('checkin_routes.checkin_manual',
                                              usuario_id=insc.usuario.id,
                                              oficina_id=insc.oficina.id) }}">
                       <button type="submit" class="btn btn-sm btn-success"
@@ -173,7 +173,7 @@
                   {% endif %}
                   
 
-                    <form action="{{ url_for('routes.cancelar_inscricao', inscricao_id=insc.id) }}"
+                    <form action="{{ url_for('inscricao_routes.cancelar_inscricao', inscricao_id=insc.id) }}"
                           method="POST" style="display:inline;"
                           onsubmit="return confirm('Cancelar esta inscrição?')">
                       <button type="submit" class="btn btn-sm btn-danger">
@@ -220,7 +220,7 @@
 
         <div class="modal-body p-4">
           <form id="formMoverInscricoes"
-                action="{{ url_for('routes.inscricoes_lote') }}"
+                action="{{ url_for('inscricao_routes.inscricoes_lote') }}"
                 method="POST">
 
             <!-- Ação: mover x copiar -->

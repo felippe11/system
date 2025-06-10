@@ -173,7 +173,7 @@
                                                                 <a href="{{ url_for('agendamento_routes.listar_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-success">
                                                                     <i class="fas fa-list"></i> Ver Agendamentos
                                                                 </a>
-                                                                <a href="{{ url_for('routes.gerar_relatorio_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
+                                                                <a href="{{ url_for('agendamento_routes.gerar_relatorio_agendamentos', evento_id=evento.id) }}" class="btn btn-sm btn-primary">
                                                                     <i class="fas fa-file-pdf"></i> Relatório
                                                                 </a>
                                                             {% else %}
@@ -216,7 +216,7 @@
                             </div>
                         </a>
                         
-                        <a href="{{ url_for('routes.relatorio_geral_agendamentos') }}" class="list-group-item list-group-item-action">
+                        <a href="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}" class="list-group-item list-group-item-action">
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-chart-bar fa-2x me-3 text-success"></i>
                                 <div>

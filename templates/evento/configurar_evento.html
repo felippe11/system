@@ -1218,9 +1218,9 @@ function updateProgressBar(step) {
 <script>
   function carregarEvento(eventoId) {
     if (eventoId) {
-      window.location.href = "{{ url_for('routes.configurar_evento') }}?evento_id=" + eventoId;
+      window.location.href = "{{ url_for('evento_routes.configurar_evento') }}?evento_id=" + eventoId;
     } else {
-      window.location.href = "{{ url_for('routes.configurar_evento') }}";
+      window.location.href = "{{ url_for('evento_routes.configurar_evento') }}";
     }
   }
 
