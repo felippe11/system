@@ -92,8 +92,8 @@
 {% block scripts %}
 {{ super() }}
 <script>
-const API        = "{{ url_for('routes.gerar_link') }}";
-const API_DELETE = "{{ url_for('routes.excluir_link') }}";
+const API        = "{{ url_for('gerar_link_routes.gerar_link') }}";
+const API_DELETE = "{{ url_for('gerar_link_routes.excluir_link') }}";
 
 /* ===== Bootstrap Toast helper ===== */
 function toast(msg, type='info') {

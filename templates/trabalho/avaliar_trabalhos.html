@@ -20,7 +20,7 @@
         <td>{{ trabalho.usuario.nome }}</td>
         <td>{{ trabalho.status }}</td>
         <td>
-          <a href="{{ url_for('routes.avaliar_trabalho', trabalho_id=trabalho.id) }}" class="btn btn-primary btn-sm">Avaliar</a>
+          <a href="{{ url_for('trabalho_routes.avaliar_trabalho', trabalho_id=trabalho.id) }}" class="btn btn-primary btn-sm">Avaliar</a>
         </td>
       </tr>
       {% endfor %}

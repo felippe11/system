@@ -168,7 +168,7 @@
         const resultElement = document.getElementById('qr-result');
     
         try {
-            const response = await fetch("{{ url_for('routes.leitor_checkin_json') }}", {
+            const response = await fetch("{{ url_for('checkin_routes.leitor_checkin_json') }}", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token })
@@ -240,7 +240,7 @@
     
     async function carregarCheckinsAnteriores() {
         try {
-            const resp = await fetch("{{ url_for('routes.lista_checkins_json') }}");
+            const resp = await fetch("{{ url_for('checkin_routes.lista_checkins_json') }}");
             const data = await resp.json();
             if (data.status === 'success' && Array.isArray(data.checkins)) {
                 data.checkins.forEach(chk => {

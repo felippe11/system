@@ -5,7 +5,7 @@
         <h2 class="mb-0">
             <i class="bi bi-list-nested me-2"></i>Gerenciar Campos
         </h2>
-        <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar para Formulários
         </a>
     </div>
@@ -43,7 +43,7 @@
                                     </div>
                                 </div>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('routes.editar_campo', campo_id=campo.id) }}" class="btn btn-outline-warning">
+                                    <a href="{{ url_for('formularios_routes.editar_campo', campo_id=campo.id) }}" class="btn btn-outline-warning">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
@@ -67,7 +67,7 @@
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <form action="{{ url_for('routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
+                                        <form action="{{ url_for('formularios_routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
                                             <button type="submit" class="btn btn-danger">Remover Campo</button>
                                         </form>
                                     </div>
@@ -85,7 +85,7 @@
                 </div>
                 {% if formulario.campos %}
                 <div class="card-footer bg-white text-center">
-                    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary">
+                    <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-primary">
                         <i class="bi bi-check-circle me-1"></i> Finalizar e Salvar
                     </a>
                 </div>

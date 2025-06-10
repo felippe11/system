@@ -31,7 +31,7 @@
                     {% endif %}
                 </td>
                 <td>
-                    <a href="{{ url_for('routes.toggle_cliente', cliente_id=cliente.id) }}" class="btn btn-sm {% if cliente.ativo %}btn-danger{% else %}btn-success{% endif %}">
+                    <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}" class="btn btn-sm {% if cliente.ativo %}btn-danger{% else %}btn-success{% endif %}">
                         {% if cliente.ativo %}Desativar{% else %}Ativar{% endif %}
                     </a>
                 </td>
