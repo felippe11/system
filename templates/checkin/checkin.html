@@ -240,7 +240,7 @@
         </div>
 
         <!-- Formulário de Check-in com opções de múltipla escolha -->
-        <form method="POST" action="{{ url_for('routes.checkin', oficina_id=oficina.id) }}">
+        <form method="POST" action="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}">
             <p class="form-title">Selecione a palavra-chave correta para confirmar sua presença:</p>
             
             <div class="options-container">

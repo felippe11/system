@@ -89,14 +89,14 @@
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Lista de Agendamentos</h5>
       <div>
-        <a href="{{ url_for('routes.exportar_agendamentos_pdf') }}" class="btn btn-sm btn-outline-primary">
+        <a href="{{ url_for('agendamento_routes.exportar_agendamentos_pdf') }}" class="btn btn-sm btn-outline-primary">
           <i class="bi bi-file-pdf me-1"></i> Exportar PDF
         </a>
-        <a href="{{ url_for('routes.exportar_agendamentos_csv') }}" class="btn btn-sm btn-outline-success">
+        <a href="{{ url_for('agendamento_routes.exportar_agendamentos_csv') }}" class="btn btn-sm btn-outline-success">
           <i class="bi bi-file-excel me-1"></i> Exportar CSV
         </a>
         {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
-        <a href="{{ url_for('routes.criar_agendamento') }}" class="btn btn-sm btn-primary ms-2">
+        <a href="{{ url_for('agendamento_routes.criar_agendamento') }}" class="btn btn-sm btn-primary ms-2">
           <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
         </a>
         {% endif %}
@@ -137,13 +137,13 @@
                   </td>
                   <td class="text-center">
                     <div class="btn-group btn-group-sm">
-                      <a href="{{ url_for('routes.visualizar_agendamento', agendamento_id=agendamento.id) }}" 
+                      <a href="{{ url_for('agendamento_routes.visualizar_agendamento', agendamento_id=agendamento.id) }}" 
                          class="btn btn-outline-info" data-bs-toggle="tooltip" title="Visualizar">
                         <i class="bi bi-eye"></i>
                       </a>
                       
                       {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] or current_user.id == agendamento.usuario_id %}
-                        <a href="{{ url_for('routes.editar_agendamento', agendamento_id=agendamento.id) }}" 
+                        <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}" 
                            class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar">
                           <i class="bi bi-pencil"></i>
                         </a>
@@ -189,7 +189,7 @@
                             <h5 class="modal-title">Cancelar Agendamento</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
-                          <form action="{{ url_for('routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="cancelado">
                               <p>Tem certeza que deseja cancelar este agendamento?</p>
@@ -215,7 +215,7 @@
                             <h5 class="modal-title">Confirmar Agendamento</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
-                          <form action="{{ url_for('routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="confirmado">
                               <p>Deseja confirmar este agendamento?</p>
@@ -241,7 +241,7 @@
                             <h5 class="modal-title">Marcar como Realizado</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
-                          <form action="{{ url_for('routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="realizado">
                               <p>Confirma que este agendamento foi realizado?</p>
