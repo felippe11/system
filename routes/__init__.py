@@ -15,6 +15,7 @@ def register_routes(app):
     from .dashboard_routes import dashboard_routes
     # Importa rotas adicionais do cliente que utilizam o mesmo blueprint
     from . import dashboard_cliente  # noqa: F401
+    from . import pdf_routes  # noqa: F401
     from .dashboard_participante import dashboard_participante_routes
     from .dashboard_professor import dashboard_professor_routes
     from .dashboard_ministrante import dashboard_ministrante_routes
