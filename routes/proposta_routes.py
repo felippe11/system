@@ -15,7 +15,7 @@ def enviar_proposta():
 
     if not all([nome, email, tipo_evento, descricao]):
         flash('Por favor, preencha todos os campos.', 'danger')
-        return redirect(url_for('routes.home'))
+        return redirect(url_for('evento_routes.home'))
 
     nova_proposta = Proposta(
         nome=nome,

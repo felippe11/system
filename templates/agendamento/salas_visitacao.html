@@ -65,7 +65,7 @@
                       <td>{{ sala.descricao }}</td>
                       <td class="text-center">
                         <div class="btn-group">
-                          <a href="{{ url_for('routes.editar_sala_visitacao', sala_id=sala.id) }}" class="btn btn-sm btn-warning">
+                          <a href="{{ url_for('agendamento_routes.editar_sala_visitacao', sala_id=sala.id) }}" class="btn btn-sm btn-warning">
                             <i class="bi bi-pencil"></i>
                           </a>
                           <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#excluirSalaModal" data-sala-id="{{ sala.id }}" data-sala-nome="{{ sala.nome }}">
