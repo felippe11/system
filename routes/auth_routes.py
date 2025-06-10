@@ -93,10 +93,10 @@ def esqueci_senha_cpf():
         usuario = Usuario.query.filter_by(cpf=cpf).first()
         if usuario:
             session['reset_user_id'] = usuario.id
-            return redirect(url_for('routes.reset_senha_cpf'))
+            return redirect(url_for('auth_routes.reset_senha_cpf'))
         else:
             flash('CPF não encontrado!', 'danger')
-            return redirect(url_for('routes.esqueci_senha_cpf'))
+            return redirect(url_for('auth_routes.esqueci_senha_cpf'))
     return render_template("esqueci_senha_cpf.html")
 
 @auth_routes.route('/reset_senha_cpf', methods=['GET', 'POST'])
@@ -104,22 +104,22 @@ def reset_senha_cpf():
     user_id = session.get('reset_user_id')
     if not user_id:
         flash('Nenhum usuário selecionado para redefinição!', 'danger')
-        return redirect(url_for('routes.esqueci_senha_cpf'))
+        return redirect(url_for('auth_routes.esqueci_senha_cpf'))
     usuario = db.session.get(Usuario, user_id)
     if not usuario:
         flash('Usuário não encontrado no banco de dados!', 'danger')
-        return redirect(url_for('routes.esqueci_senha_cpf'))
+        return redirect(url_for('auth_routes.esqueci_senha_cpf'))
     if request.method == 'POST':
         nova_senha = request.form.get('nova_senha')
         confirmar_senha = request.form.get('confirmar_senha')
         if not nova_senha or nova_senha != confirmar_senha:
             flash('As senhas não coincidem ou são inválidas.', 'danger')
-            return redirect(url_for('routes.reset_senha_cpf'))
+            return redirect(url_for('auth_routes.reset_senha_cpf'))
         usuario.senha = generate_password_hash(nova_senha)
         db.session.commit()
         session.pop('reset_user_id', None)
         flash('Senha redefinida com sucesso! Faça login novamente.', 'success')
-        return redirect(url_for('routes.login'))
+        return redirect(url_for('auth_routes.login'))
     return render_template('reset_senha_cpf.html', usuario=usuario)
 
 # =======================================
