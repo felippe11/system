@@ -1391,7 +1391,7 @@
       <a href="{{ url_for('relatorio_pdf_routes.gerar_inscritos_pdf_route', oficina_id=oficina.id) }}" class="btn btn-outline-primary">
         <i class="bi bi-file-earmark-text me-2"></i>Lista de Inscritos
       </a>
-      <a href="{{ url_for('relatorio_pdf_routes.gerar_lista_frequencia_route', oficina_id=oficina.id) }}" class="btn btn-outline-secondary">
+      <a href="{{ url_for('routes.gerar_lista_frequencia_route', oficina_id=oficina.id) }}" class="btn btn-outline-secondary">
         <i class="bi bi-file-earmark-spreadsheet me-2"></i>Lista de Frequência
       </a>
       <a href="{{ url_for('routes.gerar_certificados_route', oficina_id=oficina.id) }}" class="btn btn-outline-success">
