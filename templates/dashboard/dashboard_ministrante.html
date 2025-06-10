@@ -3,13 +3,13 @@
 <div class="container mt-4">
   <h2>Dashboard do Ministrante: {{ ministrante.nome }}</h2>
   <div class="mb-4">
-    <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-primary w-100 fw-bold">
+    <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-primary w-100 fw-bold">
         <i class="bi bi-ui-checks"></i> Gerenciar Formulários
     </a>
 </div>
 
 <div class="mb-4">
-  <a href="{{ url_for('routes.listar_respostas', formulario_id=1) }}" class="btn btn-primary w-100 fw-bold">
+  <a href="{{ url_for('formularios_routes.listar_respostas', formulario_id=1) }}" class="btn btn-primary w-100 fw-bold">
       📄 Gerenciar Respostas dos Formulários
   </a>
 </div>
@@ -32,15 +32,15 @@
             <p><strong>Quantidade de inscritos:</strong> {{ oficina.inscritos|length }}</p>
 
             <!-- Botões de ação -->
-            <a href="{{ url_for('routes.upload_material', oficina_id=oficina.id) }}" class="btn btn-sm btn-secondary">
+            <a href="{{ url_for('ministrante_routes.upload_material', oficina_id=oficina.id) }}" class="btn btn-sm btn-secondary">
                 Anexar Material
               </a>
-            <a href="{{ url_for('routes.enviar_relatorio', oficina_id=oficina.id) }}" class="btn btn-sm btn-warning">
+            <a href="{{ url_for('ministrante_routes.enviar_relatorio', oficina_id=oficina.id) }}" class="btn btn-sm btn-warning">
               Enviar Relatório
             </a>
 
             {% if habilitar_feedback %}
-            <a href="{{ url_for('routes.feedback_ministrante', oficina_id=oficina.id) }}" class="btn btn-sm btn-info">
+            <a href="{{ url_for('feedback_routes.feedback_ministrante', oficina_id=oficina.id) }}" class="btn btn-sm btn-info">
                 Enviar Feedback
             </a>
             {% endif %}

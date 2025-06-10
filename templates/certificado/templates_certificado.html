@@ -36,7 +36,7 @@
               </td>
               <td>
                 {% if not template.ativo %}
-                <form action="{{ url_for('routes.set_template_ativo', template_id=template.id) }}" method="post" class="d-inline">
+                <form action="{{ url_for('certificado_routes.set_template_ativo', template_id=template.id) }}" method="post" class="d-inline">
                   <button class="btn btn-sm btn-outline-primary">Definir como ativo</button>
                 </form>
                 {% endif %}
@@ -54,7 +54,7 @@
                     <h5 class="modal-title">Editar Template: {{ template.titulo }}</h5>
                     <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                   </div>
-                  <form method="POST" action="{{ url_for('routes.editar_template_certificado', template_id=template.id) }}">
+                  <form method="POST" action="{{ url_for('certificado_routes.editar_template_certificado', template_id=template.id) }}">
                     <div class="modal-body">
                       <div class="form-group mb-3">
                         <label>Título do Template</label>
@@ -92,7 +92,7 @@
           <h5 class="modal-title">Novo Template de Certificado</h5>
           <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
-        <form method="POST" action="{{ url_for('routes.templates_certificado') }}">
+        <form method="POST" action="{{ url_for('certificado_routes.templates_certificado') }}">
           <div class="modal-body">
             <div class="form-group mb-3">
               <label>Título do Template</label>

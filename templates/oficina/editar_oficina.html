@@ -325,7 +325,7 @@
 
     cidadeSelect.innerHTML = "<option value=''>Carregando...</option>";
 
-    fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estado)
+    fetch("{{ url_for('api_cidades.get_cidades', estado_sigla='') }}" + estado)
       .then(response => response.json())
       .then(data => {
         cidadeSelect.innerHTML = "<option value=''>Selecione uma cidade</option>";
@@ -347,7 +347,7 @@
     var cidadeAtual = "{{ oficina.cidade }}";
 
     if (estadoAtual) {
-      fetch("{{ url_for('routes.get_cidades', estado_sigla='') }}" + estadoAtual)
+      fetch("{{ url_for('api_cidades.get_cidades', estado_sigla='') }}" + estadoAtual)
         .then(response => response.json())
         .then(data => {
           var cidadeSelect = document.getElementById("cidade");
