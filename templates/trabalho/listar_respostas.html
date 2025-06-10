@@ -10,10 +10,12 @@
                     <i class="bi bi-download"></i> Exportar
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                    <li><a class="dropdown-item" href="{{ url_for('routes.gerar_pdf_respostas', formulario_id=formulario.id) }}">
+                    <li><a class="dropdown-item" href="{{ url_for('trabalho_routes.gerar_pdf_respostas', formulario_id=formulario.id) }}">
                         <i class="bi bi-file-pdf"></i> PDF
                     </a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('formularios_routes.exportar_csv', formulario_id=formulario.id) }}">
+
+                    <li><a class="dropdown-item" href="{{ url_for('trabalho_routes.exportar_csv', formulario_id=formulario.id) }}">
+
                         <i class="bi bi-file-excel"></i> CSV
                     </a></li>
                 </ul>
@@ -72,14 +74,16 @@
                                 <i class="bi bi-pencil-square"></i> Alterar Status
                             </button>
                         </div>
-                        <a href="{{ url_for('routes.dar_feedback_resposta_formulario', resposta_id=resposta.id) }}" class="btn btn-sm btn-primary">
+                        <a href="{{ url_for('trabalho_routes.dar_feedback_resposta_formulario', resposta_id=resposta.id) }}" class="btn btn-sm btn-primary">
                             <i class="bi bi-eye"></i> Ver / Feedback
                         </a>
                     </div>
                     
                     <!-- Hidden status form (revealed by button click) -->
                     <div class="status-form mt-3" id="status-form-{{ resposta.id }}" style="display: none;">
-                        <form method="POST" action="{{ url_for('formularios_routes.definir_status_inline') }}" class="d-flex gap-2">
+
+                        <form method="POST" action="{{ url_for('trabalho_routes.definir_status_inline') }}" class="d-flex gap-2">
+
                             <input type="hidden" name="resposta_id" value="{{ resposta.id }}">
                             <select name="status_avaliacao" class="form-select form-select-sm">
                                 <option value="Não Avaliada" {% if resposta.status_avaliacao == 'Não Avaliada' %} selected {% endif %}>Não Avaliada</option>

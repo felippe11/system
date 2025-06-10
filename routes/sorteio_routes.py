@@ -116,7 +116,7 @@ def criar_sorteio():
             db.session.add(sorteio)
             db.session.commit()
             flash('Sorteio criado com sucesso!', 'success')
-            return redirect(url_for('routes.gerenciar_sorteios'))
+            return redirect(url_for('sorteio_routes.gerenciar_sorteios'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao criar sorteio: {str(e)}', 'danger')
