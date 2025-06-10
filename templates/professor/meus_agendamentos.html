@@ -15,7 +15,7 @@
                     <i class="fas fa-filter me-2"></i>Filtrar
                 </div>
                 <div class="card-body">
-                    <form method="GET" action="{{ url_for('routes.meus_agendamentos') }}" class="row g-2 align-items-center">
+                    <form method="GET" action="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="row g-2 align-items-center">
                         <div class="col-md-4">
                             <select name="status" class="form-select">
                                 <option value="">Todos os status</option>
@@ -31,7 +31,7 @@
                         </div>
                         {% if status_filtro %}
                         <div class="col-auto">
-                            <a href="{{ url_for('routes.meus_agendamentos') }}" class="btn btn-outline-secondary">
+                            <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-times me-1"></i>Limpar
                             </a>
                         </div>
@@ -83,7 +83,7 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-wrap justify-content-center gap-1">
-                                                    <a href="{{ url_for('routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                                    <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}"
                                                        class="btn btn-sm btn-outline-info" title="Detalhes">
                                                         <i class="fas fa-info-circle me-1"></i>Detalhes
                                                     </a>

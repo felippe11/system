@@ -30,7 +30,7 @@
           <i class="bi bi-calendar-check"></i> Regras de Agendamento
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('routes.configurar_agendamentos', evento_id=evento.id) }}">
+          <form method="POST" action="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}">
             <div class="row mb-3">
               <div class="col-md-6">
                 <label for="prazo_cancelamento" class="form-label">Prazo para Cancelamento (horas)</label>
