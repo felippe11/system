@@ -1,5 +1,32 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    send_from_directory,
+)
+from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+from sqlalchemy.orm import joinedload
+import os
+
+from sqlalchemy import text
+from extensions import db
+from models import (
+    Formulario,
+    RespostaFormulario,
+    RespostaCampo,
+    CampoFormulario,
+    FormularioTemplate,
+    CampoFormularioTemplate,
+    FeedbackCampo,
+    Usuario,
+    Inscricao,
+    Oficina,
+    Ministrante,
+)
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -288,9 +315,6 @@ def get_resposta_file(filename):
     uploads_folder = os.path.join('uploads', 'respostas')
     return send_from_directory(uploads_folder, filename)
 
-from sqlalchemy import text  # Adicione esta importação no topo do arquivo!
-
-from sqlalchemy import text
 
 @formularios_routes.route('/formularios/<int:formulario_id>/excluir', methods=['POST'])
 @login_required
