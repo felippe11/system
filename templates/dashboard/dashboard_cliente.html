@@ -293,7 +293,7 @@
             <p class="card-text text-muted">Gerencie as inscrições dos participantes</p>
           </div>
           <div class="card-footer bg-white border-0 pt-0">
-            <a href="{{ url_for('routes.gerenciar_inscricoes') }}" class="btn btn-warning w-100">
+            <a href="{{ url_for('inscricao_routes.gerenciar_inscricoes') }}" class="btn btn-warning w-100">
               <i class="bi bi-clipboard-check me-2"></i> Gerenciar Inscrições
             </a>
           </div>
@@ -311,7 +311,7 @@
             <p class="card-text text-muted">Gerencie os palestrantes e facilitadores</p>
           </div>
           <div class="card-footer bg-white border-0 pt-0">
-            <a href="{{ url_for('routes.gerenciar_ministrantes') }}" class="btn btn-success w-100">
+            <a href="{{ url_for('ministrante_routes.gerenciar_ministrantes') }}" class="btn btn-success w-100">
               <i class="bi bi-person-badge me-2"></i> Gerenciar Ministrantes
             </a>
           </div>
@@ -351,29 +351,29 @@
             <div class="d-lg-none mb-3">
               <select class="form-select" id="contentManagementMobile" onchange="window.location.href=this.value">
                 <option value="">Selecione uma opção...</option>
-                <option value="{{ url_for('routes.listar_formularios') }}">Formulários</option>
-                <option value="{{ url_for('routes.listar_respostas') }}">Respostas</option>
-                <option value="{{ url_for('routes.listar_templates') }}">Templates</option>
+                <option value="{{ url_for('formularios_routes.listar_formularios') }}">Formulários</option>
+                <option value="{{ url_for('formularios_routes.listar_respostas') }}">Respostas</option>
+                <option value="{{ url_for('formularios_routes.listar_templates') }}">Templates</option>
               </select>
             </div>
             
             <!-- Botões para telas grandes -->
             <div class="d-none d-lg-flex justify-content-between gap-3">
-              <a href="{{ url_for('routes.listar_formularios') }}" class="btn btn-outline-primary flex-fill content-card">
+              <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-outline-primary flex-fill content-card">
                 <div class="text-center py-2">
                   <i class="bi bi-ui-checks fs-2 d-block mb-2"></i>
                   <span>Formulários</span>
                 </div>
               </a>
               
-              <a href="{{ url_for('routes.listar_respostas') }}" class="btn btn-outline-primary flex-fill content-card">
+              <a href="{{ url_for('formularios_routes.listar_respostas') }}" class="btn btn-outline-primary flex-fill content-card">
                 <div class="text-center py-2">
                   <i class="bi bi-chat-square-text fs-2 d-block mb-2"></i>
                   <span>Respostas</span>
                 </div>
               </a>
               
-              <a href="{{ url_for('routes.listar_templates') }}" class="btn btn-outline-primary flex-fill content-card">
+              <a href="{{ url_for('formularios_routes.listar_templates') }}" class="btn btn-outline-primary flex-fill content-card">
                 <div class="text-center py-2">
                   <i class="bi bi-file-earmark-ruled fs-2 d-block mb-2"></i>
                   <span>Templates</span>
@@ -427,7 +427,7 @@
                         <td class="d-none d-md-table-cell">{{ oficina.descricao|truncate(50) }}</td>
                         <td>
                           <div class="btn-group d-flex justify-content-center">
-                            <a href="{{ url_for('routes.editar_oficina', oficina_id=oficina.id) }}" 
+                            <a href="{{ url_for('oficina_routes.editar_oficina', oficina_id=oficina.id) }}" 
                                class="btn btn-sm btn-outline-warning" 
                                data-bs-toggle="tooltip" 
                                title="Editar atividade">
@@ -439,19 +439,19 @@
                                     title="Participantes">
                               <i class="bi bi-people-fill"></i>
                             </button>
-                            <a href="{{ url_for('routes.lista_checkins', oficina_id=oficina.id) }}" 
+                            <a href="{{ url_for('checkin_routes.lista_checkins', oficina_id=oficina.id) }}" 
                                class="btn btn-sm btn-outline-primary"
                                data-bs-toggle="tooltip" 
                                title="Checkins">
                               <i class="bi bi-card-checklist"></i>
                             </a>
-                            <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}" 
+                            <a href="{{ url_for('feedback_routes.feedback_oficina', oficina_id=oficina.id) }}" 
                                class="btn btn-sm btn-outline-success"
                                data-bs-toggle="tooltip" 
                                title="Feedback">
                               <i class="bi bi-chat-square-text"></i>
                             </a>
-                            <form action="{{ url_for('routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" class="d-inline">
+                            <form action="{{ url_for('oficina_routes.excluir_oficina', oficina_id=oficina.id) }}" method="POST" class="d-inline">
                               <button type="submit" class="btn btn-sm btn-outline-danger"
                                       onclick="return confirm('Tem certeza que deseja excluir esta oficina?');"
                                       data-bs-toggle="tooltip" 
@@ -546,12 +546,12 @@
     
           <!-- Botões -->
           <div class="d-grid gap-2 d-md-flex">
-            <a href="{{ url_for('routes.criar_evento') }}"
+            <a href="{{ url_for('evento_routes.criar_evento') }}"
                class="btn btn-primary w-100 w-md-auto">
               <i class="bi bi-calendar-event me-2"></i> Novo
             </a>
     
-            <a href="{{ url_for('routes.configurar_evento', habilitar_pagamento=True) }}"
+            <a href="{{ url_for('evento_routes.configurar_evento', habilitar_pagamento=True) }}"
                class="btn btn-padrao btn-secondary w-100 w-md-auto">
                <i class="bi bi-gear me-2"></i> Editar
             </a>
@@ -569,7 +569,7 @@
           </div>
           <h5 class="card-title fw-bold">Criar Atividade</h5>
           <p class="card-text text-muted">Adicione palestras, oficinas e outras atividades</p>
-          <a href="{{ url_for('routes.criar_oficina') }}" class="btn btn-success mt-2 w-100">
+          <a href="{{ url_for('oficina_routes.criar_oficina') }}" class="btn btn-success mt-2 w-100">
             <i class="bi bi-journal-plus me-2"></i> Nova Atividade
           </a>
         </div>
@@ -584,7 +584,7 @@
           </div>
           <h5 class="card-title fw-bold">Adicionar Ministrante</h5>
           <p class="card-text text-muted">Cadastre palestrantes e facilitadores</p>
-          <a href="{{ url_for('routes.cadastro_ministrante') }}" class="btn btn-info mt-2 w-100 text-white">
+          <a href="{{ url_for('ministrante_routes.cadastro_ministrante') }}" class="btn btn-info mt-2 w-100 text-white">
             <i class="bi bi-person-plus me-2"></i> Novo Ministrante
           </a>
         </div>
@@ -599,7 +599,7 @@
           </div>
           <h5 class="card-title fw-bold">Link de Inscrição</h5>
           <p class="card-text text-muted">Gere links personalizados para compartilhar</p>
-          <a href="{{ url_for('routes.gerar_link_ui') }}"
+          <a href="{{ url_for('oficina_routes.gerar_link_ui') }}"
              class="btn btn-warning mt-2 w-100">
             <i class="bi bi-link-45deg me-2"></i> Gerar Link
           </a>
@@ -630,7 +630,7 @@
           </div>
           <h5 class="card-title fw-bold">Certificados</h5>
           <p class="card-text text-muted ">Personalize a aparência dos certificados</p>
-          <a href="{{ url_for('routes.upload_personalizacao_certificado') }}" class="btn btn-success mt-2 w-100">
+          <a href="{{ url_for('certificado_routes.upload_personalizacao_certificado') }}" class="btn btn-success mt-2 w-100">
             <i class="bi bi-image me-2"></i> Personalizar
           </a>
         </div>
@@ -645,7 +645,7 @@
           </div>
           <h5 class="card-title fw-bold">Realizar Sorteio</h5>
           <p class="card-text text-muted ">Sorteie prêmios entre os participantes</p>
-          <a href="{{ url_for('routes.gerenciar_sorteios') }}" class="btn btn-danger mt-2 w-100">
+          <a href="{{ url_for('sorteio_routes.gerenciar_sorteios') }}" class="btn btn-danger mt-2 w-100">
             <i class="bi bi-gift me-2"></i> Gerenciar Sorteios
           </a>
         </div>
@@ -669,7 +669,7 @@
         </div>
         <div class="card-body">
           <p class="text-muted mb-3">Configure limites de inscrições, restrições e outras regras para os participantes</p>
-          <a href="{{ url_for('routes.configurar_regras_inscricao') }}" class="btn btn-warning w-100">
+          <a href="{{ url_for('inscricao_routes.configurar_regras_inscricao') }}" class="btn btn-warning w-100">
             <i class="bi bi-gear-fill me-2"></i> Configurar Regras
           </a>
         </div>
@@ -753,7 +753,7 @@
                   <button type="button" 
                           id="btnToggleCheckin"
                           class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
-                          data-toggle-url="{{ url_for('routes.toggle_checkin_global_cliente') }}">
+                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_checkin_global_cliente') }}">
                     <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.permitir_checkin_global else 'x-circle-fill' }}"></i>
                     {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
                   </button>
@@ -771,7 +771,7 @@
                   <button type="button" 
                           id="btnToggleQrCredenciamento"
                           class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'danger' }}"
-                          data-toggle-url="{{ url_for('routes.toggle_qrcode_evento_credenciamento') }}">
+                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_qrcode_evento_credenciamento') }}">
                     <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'x-circle-fill' }}"></i>
                     {{ 'Ativo' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'Desativado' }}
                   </button>
@@ -789,7 +789,7 @@
                   <button type="button"
                           id="btnToggleFeedback"
                           class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
-                          data-toggle-url="{{ url_for('routes.toggle_feedback_cliente') }}">
+                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_feedback_cliente') }}">
                     <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_feedback else 'x-circle-fill' }}"></i>
                     {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
                   </button>
@@ -807,7 +807,7 @@
                   <button type="button" 
                           id="btnToggleCertificado"
                           class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
-                          data-toggle-url="{{ url_for('routes.toggle_certificado_cliente') }}">
+                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_certificado_cliente') }}">
                     <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_certificado_individual else 'x-circle-fill' }}"></i>
                     {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
                   </button>
@@ -835,12 +835,12 @@
                   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
                 <div class="d-grid gap-2">
-                  <a href="{{ url_for('routes.gerar_modelo', tipo='usuarios') }}"
+                  <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='usuarios') }}"
                     class="btn btn-padrao btn-file btn-outline-success">
                     <i class="bi bi-file-earmark-excel"></i>
                     <span>Modelo de Usuários</span>
                   </a>
-                  <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}"
+                  <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='oficinas') }}"
                     class="btn btn-padrao btn-file btn-outline-success">
                     <i class="bi bi-file-earmark-excel"></i>
                     <span>Modelo de Atividades</span>
@@ -866,7 +866,7 @@
                   </div>
                 </div>
 
-                <form action="{{ url_for('routes.excluir_todas_oficinas') }}" method="post"
+                <form action="{{ url_for('oficina_routes.excluir_todas_oficinas') }}" method="post"
                       onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');">
                   <button type="submit" class="btn btn-padrao btn-danger w-100">
                     <i class="bi bi-trash-fill"></i> Excluir Todas as Atividades
@@ -902,7 +902,7 @@
                 <span class="badge bg-primary rounded-circle p-2 me-2">1</span>
                 Adicionar Novo Campo
               </h6>
-              <form method="POST" action="{{ url_for('routes.adicionar_campo_personalizado') }}" class="mb-0">
+              <form method="POST" action="{{ url_for('campo_routes.adicionar_campo_personalizado') }}" class="mb-0">
                 <div class="row g-3">
                   <div class="col-md-5">
                     <label for="nome_campo" class="form-label fw-medium">Nome do Campo</label>
@@ -984,7 +984,7 @@
                           {% endif %}
                         </td>
                         <td class="text-center">
-                          <form method="POST" action="{{ url_for('routes.remover_campo_personalizado', campo_id=campo.id) }}" 
+                          <form method="POST" action="{{ url_for('campo_routes.remover_campo_personalizado', campo_id=campo.id) }}" 
                                 onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
                             <button class="btn btn-padrao btn-table btn-sm btn-danger" type="submit">
                               <i class="bi bi-trash-fill"></i> Remover
@@ -1035,7 +1035,7 @@
                   </div>
                   
                   <div class="d-grid">
-                    <a href="{{ url_for('routes.gerar_modelo', tipo='oficinas') }}" 
+                    <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='oficinas') }}" 
                       class="btn btn-padrao btn-file btn-success">
                       <i class="bi bi-file-earmark-excel"></i>
                       <span>Baixar Modelo Excel</span>
@@ -1073,7 +1073,7 @@
                 </div>
               
                 <!-- Formulário de Upload -->
-                <form action="{{ url_for('routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ url_for('agendamento_routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
                   <div class="file-drop-area bg-white p-4 rounded-3 border-2 border-primary border-dashed text-center">
                     <div class="mb-3 text-primary">
                       <i class="bi bi-cloud-upload fs-1"></i>
@@ -1112,7 +1112,7 @@
               </div>
             </div>
             
-            <form method="POST" action="{{ url_for('routes.adicionar_patrocinadores_categorizados') }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ url_for('patrocinador_routes.adicionar_patrocinadores_categorizados') }}" enctype="multipart/form-data">
               <!-- Selecionar evento -->
               <div class="bg-light p-4 rounded-3 mb-4">
                 <label for="evento_id" class="form-label fw-bold d-flex align-items-center mb-3">
@@ -1223,7 +1223,7 @@
 
               <!-- Botões de ação agrupados -->
               <div class="action-group d-flex flex-column flex-md-row justify-content-center gap-3">
-                <a href="{{ url_for('routes.gerenciar_patrocinadores') }}" class="btn btn-padrao btn-outline-primary btn-lg mb-2 mb-md-0">
+                <a href="{{ url_for('patrocinador_routes.gerenciar_patrocinadores') }}" class="btn btn-padrao btn-outline-primary btn-lg mb-2 mb-md-0">
                   <i class="bi bi-card-image"></i> Gerenciar Logos Existentes
                 </a>
                 <button type="submit" class="btn btn-padrao btn-success btn-lg">
@@ -1401,7 +1401,7 @@
               data-bs-target="#modalCertificadoIndividual{{ oficina.id }}">
         <i class="bi bi-award me-2"></i>Certificado Individual
       </button>
-      <a href="{{ url_for('routes.feedback_oficina', oficina_id=oficina.id) }}"
+      <a href="{{ url_for('feedback_routes.feedback_oficina', oficina_id=oficina.id) }}"
          class="btn btn-outline-info">
         <i class="bi bi-chat-text me-2"></i>Feedback
       </a>

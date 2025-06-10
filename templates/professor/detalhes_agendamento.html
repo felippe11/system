@@ -34,7 +34,7 @@
       <hr>
       <!-- Botão de Cancelar, chamando a rota cancelar_agendamento -->
       {% if agendamento.status != 'cancelado' and agendamento.status != 'realizado' %}
-        <form method="POST" action="{{ url_for('routes.cancelar_agendamento', agendamento_id=agendamento.id) }}">
+        <form method="POST" action="{{ url_for('agendamento_routes.cancelar_agendamento', agendamento_id=agendamento.id) }}">
           <button class="btn btn-danger">
             <i class="bi bi-x-octagon"></i> Cancelar Agendamento
           </button>
@@ -71,7 +71,7 @@
   <div class="mt-4">
     <h5>QR Code para Check-in</h5>
     <p>Caso seu sistema gere QR Code para check-in, você pode exibi-lo abaixo:</p>
-    <img src="{{ url_for('routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" 
+    <img src="{{ url_for('agendamento_routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" 
          alt="QR Code do Agendamento" style="max-width: 200px;">
   </div>
 </div>

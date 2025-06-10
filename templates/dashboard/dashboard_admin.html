@@ -147,13 +147,13 @@
                                 </button>
                               
                                 <!-- Botão Ativar/Inativar -->
-                                <a href="{{ url_for('routes.toggle_cliente', cliente_id=cliente.id) }}" 
+                                <a href="{{ url_for('config_cliente_routes.toggle_cliente', cliente_id=cliente.id) }}" 
                                    class="btn btn-sm btn-outline-{{ 'secondary' if cliente.ativo else 'success' }}">
                                   {{ "Restringir" if cliente.ativo else "Ativar" }}
                                 </a>
                               
                                 <!-- Botão Excluir -->
-                                <form method="POST" action="{{ url_for('routes.excluir_cliente', cliente_id=cliente.id) }}"
+                                <form method="POST" action="{{ url_for('cliente_routes.excluir_cliente', cliente_id=cliente.id) }}"
                                       onsubmit="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
                                   <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="bi bi-trash"></i>
@@ -228,7 +228,7 @@
 <!-- Modal -->
 <div class="modal fade" id="modalTaxa" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
-   <form method="POST" action="{{ url_for('routes.atualizar_taxa') }}">
+   <form method="POST" action="{{ url_for('mercadopago_routes.atualizar_taxa') }}">
      <div class="modal-header"><h5 class="modal-title">Taxa percentual</h5>
        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
      </div>
@@ -256,7 +256,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <!-- Use um placeholder (cliente_id=0) para que o action seja atualizado via JS -->
-      <form action="{{ url_for('routes.editar_cliente', cliente_id=0) }}" method="POST" id="formEditarCliente">
+      <form action="{{ url_for('cliente_routes.editar_cliente', cliente_id=0) }}" method="POST" id="formEditarCliente">
         <div class="modal-header">
           <h5 class="modal-title" id="modalEditarClienteLabel">Editar Cliente</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -294,7 +294,7 @@
 
 <script>
   // Define a URL base em uma variável JavaScript
-  var editarClienteBaseUrl = "{{ url_for('routes.editar_cliente', cliente_id=0) }}".replace('/0', '');
+  var editarClienteBaseUrl = "{{ url_for('cliente_routes.editar_cliente', cliente_id=0) }}".replace('/0', '');
 
   var modalEditarCliente = document.getElementById('modalEditarCliente');
   modalEditarCliente.addEventListener('show.bs.modal', function (event) {

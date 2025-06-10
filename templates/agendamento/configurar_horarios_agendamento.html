@@ -20,7 +20,7 @@
     <div class="card-body">
       <div class="row align-items-center">
         <div class="col-md-8">
-          <form method="GET" action="{{ url_for('routes.configurar_horarios_agendamento') }}">
+          <form method="GET" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}">
             <div class="input-group">
               <select class="form-select" id="evento_id" name="evento_id" required>
                 <option value="">Selecione um evento</option>
@@ -35,7 +35,7 @@
           </form>
         </div>
         <div class="col-md-4 text-end">
-          <a href="{{ url_for('routes.criar_evento') }}" class="btn btn-success">
+          <a href="{{ url_for('evento_routes.criar_evento') }}" class="btn btn-success">
             <i class="bi bi-plus-circle me-2"></i>Criar Novo Evento
           </a>
         </div>
@@ -83,7 +83,7 @@
                   <a href="{{ url_for('routes.editar_horario', horario_id=horario.id) if has_editar_horario else '#' }}" class="btn btn-warning">
                     <i class="bi bi-pencil"></i>
                   </a>
-                  <form method="POST" action="{{ url_for('routes.configurar_horarios_agendamento') }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este horário?');">
+                  <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este horário?');">
                     <input type="hidden" name="acao" value="excluir">
                     <input type="hidden" name="horario_id" value="{{ horario.id }}">
                     <input type="hidden" name="evento_id" value="{{ evento_selecionado.id }}">
@@ -115,7 +115,7 @@
           <h5 class="m-0 fw-bold"><i class="bi bi-plus-circle me-2"></i>Adicionar Horário</h5>
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('routes.configurar_horarios_agendamento') }}">
+          <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}">
             <input type="hidden" name="acao" value="adicionar">
             <input type="hidden" name="evento_id" value="{{ evento_selecionado.id }}">
             
@@ -160,7 +160,7 @@
           <h5 class="m-0 fw-bold"><i class="bi bi-calendar-week me-2"></i>Configurar Período</h5>
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('routes.configurar_horarios_agendamento') }}">
+          <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}">
             <input type="hidden" name="acao" value="adicionar_periodo">
             <input type="hidden" name="evento_id" value="{{ evento_selecionado.id }}">
             

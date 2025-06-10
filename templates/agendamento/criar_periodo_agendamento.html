@@ -7,7 +7,7 @@
     <h1 class="h2 fw-bold text-primary mb-0">
       <i class="bi bi-calendar-range me-2"></i>Criar Período de Agendamento
     </h1>
-    <a href="{{ url_for('routes.configurar_horarios_agendamento') }}" class="btn btn-outline-primary">
+    <a href="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="btn btn-outline-primary">
       <i class="bi bi-arrow-left me-2"></i>Voltar à Configuração de Horários
     </a>
   </div>
@@ -23,7 +23,7 @@
       </div>
       {% endif %}
 
-      <form method="POST" action="{{ url_for('routes.criar_periodo_agendamento') }}">
+      <form method="POST" action="{{ url_for('agendamento_routes.criar_periodo_agendamento') }}">
         <div class="row">
           <!-- Coluna 1: Informações do Evento e Período -->
           <div class="col-md-6">
@@ -153,7 +153,7 @@
         
         <div class="row mt-4">
           <div class="col-12 d-flex justify-content-between">
-            <a href="{{ url_for('routes.configurar_horarios_agendamento') }}" class="btn btn-secondary">Cancelar</a>
+            <a href="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="btn btn-secondary">Cancelar</a>
             <button type="submit" class="btn btn-success">
               <i class="bi bi-calendar-plus me-2"></i>Criar Período e Horários
             </button>

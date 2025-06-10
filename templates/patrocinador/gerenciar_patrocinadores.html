@@ -11,7 +11,7 @@
       Voltar
     </a>
     <!-- Form e botão "Remover Selecionadas" -->
-    <form action="{{ url_for('routes.remover_fotos_selecionadas') }}" method="POST"
+    <form action="{{ url_for('patrocinador_routes.remover_fotos_selecionadas') }}" method="POST"
           onsubmit="return confirm('Deseja realmente remover as imagens selecionadas?');">
       <button type="submit" class="btn btn-danger">
         Remover Selecionadas
@@ -56,7 +56,7 @@
         </td>
         <td>
           <!-- Botão individual de remoção (já existente) -->
-          <form action="{{ url_for('routes.remover_foto_patrocinador', patrocinador_id=pat.id) }}"
+          <form action="{{ url_for('patrocinador_routes.remover_foto_patrocinador', patrocinador_id=pat.id) }}"
                 method="POST"
                 onsubmit="return confirm('Deseja realmente remover esta logo?');">
             <button type="submit" class="btn btn-danger btn-sm">
@@ -71,7 +71,7 @@
 </div>
 
 <!-- Form oculto para remover em lote (bulk), usado pelos checkboxes -->
-<form id="bulkRemoveForm" action="{{ url_for('routes.remover_fotos_selecionadas') }}" method="POST">
+<form id="bulkRemoveForm" action="{{ url_for('patrocinador_routes.remover_fotos_selecionadas') }}" method="POST">
   <!-- Este form é usado pelos checkboxes via atributo form="bulkRemoveForm" -->
 </form>
 
