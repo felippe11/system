@@ -130,7 +130,7 @@ def gerenciar_patrocinadores():
         eventos_ids = [ev.id for ev in eventos_cliente]
         patrocinadores = Patrocinador.query.filter(Patrocinador.evento_id.in_(eventos_ids)).all()
 
-    return render_template('gerenciar_patrocinadores.html', patrocinadores=patrocinadores)
+    return render_template('patrocinador/gerenciar_patrocinadores.html', patrocinadores=patrocinadores)
 
 @patrocinador_routes.route('/remover_foto_patrocinador/<int:patrocinador_id>', methods=['POST'])
 @login_required
