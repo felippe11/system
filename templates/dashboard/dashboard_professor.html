@@ -119,7 +119,7 @@
           title: '{{ agendamento.escola_nome }} ({{ agendamento.turma }})',
           start: '{{ agendamento.data_inicio }}',
           end: '{{ agendamento.data_fim }}',
-          url: '{{ url_for("routes.detalhes_agendamento", agendamento_id=agendamento.id) }}'
+          url: '{{ url_for("agendamento_routes.detalhes_agendamento", agendamento_id=agendamento.id) }}'
         }{% if not loop.last %},{% endif %}
         {% endfor %}
       ],
