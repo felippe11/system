@@ -26,7 +26,7 @@ def templates_certificado():
         flash('Template cadastrado com sucesso!', 'success')
 
     templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.id).all()
-    return render_template('templates_certificado.html', templates=templates)
+    return render_template('certificado/templates_certificado.html', templates=templates)
 
 @certificado_routes.route('/set_template_ativo/<int:template_id>', methods=['POST'])
 @login_required

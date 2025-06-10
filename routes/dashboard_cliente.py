@@ -583,7 +583,7 @@ def dashboard_agendamentos():
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
     # Verificar se temos dados suficientes para mostrar a página básica
-    return render_template('dashboard_agendamentos.html', 
+    return render_template('agendamento/dashboard_agendamentos.html',
                           eventos_ativos=eventos_ativos,
                           agendamentos_totais=agendamentos_totais,
                           total_visitantes=total_visitantes,

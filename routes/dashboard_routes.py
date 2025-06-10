@@ -40,6 +40,6 @@ def dashboard():
 def dashboard_admin():
     if current_user.tipo != "admin":
         abort(403)
-    return render_template("dashboard_admin.html")
+    return render_template("dashboard/dashboard_admin.html")
 
 
