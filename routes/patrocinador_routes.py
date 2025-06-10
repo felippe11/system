@@ -77,7 +77,7 @@ def remover_patrocinador(patrocinador_id):
         # Busca o evento do patrocinador e verifica se pertence ao cliente
         if not patrocinador.evento or patrocinador.evento.cliente_id != current_user.id:
             flash("Você não tem permissão para remover esse patrocinador.", "danger")
-            return redirect(url_for('routes.listar_patrocinadores'))
+            return redirect(url_for('patrocinador_routes.listar_patrocinadores'))
 
     try:
         db.session.delete(patrocinador)
@@ -87,7 +87,7 @@ def remover_patrocinador(patrocinador_id):
         db.session.rollback()
         flash(f"Erro ao remover patrocinador: {e}", "danger")
 
-    return redirect(url_for('routes.listar_patrocinadores'))
+    return redirect(url_for('patrocinador_routes.listar_patrocinadores'))
 
 
 @patrocinador_routes.route('/patrocinadores', methods=['GET'])
@@ -146,7 +146,7 @@ def remover_foto_patrocinador(patrocinador_id):
     if current_user.tipo == 'cliente':
         if not pat.evento or pat.evento.cliente_id != current_user.id:
             flash("Você não tem permissão para remover este registro.", "danger")
-            return redirect(url_for('routes.gerenciar_patrocinadores'))
+            return redirect(url_for('patrocinador_routes.gerenciar_patrocinadores'))
 
     try:
         db.session.delete(pat)
@@ -156,7 +156,7 @@ def remover_foto_patrocinador(patrocinador_id):
         db.session.rollback()
         flash(f"Erro ao remover: {e}", "danger")
 
-    return redirect(url_for('routes.gerenciar_patrocinadores'))
+    return redirect(url_for('patrocinador_routes.gerenciar_patrocinadores'))
 
 @patrocinador_routes.route('/remover_fotos_selecionadas', methods=['POST'])
 def remover_fotos_selecionadas():
@@ -165,7 +165,7 @@ def remover_fotos_selecionadas():
 
     if not ids_selecionados:
         flash('Nenhuma imagem foi selecionada para remoção.', 'warning')
-        return redirect(url_for('routes.gerenciar_patrocinadores'))
+        return redirect(url_for('patrocinador_routes.gerenciar_patrocinadores'))
     
     # Converte cada id para inteiro
     ids_selecionados = [int(x) for x in ids_selecionados]
@@ -181,7 +181,7 @@ def remover_fotos_selecionadas():
     
     db.session.commit()
     flash('Fotos removidas com sucesso!', 'success')
-    return redirect(url_for('routes.gerenciar_patrocinadores'))
+    return redirect(url_for('patrocinador_routes.gerenciar_patrocinadores'))
     # Se não houver fotos selecionadas, redireciona para a página de gerenciamento
 
 
