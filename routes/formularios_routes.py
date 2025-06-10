@@ -60,7 +60,7 @@ def criar_formulario():
         db.session.add(novo_formulario)
         db.session.commit()
         flash('Formulário criado com sucesso!', 'success')
-        return redirect(url_for('routes.listar_formularios'))
+        return redirect(url_for('formularios_routes.listar_formularios'))
     
     return render_template("criar_formulario.html")
 
@@ -74,7 +74,7 @@ def editar_formulario(formulario_id):
         formulario.descricao = request.form.get('descricao')
         db.session.commit()
         flash('Formulário atualizado!', 'success')
-        return redirect(url_for('routes.listar_formularios'))
+        return redirect(url_for('formularios_routes.listar_formularios'))
 
     return render_template('editar_formulario.html', formulario=formulario)
 
@@ -85,7 +85,7 @@ def deletar_formulario(formulario_id):
     db.session.delete(formulario)
     db.session.commit()
     flash('Formulário deletado com sucesso!', 'success')
-    return redirect(url_for('routes.listar_formularios'))
+    return redirect(url_for('formularios_routes.listar_formularios'))
 
 @formularios_routes.route('/formularios/<int:formulario_id>/campos', methods=['GET', 'POST'])
 @login_required
@@ -114,7 +114,7 @@ def gerenciar_campos(formulario_id):
         db.session.commit()
         flash('Campo adicionado com sucesso!', 'success')
 
-        return redirect(url_for('routes.gerenciar_campos', formulario_id=formulario.id))
+        return redirect(url_for('formularios_routes.gerenciar_campos', formulario_id=formulario.id))
 
     return render_template('gerenciar_campos.html', formulario=formulario)
 
@@ -134,7 +134,7 @@ def editar_campo(campo_id):
         db.session.commit()
         flash('Campo atualizado com sucesso!', 'success')
 
-        return redirect(url_for('routes.gerenciar_campos', formulario_id=campo.formulario_id))
+        return redirect(url_for('formularios_routes.gerenciar_campos', formulario_id=campo.formulario_id))
 
     return render_template('editar_campo.html', campo=campo)
 
@@ -147,7 +147,7 @@ def deletar_campo(campo_id):
     db.session.commit()
     flash('Campo removido com sucesso!', 'success')
 
-    return redirect(url_for('routes.gerenciar_campos', formulario_id=formulario_id))
+    return redirect(url_for('formularios_routes.gerenciar_campos', formulario_id=formulario_id))
 
 @formularios_routes.route('/formularios/<int:formulario_id>/preencher', methods=['GET', 'POST'])
 @login_required
@@ -331,7 +331,7 @@ def excluir_formulario(formulario_id):
         db.session.rollback()
         flash(f"Erro ao excluir formulário: {str(e)}", "danger")
 
-    return redirect(url_for('routes.listar_formularios'))
+    return redirect(url_for('formularios_routes.listar_formularios'))
 
 @formularios_routes.route('/formularios/<int:formulario_id>/respostas_ministrante', methods=['GET'])
 @login_required
@@ -384,7 +384,7 @@ def dar_feedback_resposta(resposta_id):
 
         db.session.commit()
         flash("Feedback registrado com sucesso!", "success")
-        return redirect(url_for('routes.dar_feedback_resposta_formulario', resposta_id=resposta_id))
+        return redirect(url_for('formularios_routes.dar_feedback_resposta_formulario', resposta_id=resposta_id))
 
     return render_template(
         'dar_feedback_resposta.html',
@@ -440,7 +440,7 @@ def criar_template():
         db.session.commit()
         
         flash('Template criado com sucesso!', 'success')
-        return redirect(url_for('routes.gerenciar_campos_template', template_id=novo_template.id))
+        return redirect(url_for('formularios_routes.gerenciar_campos_template', template_id=novo_template.id))
     
     return render_template("certificado/criar_template.html")
 
@@ -452,7 +452,7 @@ def gerenciar_campos_template(template_id):
     # Check permissions
     if current_user.tipo != 'admin' and template.cliente_id != current_user.id and not template.is_default:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('routes.listar_templates'))
+        return redirect(url_for('formularios_routes.listar_templates'))
     
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -474,7 +474,7 @@ def gerenciar_campos_template(template_id):
         db.session.commit()
         
         flash('Campo adicionado com sucesso!', 'success')
-        return redirect(url_for('routes.gerenciar_campos_template', template_id=template.id))
+        return redirect(url_for('formularios_routes.gerenciar_campos_template', template_id=template.id))
     
     return render_template('gerenciar_campos_template.html', template=template)
 
@@ -509,7 +509,7 @@ def usar_template(template_id):
         
         db.session.commit()
         flash('Formulário criado com sucesso a partir do template!', 'success')
-        return redirect(url_for('routes.listar_formularios'))
+        return redirect(url_for('formularios_routes.listar_formularios'))
     
     return render_template('usar_template.html', template=template)
 
@@ -590,6 +590,6 @@ def definir_status_inline():
 
     # Redireciona para a mesma página (listar_respostas) ou usa request.referrer
     # Se estiver em /formularios/<id>/respostas_ministrante, podemos redirecionar
-    return redirect(request.referrer or url_for('routes.listar_respostas',
+    return redirect(request.referrer or url_for('formularios_routes.listar_respostas',
                                                 formulario_id=resposta.formulario_id))
 
