@@ -24,7 +24,7 @@
                             <td class="text-end pe-3">
                                 <div class="btn-group" role="group">
                                     <!-- Botão de preencher -->
-                                    <a href="{{ url_for('routes.preencher_formulario', formulario_id=formulario.id) }}"
+                                    <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
                                        class="btn btn-outline-primary btn-sm">
                                         <i class="bi bi-pencil-fill me-1"></i> Preencher
                                     </a>
@@ -38,7 +38,7 @@
 
                                     <!-- Se user_resposta existir, exibir botão de "Ver Feedback" -->
                                     {% if user_resposta %}
-                                    <a href="{{ url_for('routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
+                                    <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
                                        class="btn btn-outline-info btn-sm ms-1">
                                        <i class="bi bi-eye-fill me-1"></i> Ver Feedback
                                     </a>
