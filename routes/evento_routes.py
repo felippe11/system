@@ -114,6 +114,14 @@ def _serializa_eventos(eventos):
                 if link.slug_customizado else
                 url_for('inscricao_routes.abrir_inscricao_token', token=link.token)  # Corrigido o blueprint
             )
+        else:
+            # Habilita inscrição se o evento estiver em andamento (data atual entre início e fim)
+            hoje = date.today()
+            data_inicio = ev.data_inicio.date() if ev.data_inicio else None
+            data_fim = ev.data_fim.date() if ev.data_fim else None
+
+            if data_inicio and (data_inicio <= hoje <= (data_fim or data_inicio)):
+                dado['link_inscricao'] = url_for('evento_routes.inscricao_evento', evento_id=ev.id)
 
         lista.append(dado)
     return lista
