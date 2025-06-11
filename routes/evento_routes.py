@@ -267,8 +267,9 @@ def configurar_evento():
                 tipos_inscricao = []
                 for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
                     if nome_tipo:  # Só adicionar se o nome for preenchido
-                        # Se for inscrição gratuita, definir preço como 0.00
-                        preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                        # Se o preço estiver vazio, trata como 0
+                        preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
+                        preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
                         
                         # Verificar se já existe um tipo com este nome
                         tipo_existente = None
@@ -385,10 +386,11 @@ def configurar_evento():
                                 # O formato do nome do campo: lote_tipo_preco_[lote_id]_[tipo_id]
                                 preco_key = f'lote_tipo_preco_{lote.id}_{tipo.id}'
                                 preco_valor = request.form.get(preco_key)
-                                
+
                                 if preco_valor is not None:
-                                    # Se for gratuito, todos os preços são 0
-                                    preco_final = 0.0 if inscricao_gratuita else float(preco_valor)
+                                    preco_valor = preco_valor.strip()
+                                    # Se o valor estiver vazio ou for gratuito, usar 0
+                                    preco_final = 0.0 if inscricao_gratuita or preco_valor == '' else float(preco_valor)
                                     
                                     # Verificar se já existe um registro de preço para este lote e tipo
                                     lote_tipo = LoteTipoInscricao.query.filter_by(
@@ -427,8 +429,9 @@ def configurar_evento():
                 tipos_inscricao = []
                 for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
                     if nome_tipo:  # Só adicionar se o nome for preenchido
-                        # Se for inscrição gratuita, definir preço como 0.00
-                        preco_efetivo = 0.0 if inscricao_gratuita else float(preco_tipo)
+                        # Se o preço estiver vazio, trata como 0
+                        preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
+                        preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
                         
                         tipo = EventoInscricaoTipo(
                             evento_id=evento.id,
@@ -487,14 +490,20 @@ def configurar_evento():
                                 # Para novos lotes e tipos, o formato pode variar
                                 preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}' if tipo.id else f'lote_tipo_preco_new_{i}_new_{j}'
                                 # Verificar também o formato alternativo para compatibilidade
+
+                                preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
+
+
                                 if tipo.id:
                                     preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
                                 else:
                                     preco_valor = request.form.get(preco_key)
                                 
+
                                 if preco_valor is not None:
-                                    # Se for gratuito, todos os preços são 0
-                                    preco_final = 0.0 if inscricao_gratuita else float(preco_valor)
+                                    preco_valor = preco_valor.strip()
+                                    # Se o valor estiver vazio ou for gratuito, usar 0
+                                    preco_final = 0.0 if inscricao_gratuita or preco_valor == '' else float(preco_valor)
                                     
                                     novo_lote_tipo = LoteTipoInscricao(
                                         lote_id=lote.id,
@@ -655,7 +664,9 @@ def criar_evento():
                 tipos_inscricao = []
                 for i, nome in enumerate(nomes_tipos):
                     if nome.strip():  # Só criar se o nome não estiver vazio
-                        preco = 0.0 if inscricao_gratuita else float(precos[i])
+                        preco_tipo = precos[i] if i < len(precos) else ''
+                        preco_tipo = preco_tipo.strip() if preco_tipo else ''
+                        preco = 0.0 if inscricao_gratuita or preco_tipo == '' else float(preco_tipo)
                         novo_tipo = EventoInscricaoTipo(
                             evento_id=novo_evento.id,
                             nome=nome,
@@ -708,6 +719,16 @@ def criar_evento():
                             
                             # Processar preços por tipo de inscrição para este lote
                             for j, tipo in enumerate(tipos_inscricao):
+
+                                # O formato do name é lote_tipo_preco_0_1 onde 0 é o índice do lote e 1 é o índice do tipo
+                                preco_key = f'lote_tipo_preco_{i}_{j}'
+                                preco_lote = request.form.get(preco_key)
+
+                                if preco_lote:
+                                    preco_lote = preco_lote.strip()
+                                    # Se o evento for gratuito ou o valor estiver vazio, usar 0
+                                    preco_valor = 0.0 if inscricao_gratuita or preco_lote == '' else float(preco_lote)
+
                                 # O formato do campo pode ser lote_tipo_preco_0_1 ou lote_tipo_preco_new_0_new_1
                                 preco_key_num = f'lote_tipo_preco_{i}_{j}'
                                 preco_key_new = f'lote_tipo_preco_new_{i}_new_{j}'
@@ -718,6 +739,7 @@ def criar_evento():
                                 if preco_lote_str:
                                     # Se o evento for gratuito, todos os preços são 0
                                     preco_valor = 0.0 if inscricao_gratuita else float(preco_lote_str)
+
                                     
                                     novo_preco = LoteTipoInscricao(
                                         lote_id=novo_lote.id,
