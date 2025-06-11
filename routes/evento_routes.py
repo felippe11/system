@@ -156,7 +156,7 @@ def listar_eventos():
 def configurar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('evento_routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     # Lista todos os eventos do cliente
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
@@ -522,7 +522,7 @@ def configurar_evento():
                 ).filter_by(id=evento.id, cliente_id=current_user.id).first()
                 
             flash('Evento salvo com sucesso!', 'success')
-            return redirect(url_for('evento_routes.dashboard_cliente'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
         
         except Exception as e:
             db.session.rollback()
@@ -585,7 +585,7 @@ def exibir_evento(evento_id):
 def criar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('evento_routes.dashboard_cliente'))
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Para evitar o erro 'evento is undefined' no template
     evento = None
@@ -751,7 +751,7 @@ def criar_evento():
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             flash('Agora você pode configurar as regras de inscrição para este evento.', 'info')
-            return redirect(url_for('evento_routes.dashboard_cliente'))
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
         
         except Exception as e:
             db.session.rollback()
