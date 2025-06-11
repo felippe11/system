@@ -486,11 +486,19 @@ def configurar_evento():
                             db.session.flush()  # Para obter o ID do lote
                             
                             # Processar preços por tipo de inscrição
-                            for tipo in tipos_inscricao:
-                                # Para novos lotes e tipos, o formato é diferente
-                                preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}'
+                            for j, tipo in enumerate(tipos_inscricao):
+                                # Para novos lotes e tipos, o formato pode variar
+                                preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}' if tipo.id else f'lote_tipo_preco_new_{i}_new_{j}'
                                 # Verificar também o formato alternativo para compatibilidade
+
                                 preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
+
+
+                                if tipo.id:
+                                    preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
+                                else:
+                                    preco_valor = request.form.get(preco_key)
+                                
 
                                 if preco_valor is not None:
                                     preco_valor = preco_valor.strip()
@@ -711,6 +719,7 @@ def criar_evento():
                             
                             # Processar preços por tipo de inscrição para este lote
                             for j, tipo in enumerate(tipos_inscricao):
+
                                 # O formato do name é lote_tipo_preco_0_1 onde 0 é o índice do lote e 1 é o índice do tipo
                                 preco_key = f'lote_tipo_preco_{i}_{j}'
                                 preco_lote = request.form.get(preco_key)
@@ -719,6 +728,18 @@ def criar_evento():
                                     preco_lote = preco_lote.strip()
                                     # Se o evento for gratuito ou o valor estiver vazio, usar 0
                                     preco_valor = 0.0 if inscricao_gratuita or preco_lote == '' else float(preco_lote)
+
+                                # O formato do campo pode ser lote_tipo_preco_0_1 ou lote_tipo_preco_new_0_new_1
+                                preco_key_num = f'lote_tipo_preco_{i}_{j}'
+                                preco_key_new = f'lote_tipo_preco_new_{i}_new_{j}'
+                                preco_lote_str = request.form.get(preco_key_num)
+                                if preco_lote_str is None:
+                                    preco_lote_str = request.form.get(preco_key_new)
+
+                                if preco_lote_str:
+                                    # Se o evento for gratuito, todos os preços são 0
+                                    preco_valor = 0.0 if inscricao_gratuita else float(preco_lote_str)
+
                                     
                                     novo_preco = LoteTipoInscricao(
                                         lote_id=novo_lote.id,
