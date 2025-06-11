@@ -11,6 +11,7 @@ from services.pdf_service import (
     gerar_certificados_pdf,
     gerar_evento_qrcode_pdf,
     gerar_qrcode_token,
+    exportar_checkins_pdf_opcoes,
 )
 from . import routes
 
@@ -87,3 +88,10 @@ def gerar_qrcode_token_route(token):
 def gerar_folder_evento(evento_id):
     flash('Funcionalidade de geração de folder ainda não implementada.', 'warning')
     return redirect(url_for('evento_routes.visualizar_evento', evento_id=evento_id))
+
+
+@routes.route('/exportar_checkins_filtrados')
+@login_required
+def exportar_checkins_filtrados():
+    """Gera PDF de check-ins aplicando filtros de evento e tipo."""
+    return exportar_checkins_pdf_opcoes()
