@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="container py-5">
+  <input type="hidden" id="pagamento_habilitado" value="{{ 1 if current_user.habilita_pagamento else 0 }}">
   <div class="bg-primary bg-gradient rounded-3 p-4 mb-4 shadow-sm">
     <h1 class="h3 fw-bold text-white mb-0">
       <i class="bi bi-calendar-event me-2"></i>Configurar Evento
