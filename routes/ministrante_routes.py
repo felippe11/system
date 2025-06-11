@@ -4,6 +4,8 @@ from werkzeug.utils import secure_filename
 from models import Ministrante, Cliente, Oficina, RelatorioOficina, MaterialOficina
 from extensions import db
 from werkzeug.security import generate_password_hash
+import os
+import uuid
 
 ministrante_routes = Blueprint(
     "ministrante_routes",
