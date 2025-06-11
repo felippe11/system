@@ -14,7 +14,7 @@ from models import (
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao
 )
 
-evento_routes = Blueprint('evento_routes', __name__)
+evento_routes = Blueprint('evento_routes', __name__, template_folder="../templates")
 
 
 @evento_routes.route('/')
@@ -134,7 +134,7 @@ def listar_eventos():
             evento_dict = {
                 'id': evento.id,
                 'nome': evento.nome,
-                # adicione outros campos necessários para o template eventos.html
+                # adicione outros campos necessários para o template eventos_disponiveis.html
                 'data_inicio': evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else 'Data a definir',
                 'localizacao': evento.localizacao or 'Local a definir',
                 'preco_base': 0
@@ -145,11 +145,11 @@ def listar_eventos():
             
             eventos_processed.append(evento_dict)
         
-        return render_template('eventos.html', eventos=eventos_processed)
+        return render_template('evento/eventos_disponiveis.html', eventos=eventos_processed)
     
     except Exception as e:
         print(f"Erro em listar_eventos: {str(e)}")
-        return render_template('eventos.html', eventos=[])
+        return render_template('evento/eventos_disponiveis.html', eventos=[])
 
 @evento_routes.route('/configurar_evento', methods=['GET', 'POST'])
 @login_required
@@ -521,7 +521,7 @@ def configurar_evento():
             traceback.print_exc()
 
     return render_template(
-    "configurar_evento.html",
+    "evento/configurar_evento.html",
     eventos=eventos,
     evento=evento,
     habilita_pagamento=current_user.habilita_pagamento   #  <-- acrescente isto
@@ -730,7 +730,7 @@ def criar_evento():
             flash(f'Erro ao criar evento: {str(e)}', 'danger')
 
     # Retorna ao template, passando o 'evento' mesmo que seja None
-    return render_template('criar_evento.html', evento=evento)
+    return render_template('evento/criar_evento.html', evento=evento)
 
 @evento_routes.route('/evento/<identifier>')
 def pagina_evento(identifier):
