@@ -33,13 +33,13 @@ def pagamento_sucesso():
 @mercadopago_routes.route("/pagamento_pendente")
 def pagamento_pendente():
     flash("Pagamento pendente. Você poderá concluir mais tarde.", "warning")
-    return redirect(url_for("routes.login"))
+    return redirect(url_for("auth_routes.login"))
 
 
 @mercadopago_routes.route("/pagamento_falha")
 def pagamento_falha():
     flash("Pagamento não foi concluído. Tente novamente.", "danger")
-    return redirect(url_for("routes.login"))
+    return redirect(url_for("auth_routes.login"))
 
 
 @mercadopago_routes.route("/webhook_mp", methods=["POST"])
