@@ -483,11 +483,14 @@ def configurar_evento():
                             db.session.flush()  # Para obter o ID do lote
                             
                             # Processar preços por tipo de inscrição
-                            for tipo in tipos_inscricao:
-                                # Para novos lotes e tipos, o formato é diferente
-                                preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}'
+                            for j, tipo in enumerate(tipos_inscricao):
+                                # Para novos lotes e tipos, o formato pode variar
+                                preco_key = f'lote_tipo_preco_new_{i}_{tipo.id}' if tipo.id else f'lote_tipo_preco_new_{i}_new_{j}'
                                 # Verificar também o formato alternativo para compatibilidade
-                                preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
+                                if tipo.id:
+                                    preco_valor = request.form.get(preco_key) or request.form.get(f'lote_tipo_preco_new_{i}_new_{j}')
+                                else:
+                                    preco_valor = request.form.get(preco_key)
                                 
                                 if preco_valor is not None:
                                     # Se for gratuito, todos os preços são 0
