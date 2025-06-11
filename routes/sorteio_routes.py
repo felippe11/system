@@ -1,12 +1,12 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash
 from flask_login import current_user, login_required
 from datetime import datetime
 import random
-from models import Sorteio, Usuario, Inscricao
+from models import Sorteio, Usuario, Inscricao, Evento, Oficina
 from extensions import db
 
 # Criação do blueprint
-sorteio_routes = Blueprint('sorteio_routes', __name__)
+sorteio_routes = Blueprint('sorteio_routes', __name__, template_folder="../templates/sorteio")
 
 @sorteio_routes.route('/api/sorteio_info/<int:sorteio_id>')
 @login_required
