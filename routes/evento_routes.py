@@ -58,15 +58,15 @@ def inscricao_evento(evento_id):
     if link:
         # Se existe um link personalizado, usa ele
         if link.slug_customizado:
-            return redirect(url_for('evento_routes.inscricao', slug=link.slug_customizado))
+            return redirect(url_for('inscricao_routes.abrir_inscricao_customizada', slug=link.slug_customizado))
         # Senão, usa o token
-        return redirect(url_for('evento_routes.cadastro_participante', token=link.token))
+        return redirect(url_for('inscricao_routes.cadastro_participante', identifier=link.token))
     
     # 3. Se não existe link, verifica se o evento permite inscrição direta
     if evento.publico and not evento.requer_aprovacao:
         # Aqui está a correção - não usamos mais link.token pois link é None
         # Criamos um token temporário ou usamos um método alternativo
-        return redirect(url_for('evento_routes.cadastro_participante', evento_id=evento_id))
+        return redirect(url_for('inscricao_routes.cadastro_participante', identifier=evento_id))
     
     # 4. Fallback final
     flash('Este evento não possui inscrições abertas no momento.', 'warning')
@@ -110,9 +110,9 @@ def _serializa_eventos(eventos):
         if ev.links_cadastro:
             link = ev.links_cadastro[0]
             dado['link_inscricao'] = (
-                url_for('evento_routes.abrir_inscricao_customizada', slug=link.slug_customizado)
+                url_for('inscricao_routes.abrir_inscricao_customizada', slug=link.slug_customizado)
                 if link.slug_customizado else
-                url_for('inscricao_routes.abrir_inscricao_token', token=link.token)  # Corrigido o blueprint
+                url_for('inscricao_routes.abrir_inscricao_token', token=link.token)
             )
         else:
             # Habilita inscrição se o evento estiver em andamento (data atual entre início e fim)
