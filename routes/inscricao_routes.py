@@ -14,87 +14,152 @@ import os
 import uuid
 import logging
 from dateutil import parser
+from sqlalchemy import func
+
+
+class LoteEsgotadoError(RuntimeError):
+    """Lançada quando o lote escolhido não possui mais vagas."""
+    pass
 
 inscricao_routes = Blueprint('inscricao_routes', __name__)
 
 
 @inscricao_routes.route("/inscricao/<path:identifier>", methods=["GET", "POST"])
 def cadastro_participante(identifier: str | None = None):
-    """Fluxo completo de cadastro de participante (refatorado com debug)."""
-    
-    from services.lote_service import lote_disponivel  # helper centralizado
+    """Realiza o cadastro de um participante em um evento."""
 
-    print("\n=== DEBUG: INÍCIO ROTA CADASTRO PARTICIPANTE ===")
+    from services.lote_service import lote_disponivel
+    from services.mp_service import get_sdk
 
-    # ---------------------------------------------------------------------
-    # 1) Link (slug ou token)
-    # ---------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 1) Localiza o link e o evento relacionados
+    # ------------------------------------------------------------------
     link = LinkCadastro.query.filter(
-        (LinkCadastro.token == identifier) | 
+        (LinkCadastro.token == identifier) |
         (LinkCadastro.slug_customizado == identifier)
     ).first()
-
     if not link:
         flash("Link de inscrição inválido.", "danger")
         return redirect(url_for("routes.index"))
 
     evento = link.evento
-
     if not evento:
         flash("Evento não encontrado.", "danger")
         return redirect(url_for("routes.index"))
 
-    # ---------------------------------------------------------------------
-    # 2) Buscar tipos de inscrição diretos (sem lote)
-    # ---------------------------------------------------------------------
-    tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
+    cliente_id = link.cliente_id
 
-    # ---------------------------------------------------------------------
-    # 3) Encontrar o lote vigente (ativo, dentro do período ou ilimitado)
-    # ---------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 2) Determina lote vigente e tipos de inscrição
+    # ------------------------------------------------------------------
     lote_vigente = None
+    lotes_ativos = []
     if evento.habilitar_lotes:
-        lotes = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).all()
+        lotes_ativos = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).all()
         now = datetime.utcnow()
-        for lote in lotes:
-            valido_por_data = True
+        for lote in lotes_ativos:
+            valido = True
             if lote.data_inicio and lote.data_fim:
-                valido_por_data = lote.data_inicio <= now <= lote.data_fim
-            if valido_por_data and lote.tipos_inscricao:
+                valido = lote.data_inicio <= now <= lote.data_fim
+            if valido and lote.tipos_inscricao:
                 lote_vigente = lote
                 break
 
-    # ---------------------------------------------------------------------
-    # 4) Estatísticas do lote (opcional)
-    # ---------------------------------------------------------------------
-    lote_stats = None
-    if lote_vigente:
-        total_vagas = lote_vigente.qtd_maxima or "ilimitado"
-        vagas_usadas = sum(len(tipo.inscricoes) for tipo in lote_vigente.tipos_inscricao)
-        data_inicio = lote_vigente.data_inicio.strftime("%d/%m/%Y") if lote_vigente.data_inicio else "Início indefinido"
-        data_fim = lote_vigente.data_fim.strftime("%d/%m/%Y") if lote_vigente.data_fim else "Sem prazo"
-        lote_stats = {
-            "vagas_totais": total_vagas,
-            "vagas_usadas": vagas_usadas,
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-        }
+    tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
 
-    # ---------------------------------------------------------------------
-    # 5) Carregar outras variáveis para o template (como oficinas, programação etc.)
-    # ---------------------------------------------------------------------
-    grouped_oficinas = {}  # ajustar conforme sua lógica
-    sorted_keys = []      
-    return render_template("auth/cadastro_participante.html",
-                           evento=evento,
-                           tipos_inscricao=tipos_inscricao,
-                           lote_vigente=lote_vigente,
-                           lote_stats=lote_stats,
-                           grouped_oficinas=grouped_oficinas,
-                           sorted_keys=sorted_keys,
-                           ministrantes=ministrantes,
-                           campos_personalizados=campos_personalizados,
-                           token=identifier)
+    # ------------------------------------------------------------------
+    # 3) Processamento do POST
+    # ------------------------------------------------------------------
+    if request.method == "POST":
+        nome = request.form.get("nome", "").strip()
+        cpf = request.form.get("cpf", "").strip()
+        email = request.form.get("email", "").strip()
+        senha = request.form.get("senha")
+        formacao = request.form.get("formacao", "")
+        estados = request.form.getlist("estados[]")
+        cidades = request.form.getlist("cidades[]")
+        lote_id = request.form.get("lote_id")
+        lote_tipo_id = request.form.get("lote_tipo_inscricao_id")
+        tipo_insc_id = request.form.get("tipo_inscricao_id")
+
+        try:
+            if not all([nome, cpf, email, senha, formacao]):
+                raise ValueError("Preencha todos os campos obrigatórios.")
+
+            duplicado = Usuario.query.filter(
+                (Usuario.email == email) | (Usuario.cpf == cpf)
+            ).first()
+            if duplicado:
+                msg = "E-mail já cadastrado." if duplicado.email == email else "CPF já cadastrado."
+                raise ValueError(msg)
+
+            resolved_tipo = None
+            if lote_tipo_id:
+                lt = LoteTipoInscricao.query.get(lote_tipo_id)
+                if not lt:
+                    raise ValueError("Tipo de inscrição inválido.")
+                resolved_tipo = lt.tipo_inscricao_id
+                lote_id = lt.lote_id
+            elif tipo_insc_id:
+                resolved_tipo = int(tipo_insc_id)
+
+            if lote_id:
+                _reservar_vaga(int(lote_id))
+
+            usuario = Usuario(
+                nome=nome,
+                cpf=cpf,
+                email=email,
+                senha=generate_password_hash(senha),
+                formacao=formacao,
+                tipo="participante",
+                cliente_id=cliente_id,
+                evento_id=evento.id,
+                tipo_inscricao_id=resolved_tipo,
+                estados=",".join(estados) if estados else None,
+                cidades=",".join(cidades) if cidades else None,
+            )
+            db.session.add(usuario)
+            db.session.flush()
+
+            inscricao = Inscricao(
+                usuario_id=usuario.id,
+                evento_id=evento.id,
+                cliente_id=cliente_id,
+                lote_id=lote_id if lote_id else None,
+                tipo_inscricao_id=resolved_tipo,
+            )
+            db.session.add(inscricao)
+
+            _salvar_campos_personalizados(usuario.id, cliente_id, request.form)
+
+            preco, titulo = _calcular_preco(evento, lote_tipo_id, tipo_insc_id, lote_vigente)
+            sdk = get_sdk()
+            if preco > 0 and sdk:
+                url_pagamento = _criar_preferencia_mp(sdk, preco, titulo, inscricao, usuario)
+                db.session.commit()
+                return redirect(url_pagamento)
+
+            db.session.commit()
+            flash("Inscrição realizada com sucesso!", "success")
+            return redirect(url_for("auth_routes.login"))
+
+        except LoteEsgotadoError:
+            db.session.rollback()
+            flash("Lote esgotado. Escolha outro tipo de inscrição.", "danger")
+            return redirect(url_for("inscricao_routes.cadastro_participante", identifier=identifier))
+        except Exception as e:
+            logging.exception("Erro no cadastro de participante")
+            db.session.rollback()
+            flash(str(e), "danger")
+            return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
+                               lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+
+    # ------------------------------------------------------------------
+    # 4) GET - apenas renderiza o formulário
+    # ------------------------------------------------------------------
+    return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
+                        lotes_ativos=lotes_ativos, cliente_id=cliente_id)
 
 
 
