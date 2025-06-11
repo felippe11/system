@@ -24,7 +24,7 @@ class LoteEsgotadoError(RuntimeError):
 inscricao_routes = Blueprint('inscricao_routes', __name__)
 
 
-@inscricao_routes.route("/inscricao/<path:identifier>", methods=["GET", "POST"])
+@inscricao_routes.route("/inscricao/<identifier>", methods=["GET", "POST"])
 def cadastro_participante(identifier: str | None = None):
     """Realiza o cadastro de um participante em um evento."""
 
@@ -38,16 +38,27 @@ def cadastro_participante(identifier: str | None = None):
         (LinkCadastro.token == identifier) |
         (LinkCadastro.slug_customizado == identifier)
     ).first()
-    if not link:
-        flash("Link de inscrição inválido.", "danger")
-        return redirect(url_for("evento_routes.home"))
 
-    evento = link.evento
+    evento = None
+    cliente_id = None
+
+    if link:
+        evento = link.evento
+        cliente_id = link.cliente_id
+    else:
+        if identifier.isdigit():
+            evento = Evento.query.get(int(identifier))
+            if evento and evento.publico and evento.status == "ativo" and not evento.requer_aprovacao:
+                cliente_id = evento.cliente_id
+            else:
+                evento = None
+        else:
+            flash("Link de inscrição inválido.", "danger")
+            return redirect(url_for("evento_routes.home"))
+
     if not evento:
         flash("Evento não encontrado.", "danger")
         return redirect(url_for("evento_routes.home"))
-
-    cliente_id = link.cliente_id
 
     # ------------------------------------------------------------------
     # 2) Determina lote vigente e tipos de inscrição
@@ -311,8 +322,10 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
             "data_fim": lote_vigente.data_fim.strftime("%d/%m/%Y") if lote_vigente.data_fim else "Não definido",
         }
 
+    token = link.token if link else str(evento.id)
+
     return render_template("auth/cadastro_participante.html",
-        token=link.token,
+        token=token,
         evento=evento,
         sorted_keys=sorted_keys,
         grouped_oficinas=grouped_oficinas,
