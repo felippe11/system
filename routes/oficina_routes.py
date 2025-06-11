@@ -11,7 +11,7 @@ from models import (
 )
 from flask import Blueprint
 
-oficina_routes = Blueprint('oficina_routes', __name__)
+oficina_routes = Blueprint('oficina_routes', __name__, template_folder="../templates/oficina")
 
 @oficina_routes.route('/criar_oficina', methods=['GET', 'POST'])
 @login_required
@@ -287,7 +287,7 @@ def editar_oficina(oficina_id):
             db.session.rollback()
             flash(f'Erro ao editar oficina: {str(e)}', 'danger')
             return render_template(
-                'oficina/editar_oficina.html',
+                'editar_oficina.html',
                 oficina=oficina,
                 estados=estados,
                 ministrantes=ministrantes,
@@ -296,7 +296,7 @@ def editar_oficina(oficina_id):
             )
 
     return render_template(
-        'oficina/editar_oficina.html',
+        'editar_oficina.html',
         oficina=oficina,
         estados=estados,
         ministrantes=ministrantes,
@@ -440,7 +440,7 @@ def eventos_com_oficinas():
 @login_required
 def oficinas_disponiveis():
     oficinas = Oficina.query.filter_by(cliente_id=current_user.cliente_id).all()
-    return render_template('oficina/oficinas.html', oficinas=oficinas)
+    return render_template('oficinas.html', oficinas=oficinas)
 
 # routes/links_ui.py  (ou no mesmo arquivo se preferir)
 @oficina_routes.route("/links/gerar", methods=["GET"])
@@ -457,5 +457,5 @@ def listar_oficinas():
     else:
         oficinas = Oficina.query.all()
 
-    return render_template('oficina/oficinas.html', oficinas=oficinas)
+    return render_template('oficinas.html', oficinas=oficinas)
 
