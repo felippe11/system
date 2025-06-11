@@ -40,12 +40,12 @@ def cadastro_participante(identifier: str | None = None):
     ).first()
     if not link:
         flash("Link de inscrição inválido.", "danger")
-        return redirect(url_for("routes.index"))
+        return redirect(url_for("evento_routes.home"))
 
     evento = link.evento
     if not evento:
         flash("Evento não encontrado.", "danger")
-        return redirect(url_for("routes.index"))
+        return redirect(url_for("evento_routes.home"))
 
     cliente_id = link.cliente_id
 
