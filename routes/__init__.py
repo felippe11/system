@@ -47,6 +47,8 @@ def register_routes(app):
     from .mercadopago_routes import mercadopago_routes
     from .util_routes import util_routes
     from .relatorio_pdf_routes import relatorio_pdf_routes
+    # Importa servicos que registram rotas diretamente no blueprint
+    from services import lote_service  # noqa: F401
 
     # Registra o blueprint principal somente após importar rotas que o utilizam
     app.register_blueprint(routes)
