@@ -40,6 +40,11 @@ def app():
         db.session.add(link)
         db.session.commit()
 
+        # Evento sem link de cadastro
+        evento2 = Evento(cliente_id=cliente.id, nome='Evento Sem Link', habilitar_lotes=False, inscricao_gratuita=True)
+        db.session.add(evento2)
+        db.session.commit()
+
     yield app
 
 @pytest.fixture
@@ -51,4 +56,25 @@ def test_get_inscricao_page(client):
     resp = client.get('/inscricao/token/testtoken')
     assert resp.status_code == 200
     assert b'Evento Teste' in resp.data
+
+
+def test_inscricao_por_id(client, app):
+    with app.app_context():
+        evento = Evento.query.filter_by(nome='Evento Sem Link').first()
+        assert evento is not None
+        evento_id = evento.id
+
+    resp = client.get(f'/inscricao/{evento_id}')
+    assert resp.status_code == 200
+    assert b'Evento Sem Link' in resp.data
+
+
+def test_inscricao_evento_route_redirect(client, app):
+    with app.app_context():
+        evento = Evento.query.filter_by(nome='Evento Sem Link').first()
+        evento_id = evento.id
+
+    resp = client.get(f'/evento/{evento_id}/inscricao', follow_redirects=True)
+    assert resp.status_code == 200
+    assert b'Evento Sem Link' in resp.data
 
