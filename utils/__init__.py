@@ -44,9 +44,10 @@ logger = logging.getLogger(__name__)
 
 # Escopo necessário para envio de e-mails
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-# Caminhos dos arquivos JSON
-CREDENTIALS_FILE = "credentials.json"
+# Configuracoes de OAuth
 TOKEN_FILE = "token.json"
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 from decimal import Decimal, ROUND_HALF_UP
 from models import Configuracao
@@ -557,16 +558,29 @@ def obter_credenciais():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES,
-                redirect_uri="https://appfiber.com.br/"
+            if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+                logger.error("Variaveis GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nao estao definidas.")
+                return None
+
+            flow = InstalledAppFlow.from_client_config(
+                {
+                    "installed": {
+                        "client_id": GOOGLE_CLIENT_ID,
+                        "client_secret": GOOGLE_CLIENT_SECRET,
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
+                    }
+                },
+                SCOPES,
+                redirect_uri="https://appfiber.com.br/",
             )
 
-            # Exibir o link de autenticação manualmente
-            auth_url, _ = flow.authorization_url(prompt='consent')
-            print(f"🔗 Acesse este link para autenticação manual:\n{auth_url}")
+            # Exibir o link de autenticacao manualmente
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            print(f"\ud83d\udd17 Acesse este link para autenticacao manual:\n{auth_url}")
 
-            # Executar autenticação manual (esperar código do usuário)
+            # Executar autenticacao manual (esperar codigo do usuario)
             creds = flow.run_console()
 
         with open(TOKEN_FILE, "w") as token:
