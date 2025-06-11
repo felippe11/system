@@ -30,7 +30,7 @@ def create_app():
     mail.init_app(app)
     CORS(app)
 
-    login_manager.login_view = "routes.login"
+    login_manager.login_view = "auth_routes.login"
     login_manager.session_protection = "strong"
 
     # Filtros Jinja2
