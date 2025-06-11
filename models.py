@@ -255,12 +255,14 @@ class Inscricao(db.Model):
         index=True        # ➊  (gera índice)
     )
 
-    def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None, status_pagamento="pending"):
+    def __init__(self, usuario_id, cliente_id, oficina_id=None, evento_id=None, status_pagamento="pending", lote_id=None, tipo_inscricao_id=None):
         self.usuario_id = usuario_id
         self.cliente_id = cliente_id
         self.oficina_id = oficina_id
         self.evento_id = evento_id
         self.status_pagamento = status_pagamento
+        self.lote_id = lote_id
+        self.tipo_inscricao_id = tipo_inscricao_id
 
         # Gera um token único garantido
         while True:
