@@ -27,6 +27,7 @@ from models import (
     Oficina,
     Ministrante,
 )
+from services.pdf_service import gerar_pdf_respostas
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -306,6 +307,18 @@ def exportar_csv(formulario_id):
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={csv_filename}"}
     )
+
+
+@formularios_routes.route('/formularios/<int:formulario_id>/gerar_pdf_respostas')
+@login_required
+def gerar_pdf_respostas_route(formulario_id):
+    """Gera um PDF contendo todas as respostas do formulário."""
+    resultado = gerar_pdf_respostas(formulario_id)
+    if isinstance(resultado, tuple):
+        _, mensagem = resultado
+        flash(mensagem, 'warning')
+        return redirect(request.referrer or url_for('formularios_routes.listar_respostas'))
+    return resultado
 
 
 @formularios_routes.route('/respostas/<path:filename>')
