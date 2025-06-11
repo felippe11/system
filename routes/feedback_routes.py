@@ -123,7 +123,7 @@ def feedback_oficina(oficina_id):
     feedbacks = query.order_by(Feedback.created_at.desc()).all()
 
     
-    return render_template('feedback_oficina.html', oficina=oficina, feedbacks=feedbacks,
+    return render_template('oficina/feedback_oficina.html', oficina=oficina, feedbacks=feedbacks,
                            total_count=total_count, total_avg=total_avg,
                            count_ministrantes=count_ministrantes, avg_ministrantes=avg_ministrantes,
                            count_usuarios=count_usuarios, avg_usuarios=avg_usuarios,  is_admin=current_user.tipo == 'admin', clientes=clientes, cliente_filter=cliente_filter)

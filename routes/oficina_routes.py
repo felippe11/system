@@ -287,7 +287,7 @@ def editar_oficina(oficina_id):
             db.session.rollback()
             flash(f'Erro ao editar oficina: {str(e)}', 'danger')
             return render_template(
-                'editar_oficina.html',
+                'oficina/editar_oficina.html',
                 oficina=oficina,
                 estados=estados,
                 ministrantes=ministrantes,
@@ -296,7 +296,7 @@ def editar_oficina(oficina_id):
             )
 
     return render_template(
-        'editar_oficina.html',
+        'oficina/editar_oficina.html',
         oficina=oficina,
         estados=estados,
         ministrantes=ministrantes,
