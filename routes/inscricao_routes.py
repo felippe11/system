@@ -67,6 +67,37 @@ def cadastro_participante(identifier: str | None = None):
 
     tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento.id).all()
 
+    # ---------------------------------------------------------------------
+    # 5) Carregar outras variáveis para o template (como oficinas, programação etc.)
+    # ---------------------------------------------------------------------
+    grouped_oficinas = {}  # ajustar conforme sua lógica
+    sorted_keys = []
+
+    # Dados adicionais esperados pelo template
+    ministrantes = (
+        Ministrante.query.join(Oficina)
+        .filter(Oficina.evento_id == evento.id)
+        .distinct()
+        .all()
+    )
+    campos_personalizados = CampoPersonalizadoCadastro.query.filter_by(
+        cliente_id=evento.cliente_id
+    ).all()
+    lotes_ativos = LoteInscricao.query.filter_by(evento_id=evento.id, ativo=True).all()
+    return render_template(
+        "auth/cadastro_participante.html",
+        evento=evento,
+        tipos_inscricao=tipos_inscricao,
+        lote_vigente=lote_vigente,
+        lote_stats=lote_stats,
+        grouped_oficinas=grouped_oficinas,
+        sorted_keys=sorted_keys,
+        ministrantes=ministrantes,
+        campos_personalizados=campos_personalizados,
+        lotes_ativos=lotes_ativos,
+        token=identifier,
+    )
+
     # ------------------------------------------------------------------
     # 3) Processamento do POST
     # ------------------------------------------------------------------
@@ -160,6 +191,7 @@ def cadastro_participante(identifier: str | None = None):
     # ------------------------------------------------------------------
     return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
                         lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+
 
 
 
