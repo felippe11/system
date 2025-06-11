@@ -767,10 +767,16 @@
     margin-bottom: 8px;
     }
     
-    .lote-info p {
+.lote-info p {
     margin-bottom: 5px;
     font-size: 0.9rem;
-    }
+}
+
+.current-lote {
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
     
     .outros-lotes {
     margin-top: 15px;
