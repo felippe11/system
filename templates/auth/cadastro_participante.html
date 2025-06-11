@@ -298,6 +298,7 @@
                                 <p>Vagas: {{ lote_stats.vagas_usadas }}/{{ lote_stats.vagas_totais if lote_stats.vagas_totais != "ilimitado" else "Ilimitadas" }}</p>
                                 <p>Período: {{ lote_stats.data_inicio }} a {{ lote_stats.data_fim }}</p>
                             </div>
+                            <div class="current-lote"></div>
 
                             <div class="ticket-options">
                                 {% for lote_tipo in lote_vigente.tipos_inscricao %}
