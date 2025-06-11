@@ -214,7 +214,7 @@ def lista_checkins(oficina_id):
     ministrantes = [m.nome for m in oficina.ministrantes_associados] if oficina.ministrantes_associados else []
 
     return render_template(
-        'lista_checkins.html',
+        'checkin/lista_checkins.html',
         oficina=oficina,
         usuarios_checkin=usuarios_checkin,
         ministrantes=ministrantes
