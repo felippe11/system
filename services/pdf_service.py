@@ -4047,9 +4047,11 @@ def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
             "success": return_url,
             "failure": return_url,
             "pending": return_url
-        },
-        "auto_return": "approved"
+        }
     }
+    auto_return = os.getenv("MP_AUTO_RETURN")
+    if auto_return:
+        preference_data["auto_return"] = auto_return
     try:
         preference_response = sdk.preference().create(preference_data)
         return preference_response["response"]["init_point"]
@@ -4080,9 +4082,11 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
             "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
             "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True)
         },
-        "auto_return": "approved",
         "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True)
     }
+    auto_return = os.getenv("MP_AUTO_RETURN")
+    if auto_return:
+        preference_data["auto_return"] = auto_return
     try:
         pref = sdk.preference().create(preference_data)
         return pref["response"]["init_point"]
