@@ -469,7 +469,7 @@
                                     </li>
                                     <li><hr class="dropdown-divider my-1"></li>
                                     <li>
-                                        <a class="dropdown-item py-2" href="{{ url_for('dashboard_routes.dashboard_participante') }}">
+                                        <a class="dropdown-item py-2" href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}">
                                             <i class="bi bi-speedometer2 me-2"></i>Dashboard
                                         </a>
                                     </li>
@@ -485,7 +485,7 @@
                                 
                                 {% if current_user.tipo == 'ministrante' %}
                                     <li>
-                                        <a class="dropdown-item py-2" href="{{ url_for('dashboard_routes.dashboard_ministrante') }}">
+                                        <a class="dropdown-item py-2" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
                                             <i class="bi bi-speedometer2 me-2"></i>Dashboard
                                         </a>
                                     </li>
