@@ -1450,9 +1450,9 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
-<script>
-  const URL_EXPORTAR_CHECKINS_PDF = "{{ url_for('routes.exportar_checkins_filtrados') }}";
-</script>
+  <script>
+    const URL_EXPORTAR_CHECKINS_PDF = "{{ url_for('routes.exportar_checkins_filtrados') }}";
+  </script>
 {% endblock %}
 
 {% endblock %}

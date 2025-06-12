@@ -45,7 +45,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      fetch(toggleUrl)
+      fetch(toggleUrl, {
+        credentials: 'include'
+      })
         .then(response => {
           if (response.ok) {
             location.reload(); // Recarrega para refletir a mudança
@@ -121,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 3. Buscar estado atual das configurações do cliente
   if (typeof URL_CONFIG_CLIENTE_ATUAL !== 'undefined') {
-    fetch(URL_CONFIG_CLIENTE_ATUAL)
+    fetch(URL_CONFIG_CLIENTE_ATUAL, { credentials: 'include' })
       .then(response => response.json())
       .then(data => {
         if (!data.success) {
@@ -132,10 +134,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnCheckin = document.getElementById('btnToggleCheckin');
         const btnFeedback = document.getElementById('btnToggleFeedback');
         const btnCertificado = document.getElementById('btnToggleCertificado');
+        const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
 
         if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
         if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
         if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
+        if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
       })
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
@@ -144,11 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.warn("URL_CONFIG_CLIENTE_ATUAL não definida. Não foi possível buscar configurações do cliente.");
   }
 
-  // 4. Configurar botões de toggle (check-in, feedback, certificado)
+  // 4. Configurar botões de toggle (check-in, QR code, feedback, certificado)
   const toggleButtons = [
     document.getElementById('btnToggleCheckin'),
     document.getElementById('btnToggleFeedback'),
-    document.getElementById('btnToggleCertificado')
+    document.getElementById('btnToggleCertificado'),
+    document.getElementById('btnToggleQrCredenciamento')
   ];
 
   toggleButtons.forEach(button => {
@@ -167,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
           "Content-Type": "application/json", // Se enviar corpo JSON
           "X-Requested-With": "XMLHttpRequest" // Comum para requisições AJAX
         },
+        credentials: 'include'
         // body: JSON.stringify({}) // Adicione um corpo se sua API necessitar
       })
       .then(res => res.json())
@@ -808,42 +814,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Toggle para QR Code de Credenciamento do Evento
-document.addEventListener('DOMContentLoaded', function() {
-  const btnToggle = document.getElementById('btnToggleQrCredenciamento');
-  if (btnToggle) {
-    btnToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      if (typeof URL_TOGGLE_QR_CREDENCIAMENTO === 'undefined') {
-        alert("Erro de configuração: URL para alternar QR Code não definida.");
-        console.error("URL_TOGGLE_QR_CREDENCIAMENTO não está definida.");
-        return;
-      }
-
-      fetch(URL_TOGGLE_QR_CREDENCIAMENTO, {
-        method: "POST", // Ou GET, dependendo da sua API
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-        // body: JSON.stringify({ evento_id: SEU_EVENTO_ID_ATUAL }) // Se precisar passar ID do evento
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          // Idealmente, atualizar o texto/classe do botão em vez de recarregar a página inteira
-          // Mas recarregar é mais simples se o estado do botão é renderizado pelo servidor.
-          window.location.reload(); 
-        } else {
-          alert("Erro ao alterar configuração do QR Code: " + (data.message || "Erro desconhecido."));
-          console.error("Erro ao alternar QR Code:", data);
-        }
-      })
-      .catch(err => {
-        console.error("Erro de comunicação ao alternar QR Code:", err);
-        alert("Ocorreu um erro ao tentar alterar a configuração do QR Code.");
-      });
-    });
-  }
-});
 
 // Adicionar botão para gerar link
 const buttonContainer = document.getElementById('buttonContainer'); // Replace with the appropriate container ID

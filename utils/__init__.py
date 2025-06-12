@@ -920,15 +920,25 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
     c.save()
     return pdf_path
 
+from flask import current_app
+
+
 def caminho_absoluto_arquivo(imagem_relativa):
-    """Retorna o caminho absoluto corrigido para leitura de imagem"""
+    """Resolve o caminho de uma imagem para um formato absoluto."""
     if not imagem_relativa:
         return None
 
-    # Evita duplicar 'static/static/...'
-    if imagem_relativa.startswith('static/'):
+    imagem_relativa = os.path.normpath(imagem_relativa)
+
+    if os.path.isabs(imagem_relativa):
         return imagem_relativa
-    return os.path.join('static', imagem_relativa)
+
+    base_dir = current_app.root_path
+    potencial = os.path.join(base_dir, imagem_relativa)
+    if os.path.exists(potencial):
+        return potencial
+
+    return os.path.join(base_dir, 'static', imagem_relativa)
 
 import mercadopago
 import os

@@ -74,9 +74,9 @@ def login():
         destino = {
             'admin':        'dashboard_routes.dashboard',
             'cliente':      'dashboard_routes.dashboard',
-            'participante': 'dashboard_routes.dashboard_participante',
-            'ministrante':  'dashboard_routes.dashboard_ministrante',
-            'professor':    'dashboard_routes.dashboard_professor'
+            'participante': 'dashboard_participante_routes.dashboard_participante',
+            'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
+            'professor':    'dashboard_professor.dashboard_professor'
         }.get(session.get('user_type'), 'dashboard_routes.dashboard')
 
         return redirect(url_for(destino))
