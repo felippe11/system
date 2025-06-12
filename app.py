@@ -1,16 +1,12 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask_mail import Message
+from flask import Flask
 from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 from config import Config
 from extensions import db, login_manager, migrate, mail, socketio
-from models import Usuario, Cliente, Ministrante, Inscricao
+from models import Inscricao
 from utils import brasilia_filter
-import logging
-import os
 import pytz
 
 from services.mp_service import get_sdk
