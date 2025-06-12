@@ -33,8 +33,8 @@
         
         <h4>Tipos de Inscrição ({{ tipos_inscricao|length }})</h4>
         <ul>
-            {% for tipo in tipos_inscricao %}
-            <li>{{ tipo.nome }} - R$ {{ tipo.preco }} (ID: {{ tipo.id }})</li>
+            {% for lt in tipos_inscricao %}
+            <li>{{ lt.tipo_inscricao.nome }} - R$ {{ lt.preco }} (ID: {{ lt.id }})</li>
             {% else %}
             <li>Nenhum tipo de inscrição disponível</li>
             {% endfor %}
