@@ -983,12 +983,12 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "payer": {"email": usuario.email},
         "external_reference": str(usuario.id),
         "back_urls": {
-            "success": url_for("routes.pagamento_sucesso", _external=True),
-            "failure": url_for("routes.pagamento_falhou", _external=True),
-            "pending": url_for("routes.pagamento_pendente", _external=True)
+            "success": url_for("mercadopago_routes.pagamento_sucesso", _external=True),
+            "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
+            "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True)
         },
         "auto_return": "approved",
-        "notification_url": url_for("routes.webhook_mp", _external=True)
+        "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True)
     }
     pref = sdk.preference().create(preference_data)
     return pref["response"]["init_point"]
