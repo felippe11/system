@@ -1,5 +1,31 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
+import os
+import threading
+from datetime import datetime, timedelta, date
+from flask import current_app, send_file, Response, abort
+from flask_mail import Message
+from werkzeug.utils import secure_filename
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash
+from extensions import db, mail
+from models import (
+    AgendamentoVisita, HorarioVisitacao, Evento,
+    EventoInscricaoTipo, ConfiguracaoAgendamento,
+    Usuario, Cliente, Oficina
+)
+from utils import obter_estados
+from fpdf import FPDF
+import pandas as pd
+import qrcode
+import io
+from . import routes
+
+# Aliases for backward compatibility used later in this module
+ConfigAgendamento = ConfiguracaoAgendamento
+Agendamento = AgendamentoVisita
+Horario = HorarioVisitacao
+data_agendamento = AgendamentoVisita.data_agendamento
 
 agendamento_routes = Blueprint(
     'agendamento_routes',
