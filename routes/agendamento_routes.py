@@ -2960,7 +2960,7 @@ def confirmar_checkin_agendamento(token):
             flash(f'Erro ao processar check-in: {str(e)}', 'danger')
     
     # Renderiza a página de confirmação
-    return render_template('confirmar_checkin.html', 
+    return render_template('checkin/confirmar_checkin.html',
                           agendamento=agendamento,
                           evento=evento,
                           horario=horario)
