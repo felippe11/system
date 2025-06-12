@@ -56,7 +56,8 @@ def toggle_feedback_cliente():
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
+            habilitar_qrcode_evento_credenciamento=False
         )
         db.session.add(config_cliente)
         db.session.commit()
@@ -194,7 +195,8 @@ def configuracao_cliente_atual():
         "success": True,
         "permitir_checkin_global": config_cliente.permitir_checkin_global,
         "habilitar_feedback": config_cliente.habilitar_feedback,
-        "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual
+        "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual,
+        "habilitar_qrcode_evento_credenciamento": config_cliente.habilitar_qrcode_evento_credenciamento
     })
 
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
