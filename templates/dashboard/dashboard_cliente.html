@@ -1450,10 +1450,9 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
-<script>
-  const URL_TOGGLE_QR_CREDENCIAMENTO = "{{ url_for('config_cliente_routes.toggle_qrcode_evento_credenciamento') }}";
-  const URL_EXPORTAR_CHECKINS_PDF = "{{ url_for('routes.exportar_checkins_filtrados') }}";
-</script>
+  <script>
+    const URL_EXPORTAR_CHECKINS_PDF = "{{ url_for('routes.exportar_checkins_filtrados') }}";
+  </script>
 {% endblock %}
 
 {% endblock %}
