@@ -134,10 +134,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnCheckin = document.getElementById('btnToggleCheckin');
         const btnFeedback = document.getElementById('btnToggleFeedback');
         const btnCertificado = document.getElementById('btnToggleCertificado');
+        const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
 
         if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
         if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
         if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
+        if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
       })
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
@@ -146,11 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
     console.warn("URL_CONFIG_CLIENTE_ATUAL não definida. Não foi possível buscar configurações do cliente.");
   }
 
-  // 4. Configurar botões de toggle (check-in, feedback, certificado)
+  // 4. Configurar botões de toggle (check-in, QR code, feedback, certificado)
   const toggleButtons = [
     document.getElementById('btnToggleCheckin'),
     document.getElementById('btnToggleFeedback'),
-    document.getElementById('btnToggleCertificado')
+    document.getElementById('btnToggleCertificado'),
+    document.getElementById('btnToggleQrCredenciamento')
   ];
 
   toggleButtons.forEach(button => {
@@ -833,9 +836,7 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(response => response.json())
       .then(data => {
         if (data.success) {
-          // Idealmente, atualizar o texto/classe do botão em vez de recarregar a página inteira
-          // Mas recarregar é mais simples se o estado do botão é renderizado pelo servidor.
-          window.location.reload(); 
+          atualizarBotao(btnToggle, data.value);
         } else {
           alert("Erro ao alterar configuração do QR Code: " + (data.message || "Erro desconhecido."));
           console.error("Erro ao alternar QR Code:", data);
