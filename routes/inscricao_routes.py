@@ -16,6 +16,7 @@ import logging
 from dateutil import parser
 from sqlalchemy import func
 from services.lote_service import lote_disponivel
+from utils import external_url
 
 
 class LoteEsgotadoError(RuntimeError):
@@ -241,11 +242,11 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
         "payer": {"email": usuario.email, "name": usuario.nome},
         "external_reference": str(inscricao.id),
         "back_urls": {
-            "success": url_for("mercadopago_routes.pagamento_sucesso", _external=True),
-            "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
-            "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True),
+            "success": external_url("mercadopago_routes.pagamento_sucesso"),
+            "failure": external_url("mercadopago_routes.pagamento_falha"),
+            "pending": external_url("mercadopago_routes.pagamento_pendente"),
         },
-        "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True),
+        "notification_url": external_url("mercadopago_routes.webhook_mp"),
     }
 
     auto_return = os.getenv("MP_AUTO_RETURN")

@@ -1,4 +1,5 @@
 from flask_login import login_required
+from utils import external_url
 
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     """
@@ -4078,11 +4079,11 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "payer": {"email": usuario.email},
         "external_reference": str(usuario.id),
         "back_urls": {
-            "success": url_for("mercadopago_routes.pagamento_sucesso", _external=True),
-            "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
-            "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True)
+            "success": external_url("mercadopago_routes.pagamento_sucesso"),
+            "failure": external_url("mercadopago_routes.pagamento_falha"),
+            "pending": external_url("mercadopago_routes.pagamento_pendente"),
         },
-        "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True)
+        "notification_url": external_url("mercadopago_routes.webhook_mp")
     }
     auto_return = os.getenv("MP_AUTO_RETURN")
     if auto_return:
