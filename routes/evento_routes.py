@@ -185,8 +185,10 @@ def configurar_evento():
         programacao = request.form.get('programacao')
         localizacao = request.form.get('localizacao')
         link_mapa = request.form.get('link_mapa')
-        inscricao_gratuita = request.form.get('inscricao_gratuita') == 'on'  # Checkbox retorna 'on' se marcado
-        habilitar_lotes = request.form.get('habilitar_lotes') == 'on'  # Novo campo
+        inscricao_gratuita_val = request.form.get('inscricao_gratuita')
+        inscricao_gratuita = inscricao_gratuita_val in ['on', '1', 'true']
+        habilitar_lotes_val = request.form.get('habilitar_lotes')
+        habilitar_lotes = habilitar_lotes_val in ['on', '1', 'true']
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
         
@@ -629,10 +631,12 @@ def criar_evento():
         hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
         
         # Verificar se é gratuito
-        inscricao_gratuita = (request.form.get('inscricao_gratuita') == 'on')
-        
+        inscricao_gratuita_val = request.form.get('inscricao_gratuita')
+        inscricao_gratuita = inscricao_gratuita_val in ['on', '1', 'true']
+
         # Verificar se habilita lotes
-        habilitar_lotes = (request.form.get('habilitar_lotes') == 'on')
+        habilitar_lotes_val = request.form.get('habilitar_lotes')
+        habilitar_lotes = habilitar_lotes_val in ['on', '1', 'true']
     
         # Cria o objeto Evento
         novo_evento = Evento(
