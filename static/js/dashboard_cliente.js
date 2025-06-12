@@ -45,7 +45,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      fetch(toggleUrl)
+      fetch(toggleUrl, {
+        credentials: 'include'
+      })
         .then(response => {
           if (response.ok) {
             location.reload(); // Recarrega para refletir a mudança
@@ -121,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 3. Buscar estado atual das configurações do cliente
   if (typeof URL_CONFIG_CLIENTE_ATUAL !== 'undefined') {
-    fetch(URL_CONFIG_CLIENTE_ATUAL)
+    fetch(URL_CONFIG_CLIENTE_ATUAL, { credentials: 'include' })
       .then(response => response.json())
       .then(data => {
         if (!data.success) {
@@ -167,6 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
           "Content-Type": "application/json", // Se enviar corpo JSON
           "X-Requested-With": "XMLHttpRequest" // Comum para requisições AJAX
         },
+        credentials: 'include'
         // body: JSON.stringify({}) // Adicione um corpo se sua API necessitar
       })
       .then(res => res.json())
@@ -823,7 +826,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
       fetch(URL_TOGGLE_QR_CREDENCIAMENTO, {
         method: "POST", // Ou GET, dependendo da sua API
-        headers: { "X-Requested-With": "XMLHttpRequest" }
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        credentials: 'include'
         // body: JSON.stringify({ evento_id: SEU_EVENTO_ID_ATUAL }) // Se precisar passar ID do evento
       })
       .then(response => response.json())
