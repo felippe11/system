@@ -985,11 +985,11 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
         "payer": {"email": usuario.email},
         "external_reference": str(usuario.id),
         "back_urls": {
-            "success": url_for("mercadopago_routes.pagamento_sucesso", _external=True),
-            "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
-            "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True)
+            "success": external_url("mercadopago_routes.pagamento_sucesso"),
+            "failure": external_url("mercadopago_routes.pagamento_falha"),
+            "pending": external_url("mercadopago_routes.pagamento_pendente"),
         },
-        "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True)
+        "notification_url": external_url("mercadopago_routes.webhook_mp")
     }
     auto_return = os.getenv("MP_AUTO_RETURN")
     if auto_return:
@@ -1002,6 +1002,13 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
 from functools import wraps
 from flask_login import current_user
 from flask import flash, redirect, url_for, request
+
+def external_url(endpoint: str, **values) -> str:
+    """Gera URL absoluta usando APP_BASE_URL se definido."""
+    base = os.getenv("APP_BASE_URL")
+    if base:
+        return base.rstrip("/") + url_for(endpoint, _external=False, **values)
+    return url_for(endpoint, _external=True, **values)
 
 def pagamento_necessario(f):
     @wraps(f)
