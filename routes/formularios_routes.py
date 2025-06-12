@@ -212,7 +212,7 @@ def preencher_formulario(formulario_id):
         flash("Formulário enviado com sucesso!", "success")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
-    return render_template('preencher_formulario.html', formulario=formulario)
+    return render_template('inscricao/preencher_formulario.html', formulario=formulario)
 
 
 @formularios_routes.route('/formularios_participante', methods=['GET'])
