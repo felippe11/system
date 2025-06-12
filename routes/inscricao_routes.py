@@ -241,11 +241,11 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
         "payer": {"email": usuario.email, "name": usuario.nome},
         "external_reference": str(inscricao.id),
         "back_urls": {
-            "success": url_for("routes.pagamento_sucesso", _external=True),
-            "failure": url_for("routes.pagamento_falha", _external=True),
-            "pending": url_for("routes.pagamento_pendente", _external=True),
+            "success": url_for("mercadopago_routes.pagamento_sucesso", _external=True),
+            "failure": url_for("mercadopago_routes.pagamento_falha", _external=True),
+            "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True),
         },
-        "notification_url": url_for("routes.webhook_mp", _external=True),
+        "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True),
         "auto_return": "approved",
     }
 
