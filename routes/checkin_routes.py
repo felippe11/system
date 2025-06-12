@@ -189,7 +189,7 @@ def checkin(oficina_id):
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     opcoes = oficina.opcoes_checkin.split(',') if oficina.opcoes_checkin else []
-    return render_template('checkin.html', oficina=oficina, opcoes=opcoes)
+    return render_template('checkin/checkin.html', oficina=oficina, opcoes=opcoes)
 
 
 
@@ -451,7 +451,7 @@ def confirmar_checkin(agendamento_id):
             flash(f'Erro ao realizar check-in: {str(e)}', 'danger')
     
     return render_template(
-        'confirmar_checkin.html',
+        'checkin/confirmar_checkin.html',
         agendamento=agendamento,
         horario=agendamento.horario,
         evento=evento
