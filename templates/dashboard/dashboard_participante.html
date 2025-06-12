@@ -394,7 +394,7 @@
   {% endif %}
 
   {% if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento %}
-    <a href="{{ url_for('routes.gerar_evento_qrcode_pdf', evento_id=evento.id) }}" class="btn btn-primary">
+    <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
       <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
     </a>
   {% else %}
