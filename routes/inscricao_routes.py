@@ -290,7 +290,7 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
 
     # Tipos de inscrição
     if evento and evento.habilitar_lotes and lote_vigente:
-        tipos_inscricao = [lt.tipo_inscricao for lt in lote_vigente.tipos_inscricao]
+        tipos_inscricao = lote_vigente.tipos_inscricao
     elif evento:
         tipos_inscricao = (
             EventoInscricaoTipo.query.filter_by(evento_id=evento.id).order_by(EventoInscricaoTipo.nome).all()
