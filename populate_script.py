@@ -428,7 +428,7 @@ def criar_oficinas(eventos, ministrantes, quantidade_por_evento=10):
                 cliente_id=evento.cliente_id,
                 evento_id=evento.id,
                 qr_code=f"qrcode/oficina_{evento.id}_{i}.png",
-                opcoes_checkin=f"palavra1,palavra2,palavra3,palavra4,palavra5",
+                opcoes_checkin="palavra1,palavra2,palavra3,palavra4,palavra5",
                 palavra_correta=f"palavra{random.randint(1, 5)}",
                 tipo_inscricao=tipo_inscricao,
                 tipo_oficina=tipo_oficina,
@@ -889,7 +889,7 @@ def popular_banco():
     agendamentos = criar_agendamentos_visita(eventos, usuarios)
     
     print("Banco de dados populado com sucesso!")
-    print(f"Foram criados:")
+    print("Foram criados:")
     print(f"- {len(clientes)} clientes")
     print(f"- {len(eventos)} eventos")
     print(f"- {len(ministrantes)} ministrantes")
