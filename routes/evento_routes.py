@@ -563,11 +563,11 @@ def exibir_evento(evento_id):
     #    grouped_oficinas[ "DD/MM/AAAA" ] = [ { 'titulo': ..., 'ministrante': ..., 'inicio': ..., 'fim': ... }, ... ]
     grouped_oficinas = defaultdict(list)
 
-   # No trecho onde você monta grouped_oficinas
+    # Preenche grouped_oficinas com as oficinas agrupadas por data
     for oficina in oficinas:
         for dia in oficina.dias:
             data_str = dia.data.strftime('%d/%m/%Y')
-            temp_group[data_str].append({
+            grouped_oficinas[data_str].append({
                 'titulo': oficina.titulo,
                 'descricao': oficina.descricao,
                 'ministrante': oficina.ministrante_obj,  # Objeto ministrante completo em vez de só o nome
