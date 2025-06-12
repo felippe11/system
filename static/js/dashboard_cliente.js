@@ -814,41 +814,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// Toggle para QR Code de Credenciamento do Evento
-document.addEventListener('DOMContentLoaded', function() {
-  const btnToggle = document.getElementById('btnToggleQrCredenciamento');
-  if (btnToggle) {
-    btnToggle.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      if (typeof URL_TOGGLE_QR_CREDENCIAMENTO === 'undefined') {
-        alert("Erro de configuração: URL para alternar QR Code não definida.");
-        console.error("URL_TOGGLE_QR_CREDENCIAMENTO não está definida.");
-        return;
-      }
-
-      fetch(URL_TOGGLE_QR_CREDENCIAMENTO, {
-        method: "POST", // Ou GET, dependendo da sua API
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        credentials: 'include'
-        // body: JSON.stringify({ evento_id: SEU_EVENTO_ID_ATUAL }) // Se precisar passar ID do evento
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          atualizarBotao(btnToggle, data.value);
-        } else {
-          alert("Erro ao alterar configuração do QR Code: " + (data.message || "Erro desconhecido."));
-          console.error("Erro ao alternar QR Code:", data);
-        }
-      })
-      .catch(err => {
-        console.error("Erro de comunicação ao alternar QR Code:", err);
-        alert("Ocorreu um erro ao tentar alterar a configuração do QR Code.");
-      });
-    });
-  }
-});
 
 // Adicionar botão para gerar link
 const buttonContainer = document.getElementById('buttonContainer'); // Replace with the appropriate container ID
