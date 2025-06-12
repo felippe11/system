@@ -78,3 +78,41 @@ def test_inscricao_evento_route_redirect(client, app):
     assert resp.status_code == 200
     assert b'Evento Sem Link' in resp.data
 
+
+def test_render_multiple_tipos_no_lote(client, app):
+    """Should display all tipos with their respective lote prices."""
+    with app.app_context():
+        cliente = Cliente.query.first()
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome='Evento Multi',
+            habilitar_lotes=True,
+            inscricao_gratuita=False,
+        )
+        db.session.add(evento)
+        db.session.commit()
+
+        tipo1 = EventoInscricaoTipo(evento_id=evento.id, nome='Tipo 1', preco=10.0)
+        tipo2 = EventoInscricaoTipo(evento_id=evento.id, nome='Tipo 2', preco=15.0)
+        db.session.add_all([tipo1, tipo2])
+        db.session.commit()
+
+        lote = LoteInscricao(evento_id=evento.id, nome='Lote Multi', ativo=True)
+        db.session.add(lote)
+        db.session.commit()
+
+        lt1 = LoteTipoInscricao(lote_id=lote.id, tipo_inscricao_id=tipo1.id, preco=11.0)
+        lt2 = LoteTipoInscricao(lote_id=lote.id, tipo_inscricao_id=tipo2.id, preco=16.0)
+        db.session.add_all([lt1, lt2])
+        db.session.commit()
+
+        link = LinkCadastro(cliente_id=cliente.id, evento_id=evento.id, token='multitoken')
+        db.session.add(link)
+        db.session.commit()
+
+    resp = client.get('/inscricao/multitoken')
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert 'Tipo 1' in html and 'Tipo 2' in html
+    assert 'R$ 11.0' in html and 'R$ 16.0' in html
+
