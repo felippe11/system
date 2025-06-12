@@ -15,6 +15,7 @@ import uuid
 import logging
 from dateutil import parser
 from sqlalchemy import func
+from services.lote_service import lote_disponivel
 
 
 class LoteEsgotadoError(RuntimeError):
@@ -28,7 +29,6 @@ inscricao_routes = Blueprint('inscricao_routes', __name__)
 def cadastro_participante(identifier: str | None = None):
     """Realiza o cadastro de um participante em um evento."""
 
-    from services.lote_service import lote_disponivel
     from services.mp_service import get_sdk
 
     # ------------------------------------------------------------------
