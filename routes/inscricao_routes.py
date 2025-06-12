@@ -249,9 +249,15 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
         "auto_return": "approved",
     }
 
-    pref = sdk.preference().create(preference_data)
+    try:
+        pref = sdk.preference().create(preference_data)
+    except Exception as exc:
+        logging.exception("Erro ao chamar API do Mercado Pago")
+        raise RuntimeError("Falha ao criar preferência de pagamento.") from exc
+
     init_point = pref.get("response", {}).get("init_point")
     if not init_point:
+        logging.error("Resposta inesperada do Mercado Pago: %s", pref)
         raise RuntimeError("Falha ao criar preferência de pagamento.")
     inscricao.payment_id = pref["response"].get("id")
     db.session.flush()
