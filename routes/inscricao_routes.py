@@ -246,8 +246,11 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
             "pending": url_for("mercadopago_routes.pagamento_pendente", _external=True),
         },
         "notification_url": url_for("mercadopago_routes.webhook_mp", _external=True),
-        "auto_return": "approved",
     }
+
+    auto_return = os.getenv("MP_AUTO_RETURN")
+    if auto_return:
+        preference_data["auto_return"] = auto_return
 
     try:
         pref = sdk.preference().create(preference_data)
