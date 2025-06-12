@@ -6,8 +6,7 @@ import requests
 from reportlab.lib.units import inch
 import os
 import base64
-import google.auth
-import google.auth.transport.requests
+
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -21,22 +20,15 @@ from datetime import datetime
 import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from models import CertificadoTemplate, Oficina, Usuario, Cliente, Inscricao
-from flask_mail import Message
-from extensions import mail
+from models import CertificadoTemplate, Usuario, Inscricao, Evento
 import logging
-from models import CertificadoTemplate
 
 
 # ReportLab para PDFs
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, landscape, A4
+from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfbase import pdfmetrics
 
 # Configuração de logging
 logging.basicConfig(level=logging.DEBUG)
@@ -302,14 +294,6 @@ def gerar_qr_code(oficina_id):
     return os.path.join("qrcodes", nome_arquivo)
 
 
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib import colors
-from reportlab.lib.units import mm
-from reportlab.platypus import Image
-from reportlab.lib.utils import ImageReader
-import os
-from datetime import datetime
 
 def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     """
@@ -678,7 +662,7 @@ def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_person
     from reportlab.lib.utils import ImageReader
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import Paragraph, Frame
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.lib.enums import TA_JUSTIFY
 
     # Configuração do arquivo de saída
     pdf_filename = f"certificado_evento_{usuario.id}.pdf"
@@ -809,7 +793,7 @@ def gerar_certificados_pdf(oficina, inscritos, pdf_path):
     from reportlab.lib.utils import ImageReader
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.platypus import Paragraph, Frame
-    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    from reportlab.lib.enums import TA_CENTER
 
     # Obter o template de certificado
     template = CertificadoTemplate.query.filter_by(cliente_id=oficina.cliente_id, ativo=True).first()
@@ -1010,9 +994,7 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
 
 # utils.py  (ou um novo arquivo helpers.py)
 from functools import wraps
-from flask_login import current_user
-from flask import flash, redirect, url_for, request
-
+from flask import url_for
 def external_url(endpoint: str, **values) -> str:
     """Gera URL absoluta usando APP_BASE_URL se definido."""
     base = os.getenv("APP_BASE_URL")
