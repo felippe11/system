@@ -34,7 +34,11 @@
         <h4>Tipos de Inscrição ({{ tipos_inscricao|length }})</h4>
         <ul>
             {% for lt in tipos_inscricao %}
+            {% if evento and evento.habilitar_lotes %}
             <li>{{ lt.tipo_inscricao.nome }} - R$ {{ lt.preco }} (ID: {{ lt.id }})</li>
+            {% else %}
+            <li>{{ lt.nome }} - R$ {{ lt.preco }} (ID: {{ lt.id }})</li>
+            {% endif %}
             {% else %}
             <li>Nenhum tipo de inscrição disponível</li>
             {% endfor %}
