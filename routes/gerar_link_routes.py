@@ -63,8 +63,7 @@ def gerar_link():
         if slug_customizado:
             link_gerado = f"{base_url}/inscricao/{slug_customizado}"
         else:
-            link_gerado = f"{base_url}{url_for('inscricao_routes.cadastro_participante', token=novo_token)}"
-
+            link_gerado = f"{base_url}{url_for('inscricao_routes.cadastro_participante', identifier=novo_token)}"
         return jsonify({'success': True, 'link': link_gerado})
 
     # Para GET, verificamos se é uma solicitação para listar links de um evento específico
@@ -89,8 +88,7 @@ def gerar_link():
             if link.slug_customizado:
                 url = f"{base_url}/inscricao/{link.slug_customizado}"
             else:
-                url = f"{base_url}{url_for('inscricao_routes.cadastro_participante', token=link.token)}"
-                
+                url = f"{base_url}{url_for('inscricao_routes.cadastro_participante', identifier=link.token)}"                
             links_list.append({
                 'id': link.id,
                 'token': link.token,
