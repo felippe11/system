@@ -273,11 +273,18 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
     from collections import defaultdict
 
     oficinas = Oficina.query.filter_by(evento_id=evento.id).all() if evento else []
-    ministrantes = (
-        Ministrante.query.join(Oficina).filter(Oficina.evento_id == evento.id).distinct().all()
-        if evento
-        else []
-    )
+
+    # Coleta ministrantes associados ao evento tanto diretamente quanto via
+    # relacionamento many-to-many. Utiliza um set para evitar duplicidade
+    # quando o mesmo ministrante participa de mais de uma oficina.
+    ministrantes_set = set()
+    if evento:
+        for ofi in oficinas:
+            if ofi.ministrante_obj:
+                ministrantes_set.add(ofi.ministrante_obj)
+            if hasattr(ofi, "ministrantes_associados"):
+                ministrantes_set.update(ofi.ministrantes_associados.all())
+    ministrantes = sorted(ministrantes_set, key=lambda m: m.nome)
 
     grouped_oficinas: dict[str, list] = defaultdict(list)
     for oficina in oficinas:
