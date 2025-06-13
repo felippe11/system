@@ -95,113 +95,149 @@
 const API        = "{{ url_for('gerar_link_routes.gerar_link') }}";
 const API_DELETE = "{{ url_for('gerar_link_routes.excluir_link') }}";
 
-/* ===== Bootstrap Toast helper ===== */
-function toast(msg, type='info') {
-  const icons = {info:'bi-info-circle',success:'bi-check-circle',danger:'bi-exclamation-circle'};
-  const toastHtml = `
+function toast(message, type = 'info') {
+  const icons = {
+    info: 'bi-info-circle',
+    success: 'bi-check-circle',
+    danger: 'bi-exclamation-circle'
+  };
+  const html = `
     <div class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
-        <div class="toast-body"><i class="bi ${icons[type]} me-2"></i>${msg}</div>
+        <div class="toast-body"><i class="bi ${icons[type]} me-2"></i>${message}</div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     </div>`;
   const container = document.querySelector('.toast-custom');
-  container.insertAdjacentHTML('beforeend', toastHtml);
-  const t = new bootstrap.Toast(container.lastElementChild,{delay:3500});
+  container.insertAdjacentHTML('beforeend', html);
+  const t = new bootstrap.Toast(container.lastElementChild, { delay: 3500 });
   t.show();
 }
 
-/* ===== Main logic ===== */
 document.addEventListener('DOMContentLoaded', () => {
   const eventoSelect = document.getElementById('eventoSelect');
   const linksArea    = document.getElementById('linksArea');
   const linksBody    = document.getElementById('linksBody');
+  const linkForm     = document.getElementById('linkForm');
 
-  /* 1. Carrega eventos */
-  fetch(API)
-    .then(r=>r.json()).then(d=>{
-      eventoSelect.innerHTML='<option value="">-- selecione --</option>';
-      d.eventos.forEach(ev=>{
-        eventoSelect.insertAdjacentHTML('beforeend',`<option value="${ev.id}">${ev.nome}</option>`);
+  async function carregarEventos() {
+    try {
+      const r = await fetch(API);
+      const d = await r.json();
+      eventoSelect.innerHTML = '<option value="">-- selecione --</option>';
+      d.eventos.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = ev.id;
+        opt.textContent = ev.nome;
+        eventoSelect.appendChild(opt);
       });
-    });
-
-  /* 2. Listar links */
-  eventoSelect.addEventListener('change', listarLinks);
-  function listarLinks(){
-    const id = eventoSelect.value;
-    if(!id){ linksArea.style.display='none'; return; }
-    fetch(`${API}?evento_id=${id}`)
-      .then(r=>r.json()).then(d=>{
-        linksBody.innerHTML='';
-        if(d.success && d.links.length){
-          d.links.forEach(lk=>{
-            linksBody.insertAdjacentHTML('beforeend',`
-              <tr data-link-id="${lk.id}">
-                <td>${lk.slug || lk.token.slice(0,8)+'…'}</td>
-                <td>${new Date(lk.criado_em).toLocaleDateString('pt-BR')}</td>
-                <td class="text-truncate" style="max-width:250px">${lk.url}</td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-primary btn-copy" data-url="${lk.url}">
-                    <i class="bi bi-clipboard"></i>
-                  </button>
-                </td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-danger btn-excluir">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>`);
-          });
-          linksArea.style.display='';
-        }else{
-          linksArea.style.display='none';
-        }
-      });
+    } catch (err) {
+      toast('Erro ao carregar eventos', 'danger');
+    }
   }
 
-  /* 3. Criar link */
-  document.getElementById('linkForm').addEventListener('submit',e=>{
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target).entries());
-    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
-      .then(r=>r.json()).then(d=>{
-        if(d.success){
-          toast('Link criado com sucesso!','success');
-          listarLinks();
-          e.target.slug_customizado.value='';
-        }else{
-          toast(d.message || 'Erro','danger');
-        }
-      }).catch(()=>toast('Falha na comunicação','danger'));
-  });
-
-  /* 4. Delegação copiar / excluir */
-  linksBody.addEventListener('click',e=>{
-    const row=e.target.closest('tr');
-    if(!row) return;
-    /* copiar */
-    if(e.target.closest('.btn-copy')){
-      navigator.clipboard.writeText(e.target.closest('.btn-copy').dataset.url)
-        .then(()=>toast('Copiado!','info'));
+  async function listarLinks() {
+    const id = eventoSelect.value;
+    if (!id) {
+      linksArea.style.display = 'none';
       return;
     }
-    /* excluir */
-    if(e.target.closest('.btn-excluir')){
-      if(!confirm('Excluir este link?')) return;
-      fetch(API_DELETE,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({link_id:row.dataset.linkId})})
-        .then(r=>r.json()).then(d=>{
-          if(d.success){
-            row.remove();
-            if(!linksBody.children.length) linksArea.style.display='none';
-            toast('Link excluído','success');
-          }else{
-            toast(d.message || 'Erro ao excluir','danger');
-          }
-        }).catch(()=>toast('Erro de comunicação','danger'));
+    try {
+      const r = await fetch(`${API}?evento_id=${id}`);
+      const d = await r.json();
+      linksBody.innerHTML = '';
+      if (d.success && d.links.length) {
+        d.links.forEach(lk => {
+          const row = document.createElement('tr');
+          row.dataset.linkId = lk.id;
+          row.innerHTML = `
+            <td>${lk.slug || lk.token.slice(0,8) + '…'}</td>
+            <td>${new Date(lk.criado_em).toLocaleDateString('pt-BR')}</td>
+            <td class="text-truncate" style="max-width:250px">${lk.url}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-primary btn-copy" data-url="${lk.url}">
+                <i class="bi bi-clipboard"></i>
+              </button>
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger btn-excluir">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>`;
+          linksBody.appendChild(row);
+        });
+        linksArea.style.display = '';
+      } else {
+        linksArea.style.display = 'none';
+      }
+    } catch (err) {
+      toast('Erro ao carregar links', 'danger');
     }
+  }
+
+  async function criarLink(e) {
+    e.preventDefault();
+    const payload = {
+      evento_id: eventoSelect.value,
+      slug_customizado: linkForm.slug_customizado.value.trim() || null
+    };
+    try {
+      const r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      if (d.success) {
+        toast('Link criado com sucesso!', 'success');
+        linkForm.slug_customizado.value = '';
+        await listarLinks();
+      } else {
+        toast(d.message || 'Erro', 'danger');
+      }
+    } catch (err) {
+      toast('Falha na comunicação', 'danger');
+    }
+  }
+
+  async function copiarOuExcluir(e) {
+    const row = e.target.closest('tr');
+    if (!row) return;
+    const copyBtn = e.target.closest('.btn-copy');
+    const deleteBtn = e.target.closest('.btn-excluir');
+    if (copyBtn) {
+      navigator.clipboard.writeText(copyBtn.dataset.url)
+        .then(() => toast('Copiado!', 'info'));
+      return;
+    }
+    if (deleteBtn) {
+      if (!confirm('Excluir este link?')) return;
+      try {
+        const r = await fetch(API_DELETE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link_id: row.dataset.linkId })
+        });
+        const d = await r.json();
+        if (d.success) {
+          row.remove();
+          if (!linksBody.children.length) linksArea.style.display = 'none';
+          toast('Link excluído', 'success');
+        } else {
+          toast(d.message || 'Erro ao excluir', 'danger');
+        }
+      } catch (err) {
+        toast('Erro de comunicação', 'danger');
+      }
+    }
+  }
+
+  carregarEventos().then(() => {
+    eventoSelect.addEventListener('change', listarLinks);
+    if (eventoSelect.value) listarLinks();
   });
+  linkForm.addEventListener('submit', criarLink);
+  linksBody.addEventListener('click', copiarOuExcluir);
 });
 </script>
 {% endblock %}
