@@ -2269,7 +2269,7 @@ from datetime import datetime
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from flask_login import login_required, current_user
-from models import Checkin, Evento
+from models import Checkin, Evento, ConfiguracaoCliente
 import unicodedata
 
 
