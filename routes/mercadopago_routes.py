@@ -62,7 +62,8 @@ def webhook_mp():
 @mercadopago_routes.route("/atualizar_taxa", methods=["POST"])
 @login_required
 def atualizar_taxa():
-    if current_user.tipo != "cliente":
+    # Permitir tanto superadmin quanto cliente
+    if current_user.tipo not in ["cliente", "superadmin", "admin"]:
         abort(403)
 
     valor = request.form.get("taxa_percentual", "0").replace(",", ".")
