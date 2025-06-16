@@ -1,5 +1,5 @@
 from flask_login import login_required
-from flask import request, send_file, redirect, url_for, flash
+from flask import request, send_file, redirect, url_for
 import os
 from services.pdf_service import (
     gerar_etiquetas,
@@ -11,6 +11,7 @@ from services.pdf_service import (
     gerar_certificados_pdf,
     gerar_evento_qrcode_pdf,
     gerar_qrcode_token,
+    gerar_programacao_evento_pdf,
     exportar_checkins_pdf_opcoes,
 )
 from . import routes
@@ -84,10 +85,8 @@ def gerar_qrcode_token_route(token):
 
 
 @routes.route('/gerar_folder_evento/<int:evento_id>')
-@login_required
 def gerar_folder_evento(evento_id):
-    flash('Funcionalidade de geração de folder ainda não implementada.', 'warning')
-    return redirect(url_for('evento_routes.visualizar_evento', evento_id=evento_id))
+    return gerar_programacao_evento_pdf(evento_id)
 
 
 @routes.route('/exportar_checkins_filtrados')
