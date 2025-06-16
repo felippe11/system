@@ -1,5 +1,5 @@
 from flask_login import login_required
-from utils import external_url
+from utils import external_url, determinar_turno
 
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     """
@@ -1950,6 +1950,7 @@ def gerar_pdf_checkins_qr():
         table_data = [[
             Paragraph("Nome do Participante", styles["Normal"]),
             Paragraph("E-mail", styles["Normal"]),
+            Paragraph("Turno", styles["Normal"]),
             Paragraph("Data/Hora do Check-in", styles["Normal"])
         ]]
         
@@ -1962,17 +1963,20 @@ def gerar_pdf_checkins_qr():
             dt_local = convert_to_brasilia(ck.data_hora)
             data_str = dt_local.strftime('%d/%m/%Y %H:%M') if dt_local else "N/A"
             
+            turno = determinar_turno(ck.data_hora)
             table_data.append([
                 Paragraph(nome, styles["Normal"]),
                 Paragraph(email, styles["Normal"]),
+                Paragraph(turno, styles["Normal"]),
                 Paragraph(data_str, styles["Normal"])
             ])
         
         # Definir larguras das colunas
         col_widths = [
-            doc.width * 0.35,
-            doc.width * 0.35,
-            doc.width * 0.3
+            doc.width * 0.30,
+            doc.width * 0.30,
+            doc.width * 0.20,
+            doc.width * 0.20
         ]
         
         table = LongTable(table_data, colWidths=col_widths)
@@ -2388,7 +2392,8 @@ def exportar_checkins_pdf_opcoes():
         p.setFont("Helvetica-Bold", 10)
         p.drawString(1.2*cm, y - 0.4*cm, "Participante")
         p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
-        p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+        p.drawString(12*cm, y - 0.4*cm, "Turno")
+        p.drawString(16*cm, y - 0.4*cm, "Data/Hora")
         
         y -= 0.7*cm
         
@@ -2408,7 +2413,8 @@ def exportar_checkins_pdf_opcoes():
                 p.setFont("Helvetica-Bold", 10)
                 p.drawString(1.2*cm, y - 0.4*cm, "Participante")
                 p.drawString(7*cm, y - 0.4*cm, "Palavra-chave")
-                p.drawString(13*cm, y - 0.4*cm, "Data/Hora")
+                p.drawString(12*cm, y - 0.4*cm, "Turno")
+                p.drawString(16*cm, y - 0.4*cm, "Data/Hora")
                 
                 y -= 0.7*cm
             
@@ -2423,7 +2429,8 @@ def exportar_checkins_pdf_opcoes():
             p.setFont("Helvetica", 9)
             p.drawString(1.2*cm, y - 0.3*cm, c.usuario.nome[:28])
             p.drawString(7*cm, y - 0.3*cm, c.palavra_chave[:20])
-            p.drawString(13*cm, y - 0.3*cm, c.data_hora.strftime('%d/%m/%Y %H:%M'))
+            p.drawString(12*cm, y - 0.3*cm, determinar_turno(c.data_hora))
+            p.drawString(16*cm, y - 0.3*cm, c.data_hora.strftime('%d/%m/%Y %H:%M'))
             
             # Descer para próxima linha
             y -= 0.5*cm
@@ -2648,7 +2655,7 @@ def exportar_checkins_evento_pdf(evento_id):
     elementos.append(Spacer(1, 0.2*cm))
     
     # Dados para tabela principal
-    dados_tabela = [["Nome", "CPF", "Data/Hora", "Palavra-chave"]]
+    dados_tabela = [["Nome", "CPF", "Turno", "Data/Hora", "Palavra-chave"]]
     
     # Preencher dados na tabela
     for checkin in checkins:
@@ -2656,12 +2663,13 @@ def exportar_checkins_evento_pdf(evento_id):
         dados_tabela.append([
             usuario.nome[:40],
             usuario.cpf or "-",
+            determinar_turno(checkin.data_hora),
             checkin.data_hora.strftime('%d/%m/%Y %H:%M'),
             checkin.palavra_chave or "-"
         ])
     
     # Criar e estilizar tabela
-    tabela = Table(dados_tabela, colWidths=[5*cm, 3*cm, 4*cm, 4*cm])
+    tabela = Table(dados_tabela, colWidths=[5*cm, 3*cm, 3*cm, 3*cm, 3*cm])
     tabela.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), cor_primaria),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
