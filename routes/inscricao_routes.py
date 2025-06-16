@@ -8,7 +8,7 @@ from models import (
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
     CampoPersonalizadoCadastro, RespostaCampo, RegraInscricaoEvento,
-    Patrocinador, Ministrante, InscricaoTipo
+    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente
 )
 import os
 import uuid
@@ -321,6 +321,9 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
     else:
         tipos_inscricao = []
 
+    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    mostrar_taxa = config_cli.mostrar_taxa if config_cli else True
+
     # Estatísticas do lote vigente
     lote_stats = None
     if lote_vigente:
@@ -359,6 +362,8 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         lote_stats=lote_stats,
         lotes_ativos=lotes_ativos,
         tipos_inscricao=tipos_inscricao,
+        mostrar_taxa=mostrar_taxa,
+        preco_com_taxa=preco_com_taxa
     )
 
 @inscricao_routes.route('/editar_participante', methods=['GET', 'POST'])

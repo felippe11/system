@@ -175,6 +175,27 @@ def toggle_submissao_trabalhos_cliente():
     flash("Configuração de submissão de trabalhos atualizada!", "success")
     return redirect(url_for('dashboard_routes.dashboard'))
 
+@config_cliente_routes.route('/toggle_mostrar_taxa', methods=['POST'])
+@login_required
+def toggle_mostrar_taxa():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+
+    config.mostrar_taxa = not config.mostrar_taxa
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "value": config.mostrar_taxa,
+        "message": "Exibição da taxa atualizada!"
+    })
+
 @config_cliente_routes.route("/api/configuracao_cliente_atual", methods=["GET"])
 @login_required
 def configuracao_cliente_atual():
@@ -196,7 +217,8 @@ def configuracao_cliente_atual():
         "permitir_checkin_global": config_cliente.permitir_checkin_global,
         "habilitar_feedback": config_cliente.habilitar_feedback,
         "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual,
-        "habilitar_qrcode_evento_credenciamento": config_cliente.habilitar_qrcode_evento_credenciamento
+        "habilitar_qrcode_evento_credenciamento": config_cliente.habilitar_qrcode_evento_credenciamento,
+        "mostrar_taxa": config_cliente.mostrar_taxa
     })
 
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
