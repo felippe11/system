@@ -212,7 +212,8 @@ function renderizarEventos(eventos) {
                     </div>
                     <h3 class="event-title">${evento.nome}</h3>
                     <div class="event-location">
-                        <i class="fas fa-map-marker-alt"></i> ${evento.localizacao || 'Local a definir'}
+                        <i class="fas fa-map-marker-alt"></i>
+                        ${evento.link_mapa ? `<a href="${evento.link_mapa}" target="_blank" class="ms-1">${evento.localizacao || 'Local a definir'}</a>` : `${evento.localizacao || 'Local a definir'}`}
                     </div>
                     <p class="event-description">${evento.descricao ? evento.descricao.substring(0, 150) + (evento.descricao.length > 150 ? '...' : '') : ''}</p>
                     <div class="event-footer">

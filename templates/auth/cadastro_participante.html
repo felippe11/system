@@ -164,7 +164,14 @@
                 </div>
                 <div class="detail-content">
                     <h3>Localização</h3>
-                    <p>{{ evento.localizacao }}</p>
+                    <p>
+                        {{ evento.localizacao }}
+                        {% if evento.link_mapa %}
+                        <a href="{{ evento.link_mapa }}" target="_blank" class="ms-2" title="Abrir no Google Maps">
+                            <i class="bi bi-geo-alt-fill"></i>
+                        </a>
+                        {% endif %}
+                    </p>
                     <div id="map-container" class="map-container"></div>
                 </div>
             </div>

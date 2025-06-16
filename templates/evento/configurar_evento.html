@@ -570,6 +570,11 @@
         <div id="endereco-detalhes" class="mt-3 p-3 bg-light rounded d-none">
           <h6 class="fw-bold">Detalhes do Local:</h6>
           <p id="endereco-completo" class="mb-1"></p>
+          <p class="mb-1">
+            <a id="link-googlemaps" href="#" target="_blank" class="btn btn-sm btn-outline-primary d-none">
+              <i class="bi bi-geo-alt-fill"></i> Ver no Google Maps
+            </a>
+          </p>
           <p class="mb-1">Latitude: <span id="info-latitude"></span></p>
           <p class="mb-1">Longitude: <span id="info-longitude"></span></p>
         </div>
@@ -1477,10 +1482,13 @@ function updateProgressBar(step) {
    }
    
    // Mostrar detalhes do local selecionado
-   function showLocationDetails(lat, lng) {
-     document.getElementById('endereco-detalhes').classList.remove('d-none');
-     document.getElementById('info-latitude').textContent = lat.toFixed(6);
-     document.getElementById('info-longitude').textContent = lng.toFixed(6);
+  function showLocationDetails(lat, lng) {
+    document.getElementById('endereco-detalhes').classList.remove('d-none');
+    document.getElementById('info-latitude').textContent = lat.toFixed(6);
+    document.getElementById('info-longitude').textContent = lng.toFixed(6);
+    const linkEl = document.getElementById('link-googlemaps');
+    linkEl.href = `https://www.google.com/maps?q=${lat},${lng}`;
+    linkEl.classList.remove('d-none');
      
      // Fazer geocoding reverso para obter o endereço
       fetch(`https://api.stadiamaps.com/geocoding/v1/reverse?point.lat=${lat}&point.lon=${lng}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
