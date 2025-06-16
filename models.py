@@ -569,8 +569,11 @@ class ConfiguracaoCliente(db.Model):
     
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
     cliente = db.relationship('Cliente', back_populates='configuracao')
-    
+
     habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
+
+    # Exibe a taxa de serviço separadamente no preço da inscrição
+    mostrar_taxa = db.Column(db.Boolean, default=True)
 
     
     
