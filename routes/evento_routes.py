@@ -173,12 +173,17 @@ def configurar_evento():
     # Evento selecionado (por padrão, None até que o usuário escolha)
     evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
     evento = None
+    config_certificado = None
+    oficinas = []
     if evento_id:
         # Carregamento eager de todos os relacionamentos necessários
         evento = Evento.query.options(
             db.joinedload(Evento.tipos_inscricao),
             db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
         ).filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if evento:
+            config_certificado = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento.id).first()
+            oficinas = Oficina.query.filter_by(evento_id=evento.id).order_by(Oficina.titulo).all()
 
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -544,11 +549,13 @@ def configurar_evento():
             traceback.print_exc()
 
     return render_template(
-    "evento/configurar_evento.html",
-    eventos=eventos,
-    evento=evento,
-    habilita_pagamento=current_user.habilita_pagamento   #  <-- acrescente isto
-)
+        "evento/configurar_evento.html",
+        eventos=eventos,
+        evento=evento,
+        habilita_pagamento=current_user.habilita_pagamento,
+        config_certificado=config_certificado,
+        oficinas=oficinas,
+    )
 
 
 @evento_routes.route('/salvar_config_certificado/<int:evento_id>', methods=['POST'])
