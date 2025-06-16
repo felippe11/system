@@ -11,7 +11,8 @@ from datetime import date
 from extensions import db
 from models import (
     Evento, Oficina, LinkCadastro, LoteInscricao, EventoInscricaoTipo,
-    Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao
+    Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
+    ConfiguracaoCertificadoEvento
 )
 
 evento_routes = Blueprint('evento_routes', __name__, template_folder="../templates")
@@ -548,6 +549,28 @@ def configurar_evento():
     evento=evento,
     habilita_pagamento=current_user.habilita_pagamento   #  <-- acrescente isto
 )
+
+
+@evento_routes.route('/salvar_config_certificado/<int:evento_id>', methods=['POST'])
+@login_required
+def salvar_config_certificado(evento_id):
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    config = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento_id).first()
+    if not config:
+        config = ConfiguracaoCertificadoEvento(evento_id=evento_id, cliente_id=current_user.id)
+        db.session.add(config)
+
+    config.checkins_minimos = request.form.get('checkins_minimos', type=int) or 0
+    config.percentual_minimo = request.form.get('percentual_minimo', type=int) or 0
+    oficinas = request.form.getlist('oficinas_obrigatorias')
+    config.oficinas_obrigatorias = ','.join(oficinas)
+    db.session.commit()
+
+    flash('Configuração de certificado atualizada!', 'success')
+    return redirect(url_for('evento_routes.configurar_evento', evento_id=evento_id))
 
 @evento_routes.route('/exibir_evento/<int:evento_id>')
 @login_required
