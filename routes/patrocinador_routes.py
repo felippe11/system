@@ -9,6 +9,14 @@ from extensions import db
 import os
 from flask import jsonify
 
+# Mapeamento de categorias para usar acentuação correta
+categoria_map = {
+    "realizacao": "Realização",
+    "patrocinio": "Patrocínio",
+    "organizacao": "Organização",
+    "apoio": "Apoio",
+}
+
 
 @patrocinador_routes.route('/adicionar_patrocinadores_categorizados', methods=['POST'])
 @login_required
@@ -41,11 +49,12 @@ def adicionar_patrocinadores_categorizados():
 
                     logo_path = os.path.join('uploads', 'patrocinadores', filename)
 
-                    # Ajuste aqui para categoria com inicial maiúscula
+                    # Categoria com acentuação correta
+                    categoria = categoria_map.get(categoria_label.lower())
                     novo_pat = Patrocinador(
                         evento_id=evento_id,
                         logo_path=logo_path,
-                        categoria=categoria_label.capitalize()  # Realizacao, Patrocinio, Organizacao, Apoio
+                        categoria=categoria
                     )
                     db.session.add(novo_pat)
                     imported_count += 1
