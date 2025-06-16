@@ -362,6 +362,12 @@ class Checkin(db.Model):
     def __repr__(self):
         return f"<Checkin (usuario={self.usuario_id}, oficina={self.oficina_id}, evento={self.evento_id}, data={self.data_hora})>"
 
+    @property
+    def turno(self) -> str:
+        """Retorna o turno baseado no horário do check-in."""
+        from utils import determinar_turno
+        return determinar_turno(self.data_hora)
+
 # =================================
 #            FEEDBACK
 # =================================

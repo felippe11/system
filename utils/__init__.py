@@ -1,5 +1,5 @@
-from .time_helpers import formatar_brasilia
-__all__ = ["formatar_brasilia"]
+from .time_helpers import formatar_brasilia, determinar_turno
+__all__ = ["formatar_brasilia", "determinar_turno"]
 
 
 import requests
