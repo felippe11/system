@@ -135,11 +135,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnFeedback = document.getElementById('btnToggleFeedback');
         const btnCertificado = document.getElementById('btnToggleCertificado');
         const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
+        const btnMostrarTaxa = document.getElementById('btnToggleMostrarTaxa');
 
         if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
         if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
         if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
         if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
+        if (btnMostrarTaxa) atualizarBotao(btnMostrarTaxa, data.mostrar_taxa);
       })
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
@@ -153,7 +155,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnToggleCheckin'),
     document.getElementById('btnToggleFeedback'),
     document.getElementById('btnToggleCertificado'),
-    document.getElementById('btnToggleQrCredenciamento')
+    document.getElementById('btnToggleQrCredenciamento'),
+    document.getElementById('btnToggleMostrarTaxa')
   ];
 
   toggleButtons.forEach(button => {
