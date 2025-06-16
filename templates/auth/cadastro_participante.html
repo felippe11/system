@@ -306,19 +306,28 @@
 
                             <div class="ticket-options">
                                 {% for lote_tipo in lote_vigente.tipos_inscricao %}
+                                {% set final = preco_com_taxa(lote_tipo.preco) %}
                                 <div class="ticket-option">
-                                    <input type="radio" 
-                                           id="lote_tipo_{{ lote_tipo.id }}" 
-                                           name="lote_tipo_inscricao_id" 
+                                    <input type="radio"
+                                           id="lote_tipo_{{ lote_tipo.id }}"
+                                           name="lote_tipo_inscricao_id"
                                            value="{{ lote_tipo.id }}"
                                            data-lote-id="{{ lote_vigente.id }}"
                                            data-tipo-id="{{ lote_tipo.tipo_inscricao_id }}"
                                            data-preco="{{ lote_tipo.preco }}"
+                                           data-preco-final="{{ final }}"
                                            required>
                                     <label for="lote_tipo_{{ lote_tipo.id }}">
                                         <span class="ticket-name">{{ lote_tipo.tipo_inscricao.nome }}</span>
                                         {% if not evento.inscricao_gratuita %}
-                                        <span class="ticket-price">R$ {{ lote_tipo.preco }}</span>
+                                        <span class="ticket-price">
+                                            {% if mostrar_taxa %}
+                                            R$ {{ "%.2f"|format(final) }}
+                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format(final - lote_tipo.preco) }} de taxa)</small>
+                                            {% else %}
+                                            R$ {{ "%.2f"|format(final) }}
+                                            {% endif %}
+                                        </span>
                                         {% endif %}
                                     </label>
                                 </div>
@@ -329,17 +338,26 @@
                             {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
                             <div class="ticket-options">
                                 {% for tipo in tipos_inscricao %}
+                                {% set final = preco_com_taxa(tipo.preco) %}
                                 <div class="ticket-option">
-                                    <input type="radio" 
-                                           id="tipo_{{ tipo.id }}" 
-                                           name="tipo_inscricao_id" 
+                                    <input type="radio"
+                                           id="tipo_{{ tipo.id }}"
+                                           name="tipo_inscricao_id"
                                            value="{{ tipo.id }}"
                                            data-preco="{{ tipo.preco }}"
+                                           data-preco-final="{{ final }}"
                                            required>
                                     <label for="tipo_{{ tipo.id }}">
                                         <span class="ticket-name">{{ tipo.nome }}</span>
                                         {% if not evento.inscricao_gratuita %}
-                                        <span class="ticket-price">R$ {{ tipo.preco }}</span>
+                                        <span class="ticket-price">
+                                            {% if mostrar_taxa %}
+                                            R$ {{ "%.2f"|format(final) }}
+                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format(final - tipo.preco) }} de taxa)</small>
+                                            {% else %}
+                                            R$ {{ "%.2f"|format(final) }}
+                                            {% endif %}
+                                        </span>
                                         {% endif %}
                                     </label>
                                 </div>
@@ -714,6 +732,7 @@
     
     // Formulário
     document.addEventListener('DOMContentLoaded', function() {
+        const MOSTRAR_TAXA = {{ 'true' if mostrar_taxa else 'false' }};
         // Máscara de CPF
         const cpfField = document.getElementById('cpf');
         if (cpfField) {
@@ -731,10 +750,16 @@
             radio.addEventListener('change', function() {
                 if (this.checked) {
                     const preco = this.getAttribute('data-preco');
+                    const precoFinal = this.getAttribute('data-preco-final');
                     const display = document.getElementById('selectedTicketText');
-                    
-                    if (preco) {
-                        display.textContent = `Valor: R$ ${preco}`;
+
+                    if (precoFinal) {
+                        let txt = `Valor: R$ ${precoFinal}`;
+                        if (MOSTRAR_TAXA) {
+                            const diff = (parseFloat(precoFinal) - parseFloat(preco)).toFixed(2);
+                            txt += ` (inclui R$ ${diff} de taxa)`;
+                        }
+                        display.textContent = txt;
                     } else {
                         display.textContent = 'Inscrição selecionada';
                     }
