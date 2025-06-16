@@ -7,41 +7,14 @@
     <title>AppFiber - Simplifique a Gestão dos Seus Eventos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel='stylesheet' href='{{ url_for('static', filename='css/navbar.css') }}'>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="#"><i class="bi bi-cpu"></i>App<span>Fiber</span></a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#home">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#eventos">Eventos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#recursos">Recursos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#contato">Contato</a>
-                    </li>
-                    <li class="nav-item ms-lg-3">
-                        <a class="btn btn-login" href="login">Entrar</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="btn btn-register" href="cadastro_participante">Cadastrar</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    {% set show_index_links = True %}
+    {% include 'partials/navbar.html' %}
 
     <!-- Hero Section -->
     <section id="home" class="hero-section mt-5">
