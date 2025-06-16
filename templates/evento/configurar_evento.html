@@ -1437,13 +1437,21 @@ function updateProgressBar(step) {
    });
    
    // Inicializar o mapa
-   function initMap() {
-     map = L.map('mapa-container').setView([currentLocation.lat, currentLocation.lng], 13);
-     
-      L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
+  function initMap() {
+    map = L.map('mapa-container').setView([currentLocation.lat, currentLocation.lng], 13);
+
+      const stay22Layer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
         maxZoom: 20,
         attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
       }).addTo(map);
+
+      stay22Layer.on('tileerror', function() {
+        map.removeLayer(stay22Layer);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+      });
      
      // Adicionar marker no mapa se já existir localização
      if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
