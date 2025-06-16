@@ -14,9 +14,12 @@ import os
 import uuid
 import logging
 from dateutil import parser
+
+# Configuração de logging
+logger = logging.getLogger(__name__)
 from sqlalchemy import func
 from services.lote_service import lote_disponivel
-from utils import external_url
+from utils import external_url, preco_com_taxa, gerar_comprovante_pdf, enviar_email
 
 
 class LoteEsgotadoError(RuntimeError):
@@ -229,6 +232,9 @@ def _calcular_preco(evento, lote_tipo_insc_id, tipo_insc_id, lote_vigente):
 
 def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, usuario: Usuario) -> str:
     """Gera preferência MP e devolve URL de pagamento."""
+    # Aplicar a taxa configurada ao preço
+    preco_final = preco_com_taxa(preco)
+    
     preference_data = {
         "items": [
             {
@@ -236,7 +242,7 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
                 "title": titulo,
                 "quantity": 1,
                 "currency_id": "BRL",
-                "unit_price": preco,
+                "unit_price": float(preco_final),
             }
         ],
         "payer": {"email": usuario.email, "name": usuario.nome},
@@ -492,8 +498,7 @@ def inscrever(oficina_id):
     
     # No formulário de inscrição, capture o id do tipo de inscrição escolhido:
     tipo_inscricao_id = request.form.get('tipo_inscricao_id')  # Pode ser None se for gratuita
-    
-    # Criar a inscrição
+      # Criar a inscrição
     inscricao = Inscricao(
         usuario_id=current_user.id,
         oficina_id=oficina.id,
@@ -501,8 +506,6 @@ def inscrever(oficina_id):
         evento_id=oficina.evento_id,  # Importante: associar ao evento da oficina
         tipo_inscricao_id=tipo_inscricao_id if tipo_inscricao_id else None,
     )
-    # Aqui você pode chamar a função que integra com o Mercado Pago
-    # Exemplo: url_pagamento = iniciar_pagamento(inscricao)
     
     try:
         db.session.add(inscricao)
@@ -511,7 +514,44 @@ def inscrever(oficina_id):
         # associar este usuário ao evento da oficina para manter compatibilidade com o sistema
         if not current_user.evento_id and oficina.evento_id:
             current_user.evento_id = oficina.evento_id
+        
+        # Verificar se a oficina é paga e processar pagamento
+        if not oficina.inscricao_gratuita and tipo_inscricao_id:
+            # Recuperar o tipo de inscrição
+            tipo_inscricao = InscricaoTipo.query.get(tipo_inscricao_id)
+            if tipo_inscricao:
+                # Importar SDK do Mercado Pago
+                from services.mp_service import get_sdk
+                sdk = get_sdk()
+                
+                if sdk:
+                    # Fazer flush para gerar o ID da inscrição
+                    db.session.flush()
+                    
+                    # Criar título para o pagamento
+                    titulo = f"Inscrição - {oficina.titulo} - {tipo_inscricao.nome}"
+                    
+                    # Criar preferência e redirecionar para pagamento
+                    url_pagamento = _criar_preferencia_mp(
+                        sdk=sdk, 
+                        preco=float(tipo_inscricao.preco), 
+                        titulo=titulo,
+                        inscricao=inscricao, 
+                        usuario=current_user
+                    )
+                    
+                    # Confirmar a transação
+                    db.session.commit()
+                    
+                    # Retornar URL de pagamento
+                    return jsonify({
+                        'success': True,
+                        'redirect': True,
+                        'payment_url': url_pagamento,
+                        'message': 'Redirecionando para o pagamento...'
+                    })
             
+        # Se chegou aqui, é porque a inscrição é gratuita ou não precisa de pagamento
         db.session.commit()
 
         # Gera o comprovante
