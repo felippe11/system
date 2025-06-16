@@ -6,7 +6,7 @@ from datetime import datetime
 from models import (
     Checkin, Inscricao, Oficina, ConfiguracaoCliente, AgendamentoVisita, Evento
 )
-from utils import formatar_brasilia
+from utils import formatar_brasilia, determinar_turno
 
 checkin_routes = Blueprint('checkin_routes', __name__)
 
@@ -334,7 +334,8 @@ def leitor_checkin_json():
     # prepara carga para front‑end
     payload = {
         'participante': inscricao.usuario.nome,
-        'data_hora'   : novo.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        'data_hora'   : novo.data_hora.strftime('%d/%m/%Y %H:%M:%S'),
+        'turno'       : determinar_turno(novo.data_hora)
     }
     if novo.evento_id:
         payload['evento'] = inscricao.evento.nome
@@ -350,7 +351,6 @@ def leitor_checkin_json():
                    **payload)
 
 
-from utils import formatar_brasilia  # coloque no topo do routes.py
 
 @checkin_routes.route('/lista_checkins_json')
 @login_required
@@ -372,12 +372,14 @@ def lista_checkins_json():
     resultado = []
     for c in checkins:
         data_formatada = formatar_brasilia(c.data_hora)
+        turno = determinar_turno(c.data_hora)
 
         if c.evento_id:
             resultado.append({
                 'participante': c.usuario.nome,
                 'evento'      : c.evento.nome if c.evento else "Evento Desconhecido",
                 'data_hora'   : data_formatada,
+                'turno'       : turno,
                 'tipo_checkin': 'evento'
             })
         elif c.oficina_id:
@@ -385,6 +387,7 @@ def lista_checkins_json():
                 'participante': c.usuario.nome,
                 'oficina'     : c.oficina.titulo if c.oficina else "Oficina Desconhecida",
                 'data_hora'   : data_formatada,
+                'turno'       : turno,
                 'tipo_checkin': 'oficina'
             })
         else:
@@ -392,6 +395,7 @@ def lista_checkins_json():
                 'participante': c.usuario.nome,
                 'atividade'   : "N/A",
                 'data_hora'   : data_formatada,
+                'turno'       : turno,
                 'tipo_checkin': 'nenhum'
             })
 
