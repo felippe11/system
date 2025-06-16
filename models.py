@@ -131,7 +131,7 @@ class Oficina(db.Model):
     __tablename__ = 'oficina'
     
     id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(100), nullable=False)
+    titulo = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=False)
     ministrante_id = db.Column(db.Integer, db.ForeignKey('ministrante.id'), nullable=True)
     ministrante_obj = db.relationship("Ministrante", backref="oficinas", lazy=True)
