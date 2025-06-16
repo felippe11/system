@@ -54,8 +54,13 @@ def inscricao_evento(evento_id):
         flash('Este evento não está disponível para inscrições no momento.', 'warning')
         return redirect(url_for('evento_routes.visualizar_evento', evento_id=evento_id))
     
-    # 2. Busca um link de cadastro para este evento
-    link = LinkCadastro.query.filter_by(evento_id=evento_id).first()
+    # 2. Busca o link de cadastro mais recente para este evento
+    link = (
+        LinkCadastro.query
+        .filter_by(evento_id=evento_id)
+        .order_by(LinkCadastro.criado_em.desc())
+        .first()
+    )
     
     if link:
         # Se existe um link personalizado, usa ele
