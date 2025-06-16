@@ -694,18 +694,21 @@
         return match ? { latitude: parseFloat(match[1]), longitude: parseFloat(match[2]) } : null;
     }
     
-    function setupMap(latitude, longitude) {
-        const map = L.map('map-container').setView([latitude, longitude], 15);
-        
-        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
-        }).addTo(map);
-        
-        const marker = L.marker([latitude, longitude]).addTo(map)
-            .bindPopup("<b>{{ evento.nome|e if evento else '' }}</b><br>{{ evento.localizacao|e if evento and evento.localizacao else '' }}")
-            .openPopup();
-    }
+   function setupMap(latitude, longitude) {
+    const map = L.map('map-container').setView([latitude, longitude], 15);
+
+    // Camada de mapa (Stadia Stay22 com API Key)
+    L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Adiciona marcador no mapa
+    const marker = L.marker([latitude, longitude]).addTo(map)
+        .bindPopup(`<b>{{ evento.nome|e if evento else '' }}</b><br>{{ evento.localizacao|e if evento and evento.localizacao else '' }}`)
+        .openPopup();
+  }
+
     
     async function geocodeAddress(address) {
         if (!address) {
@@ -730,11 +733,14 @@
     
     function showDefaultMap() {
         const map = L.map('map-container').setView([-15.77972, -47.92972], 4);
-        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png', {
+
+        // Camada de mapa Stadia Maps Stay22 com API Key
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
             maxZoom: 20,
             attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
         }).addTo(map);
     }
+
     
     // Formulário
     document.addEventListener('DOMContentLoaded', function() {
