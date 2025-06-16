@@ -697,7 +697,7 @@
     function setupMap(latitude, longitude) {
         const map = L.map('map-container').setView([latitude, longitude], 15);
         
-        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
             maxZoom: 20,
             attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
         }).addTo(map);
@@ -730,7 +730,7 @@
     
     function showDefaultMap() {
         const map = L.map('map-container').setView([-15.77972, -47.92972], 4);
-        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
             maxZoom: 20,
             attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
         }).addTo(map);
