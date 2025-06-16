@@ -14,6 +14,7 @@ from models import (
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
     ConfiguracaoCertificadoEvento
 )
+from utils import preco_com_taxa
 
 evento_routes = Blueprint('evento_routes', __name__, template_folder="../templates")
 
@@ -92,6 +93,7 @@ def api_eventos_destaque():
 def _serializa_eventos(eventos):
     lista = []
     for ev in eventos:
+        preco_base = min((t.preco for t in ev.tipos_inscricao), default=0)
         dado = {
             'id':          ev.id,
             'nome':        ev.nome,
@@ -103,7 +105,8 @@ def _serializa_eventos(eventos):
             'localizacao': ev.localizacao or 'Local a definir',
             'banner_url':  ev.banner_url or url_for('static',
                                                     filename='images/event-placeholder.jpg'),
-            'preco_base':  min((t.preco for t in ev.tipos_inscricao), default=0),
+            'preco_base':  preco_base,
+            'preco_final': float(preco_com_taxa(preco_base)),
             'link_inscricao': None
         }
 
