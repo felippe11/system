@@ -744,6 +744,28 @@ class ConfiguracaoAgendamento(db.Model):
         return f"<ConfiguracaoAgendamento {self.id} - Evento {self.evento_id}>"
 
 
+class ConfiguracaoCertificadoEvento(db.Model):
+    """Regras personalizadas para emissão de certificados em eventos."""
+    __tablename__ = 'config_certificado_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+
+    checkins_minimos = db.Column(db.Integer, default=0)
+    percentual_minimo = db.Column(db.Integer, default=0)
+    oficinas_obrigatorias = db.Column(db.Text, nullable=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('configs_certificado_evento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('config_certificado', uselist=False))
+
+    def get_oficinas_obrigatorias_list(self):
+        if not self.oficinas_obrigatorias:
+            return []
+        return [int(o) for o in self.oficinas_obrigatorias.split(',') if o]
+
+
+
 class SalaVisitacao(db.Model):
     """Salas disponíveis para visitação em um evento."""
     __tablename__ = 'sala_visitacao'
@@ -1027,3 +1049,4 @@ class LoteTipoInscricao(db.Model):
 
     def __repr__(self):
         return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
+
