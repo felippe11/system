@@ -20,3 +20,18 @@ def test_arquivo_permitido_extensoes_rejeitadas():
     assert not arquivo_permitido('imagem.png')
     assert not arquivo_permitido('documento.pdf')
     assert not arquivo_permitido('arquivo.txt')
+
+
+def test_determinar_turno():
+    from utils.time_helpers import determinar_turno
+    from pytz import timezone
+    from datetime import datetime
+
+    tz = timezone("America/Sao_Paulo")
+    manha = tz.localize(datetime(2024, 1, 1, 8, 0))
+    tarde = tz.localize(datetime(2024, 1, 1, 15, 0))
+    noite = tz.localize(datetime(2024, 1, 1, 20, 0))
+
+    assert determinar_turno(manha) == "Matutino"
+    assert determinar_turno(tarde) == "Vespertino"
+    assert determinar_turno(noite) == "Noturno"
