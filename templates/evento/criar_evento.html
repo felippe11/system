@@ -976,10 +976,10 @@ document.addEventListener('DOMContentLoaded', function() {
   function initMap() {
     map = L.map('mapa-container').setView([currentLocation.lat, currentLocation.lng], 13);
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(map);
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
+      }).addTo(map);
     
     // Adicionar marker no mapa se já existir localização
     if (document.getElementById('latitude').value && document.getElementById('longitude').value) {
@@ -1011,19 +1011,19 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('info-longitude').textContent = lng.toFixed(6);
     
     // Fazer geocoding reverso para obter o endereço
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
-      .then(response => response.json())
-      .then(data => {
-        if (data && data.display_name) {
-          document.getElementById('endereco-completo').textContent = data.display_name;
-          // Guardar temporariamente
-          currentLocation = {
-            lat: lat,
-            lng: lng,
-            address: data.display_name
-          };
-        }
-      })
+      fetch(`https://api.stadiamaps.com/geocoding/v1/reverse?point.lat=${lat}&point.lon=${lng}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.features && data.features.length > 0) {
+            const label = data.features[0].properties.label;
+            document.getElementById('endereco-completo').textContent = label;
+            currentLocation = {
+              lat: lat,
+              lng: lng,
+              address: label
+            };
+          }
+        })
       .catch(error => {
         console.error('Erro ao obter endereço:', error);
         document.getElementById('endereco-completo').textContent = 'Endereço não disponível';
@@ -1036,9 +1036,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (query.length < 3) return;
     
-    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
-      .then(response => response.json())
-      .then(data => {
+      fetch(`https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
+        .then(response => response.json())
+        .then(data => {
         if (modalSearch) {
           // Se for busca no modal, centraliza o primeiro resultado no mapa
           if (data.features && data.features.length > 0) {
@@ -1061,38 +1061,24 @@ document.addEventListener('DOMContentLoaded', function() {
           // Se for busca no campo, mostra sugestões
           suggestionsContainer.innerHTML = '';
           
-          if (data.features && data.features.length > 0) {
-            data.features.forEach(feature => {
-              const properties = feature.properties;
-              const coords = feature.geometry.coordinates;
-              
-              // Criar texto para exibição
-              let displayText = [];
-              if (properties.name) displayText.push(properties.name);
-              if (properties.street) displayText.push(properties.street);
-              if (properties.city) displayText.push(properties.city);
-              if (properties.state) displayText.push(properties.state);
-              
-              const item = document.createElement('div');
-              item.className = 'suggestion-item';
-              item.textContent = displayText.join(', ');
-              item.addEventListener('click', function() {
-                // Preencher o campo de localização
-                localizacaoInput.value = displayText.join(', ');
-                
-                // Guardar coordenadas
-                document.getElementById('latitude').value = coords[1];
-                document.getElementById('longitude').value = coords[0];
-                
-                // Gerar link do Google Maps
-                document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
-                
-                // Esconder sugestões
-                suggestionsContainer.style.display = 'none';
+            if (data.features && data.features.length > 0) {
+              data.features.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const label = feature.properties.label;
+
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.textContent = label;
+                item.addEventListener('click', function() {
+                  localizacaoInput.value = label;
+                  document.getElementById('latitude').value = coords[1];
+                  document.getElementById('longitude').value = coords[0];
+                  document.getElementById('link_mapa').value = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
+                  suggestionsContainer.style.display = 'none';
+                });
+
+                suggestionsContainer.appendChild(item);
               });
-              
-              suggestionsContainer.appendChild(item);
-            });
             
             suggestionsContainer.style.display = 'block';
           } else {
