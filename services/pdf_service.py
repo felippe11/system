@@ -3255,6 +3255,79 @@ def gerar_qrcode_token(token):
     return send_file(buffer, mimetype='image/png')
 
 
+def gerar_programacao_evento_pdf(evento_id):
+    """Gera um PDF simples da programação do evento"""
+    from models import Evento, Oficina
+    from extensions import db
+    from flask import current_app
+    import os
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+
+    evento = Evento.query.get_or_404(evento_id)
+
+    oficinas = (
+        Oficina.query
+        .filter_by(evento_id=evento_id)
+        .options(db.joinedload(Oficina.dias), db.joinedload(Oficina.ministrante_obj))
+        .all()
+    )
+
+    grouped = {}
+    for of in oficinas:
+        for dia in of.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            grouped.setdefault(data_str, []).append({
+                'titulo': of.titulo,
+                'ministrante': of.ministrante_obj.nome if of.ministrante_obj else '',
+                'inicio': dia.horario_inicio,
+                'fim': dia.horario_fim,
+            })
+
+    sorted_dates = sorted(grouped.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+
+    pdf_dir = os.path.join(current_app.static_folder, 'programacoes')
+    os.makedirs(pdf_dir, exist_ok=True)
+    filename = f'programacao_evento_{evento_id}.pdf'
+    pdf_path = os.path.join(pdf_dir, filename)
+
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+    c.setTitle(f'Programação - {evento.nome}')
+
+    c.setFont('Helvetica-Bold', 16)
+    c.drawCentredString(width / 2, height - 2 * cm, f'Programação - {evento.nome}')
+    c.setFont('Helvetica', 12)
+    if evento.descricao:
+        text = c.beginText(2 * cm, height - 3 * cm)
+        for line in evento.descricao.splitlines():
+            text.textLine(line)
+        c.drawText(text)
+
+    y = height - 4 * cm
+    for data in sorted_dates:
+        c.setFont('Helvetica-Bold', 14)
+        c.drawString(2 * cm, y, data)
+        y -= 0.7 * cm
+        for item in sorted(grouped[data], key=lambda x: x['inicio']):
+            linha = f"{item['inicio']} - {item['fim']} | {item['titulo']}"
+            if item['ministrante']:
+                linha += f" - {item['ministrante']}"
+            c.setFont('Helvetica', 11)
+            c.drawString(2.5 * cm, y, linha)
+            y -= 0.6 * cm
+            if y < 2 * cm:
+                c.showPage()
+                y = height - 2 * cm
+
+    c.showPage()
+    c.save()
+
+    return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
 
 def gerar_etiquetas(cliente_id):
     """Gera um PDF de etiquetas para o cliente"""
