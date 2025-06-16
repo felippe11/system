@@ -323,7 +323,7 @@
                                         <span class="ticket-price">
                                             {% if mostrar_taxa %}
                                             R$ {{ "%.2f"|format(final) }}
-                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format(final - lote_tipo.preco) }} de taxa)</small>
+                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format((final|float) - (lote_tipo.preco|float)) }} de taxa)</small>
                                             {% else %}
                                             R$ {{ "%.2f"|format(final) }}
                                             {% endif %}
@@ -353,7 +353,7 @@
                                         <span class="ticket-price">
                                             {% if mostrar_taxa %}
                                             R$ {{ "%.2f"|format(final) }}
-                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format(final - tipo.preco) }} de taxa)</small>
+                                            <small class="text-muted">(inclui R$ {{ "%.2f"|format((final|float) - (tipo.preco|float)) }} de taxa)</small>
                                             {% else %}
                                             R$ {{ "%.2f"|format(final) }}
                                             {% endif %}
