@@ -455,11 +455,17 @@
     let currentLoteId = {% if lote_vigente %}{{ lote_vigente.id }}{% else %}null{% endif %};
     let loteCheckInterval = null;
     let estadosBrasil = [];
-    
-    // Controle de Modais
+      // Controle de Modais
     function abrirModal() {
-        document.getElementById('cadastroModal').style.display = 'flex';
+        const modal = document.getElementById('cadastroModal');
+        modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        document.body.classList.add('modal-open');
+        
+        // Garante que o modal esteja acima da navbar
+        setTimeout(() => {
+            window.scrollTo(0, 0);
+        }, 100);
         
         if (eventoId && {% if evento and evento.habilitar_lotes %}true{% else %}false{% endif %}) {
             checkCurrentLote(true);
@@ -471,10 +477,10 @@
             addAddressField();
         }
     }
-    
-    function fecharModal() {
+      function fecharModal() {
         document.getElementById('cadastroModal').style.display = 'none';
         document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
         
         if (loteCheckInterval) {
             clearInterval(loteCheckInterval);
@@ -835,5 +841,16 @@
         }
         tipoInput.value = tipoId;   
     }
+    
+    // Fechar o modal quando clicar fora do conteúdo
+    window.addEventListener('load', function() {
+        var modal = document.getElementById('cadastroModal');
+        
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                fecharModal();
+            }
+        });
+    });
 </script>
 {% endblock %}
