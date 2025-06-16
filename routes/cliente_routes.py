@@ -37,7 +37,7 @@ def cadastrar_cliente():
         db.session.commit()
 
         flash("Cliente cadastrado com sucesso!", "success")
-        return redirect(url_for('cliente_routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     return render_template("auth/cadastrar_cliente.html")
 
@@ -48,7 +48,7 @@ def cadastrar_cliente():
 def editar_cliente(cliente_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('cliente_routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     cliente = Cliente.query.get_or_404(cliente_id)
     if request.method == 'POST':
@@ -78,7 +78,7 @@ def editar_cliente(cliente_id):
             print("DEBUG: Erro ao atualizar cliente:", e)
             # logger.error("Erro ao atualizar cliente: %s", e, exc_info=True)
             flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
-        return redirect(url_for('cliente_routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
     
     return render_template('auth/editar_cliente.html', cliente=cliente)
 
@@ -88,7 +88,7 @@ def editar_cliente(cliente_id):
 def excluir_cliente(cliente_id):
     if current_user.tipo != 'admin':
         flash("Apenas administradores podem excluir clientes.", "danger")
-        return redirect(url_for('cliente_routes.dashboard'))
+        return redirect(url_for('dashboard_routes.dashboard'))
 
     cliente = Cliente.query.get_or_404(cliente_id)
 
@@ -176,4 +176,4 @@ def excluir_cliente(cliente_id):
         db.session.rollback()
         flash(f"Erro ao excluir cliente: {str(e)}", 'danger')
 
-    return redirect(url_for('cliente_routes.dashboard'))
+    return redirect(url_for('dashboard_routes.dashboard'))
