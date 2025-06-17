@@ -39,9 +39,9 @@ def cadastrar_cliente():
             True if request.form.get("habilita_pagamento") == "on" else False
         )
         novo_cliente = Cliente(
-            nome=request.form["nome"],
-            email=request.form["email"],
-            senha=request.form["senha"],
+            nome=nome,
+            email=email,
+            senha=generate_password_hash(senha),
             habilita_pagamento=habilita_pagamento,
         )
 
