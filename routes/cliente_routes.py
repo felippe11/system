@@ -132,6 +132,7 @@ def excluir_cliente(cliente_id):
             RelatorioOficina,
             RespostaCampo,
             RespostaFormulario,
+            FeedbackCampo,
             SalaVisitacao,
             Usuario,
         )
@@ -149,6 +150,23 @@ def excluir_cliente(cliente_id):
                 resposta_ids = db.session.query(RespostaFormulario.id).filter_by(
                     usuario_id=usuario.id
                 )
+
+                db.session.execute(
+                    text(
+                        """
+                        DELETE FROM feedback_campo
+                        WHERE resposta_campo_id IN (
+                            SELECT id FROM respostas_campo
+                            WHERE resposta_formulario_id IN (
+                                SELECT id FROM respostas_formulario
+                                WHERE usuario_id = :uid
+                            )
+                        )
+                        """
+                    ),
+                    {"uid": usuario.id},
+                )
+
                 RespostaCampo.query.filter(
                     RespostaCampo.resposta_formulario_id.in_(resposta_ids)
                 ).delete(synchronize_session=False)
