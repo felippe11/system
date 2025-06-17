@@ -501,11 +501,13 @@
         document.getElementById('speakerModalPhoto').src = photo;
         document.getElementById('speakerModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        document.body.classList.add('modal-open');
     }
-    
+
     function closeSpeakerModal() {
         document.getElementById('speakerModal').style.display = 'none';
         document.body.style.overflow = 'auto';
+        document.body.classList.remove('modal-open');
     }
     
     // Gerenciamento de Lotes
@@ -872,10 +874,13 @@
     // Fechar o modal quando clicar fora do conteúdo
     window.addEventListener('load', function() {
         var modal = document.getElementById('cadastroModal');
-        
+        var speakerModal = document.getElementById('speakerModal');
+
         window.addEventListener('click', function(event) {
             if (event.target === modal) {
                 fecharModal();
+            } else if (event.target === speakerModal) {
+                closeSpeakerModal();
             }
         });
     });
