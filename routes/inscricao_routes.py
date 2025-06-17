@@ -739,9 +739,9 @@ def configurar_regras_inscricao():
             db.session.rollback()
             flash(f'Erro ao configurar regras: {str(e)}', 'danger')
     
-    return render_template("inscricao/configurar_regras_inscricao.html", 
-        eventos=eventos, 
-        evento=evento, 
+    return render_template("agendamento/configurar_regras_inscricao.html",
+        eventos=eventos,
+        evento=evento,
         oficinas=oficinas,
         regras=regras
     )
