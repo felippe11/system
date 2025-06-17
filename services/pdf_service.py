@@ -3278,13 +3278,14 @@ def gerar_programacao_evento_pdf(evento_id):
 
     grouped_oficinas = {}
     for of in oficinas:
-        for dia in of.data: # Accessing 'data' attribute from 'dia' object directly
-            data_str = dia.strftime('%d/%m/%Y')
+        # Iterate over the "dias" relationship of the Oficina instance
+        for dia in of.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
             grouped_oficinas.setdefault(data_str, []).append({
                 'titulo': of.titulo,
                 'ministrante': of.ministrante_obj.nome if of.ministrante_obj else '',
-                'inicio': dia.horario_inicio.strftime('%H:%M'), # Format time
-                'fim': dia.horario_fim.strftime('%H:%M'),       # Format time
+                'inicio': dia.horario_inicio,
+                'fim': dia.horario_fim,
             })
 
     sorted_dates = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
