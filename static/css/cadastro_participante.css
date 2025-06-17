@@ -48,6 +48,10 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
+body.modal-open {
+    overflow: hidden;
+}
       /* Container Principal */
     .event-page-container {
     width: 100%;
