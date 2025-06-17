@@ -253,39 +253,39 @@
                 <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
                     <h4 class="footer-heading">Empresa</h4>
                     <ul class="footer-links">
-                        <li><a href="#">Sobre nós</a></li>
-                        <li><a href="#">Nosso time</a></li>
-                        <li><a href="#">Carreiras</a></li>
-                        <li><a href="#">Blog</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='sobre-nos') }}">Sobre nós</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='nosso-time') }}">Nosso time</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='carreiras') }}">Carreiras</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='blog') }}">Blog</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
                     <h4 class="footer-heading">Eventos</h4>
                     <ul class="footer-links">
-                        <li><a href="#">Conferências</a></li>
-                        <li><a href="#">Workshops</a></li>
-                        <li><a href="#">Formações</a></li>
-                        <li><a href="#">Seminários</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='conferencias') }}">Conferências</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='workshops') }}">Workshops</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='formacoes') }}">Formações</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='seminarios') }}">Seminários</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
                     <h4 class="footer-heading">Suporte</h4>
                     <ul class="footer-links">
-                        <li><a href="#">FAQ</a></li>
-                        <li><a href="#">Central de ajuda</a></li>
-                        <li><a href="#">Contato</a></li>
-                        <li><a href="#">Tutoriais</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='faq') }}">FAQ</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='central-de-ajuda') }}">Central de ajuda</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='contato') }}">Contato</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='tutoriais') }}">Tutoriais</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-6">
                     <h4 class="footer-heading">Legal</h4>
                     <ul class="footer-links">
-                        <li><a href="#">Termos de uso</a></li>
-                        <li><a href="#">Privacidade</a></li>
-                        <li><a href="#">Cookies</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}">Termos de uso</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}">Privacidade</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='cookies') }}">Cookies</a></li>
                     </ul>
                 </div>
             </div>

@@ -3288,7 +3288,7 @@ def gerar_programacao_evento_pdf(evento_id):
 
     sorted_dates = sorted(grouped.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
 
-    pdf_dir = os.path.join(current_app.static_folder, 'programacoes')
+    pdf_dir = os.path.join(current_app.static_folder, 'programacoes', str(evento_id))
     os.makedirs(pdf_dir, exist_ok=True)
     filename = f'programacao_evento_{evento_id}.pdf'
     pdf_path = os.path.join(pdf_dir, filename)
