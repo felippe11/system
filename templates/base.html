@@ -484,30 +484,30 @@
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
                     <h6 class="fw-bold mb-3">Suporte</h6>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#">Central de Ajuda</a></li>
-                        <li class="mb-2"><a href="#">Documentação</a></li>
-                        <li class="mb-2"><a href="#">Status do Sistema</a></li>
-                        <li><a href="#">Contato</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='central-de-ajuda') }}">Central de Ajuda</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='tutoriais') }}">Documentação</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='suporte') }}">Status do Sistema</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='contato') }}">Contato</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
                     <h6 class="fw-bold mb-3">Legal</h6>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#">Termos de Uso</a></li>
-                        <li class="mb-2"><a href="#">Privacidade</a></li>
-                        <li class="mb-2"><a href="#">Cookies</a></li>
-                        <li><a href="#">LGPD</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}">Termos de Uso</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}">Privacidade</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='cookies') }}">Cookies</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='legal') }}">LGPD</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
                     <h6 class="fw-bold mb-3">Empresa</h6>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#">Sobre nós</a></li>
-                        <li class="mb-2"><a href="#">Blog</a></li>
-                        <li class="mb-2"><a href="#">Trabalhe Conosco</a></li>
-                        <li><a href="#">Parceiros</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='sobre-nos') }}">Sobre nós</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='blog') }}">Blog</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='carreiras') }}">Trabalhe Conosco</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='empresa') }}">Parceiros</a></li>
                     </ul>
                 </div>
             </div>
