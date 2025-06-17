@@ -191,7 +191,7 @@ function renderizarEventos(eventos) {
         // Formata o preço do evento
         let priceValue = evento.preco_final !== undefined ? evento.preco_final : evento.preco_base;
         const price = priceValue > 0
-            ? `R$ ${parseFloat(priceValue).toFixed(2).replace('.', ',')}`
+            ? `A partir de R$ ${parseFloat(priceValue).toFixed(2).replace('.', ',')}`
             : 'Gratuito';
         
         // Gera um elemento div colorido como fallback de imagem
