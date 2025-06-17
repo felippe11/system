@@ -266,6 +266,13 @@
                             <input type="password" id="senha" name="senha" placeholder="Crie uma senha segura" required>
                             <small class="password-hint">Mínimo de 8 caracteres</small>
                         </div>
+
+                        {% if solicitar_senha %}
+                        <div class="form-group">
+                            <label for="senha_existente">Confirme sua senha cadastrada</label>
+                            <input type="password" id="senha_existente" name="senha_existente" placeholder="Senha já cadastrada" required>
+                        </div>
+                        {% endif %}
                         
                         <div class="form-group full-width">
                             <label for="formacao">Formação Acadêmica</label>
