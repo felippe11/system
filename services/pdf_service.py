@@ -3256,18 +3256,21 @@ def gerar_qrcode_token(token):
 
 
 def gerar_programacao_evento_pdf(evento_id):
-    """Gera um PDF simples da programação do evento"""
+    """Gera um PDF com um layout estilo folder (três colunas) da programação do evento."""
     from models import Evento, Oficina
     from extensions import db
-    from flask import current_app
+    from flask import current_app, send_file
     import os
     from datetime import datetime
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Spacer, Frame, PageBreak
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
+    # 1. Data Retrieval and Preparation
     evento = Evento.query.get_or_404(evento_id)
-
     oficinas = (
         Oficina.query
         .filter_by(evento_id=evento_id)
@@ -3275,73 +3278,139 @@ def gerar_programacao_evento_pdf(evento_id):
         .all()
     )
 
-    grouped = {}
+    grouped_oficinas = {}
     for of in oficinas:
-        for dia in of.dias:
-            data_str = dia.data.strftime('%d/%m/%Y')
-            grouped.setdefault(data_str, []).append({
+        for dia in of.data: # Accessing 'data' attribute from 'dia' object directly
+            data_str = dia.strftime('%d/%m/%Y')
+            grouped_oficinas.setdefault(data_str, []).append({
                 'titulo': of.titulo,
                 'ministrante': of.ministrante_obj.nome if of.ministrante_obj else '',
-                'inicio': dia.horario_inicio,
-                'fim': dia.horario_fim,
+                'inicio': dia.horario_inicio.strftime('%H:%M'), # Format time
+                'fim': dia.horario_fim.strftime('%H:%M'),       # Format time
             })
 
-    sorted_dates = sorted(grouped.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+    sorted_dates = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
 
+    # 2. PDF File Setup
     pdf_dir = os.path.join(current_app.static_folder, 'programacoes', str(evento_id))
     os.makedirs(pdf_dir, exist_ok=True)
     filename = f'programacao_evento_{evento_id}.pdf'
     pdf_path = os.path.join(pdf_dir, filename)
 
-    # Geração em modo paisagem para formato estilo folder
-    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    # 3. PDF Generation with ReportLab Platypus (Flowables)
+    styles = getSampleStyleSheet()
+
+    # Custom Styles for a modern folder look
+    styles.add(ParagraphStyle(name='EventTitle',
+                              fontSize=24,
+                              leading=28,
+                              alignment=TA_CENTER,
+                              spaceAfter=14,
+                              fontName='Helvetica-Bold',
+                              textColor='#34495e')) # Dark blue-grey
+
+    styles.add(ParagraphStyle(name='EventSubtitle',
+                              fontSize=16,
+                              leading=18,
+                              alignment=TA_CENTER,
+                              spaceAfter=10,
+                              fontName='Helvetica',
+                              textColor='#5d6d7e')) # Medium grey
+
+    styles.add(ParagraphStyle(name='EventDescription',
+                              fontSize=10,
+                              leading=12,
+                              alignment=TA_LEFT,
+                              spaceAfter=10,
+                              fontName='Helvetica',
+                              textColor='#2c3e50')) # Darker grey for body text
+
+    styles.add(ParagraphStyle(name='DateHeader',
+                              fontSize=13,
+                              leading=15,
+                              alignment=TA_LEFT,
+                              spaceAfter=6,
+                              fontName='Helvetica-Bold',
+                              textColor='#1abc9c')) # Turquoise for date headers
+
+    styles.add(ParagraphStyle(name='OficinaItem',
+                              fontSize=9,
+                              leading=11,
+                              alignment=TA_LEFT,
+                              spaceAfter=3,
+                              fontName='Helvetica',
+                              leftIndent=0.3*cm)) # Small indent for readability
+
+    styles.add(ParagraphStyle(name='ContactInfo',
+                              fontSize=10,
+                              leading=12,
+                              alignment=TA_CENTER,
+                              spaceBefore=12,
+                              fontName='Helvetica-Oblique',
+                              textColor='#7f8c8d')) # Light grey, italic for contact
+
+    # Prepare Flowables (content elements)
+    story = []
+
+    # Calculate page dimensions and column widths
     width, height = landscape(A4)
-    c.setTitle(f'Programação - {evento.nome}')
+    margin_x = 1.5 * cm
+    margin_y = 1.5 * cm
+    gap_x = 0.8 * cm # Gap between columns
 
-    c.setFont('Helvetica-Bold', 16)
-    c.drawCentredString(width / 2, height - 2 * cm, f'Programação - {evento.nome}')
-    c.setFont('Helvetica', 12)
+    # Three-column layout
+    column_width = (width - (2 * margin_x) - (2 * gap_x)) / 3
+    column_height = height - (2 * margin_y)
+
+    # Define the three frames (panels)
+    frame1 = Frame(margin_x, margin_y, column_width, column_height,
+                   id='col1', showBoundary=0) # showBoundary=1 for debugging to see frame borders
+    frame2 = Frame(margin_x + column_width + gap_x, margin_y, column_width, column_height,
+                   id='col2', showBoundary=0)
+    frame3 = Frame(margin_x + (2 * column_width) + (2 * gap_x), margin_y, column_width, column_height,
+                   id='col3', showBoundary=0)
+
+    # Add content to the story. ReportLab will flow this content through the defined frames.
+
+    # Event Title and Description (typically placed to be prominent)
+    story.append(Paragraph(f'<b>{evento.nome}</b>', styles['EventTitle']))
     if evento.descricao:
-        text = c.beginText(2 * cm, height - 3 * cm)
-        for line in evento.descricao.splitlines():
-            text.textLine(line)
-        c.drawText(text)
+        story.append(Paragraph(evento.descricao, styles['EventDescription']))
+    story.append(Spacer(1, 0.5 * cm))
 
-    # Margens e configuração de duas colunas
-    margin_x = 2 * cm
-    start_y = height - 4 * cm
-    column_width = (width - 2 * margin_x) / 2
-    current_x = margin_x
-    y = start_y
-    coluna = 0
-
+    # Add program details
     for data in sorted_dates:
-        c.setFont('Helvetica-Bold', 14)
-        c.drawString(current_x, y, data)
-        y -= 0.7 * cm
-        for item in sorted(grouped[data], key=lambda x: x['inicio']):
-            linha = f"{item['inicio']} - {item['fim']} | {item['titulo']}"
-            if item['ministrante']:
-                linha += f" - {item['ministrante']}"
-            c.setFont('Helvetica', 11)
-            c.drawString(current_x + 0.5 * cm, y, linha)
-            y -= 0.6 * cm
-            if y < 2 * cm:
-                if coluna == 0:
-                    coluna = 1
-                    current_x = margin_x + column_width
-                    y = start_y
-                else:
-                    c.showPage()
-                    coluna = 0
-                    current_x = margin_x
-                    y = start_y
+        story.append(Paragraph(f'<b>{data}</b>', styles['DateHeader']))
+        # Sort items by start time for each day
+        for item in sorted(grouped_oficinas[data], key=lambda x: x['inicio']):
+            time_str = f"{item['inicio']} - {item['fim']}"
+            title_str = f"{item['titulo']}"
+            ministrante_str = f" ({item['ministrante']})" if item['ministrante'] else ""
+            line_content = f"<font color='#0077b6'>{time_str}</font><br/><b>{title_str}</b>{ministrante_str}"
+            story.append(Paragraph(line_content, styles['OficinaItem']))
+        story.append(Spacer(1, 0.4 * cm)) # Small space between days
 
-    c.showPage()
-    c.save()
+    # Add a final contact/info section
+    story.append(Spacer(1, 1*cm))
+    story.append(Paragraph("Para mais informações, visite nosso site ou entre em contato:", styles['ContactInfo']))
+    story.append(Paragraph(f"<b>[Seu Site Aqui]</b> | [Seu Email Aqui]", styles['ContactInfo']))
+    story.append(Paragraph("Maceió, AL", styles['ContactInfo']))
+
+    # Building the PDF using BaseDocTemplate for custom frames
+    from reportlab.platypus import BaseDocTemplate, PageTemplate
+
+    # Define a custom page template with the three frames
+    template = PageTemplate(id='ThreeColumnPage', frames=[frame1, frame2, frame3])
+
+    doc = BaseDocTemplate(pdf_path, pagesize=landscape(A4),
+                          rightMargin=margin_x, leftMargin=margin_x,
+                          topMargin=margin_y, bottomMargin=margin_y)
+
+    doc.addPageTemplates([template])
+
+    doc.build(story)
 
     return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
-
 
 
 def gerar_etiquetas(cliente_id):
