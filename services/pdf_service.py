@@ -3290,13 +3290,19 @@ def gerar_programacao_evento_pdf(evento_id):
                 'fim': dia.horario_fim,
             })
 
-    sorted_dates = sorted(grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+    sorted_dates = sorted(
+        grouped_oficinas.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y')
+    )
 
     # 2. PDF File Setup
     pdf_dir = os.path.join(current_app.static_folder, 'programacoes', str(evento_id))
     os.makedirs(pdf_dir, exist_ok=True)
-    filename = f'programacao_evento_{evento_id}.pdf'
+    filename = f"programacao_evento_{evento_id}.pdf"
     pdf_path = os.path.join(pdf_dir, filename)
+
+    # Criar canvas para geracao do PDF em modo paisagem
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
 
     # 3. PDF Generation with ReportLab Platypus (Flowables)
     styles = getSampleStyleSheet()
@@ -3354,8 +3360,7 @@ def gerar_programacao_evento_pdf(evento_id):
     story = []
 
     # Calculate page dimensions and column widths
-    width, height = landscape(A4)
-    c.setTitle(f'Programação - {evento.nome}')
+    c.setTitle(f"Programação - {evento.nome}")
 
     c.setFont('Helvetica-Bold', 16)
     c.drawCentredString(width / 2, height - 2 * cm, f'Programação - {evento.nome}')
@@ -3378,7 +3383,7 @@ def gerar_programacao_evento_pdf(evento_id):
         c.setFont('Helvetica-Bold', 14)
         c.drawString(current_x, y, data)
         y -= 0.7 * cm
-        for item in sorted(grouped[data], key=lambda x: x['inicio']):
+        for item in sorted(grouped_oficinas[data], key=lambda x: x['inicio']):
             linha = f"{item['inicio']} - {item['fim']} | {item['titulo']}"
             if item['ministrante']:
                 linha += f" - {item['ministrante']}"
