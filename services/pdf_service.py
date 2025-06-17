@@ -3355,6 +3355,7 @@ def gerar_programacao_evento_pdf(evento_id):
 
     # Calculate page dimensions and column widths
     width, height = landscape(A4)
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
     c.setTitle(f'Programação - {evento.nome}')
 
     c.setFont('Helvetica-Bold', 16)
@@ -3378,7 +3379,7 @@ def gerar_programacao_evento_pdf(evento_id):
         c.setFont('Helvetica-Bold', 14)
         c.drawString(current_x, y, data)
         y -= 0.7 * cm
-        for item in sorted(grouped[data], key=lambda x: x['inicio']):
+        for item in sorted(grouped_oficinas[data], key=lambda x: x['inicio']):
             linha = f"{item['inicio']} - {item['fim']} | {item['titulo']}"
             if item['ministrante']:
                 linha += f" - {item['ministrante']}"
