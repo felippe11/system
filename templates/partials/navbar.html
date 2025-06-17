@@ -26,69 +26,47 @@
                     <a class="nav-link btn btn-primary text-white px-3" href="#">
                         <i class="bi bi-download me-1"></i> Instalar App
                     </a>
-                </li>
-                {% if not current_user.is_authenticated %}
+                </li>                {% if not current_user.is_authenticated %}
                 <li class="nav-item ms-lg-3">
                     <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
                 </li>
                 {% else %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-2 fs-5"></i>{{ current_user.nome }}
+                
+                {% if current_user.tipo == 'participante' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('inscricao_routes.editar_participante') }}">
+                        <i class="bi bi-person-badge"></i> Perfil
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                        <li>
-                            {% if current_user.tipo == 'participante' %}
-                            <a class="dropdown-item py-2" href="{{ url_for('inscricao_routes.editar_participante') }}">
-                            {% elif current_user.tipo == 'cliente' %}
-                            <a class="dropdown-item py-2" href="{{ url_for('cliente_routes.editar_cliente', cliente_id=current_user.id) }}">
-                            {% elif current_user.tipo == 'ministrante' %}
-                            <a class="dropdown-item py-2" href="{{ url_for('ministrante_routes.editar_ministrante', ministrante_id=current_user.id) }}">
-                            {% else %}
-                            <a class="dropdown-item py-2" href="#">
-                            {% endif %}
-                                <i class="bi bi-person-badge me-2"></i>Editar Perfil
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider my-1"></li>
-                        {% if current_user.tipo == 'participante' %}
-                        <li>
-                            <a class="dropdown-item py-2" href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                            </a>
-                        </li>
-                        {% elif current_user.tipo == 'cliente' %}
-                        <li>
-                            <a class="dropdown-item py-2" href="{{ url_for('dashboard_routes.dashboard_cliente') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                            </a>
-                        </li>
-                        {% elif current_user.tipo == 'ministrante' %}
-                        <li>
-                            <a class="dropdown-item py-2" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                            </a>
-                        </li>
-                        {% elif current_user.tipo == 'admin' %}
-                        <li>
-                            <a class="dropdown-item py-2" href="{{ url_for('dashboard_routes.dashboard') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                            </a>
-                        </li>
-                        {% elif current_user.tipo == 'professor' %}
-                        <li>
-                            <a class="dropdown-item py-2" href="{{ url_for('dashboard_professor.dashboard_professor') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li><hr class="dropdown-divider my-1"></li>
-                        <li>
-                            <a class="dropdown-item text-danger py-2" href="{{ url_for('auth_routes.logout') }}">
-                                <i class="bi bi-box-arrow-right me-2"></i>Sair
-                            </a>
-                        </li>
-                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                {% elif current_user.tipo == 'cliente' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard_cliente') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                {% elif current_user.tipo == 'ministrante' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                {% elif current_user.tipo == 'admin' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li class="nav-item">
+                    <a class="nav-link text-danger" href="{{ url_for('auth_routes.logout') }}">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </a>
                 </li>
                 {% endif %}
             </ul>
