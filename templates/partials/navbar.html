@@ -1,44 +1,35 @@
-{% set show_index_links = show_index_links | default(False) %}
+{% set current_path = request.path %}
+<!-- Adicione o link para o CSS da navbar caso ainda não esteja incluído no head -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}" rel="stylesheet">
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
     <div class="container">
-        <a class="navbar-brand" href="{{ url_for('dashboard_routes.dashboard') }}">
-            <i class="bi bi-cpu"></i>App<span>Fiber</span>
+        <a class="navbar-brand" href="{{ url_for('evento_routes.home') }}">
+            App<span>Fiber</span>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                {% if show_index_links %}
-                <li class="nav-item">
-                    <a class="nav-link" href="#home">Home</a>
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">                <li class="nav-item">
+                    <a class="nav-link home-link" href="{{ url_for('evento_routes.home') }}{% if current_path == '/' %}#home{% endif %}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#eventos">Eventos</a>
+                    <a class="nav-link eventos-link" href="{{ url_for('evento_routes.home') }}#eventos">Eventos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#recursos">Recursos</a>
+                    <a class="nav-link recursos-link" href="{{ url_for('evento_routes.home') }}#recursos">Recursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#contato">Contato</a>
+                    <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
                 </li>
-                {% endif %}
                 <li class="nav-item me-2" id="pwa-install-btn">
                     <a class="nav-link btn btn-primary text-white px-3" href="#">
                         <i class="bi bi-download me-1"></i> Instalar App
                     </a>
                 </li>
-                <li class="nav-item me-2">
-                    <div class="theme-toggle nav-link" id="theme-toggle">
-                        <i class="bi bi-sun-fill" id="theme-icon"></i>
-                    </div>
-                </li>
                 {% if not current_user.is_authenticated %}
                 <li class="nav-item ms-lg-3">
                     <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-register" href="{{ url_for('evento_routes.listar_eventos') }}">Cadastrar</a>
                 </li>
                 {% else %}
                 <li class="nav-item dropdown">
@@ -90,3 +81,87 @@
         </div>
     </div>
 </nav>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtém o path atual
+        const currentPath = window.location.pathname;
+        const currentHash = window.location.hash;
+        
+        // Verifica se estamos na página inicial
+        const isHomePage = currentPath === '/' || currentPath === '/index' || currentPath === '/index.html';
+        
+        // Gerencia links ativos
+        const navLinks = document.querySelectorAll('.navbar .nav-link');
+        
+        // Remove a classe active de todos os links
+        navLinks.forEach(link => link.classList.remove('active'));
+        
+        if (isHomePage) {
+            // Se estiver na home, ativa com base no hash
+            if (currentHash) {
+                // Remove o # do hash
+                const activeSection = currentHash.substring(1);
+                // Procura o link correspondente
+                const activeLink = document.querySelector(`.navbar .${activeSection}-link`);
+                if (activeLink) {
+                    activeLink.classList.add('active');
+                } else {
+                    // Se não há hash ou o hash não corresponde a nenhum link, ativa o Home
+                    document.querySelector('.navbar .home-link').classList.add('active');
+                }
+            } else {
+                // Se não há hash, ativa o Home
+                document.querySelector('.navbar .home-link').classList.add('active');
+            }
+        } else {
+            // Nas outras páginas, não marca nenhum link de seção como ativo
+            // Mas poderia ativar outros links específicos se necessário
+        }
+        
+        // Atualiza os links ativos quando há rolagem na página inicial
+        if (isHomePage) {
+            window.addEventListener('scroll', function() {
+                // Somente executa esse código na página inicial
+                const scrollPosition = window.scrollY;
+
+                // Obtém as seções
+                const homeSection = document.querySelector('#home');
+                const eventosSection = document.querySelector('#eventos');
+                const recursosSection = document.querySelector('#recursos');
+                const contatoSection = document.querySelector('#contato');
+                
+                // Remove active de todos os links
+                navLinks.forEach(link => link.classList.remove('active'));
+                
+                // Adiciona active ao link correspondente com base na posição da rolagem
+                if (homeSection && scrollPosition < eventosSection?.offsetTop - 100) {
+                    document.querySelector('.navbar .home-link').classList.add('active');
+                } else if (eventosSection && scrollPosition < recursosSection?.offsetTop - 100) {
+                    document.querySelector('.navbar .eventos-link').classList.add('active');
+                } else if (recursosSection && scrollPosition < contatoSection?.offsetTop - 100) {
+                    document.querySelector('.navbar .recursos-link').classList.add('active');
+                } else if (contatoSection) {
+                    document.querySelector('.navbar .contato-link').classList.add('active');
+                }
+            });
+        }
+    });
+</script>
+<script>
+    // Script para efeito de scroll na navbar
+    window.addEventListener('scroll', function() {
+        const navbar = document.querySelector('.navbar');
+        if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    });
+    
+    // Verifica se a página foi carregada já com scroll (por exemplo, refresh)
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.scrollY > 50) {
+            document.querySelector('.navbar').classList.add('scrolled');
+        }
+    });
+</script>

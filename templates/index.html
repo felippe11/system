@@ -13,7 +13,6 @@
 </head>
 <body>
     <!-- Navbar -->
-    {% set show_index_links = True %}
     {% include 'partials/navbar.html' %}
 
     <!-- Hero Section -->
@@ -296,6 +295,10 @@
             </div>
         </div>
     </footer>
+    
+    <!-- PWA Scripts -->
+    <script src="{{ url_for('static', filename='js/pwa.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pwa-install.js') }}"></script>
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>

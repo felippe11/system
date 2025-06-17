@@ -63,22 +63,7 @@
             --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
             color-scheme: dark;
         }
-          /* Ajustes para modo escuro na navbar */
-        [data-bs-theme="dark"] .navbar {
-            background: rgba(23, 25, 50, 0.9) !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        }
         
-        [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover {
-            background-color: rgba(255, 255, 255, 0.15);
-            color: var(--primary-color-light);
-            transform: translateY(-2px);
-        }
         
         /* Ajuste do botão de tema para modo escuro */
         [data-bs-theme="dark"] .theme-toggle {
@@ -89,47 +74,8 @@
             background-color: rgba(255, 255, 255, 0.15);
             transform: translateY(-2px);
             box-shadow: 0 2px 8px rgba(143, 148, 251, 0.3);
-        }
-        
-        /* Ajuste para usuario dropdown no modo escuro */
-        [data-bs-theme="dark"] .nav-item.dropdown .nav-link {
-            color: rgba(255, 255, 255, 0.9);
-        }
-        
-        [data-bs-theme="dark"] .nav-link.btn-outline-primary {
-            color: var(--primary-color-light) !important;
-            border-color: var(--primary-color-light);
-        }
-        
-        [data-bs-theme="dark"] .nav-link.btn-outline-primary:hover {
-            background-color: rgba(143, 148, 251, 0.2);
-            border-color: var(--primary-color-light);
-            color: #ffffff !important;
-            box-shadow: 0 0 15px rgba(143, 148, 251, 0.3);
-        }
-        
-        /* Destaque para o botão "Entrar" */
-        .nav-link.btn-outline-primary {
-            position: relative;
-            z-index: 1;
-            overflow: hidden;
-        }
-        
-        .nav-link.btn-outline-primary::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: rgba(42, 45, 114, 0.05);
-            transition: all 0.4s ease;
-            z-index: -1;
-        }
-        
-        .nav-link.btn-outline-primary:hover::before {
-            left: 0;
-        }
+        }     
+
         
         /* Estilo para o dropdown do perfil */
         .dropdown-menu {
@@ -147,28 +93,8 @@
             transform: translateX(5px);
         }
         
-        [data-bs-theme="dark"] .dropdown-item:hover {
-            background-color: rgba(143, 148, 251, 0.15);
-        }
-        
-        [data-bs-theme="dark"] .navbar-brand .gradient-text {
-            background: linear-gradient(90deg, #8F94FB, #FFFFFF);
-            -webkit-background-clip: text;
-            background-clip: text;
-        }
+
           /* Efeito de brilho sutil para a logo no hover */
-        .navbar-brand:hover .gradient-text {
-            text-shadow: 0 0 8px rgba(var(--primary-color-rgb, 42, 45, 114), 0.3);
-        }
-        
-        [data-bs-theme="dark"] .navbar-brand:hover .gradient-text {
-            text-shadow: 0 0 8px rgba(143, 148, 251, 0.4);
-        }
-        
-        /* Garantir que o texto secundário se posicione corretamente */
-        .navbar-brand .animated-text {
-            min-width: 100px;
-        }
 
         body {
             background-color: var(--bs-body-bg);
@@ -184,95 +110,8 @@
         [data-bs-theme="dark"] body {
             background-image: linear-gradient(to bottom right, #1a1a2e, #16213e, #1a1a2e);
         }        /* Navbar styling com efeito glassmorphism */
-        .navbar {
-            background: rgba(71, 125, 162, 0.9) !important;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-            height: var(--navbar-height);
-            transition: var(--transition-normal);
-        }.navbar-light .navbar-nav .nav-link {
-            color: var(--primary-color);
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            transition: var(--transition-normal);
-        }
-          .navbar-light .navbar-nav .nav-link:hover {
-            background-color: rgba(42, 45, 114, 0.15);
-            color: var(--primary-color);
-            transform: translateY(-2px);
-        }
         
-        /* Ajustes para botões no navbar modo claro */
-        .theme-toggle, .nav-item.dropdown .nav-link {
-            color: var(--primary-color);
-        }
-        
-        /* Efeito para links e botões */
-        .nav-link.btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-        
-        .nav-link.btn-primary:hover {
-            box-shadow: 0 4px 12px rgba(42, 45, 114, 0.3);
-        }
-        
-        [data-bs-theme="dark"] .nav-link.btn-primary:hover {
-            box-shadow: 0 4px 12px rgba(143, 148, 251, 0.4);
-        }
-        
-        /* Efeito especial para botão de instalar app */
-        #pwa-install-btn .nav-link {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        #pwa-install-btn .nav-link::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -60%;
-            width: 20px;
-            height: 200%;
-            background: rgba(255, 255, 255, 0.2);
-            transform: rotate(30deg);
-            transition: all 0.6s;
-            opacity: 0;
-        }
-        
-        #pwa-install-btn .nav-link:hover::after {
-            left: 120%;
-            opacity: 1;
-        }        /* Ajuste para o texto da marca ficar com gradiente de azul para preto */
-        .navbar-brand .gradient-text {
-            background: linear-gradient(90deg, var(--primary-color), #000);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent !important;
-            font-weight: 600;
-        }
-        
-        .navbar-brand .text1, 
-        .navbar-brand .text2 {
-            background: linear-gradient(90deg, var(--primary-color), #000);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent !important;
-        }
-        
-        [data-bs-theme="dark"] .navbar-brand .text1,
-        [data-bs-theme="dark"] .navbar-brand .text2 {
-            background: linear-gradient(90deg, #8F94FB, #FFFFFF);
-            -webkit-background-clip: text;
-            background-clip: text;
-        }.navbar-brand .gradient-text {
-            position: relative;
-            display: inline-block;
-        }
-        
+       
         .animated-text {
             position: relative;
             display: inline-block;
@@ -288,16 +127,6 @@
             left: 0;
             opacity: 0;
             transform: translateY(10px);
-        }
-        
-        .navbar-brand:hover .animated-text .text1 {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        
-        .navbar-brand:hover .animated-text .text2 {
-            opacity: 1;
-            transform: translateY(0);
         }
 
         /* Ajustes para conteúdo principal */
@@ -387,39 +216,11 @@
             box-shadow: var(--shadow-sm);
         }
 
-        /* ---------- Hover suave só no texto (modo claro) ---------- */
-        .navbar-light .navbar-nav .nav-link,
-        .nav-link.btn {
-            transition: color .3s ease, text-shadow .3s ease, transform .3s ease;
-        }
-
-        .navbar-light .navbar-nav .nav-link:hover,
-        .nav-link.btn:hover {
-            /* tira o fundo e a sombra */
-            background-color: transparent !important;
-            box-shadow: none !important;
-
-            /* realce apenas no texto */
-            color: var(--primary-color-light) !important;          /* azul mais claro */
-            text-shadow: 0 0 6px rgba(var(--primary-color-rgb), .35);
-            transform: translateY(-2px);                           /* opcional – mantém leve “lift” */
-        }
-
-        /* ---------- Hover suave só no texto (modo escuro) ---------- */
-        [data-bs-theme="dark"] .navbar-light .navbar-nav .nav-link:hover,
-        [data-bs-theme="dark"] .nav-link.btn:hover {
-            background-color: transparent !important;
-            box-shadow: none !important;
-
-            color: #ffffff !important;
-            text-shadow: 0 0 6px rgba(143,148,251,.45);            /* a mesma cor do gradiente da logo */
-        }
     </style>
 </head>
 
 <body>
     <!-- NAVBAR -->
-    {% set show_index_links = False %}
     {% include 'partials/navbar.html' %}
     
     <!-- ESPAÇAMENTO NAVBAR -->
@@ -462,7 +263,7 @@
             <div class="row g-4">
                 <div class="col-lg-4 mb-4">
                     <div class="mb-4">
-                        <h5 class="fw-bold"><i class="bi bi-cpu me-2"></i>AppFiber</h5>
+                        <h5 class="fw-bold"></i>AppFiber</h5>
                         <p class="small opacity-75 mt-3">
                             Transformando a gestão educacional com tecnologia inovadora desde 2023.
                             Nossa plataforma conecta alunos, professores e instituições em um ambiente digital integrado.
