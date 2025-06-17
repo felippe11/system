@@ -14,10 +14,9 @@ window.addEventListener('scroll', function() {
 // Scroll suave para âncoras
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
-        e.preventDefault();
-        
         const targetId = this.getAttribute('href');
-        if (targetId === '#') return;
+        if (targetId === '#') return;  // permite o funcionamento de dropdowns
+        e.preventDefault();
         
         const targetElement = document.querySelector(targetId);
         if (targetElement) {
