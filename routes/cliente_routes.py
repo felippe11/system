@@ -10,11 +10,13 @@ from flask import (
 )
 from flask_login import current_user, login_required
 from werkzeug.security import generate_password_hash
+import logging
 
 from extensions import db
 from models import Cliente
 
 cliente_routes = Blueprint("cliente_routes", __name__)
+logger = logging.getLogger(__name__)
 
 
 @cliente_routes.route("/cadastrar_cliente", methods=["GET", "POST"])
@@ -69,28 +71,24 @@ def editar_cliente(cliente_id):
         if nova_senha:  # Só atualiza a senha se fornecida
             cliente.senha = generate_password_hash(nova_senha)
 
-        # Debug: exibe o valor recebido do checkbox
+        # Valor recebido do checkbox
         debug_checkbox = request.form.get("habilita_pagamento")
-        print("DEBUG: Valor recebido do checkbox 'habilita_pagamento':", debug_checkbox)
-        # Se você tiver um logger configurado, pode usar:
-        # logger.debug("Valor recebido do checkbox 'habilita_pagamento': %s", debug_checkbox)
+        logger.debug("Valor recebido do checkbox 'habilita_pagamento': %s", debug_checkbox)
 
         cliente.habilita_pagamento = True if debug_checkbox == "on" else False
 
-        # Debug: exibe o valor que está sendo salvo
-        print(
-            "DEBUG: Valor salvo em cliente.habilita_pagamento:",
+        # Valor que será salvo
+        logger.debug(
+            "Valor salvo em cliente.habilita_pagamento: %s",
             cliente.habilita_pagamento,
         )
-        # logger.debug("Valor salvo em cliente.habilita_pagamento: %s", cliente.habilita_pagamento)
 
         try:
             db.session.commit()
             flash("Cliente atualizado com sucesso!", "success")
         except Exception as e:
             db.session.rollback()
-            print("DEBUG: Erro ao atualizar cliente:", e)
-            # logger.error("Erro ao atualizar cliente: %s", e, exc_info=True)
+            logger.error("Erro ao atualizar cliente: %s", e, exc_info=True)
             flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
