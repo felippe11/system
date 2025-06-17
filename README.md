@@ -19,3 +19,31 @@ autenticacao com a API do Gmail. O arquivo `token.json` sera gerado apos a
 primeira autenticacao.
 
 `APP_BASE_URL` define a URL base para gerar links externos, como o `notification_url` do Mercado Pago. Em desenvolvimento, aponte para um endereço público (ex.: URL do ngrok).
+
+## Acessibilidade
+
+Para oferecer acessibilidade em Libras e suporte a pessoas cegas:
+
+- Adicione o plugin [VLibras](https://www.gov.br/governodigital/pt-br/vlibras) antes do fechamento da tag `</body>` em `templates/base.html`:
+
+```html
+<div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+        <div class="vw-plugin-top-wrapper"></div>
+    </div>
+</div>
+<script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+<script>new window.VLibras.Widget('https://vlibras.gov.br/app');</script>
+```
+
+- Inclua um link "Pular para o conteúdo principal" no início do `<body>` e defina o `id` `main-content` na tag `<main>`:
+
+```html
+<a href="#main-content" class="visually-hidden-focusable">Pular para o conteúdo principal</a>
+<main id="main-content">
+    ...
+</main>
+```
+
+- Verifique se todas as imagens possuem um texto alternativo significativo (`alt`).
