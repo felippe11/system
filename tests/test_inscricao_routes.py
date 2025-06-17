@@ -116,3 +116,28 @@ def test_render_multiple_tipos_no_lote(client, app):
     assert 'Tipo 1' in html and 'Tipo 2' in html
     assert 'R$ 11.0' in html and 'R$ 16.0' in html
 
+
+def test_inscricao_sanitizes_input(client, app):
+    data = {
+        'nome': '<b>Alice</b>',
+        'cpf': '111',
+        'email': 'alice@example.com',
+        'senha': '123',
+        'formacao': '<script>hack</script>',
+        'estados[]': ['<i>SP</i>'],
+        'cidades[]': ['<i>Sao Paulo</i>'],
+        'lote_id': '',
+        'lote_tipo_inscricao_id': '',
+        'tipo_inscricao_id': ''
+    }
+    resp = client.post('/inscricao/token/testtoken', data=data, follow_redirects=True)
+    assert resp.status_code in (200, 302)
+    with app.app_context():
+        from models import Usuario
+        user = Usuario.query.filter_by(email='alice@example.com').first()
+        assert user is not None
+        assert user.nome == 'Alice'
+        assert user.formacao == 'hack'
+        assert '<' not in (user.estados or '')
+        assert '<' not in (user.cidades or '')
+
