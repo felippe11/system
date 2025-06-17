@@ -132,6 +132,11 @@ def excluir_cliente(cliente_id):
             RespostaFormulario,
             FeedbackCampo,
             SalaVisitacao,
+            Formulario,
+            FormularioTemplate,
+            CampoFormularioTemplate,
+            Sorteio,
+            Pagamento,
             Usuario,
         )
 
@@ -139,6 +144,7 @@ def excluir_cliente(cliente_id):
         # 1️⃣ PARTICIPANTES
         # ===============================
         participantes = Usuario.query.filter_by(cliente_id=cliente.id).all()
+        usuario_ids = [u.id for u in participantes]
 
         with db.session.no_autoflush:
             for usuario in participantes:
@@ -219,6 +225,7 @@ def excluir_cliente(cliente_id):
         eventos = Evento.query.filter(
             or_(Evento.cliente_id == cliente.id, Evento.cliente_id == None)
         ).all()
+        evento_ids = [e.id for e in eventos]
 
         for evento in eventos:
             with db.session.no_autoflush:
@@ -248,6 +255,23 @@ def excluir_cliente(cliente_id):
         CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente.id).delete()
         LinkCadastro.query.filter_by(cliente_id=cliente.id).delete()
         ConfiguracaoCliente.query.filter_by(cliente_id=cliente.id).delete()
+
+        # Formulários e templates vinculados ao cliente
+        template_ids = db.session.query(FormularioTemplate.id).filter_by(cliente_id=cliente.id)
+        CampoFormularioTemplate.query.filter(
+            CampoFormularioTemplate.template_id.in_(template_ids)
+        ).delete(synchronize_session=False)
+        FormularioTemplate.query.filter_by(cliente_id=cliente.id).delete()
+        Formulario.query.filter_by(cliente_id=cliente.id).delete()
+
+        # Sorteios e pagamentos
+        Sorteio.query.filter_by(cliente_id=cliente.id).delete()
+        Pagamento.query.filter(
+            Pagamento.usuario_id.in_(usuario_ids)
+        ).delete(synchronize_session=False)
+        Pagamento.query.filter(
+            Pagamento.evento_id.in_(evento_ids)
+        ).delete(synchronize_session=False)
 
         # ===============================
         # 6️⃣ EXCLUI O CLIENTE
