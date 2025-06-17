@@ -220,6 +220,7 @@
 </head>
 
 <body>
+    <a href="#main-content" class="visually-hidden-focusable skip-link">Pular para o conteúdo principal</a>
     <!-- NAVBAR -->
     {% include 'partials/navbar.html' %}
     
@@ -251,7 +252,7 @@
     {% endwith %}
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <main>
+    <main id="main-content">
         <div class="container">
             {% block content %}{% endblock %}
         </div>
@@ -431,5 +432,17 @@
     
     <!-- Scripts Extras Específicos da Página -->
     {% block scripts_extra %}{% endblock %}
+
+    <!-- Integracao com VLibras para acessibilidade em Libras -->
+    <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper>
+            <div class="vw-plugin-top-wrapper"></div>
+        </div>
+    </div>
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+    <script>
+        new window.VLibras.Widget('https://vlibras.gov.br/app');
+    </script>
 </body>
 </html>
