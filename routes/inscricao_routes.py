@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from extensions import db
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from models import (
@@ -98,15 +98,23 @@ def cadastro_participante(identifier: str | None = None):
         tipo_insc_id = request.form.get("tipo_inscricao_id")
 
         try:
+            solicitar_senha = False
             if not all([nome, cpf, email, senha, formacao]):
                 raise ValueError("Preencha todos os campos obrigatórios.")
 
             duplicado = Usuario.query.filter(
                 (Usuario.email == email) | (Usuario.cpf == cpf)
             ).first()
+
+            usuario = None
             if duplicado:
-                msg = "E-mail já cadastrado." if duplicado.email == email else "CPF já cadastrado."
-                raise ValueError(msg)
+                senha_existente = request.form.get("senha_existente")
+                if senha_existente and check_password_hash(duplicado.senha, senha_existente):
+                    usuario = duplicado
+                else:
+                    solicitar_senha = True
+                    msg = "Usuário já cadastrado. Confirme sua senha para prosseguir."
+                    raise ValueError(msg)
 
             resolved_tipo = None
             if lote_tipo_id:
@@ -121,21 +129,22 @@ def cadastro_participante(identifier: str | None = None):
             if lote_id:
                 _reservar_vaga(int(lote_id))
 
-            usuario = Usuario(
-                nome=nome,
-                cpf=cpf,
-                email=email,
-                senha=generate_password_hash(senha),
-                formacao=formacao,
-                tipo="participante",
-                cliente_id=cliente_id,
-                evento_id=evento.id,
-                tipo_inscricao_id=resolved_tipo,
-                estados=",".join(estados) if estados else None,
-                cidades=",".join(cidades) if cidades else None,
-            )
-            db.session.add(usuario)
-            db.session.flush()
+            if not usuario:
+                usuario = Usuario(
+                    nome=nome,
+                    cpf=cpf,
+                    email=email,
+                    senha=generate_password_hash(senha),
+                    formacao=formacao,
+                    tipo="participante",
+                    cliente_id=cliente_id,
+                    evento_id=evento.id,
+                    tipo_inscricao_id=resolved_tipo,
+                    estados=",".join(estados) if estados else None,
+                    cidades=",".join(cidades) if cidades else None,
+                )
+                db.session.add(usuario)
+                db.session.flush()
 
             inscricao = Inscricao(
                 usuario_id=usuario.id,
@@ -168,13 +177,15 @@ def cadastro_participante(identifier: str | None = None):
             db.session.rollback()
             flash(str(e), "danger")
             return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                               lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+                               lotes_ativos=lotes_ativos, cliente_id=cliente_id,
+                               solicitar_senha=solicitar_senha)
 
     # ------------------------------------------------------------------
     # 4) GET - apenas renderiza o formulário
     # ------------------------------------------------------------------
     return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                        lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+                        lotes_ativos=lotes_ativos, cliente_id=cliente_id,
+                        solicitar_senha=False)
 
 
 
@@ -274,7 +285,7 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
     return init_point
 
 
-def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
+def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solicitar_senha=False):
     """Coleta dados de contexto e renderiza template."""
     from collections import defaultdict
 
@@ -363,7 +374,8 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         lotes_ativos=lotes_ativos,
         tipos_inscricao=tipos_inscricao,
         mostrar_taxa=mostrar_taxa,
-        preco_com_taxa=preco_com_taxa
+        preco_com_taxa=preco_com_taxa,
+        solicitar_senha=solicitar_senha
     )
 
 @inscricao_routes.route('/editar_participante', methods=['GET', 'POST'])
