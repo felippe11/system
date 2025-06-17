@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from utils.security import sanitize_input
 from flask_login import login_required, current_user
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -86,13 +87,13 @@ def cadastro_participante(identifier: str | None = None):
     # 3) Processamento do POST
     # ------------------------------------------------------------------
     if request.method == "POST":
-        nome = request.form.get("nome", "").strip()
-        cpf = request.form.get("cpf", "").strip()
-        email = request.form.get("email", "").strip()
-        senha = request.form.get("senha")
-        formacao = request.form.get("formacao", "")
-        estados = request.form.getlist("estados[]")
-        cidades = request.form.getlist("cidades[]")
+        nome = sanitize_input(request.form.get("nome", "").strip())
+        cpf = sanitize_input(request.form.get("cpf", "").strip())
+        email = sanitize_input(request.form.get("email", "").strip())
+        senha = sanitize_input(request.form.get("senha"))
+        formacao = sanitize_input(request.form.get("formacao", ""))
+        estados = [sanitize_input(e) for e in request.form.getlist("estados[]")]
+        cidades = [sanitize_input(c) for c in request.form.getlist("cidades[]")]
         lote_id = request.form.get("lote_id")
         lote_tipo_id = request.form.get("lote_tipo_inscricao_id")
         tipo_insc_id = request.form.get("tipo_inscricao_id")
@@ -108,7 +109,7 @@ def cadastro_participante(identifier: str | None = None):
 
             usuario = None
             if duplicado:
-                senha_existente = request.form.get("senha_existente")
+                senha_existente = sanitize_input(request.form.get("senha_existente"))
                 if senha_existente and check_password_hash(duplicado.senha, senha_existente):
                     usuario = duplicado
                 else:
@@ -399,14 +400,14 @@ def editar_participante(usuario_id=None, oficina_id=None):
         oficina = None  # Não necessário nesse caso
 
     if request.method == 'POST':
-        usuario.nome = request.form.get('nome')
-        usuario.cpf = request.form.get('cpf')
-        usuario.email = request.form.get('email')
-        usuario.formacao = request.form.get('formacao')
-        usuario.estados = ','.join(request.form.getlist('estados[]') or [])
-        usuario.cidades = ','.join(request.form.getlist('cidades[]') or [])
+        usuario.nome = sanitize_input(request.form.get('nome'))
+        usuario.cpf = sanitize_input(request.form.get('cpf'))
+        usuario.email = sanitize_input(request.form.get('email'))
+        usuario.formacao = sanitize_input(request.form.get('formacao'))
+        usuario.estados = ','.join(sanitize_input(e) for e in request.form.getlist('estados[]') or [])
+        usuario.cidades = ','.join(sanitize_input(c) for c in request.form.getlist('cidades[]') or [])
 
-        nova_senha = request.form.get('senha')
+        nova_senha = sanitize_input(request.form.get('senha'))
         if nova_senha:
             usuario.senha = generate_password_hash(nova_senha)
 
@@ -684,7 +685,9 @@ def configurar_regras_inscricao():
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     
     # Evento selecionado (por padrão, None até que o usuário escolha)
-    evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    evento_id = sanitize_input(
+        request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
+    )
     evento = None
     oficinas = []
     regras = {}
