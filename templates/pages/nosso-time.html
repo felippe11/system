@@ -1,1 +1,104 @@
 {% extends 'pages/base_page.html' %}
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block content %}
+
+<style>
+    body {
+        background: linear-gradient(135deg, #e0f7fa, #e0f2f1);
+    }
+    .team-container {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 40px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+        margin-bottom: 40px;
+    }
+    .team-title {
+        font-weight: 800;
+        color: #00796b;
+    }
+    .member-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        padding: 20px;
+        text-align: center;
+    }
+    .member-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    .member-card img {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 50%;
+        margin-bottom: 15px;
+        border: 4px solid #00796b20;
+    }
+    .member-card h5 {
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #004d40;
+    }
+    .member-card p {
+        margin-bottom: 10px;
+        color: #555;
+    }
+    .member-card .social-icons a {
+        color: #00796b;
+        margin: 0 6px;
+        font-size: 18px;
+        transition: color 0.3s;
+    }
+    .member-card .social-icons a:hover {
+        color: #004d40;
+    }
+</style>
+
+<div class="container py-5 team-container">
+    <h1 class="mb-4 team-title text-center">{{ page_title }}</h1>
+
+    <p class="lead text-center mb-5">
+        Conheça os desenvolvedores responsáveis pela <strong>AppFiber</strong>. Somos apaixonados por criar soluções tecnológicas que transformam a gestão de eventos, oficinas e formações.
+    </p>
+
+    <div class="row g-4 justify-content-center">
+
+        <!-- André Felippe -->
+        <div class="col-md-5 col-sm-8">
+            <div class="member-card">
+                <img src="/static/img/team/andre.jpg" alt="André Felippe">
+                <h5>André Felippe</h5>
+                <p>Desenvolvedor Full Stack e Fundador</p>
+                <div class="social-icons">
+                    <a href="#"><i class="bi bi-linkedin"></i></a>
+                    <a href="#"><i class="bi bi-github"></i></a>
+                    <a href="#"><i class="bi bi-envelope"></i></a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Felipe Cabral -->
+        <div class="col-md-5 col-sm-8">
+            <div class="member-card">
+                <img src="/static/img/team/felipe.jpg" alt="Felipe Cabral">
+                <h5>Felipe Cabral</h5>
+                <p>Desenvolvedor Full Stack & Fundador</p>
+                <div class="social-icons">
+                    <a href="#"><i class="bi bi-linkedin"></i></a>
+                    <a href="#"><i class="bi bi-github"></i></a>
+                    <a href="#"><i class="bi bi-envelope"></i></a>
+                </div>
+            </div>
+        </div>
+
+        
+
+    </div>
+</div>
+
+{% endblock %}
