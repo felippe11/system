@@ -1,1 +1,601 @@
-{% extends 'pages/base_page.html' %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre Nós - AppFiber</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            --dark-bg: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--dark-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+            color: #fff;
+        }
+
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: var(--dark-bg);
+        }
+
+        .floating-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(40px);
+            animation: float 20s infinite ease-in-out;
+            opacity: 0.1;
+        }
+
+        .shape:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            background: var(--primary-gradient);
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .shape:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            background: var(--secondary-gradient);
+            top: 70%;
+            right: 20%;
+            animation-delay: -7s;
+        }
+
+        .shape:nth-child(3) {
+            width: 250px;
+            height: 250px;
+            background: var(--accent-gradient);
+            bottom: 20%;
+            left: 60%;
+            animation-delay: -14s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            padding: 80px 0;
+        }
+
+        .glass-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 60px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 4s ease-in-out infinite;
+            margin-bottom: 2rem;
+            line-height: 1.1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 3rem;
+            line-height: 1.6;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .feature-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            padding: 2px;
+            background: var(--primary-gradient);
+            border-radius: 20px;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: xor;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 30px 80px rgba(102, 126, 234, 0.3);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            color: white;
+            position: relative;
+        }
+
+        .feature-icon::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: var(--primary-gradient);
+            border-radius: 18px;
+            z-index: -1;
+            filter: blur(8px);
+            opacity: 0.5;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 1rem;
+        }
+
+        .feature-description {
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .section-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .custom-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .custom-list li {
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            padding-left: 3rem;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .custom-list li:hover {
+            color: #fff;
+            transform: translateX(10px);
+        }
+
+        .custom-list li::before {
+            content: "✨";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 1; transform: translateY(-50%) scale(1); }
+            50% { opacity: 0.5; transform: translateY(-50%) scale(1.2); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            background: var(--success-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: block;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .contact-section {
+            margin-top: 5rem;
+            padding: 3rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            text-align: center;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover {
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        .contact-item i {
+            font-size: 1.5rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .pulse-animation {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 2rem;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        @media (max-width: 768px) {
+            .glass-container {
+                padding: 40px 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .hero-title {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg">
+        <div class="floating-shapes">
+            <div class="shape"></div>
+            <div class="shape"></div>
+            <div class="shape"></div>
+        </div>
+    </div>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="glass-container">
+                <div class="text-center">
+                    <h1 class="hero-title">AppFiber</h1>
+                    <p class="hero-subtitle">
+                        Transformando a gestão de eventos, oficinas e formações através da tecnologia mais avançada. 
+                        Uma plataforma completa que digitaliza processos e cria experiências memoráveis.
+                    </p>
+                </div>
+
+                <!-- Feature Cards -->
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-rocket-takeoff"></i>
+                        </div>
+                        <h3 class="feature-title">Inovação Contínua</h3>
+                        <p class="feature-description">
+                            Tecnologia de ponta que evolui constantemente para atender às necessidades do futuro.
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <h3 class="feature-title">Experiência Única</h3>
+                        <p class="feature-description">
+                            Interface intuitiva e experiência personalizada para cada tipo de usuário.
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <h3 class="feature-title">Segurança Total</h3>
+                        <p class="feature-description">
+                            Proteção avançada de dados em conformidade com LGPD e padrões internacionais.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stats Section -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-number">10K+</span>
+                        <span class="stat-label">Eventos Criados</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">50K+</span>
+                        <span class="stat-label">Participantes</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">99.9%</span>
+                        <span class="stat-label">Uptime</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">24/7</span>
+                        <span class="stat-label">Suporte</span>
+                    </div>
+                </div>
+
+                <!-- What We Do Section -->
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h2 class="section-title">🚀 O que fazemos</h2>
+                        <p class="section-subtitle">Soluções completas para gestão de eventos e educação</p>
+                        <ul class="custom-list">
+                            <li>Gestão completa de eventos, oficinas e simpósios com automação inteligente</li>
+                            <li>Controle avançado de inscrições, lotes, pagamentos e sistemas de desconto</li>
+                            <li>Emissão automática de certificados personalizados com blockchain</li>
+                            <li>Sistema de presença por QR Code, reconhecimento facial e palavras-chave</li>
+                            <li>Plataforma completa para submissão, avaliação e publicação científica</li>
+                            <li>Dashboards interativos para todos os tipos de usuários</li>
+                            <li>Arquitetura multi-tenant com isolamento completo de dados</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Mission & Vision -->
+                <div class="row mt-5">
+                    <div class="col-md-6">
+                        <h3 class="section-title">🎯 Nossa Missão</h3>
+                        <p class="feature-description">
+                            Democratizar o acesso à tecnologia educacional, transformando a gestão de eventos 
+                            e projetos educacionais através de soluções inovadoras, acessíveis e sustentáveis.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h3 class="section-title">🌐 Visão de Futuro</h3>
+                        <p class="feature-description">
+                            Ser a plataforma de referência global em gestão de eventos educacionais, 
+                            impulsionando a transformação digital da educação mundial.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Values Section -->
+                <div class="mt-5">
+                    <h3 class="section-title">💎 Nossos Valores</h3>
+                    <p class="section-subtitle">Os princípios que guiam nossa jornada</p>
+                    <ul class="custom-list">
+                        <li>Inovação disruptiva e pensamento exponencial</li>
+                        <li>Excelência operacional e melhoria contínua</li>
+                        <li>Transparência radical e ética em todas as decisões</li>
+                        <li>Inclusão, diversidade e acessibilidade universal</li>
+                        <li>Obsessão pela experiência do usuário</li>
+                        <li>Sustentabilidade e responsabilidade social</li>
+                    </ul>
+                </div>
+
+                <!-- Contact Section -->
+                <div class="contact-section">
+                    <h3 class="section-title">📞 Conecte-se Conosco</h3>
+                    <p class="section-subtitle">Estamos prontos para transformar seus eventos</p>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="contact-item">
+                                <i class="bi bi-envelope-heart"></i>
+                                <div>
+                                    <strong>Email</strong><br>
+                                    suporte@appfiber.com.br
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="contact-item">
+                                <i class="bi bi-telephone-plus"></i>
+                                <div>
+                                    <strong>Telefone</strong><br>
+                                    (82) 0000-0000
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="contact-item pulse-animation">
+                                <i class="bi bi-clock-history"></i>
+                                <div>
+                                    <strong>Atendimento</strong><br>
+                                    Seg-Sex, 08h às 18h
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="scroll-indicator">
+                <i class="bi bi-chevron-double-down"></i>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Smooth scroll animation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add intersection observer for animations
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            // Observe all feature cards
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(30px)';
+                card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                observer.observe(card);
+            });
+
+            // Parallax effect for floating shapes
+            window.addEventListener('scroll', () => {
+                const scrolled = window.pageYOffset;
+                const shapes = document.querySelectorAll('.shape');
+                
+                shapes.forEach((shape, index) => {
+                    const speed = 0.5 + (index * 0.2);
+                    shape.style.transform = `translateY(${scrolled * speed}px)`;
+                });
+            });
+
+            // Smooth hover effects
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-10px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
