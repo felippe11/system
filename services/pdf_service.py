@@ -2710,7 +2710,7 @@ def gerar_evento_qrcode_pdf(evento_id):
     from datetime import datetime
     from flask import send_file, flash, redirect, url_for
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
     import qrcode
 
@@ -3263,7 +3263,7 @@ def gerar_programacao_evento_pdf(evento_id):
     import os
     from datetime import datetime
     from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
 
     evento = Evento.query.get_or_404(evento_id)
@@ -3293,8 +3293,9 @@ def gerar_programacao_evento_pdf(evento_id):
     filename = f'programacao_evento_{evento_id}.pdf'
     pdf_path = os.path.join(pdf_dir, filename)
 
-    c = canvas.Canvas(pdf_path, pagesize=A4)
-    width, height = A4
+    # Geração em modo paisagem para formato estilo folder
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
     c.setTitle(f'Programação - {evento.nome}')
 
     c.setFont('Helvetica-Bold', 16)
@@ -3306,21 +3307,35 @@ def gerar_programacao_evento_pdf(evento_id):
             text.textLine(line)
         c.drawText(text)
 
-    y = height - 4 * cm
+    # Margens e configuração de duas colunas
+    margin_x = 2 * cm
+    start_y = height - 4 * cm
+    column_width = (width - 2 * margin_x) / 2
+    current_x = margin_x
+    y = start_y
+    coluna = 0
+
     for data in sorted_dates:
         c.setFont('Helvetica-Bold', 14)
-        c.drawString(2 * cm, y, data)
+        c.drawString(current_x, y, data)
         y -= 0.7 * cm
         for item in sorted(grouped[data], key=lambda x: x['inicio']):
             linha = f"{item['inicio']} - {item['fim']} | {item['titulo']}"
             if item['ministrante']:
                 linha += f" - {item['ministrante']}"
             c.setFont('Helvetica', 11)
-            c.drawString(2.5 * cm, y, linha)
+            c.drawString(current_x + 0.5 * cm, y, linha)
             y -= 0.6 * cm
             if y < 2 * cm:
-                c.showPage()
-                y = height - 2 * cm
+                if coluna == 0:
+                    coluna = 1
+                    current_x = margin_x + column_width
+                    y = start_y
+                else:
+                    c.showPage()
+                    coluna = 0
+                    current_x = margin_x
+                    y = start_y
 
     c.showPage()
     c.save()
