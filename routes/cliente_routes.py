@@ -1,15 +1,16 @@
 from flask import (
     Blueprint,
+    abort,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    flash,
-    abort,
     session,
+    url_for,
 )
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
 from werkzeug.security import generate_password_hash
+
 from extensions import db
 from models import Cliente
 
@@ -107,31 +108,32 @@ def excluir_cliente(cliente_id):
 
     try:
         from sqlalchemy import or_, text
+
         from models import (
-            Usuario,
-            Oficina,
-            OficinaDia,
-            Checkin,
-            Inscricao,
-            MaterialOficina,
-            RelatorioOficina,
-            Ministrante,
-            Evento,
-            Patrocinador,
             CampoPersonalizadoCadastro,
-            LinkCadastro,
-            ConfiguracaoCliente,
             CertificadoTemplate,
-            Feedback,
-            RespostaCampo,
-            RespostaFormulario,
+            Checkin,
             ConfiguracaoAgendamento,
+            ConfiguracaoCliente,
+            Evento,
+            EventoInscricaoTipo,
+            Feedback,
             HorarioVisitacao,
-            SalaVisitacao,
+            Inscricao,
+            LinkCadastro,
             LoteInscricao,
             LoteTipoInscricao,
+            MaterialOficina,
+            Ministrante,
+            Oficina,
+            OficinaDia,
+            Patrocinador,
             RegraInscricaoEvento,
-            EventoInscricaoTipo,
+            RelatorioOficina,
+            RespostaCampo,
+            RespostaFormulario,
+            SalaVisitacao,
+            Usuario,
         )
 
         # ===============================
@@ -144,9 +146,13 @@ def excluir_cliente(cliente_id):
                 Checkin.query.filter_by(usuario_id=usuario.id).delete()
                 Inscricao.query.filter_by(usuario_id=usuario.id).delete()
                 Feedback.query.filter_by(usuario_id=usuario.id).delete()
-                RespostaCampo.query.filter_by(
-                    resposta_formulario_id=usuario.id
-                ).delete()
+                resposta_ids = db.session.query(RespostaFormulario.id).filter_by(
+                    usuario_id=usuario.id
+                )
+                RespostaCampo.query.filter(
+                    RespostaCampo.resposta_formulario_id.in_(resposta_ids)
+                ).delete(synchronize_session=False)
+
                 RespostaFormulario.query.filter_by(usuario_id=usuario.id).delete()
 
         Usuario.query.filter_by(cliente_id=cliente.id).delete()
