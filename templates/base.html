@@ -380,8 +380,9 @@
             transform: rotate(15deg);
         }
 
-        /* Mensagens Flash aprimoradas */
-        .alert {
+        /* Mensagens Flash e Toasts aprimorados */
+        .alert,
+        .toast {
             border-radius: 10px;
             box-shadow: var(--shadow-sm);
         }
@@ -427,17 +428,21 @@
     <!-- MENSAGENS FLASH -->
     {% with msgs = get_flashed_messages(with_categories=true) %}
         {% if msgs %}
-            <div class="container mt-3">
+            <div class="toast-container position-fixed bottom-0 end-0 p-3">
                 {% for category, message in msgs %}
-                    {% set alert_class = "info" if category == "message" else category %}
-                    <div class="alert alert-{{ alert_class }} alert-dismissible fade show" role="alert">
-                        <i class="bi 
-                            {% if alert_class == "success" %}bi-check-circle-fill
-                            {% elif alert_class == "danger" %}bi-exclamation-triangle-fill
-                            {% elif alert_class == "warning" %}bi-exclamation-circle-fill
-                            {% else %}bi-info-circle-fill{% endif %} me-2"></i>
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    {% set toast_class = "info" if category == "message" else category %}
+                    <div class="toast align-items-center text-bg-{{ toast_class }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="bi
+                                    {% if toast_class == "success" %}bi-check-circle
+                                    {% elif toast_class == "danger" %}bi-exclamation-circle
+                                    {% elif toast_class == "warning" %}bi-exclamation-triangle
+                                    {% else %}bi-info-circle{% endif %} me-2"></i>
+                                {{ message }}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
@@ -614,13 +619,10 @@
                 });
             });
             
-            // Auto-hide para as mensagens de alerta após 5 segundos
-            const alerts = document.querySelectorAll('.alert:not(.alert-danger)');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const closeBtn = alert.querySelector('.btn-close');
-                    if (closeBtn) closeBtn.click();
-                }, 5000);
+            // Inicializa e exibe toasts gerados via mensagens flash
+            document.querySelectorAll('.toast').forEach(toastEl => {
+                const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+                toast.show();
             });
         });
     </script>
