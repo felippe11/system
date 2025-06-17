@@ -664,8 +664,11 @@ def abrir_inscricao_customizada(slug):
     evento = link.evento
     return render_template("auth/cadastro_participante.html", evento=evento)
 
-@inscricao_routes.route('/inscricao/token/<token>')
+@inscricao_routes.route('/inscricao/token/<token>', methods=['GET', 'POST'])
 def abrir_inscricao_token(token):
+    if request.method == 'POST':
+        # Reutiliza a lógica de cadastro para processar o formulário
+        return cadastro_participante(token)
     link = LinkCadastro.query.filter_by(token=token).first()
 
     if not link or not link.evento:
