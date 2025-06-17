@@ -1,9 +1,10 @@
 /* Navbar shared styles */
 .navbar {
-    background-color: #fff;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    padding: 12px 0;
+    background-color: #f8f9fa; /* Cor de fundo clara */
+    padding: 15px 0; /* Espaçamento interno */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave */
     transition: all 0.3s ease;
+    backdrop-filter: blur(10px); /* Aplica o efeito de desfoque */
 }
 
 .navbar.scrolled {
@@ -14,8 +15,8 @@
 }
 
 .navbar-brand {
-    font-weight: 700;
-    font-size: 1.7rem;
+    font-weight: bold; /* Texto em negrito */
+    font-size: 1.5rem; /* Tamanho da fonte maior */
     color: var(--primary-color);
 }
 
@@ -25,7 +26,7 @@
 }
 
 .navbar-brand span {
-    color: var(--primary-color);
+    color: var(--secondary-color); /* Cor secundária para o "Fiber" */
 }
 
 .nav-link {
@@ -38,6 +39,16 @@
 .nav-link:hover,
 .nav-link.active {
     color: var(--primary-color) !important;
+}
+
+.navbar-nav .nav-link {
+    color: #333; /* Cor do texto dos links */
+    margin-left: 15px; /* Espaçamento entre os links */
+    transition: color 0.3s ease; /* Transição suave na cor */
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--secondary-color); /* Cor secundária ao passar o mouse */
 }
 
 .btn-login {
@@ -69,6 +80,19 @@
 .btn-register:hover {
     background-color: var(--primary-color-light);
     border-color: var(--primary-color-light);
+}
+
+.btn-inscricao {
+    background-color: var(--secondary-color); /* Cor de fundo secundária */
+    color: white; /* Cor do texto branco */
+    border: none; /* Sem borda */
+    padding: 10px 20px; /* Espaçamento interno */
+    border-radius: 5px; /* Borda arredondada */
+    transition: background-color 0.3s ease; /* Transição suave na cor de fundo */
+}
+
+.btn-inscricao:hover {
+    background-color: var(--primary-color); /* Cor primária ao passar o mouse */
 }
 
 .theme-toggle {
@@ -122,6 +146,20 @@
     opacity: 1;
 }
 
+.dropdown-menu {
+    border: none; /* Remove a borda padrão */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Sombra mais pronunciada */
+}
+
+.dropdown-item {
+    color: #333; /* Cor do texto dos itens do dropdown */
+    transition: background-color 0.3s ease; /* Transição suave na cor de fundo */
+}
+
+.dropdown-item:hover {
+    background-color: var(--light-gray); /* Cor de fundo clara ao passar o mouse */
+}
+
 @media (max-width: 991.98px) {
     .navbar-collapse {
         background-color: #fff;
@@ -135,5 +173,16 @@
         margin: 10px 0;
         display: block;
         text-align: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.2rem; /* Reduz o tamanho da fonte em telas menores */
+    }
+
+    .navbar-nav .nav-link {
+        margin-left: 0; /* Remove o espaçamento entre os links */
+        margin-top: 10px; /* Adiciona espaçamento vertical */
     }
 }
