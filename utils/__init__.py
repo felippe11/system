@@ -51,7 +51,7 @@ def preco_com_taxa(base):
     """
     base = Decimal(str(base))
     cfg  = Configuracao.query.first()
-    perc = Decimal(str(cfg.taxa_percentual_inscricao if cfg else 0))
+    perc = Decimal(cfg.taxa_percentual_inscricao or 0) if cfg else Decimal("0")
     valor = base * (1 + perc/100)
     # duas casas, arredondamento comercial
     return valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
