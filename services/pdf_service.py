@@ -3278,15 +3278,17 @@ def gerar_programacao_evento_pdf(evento_id):
     )
 
     grouped = {}
-    for of in oficinas:
-        for dia in of.dias:
-            data_str = dia.data.strftime('%d/%m/%Y')
-            grouped.setdefault(data_str, []).append({
-                'titulo': of.titulo,
-                'ministrante': of.ministrante_obj.nome if of.ministrante_obj else '',
-                'inicio': dia.horario_inicio,
-                'fim': dia.horario_fim,
-            })
+    for oficina in oficinas:
+        for dia_obj in getattr(oficina, "dias", []):
+            data_str = dia_obj.data.strftime("%d/%m/%Y")
+            grouped.setdefault(data_str, []).append(
+                {
+                    "titulo": oficina.titulo,
+                    "ministrante": oficina.ministrante_obj.nome if oficina.ministrante_obj else "",
+                    "inicio": dia_obj.horario_inicio,
+                    "fim": dia_obj.horario_fim,
+                }
+            )
 
     sorted_dates = sorted(grouped.keys(), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
 
