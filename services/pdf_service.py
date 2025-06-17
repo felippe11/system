@@ -3265,6 +3265,8 @@ def gerar_programacao_evento_pdf(evento_id):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     # 1. Data Retrieval and Preparation
     evento = Evento.query.get_or_404(evento_id)
