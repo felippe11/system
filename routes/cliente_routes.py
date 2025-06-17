@@ -175,6 +175,20 @@ def excluir_cliente(cliente_id):
         # ===============================
         # 3️⃣ MINISTRANTES
         # ===============================
+        ministrantes = Ministrante.query.filter_by(cliente_id=cliente.id).all()
+        for m in ministrantes:
+            # Remove associações em oficinas de outros clientes
+            db.session.execute(
+                text(
+                    "DELETE FROM oficina_ministrantes_association WHERE ministrante_id = :mid"
+                ),
+                {"mid": m.id},
+            )
+            # Remove vínculo direto caso alguma oficina ainda aponte para este ministrante
+            Oficina.query.filter_by(ministrante_id=m.id).update(
+                {"ministrante_id": None}, synchronize_session=False
+            )
+
         Ministrante.query.filter_by(cliente_id=cliente.id).delete()
 
         # ===============================
