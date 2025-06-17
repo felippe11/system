@@ -1309,13 +1309,20 @@ function updateProgressBar(step) {
 </script>
 {% endif %}
 
-<script>
+  <script>
   function carregarEvento(eventoId) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentStep = urlParams.get('step');
+    let targetUrl = "{{ url_for('evento_routes.configurar_evento') }}";
     if (eventoId) {
-      window.location.href = "{{ url_for('evento_routes.configurar_evento') }}?evento_id=" + eventoId;
-    } else {
-      window.location.href = "{{ url_for('evento_routes.configurar_evento') }}";
+      targetUrl += `?evento_id=${eventoId}`;
+      if (currentStep) {
+        targetUrl += `&step=${currentStep}`;
+      }
+    } else if (currentStep) {
+      targetUrl += `?step=${currentStep}`;
     }
+    window.location.href = targetUrl;
   }
 
   // Código para controle de etapas quando não há pagamento habilitado
