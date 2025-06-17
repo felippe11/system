@@ -3256,8 +3256,8 @@ def gerar_qrcode_token(token):
 
 
 def gerar_programacao_evento_pdf(evento_id):
-    """Gera um PDF simples da programação do evento"""
-    from models import Evento, Oficina
+    """Gera um PDF estilo folder com programação e logos"""
+    from models import Evento, Oficina, Patrocinador
     from extensions import db
     from flask import current_app
     import os
@@ -3265,8 +3265,10 @@ def gerar_programacao_evento_pdf(evento_id):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
+    from reportlab.lib.utils import ImageReader
 
     evento = Evento.query.get_or_404(evento_id)
+    patrocinadores = Patrocinador.query.filter_by(evento_id=evento_id).all()
 
     oficinas = (
         Oficina.query
@@ -3298,18 +3300,36 @@ def gerar_programacao_evento_pdf(evento_id):
     width, height = landscape(A4)
     c.setTitle(f'Programação - {evento.nome}')
 
+    margin_x = 2 * cm
+    banner_height = 3 * cm
+    title_y = height - 2 * cm
+
+    banner_path = None
+    if evento.banner_url:
+        banner_file = os.path.join(current_app.root_path, evento.banner_url.lstrip('/'))
+        if os.path.exists(banner_file):
+            banner_path = banner_file
+
+    if banner_path:
+        try:
+            banner = ImageReader(banner_path)
+            c.drawImage(banner, margin_x, height - banner_height - cm,
+                        width - 2 * margin_x, banner_height, preserveAspectRatio=True)
+            title_y = height - banner_height - 1.5 * cm
+        except Exception:
+            pass
+
     c.setFont('Helvetica-Bold', 16)
-    c.drawCentredString(width / 2, height - 2 * cm, f'Programação - {evento.nome}')
+    c.drawCentredString(width / 2, title_y, f'Programação - {evento.nome}')
     c.setFont('Helvetica', 12)
     if evento.descricao:
-        text = c.beginText(2 * cm, height - 3 * cm)
+        text = c.beginText(margin_x, title_y - cm)
         for line in evento.descricao.splitlines():
             text.textLine(line)
         c.drawText(text)
 
     # Margens e configuração de duas colunas
-    margin_x = 2 * cm
-    start_y = height - 4 * cm
+    start_y = title_y - 2 * cm
     column_width = (width - 2 * margin_x) / 2
     current_x = margin_x
     y = start_y
@@ -3336,6 +3356,41 @@ def gerar_programacao_evento_pdf(evento_id):
                     coluna = 0
                     current_x = margin_x
                     y = start_y
+
+    c.showPage()
+
+    # Segunda página com patrocinadores
+    if patrocinadores:
+        width, height = landscape(A4)
+        y = height - 2 * cm
+        c.setFont('Helvetica-Bold', 16)
+        c.drawCentredString(width / 2, y, 'Patrocinadores e Organizadores')
+        y -= 1 * cm
+        categorias = ['Realização', 'Organização', 'Patrocínio', 'Apoio']
+        for categoria in categorias:
+            logos = [p for p in patrocinadores if p.categoria == categoria]
+            if not logos:
+                continue
+            c.setFont('Helvetica-Bold', 14)
+            c.drawString(margin_x, y, categoria)
+            y -= 1 * cm
+            x = margin_x
+            logo_h = 2 * cm
+            for pat in logos:
+                logo_file = os.path.join(current_app.static_folder, pat.logo_path)
+                if os.path.exists(logo_file):
+                    try:
+                        c.drawImage(ImageReader(logo_file), x, y - logo_h, width=3*cm, height=logo_h, preserveAspectRatio=True)
+                    except Exception:
+                        pass
+                x += 3.5 * cm
+                if x > width - margin_x - 3 * cm:
+                    x = margin_x
+                    y -= logo_h + 0.5 * cm
+                    if y < 2 * cm:
+                        c.showPage()
+                        y = height - 2 * cm
+            y -= logo_h + 1 * cm
 
     c.showPage()
     c.save()
