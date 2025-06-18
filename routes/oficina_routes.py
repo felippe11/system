@@ -340,7 +340,11 @@ def excluir_oficina(oficina_id):
         # 6️⃣ **Excluir feedbacks relacionados à oficina**
         db.session.query(Feedback).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Feedbacks da oficina removidos.")
-        # 7️⃣ **Excluir associações com ministrantes na tabela de associação**
+
+        # 7️⃣ **Excluir tipos de inscrição da oficina**
+        db.session.query(InscricaoTipo).filter_by(oficina_id=oficina.id).delete()
+        print("✅ [DEBUG] Tipos de inscrição removidos.")
+        # 8️⃣ **Excluir associações com ministrantes na tabela de associação**
         from sqlalchemy import text
         db.session.execute(
             text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
@@ -348,7 +352,7 @@ def excluir_oficina(oficina_id):
         )
         print("✅ [DEBUG] Associações com ministrantes removidas.")
 
-        # 8️⃣ **Excluir a própria oficina**
+        # 9️⃣ **Excluir a própria oficina**
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
@@ -386,6 +390,7 @@ def excluir_todas_oficinas():
             db.session.query(MaterialOficina).filter_by(oficina_id=oficina.id).delete()
             db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
             db.session.query(Feedback).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(InscricaoTipo).filter_by(oficina_id=oficina.id).delete()
             db.session.delete(oficina)
 
         db.session.commit()
