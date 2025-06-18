@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
-from models import Oficina, OficinaDia, Ministrante, Evento, Cliente, Checkin, Inscricao, MaterialOficina, RelatorioOficina, InscricaoTipo
+from models import Oficina, OficinaDia, Ministrante, Evento, Cliente, Checkin, Inscricao, MaterialOficina, RelatorioOficina, InscricaoTipo, Feedback
 from extensions import db
 from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
@@ -337,7 +337,14 @@ def excluir_oficina(oficina_id):
         db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
         print("✅ [DEBUG] Relatórios da oficina removidos.")
 
-        # 6️⃣ **Excluir associações com ministrantes na tabela de associação**
+        # 6️⃣ **Excluir feedbacks relacionados à oficina**
+        db.session.query(Feedback).filter_by(oficina_id=oficina.id).delete()
+        print("✅ [DEBUG] Feedbacks da oficina removidos.")
+
+        # 7️⃣ **Excluir tipos de inscrição da oficina**
+        db.session.query(InscricaoTipo).filter_by(oficina_id=oficina.id).delete()
+        print("✅ [DEBUG] Tipos de inscrição removidos.")
+        # 8️⃣ **Excluir associações com ministrantes na tabela de associação**
         from sqlalchemy import text
         db.session.execute(
             text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
@@ -345,7 +352,7 @@ def excluir_oficina(oficina_id):
         )
         print("✅ [DEBUG] Associações com ministrantes removidas.")
 
-        # 7️⃣ **Excluir a própria oficina**
+        # 9️⃣ **Excluir a própria oficina**
         db.session.delete(oficina)
         db.session.commit()
         print("✅ [DEBUG] Oficina removida com sucesso!")
@@ -382,6 +389,8 @@ def excluir_todas_oficinas():
             db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete()
             db.session.query(MaterialOficina).filter_by(oficina_id=oficina.id).delete()
             db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(Feedback).filter_by(oficina_id=oficina.id).delete()
+            db.session.query(InscricaoTipo).filter_by(oficina_id=oficina.id).delete()
             db.session.delete(oficina)
 
         db.session.commit()
