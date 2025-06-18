@@ -168,7 +168,7 @@ def criar_eventos(clientes, quantidade_por_cliente=5):
                 banner_url=f"banners/evento_{i}_{cliente.id}.jpg",
                 programacao=fake.paragraph(nb_sentences=3),
                 localizacao=fake.address(),
-                link_mapa="https://maps.google.com/?q=" + fake.latitude() + "," + fake.longitude(),
+                link_mapa=f"https://maps.google.com/?q={fake.latitude()},{fake.longitude()}",
                 data_inicio=data_inicio,
                 data_fim=data_fim,
                 hora_inicio=datetime.strptime(f"{random.randint(8, 10)}:00", "%H:%M").time(),

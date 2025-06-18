@@ -117,6 +117,7 @@ def excluir_cliente(cliente_id):
             EventoInscricaoTipo,
             Feedback,
             HorarioVisitacao,
+            InscricaoTipo,
             Inscricao,
             LinkCadastro,
             LoteInscricao,
@@ -138,6 +139,9 @@ def excluir_cliente(cliente_id):
             Sorteio,
             Pagamento,
             Usuario,
+            AgendamentoVisita,
+            AlunoVisitante,
+            ProfessorBloqueado,
         )
 
         # ===============================
@@ -190,6 +194,10 @@ def excluir_cliente(cliente_id):
             OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
             MaterialOficina.query.filter_by(oficina_id=oficina.id).delete()
             RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
+            Feedback.query.filter_by(oficina_id=oficina.id).delete()
+
+            # Remove tipos de inscrição vinculados à oficina
+            InscricaoTipo.query.filter_by(oficina_id=oficina.id).delete()
 
             db.session.execute(
                 text(
@@ -229,6 +237,30 @@ def excluir_cliente(cliente_id):
 
         for evento in eventos:
             with db.session.no_autoflush:
+                # Limpar referências em usuários para tipos de inscrição deste evento
+                Usuario.query.filter(
+                    Usuario.tipo_inscricao_id.in_(
+                        db.session.query(EventoInscricaoTipo.id).filter_by(
+                            evento_id=evento.id
+                        )
+                    )
+                ).update({"tipo_inscricao_id": None}, synchronize_session=False)
+                agendamento_ids = (
+                    db.session.query(AgendamentoVisita.id)
+                    .join(HorarioVisitacao)
+                    .filter(HorarioVisitacao.evento_id == evento.id)
+                )
+
+                AlunoVisitante.query.filter(
+                    AlunoVisitante.agendamento_id.in_(agendamento_ids)
+                ).delete(synchronize_session=False)
+
+                AgendamentoVisita.query.filter(
+                    AgendamentoVisita.id.in_(agendamento_ids)
+                ).delete(synchronize_session=False)
+
+                ProfessorBloqueado.query.filter_by(evento_id=evento.id).delete()
+
                 HorarioVisitacao.query.filter_by(evento_id=evento.id).delete()
                 ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).delete()
                 Patrocinador.query.filter_by(evento_id=evento.id).delete()
@@ -262,7 +294,9 @@ def excluir_cliente(cliente_id):
             CampoFormularioTemplate.template_id.in_(template_ids)
         ).delete(synchronize_session=False)
         FormularioTemplate.query.filter_by(cliente_id=cliente.id).delete()
-        Formulario.query.filter_by(cliente_id=cliente.id).delete()
+        formularios = Formulario.query.filter_by(cliente_id=cliente.id).all()
+        for f in formularios:
+            db.session.delete(f)  # cascades to campos and respostas
 
         # Sorteios e pagamentos
         Sorteio.query.filter_by(cliente_id=cliente.id).delete()
