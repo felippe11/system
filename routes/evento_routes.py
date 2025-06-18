@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import or_, cast, Date, func
+from sqlalchemy import or_, cast, Date, func, text
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from collections import defaultdict
@@ -12,7 +12,10 @@ from extensions import db
 from models import (
     Evento, Oficina, LinkCadastro, LoteInscricao, EventoInscricaoTipo,
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
-    ConfiguracaoCertificadoEvento
+    ConfiguracaoCertificadoEvento, Checkin, OficinaDia, MaterialOficina,
+    RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
+    HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
+    ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico
 )
 from utils import preco_com_taxa
 
@@ -586,6 +589,79 @@ def salvar_config_certificado(evento_id):
 
     flash('Configuração de certificado atualizada!', 'success')
     return redirect(url_for('evento_routes.configurar_evento', evento_id=evento_id))
+
+
+@evento_routes.route('/excluir_evento/<int:evento_id>', methods=['POST'])
+@login_required
+def excluir_evento(evento_id):
+    evento = Evento.query.get_or_404(evento_id)
+
+    if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+        flash('Você não tem permissão para excluir este evento.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    try:
+        # Desassociar usuários do evento
+        Usuario.query.filter_by(evento_id=evento.id).update({'evento_id': None})
+
+        # Excluir oficinas e dados relacionados
+        for oficina in list(evento.oficinas):
+            Checkin.query.filter_by(oficina_id=oficina.id).delete()
+            Inscricao.query.filter_by(oficina_id=oficina.id).delete()
+            OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
+            MaterialOficina.query.filter_by(oficina_id=oficina.id).delete()
+            RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
+            from sqlalchemy import text
+            db.session.execute(
+                text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oid'),
+                {'oid': oficina.id}
+            )
+            db.session.delete(oficina)
+
+        # Remover check-ins diretamente do evento
+        Checkin.query.filter_by(evento_id=evento.id).delete()
+
+        # Excluir inscrições do evento
+        Inscricao.query.filter_by(evento_id=evento.id).delete()
+
+        # Excluir links de cadastro
+        LinkCadastro.query.filter_by(evento_id=evento.id).delete()
+
+        # Excluir lotes e preços
+        lotes_ids = [l.id for l in evento.lotes]
+        if lotes_ids:
+            LoteTipoInscricao.query.filter(LoteTipoInscricao.lote_id.in_(lotes_ids)).delete(synchronize_session=False)
+        LoteInscricao.query.filter_by(evento_id=evento.id).delete()
+
+        # Excluir tipos e regras de inscrição
+        RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
+        EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+
+        # Configurações e demais dependências
+        ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).delete()
+        ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento.id).delete()
+        SalaVisitacao.query.filter_by(evento_id=evento.id).delete()
+        HorarioVisitacao.query.filter_by(evento_id=evento.id).delete()
+        AgendamentoVisita.query.filter(
+            AgendamentoVisita.horario_id.in_(db.session.query(HorarioVisitacao.id).filter_by(evento_id=evento.id))
+        ).delete(synchronize_session=False)
+        AlunoVisitante.query.filter(
+            AlunoVisitante.agendamento_id.in_(db.session.query(AgendamentoVisita.id).join(HorarioVisitacao).filter(HorarioVisitacao.evento_id == evento.id))
+        ).delete(synchronize_session=False)
+        ProfessorBloqueado.query.filter_by(evento_id=evento.id).delete()
+        Patrocinador.query.filter_by(evento_id=evento.id).delete()
+        Sorteio.query.filter_by(evento_id=evento.id).delete()
+        TrabalhoCientifico.query.filter_by(evento_id=evento.id).delete()
+
+        db.session.delete(evento)
+        db.session.commit()
+        flash('Evento excluído com sucesso!', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir evento: {str(e)}', 'danger')
+
+    return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
 
 @evento_routes.route('/exibir_evento/<int:evento_id>')
 @login_required
