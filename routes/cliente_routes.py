@@ -140,6 +140,7 @@ def excluir_cliente(cliente_id):
             Usuario,
             AgendamentoVisita,
             AlunoVisitante,
+            ProfessorBloqueado,
         )
 
         # ===============================
@@ -244,6 +245,8 @@ def excluir_cliente(cliente_id):
                 AgendamentoVisita.query.filter(
                     AgendamentoVisita.id.in_(agendamento_ids)
                 ).delete(synchronize_session=False)
+
+                ProfessorBloqueado.query.filter_by(evento_id=evento.id).delete()
 
                 HorarioVisitacao.query.filter_by(evento_id=evento.id).delete()
                 ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).delete()
