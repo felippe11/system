@@ -195,6 +195,9 @@ def excluir_cliente(cliente_id):
             RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
             Feedback.query.filter_by(oficina_id=oficina.id).delete()
 
+            # Remove tipos de inscrição vinculados à oficina
+            InscricaoTipo.query.filter_by(oficina_id=oficina.id).delete()
+
             db.session.execute(
                 text(
                     "DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id"
