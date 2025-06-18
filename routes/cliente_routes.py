@@ -237,6 +237,14 @@ def excluir_cliente(cliente_id):
 
         for evento in eventos:
             with db.session.no_autoflush:
+                # Limpar referências em usuários para tipos de inscrição deste evento
+                Usuario.query.filter(
+                    Usuario.tipo_inscricao_id.in_(
+                        db.session.query(EventoInscricaoTipo.id).filter_by(
+                            evento_id=evento.id
+                        )
+                    )
+                ).update({"tipo_inscricao_id": None}, synchronize_session=False)
                 agendamento_ids = (
                     db.session.query(AgendamentoVisita.id)
                     .join(HorarioVisitacao)
