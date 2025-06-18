@@ -138,6 +138,8 @@ def excluir_cliente(cliente_id):
             Sorteio,
             Pagamento,
             Usuario,
+            AgendamentoVisita,
+            AlunoVisitante,
         )
 
         # ===============================
@@ -229,6 +231,20 @@ def excluir_cliente(cliente_id):
 
         for evento in eventos:
             with db.session.no_autoflush:
+                agendamento_ids = (
+                    db.session.query(AgendamentoVisita.id)
+                    .join(HorarioVisitacao)
+                    .filter(HorarioVisitacao.evento_id == evento.id)
+                )
+
+                AlunoVisitante.query.filter(
+                    AlunoVisitante.agendamento_id.in_(agendamento_ids)
+                ).delete(synchronize_session=False)
+
+                AgendamentoVisita.query.filter(
+                    AgendamentoVisita.id.in_(agendamento_ids)
+                ).delete(synchronize_session=False)
+
                 HorarioVisitacao.query.filter_by(evento_id=evento.id).delete()
                 ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).delete()
                 Patrocinador.query.filter_by(evento_id=evento.id).delete()
