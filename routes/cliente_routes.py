@@ -117,6 +117,7 @@ def excluir_cliente(cliente_id):
             EventoInscricaoTipo,
             Feedback,
             HorarioVisitacao,
+            InscricaoTipo,
             Inscricao,
             LinkCadastro,
             LoteInscricao,
