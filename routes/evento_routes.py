@@ -15,7 +15,8 @@ from models import (
     ConfiguracaoCertificadoEvento, Checkin, OficinaDia, MaterialOficina,
     RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
-    ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico
+    ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico,
+    Feedback
 )
 from utils import preco_com_taxa
 
@@ -611,6 +612,7 @@ def excluir_evento(evento_id):
             OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
             MaterialOficina.query.filter_by(oficina_id=oficina.id).delete()
             RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
+            Feedback.query.filter_by(oficina_id=oficina.id).delete()
             from sqlalchemy import text
             db.session.execute(
                 text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oid'),
