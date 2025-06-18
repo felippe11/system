@@ -281,7 +281,9 @@ def excluir_cliente(cliente_id):
             CampoFormularioTemplate.template_id.in_(template_ids)
         ).delete(synchronize_session=False)
         FormularioTemplate.query.filter_by(cliente_id=cliente.id).delete()
-        Formulario.query.filter_by(cliente_id=cliente.id).delete()
+        formularios = Formulario.query.filter_by(cliente_id=cliente.id).all()
+        for f in formularios:
+            db.session.delete(f)  # cascades to campos and respostas
 
         # Sorteios e pagamentos
         Sorteio.query.filter_by(cliente_id=cliente.id).delete()
