@@ -193,6 +193,7 @@ def excluir_cliente(cliente_id):
             OficinaDia.query.filter_by(oficina_id=oficina.id).delete()
             MaterialOficina.query.filter_by(oficina_id=oficina.id).delete()
             RelatorioOficina.query.filter_by(oficina_id=oficina.id).delete()
+            Feedback.query.filter_by(oficina_id=oficina.id).delete()
 
             db.session.execute(
                 text(
