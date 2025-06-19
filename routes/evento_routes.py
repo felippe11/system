@@ -564,7 +564,7 @@ def configurar_evento():
         "evento/configurar_evento.html",
         eventos=eventos,
         evento=evento,
-        habilita_pagamento=current_user.habilita_pagamento,
+        habilita_pagamento=True,
         config_certificado=config_certificado,
         oficinas=oficinas,
     )
@@ -775,10 +775,9 @@ def criar_evento():
             db.session.add(novo_evento)
             db.session.flush()  # precisamos do ID para criar tipos de inscrição
 
-            # Se o cliente tiver pagamento habilitado, tratar tipos de inscrição
-            if current_user.habilita_pagamento:
-                nomes_tipos = request.form.getlist('nome_tipo[]')
-                precos = request.form.getlist('preco_tipo[]')
+            # Tratar tipos de inscrição
+            nomes_tipos = request.form.getlist('nome_tipo[]')
+            precos = request.form.getlist('preco_tipo[]')
                 
                 # Verificar se os tipos de inscrição foram fornecidos
                 if not nomes_tipos:
