@@ -159,9 +159,35 @@
   </div>
 
   <script>
-    document.getElementById('btnGerarPreview').addEventListener('click', function () {
-      const iframe = document.getElementById('certPreviewFrame');
-      iframe.src = '{{ url_for('certificado_routes.preview_certificado') }}?t=' + Date.now();
+    const previewUrl = '{{ url_for('certificado_routes.preview_certificado') }}';
+
+    function enviarPreview() {
+      const formData = new FormData();
+      const logo = document.querySelector('input[name="logo_certificado"]').files[0];
+      if (logo) formData.append('logo_certificado', logo);
+      const ass = document.querySelector('input[name="assinatura_certificado"]').files[0];
+      if (ass) formData.append('assinatura_certificado', ass);
+      const fundo = document.querySelector('input[name="fundo_certificado"]').files[0];
+      if (fundo) formData.append('fundo_certificado', fundo);
+      formData.append('texto_personalizado', document.querySelector('textarea[name="texto_personalizado"]').value);
+
+      fetch(previewUrl, {
+        method: 'POST',
+        body: formData
+      })
+        .then(r => r.ok ? r.blob() : Promise.reject())
+        .then(blob => {
+          const iframe = document.getElementById('certPreviewFrame');
+          const url = URL.createObjectURL(blob);
+          iframe.src = url;
+        })
+        .catch(() => console.error('Erro ao gerar preview'));
+    }
+
+    document.getElementById('btnGerarPreview').addEventListener('click', enviarPreview);
+    document.querySelector('textarea[name="texto_personalizado"]').addEventListener('input', enviarPreview);
+    ['logo_certificado', 'assinatura_certificado', 'fundo_certificado'].forEach(name => {
+      document.querySelector(`input[name="${name}"]`).addEventListener('change', enviarPreview);
     });
   </script>
 
