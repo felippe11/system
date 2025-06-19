@@ -1,24 +1,55 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+.dropdown-menu {
+    overflow: visible !important;
+    z-index: 9999 !important;
+    transform: none !important;
+    position: absolute !important;
+}
+
+.card {
+    overflow: visible !important;
+}
+
+.card-body {
+    overflow: visible !important;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+.export-dropdown-container {
+    position: static;
+}
+
+.export-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 0.125rem;
+}
+</style>
 <div class="container py-4">
     <!-- Header with shadow card -->
     <div class="card shadow-sm mb-4">
         <div class="card-body d-flex justify-content-between align-items-center">
             <h2 class="mb-0">{{ formulario.nome }}</h2>
-            <div>
-                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download"></i> Exportar
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                    <li><a class="dropdown-item" href="{{ url_for('formularios_routes.gerar_pdf_respostas_route', formulario_id=formulario.id) }}">
-                        <i class="bi bi-file-pdf"></i> PDF
-                    </a></li>
-
-                    <li><a class="dropdown-item" href="{{ url_for('formularios_routes.exportar_csv', formulario_id=formulario.id) }}">
-
-                        <i class="bi bi-file-excel"></i> CSV
-                    </a></li>
-                </ul>
+            <div class="export-dropdown-container">
+                <div class="dropend">
+                    <button class="btn btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download"></i> Exportar
+                    </button>
+                    <div class="dropdown-menu export-dropdown-menu shadow" data-bs-popper="none" aria-labelledby="exportDropdown">
+                        <a class="dropdown-item" href="{{ url_for('formularios_routes.gerar_pdf_respostas_route', formulario_id=formulario.id) }}">
+                            <i class="bi bi-file-pdf"></i> PDF
+                        </a>
+                        <a class="dropdown-item" href="{{ url_for('formularios_routes.exportar_csv', formulario_id=formulario.id) }}">
+                            <i class="bi bi-file-excel"></i> CSV
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
