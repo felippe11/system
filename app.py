@@ -90,9 +90,9 @@ def on_join(data):
         join_room(sala)
 
 
-# Rota básica
-@app.route("/")
-def index():
+# Rota para verificar o horário atual do servidor
+@app.route("/time")
+def current_time():
     now = datetime.utcnow()
     return f"Horário de Brasília: {brasilia_filter(now)}"
 
