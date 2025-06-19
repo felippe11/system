@@ -1050,3 +1050,20 @@ class LoteTipoInscricao(db.Model):
     def __repr__(self):
         return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
 
+
+# =================================
+#            ARQUIVO BINÁRIO
+# =================================
+class ArquivoBinario(db.Model):
+    """Modelo para armazenar arquivos binários no banco de dados."""
+    __tablename__ = 'arquivo_binario'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    conteudo = db.Column(db.LargeBinary, nullable=False)
+    mimetype = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ArquivoBinario id={self.id} nome={self.nome}>"
+
