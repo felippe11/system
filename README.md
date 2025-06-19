@@ -13,6 +13,8 @@ export GOOGLE_CLIENT_ID="<cliente_id_do_google>"
 export GOOGLE_CLIENT_SECRET="<cliente_secret_do_google>"
 export SECRET_KEY="<sua_chave_secreta>"
 export APP_BASE_URL="https://seu-dominio.com"
+export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
+export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
 ```
 
 `SECRET_KEY` garante que as sessões geradas por uma instância do Flask possam
@@ -24,6 +26,8 @@ autenticacao com a API do Gmail. O arquivo `token.json` sera gerado apos a
 primeira autenticacao.
 
 `APP_BASE_URL` define a URL base para gerar links externos, como o `notification_url` do Mercado Pago. Em desenvolvimento, aponte para um endereço público (ex.: URL do ngrok).
+
+`RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
 ## Acessibilidade
 
