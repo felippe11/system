@@ -6,7 +6,11 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    SECRET_KEY = os.urandom(24)  # Gera uma chave aleatória
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    if not SECRET_KEY:
+        if os.getenv("FLASK_ENV") == "production":
+            raise RuntimeError("SECRET_KEY environment variable not set")
+        SECRET_KEY = "dev_secret_key"  # Fixed key for development
 
     # URLs dos bancos de dados
     DB_ONLINE = 'postgresql://iafap:tOsydfgBrVx1o57X7oqznlABbwlFek84@dpg-cug5itl6l47c739tgung-a/iafap_database'
