@@ -13,6 +13,30 @@ from flask import Blueprint
 
 oficina_routes = Blueprint('oficina_routes', __name__, template_folder="../templates/oficina")
 
+@oficina_routes.route('/oficina/<int:oficina_id>/participantes')
+@login_required
+def lista_participantes(oficina_id):
+    """
+    Exibe uma página com a lista de participantes de uma oficina específica.
+    Substitui o modal que era usado anteriormente.
+    """
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for('dashboard_routes.dashboard'))
+        
+    # Busca a oficina com seus inscritos
+    oficina = Oficina.query.get_or_404(oficina_id)
+    
+    # Verificar se a oficina pertence ao cliente atual
+    if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
+        flash("Você não tem permissão para acessar esta oficina!", "danger")
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    return render_template(
+        'oficina/lista_participantes.html',
+        oficina=oficina
+    )
+
 @oficina_routes.route('/criar_oficina', methods=['GET', 'POST'])
 @login_required
 def criar_oficina():
