@@ -3,31 +3,42 @@
 {% block title %}Cadastrar Cliente{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h2 class="mb-4">Cadastrar Novo Cliente</h2>
+<section class="bg-light py-5">
+  <div class="container">
+    <div class="card border-0 rounded-4 shadow-lg mx-auto" style="max-width: 500px;">
+      <div class="card-body p-5">
+        <div class="text-center mb-4">
+          <h2 class="fw-bold mb-2">Cadastro Cliente</h2>
+          <p class="text-muted">Preencha as informações abaixo para criar uma conta</p>
+        </div>
+        <form method="POST">
+          {{ form.hidden_tag() }}
 
-      <form method="POST">
-        {{ form.hidden_tag() }}
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome</label>
-            <input type="text" class="form-control" id="nome" name="nome" required>
-        </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">E-mail</label>
-            <input type="email" class="form-control" id="email" name="email" required>
-        </div>
-        <div class="mb-3">
-            <label for="senha" class="form-label">Senha</label>
-            <input type="password" class="form-control" id="senha" name="senha" required>
-        </div>
-        <div class="mb-3">
+          <div class="form-floating mb-4">
+            <input type="text" class="form-control form-control-lg" id="nome" name="nome" placeholder="Nome completo" required>
+            <label for="nome"><i class="fas fa-user me-2"></i>Nome completo</label>
+          </div>
+
+          <div class="form-floating mb-4">
+            <input type="email" class="form-control form-control-lg" id="email" name="email" placeholder="nome@exemplo.com" required>
+            <label for="email"><i class="fas fa-envelope me-2"></i>E-mail</label>
+          </div>
+
+          <div class="form-floating mb-4">
+            <input type="password" class="form-control form-control-lg" id="senha" name="senha" placeholder="Senha" required>
+            <label for="senha"><i class="fas fa-lock me-2"></i>Senha</label>
+          </div>
+
+          <div class="mb-4 text-center">
             {{ form.recaptcha }}
-        </div>
-        <button type="submit" class="btn btn-success">Cadastrar Cliente</button>
-      </form>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm">
+            <i class="fas fa-user-plus me-2"></i>Cadastrar 
+          </button>
+        </form>
+      </div>
     </div>
   </div>
-</div>
+</section>
 {% endblock %}
