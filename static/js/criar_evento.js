@@ -8,18 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     let suggestionTimeout;
 
-    // ——— pagamento habilitado?  (1 = sim / 0 = não)
-    const pagamentoHabilitado = document.getElementById('pagamento_habilitado').value === '1';
-
-    // Se o cliente NÃO pode cobrar:
-    //   – força o checkbox "inscrição gratuita"
-    //   – desabilita seu uso
-    //   – oculta qualquer coluna de preços
-    if (!pagamentoHabilitado) {
-      inscricaoGratuita.checked = true;
-      inscricaoGratuita.disabled = true;
-      updatePriceFields();          // já esconde colunas de preço
-    }
+    // Pagamento habilitado para todos os clientes
+    const pagamentoHabilitado = true;
 
     // Configuração de sugestões para o campo de localização
     const localizacaoInput = document.getElementById('localizacao-input');
