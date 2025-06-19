@@ -150,13 +150,12 @@ def cadastrar_cliente_publico():
             flash('Já existe um cliente com esse e-mail!', 'danger')
             return redirect(url_for('auth_routes.cadastrar_cliente_publico'))
 
-        habilita_pagamento = True if request.form.get('habilita_pagamento') == 'on' else False
-
+        # Pagamento habilitado por padrão para novos clientes
         novo_cliente = Cliente(
             nome=nome,
             email=email,
             senha=generate_password_hash(senha),
-            habilita_pagamento=habilita_pagamento,
+            habilita_pagamento=True,
         )
 
         db.session.add(novo_cliente)

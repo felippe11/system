@@ -450,7 +450,7 @@ class Cliente(db.Model, UserMixin):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # ✅ Adicionando relação com Cliente
 
     # Campo novo para pagamento:
-    habilita_pagamento = db.Column(db.Boolean, default=False)
+    habilita_pagamento = db.Column(db.Boolean, default=True)
 
      # Relacionamento com Oficina
     oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`

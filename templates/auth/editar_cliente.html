@@ -2,8 +2,10 @@
 {% block title %}Editar Cliente{% endblock %}
 {% block content %}
 <div class="container mt-4">
-  <h2>Editar Cliente</h2>
-  <form method="POST">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h2>Editar Cliente</h2>
+      <form method="POST">
     <div class="mb-3">
       <label for="nome" class="form-label">Nome</label>
       <input type="text" id="nome" name="nome" class="form-control" value="{{ cliente.nome }}" required>
@@ -16,11 +18,9 @@
       <label for="senha" class="form-label">Nova Senha (opcional)</label>
       <input type="password" id="senha" name="senha" class="form-control">
     </div>
-    <div class="form-check mb-3">
-      <input class="form-check-input" type="checkbox" id="habilita_pagamento" name="habilita_pagamento" {% if cliente.habilita_pagamento %}checked{% endif %}>
-      <label class="form-check-label" for="habilita_pagamento">Habilitar Pagamento</label>
-    </div>
     <button type="submit" class="btn btn-primary">Salvar</button>
-  </form>
+      </form>
+    </div>
+  </div>
 </div>
 {% endblock %}
