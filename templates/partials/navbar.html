@@ -28,6 +28,9 @@
                     </a>
                 </li>                {% if not current_user.is_authenticated %}
                 <li class="nav-item ms-lg-3">
+                    <a class="btn btn-register" href="{{ url_for('auth_routes.cadastrar_cliente_publico') }}">Criar Conta</a>
+                </li>
+                <li class="nav-item ms-lg-3">
                     <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
                 </li>
                 {% else %}
