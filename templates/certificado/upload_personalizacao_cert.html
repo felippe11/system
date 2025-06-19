@@ -137,8 +137,33 @@
           {% endif %}
         </div>
       </div>
+  </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0 d-flex align-items-center">
+            <i class="bi bi-eye-fill me-2"></i> Preview do Certificado
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <iframe id="certPreviewFrame" src="{{ url_for('certificado_routes.preview_certificado') }}" class="w-100" style="min-height:500px;" frameborder="0"></iframe>
+          <button type="button" class="btn btn-secondary mt-3" id="btnGerarPreview">
+            <i class="bi bi-arrow-clockwise me-1"></i>Gerar Preview
+          </button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <script>
+    document.getElementById('btnGerarPreview').addEventListener('click', function () {
+      const iframe = document.getElementById('certPreviewFrame');
+      iframe.src = '{{ url_for('certificado_routes.preview_certificado') }}?t=' + Date.now();
+    });
+  </script>
 
   <!-- Modais de Edição -->
   {% for template in templates %}
