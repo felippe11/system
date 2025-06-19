@@ -778,102 +778,102 @@ def criar_evento():
             # Tratar tipos de inscrição
             nomes_tipos = request.form.getlist('nome_tipo[]')
             precos = request.form.getlist('preco_tipo[]')
-                
-                # Verificar se os tipos de inscrição foram fornecidos
-                if not nomes_tipos:
-                    raise ValueError("É necessário definir pelo menos um tipo de inscrição.")
-                
-                # Para eventos gratuitos, definir todos os preços como 0.00
-                if inscricao_gratuita:
-                    precos = ['0.00'] * len(nomes_tipos)
-                
-                # Criar tipos de inscrição para o evento
-                tipos_inscricao = []
-                for i, nome in enumerate(nomes_tipos):
-                    if nome.strip():  # Só criar se o nome não estiver vazio
-                        preco_tipo = precos[i] if i < len(precos) else ''
-                        preco_tipo = preco_tipo.strip() if preco_tipo else ''
-                        preco = 0.0 if inscricao_gratuita or preco_tipo == '' else float(preco_tipo)
-                        novo_tipo = EventoInscricaoTipo(
+
+            # Verificar se os tipos de inscrição foram fornecidos
+            if not nomes_tipos:
+                raise ValueError("É necessário definir pelo menos um tipo de inscrição.")
+
+            # Para eventos gratuitos, definir todos os preços como 0.00
+            if inscricao_gratuita:
+                precos = ['0.00'] * len(nomes_tipos)
+
+            # Criar tipos de inscrição para o evento
+            tipos_inscricao = []
+            for i, nome in enumerate(nomes_tipos):
+                if nome.strip():  # Só criar se o nome não estiver vazio
+                    preco_tipo = precos[i] if i < len(precos) else ''
+                    preco_tipo = preco_tipo.strip() if preco_tipo else ''
+                    preco = 0.0 if inscricao_gratuita or preco_tipo == '' else float(preco_tipo)
+                    novo_tipo = EventoInscricaoTipo(
+                        evento_id=novo_evento.id,
+                        nome=nome,
+                        preco=preco
+                    )
+                    db.session.add(novo_tipo)
+                    db.session.flush()  # Para obter o ID do tipo
+                    tipos_inscricao.append(novo_tipo)
+
+            # Processar os lotes de inscrição somente se habilitar_lotes for True
+            if habilitar_lotes:
+                lote_nomes = request.form.getlist('lote_nome[]')
+                lote_ordens = request.form.getlist('lote_ordem[]')
+                lote_usar_data = [item == 'on' for item in request.form.getlist('lote_usar_data[]')]
+                lote_data_inicio = request.form.getlist('lote_data_inicio[]')
+                lote_data_fim = request.form.getlist('lote_data_fim[]')
+                lote_usar_qtd = [item == 'on' for item in request.form.getlist('lote_usar_qtd[]')]
+                lote_qtd_maxima = request.form.getlist('lote_qtd_maxima[]')
+
+                # Criar cada lote
+                for i, nome in enumerate(lote_nomes):
+                    if nome.strip():
+                        # Determinar se usa data ou quantidade
+                        data_inicio_lote = None
+                        data_fim_lote = None
+                        qtd_maxima = None
+
+                        if i < len(lote_usar_data) and lote_usar_data[i]:
+                            if i < len(lote_data_inicio) and lote_data_inicio[i]:
+                                data_inicio_lote = datetime.strptime(lote_data_inicio[i], '%Y-%m-%d')
+                            if i < len(lote_data_fim) and lote_data_fim[i]:
+                                data_fim_lote = datetime.strptime(lote_data_fim[i], '%Y-%m-%d')
+
+                        if i < len(lote_usar_qtd) and lote_usar_qtd[i]:
+                            if i < len(lote_qtd_maxima) and lote_qtd_maxima[i]:
+                                qtd_maxima = int(lote_qtd_maxima[i])
+
+                        # Criar o lote
+                        novo_lote = LoteInscricao(
                             evento_id=novo_evento.id,
                             nome=nome,
-                            preco=preco
+                            data_inicio=data_inicio_lote,
+                            data_fim=data_fim_lote,
+                            qtd_maxima=qtd_maxima,
+                            ordem=int(lote_ordens[i]) if i < len(lote_ordens) and lote_ordens[i] else i+1,
+                            ativo=True
                         )
-                        db.session.add(novo_tipo)
-                        db.session.flush()  # Para obter o ID do tipo
-                        tipos_inscricao.append(novo_tipo)
-                
-                # Processar os lotes de inscrição somente se habilitar_lotes for True
-                if habilitar_lotes:
-                    lote_nomes = request.form.getlist('lote_nome[]')
-                    lote_ordens = request.form.getlist('lote_ordem[]')
-                    lote_usar_data = [item == 'on' for item in request.form.getlist('lote_usar_data[]')]
-                    lote_data_inicio = request.form.getlist('lote_data_inicio[]')
-                    lote_data_fim = request.form.getlist('lote_data_fim[]')
-                    lote_usar_qtd = [item == 'on' for item in request.form.getlist('lote_usar_qtd[]')]
-                    lote_qtd_maxima = request.form.getlist('lote_qtd_maxima[]')
-                    
-                    # Criar cada lote
-                    for i, nome in enumerate(lote_nomes):
-                        if nome.strip():
-                            # Determinar se usa data ou quantidade
-                            data_inicio_lote = None
-                            data_fim_lote = None
-                            qtd_maxima = None
-                            
-                            if i < len(lote_usar_data) and lote_usar_data[i]:
-                                if i < len(lote_data_inicio) and lote_data_inicio[i]:
-                                    data_inicio_lote = datetime.strptime(lote_data_inicio[i], '%Y-%m-%d')
-                                if i < len(lote_data_fim) and lote_data_fim[i]:
-                                    data_fim_lote = datetime.strptime(lote_data_fim[i], '%Y-%m-%d')
-                            
-                            if i < len(lote_usar_qtd) and lote_usar_qtd[i]:
-                                if i < len(lote_qtd_maxima) and lote_qtd_maxima[i]:
-                                    qtd_maxima = int(lote_qtd_maxima[i])
-                            
-                            # Criar o lote
-                            novo_lote = LoteInscricao(
-                                evento_id=novo_evento.id,
-                                nome=nome,
-                                data_inicio=data_inicio_lote,
-                                data_fim=data_fim_lote,
-                                qtd_maxima=qtd_maxima,
-                                ordem=int(lote_ordens[i]) if i < len(lote_ordens) and lote_ordens[i] else i+1,
-                                ativo=True
-                            )
-                            db.session.add(novo_lote)
-                            db.session.flush()  # Para obter o ID do lote
-                            
-                            # Processar preços por tipo de inscrição para este lote
-                            for j, tipo in enumerate(tipos_inscricao):
+                        db.session.add(novo_lote)
+                        db.session.flush()  # Para obter o ID do lote
 
-                                # O formato do name é lote_tipo_preco_0_1 onde 0 é o índice do lote e 1 é o índice do tipo
-                                preco_key = f'lote_tipo_preco_{i}_{j}'
-                                preco_lote = request.form.get(preco_key)
+                        # Processar preços por tipo de inscrição para este lote
+                        for j, tipo in enumerate(tipos_inscricao):
 
-                                if preco_lote:
-                                    preco_lote = preco_lote.strip()
-                                    # Se o evento for gratuito ou o valor estiver vazio, usar 0
-                                    preco_valor = 0.0 if inscricao_gratuita or preco_lote == '' else float(preco_lote)
+                            # O formato do name é lote_tipo_preco_0_1 onde 0 é o índice do lote e 1 é o índice do tipo
+                            preco_key = f'lote_tipo_preco_{i}_{j}'
+                            preco_lote = request.form.get(preco_key)
 
-                                # O formato do campo pode ser lote_tipo_preco_0_1 ou lote_tipo_preco_new_0_new_1
-                                preco_key_num = f'lote_tipo_preco_{i}_{j}'
-                                preco_key_new = f'lote_tipo_preco_new_{i}_new_{j}'
-                                preco_lote_str = request.form.get(preco_key_num)
-                                if preco_lote_str is None:
-                                    preco_lote_str = request.form.get(preco_key_new)
+                            if preco_lote:
+                                preco_lote = preco_lote.strip()
+                                # Se o evento for gratuito ou o valor estiver vazio, usar 0
+                                preco_valor = 0.0 if inscricao_gratuita or preco_lote == '' else float(preco_lote)
 
-                                if preco_lote_str:
-                                    # Se o evento for gratuito, todos os preços são 0
-                                    preco_valor = 0.0 if inscricao_gratuita else float(preco_lote_str)
+                            # O formato do campo pode ser lote_tipo_preco_0_1 ou lote_tipo_preco_new_0_new_1
+                            preco_key_num = f'lote_tipo_preco_{i}_{j}'
+                            preco_key_new = f'lote_tipo_preco_new_{i}_new_{j}'
+                            preco_lote_str = request.form.get(preco_key_num)
+                            if preco_lote_str is None:
+                                preco_lote_str = request.form.get(preco_key_new)
 
-                                    
-                                    novo_preco = LoteTipoInscricao(
-                                        lote_id=novo_lote.id,
-                                        tipo_inscricao_id=tipo.id,
-                                        preco=preco_valor
-                                    )
-                                    db.session.add(novo_preco)
+                            if preco_lote_str:
+                                # Se o evento for gratuito, todos os preços são 0
+                                preco_valor = 0.0 if inscricao_gratuita else float(preco_lote_str)
+
+
+                                novo_preco = LoteTipoInscricao(
+                                    lote_id=novo_lote.id,
+                                    tipo_inscricao_id=tipo.id,
+                                    preco=preco_valor
+                                )
+                                db.session.add(novo_preco)
             
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
