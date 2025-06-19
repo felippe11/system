@@ -6,6 +6,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from models import Usuario, Ministrante, Cliente
 from extensions import login_manager, db
+from forms import PublicClienteForm
 
 auth_routes = Blueprint(
     'auth_routes',
@@ -131,3 +132,40 @@ def logout():
     logout_user()
     flash('Logout realizado com sucesso!', 'info')
     return redirect(url_for('evento_routes.home'))
+
+
+# =======================================
+# Cadastro Público de Cliente
+# =======================================
+@auth_routes.route('/registrar_cliente', methods=['GET', 'POST'])
+def cadastrar_cliente_publico():
+    form = PublicClienteForm()
+    if form.validate_on_submit():
+        nome = request.form['nome']
+        email = request.form['email']
+        senha = request.form['senha']
+
+        cliente_existente = Cliente.query.filter_by(email=email).first()
+        if cliente_existente:
+            flash('Já existe um cliente com esse e-mail!', 'danger')
+            return redirect(url_for('auth_routes.cadastrar_cliente_publico'))
+
+        habilita_pagamento = True if request.form.get('habilita_pagamento') == 'on' else False
+
+        novo_cliente = Cliente(
+            nome=nome,
+            email=email,
+            senha=generate_password_hash(senha),
+            habilita_pagamento=habilita_pagamento,
+        )
+
+        db.session.add(novo_cliente)
+        db.session.commit()
+
+        flash('Cliente cadastrado com sucesso!', 'success')
+        return redirect(url_for('auth_routes.login'))
+
+    if request.method == 'POST':
+        flash('Falha na validação do CAPTCHA, tente novamente.', 'danger')
+
+    return render_template('auth/cadastrar_cliente_publico.html', form=form)
