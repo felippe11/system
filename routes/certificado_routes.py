@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from extensions import db
@@ -6,6 +6,7 @@ from models import Cliente, Oficina, CertificadoTemplate
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 
 import os
+from datetime import datetime
 
 certificado_routes = Blueprint(
     'certificado_routes',
@@ -164,4 +165,42 @@ def upload_personalizacao_certificado():
         return redirect(url_for('certificado_routes.dashboard_cliente'))
 
     return render_template('upload_personalizacao_cert.html', templates=templates, cliente=cliente)
+
+
+@certificado_routes.route('/preview_certificado')
+@login_required
+def preview_certificado():
+    """Gera um PDF de exemplo para visualizar o certificado."""
+
+    class UsuarioExemplo:
+        id = 0
+        nome = "Participante Exemplo"
+
+    class OficinaExemplo:
+        titulo = "Oficina Exemplo"
+        carga_horaria = "4"
+        datas = [datetime.now()]
+
+    cliente = Cliente.query.get(current_user.id)
+    template = CertificadoTemplate.query.filter_by(cliente_id=current_user.id, ativo=True).first()
+    template_conteudo = template.conteudo if template else None
+
+    pdf_path = gerar_certificado_personalizado(
+        UsuarioExemplo(),
+        [OficinaExemplo()],
+        4,
+        "",
+        template_conteudo,
+        cliente,
+    )
+
+    @after_this_request
+    def cleanup(response):
+        try:
+            os.remove(pdf_path)
+        except Exception:
+            pass
+        return response
+
+    return send_file(pdf_path, mimetype='application/pdf')
 
