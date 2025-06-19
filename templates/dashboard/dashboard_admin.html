@@ -141,8 +141,7 @@
                                         data-bs-target="#modalEditarCliente"
                                         data-id="{{ cliente.id }}"
                                         data-nome="{{ cliente.nome }}"
-                                        data-email="{{ cliente.email }}"
-                                        data-habilita-pagamento="{{ cliente.habilita_pagamento }}">
+                                        data-email="{{ cliente.email }}">
                                   <i class="bi bi-pencil"></i>
                                 </button>
                               
@@ -276,12 +275,6 @@
             <input type="password" class="form-control" name="senha" id="clienteSenha" placeholder="Deixe em branco para manter a senha atual">
             <small class="form-text text-muted">A senha só será alterada se você preencher este campo.</small>
           </div>
-          <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input" id="habilita_pagamento" name="habilita_pagamento">
-            <label class="form-check-label" for="habilita_pagamento">
-              Habilitar Pagamento
-            </label>
-          </div>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -302,16 +295,10 @@
       var clienteId = button.getAttribute('data-id');
       var nome = button.getAttribute('data-nome');
       var email = button.getAttribute('data-email');
-      var habilitaPagamento = button.getAttribute('data-habilita-pagamento'); // Novo atributo
-
       var form = modalEditarCliente.querySelector('#formEditarCliente');
       form.querySelector('#clienteNome').value = nome;
       form.querySelector('#clienteEmail').value = email;
       form.querySelector('#clienteSenha').value = ''; // Mantém em branco
-      
-      // Converte para minúsculas e verifica se é "true"
-      var isPagamentoEnabled = (habilitaPagamento && habilitaPagamento.toLowerCase() === 'true');
-      form.querySelector('#habilita_pagamento').checked = isPagamentoEnabled;
       
       form.action = editarClienteBaseUrl + '/' + clienteId;
   });

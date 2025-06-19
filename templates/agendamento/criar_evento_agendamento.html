@@ -113,7 +113,6 @@
         </div>
 
 
-                  {% if current_user.habilita_pagamento %}
                 <div class="row">
                   <!-- Location Section -->
                   <div class="col-md-6">
@@ -180,7 +179,6 @@
                       </div>
                     </div>
                   </div>
-                  {% endif %}
                 </div>
         
         <div class="row mt-4">
@@ -238,7 +236,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-{% if current_user.habilita_pagamento %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     // Toggle registration types visibility
@@ -292,5 +289,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 </script>
-{% endif %}
 {% endblock %}

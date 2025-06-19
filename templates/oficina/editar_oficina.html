@@ -237,7 +237,6 @@
           </div>
         </div>
 
-        {% if current_user.habilita_pagamento %}
         <!-- Configuração de Inscrição para Clientes com Pagamento Habilitado -->
         <div class="mb-3">
           <label class="form-label">Configuração de Inscrição:</label>
@@ -285,7 +284,6 @@
           </div>
           <button type="button" id="adicionar-tipo-inscricao" class="btn btn-secondary">+ Adicionar Tipo de Inscrição</button>
         </div>
-        {% endif %}
 
         <button type="submit" class="btn btn-success w-100 mt-3">Salvar Alterações</button>
       </form>
@@ -405,7 +403,6 @@
     button.closest('.data-item').remove();
   }
 
-  {% if current_user.habilita_pagamento %}
   document.getElementById('inscricao_gratuita').addEventListener('change', function(){
     var container = document.getElementById('tipos-inscricao-container');
     if(this.checked){
@@ -440,7 +437,6 @@
       e.target.parentElement.parentElement.remove();
     }
   });
-  {% endif %}
 
   document.querySelector("form").addEventListener("submit", function(event) {
     var estado = document.getElementById("estado").value;
