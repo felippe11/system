@@ -2014,20 +2014,19 @@ def gerar_pdf_respostas(formulario_id):
         Um arquivo PDF para download
     """
     # Importações necessárias
-    from reportlab.platypus import (
-        SimpleDocTemplate, Table, TableStyle, Paragraph, 
-        Spacer, Image, PageBreak
-    )
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
     import pytz
+    from models import Formulario, RespostaFormulario
     import os
     from flask import send_file, current_app
     import time
     from datetime import datetime
+    from models import Formulario, RespostaFormulario
     
     # Busca o formulário e as respostas
     formulario = Formulario.query.get_or_404(formulario_id)
