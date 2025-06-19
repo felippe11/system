@@ -36,15 +36,12 @@ def cadastrar_cliente():
             flash("Já existe um cliente com esse e-mail!", "danger")
             return redirect(url_for("cliente_routes.cadastrar_cliente"))
 
-        # Cria o cliente
-        habilita_pagamento = (
-            True if request.form.get("habilita_pagamento") == "on" else False
-        )
+        # Cria o cliente com pagamento habilitado por padrão
         novo_cliente = Cliente(
             nome=nome,
             email=email,
             senha=generate_password_hash(senha),
-            habilita_pagamento=habilita_pagamento,
+            habilita_pagamento=True,
         )
 
         db.session.add(novo_cliente)
@@ -71,17 +68,8 @@ def editar_cliente(cliente_id):
         if nova_senha:  # Só atualiza a senha se fornecida
             cliente.senha = generate_password_hash(nova_senha)
 
-        # Valor recebido do checkbox
-        debug_checkbox = request.form.get("habilita_pagamento")
-        logger.debug("Valor recebido do checkbox 'habilita_pagamento': %s", debug_checkbox)
-
-        cliente.habilita_pagamento = True if debug_checkbox == "on" else False
-
-        # Valor que será salvo
-        logger.debug(
-            "Valor salvo em cliente.habilita_pagamento: %s",
-            cliente.habilita_pagamento,
-        )
+        # Pagamento sempre habilitado para clientes
+        cliente.habilita_pagamento = True
 
         try:
             db.session.commit()
