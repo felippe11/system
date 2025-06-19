@@ -4167,12 +4167,11 @@ def caminho_absoluto_arquivo(imagem_relativa):
         return None
 
     imagem_relativa = os.path.normpath(imagem_relativa)
-
-    # Se já for absoluto, apenas normalizamos
-    if os.path.isabs(imagem_relativa):
-        return imagem_relativa
-
     base_dir = current_app.root_path
+
+    # Caminho absoluto fornecido
+    if os.path.isabs(imagem_relativa):
+        return imagem_relativa if os.path.exists(imagem_relativa) else None
 
     # Primeiro tenta o caminho relativo ao diretório da aplicação
     potencial = os.path.join(base_dir, imagem_relativa)
@@ -4180,7 +4179,8 @@ def caminho_absoluto_arquivo(imagem_relativa):
         return potencial
 
     # Fallback para dentro de "static"
-    return os.path.join(base_dir, 'static', imagem_relativa)
+    potencial = os.path.join(base_dir, 'static', imagem_relativa)
+    return potencial if os.path.exists(potencial) else None
 
 import os
 import logging
