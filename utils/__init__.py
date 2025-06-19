@@ -913,16 +913,17 @@ def caminho_absoluto_arquivo(imagem_relativa):
         return None
 
     imagem_relativa = os.path.normpath(imagem_relativa)
+    base_dir = current_app.root_path
 
     if os.path.isabs(imagem_relativa):
-        return imagem_relativa
+        return imagem_relativa if os.path.exists(imagem_relativa) else None
 
-    base_dir = current_app.root_path
     potencial = os.path.join(base_dir, imagem_relativa)
     if os.path.exists(potencial):
         return potencial
 
-    return os.path.join(base_dir, 'static', imagem_relativa)
+    potencial = os.path.join(base_dir, 'static', imagem_relativa)
+    return potencial if os.path.exists(potencial) else None
 
 import mercadopago
 import os
