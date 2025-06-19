@@ -337,9 +337,12 @@ document.querySelectorAll('.gerar-link-btn').forEach(btn => {
 });
 
 // Função para carregar links existentes quando um evento é selecionado no modal
-const eventoSelectModalGlobal = document.getElementById("eventoSelectModal"); // ID do select de eventos DENTRO DO MODAL
-if (eventoSelectModalGlobal) {
-    eventoSelectModalGlobal.addEventListener("change", function() {
+// Evitamos redeclaração verificando se a variável já existe
+if (typeof window.eventoSelectModalGlobal === 'undefined') {
+    window.eventoSelectModalGlobal = document.getElementById("eventoSelectModal"); // ID do select de eventos DENTRO DO MODAL
+}
+if (window.eventoSelectModalGlobal) {
+    window.eventoSelectModalGlobal.addEventListener("change", function() {
         const eventoId = this.value;
         // Passando o ID do evento para a função que atualiza a tabela
         if (eventoId) {

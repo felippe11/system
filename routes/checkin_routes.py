@@ -352,6 +352,47 @@ def leitor_checkin_json():
 
 
 
+@checkin_routes.route('/lista_checkins_qr')
+@login_required
+def lista_checkins_qr():
+    """
+    Rota para exibir os check-ins feitos via QR Code em uma página dedicada,
+    substituindo o modal que era usado anteriormente.
+    """
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for('dashboard_routes.dashboard'))
+        
+    # Busca apenas check-ins via QR dos usuários do cliente
+    from sqlalchemy import or_
+    from models import Usuario
+
+    checkins_via_qr = (
+        Checkin.query
+        .outerjoin(Checkin.oficina)
+        .outerjoin(Checkin.usuario)
+        .filter(
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO']),
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id
+            )
+        )
+        .order_by(Checkin.data_hora.desc())
+        .all()
+    )
+    
+    # Obtém as atividades (oficinas) do cliente para o filtro
+    oficinas = Oficina.query.filter_by(cliente_id=current_user.id).all()
+    
+    return render_template(
+        'checkin/lista_checkins_qr.html',
+        checkins_via_qr=checkins_via_qr,
+        oficinas=oficinas,
+        active_tab=None
+    )
+
 @checkin_routes.route('/lista_checkins_json')
 @login_required
 def lista_checkins_json():
