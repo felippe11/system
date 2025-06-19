@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container py-5">
-  <input type="hidden" id="pagamento_habilitado" value="{{ 1 if current_user.habilita_pagamento else 0 }}">
+  <input type="hidden" id="pagamento_habilitado" value="1">
   <div class="bg-primary bg-gradient rounded-3 p-4 mb-4 shadow-sm">
     <h1 class="h3 fw-bold text-white mb-0">
       <i class="bi bi-calendar-event me-2"></i>Configurar Evento
@@ -182,22 +182,11 @@
         
         <!-- Etapa 4: Configuração de Inscrição -->
         <div class="step" id="step-4" style="display: none;">
-          {% if habilita_pagamento %}
           <div class="border-bottom border-primary pb-2 mb-4">
             <h5 class="text-primary d-flex align-items-center">
               <i class="bi bi-cash-coin me-2"></i>Configuração de Inscrição
             </h5>
           </div>
-          
-          {% if not habilita_pagamento %}
-          <div class="alert alert-info bg-info bg-opacity-10 border-info d-flex mb-4" role="alert">
-            <div class="me-3"><i class="bi bi-info-circle-fill fs-3 text-info"></i></div>
-            <div>
-              <h6 class="alert-heading fw-bold mb-1">Plano Gratuito</h6>
-              <p class="mb-0 text-muted">Seu plano atual permite apenas inscrições gratuitas. Para habilitar cobranças, faça upgrade do seu plano.</p>
-            </div>
-          </div>
-          {% endif %}
 
           <div class="row g-4 mb-4">
             <div class="col-md-6">
@@ -222,8 +211,7 @@
                 <div class="card-body p-4">
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="inscricao_gratuita" id="inscricao_paga" value="0"
-                           {% if evento and not evento.inscricao_gratuita %}checked{% endif %}
-                           {% if not habilita_pagamento %}disabled{% endif %}>
+                           {% if evento and not evento.inscricao_gratuita %}checked{% endif %}>
                     <label class="form-check-label w-100" for="inscricao_paga">
                       <div class="d-flex align-items-center mb-2">
                         <i class="bi bi-credit-card-fill fs-3 text-primary me-2"></i>
@@ -777,7 +765,6 @@
 </style>
 
 <!-- Scripts -->
-{% if current_user.habilita_pagamento %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Controle de etapas
@@ -1314,7 +1301,6 @@ function updateProgressBar(step) {
   });
 });
 </script>
-{% endif %}
 
   <script>
   function carregarEvento(eventoId) {
