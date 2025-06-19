@@ -51,5 +51,5 @@ class Config:
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_USERNAME')  # O e-mail que enviará as mensagens
 
     # Chaves do reCAPTCHA
-    RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY', 'test')
-    RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY', 'test')
+    RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY') or ''
+    RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY') or ''
