@@ -167,7 +167,7 @@ def upload_personalizacao_certificado():
     return render_template('upload_personalizacao_cert.html', templates=templates, cliente=cliente)
 
 
-@certificado_routes.route('/preview_certificado')
+@certificado_routes.route('/preview_certificado', methods=['GET', 'POST'])
 @login_required
 def preview_certificado():
     """Gera um PDF de exemplo para visualizar o certificado."""
@@ -185,13 +185,43 @@ def preview_certificado():
     template = CertificadoTemplate.query.filter_by(cliente_id=current_user.id, ativo=True).first()
     template_conteudo = template.conteudo if template else None
 
+    temp_files = []
+
+    if request.method == "POST":
+        import tempfile
+        from types import SimpleNamespace
+
+        texto_personalizado = request.form.get("texto_personalizado", "")
+
+        caminhos = {}
+        for campo in ["logo_certificado", "assinatura_certificado", "fundo_certificado"]:
+            arquivo = request.files.get(campo)
+            if arquivo and arquivo.filename:
+                extensao = os.path.splitext(arquivo.filename)[1]
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=extensao)
+                arquivo.save(tmp.name)
+                caminhos[campo] = tmp.name
+                temp_files.append(tmp.name)
+            else:
+                caminhos[campo] = getattr(cliente, campo)
+
+        temp_cliente = SimpleNamespace(
+            logo_certificado=caminhos.get("logo_certificado"),
+            assinatura_certificado=caminhos.get("assinatura_certificado"),
+            fundo_certificado=caminhos.get("fundo_certificado"),
+            texto_personalizado=texto_personalizado,
+        )
+    else:
+        texto_personalizado = ""
+        temp_cliente = cliente
+
     pdf_path = gerar_certificado_personalizado(
         UsuarioExemplo(),
         [OficinaExemplo()],
         4,
-        "",
+        texto_personalizado,
         template_conteudo,
-        cliente,
+        temp_cliente,
     )
 
     @after_this_request
@@ -200,7 +230,12 @@ def preview_certificado():
             os.remove(pdf_path)
         except Exception:
             pass
+        for f in temp_files:
+            try:
+                os.remove(f)
+            except Exception:
+                pass
         return response
 
-    return send_file(pdf_path, mimetype='application/pdf')
+    return send_file(pdf_path, mimetype="application/pdf")
 
