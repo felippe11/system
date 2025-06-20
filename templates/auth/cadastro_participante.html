@@ -314,7 +314,7 @@
 
                             <div class="ticket-options">
                                 {% for lote_tipo in lote_vigente.tipos_inscricao %}
-                                {% set final = preco_com_taxa(lote_tipo.preco) %}
+                                {% set final = preco_com_taxa(lote_tipo.preco, cliente_id) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="lote_tipo_{{ lote_tipo.id }}"
@@ -346,7 +346,7 @@
                             {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
                             <div class="ticket-options">
                                 {% for tipo in tipos_inscricao %}
-                                {% set final = preco_com_taxa(tipo.preco) %}
+                                {% set final = preco_com_taxa(tipo.preco, cliente_id) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="tipo_{{ tipo.id }}"
@@ -380,12 +380,13 @@
 
                             {% if tipos_inscricao and tipos_inscricao|length > 0 %}
                             <div class="ticket-options">
-                                {% for tipo in tipos_inscricao %}
-                                <div class="ticket-option">
+                                {% for tipo in tipos_inscricao %}                                <div class="ticket-option">
                                     <input type="radio" 
                                            id="tipo_{{ tipo.id }}" 
                                            name="tipo_inscricao_id" 
                                            value="{{ tipo.id }}"
+                                           data-preco="0"
+                                           data-preco-final="0"
                                            required>
                                     <label for="tipo_{{ tipo.id }}">
                                         <span class="ticket-name">{{ tipo.nome }}</span>
@@ -782,13 +783,17 @@
         
         // Seleção de tipo de ingresso
         document.querySelectorAll('input[type="radio"][name^="lote_tipo"], input[type="radio"][name^="tipo_inscricao"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.checked) {
+            radio.addEventListener('change', function() {                if (this.checked) {
                     const preco = this.getAttribute('data-preco');
                     const precoFinal = this.getAttribute('data-preco-final');
+                    const inscricaoGratuita = {{ 'true' if evento and evento.inscricao_gratuita else 'false' }};
                     const display = document.getElementById('selectedTicketText');
-
-                    if (precoFinal) {
+                    
+                    if (inscricaoGratuita) {
+                        display.textContent = 'Inscrição gratuita';
+                    } else if (preco === "0" || precoFinal === "0") {
+                        display.textContent = 'Inscrição gratuita';
+                    } else if (precoFinal) {
                         let txt = `Valor: R$ ${precoFinal}`;
                         if (MOSTRAR_TAXA) {
                             const diff = (parseFloat(precoFinal) - parseFloat(preco)).toFixed(2);
