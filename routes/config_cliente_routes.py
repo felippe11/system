@@ -25,7 +25,8 @@ def toggle_checkin_global_cliente():
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
+            habilitar_submissao_trabalhos=False
         )
         db.session.add(config_cliente)
         db.session.commit()
@@ -57,7 +58,8 @@ def toggle_feedback_cliente():
             permitir_checkin_global=False,
             habilitar_feedback=False,
             habilitar_certificado_individual=False,
-            habilitar_qrcode_evento_credenciamento=False
+            habilitar_qrcode_evento_credenciamento=False,
+            habilitar_submissao_trabalhos=False
         )
         db.session.add(config_cliente)
         db.session.commit()
@@ -87,7 +89,8 @@ def toggle_certificado_cliente():
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
+            habilitar_submissao_trabalhos=False
         )
         db.session.add(config_cliente)
         db.session.commit()
@@ -157,23 +160,28 @@ def toggle_cliente(cliente_id):
     flash(f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success")
     return redirect(url_for('dashboard_routes.dashboard'))
 
-@config_cliente_routes.route('/toggle_submissao_trabalhos')
+@config_cliente_routes.route('/toggle_submissao_trabalhos', methods=['POST'])
 @login_required
 def toggle_submissao_trabalhos_cliente():
     if current_user.tipo != 'cliente':
-        flash("Apenas clientes podem alterar essa configuração.", "warning")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
 
     config = current_user.configuracao
 
     if not config:
-        flash("Cliente sem configuração associada.", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        config = ConfiguracaoCliente(cliente_id=current_user.id,
+                                     habilitar_submissao_trabalhos=False)
+        db.session.add(config)
+        db.session.commit()
 
     config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
     db.session.commit()
-    flash("Configuração de submissão de trabalhos atualizada!", "success")
-    return redirect(url_for('dashboard_routes.dashboard'))
+
+    return jsonify({
+        "success": True,
+        "value": config.habilitar_submissao_trabalhos,
+        "message": "Configuração de submissão de trabalhos atualizada!"
+    })
 
 @config_cliente_routes.route('/toggle_mostrar_taxa', methods=['POST'])
 @login_required
@@ -183,7 +191,8 @@ def toggle_mostrar_taxa():
 
     config = current_user.configuracao
     if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        config = ConfiguracaoCliente(cliente_id=current_user.id,
+                                     habilitar_submissao_trabalhos=False)
         db.session.add(config)
         db.session.commit()
 
@@ -207,7 +216,8 @@ def configuracao_cliente_atual():
             cliente_id=cliente_id,
             permitir_checkin_global=False,
             habilitar_feedback=False,
-            habilitar_certificado_individual=False
+            habilitar_certificado_individual=False,
+            habilitar_submissao_trabalhos=False
         )
         db.session.add(config_cliente)
         db.session.commit()
@@ -218,7 +228,8 @@ def configuracao_cliente_atual():
         "habilitar_feedback": config_cliente.habilitar_feedback,
         "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual,
         "habilitar_qrcode_evento_credenciamento": config_cliente.habilitar_qrcode_evento_credenciamento,
-        "mostrar_taxa": config_cliente.mostrar_taxa
+        "mostrar_taxa": config_cliente.mostrar_taxa,
+        "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos
     })
 
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
@@ -236,7 +247,8 @@ def toggle_qrcode_evento_credenciamento():
             permitir_checkin_global=False,
             habilitar_feedback=False,
             habilitar_certificado_individual=False,
-            habilitar_qrcode_evento_credenciamento=False
+            habilitar_qrcode_evento_credenciamento=False,
+            habilitar_submissao_trabalhos=False
         )
         db.session.add(config_cliente)
         db.session.commit()
