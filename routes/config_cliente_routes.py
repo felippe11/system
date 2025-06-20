@@ -234,7 +234,8 @@ def configuracao_cliente_atual():
         "num_revisores_min": config_cliente.num_revisores_min,
         "num_revisores_max": config_cliente.num_revisores_max,
         "prazo_parecer_dias": config_cliente.prazo_parecer_dias,
-        "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos
+        "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos,
+        "allowed_file_types": config_cliente.allowed_file_types
 
     })
 
@@ -360,6 +361,26 @@ def set_prazo_parecer_dias():
     db.session.commit()
 
     return jsonify({"success": True, "value": config_cliente.prazo_parecer_dias})
+
+
+@config_cliente_routes.route("/set_allowed_file_types", methods=["POST"])
+@login_required
+def set_allowed_file_types():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    value = data.get("value", "pdf")
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.allowed_file_types = value
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.allowed_file_types})
 
 @config_cliente_routes.route('/revisao_config/<int:evento_id>', methods=['POST'])
 @login_required
