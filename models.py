@@ -42,6 +42,10 @@ class Usuario(db.Model, UserMixin):
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
     cidades = db.Column(db.String(255), nullable=True)   # Ex.: "São Paulo,Rio de Janeiro,Belo Horizonte"
 
+    # MFA
+    mfa_enabled = db.Column(db.Boolean, default=False)
+    mfa_secret = db.Column(db.String(32), nullable=True)
+
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)
 
@@ -1066,4 +1070,22 @@ class ArquivoBinario(db.Model):
 
     def __repr__(self):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
+
+
+# =================================
+#            AUDIT LOG
+# =================================
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    submission_id = db.Column(db.Integer, nullable=True)
+    event_type = db.Column(db.String(50), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    usuario = db.relationship('Usuario')
+
+    def __repr__(self):
+        return f"<AuditLog {self.user_id} {self.event_type} {self.submission_id}>"
 
