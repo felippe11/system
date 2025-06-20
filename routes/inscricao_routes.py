@@ -8,7 +8,7 @@ from datetime import datetime
 from models import (
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
-    CampoPersonalizadoCadastro, RespostaCampo, RegraInscricaoEvento,
+    CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, RegraInscricaoEvento,
     Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente
 )
 import os
@@ -207,6 +207,15 @@ def _reservar_vaga(lote_id: int) -> None:
 
 
 def _salvar_campos_personalizados(user_id: int, cliente_id: int, form):
+    """Salva respostas de campos personalizados vinculadas a um RespostaFormulario."""
+
+    resposta_formulario = RespostaFormulario(
+        formulario_id=1,  # Formulário padrão para cadastro de participante
+        usuario_id=user_id,
+    )
+    db.session.add(resposta_formulario)
+    db.session.flush()  # obtém ID para relacionar as respostas
+
     campos = CampoPersonalizadoCadastro.query.filter_by(cliente_id=cliente_id).all()
     for campo in campos:
         valor = form.get(f"campo_{campo.id}") or ""
@@ -214,11 +223,13 @@ def _salvar_campos_personalizados(user_id: int, cliente_id: int, form):
             raise ValueError(f"O campo '{campo.nome}' é obrigatório.")
         db.session.add(
             RespostaCampo(
-                resposta_formulario_id=user_id,  # mantém compatibilidade
+                resposta_formulario_id=resposta_formulario.id,
                 campo_id=campo.id,
                 valor=valor,
             )
         )
+
+    return resposta_formulario.id
 
 
 def _calcular_preco(evento, lote_tipo_insc_id, tipo_insc_id, lote_vigente):
