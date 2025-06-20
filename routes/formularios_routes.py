@@ -8,6 +8,7 @@ from flask import (
     send_from_directory,
 )
 from flask_login import login_required, current_user
+from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 import os
@@ -26,6 +27,7 @@ from models import (
     Inscricao,
     Oficina,
     Ministrante,
+    AuditLog,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -323,9 +325,14 @@ def gerar_pdf_respostas_route(formulario_id):
 
 @formularios_routes.route('/respostas/<path:filename>')
 @login_required
+@mfa_required
 def get_resposta_file(filename):
     print(">> get_resposta_file foi chamado com:", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
+    uid = current_user.id if hasattr(current_user, 'id') else None
+    log = AuditLog(user_id=uid, submission_id=None, event_type='download')
+    db.session.add(log)
+    db.session.commit()
     return send_from_directory(uploads_folder, filename)
 
 
@@ -603,6 +610,7 @@ def listar_respostas():
 
 @formularios_routes.route('/definir_status_inline', methods=['POST'])
 @login_required
+@mfa_required
 def definir_status_inline():
     # 1) Pega valores do form
     resposta_id = request.form.get('resposta_id')
@@ -621,6 +629,10 @@ def definir_status_inline():
 
     # 4) Atualiza
     resposta.status_avaliacao = novo_status
+    db.session.commit()
+    uid = current_user.id if hasattr(current_user, 'id') else None
+    log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
+    db.session.add(log)
     db.session.commit()
 
     flash("Status atualizado com sucesso!", "success")

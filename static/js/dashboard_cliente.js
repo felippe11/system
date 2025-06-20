@@ -32,37 +32,7 @@
  * </script>
  */
 
-document.addEventListener('DOMContentLoaded', function () {
-  const btnSubmissao = document.getElementById('btnToggleSubmissao');
 
-  if (btnSubmissao) {
-    btnSubmissao.addEventListener('click', function () {
-      const toggleUrl = btnSubmissao.getAttribute('data-toggle-url'); // Boa prática: URL via atributo data
-
-      if (!toggleUrl) {
-        console.error("Atributo data-toggle-url não encontrado no botão de submissão.");
-        alert("Erro de configuração: URL para alternar submissão não definida.");
-        return;
-      }
-
-      fetch(toggleUrl, {
-        credentials: 'include'
-      })
-        .then(response => {
-          if (response.ok) {
-            location.reload(); // Recarrega para refletir a mudança
-          } else {
-            alert("Erro ao atualizar a configuração de submissão.");
-            response.text().then(text => console.error("Detalhes do erro:", text));
-          }
-        })
-        .catch(error => {
-          console.error("Erro na requisição para alternar submissão:", error);
-          alert("Erro ao conectar com o servidor para alternar submissão.");
-        });
-    });
-  }
-});
 
 // Carregamento inicial - Estados, cidades e configurações
 document.addEventListener('DOMContentLoaded', function() {
@@ -136,12 +106,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnCertificado = document.getElementById('btnToggleCertificado');
         const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
         const btnMostrarTaxa = document.getElementById('btnToggleMostrarTaxa');
+        const btnSubmissao = document.getElementById('btnToggleSubmissao');
 
         if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
         if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
         if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
         if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
         if (btnMostrarTaxa) atualizarBotao(btnMostrarTaxa, data.mostrar_taxa);
+        if (btnSubmissao) atualizarBotao(btnSubmissao, data.habilitar_submissao_trabalhos);
       })
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
@@ -156,7 +128,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnToggleFeedback'),
     document.getElementById('btnToggleCertificado'),
     document.getElementById('btnToggleQrCredenciamento'),
-    document.getElementById('btnToggleMostrarTaxa')
+    document.getElementById('btnToggleMostrarTaxa'),
+    document.getElementById('btnToggleSubmissao')
   ];
 
   toggleButtons.forEach(button => {
@@ -192,6 +165,64 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const selectReview = document.getElementById('selectReviewModel');
+  if (selectReview) {
+    selectReview.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ review_model: this.value })
+      });
+    });
+  }
+
+  const inputMin = document.getElementById('inputRevisoresMin');
+  if (inputMin) {
+    inputMin.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
+  const inputMax = document.getElementById('inputRevisoresMax');
+  if (inputMax) {
+    inputMax.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
+  const inputPrazo = document.getElementById('inputPrazoParecer');
+  if (inputPrazo) {
+    inputPrazo.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
 });
 
 // Funções auxiliares
