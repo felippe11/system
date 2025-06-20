@@ -114,6 +114,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
         if (btnMostrarTaxa) atualizarBotao(btnMostrarTaxa, data.mostrar_taxa);
         if (btnSubmissao) atualizarBotao(btnSubmissao, data.habilitar_submissao_trabalhos);
+        const inputAllowed = document.getElementById('inputAllowedFiles');
+        if (inputAllowed && data.allowed_file_types) inputAllowed.value = data.allowed_file_types;
       })
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
@@ -178,6 +180,10 @@ document.addEventListener('DOMContentLoaded', function() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ review_model: this.value })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) alert('Configuração atualizada!');
       });
     });
   }
@@ -213,6 +219,20 @@ document.addEventListener('DOMContentLoaded', function() {
   const inputPrazo = document.getElementById('inputPrazoParecer');
   if (inputPrazo) {
     inputPrazo.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
+  const inputAllowed = document.getElementById('inputAllowedFiles');
+  if (inputAllowed) {
+    inputAllowed.addEventListener('change', function() {
       const url = this.dataset.updateUrl;
       if (!url) return;
       fetch(url, {
