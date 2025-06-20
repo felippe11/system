@@ -3149,6 +3149,35 @@ def gerar_programacao_evento_pdf(evento_id):
     c.save()
 
     return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+# Gerar placas simples para oficinas do evento
+
+def gerar_placas_oficinas_pdf(evento_id):
+    """Gera um PDF com uma pagina por oficina, exibindo titulo e ministrante."""
+    from models import Evento, Oficina
+    from flask import current_app, send_file
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    import os
+    evento = Evento.query.get_or_404(evento_id)
+    oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
+    pdf_dir = os.path.join(current_app.static_folder, "placas", str(evento_id))
+    os.makedirs(pdf_dir, exist_ok=True)
+    filename = f"placas_oficinas_{evento_id}.pdf"
+    pdf_path = os.path.join(pdf_dir, filename)
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+    for ofi in oficinas:
+        c.setFont("Helvetica-Bold", 28)
+        c.drawCentredString(width/2, height-5*cm, ofi.titulo)
+        if ofi.ministrante_obj:
+            c.setFont("Helvetica", 20)
+            c.drawCentredString(width/2, height-7*cm, ofi.ministrante_obj.nome)
+        c.showPage()
+    c.save()
+
+    return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
 
 
 def gerar_etiquetas(cliente_id):

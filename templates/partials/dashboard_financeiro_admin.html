@@ -1,0 +1,26 @@
+<h5 class="mb-3">Resumo Financeiro Geral</h5>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Evento</th>
+      <th>Inscrições Aprovadas</th>
+      <th>Receita</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for ev in eventos %}
+    <tr>
+      <td>{{ ev.nome }}</td>
+      <td>{{ ev.quantidade }}</td>
+      <td>R$ {{ "%.2f"|format(ev.receita) }}</td>
+    </tr>
+  {% else %}
+    <tr>
+      <td colspan="3" class="text-center">Nenhum evento pago.</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="mt-3"><strong>Total de Eventos com Receita:</strong> {{ total_eventos }}</div>
+<div><strong>Receita Total:</strong> R$ {{ "%.2f"|format(receita_total) }}</div>
+<div><strong>Receita de Taxas:</strong> R$ {{ "%.2f"|format(receita_taxas) }}</div>
