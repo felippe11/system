@@ -487,7 +487,7 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
         }
 
     token = link.token if link else str(evento.id)
-
+    
     return render_template("auth/cadastro_participante.html",
         token=token,
         evento=evento,
@@ -502,7 +502,8 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
         tipos_inscricao=tipos_inscricao,
         mostrar_taxa=mostrar_taxa,
         preco_com_taxa=preco_com_taxa,
-        solicitar_senha=solicitar_senha
+        solicitar_senha=solicitar_senha,
+        cliente_id=cliente_id
     )
 
 @inscricao_routes.route('/editar_participante', methods=['GET', 'POST'])
@@ -783,12 +784,13 @@ def cancelar_inscricao(inscricao_id):
 @inscricao_routes.route('/inscricao/<slug>')
 def abrir_inscricao_customizada(slug):
     link = LinkCadastro.query.filter_by(slug_customizado=slug).first()
-
+    
     if not link or not link.evento:
         return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
-
+        
     evento = link.evento
-    return render_template("auth/cadastro_participante.html", evento=evento)
+    cliente_id = link.cliente_id
+    return render_template("auth/cadastro_participante.html", evento=evento, cliente_id=cliente_id)
 
 @inscricao_routes.route('/inscricao/token/<token>', methods=['GET', 'POST'])
 def abrir_inscricao_token(token):
@@ -796,12 +798,13 @@ def abrir_inscricao_token(token):
         # Reutiliza a lógica de cadastro para processar o formulário
         return cadastro_participante(token)
     link = LinkCadastro.query.filter_by(token=token).first()
-
+    
     if not link or not link.evento:
         return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
 
     evento = link.evento
-    return render_template("auth/cadastro_participante.html", evento=evento)
+    cliente_id = link.cliente_id
+    return render_template("auth/cadastro_participante.html", evento=evento, cliente_id=cliente_id)
 
 @inscricao_routes.route('/configurar_regras_inscricao', methods=['GET', 'POST'])
 @login_required
