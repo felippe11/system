@@ -8,6 +8,9 @@ campo_routes = Blueprint('campo_routes', __name__)
 @campo_routes.route('/adicionar_campo_personalizado', methods=['POST'])
 @login_required
 def adicionar_campo_personalizado():
+    if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
+        flash('Acesso negado', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
     nome_campo = request.form.get('nome_campo')
     tipo_campo = request.form.get('tipo_campo')
     obrigatorio = bool(request.form.get('obrigatorio'))
@@ -27,9 +30,13 @@ def adicionar_campo_personalizado():
 @campo_routes.route('/remover_campo_personalizado/<int:campo_id>', methods=['POST'])
 @login_required
 def remover_campo_personalizado(campo_id):
+    if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
+        flash('Acesso negado', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
     campo = CampoPersonalizadoCadastro.query.get_or_404(campo_id)
 
-    if campo.cliente_id != current_user.id:
+    if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
         flash('Você não tem permissão para remover este campo.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
