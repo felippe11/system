@@ -22,6 +22,9 @@
                 <li class="nav-item">
                     <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
                 </li>
+                <li class="nav-item ms-lg-3">
+                    <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">Revisores</a>
+                </li>
                 <li class="nav-item me-2" id="pwa-install-btn">
                     <a class="nav-link btn btn-primary text-white px-3" href="#">
                         <i class="bi bi-download me-1"></i> Instalar App
@@ -76,6 +79,30 @@
         </div>
     </div>
 </nav>
+<!-- Modal Revisores -->
+<div class="modal fade" id="revisorModal" tabindex="-1" aria-labelledby="revisorModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="revisorModalLabel">Acesso dos Revisores</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="get" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
+          <div class="mb-3">
+            <label for="locatorInput" class="form-label">Localizador</label>
+            <input type="text" class="form-control" id="locatorInput" name="locator">
+          </div>
+          <div class="mb-3">
+            <label for="codeInput" class="form-label">Código de Acesso</label>
+            <input type="password" class="form-control" id="codeInput" name="code">
+          </div>
+          <button type="submit" class="btn btn-primary">Entrar</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Obtém o path atual
