@@ -1067,3 +1067,32 @@ class ArquivoBinario(db.Model):
     def __repr__(self):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
 
+
+class RevisaoConfig(db.Model):
+    __tablename__ = 'revisao_config'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False, unique=True)
+    numero_revisores = db.Column(db.Integer, default=2)
+    prazo_revisao = db.Column(db.DateTime, nullable=True)
+    modelo_blind = db.Column(db.String(20), default='single')  # single ou double
+
+    evento = db.relationship('Evento', backref=db.backref('revisao_config', uselist=False))
+
+
+class Review(db.Model):
+    __tablename__ = 'review'
+
+    id = db.Column(db.Integer, primary_key=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
+    revisor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    codigo_acesso = db.Column(db.String(50), nullable=False)
+    blind_type = db.Column(db.String(20), default='anonimo')
+    nota = db.Column(db.Integer, nullable=True)
+    comentarios = db.Column(db.Text, nullable=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    trabalho = db.relationship('TrabalhoCientifico', backref=db.backref('reviews', lazy=True))
+    revisor = db.relationship('Usuario', backref=db.backref('reviews_realizadas', lazy=True))
+

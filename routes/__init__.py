@@ -46,6 +46,7 @@ def register_routes(app):
     from .api_cidades import api_cidades
     from .mercadopago_routes import mercadopago_routes
     from .binary_routes import binary_routes
+    from .peer_review_routes import peer_review_routes
     from .util_routes import util_routes
     from .relatorio_pdf_routes import relatorio_pdf_routes
     from .static_page_routes import static_page_routes
@@ -90,5 +91,6 @@ def register_routes(app):
     app.register_blueprint(certificado_routes)
     app.register_blueprint(placeholder_routes)
     app.register_blueprint(static_page_routes)
+    app.register_blueprint(peer_review_routes)
 
 
