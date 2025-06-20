@@ -47,9 +47,11 @@ def register_routes(app):
     from .mercadopago_routes import mercadopago_routes
     from .binary_routes import binary_routes
     from .peer_review_routes import peer_review_routes
+    from .submission_routes import submission_routes
     from .util_routes import util_routes
     from .relatorio_pdf_routes import relatorio_pdf_routes
     from .static_page_routes import static_page_routes
+    from .peer_review_routes import peer_review_routes
     # Importa servicos que registram rotas diretamente no blueprint
     from services import lote_service  # noqa: F401
 
@@ -86,6 +88,7 @@ def register_routes(app):
     app.register_blueprint(api_cidades)
     app.register_blueprint(mercadopago_routes)
     app.register_blueprint(binary_routes)
+    app.register_blueprint(submission_routes)
     app.register_blueprint(util_routes)
     app.register_blueprint(relatorio_pdf_routes)
     app.register_blueprint(certificado_routes)

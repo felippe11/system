@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Decisões Editoriais{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Decisões Editoriais</h1>
+  <p class="text-muted">Resumo das decisões tomadas para cada submissão.</p>
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Título</th><th>Decisão</th><th>Data</th></tr>
+    </thead>
+    <tbody>
+      {% for decision in decisions %}
+      <tr>
+        <td>{{ decision.title }}</td>
+        <td>{{ decision.status }}</td>
+        <td>{{ decision.date }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-center">Nenhuma decisão registrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

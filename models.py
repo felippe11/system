@@ -1,6 +1,9 @@
 import os
 import uuid
+
 from datetime import datetime
+from datetime import datetime
+import bcrypt
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
@@ -56,6 +59,9 @@ class Usuario(db.Model, UserMixin):
     
     def is_professor(self):
          return self.tipo == 'professor'
+
+    def is_revisor(self):
+         return self.tipo == 'revisor'
     
     def tem_pagamento_pendente(self):
         pendente = Inscricao.query.filter_by(
@@ -1036,27 +1042,39 @@ class LoteInscricao(db.Model):
         return True
     
 class LoteTipoInscricao(db.Model):
-    __tablename__ = 'lote_tipo_inscricao'
+    """Associa um *lote* de inscrição a um *tipo* de inscrição com preço."""
+
+    __tablename__ = "lote_tipo_inscricao"
 
     id = db.Column(db.Integer, primary_key=True)
-    lote_id = db.Column(db.Integer, db.ForeignKey('lote_inscricao.id'), nullable=False)
-    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    lote_id = db.Column(db.Integer, db.ForeignKey("lote_inscricao.id"), nullable=False)
+    tipo_inscricao_id = db.Column(
+        db.Integer, db.ForeignKey("evento_inscricao_tipo.id"), nullable=False
+    )
     preco = db.Column(db.Float, nullable=False)
 
-    # Relacionamentos
-    lote = db.relationship('LoteInscricao', backref=db.backref('tipos_inscricao', lazy=True))
-    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('lotes_precos', lazy=True))
+    # relationships
+    lote = db.relationship(
+        "LoteInscricao", backref=db.backref("tipos_inscricao", lazy=True)
+    )
+    tipo_inscricao = db.relationship(
+        "EventoInscricaoTipo", backref=db.backref("lotes_precos", lazy=True)
+    )
 
     def __repr__(self):
-        return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
+        return (
+            f"<LoteTipoInscricao lote={self.lote_id} tipo={self.tipo_inscricao_id} "
+            f"preco={self.preco}>"
+        )
 
 
-# =================================
-#            ARQUIVO BINÁRIO
-# =================================
+# -----------------------------------------------------------------------------
+# ARQUIVO BINÁRIO
+# -----------------------------------------------------------------------------
 class ArquivoBinario(db.Model):
-    """Modelo para armazenar arquivos binários no banco de dados."""
-    __tablename__ = 'arquivo_binario'
+    """Armazena qualquer arquivo diretamente no banco (útil para anexos pequenos)."""
+
+    __tablename__ = "arquivo_binario"
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
@@ -1068,31 +1086,129 @@ class ArquivoBinario(db.Model):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
 
 
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DE REVISÃO POR EVENTO
+# -----------------------------------------------------------------------------
 class RevisaoConfig(db.Model):
-    __tablename__ = 'revisao_config'
+    """Define regras globais de revisão para um evento (nº revisores, blind etc.)."""
+
+    __tablename__ = "revisao_config"
 
     id = db.Column(db.Integer, primary_key=True)
-    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False, unique=True)
+    evento_id = db.Column(
+        db.Integer, db.ForeignKey("evento.id"), nullable=False, unique=True
+    )
     numero_revisores = db.Column(db.Integer, default=2)
     prazo_revisao = db.Column(db.DateTime, nullable=True)
-    modelo_blind = db.Column(db.String(20), default='single')  # single ou double
+    modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
 
-    evento = db.relationship('Evento', backref=db.backref('revisao_config', uselist=False))
+    evento = db.relationship(
+        "Evento", backref=db.backref("revisao_config", uselist=False)
+    )
+
+    def __repr__(self):
+        return (
+            f"<RevisaoConfig evento={self.evento_id} revisores={self.numero_revisores} "
+            f"blind={self.modelo_blind}>"
+        )
 
 
-class Review(db.Model):
-    __tablename__ = 'review'
+# -----------------------------------------------------------------------------
+# SUBMISSION (trabalhos científicos, resumos, etc.)
+# -----------------------------------------------------------------------------
+class Submission(db.Model):
+    """Representa um trabalho submetido para avaliação em um evento."""
+
+    __tablename__ = "submission"
 
     id = db.Column(db.Integer, primary_key=True)
-    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
-    revisor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
+
+    # textual fields
+    abstract = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)
+
+    # file upload (caminho para o arquivo no sistema de arquivos ou S3 etc.)
+    file_path = db.Column(db.String(255), nullable=True)
+
+    # locator & code (para acesso do autor e revisores externos)
     locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
-    codigo_acesso = db.Column(db.String(50), nullable=False)
-    blind_type = db.Column(db.String(20), default='anonimo')
-    nota = db.Column(db.Integer, nullable=True)
-    comentarios = db.Column(db.Text, nullable=True)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    code_hash = db.Column(db.String(128), nullable=False)
 
-    trabalho = db.relationship('TrabalhoCientifico', backref=db.backref('reviews', lazy=True))
-    revisor = db.relationship('Usuario', backref=db.backref('reviews_realizadas', lazy=True))
+    # metadata
+    status = db.Column(db.String(50), nullable=True)
+    area_id = db.Column(db.Integer, nullable=True)
+    author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # relationships
+    author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))
+
+    # ------------------------------------------------------------------
+    # utility
+    # ------------------------------------------------------------------
+    def __repr__(self):
+        return f"<Submission {self.title}>"
+
+    def check_code(self, code: str) -> bool:
+        """Valida o código de acesso enviado pelo usuário."""
+        if not code:
+            return False
+        return bcrypt.checkpw(code.encode(), self.code_hash.encode())
+
+
+# -----------------------------------------------------------------------------
+# REVIEW (parecer da submissão)
+# -----------------------------------------------------------------------------
+class Review(db.Model):
+    """Armazena o parecer de um revisor sobre uma submissão."""
+
+    __tablename__ = "review"
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
+
+    # revisor (identificado ou anônimo)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    reviewer_name = db.Column(db.String(255), nullable=True)
+
+    # segurança/acesso externo
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    access_code = db.Column(db.String(50), nullable=True)
+
+    # detalhes
+    blind_type = db.Column(db.String(20), nullable=True)  # single | double | open | anonimo
+    scores = db.Column(db.JSON, nullable=True)            # ex.: {"originalidade": 4}
+    note = db.Column(db.Integer, nullable=True)           # nota geral (0‑10) opcional
+    comments = db.Column(db.Text, nullable=True)
+    file_path = db.Column(db.String(255), nullable=True)  # PDF anotado etc.
+    decision = db.Column(db.String(50), nullable=True)    # accept | minor | major | reject
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # relationships
+    submission = db.relationship("Submission", backref=db.backref("reviews", lazy=True))
+    reviewer = db.relationship("Usuario", backref=db.backref("reviews", lazy=True))
+
+    def __repr__(self):
+        return f"<Review {self.id} submission={self.submission_id}>"
+
+
+# -----------------------------------------------------------------------------
+# ASSIGNMENT (vincula revisor ↔ submissão)
+# -----------------------------------------------------------------------------
+class Assignment(db.Model):
+    """Liga um revisor a uma submissão, controlando prazo e conclusão."""
+
+    __tablename__ = "assignment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    deadline = db.Column(db.DateTime, nullable=True)
+    completed = db.Column(db.Boolean, default=False)
+
+    submission = db.relationship("Submission", backref=db.backref("assignments", lazy=True))
+    reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
+
+    def __repr__(self):
+        return f"<Assignment submission={self.submission_id} reviewer={self.reviewer_id}>"
