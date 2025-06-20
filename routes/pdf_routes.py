@@ -12,6 +12,7 @@ from services.pdf_service import (
     gerar_evento_qrcode_pdf,
     gerar_qrcode_token,
     gerar_programacao_evento_pdf,
+    gerar_placas_oficinas_pdf,
     exportar_checkins_pdf_opcoes,
 )
 from . import routes
@@ -87,6 +88,13 @@ def gerar_qrcode_token_route(token):
 @routes.route('/gerar_folder_evento/<int:evento_id>')
 def gerar_folder_evento(evento_id):
     return gerar_programacao_evento_pdf(evento_id)
+
+
+@routes.route('/gerar_placas/<int:evento_id>')
+@login_required
+def gerar_placas_oficinas(evento_id):
+    """Gera PDF com placas simples das oficinas do evento."""
+    return gerar_placas_oficinas_pdf(evento_id)
 
 
 @routes.route('/exportar_checkins_filtrados')
