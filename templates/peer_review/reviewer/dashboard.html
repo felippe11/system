@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Tarefas de Revisão{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Tarefas de Revisão</h1>
+  <p class="text-muted">Lista de trabalhos atribuídos para revisão.</p>
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Título</th><th>Status</th><th>Prazo</th></tr>
+    </thead>
+    <tbody>
+      {% for task in tasks %}
+      <tr>
+        <td>{{ task.title }}</td>
+        <td>{{ task.status }}</td>
+        <td>{{ task.due_date }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-center">Nenhuma tarefa pendente.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
