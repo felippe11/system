@@ -313,7 +313,7 @@
 
                             <div class="ticket-options">
                                 {% for lote_tipo in lote_vigente.tipos_inscricao %}
-                                {% set final = preco_com_taxa(lote_tipo.preco) %}
+                                {% set final = preco_com_taxa(lote_tipo.preco, cliente_id=evento.cliente_id) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="lote_tipo_{{ lote_tipo.id }}"
@@ -345,7 +345,7 @@
                             {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
                             <div class="ticket-options">
                                 {% for tipo in tipos_inscricao %}
-                                {% set final = preco_com_taxa(tipo.preco) %}
+                                {% set final = preco_com_taxa(tipo.preco, cliente_id=evento.cliente_id) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="tipo_{{ tipo.id }}"

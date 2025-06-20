@@ -23,5 +23,15 @@ def get_sdk():
         )
         _sdk = None
     else:
-        _sdk = mercadopago.SDK(token)
+        try:
+            _logger.info("Inicializando SDK do Mercado Pago")
+            _sdk = mercadopago.SDK(token)
+            # Verificar se a SDK foi inicializada corretamente
+            if _sdk:
+                _logger.info("SDK do Mercado Pago inicializada com sucesso")
+            else:
+                _logger.error("Falha ao inicializar SDK do Mercado Pago")
+        except Exception as e:
+            _logger.exception(f"Erro ao inicializar SDK do Mercado Pago: {str(e)}")
+            _sdk = None
     return _sdk

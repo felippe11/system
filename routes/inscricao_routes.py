@@ -12,6 +12,7 @@ from models import (
     Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente
 )
 import os
+from mp_fix_patch import fix_mp_notification_url, create_mp_preference
 import uuid
 import logging
 from dateutil import parser
@@ -255,9 +256,91 @@ def _calcular_preco(evento, lote_tipo_insc_id, tipo_insc_id, lote_vigente):
 
 def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, usuario: Usuario) -> str:
     """Gera preferência MP e devolve URL de pagamento."""
-    # Aplicar a taxa configurada ao preço
-    preco_final = preco_com_taxa(preco)
+    # Aplicar a taxa configurada ao preço, considerando cliente_id da inscrição
+    logging.info(f"Criando preferência MP: preco={preco}, titulo='{titulo}', inscricao_id={inscricao.id}, usuario_id={usuario.id}, cliente_id={inscricao.cliente_id}")
     
+    try:
+        preco_final = preco_com_taxa(preco, cliente_id=inscricao.cliente_id)
+        logging.info(f"Preço com taxa aplicada: {preco_final}")
+    except Exception as e:
+        logging.exception(f"Erro ao calcular preço com taxa: {str(e)}")
+        # Usar o preço original se houver erro no cálculo da taxa
+        preco_final = float(preco)
+        logging.info(f"Usando preço original: {preco_final}")
+    # Construir as URLs para o Mercado Pago
+    try:
+        # Obter o hostname válido para as URLs
+        app_url = os.getenv("APP_BASE_URL")
+        if not app_url or not app_url.strip():
+            app_url = request.host_url.rstrip('/')
+            if not app_url.startswith(('http://', 'https://')):
+                app_url = f"https://{app_url}"
+        elif not app_url.startswith(('http://', 'https://')):
+            app_url = f"https://{app_url}"
+            
+        logging.info(f"Base URL para Mercado Pago: {app_url}")
+            
+        # Gerar URLs completas e válidas
+        notification_url = external_url("mercadopago_routes.webhook_mp")
+        success_url = external_url("mercadopago_routes.pagamento_sucesso")
+        failure_url = external_url("mercadopago_routes.pagamento_falha")
+        pending_url = external_url("mercadopago_routes.pagamento_pendente")
+        
+        # Verificar se as URLs são válidas
+        for url_name, url in [
+            ("notification_url", notification_url),
+            ("success_url", success_url),
+            ("failure_url", failure_url),
+            ("pending_url", pending_url)
+        ]:
+            if not url.startswith(('http://', 'https://')):
+                logging.warning(f"URL inválida '{url_name}': {url} - Ajustando...")
+                # Adicionar protocolo https:// se não houver
+                fixed_url = f"https://{url}" if '://' not in url else url
+                
+                if url_name == "notification_url":
+                    notification_url = fixed_url
+                elif url_name == "success_url":
+                    success_url = fixed_url
+                elif url_name == "failure_url":
+                    failure_url = fixed_url
+                elif url_name == "pending_url":
+                    pending_url = fixed_url
+                    
+        # Validar novamente todas as URLs para garantir que são URLs absolutas válidas
+        for url_name, url in [
+            ("notification_url", notification_url),
+            ("success_url", success_url),
+            ("failure_url", failure_url),
+            ("pending_url", pending_url)
+        ]:
+            if not url.startswith(('http://', 'https://')):
+                logging.error(f"URL ainda inválida para {url_name}: {url}")
+                # Usar uma URL absoluta construída manualmente como fallback
+                fixed_url = f"{app_url}/mercadopago/{url_name.replace('_url', '')}"
+                
+                if url_name == "notification_url":
+                    notification_url = fixed_url.replace('notification', 'webhook')
+                elif url_name == "success_url":
+                    success_url = fixed_url.replace('success', 'pagamento_sucesso')
+                elif url_name == "failure_url":
+                    failure_url = fixed_url.replace('failure', 'pagamento_falha')
+                elif url_name == "pending_url":
+                    pending_url = fixed_url.replace('pending', 'pagamento_pendente')
+        
+        logging.info(f"URLs finais para MP: notification={notification_url}, success={success_url}, failure={failure_url}, pending={pending_url}")
+    except Exception as e:
+        logging.exception(f"Erro ao gerar URLs: {str(e)}")
+        # Uso do fallback simples para as URLs
+        base_url = os.getenv("APP_BASE_URL") or "https://sistema.evento.com"
+        if not base_url.startswith(('http://', 'https://')):
+            base_url = f"https://{base_url}"
+        notification_url = f"{base_url}/mercadopago/webhook"
+        success_url = f"{base_url}/mercadopago/sucesso"
+        failure_url = f"{base_url}/mercadopago/falha"
+        pending_url = f"{base_url}/mercadopago/pendente"
+        logging.info(f"Usando URLs de fallback: notification={notification_url}, success={success_url}")
+      # Dados para a API do Mercado Pago, garantindo formato correto
     preference_data = {
         "items": [
             {
@@ -271,27 +354,59 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
         "payer": {"email": usuario.email, "name": usuario.nome},
         "external_reference": str(inscricao.id),
         "back_urls": {
-            "success": external_url("mercadopago_routes.pagamento_sucesso"),
-            "failure": external_url("mercadopago_routes.pagamento_falha"),
-            "pending": external_url("mercadopago_routes.pagamento_pendente"),
+            "success": success_url,
+            "failure": failure_url,
+            "pending": pending_url,
         },
-        "notification_url": external_url("mercadopago_routes.webhook_mp"),
+        "notification_url": notification_url,
     }
-
+      # Log detalhado dos parâmetros sendo enviados
+    logging.info(f"Dados da preferência MP: {preference_data}")
+    
     auto_return = os.getenv("MP_AUTO_RETURN")
     if auto_return:
         preference_data["auto_return"] = auto_return
-
+        
+    # Adicionar o campo notificaction_url para contornar possível bug no MP ou SDK
+    if "notification_url" in preference_data:
+        preference_data["notificaction_url"] = preference_data["notification_url"]
+        logging.info("Adicionado campo notificaction_url como fallback")
+    
     try:
-        pref = sdk.preference().create(preference_data)
+        # Tenta criar a preferência com o SDK
+        # Usar a função segura de criação de preferência
+
+        pref = create_mp_preference(sdk, preference_data)
+        logging.info(f"Preferência MP criada: {pref}")
     except Exception as exc:
-        logging.exception("Erro ao chamar API do Mercado Pago")
-        raise RuntimeError("Falha ao criar preferência de pagamento.") from exc
+        logging.exception(f"Erro ao chamar API do Mercado Pago: {str(exc)}")
+        
+        # Se o erro for relacionado à URL de notificação, tente com a correção
+        if "notification_url" in str(exc) or "notificaction_url" in str(exc):
+            logging.warning("Erro relacionado à URL de notificação. Tentando corrigir...")
+            try:
+                # Cria uma cópia dos dados e adiciona notificaction_url
+                corrected_data = preference_data.copy()
+                corrected_data["notificaction_url"] = preference_data["notification_url"]
+                
+                # Tenta novamente com os dados corrigidos
+                pref = sdk.preference().create(corrected_data)
+                logging.info(f"Preferência MP criada após correção: {pref}")
+            except Exception as exc2:
+                logging.exception(f"Falha na segunda tentativa: {str(exc2)}")
+                if hasattr(exc2, 'response'):
+                    logging.error(f"Resposta de erro do MP: {exc2.response}")
+                raise RuntimeError(f"Falha ao criar preferência de pagamento após correção: {str(exc2)}") from exc2
+        else:
+            # Detalhando o erro para melhor diagnóstico
+            if hasattr(exc, 'response'):
+                logging.error(f"Resposta de erro do MP: {exc.response}")
+            raise RuntimeError(f"Falha ao criar preferência de pagamento: {str(exc)}") from exc
 
     init_point = pref.get("response", {}).get("init_point")
     if not init_point:
-        logging.error("Resposta inesperada do Mercado Pago: %s", pref)
-        raise RuntimeError("Falha ao criar preferência de pagamento.")
+        logging.error(f"Resposta inesperada do Mercado Pago: {pref}")
+        raise RuntimeError("Falha ao criar preferência de pagamento: URL de redirecionamento não encontrada na resposta.")
     inscricao.payment_id = pref["response"].get("id")
     db.session.flush()
     return init_point
