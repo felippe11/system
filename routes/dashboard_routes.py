@@ -7,6 +7,7 @@ from flask import (
     session,
     abort,
     request,
+    current_app,
 )
 from flask_login import login_required, current_user
 
