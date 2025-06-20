@@ -393,23 +393,6 @@
   </div>
 </div>
 
-<!-- Submissões e Revisão -->
-<div class="col-lg-6 col-xl-3">
-  <div class="card h-100 shadow-sm hover-shadow border-0">
-    <div class="card-body">
-      <div class="text-info mb-3">
-        <i class="bi bi-journal-text fs-1"></i>
-      </div>
-      <h5 class="card-title fw-bold">Submissões e Revisão</h5>
-      <p class="card-text text-muted">Acesse as configurações de submissões e revisão</p>
-    </div>
-    <div class="card-footer bg-white border-0 pt-0">
-      <a href="{{ url_for('config_cliente_routes.config_submissao') }}" class="btn btn-info w-100 text-white">
-        <i class="bi bi-journal-text me-2"></i> Abrir Página
-      </a>
-    </div>
-  </div>
-</div>
 
 <!-- Placas das Oficinas -->
 <div class="col-lg-6 col-xl-3">
@@ -956,7 +939,6 @@
               <div class="d-flex align-items-center">
                 <i class="bi bi-journal-text me-2 fs-5"></i>
                 <h5 class="fw-bold mb-0">Submissões e Revisão</h5>
-                <a href="{{ url_for('config_cliente_routes.config_submissao') }}" class="ms-auto small text-decoration-none">Abrir página</a>
               </div>
             </div>
             <div class="card-body">
@@ -975,6 +957,12 @@
                   <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'x-circle-fill' }}"></i>
                   {{ 'Ativo' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'Desativado' }}
                 </button>
+              </div>
+              <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                <div>
+                  <h6 class="mb-0 fw-semibold">Tipos de Arquivo Permitidos</h6>
+                </div>
+                <input type="text" id="inputAllowedFiles" class="form-control w-auto" value="{{ config_cliente.allowed_file_types }}" data-update-url="{{ url_for('config_cliente_routes.set_allowed_file_types') }}">
               </div>
               <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
                 <div>

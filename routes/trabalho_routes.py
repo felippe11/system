@@ -34,6 +34,17 @@ def submeter_trabalho():
             flash("Todos os campos são obrigatórios!", "warning")
             return redirect(url_for("trabalho_routes.submeter_trabalho"))
 
+        allowed = "pdf"
+        if current_user.cliente and current_user.cliente.configuracao:
+            allowed = current_user.cliente.configuracao.allowed_file_types or "pdf"
+        ext_ok = False
+        if allowed:
+            exts = [e.strip().lower() for e in allowed.split(',')]
+            ext_ok = any(arquivo.filename.lower().endswith(f".{ext}") for ext in exts)
+        if not ext_ok:
+            flash("Tipo de arquivo não permitido.", "warning")
+            return redirect(url_for("trabalho_routes.submeter_trabalho"))
+
         # Salva o arquivo
         filename = secure_filename(arquivo.filename)
         uploads_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/trabalhos")
