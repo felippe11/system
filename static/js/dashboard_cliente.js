@@ -167,6 +167,64 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+document.addEventListener('DOMContentLoaded', function() {
+  const selectReview = document.getElementById('selectReviewModel');
+  if (selectReview) {
+    selectReview.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ review_model: this.value })
+      });
+    });
+  }
+
+  const inputMin = document.getElementById('inputRevisoresMin');
+  if (inputMin) {
+    inputMin.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
+  const inputMax = document.getElementById('inputRevisoresMax');
+  if (inputMax) {
+    inputMax.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
+  const inputPrazo = document.getElementById('inputPrazoParecer');
+  if (inputPrazo) {
+    inputPrazo.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+});
+
 // Funções auxiliares
 function atualizarBotao(btn, valorAtivo) {
   if (!btn) return;

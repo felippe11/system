@@ -230,7 +230,12 @@ def configuracao_cliente_atual():
         "habilitar_certificado_individual": config_cliente.habilitar_certificado_individual,
         "habilitar_qrcode_evento_credenciamento": config_cliente.habilitar_qrcode_evento_credenciamento,
         "mostrar_taxa": config_cliente.mostrar_taxa,
+        "review_model": config_cliente.review_model,
+        "num_revisores_min": config_cliente.num_revisores_min,
+        "num_revisores_max": config_cliente.num_revisores_max,
+        "prazo_parecer_dias": config_cliente.prazo_parecer_dias
         "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos
+
     })
 
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
@@ -265,6 +270,97 @@ def toggle_qrcode_evento_credenciamento():
     })
 
 
+
+@config_cliente_routes.route("/set_review_model", methods=["POST"])
+@login_required
+def set_review_model():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    review_model = data.get("review_model")
+    if review_model not in ["single", "double"]:
+        return jsonify({"success": False, "message": "Modelo inválido"}), 400
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.review_model = review_model
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.review_model})
+
+
+@config_cliente_routes.route("/set_num_revisores_min", methods=["POST"])
+@login_required
+def set_num_revisores_min():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    try:
+        value = int(data.get("value"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.num_revisores_min = value
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.num_revisores_min})
+
+
+@config_cliente_routes.route("/set_num_revisores_max", methods=["POST"])
+@login_required
+def set_num_revisores_max():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    try:
+        value = int(data.get("value"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.num_revisores_max = value
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.num_revisores_max})
+
+
+@config_cliente_routes.route("/set_prazo_parecer_dias", methods=["POST"])
+@login_required
+def set_prazo_parecer_dias():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    try:
+        value = int(data.get("value"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.prazo_parecer_dias = value
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.prazo_parecer_dias})
+
 @config_cliente_routes.route('/revisao_config/<int:evento_id>', methods=['POST'])
 @login_required
 def atualizar_revisao_config(evento_id):
@@ -282,4 +378,5 @@ def atualizar_revisao_config(evento_id):
     config.modelo_blind = data.get('modelo_blind', config.modelo_blind)
     db.session.commit()
     return jsonify({"success": True})
+
 

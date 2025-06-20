@@ -950,6 +950,58 @@
             </div>
           </div>
 
+          <div class="card border-info border-top border-4 shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-journal-text me-2 fs-5"></i>
+                <h5 class="fw-bold mb-0">Submissões e Revisão</h5>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                <div>
+                  <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                    <i class="bi bi-upload text-primary me-2"></i>
+                    Submissão de Trabalhos
+                  </h6>
+                  <p class="text-muted small mb-0">Permite que participantes submetam trabalhos</p>
+                </div>
+                <button type="button"
+                        id="btnToggleSubmissao"
+                        class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'danger' }}"
+                        data-toggle-url="{{ url_for('config_cliente_routes.toggle_submissao_trabalhos_cliente') }}">
+                  <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'x-circle-fill' }}"></i>
+                  {{ 'Ativo' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'Desativado' }}
+                </button>
+              </div>
+              <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+                <div>
+                  <h6 class="mb-0 fw-semibold">Modelo de Revisão</h6>
+                </div>
+                <select id="selectReviewModel" class="form-select w-auto" data-update-url="{{ url_for('config_cliente_routes.set_review_model') }}">
+                  <option value="single" {% if config_cliente.review_model == 'single' %}selected{% endif %}>Single-blind</option>
+                  <option value="double" {% if config_cliente.review_model == 'double' %}selected{% endif %}>Double-blind</option>
+                </select>
+              </div>
+              <div class="config-item p-3">
+                <div class="row g-2 align-items-end">
+                  <div class="col">
+                    <label class="form-label mb-0">Mínimo Revisores</label>
+                    <input type="number" min="1" class="form-control" id="inputRevisoresMin" value="{{ config_cliente.num_revisores_min }}" data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_min') }}">
+                  </div>
+                  <div class="col">
+                    <label class="form-label mb-0">Máximo Revisores</label>
+                    <input type="number" min="1" class="form-control" id="inputRevisoresMax" value="{{ config_cliente.num_revisores_max }}" data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_max') }}">
+                  </div>
+                  <div class="col">
+                    <label class="form-label mb-0">Prazo (dias)</label>
+                    <input type="number" min="1" class="form-control" id="inputPrazoParecer" value="{{ config_cliente.prazo_parecer_dias }}" data-update-url="{{ url_for('config_cliente_routes.set_prazo_parecer_dias') }}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Modelos e Manutenção Cards -->
           <div class="col-md-5">
             <!-- Baixar Modelos Excel Card -->
