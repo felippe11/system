@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Verificação em Duas Etapas</h3>
+  <form method="POST">
+    <div class="mb-3">
+      <label for="token" class="form-label">Código do Aplicativo</label>
+      <input type="text" id="token" name="token" class="form-control" required autofocus>
+    </div>
+    <button type="submit" class="btn btn-primary">Verificar</button>
+  </form>
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
+import pyotp
 
 from models import Usuario, Ministrante, Cliente
 from extensions import login_manager, db
@@ -59,19 +60,26 @@ def login():
             flash('E-mail ou senha incorretos!', 'danger')
             return render_template("login.html")
 
-        # Autenticar e guardar o tipo de usuário
-        login_user(usuario)
+        if getattr(usuario, 'mfa_enabled', False):
+            session['pre_mfa_user_id'] = usuario.id
+            if isinstance(usuario, Cliente):
+                session['pre_mfa_user_type'] = 'cliente'
+            elif isinstance(usuario, Ministrante):
+                session['pre_mfa_user_type'] = 'ministrante'
+            else:
+                session['pre_mfa_user_type'] = usuario.tipo
+            return redirect(url_for('auth_routes.mfa'))
 
-        if isinstance(usuario, Cliente):
-            session['user_type'] = 'cliente'
-        elif isinstance(usuario, Ministrante):
-            session['user_type'] = 'ministrante'
-        else:
-            session['user_type'] = usuario.tipo
+        login_user(usuario)
+        session['user_type'] = (
+            'cliente' if isinstance(usuario, Cliente)
+            else 'ministrante' if isinstance(usuario, Ministrante)
+            else usuario.tipo
+        )
+        session['mfa_authenticated'] = True
 
         flash('Login realizado com sucesso!', 'success')
 
-        # Redirecionamento baseado no tipo
         destino = {
             'admin':        'dashboard_routes.dashboard',
             'cliente':      'dashboard_routes.dashboard',
@@ -83,6 +91,39 @@ def login():
         return redirect(url_for(destino))
 
     return render_template("login.html")
+
+
+@auth_routes.route('/mfa', methods=['GET', 'POST'])
+def mfa():
+    user_id = session.get('pre_mfa_user_id')
+    if not user_id:
+        return redirect(url_for('auth_routes.login'))
+
+    usuario = db.session.get(Usuario, user_id)
+    if not usuario or not usuario.mfa_secret:
+        flash('Usuário inválido para MFA', 'danger')
+        return redirect(url_for('auth_routes.login'))
+
+    if request.method == 'POST':
+        token = request.form.get('token')
+        totp = pyotp.TOTP(usuario.mfa_secret)
+        if totp.verify(token):
+            login_user(usuario)
+            session['user_type'] = session.pop('pre_mfa_user_type', usuario.tipo)
+            session.pop('pre_mfa_user_id', None)
+            session['mfa_authenticated'] = True
+            flash('Login realizado com sucesso!', 'success')
+            destino = {
+                'admin':        'dashboard_routes.dashboard',
+                'cliente':      'dashboard_routes.dashboard',
+                'participante': 'dashboard_participante_routes.dashboard_participante',
+                'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
+                'professor':    'dashboard_professor.dashboard_professor'
+            }.get(session.get('user_type'), 'dashboard_routes.dashboard')
+            return redirect(url_for(destino))
+        else:
+            flash('Código inválido', 'danger')
+    return render_template('auth/mfa.html')
 
 # ===========================
 #   RESET DE SENHA VIA CPF
