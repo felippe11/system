@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Revisar Trabalho</h3>
+  <p><strong>{{ review.trabalho.titulo }}</strong></p>
+  <form method="POST">
+    <div class="mb-3">
+      <label>Código de Acesso</label>
+      <input type="text" name="codigo" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label>Nota (1-5)</label>
+      <input type="number" name="nota" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label>Comentários</label>
+      <textarea name="comentarios" class="form-control"></textarea>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="mostrar_nome" name="mostrar_nome">
+      <label class="form-check-label" for="mostrar_nome">Exibir meu nome ao autor</label>
+    </div>
+    <button class="btn btn-primary">Enviar Revisão</button>
+  </form>
+</div>
+{% endblock %}
