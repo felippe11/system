@@ -10,42 +10,6 @@ trabalho_routes = Blueprint(
 )
 
 
-@trabalho_routes.route('/submeter_trabalho', methods=['GET', 'POST'])
-@login_required
-def submeter_trabalho():
-    if current_user.tipo != 'participante':
-        flash('Apenas participantes podem submeter trabalhos.', 'danger')
-        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
-
-    if request.method == 'POST':
-        titulo = request.form.get('titulo')
-        resumo = request.form.get('resumo')
-        area_tematica = request.form.get('area_tematica')
-        arquivo = request.files.get('arquivo_pdf')
-
-        if not all([titulo, resumo, area_tematica, arquivo]):
-            flash('Todos os campos são obrigatórios!', 'danger')
-            return redirect(url_for('trabalho_routes.submeter_trabalho'))
-
-        filename = secure_filename(arquivo.filename)
-        caminho_pdf = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        arquivo.save(caminho_pdf)
-
-        trabalho = TrabalhoCientifico(
-            titulo=titulo,
-            resumo=resumo,
-            area_tematica=area_tematica,
-            arquivo_pdf=caminho_pdf,
-            usuario_id=current_user.id,
-            evento_id=current_user.evento_id  # opcionalmente usa o evento do usuário
-        )
-        db.session.add(trabalho)
-        db.session.commit()
-
-        flash("Trabalho submetido com sucesso!", "success")
-        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
-
-    return render_template("submeter_trabalho.html")
 
 
 @trabalho_routes.route('/avaliar_trabalhos')
@@ -106,7 +70,7 @@ def meus_trabalhos():
 @trabalho_routes.route('/submeter_trabalho', methods=['GET', 'POST'])
 @login_required
 @mfa_required
-def nova_submissao():
+def submeter_trabalho():
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem submeter trabalhos.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
@@ -119,7 +83,7 @@ def nova_submissao():
 
         if not all([titulo, resumo, area_tematica, arquivo]):
             flash('Todos os campos são obrigatórios!', 'warning')
-            return redirect(url_for('trabalho_routes.nova_submissao'))
+            return redirect(url_for('trabalho_routes.submeter_trabalho'))
 
         # Garante diretório e salva o arquivo PDF
         filename = secure_filename(arquivo.filename)
