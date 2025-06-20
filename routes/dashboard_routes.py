@@ -51,7 +51,16 @@ def dashboard_admin():
     if current_user.tipo != "admin":
         abort(403)
 
-    from models import Evento, Oficina, Inscricao, Cliente, Configuracao, Proposta
+    from models import (
+        Evento,
+        Oficina,
+        Inscricao,
+        Cliente,
+        Configuracao,
+        Proposta,
+        EventoInscricaoTipo,
+        LoteTipoInscricao,
+    )
     from extensions import db
 
     total_eventos = Evento.query.count()
@@ -73,6 +82,52 @@ def dashboard_admin():
     propostas = Proposta.query.order_by(Proposta.data_criacao.desc()).all()
     configuracao = Configuracao.query.first()
 
+    # ------------------------------------------------------------------
+    # Dados financeiros gerais
+    # ------------------------------------------------------------------
+    taxa = float(configuracao.taxa_percentual_inscricao or 0) if configuracao else 0.0
+
+    inscricoes_pagas = (
+        Inscricao.query
+        .join(Evento)
+        .filter(
+            Inscricao.status_pagamento == "approved",
+            Evento.inscricao_gratuita.is_(False)
+        )
+        .options(db.joinedload(Inscricao.evento))
+        .all()
+    )
+
+    financeiro_eventos = {}
+    for ins in inscricoes_pagas:
+        evento = ins.evento
+        if not evento:
+            continue
+        info = financeiro_eventos.setdefault(
+            evento.id,
+            {"nome": evento.nome, "quantidade": 0, "receita": 0.0},
+        )
+
+        preco = 0.0
+        if ins.lote_id and evento.habilitar_lotes:
+            lti = LoteTipoInscricao.query.filter_by(
+                lote_id=ins.lote_id,
+                tipo_inscricao_id=ins.tipo_inscricao_id,
+            ).first()
+            if lti:
+                preco = float(lti.preco)
+        else:
+            eit = EventoInscricaoTipo.query.get(ins.tipo_inscricao_id)
+            if eit:
+                preco = float(eit.preco)
+
+        info["quantidade"] += 1
+        info["receita"] += preco
+
+    total_eventos_receita = len(financeiro_eventos)
+    receita_total = sum(e["receita"] for e in financeiro_eventos.values())
+    receita_taxas = receita_total * taxa / 100
+
     estado_filter = request.args.get("estado")
     cidade_filter = request.args.get("cidade")
 
@@ -85,6 +140,10 @@ def dashboard_admin():
         clientes=clientes,
         propostas=propostas,
         configuracao=configuracao,
+        finance_eventos=list(financeiro_eventos.values()),
+        total_eventos_receita=total_eventos_receita,
+        receita_total=receita_total,
+        receita_taxas=receita_taxas,
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
     )
