@@ -698,7 +698,21 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('URL de exportação não definida.');
         return;
       }
-      window.location.href = url;
+    window.location.href = url;
+  });
+  }
+
+  const placasBtn = document.getElementById('btnGerarPlacasOficinas');
+  if (placasBtn) {
+    placasBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const eventoId = document.getElementById('eventoPlacasOficinas').value;
+      const base = this.dataset.baseUrl;
+      if (!base) {
+        console.error('Base URL não definida.');
+        return;
+      }
+      window.location.href = `${base}${encodeURIComponent(eventoId)}`;
     });
   }
   
