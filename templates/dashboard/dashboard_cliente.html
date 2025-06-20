@@ -76,6 +76,12 @@
             <i class="bi bi-gear-fill me-1"></i> Configurações
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab"
+                  data-bs-target="#financeiro" type="button">
+            <i class="bi bi-cash-coin me-1"></i> Financeiro
+          </button>
+        </li>
       </ul>
 
       <!-- Conteúdo das Abas -->
@@ -1303,6 +1309,11 @@
   </div>
 
   <!-- /ABA 4: CONFIGURAÇÕES -->
+  <!-- ABA 5: FINANCEIRO -->
+  <div class="tab-pane fade" id="financeiro" role="tabpanel">
+    {% include 'partials/dashboard_financeiro_aba.html' %}
+  </div>
+  <!-- /ABA 5: FINANCEIRO -->
 <!-- Mantendo a integração com o script original sem modificações -->
 <!-- Javascript com ícones e labels melhorados -->
 
@@ -1358,6 +1369,9 @@
   }
   if (typeof URL_EXPORTAR_PARTICIPANTES === 'undefined') {
     window.URL_EXPORTAR_PARTICIPANTES = "{{ url_for('relatorio_pdf_routes.exportar_participantes_evento') }}";
+  }
+  if (typeof URL_EXPORTAR_FINANCEIRO === 'undefined') {
+    window.URL_EXPORTAR_FINANCEIRO = "{{ url_for('relatorio_pdf_routes.exportar_financeiro') }}";
   }
 </script>
 {% endblock %}
