@@ -1,7 +1,5 @@
 import os
 import uuid
-
-from datetime import datetime
 from datetime import datetime
 import bcrypt
 from flask_login import UserMixin
@@ -1115,25 +1113,6 @@ class AuditLog(db.Model):
             f"<LoteTipoInscricao lote={self.lote_id} tipo={self.tipo_inscricao_id} "
             f"preco={self.preco}>"
         )
-
-
-# -----------------------------------------------------------------------------
-# ARQUIVO BINÁRIO
-# -----------------------------------------------------------------------------
-class ArquivoBinario(db.Model):
-    """Armazena qualquer arquivo diretamente no banco (útil para anexos pequenos)."""
-
-    __tablename__ = "arquivo_binario"
-
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(255), nullable=False)
-    conteudo = db.Column(db.LargeBinary, nullable=False)
-    mimetype = db.Column(db.String(255), nullable=False)
-    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f"<ArquivoBinario id={self.id} nome={self.nome}>"
-
 
 # -----------------------------------------------------------------------------
 # CONFIGURAÇÃO DE REVISÃO POR EVENTO
