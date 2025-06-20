@@ -682,6 +682,25 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 800); // Pequeno delay para o spinner ser visível
     });
   }
+
+  const exportPartBtn = document.getElementById('btnExportarParticipantes');
+  if (exportPartBtn) {
+    exportPartBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      const eventoId = document.getElementById('eventoExportParticipantes').value;
+      const formato = document.getElementById('formatoExportParticipantes').value;
+      let url;
+      if (this.dataset.exportUrl) {
+        url = `${this.dataset.exportUrl}?evento_id=${encodeURIComponent(eventoId)}&formato=${encodeURIComponent(formato)}`;
+      } else if (typeof URL_EXPORTAR_PARTICIPANTES !== 'undefined') {
+        url = `${URL_EXPORTAR_PARTICIPANTES}?evento_id=${encodeURIComponent(eventoId)}&formato=${encodeURIComponent(formato)}`;
+      } else {
+        console.error('URL de exportação não definida.');
+        return;
+      }
+      window.location.href = url;
+    });
+  }
   
   // Melhorar estilo dos selects ao focar/desfocar
   const selects = document.querySelectorAll('.form-select');

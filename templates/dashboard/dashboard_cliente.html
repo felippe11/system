@@ -247,6 +247,42 @@
     </div>
   </div>
 </div>
+
+<!-- Exportar Participantes do Evento -->
+<div class="card shadow mt-4">
+  <div class="card-header">
+    <h5 class="m-0 fw-bold">Exportar Participantes</h5>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label fw-bold text-secondary">
+          <i class="bi bi-calendar-event me-2"></i>Selecionar Evento
+        </label>
+        <select id="eventoExportParticipantes" class="form-select border-0 bg-light">
+          {% for evento in eventos %}
+          <option value="{{ evento.id }}">{{ evento.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label fw-bold text-secondary">
+          <i class="bi bi-file-earmark me-2"></i>Formato
+        </label>
+        <select id="formatoExportParticipantes" class="form-select border-0 bg-light">
+          <option value="xlsx">XLSX</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+      <div class="col-12 mt-4">
+        <button id="btnExportarParticipantes" data-export-url="{{ url_for('relatorio_pdf_routes.exportar_participantes_evento') }}" class="btn btn-success w-100 py-2 shadow-sm d-flex align-items-center justify-content-center">
+          <i class="bi bi-download fs-5 me-3"></i>
+          <span class="fw-bold">Exportar Participantes</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
           
         </div><!-- /ABA 1: ESTATÍSTICAS -->
 
@@ -1319,6 +1355,9 @@
   // Declarar a variável somente se ainda não existir
   if (typeof URL_EXPORTAR_CHECKINS_PDF === 'undefined') {
     window.URL_EXPORTAR_CHECKINS_PDF = "{{ url_for('routes.exportar_checkins_filtrados') }}";
+  }
+  if (typeof URL_EXPORTAR_PARTICIPANTES === 'undefined') {
+    window.URL_EXPORTAR_PARTICIPANTES = "{{ url_for('relatorio_pdf_routes.exportar_participantes_evento') }}";
   }
 </script>
 {% endblock %}
