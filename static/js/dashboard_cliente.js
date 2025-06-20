@@ -208,30 +208,6 @@ function atualizarBotao(btn, valorAtivo) {
   }
 }
 
-function carregarRelatorioMensagem() {
-  if (typeof URL_GERAR_RELATORIO_MENSAGEM === 'undefined') {
-    alert("Erro de configuração: URL para gerar relatório não definida.");
-    console.error("URL_GERAR_RELATORIO_MENSAGEM não está definida.");
-    return;
-  }
-  fetch(URL_GERAR_RELATORIO_MENSAGEM)
-    .then(response => response.text())
-    .then(data => {
-        const textoRelatorioEl = document.getElementById("textoRelatorio");
-        const modalRelatorioEl = document.getElementById("modalRelatorioMensagem");
-        if (textoRelatorioEl && modalRelatorioEl) {
-            textoRelatorioEl.value = data;
-            var modalRelatorio = new bootstrap.Modal(modalRelatorioEl);
-            modalRelatorio.show();
-        } else {
-            console.error("Elemento 'textoRelatorio' ou 'modalRelatorioMensagem' não encontrado.");
-        }
-    })
-    .catch(error => {
-        console.error("Erro ao carregar relatório:", error);
-        alert("Não foi possível carregar o relatório.");
-    });
-}
 
 function copiarMensagem() {
   const textoRelatorioEl = document.getElementById("textoRelatorio");
