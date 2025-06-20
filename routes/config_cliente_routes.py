@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import ConfiguracaoCliente, Configuracao, Cliente
+from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig
+from datetime import datetime
 
 config_cliente_routes = Blueprint('config_cliente_routes', __name__)
 
@@ -250,4 +251,23 @@ def toggle_qrcode_evento_credenciamento():
         "value": config_cliente.habilitar_qrcode_evento_credenciamento,
         "message": "Habilitação de QRCode de Evento atualizada!"
     })
+
+
+@config_cliente_routes.route('/revisao_config/<int:evento_id>', methods=['POST'])
+@login_required
+def atualizar_revisao_config(evento_id):
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    data = request.get_json() or {}
+    config = RevisaoConfig.query.filter_by(evento_id=evento_id).first()
+    if not config:
+        config = RevisaoConfig(evento_id=evento_id)
+        db.session.add(config)
+    config.numero_revisores = int(data.get('numero_revisores', config.numero_revisores))
+    prazo = data.get('prazo_revisao')
+    if prazo:
+        config.prazo_revisao = datetime.fromisoformat(prazo)
+    config.modelo_blind = data.get('modelo_blind', config.modelo_blind)
+    db.session.commit()
+    return jsonify({"success": True})
 

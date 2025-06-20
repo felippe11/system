@@ -48,7 +48,8 @@ def dashboard():
 @login_required
 def dashboard_admin():
     """Renderiza o dashboard do administrador com estatísticas do sistema."""
-    if current_user.tipo != "admin":
+    from flask import current_app
+    if not current_app.config.get('LOGIN_DISABLED') and getattr(current_user, 'tipo', None) != "admin":
         abort(403)
 
     from models import (
