@@ -42,19 +42,76 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 from decimal import Decimal, ROUND_HALF_UP
-from models import Configuracao
+from models import Configuracao, Cliente
+from flask import current_app, request
+from utils.taxa_service import calcular_taxa_cliente
 
-def preco_com_taxa(base):
+def preco_com_taxa(base, cliente_id=None):
     """
     Recebe o preço digitado pelo cliente (Decimal, str ou float)
-    e devolve o valor acrescido do percentual configurado.
+    e devolve o valor acrescido do percentual configurado,
+    considerando possíveis taxas diferenciadas por cliente.
+    
+    Args:
+        base: preço base do item (Decimal, str ou float)
+        cliente_id: ID opcional do cliente para considerar taxa diferenciada
+        
+    Returns:
+        Decimal: Valor com taxa aplicada
     """
-    base = Decimal(str(base))
-    cfg  = Configuracao.query.first()
-    perc = Decimal(cfg.taxa_percentual_inscricao or 0) if cfg else Decimal("0")
-    valor = base * (1 + perc/100)
-    # duas casas, arredondamento comercial
-    return valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    logger = logging.getLogger("preco_com_taxa")
+    logger.info(f"Calculando preço com taxa - base: {base}, cliente_id: {cliente_id}")
+    
+    try:
+        # Converter base para Decimal de forma segura
+        try:
+            base = Decimal(str(base)) 
+            logger.info(f"Preço base convertido para Decimal: {base}")
+        except Exception as e:
+            logger.error(f"Erro ao converter preço base para Decimal: {str(e)}")
+            # Fallback para um valor padrão se houver erro
+            base = Decimal('0')
+        
+        # Obter taxa geral do sistema
+        try:
+            cfg = Configuracao.query.first()
+            taxa_geral = float(cfg.taxa_percentual_inscricao or 0) if cfg else 0.0
+            logger.info(f"Taxa geral obtida: {taxa_geral}%")
+        except Exception as e:
+            logger.error(f"Erro ao obter taxa geral: {str(e)}")
+            taxa_geral = 0.0
+        
+        # Se temos um cliente_id, verifica se tem taxa diferenciada
+        perc = Decimal(str(taxa_geral))  # valor padrão
+        if cliente_id:
+            try:
+                logger.info(f"Buscando cliente ID={cliente_id}")
+                cliente = Cliente.query.get(cliente_id)
+                if cliente:
+                    logger.info(f"Cliente encontrado: {cliente.nome}")
+                    resultado_taxa = calcular_taxa_cliente(cliente, taxa_geral)
+                    taxa_aplicada = resultado_taxa["taxa_aplicada"]
+                    logger.info(f"Taxa aplicada após cálculo: {taxa_aplicada}")
+                    perc = Decimal(str(taxa_aplicada))
+                else:
+                    logger.warning(f"Cliente ID={cliente_id} não encontrado, usando taxa geral")
+            except Exception as e:
+                logger.exception(f"Erro ao processar taxa diferenciada: {str(e)}")
+        
+        # Calcular preço final com taxa
+        logger.info(f"Percentual final da taxa: {perc}%")
+        valor = base * (Decimal('1') + perc/Decimal('100'))
+        resultado = valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
+        logger.info(f"Preço final com taxa: {resultado}")
+        return resultado
+        
+    except Exception as e:
+        logger.exception(f"Erro inesperado ao calcular preço com taxa: {str(e)}")
+        # Em caso de erro, retorna o preço base sem taxa
+        try:
+            return Decimal(str(base)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        except:
+            return Decimal('0').quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
 def gerar_comprovante_pdf(usuario, oficina, inscricao):
@@ -776,13 +833,37 @@ def criar_preference_mp(usuario, tipo_inscricao, evento):
 
 # utils.py  (ou um novo arquivo helpers.py)
 from functools import wraps
-from flask import url_for
+from flask import url_for, request, current_app
 def external_url(endpoint: str, **values) -> str:
     """Gera URL absoluta usando APP_BASE_URL se definido."""
     base = os.getenv("APP_BASE_URL")
     if base:
+        # Garantir que a URL base seja válida, adicionando https:// se necessário
+        if not base.startswith(('http://', 'https://')):
+            base = 'https://' + base
         return base.rstrip("/") + url_for(endpoint, _external=False, **values)
-    return url_for(endpoint, _external=True, **values)
+    
+    # Certificar de que temos um host válido se _external=True
+    if not request.host:
+        # Fallback para uma URL completa usando o SERVER_NAME configurado
+        server_name = current_app.config.get('SERVER_NAME', 'localhost:5000')
+        scheme = current_app.config.get('PREFERRED_URL_SCHEME', 'https')  # Padronizando para HTTPS
+        path = url_for(endpoint, _external=False, **values)
+        return f"{scheme}://{server_name}{path}"
+    
+    try:
+        # Garantir que a URL gerada seja absoluta
+        url = url_for(endpoint, _external=True, **values)
+        if not url.startswith(('http://', 'https://')):
+            # Se ainda não for absoluta, aplicar o protocolo HTTPS
+            url = f"https://{request.host}{url if url.startswith('/') else '/' + url}"
+        return url
+    except Exception as e:
+        # Fallback em caso de erro na geração da URL
+        logging.exception(f"Erro ao gerar external_url para {endpoint}: {e}")
+        server_name = current_app.config.get('SERVER_NAME', 'localhost:5000')
+        path = url_for(endpoint, _external=False, **values)
+        return f"https://{server_name}{path}"
 
 def pagamento_necessario(f):
     @wraps(f)
