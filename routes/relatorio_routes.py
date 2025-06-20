@@ -7,13 +7,11 @@ from flask_login import login_required, current_user
 from io import BytesIO
 from openpyxl import Workbook
 from extensions import db
-from models import Evento, Oficina, Inscricao
+from models import Evento, Oficina, Inscricao, LoteTipoInscricao, EventoInscricaoTipo
 from datetime import datetime
 
 
-@relatorio_routes.route('/gerar_relatorio_mensagem', methods=['GET'])
-@login_required
-def gerar_relatorio_mensagem():
+def montar_relatorio_mensagem(incluir_financeiro=False):
     from sqlalchemy import func
     
     # Se quiser só as oficinas do cliente, verifique se current_user é admin ou cliente:
@@ -30,6 +28,35 @@ def gerar_relatorio_mensagem():
         oficinas = Oficina.query.filter_by(cliente_id=current_user.id).options(db.joinedload(Oficina.inscritos)).all()
         total_inscricoes = Inscricao.query.join(Oficina).filter(Oficina.cliente_id == current_user.id).count()
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+
+    financeiro_por_evento = {}
+    if incluir_financeiro:
+        inscricoes_q = (
+            Inscricao.query.join(Evento)
+            .filter(Inscricao.status_pagamento == 'approved')
+        )
+        if not is_admin:
+            inscricoes_q = inscricoes_q.filter(Evento.cliente_id == current_user.id)
+        inscricoes = inscricoes_q.options(db.joinedload(Inscricao.evento)).all()
+
+        for ins in inscricoes:
+            evento = ins.evento
+            if not evento:
+                continue
+            valor = 0.0
+            if ins.lote_id and evento.habilitar_lotes:
+                lti = LoteTipoInscricao.query.filter_by(
+                    lote_id=ins.lote_id,
+                    tipo_inscricao_id=ins.tipo_inscricao_id,
+                ).first()
+                if lti:
+                    valor = float(lti.preco)
+            else:
+                eit = EventoInscricaoTipo.query.get(ins.tipo_inscricao_id)
+                if eit:
+                    valor = float(eit.preco)
+
+            financeiro_por_evento[evento.id] = financeiro_por_evento.get(evento.id, 0.0) + valor
     
     # Novo cálculo do total_vagas conforme solicitado:
     # 1. Soma as vagas das oficinas com tipo_inscricao 'com_inscricao_com_limite'
@@ -71,6 +98,9 @@ def gerar_relatorio_mensagem():
         # Adicionar cabeçalho do evento
         mensagem += f"\n🎪 *EVENTO: {evento.nome}*\n"
         mensagem += f"📌 *Total de Oficinas no Evento:* {len(oficinas_evento)}\n"
+        if incluir_financeiro:
+            receita = financeiro_por_evento.get(evento.id, 0.0)
+            mensagem += f"💰 *Receita:* R$ {receita:.2f}\n"
         
         # Adicionar dados de cada oficina do evento
         for oficina in oficinas_evento:
@@ -106,6 +136,18 @@ def gerar_relatorio_mensagem():
         mensagem += "----------------------------------------\n"
 
     return mensagem
+
+
+@relatorio_routes.route('/relatorio_mensagem')
+@login_required
+def relatorio_mensagem():
+    incluir = request.args.get('financeiro') == '1'
+    texto = montar_relatorio_mensagem(incluir)
+    return render_template(
+        'relatorio/relatorio_mensagem.html',
+        texto_relatorio=texto,
+        incluir_financeiro=incluir
+    )
 
 
 @relatorio_routes.route('/relatorios/<path:filename>')
