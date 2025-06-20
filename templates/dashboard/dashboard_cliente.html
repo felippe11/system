@@ -377,23 +377,28 @@
 
 
       <!-- Relatório de Mensagem -->
-=======
-      <!-- Placas das Oficinas -->
-
       <div class="col-lg-6 col-xl-3">
         <div class="card h-100 shadow-sm hover-shadow border-0">
           <div class="card-body">
             <div class="text-info mb-3">
-
               <i class="bi bi-chat-left-text fs-1"></i>
             </div>
             <h5 class="card-title fw-bold">Relatório Mensagem</h5>
             <p class="card-text text-muted">Gere mensagem para compartilhar relatórios</p>
           </div>
           <div class="card-footer bg-white border-0 pt-0">
-            <button type="button" class="btn btn-info w-100 text-white" onclick="carregarRelatorioMensagem()">
+            <a href="{{ url_for('relatorio_routes.relatorio_mensagem') }}" class="btn btn-info w-100 text-white">
               <i class="bi bi-chat-left-text me-2"></i> Abrir Mensagem
+            </a>
+          </div>
+        </div>
+      </div>
 
+      <!-- Placas das Oficinas -->
+      <div class="col-lg-6 col-xl-3">
+        <div class="card h-100 shadow-sm hover-shadow border-0">
+          <div class="card-body">
+            <div class="text-info mb-3">
               <i class="bi bi-signpost fs-1"></i>
             </div>
             <h5 class="card-title fw-bold">Placas de Oficinas</h5>
@@ -407,7 +412,6 @@
           <div class="card-footer bg-white border-0 pt-0">
             <button id="btnGerarPlacasOficinas" data-base-url="{{ url_for('routes.gerar_placas_oficinas', evento_id=0)[:-1] }}" class="btn btn-info w-100">
               <i class="bi bi-download me-2"></i> Baixar Placas
-
             </button>
           </div>
         </div>
@@ -1357,34 +1361,6 @@
 
 </div>
 
-<!-- MODALS -->
-<!-- Modal do Relatório de Mensagem -->
-<div class="modal fade" id="modalRelatorioMensagem" tabindex="-1"
-     aria-labelledby="modalRelatorioMensagemLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title" id="modalRelatorioMensagemLabel">
-          <i class="bi bi-whatsapp me-2"></i>Relatório - Mensagem de Texto
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                aria-label="Fechar"></button>
-      </div>
-      <div class="modal-body">
-        <textarea id="textoRelatorio" class="form-control" rows="8">{{ msg_relatorio }}</textarea>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" onclick="copiarMensagem()">
-          <i class="bi bi-clipboard me-2"></i> Copiar
-        </button>
-        <button type="button" class="btn btn-success" onclick="enviarWhatsAppRelatorio()">
-          <i class="bi bi-whatsapp me-2"></i> Enviar via WhatsApp
-        </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- O modal de check-ins via QR foi removido e substituído por uma página dedicada -->
 
@@ -1410,9 +1386,6 @@
   }
   if (typeof URL_EXPORTAR_FINANCEIRO === 'undefined') {
     window.URL_EXPORTAR_FINANCEIRO = "{{ url_for('relatorio_pdf_routes.exportar_financeiro') }}";
-  }
-  if (typeof URL_GERAR_RELATORIO_MENSAGEM === 'undefined') {
-    window.URL_GERAR_RELATORIO_MENSAGEM = "{{ url_for('relatorio_routes.gerar_relatorio_mensagem') }}";
   }
 </script>
 {% endblock %}
