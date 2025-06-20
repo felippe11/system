@@ -49,6 +49,7 @@ def test_update_review_settings(client, app):
         assert config.num_revisores_min == 2
         assert config.num_revisores_max == 3
         assert config.prazo_parecer_dias == 10
+        assert config.allowed_file_types == 'pdf'
 
 
 def test_dashboard_defaults(client, app):
@@ -59,3 +60,4 @@ def test_dashboard_defaults(client, app):
     assert b'id="inputRevisoresMin" value="1"' in resp.data
     assert b'id="inputRevisoresMax" value="2"' in resp.data
     assert b'id="inputPrazoParecer" value="14"' in resp.data
+    assert b'id="inputAllowedFiles"' in resp.data
