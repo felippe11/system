@@ -1,5 +1,7 @@
 import os
 import uuid
+
+from datetime import datetime
 from datetime import datetime
 import bcrypt
 from flask_login import UserMixin
@@ -1040,27 +1042,39 @@ class LoteInscricao(db.Model):
         return True
     
 class LoteTipoInscricao(db.Model):
-    __tablename__ = 'lote_tipo_inscricao'
+    """Associa um *lote* de inscrição a um *tipo* de inscrição com preço."""
+
+    __tablename__ = "lote_tipo_inscricao"
 
     id = db.Column(db.Integer, primary_key=True)
-    lote_id = db.Column(db.Integer, db.ForeignKey('lote_inscricao.id'), nullable=False)
-    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    lote_id = db.Column(db.Integer, db.ForeignKey("lote_inscricao.id"), nullable=False)
+    tipo_inscricao_id = db.Column(
+        db.Integer, db.ForeignKey("evento_inscricao_tipo.id"), nullable=False
+    )
     preco = db.Column(db.Float, nullable=False)
 
-    # Relacionamentos
-    lote = db.relationship('LoteInscricao', backref=db.backref('tipos_inscricao', lazy=True))
-    tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('lotes_precos', lazy=True))
+    # relationships
+    lote = db.relationship(
+        "LoteInscricao", backref=db.backref("tipos_inscricao", lazy=True)
+    )
+    tipo_inscricao = db.relationship(
+        "EventoInscricaoTipo", backref=db.backref("lotes_precos", lazy=True)
+    )
 
     def __repr__(self):
-        return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
+        return (
+            f"<LoteTipoInscricao lote={self.lote_id} tipo={self.tipo_inscricao_id} "
+            f"preco={self.preco}>"
+        )
 
 
-# =================================
-#            ARQUIVO BINÁRIO
-# =================================
+# -----------------------------------------------------------------------------
+# ARQUIVO BINÁRIO
+# -----------------------------------------------------------------------------
 class ArquivoBinario(db.Model):
-    """Modelo para armazenar arquivos binários no banco de dados."""
-    __tablename__ = 'arquivo_binario'
+    """Armazena qualquer arquivo diretamente no banco (útil para anexos pequenos)."""
+
+    __tablename__ = "arquivo_binario"
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
@@ -1072,71 +1086,103 @@ class ArquivoBinario(db.Model):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
 
 
-# =================================
-#            SUBMISSION
-# =================================
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DE REVISÃO POR EVENTO
+# -----------------------------------------------------------------------------
+class RevisaoConfig(db.Model):
+    """Define regras globais de revisão para um evento (nº revisores, blind etc.)."""
+
+    __tablename__ = "revisao_config"
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(
+        db.Integer, db.ForeignKey("evento.id"), nullable=False, unique=True
+    )
+    numero_revisores = db.Column(db.Integer, default=2)
+    prazo_revisao = db.Column(db.DateTime, nullable=True)
+    modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
+
+    evento = db.relationship(
+        "Evento", backref=db.backref("revisao_config", uselist=False)
+    )
+
+    def __repr__(self):
+        return (
+            f"<RevisaoConfig evento={self.evento_id} revisores={self.numero_revisores} "
+            f"blind={self.modelo_blind}>"
+        )
+
+
+# -----------------------------------------------------------------------------
+# SUBMISSION (trabalhos científicos, resumos, etc.)
+# -----------------------------------------------------------------------------
 class Submission(db.Model):
-    """Model representing an academic submission that can later be reviewed."""
+    """Representa um trabalho submetido para avaliação em um evento."""
 
     __tablename__ = "submission"
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
 
-    # --- textual content ---
-    abstract = db.Column(db.Text, nullable=True)  # short summary
-    content = db.Column(db.Text, nullable=True)   # full text (optional)
+    # textual fields
+    abstract = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)
 
-    # --- file upload ---
+    # file upload (caminho para o arquivo no sistema de arquivos ou S3 etc.)
     file_path = db.Column(db.String(255), nullable=True)
 
-    # --- locator & code ---
-    locator = db.Column(db.String(36), unique=True, nullable=False)
+    # locator & code (para acesso do autor e revisores externos)
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
     code_hash = db.Column(db.String(128), nullable=False)
 
-    # --- metadata ---
+    # metadata
     status = db.Column(db.String(50), nullable=True)
     area_id = db.Column(db.Integer, nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # --- relationships ---
+    # relationships
     author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))
 
     # ------------------------------------------------------------------
-    # utility methods
+    # utility
     # ------------------------------------------------------------------
     def __repr__(self):
         return f"<Submission {self.title}>"
 
     def check_code(self, code: str) -> bool:
-        """Return True if the provided code matches the stored hash."""
+        """Valida o código de acesso enviado pelo usuário."""
         if not code:
             return False
         return bcrypt.checkpw(code.encode(), self.code_hash.encode())
 
 
-# =================================
-#              REVIEW
-# =================================
+# -----------------------------------------------------------------------------
+# REVIEW (parecer da submissão)
+# -----------------------------------------------------------------------------
 class Review(db.Model):
-    """Model capturing a review of a submission (single‑/double‑/open‑blind)."""
+    """Armazena o parecer de um revisor sobre uma submissão."""
 
     __tablename__ = "review"
 
     id = db.Column(db.Integer, primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
 
-    # reviewer can be identified by user or by name (for anonymous/blind options)
+    # revisor (identificado ou anônimo)
     reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     reviewer_name = db.Column(db.String(255), nullable=True)
 
-    # review details
-    blind_type = db.Column(db.String(20), nullable=True)  # "single", "double", "open"
-    scores = db.Column(db.JSON, nullable=True)            # e.g. {"originality":4, ...}
+    # segurança/acesso externo
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    access_code = db.Column(db.String(50), nullable=True)
+
+    # detalhes
+    blind_type = db.Column(db.String(20), nullable=True)  # single | double | open | anonimo
+    scores = db.Column(db.JSON, nullable=True)            # ex.: {"originalidade": 4}
+    note = db.Column(db.Integer, nullable=True)           # nota geral (0‑10) opcional
     comments = db.Column(db.Text, nullable=True)
-    file_path = db.Column(db.String(255), nullable=True)  # optional annotated PDF, etc.
-    decision = db.Column(db.String(50), nullable=True)    # "accept", "minor", "reject", ...
+    file_path = db.Column(db.String(255), nullable=True)  # PDF anotado etc.
+    decision = db.Column(db.String(50), nullable=True)    # accept | minor | major | reject
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # relationships
@@ -1147,11 +1193,11 @@ class Review(db.Model):
         return f"<Review {self.id} submission={self.submission_id}>"
 
 
-# =================================
-#            ASSIGNMENT
-# =================================
+# -----------------------------------------------------------------------------
+# ASSIGNMENT (vincula revisor ↔ submissão)
+# -----------------------------------------------------------------------------
 class Assignment(db.Model):
-    """Links a reviewer to a submission with an optional deadline."""
+    """Liga um revisor a uma submissão, controlando prazo e conclusão."""
 
     __tablename__ = "assignment"
 
