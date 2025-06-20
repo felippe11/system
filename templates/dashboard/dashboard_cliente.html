@@ -377,41 +377,48 @@
 
 
       <!-- Relatório de Mensagem -->
-=======
-      <!-- Placas das Oficinas -->
-
-      <div class="col-lg-6 col-xl-3">
-        <div class="card h-100 shadow-sm hover-shadow border-0">
-          <div class="card-body">
-            <div class="text-info mb-3">
-
-              <i class="bi bi-chat-left-text fs-1"></i>
-            </div>
-            <h5 class="card-title fw-bold">Relatório Mensagem</h5>
-            <p class="card-text text-muted">Gere mensagem para compartilhar relatórios</p>
-          </div>
-          <div class="card-footer bg-white border-0 pt-0">
-            <button type="button" class="btn btn-info w-100 text-white" onclick="carregarRelatorioMensagem()">
-              <i class="bi bi-chat-left-text me-2"></i> Abrir Mensagem
-
-              <i class="bi bi-signpost fs-1"></i>
-            </div>
-            <h5 class="card-title fw-bold">Placas de Oficinas</h5>
-            <p class="card-text text-muted">Selecione o evento e baixe as placas</p>
-            <select id="eventoPlacasOficinas" class="form-select mt-2">
-              {% for evento in eventos %}
-              <option value="{{ evento.id }}">{{ evento.nome }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="card-footer bg-white border-0 pt-0">
-            <button id="btnGerarPlacasOficinas" data-base-url="{{ url_for('routes.gerar_placas_oficinas', evento_id=0)[:-1] }}" class="btn btn-info w-100">
-              <i class="bi bi-download me-2"></i> Baixar Placas
-
-            </button>
-          </div>
-        </div>
+<div class="col-lg-6 col-xl-3">
+  <div class="card h-100 shadow-sm hover-shadow border-0">
+    <div class="card-body">
+      <div class="text-info mb-3">
+        <i class="bi bi-chat-left-text fs-1"></i>
       </div>
+      <h5 class="card-title fw-bold">Relatório Mensagem</h5>
+      <p class="card-text text-muted">Gere mensagem para compartilhar relatórios</p>
+    </div>
+    <div class="card-footer bg-white border-0 pt-0">
+      <button type="button" class="btn btn-info w-100 text-white" onclick="carregarRelatorioMensagem()">
+        <i class="bi bi-chat-left-text me-2"></i> Abrir Mensagem
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Placas das Oficinas -->
+<div class="col-lg-6 col-xl-3">
+  <div class="card h-100 shadow-sm hover-shadow border-0">
+    <div class="card-body">
+      <div class="text-info mb-3">
+        <i class="bi bi-signpost fs-1"></i>
+      </div>
+      <h5 class="card-title fw-bold">Placas de Oficinas</h5>
+      <p class="card-text text-muted">Selecione o evento e baixe as placas</p>
+      <select id="eventoPlacasOficinas" class="form-select mt-2">
+        {% for evento in eventos %}
+        <option value="{{ evento.id }}">{{ evento.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="card-footer bg-white border-0 pt-0">
+      <button id="btnGerarPlacasOficinas" 
+              data-base-url="{{ url_for('routes.gerar_placas_oficinas', evento_id=0)[:-1] }}" 
+              class="btn btn-info w-100">
+        <i class="bi bi-download me-2"></i> Baixar Placas
+      </button>
+    </div>
+  </div>
+</div>
+
     </div>
 
     <!-- Gerenciamento de conteúdo -->
