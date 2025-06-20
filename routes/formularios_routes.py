@@ -6,8 +6,10 @@ from flask import (
     url_for,
     flash,
     send_from_directory,
+    send_file,
 )
 from flask_login import login_required, current_user
+from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 import os
@@ -26,6 +28,7 @@ from models import (
     Inscricao,
     Oficina,
     Ministrante,
+    AuditLog,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -309,6 +312,42 @@ def exportar_csv(formulario_id):
     )
 
 
+@formularios_routes.route('/formularios/<int:formulario_id>/exportar_xlsx')
+@login_required
+def exportar_xlsx(formulario_id):
+    formulario = Formulario.query.get_or_404(formulario_id)
+    respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
+
+    try:
+        import xlsxwriter
+        from io import BytesIO
+    except ImportError:
+        flash('Biblioteca XLSXWriter não disponível', 'warning')
+        return redirect(url_for('formularios_routes.exportar_csv', formulario_id=formulario_id))
+
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output)
+    sheet = workbook.add_worksheet('Respostas')
+
+    headers = ['Usuário', 'Data de Envio'] + [c.nome for c in formulario.campos]
+    for col, h in enumerate(headers):
+        sheet.write(0, col, h)
+
+    for row_idx, resposta in enumerate(respostas, start=1):
+        usuario_nome = resposta.usuario.nome if resposta.usuario else 'N/A'
+        data_envio = resposta.data_submissao.strftime('%d/%m/%Y %H:%M')
+        row_data = [usuario_nome, data_envio]
+        for campo in formulario.campos:
+            valor = next((r.valor for r in resposta.respostas_campos if r.campo_id == campo.id), '')
+            row_data.append(valor)
+        for col_idx, val in enumerate(row_data):
+            sheet.write(row_idx, col_idx, val)
+
+    workbook.close()
+    output.seek(0)
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='respostas.xlsx')
+
+
 @formularios_routes.route('/formularios/<int:formulario_id>/gerar_pdf_respostas')
 @login_required
 def gerar_pdf_respostas_route(formulario_id):
@@ -323,9 +362,14 @@ def gerar_pdf_respostas_route(formulario_id):
 
 @formularios_routes.route('/respostas/<path:filename>')
 @login_required
+@mfa_required
 def get_resposta_file(filename):
     print(">> get_resposta_file foi chamado com:", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
+    uid = current_user.id if hasattr(current_user, 'id') else None
+    log = AuditLog(user_id=uid, submission_id=None, event_type='download')
+    db.session.add(log)
+    db.session.commit()
     return send_from_directory(uploads_folder, filename)
 
 
@@ -603,6 +647,7 @@ def listar_respostas():
 
 @formularios_routes.route('/definir_status_inline', methods=['POST'])
 @login_required
+@mfa_required
 def definir_status_inline():
     # 1) Pega valores do form
     resposta_id = request.form.get('resposta_id')
@@ -621,6 +666,10 @@ def definir_status_inline():
 
     # 4) Atualiza
     resposta.status_avaliacao = novo_status
+    db.session.commit()
+    uid = current_user.id if hasattr(current_user, 'id') else None
+    log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
+    db.session.add(log)
     db.session.commit()
 
     flash("Status atualizado com sucesso!", "success")
