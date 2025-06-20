@@ -41,4 +41,4 @@ def client(app):
 def test_dashboard_admin_financeiro(client):
     resp = client.get('/dashboard_admin')
     assert resp.status_code == 200
-    assert b'Resumo Financeiro Geral' in resp.data
+    assert b'Resumo Financeiro por Cliente' in resp.data
