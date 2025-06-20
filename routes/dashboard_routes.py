@@ -7,6 +7,7 @@ from flask import (
     session,
     abort,
     request,
+    current_app,
 )
 from flask_login import login_required, current_user
 from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
@@ -49,9 +50,12 @@ def dashboard():
 @login_required
 def dashboard_admin():
     """Renderiza o dashboard do administrador com estatísticas do sistema."""
-    from flask import current_app
+    from flask import current_app, abort
+
+    # Se o login não está desabilitado e o usuário logado não é admin → 403
     if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "admin":
         abort(403)
+
 
     from models import (
         Evento,

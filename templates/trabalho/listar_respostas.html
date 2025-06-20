@@ -48,6 +48,9 @@ body {
                         <a class="dropdown-item" href="{{ url_for('formularios_routes.exportar_csv', formulario_id=formulario.id) }}">
                             <i class="bi bi-file-excel"></i> CSV
                         </a>
+                        <a class="dropdown-item" href="{{ url_for('formularios_routes.exportar_xlsx', formulario_id=formulario.id) }}">
+                            <i class="bi bi-file-earmark-excel"></i> XLSX
+                        </a>
                     </div>
                 </div>
             </div>
