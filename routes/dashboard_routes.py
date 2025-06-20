@@ -98,14 +98,20 @@ def dashboard_admin():
         .all()
     )
 
-    financeiro_eventos = {}
+    financeiro_clientes = {}
     for ins in inscricoes_pagas:
         evento = ins.evento
         if not evento:
             continue
-        info = financeiro_eventos.setdefault(
-            evento.id,
-            {"nome": evento.nome, "quantidade": 0, "receita": 0.0},
+        cliente = evento.cliente
+        cinfo = financeiro_clientes.setdefault(
+            cliente.id,
+            {
+                "nome": cliente.nome,
+                "receita_total": 0.0,
+                "taxas": 0.0,
+                "eventos": {},
+            },
         )
 
         preco = 0.0
@@ -121,12 +127,20 @@ def dashboard_admin():
             if eit:
                 preco = float(eit.preco)
 
-        info["quantidade"] += 1
-        info["receita"] += preco
+        einfo = cinfo["eventos"].setdefault(
+            evento.id,
+            {"nome": evento.nome, "quantidade": 0, "receita": 0.0},
+        )
+        einfo["quantidade"] += 1
+        einfo["receita"] += preco
+        cinfo["receita_total"] += preco
 
-    total_eventos_receita = len(financeiro_eventos)
-    receita_total = sum(e["receita"] for e in financeiro_eventos.values())
-    receita_taxas = receita_total * taxa / 100
+    for cinfo in financeiro_clientes.values():
+        cinfo["taxas"] = cinfo["receita_total"] * taxa / 100
+
+    total_eventos_receita = sum(len(c["eventos"]) for c in financeiro_clientes.values())
+    receita_total = sum(c["receita_total"] for c in financeiro_clientes.values())
+    receita_taxas = sum(c["taxas"] for c in financeiro_clientes.values())
 
     estado_filter = request.args.get("estado")
     cidade_filter = request.args.get("cidade")
@@ -140,7 +154,7 @@ def dashboard_admin():
         clientes=clientes,
         propostas=propostas,
         configuracao=configuracao,
-        finance_eventos=list(financeiro_eventos.values()),
+        finance_clientes=list(financeiro_clientes.values()),
         total_eventos_receita=total_eventos_receita,
         receita_total=receita_total,
         receita_taxas=receita_taxas,
