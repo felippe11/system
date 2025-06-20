@@ -579,13 +579,11 @@ class ConfiguracaoCliente(db.Model):
     
     # Relacionamento com o cliente (opcional se quiser acessar .cliente)
     cliente = db.relationship('Cliente', back_populates='configuracao')
-
     habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
-
     # Exibe a taxa de serviço separadamente no preço da inscrição
     mostrar_taxa = db.Column(db.Boolean, default=True)
-
-    
+    # Taxa diferenciada específica para o cliente (se definida, sobrepõe a taxa geral)
+    taxa_diferenciada = db.Column(db.Numeric(5,2), nullable=True)
     
 class FeedbackCampo(db.Model):
     __tablename__ = 'feedback_campo'

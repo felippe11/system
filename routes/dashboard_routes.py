@@ -9,6 +9,7 @@ from flask import (
     request,
 )
 from flask_login import login_required, current_user
+from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
 
 dashboard_routes = Blueprint(
     'dashboard_routes',
@@ -77,16 +78,22 @@ def dashboard_admin():
         elif of.tipo_inscricao == "com_inscricao_sem_limite":
             total_vagas += len(of.inscritos)
 
-    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0
-
-    clientes = Cliente.query.all()
+    percentual_adesao = (total_inscricoes / total_vagas) * 100 if total_vagas > 0 else 0    # Obter todos os clientes com suas configurações (para taxas diferenciadas)
+    clientes = Cliente.query.options(db.joinedload(Cliente.configuracao)).all()
     propostas = Proposta.query.order_by(Proposta.data_criacao.desc()).all()
     configuracao = Configuracao.query.first()
-
-    # ------------------------------------------------------------------
+    
+    # Garantir que todos os clientes tenham uma configuração
+    for cliente in clientes:
+        if not hasattr(cliente, 'configuracao') or cliente.configuracao is None:
+            from models import ConfiguracaoCliente
+            nova_config = ConfiguracaoCliente(cliente_id=cliente.id)
+            db.session.add(nova_config)
+            db.session.commit()
+            cliente.configuracao = nova_config    # ------------------------------------------------------------------
     # Dados financeiros gerais
     # ------------------------------------------------------------------
-    taxa = float(configuracao.taxa_percentual_inscricao or 0) if configuracao else 0.0
+    taxa_geral = float(configuracao.taxa_percentual_inscricao or 0) if configuracao else 0.0
 
     inscricoes_pagas = (
         Inscricao.query
@@ -127,7 +134,6 @@ def dashboard_admin():
             eit = EventoInscricaoTipo.query.get(ins.tipo_inscricao_id)
             if eit:
                 preco = float(eit.preco)
-
         einfo = cinfo["eventos"].setdefault(
             evento.id,
             {"nome": evento.nome, "quantidade": 0, "receita": 0.0},
@@ -135,9 +141,7 @@ def dashboard_admin():
         einfo["quantidade"] += 1
         einfo["receita"] += preco
         cinfo["receita_total"] += preco
-
-    for cinfo in financeiro_clientes.values():
-        cinfo["taxas"] = cinfo["receita_total"] * taxa / 100
+      # Aplicar o cálculo de taxas utilizando o serviço centralizado    calcular_taxas_clientes(clientes, financeiro_clientes, taxa_geral)
 
     total_eventos_receita = sum(len(c["eventos"]) for c in financeiro_clientes.values())
     receita_total = sum(c["receita_total"] for c in financeiro_clientes.values())
