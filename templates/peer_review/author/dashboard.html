@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Minhas Submissões{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Minhas Submissões</h1>
+  <p class="text-muted">Resumo de todas as submissões enviadas.</p>
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Título</th><th>Status</th><th>Data</th></tr>
+    </thead>
+    <tbody>
+      {% for sub in submissions %}
+      <tr>
+        <td>{{ sub.title }}</td>
+        <td>{{ sub.status }}</td>
+        <td>{{ sub.date }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-center">Nenhuma submissão.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
