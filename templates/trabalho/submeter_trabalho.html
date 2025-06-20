@@ -3,6 +3,7 @@
 <div class="container mt-5">
   <h3 class="mb-4">Submissão de Trabalho Científico</h3>
   <form method="POST" enctype="multipart/form-data">
+    {{ csrf_token() }}
     <div class="mb-3">
       <label for="titulo" class="form-label">Título</label>
       <input type="text" class="form-control" name="titulo" required>
