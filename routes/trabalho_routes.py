@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
+from utils.mfa import mfa_required
+from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog
 
 trabalho_routes = Blueprint(
     'trabalho_routes',
@@ -48,6 +50,7 @@ def submeter_trabalho():
 
 @trabalho_routes.route('/avaliar_trabalhos')
 @login_required
+@mfa_required
 def avaliar_trabalhos():
     if current_user.tipo != 'cliente' and not current_user.is_superuser():
         flash('Apenas administradores ou avaliadores têm acesso.', 'danger')
@@ -58,6 +61,7 @@ def avaliar_trabalhos():
 
 @trabalho_routes.route('/avaliar_trabalho/<int:trabalho_id>', methods=['GET', 'POST'])
 @login_required
+@mfa_required
 def avaliar_trabalho(trabalho_id):
     trabalho = TrabalhoCientifico.query.get_or_404(trabalho_id)
 
@@ -79,6 +83,10 @@ def avaliar_trabalho(trabalho_id):
 
         trabalho.status = 'avaliado'
         db.session.commit()
+        uid = current_user.id if hasattr(current_user, 'id') else None
+        log = AuditLog(user_id=uid, submission_id=trabalho.id, event_type='decision')
+        db.session.add(log)
+        db.session.commit()
 
         flash("Avaliação registrada!", "success")
         return redirect(url_for('trabalho_routes.avaliar_trabalhos'))
@@ -97,6 +105,7 @@ def meus_trabalhos():
 
 @trabalho_routes.route('/submeter_trabalho', methods=['GET', 'POST'])
 @login_required
+@mfa_required
 def nova_submissao():
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem submeter trabalhos.', 'danger')
@@ -129,6 +138,10 @@ def nova_submissao():
         )
 
         db.session.add(trabalho)
+        db.session.commit()
+        uid = current_user.id if hasattr(current_user, 'id') else None
+        log = AuditLog(user_id=uid, submission_id=trabalho.id, event_type='submission')
+        db.session.add(log)
         db.session.commit()
 
         flash('Trabalho submetido com sucesso!', 'success')
