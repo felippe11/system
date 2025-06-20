@@ -1,0 +1,159 @@
+/* Estilos específicos para o checkbox de termos */
+
+/* Container do checkbox */
+.terms-checkbox {
+    display: flex;
+    margin-bottom: 16px;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #fff;
+    border: 1px solid #d1d5db;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    outline: none; /* Remove outline padrão do tabindex */
+}
+
+.terms-checkbox:hover, .terms-checkbox:focus-within {
+    border-color: #60a5fa;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Esconder o checkbox nativo mas mantê-lo acessível */
+.terms-checkbox input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* Estilo do label - torna toda a área clicável */
+.terms-checkbox label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+    font-size: 0.95rem;
+    color: #1f2937;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+}
+
+/* Criar o checkbox customizado */
+.terms-checkbox .checkmark {
+    display: inline-block;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    background-color: #fff;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    margin-right: 12px;
+    position: relative;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Estilo do texto dos termos */
+.terms-checkbox .terms-text {
+    flex-grow: 1;
+    line-height: 1.4;
+}
+
+/* Estado hover e focus */
+.terms-checkbox:hover .checkmark,
+.terms-checkbox input:focus + label .checkmark {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Estado checked */
+.terms-checkbox input:checked + label .checkmark {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.terms-checkbox input:checked + label .checkmark:after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 6px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    animation: check-animation 0.2s ease-out;
+}
+
+@keyframes check-animation {
+    0% { opacity: 0; transform: rotate(45deg) scale(0.8); }
+    50% { opacity: 1; transform: rotate(45deg) scale(1.2); }
+    100% { opacity: 1; transform: rotate(45deg) scale(1); }
+}
+
+/* Links dentro do checkbox */
+.terms-checkbox a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    margin: 0 2px;
+    position: relative;
+    z-index: 3; /* Garante que os links fiquem acima de tudo */
+}
+
+.terms-checkbox a:after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    bottom: -1px;
+    left: 0;
+    background-color: #2563eb;
+    transform: scaleX(0.5);
+    opacity: 0.3;
+    transition: all 0.2s ease-out;
+}
+
+.terms-checkbox a:hover {
+    color: #1e40af;
+}
+
+.terms-checkbox a:hover:after {
+    transform: scaleX(1);
+    opacity: 0.8;
+}
+
+/* Estado de erro */
+.terms-checkbox.highlight-required {
+    border-color: #ef4444;
+    background-color: #fee2e2;
+    animation: pulse 0.8s ease;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .terms-checkbox {
+        padding: 10px;
+    }
+    
+    .terms-checkbox .checkmark {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+    }
+    
+    .terms-checkbox .terms-text {
+        font-size: 0.9rem;
+    }
+}
