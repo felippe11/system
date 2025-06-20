@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <link rel="stylesheet" href="{{ url_for('static', filename='css/cadastro_participante.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/terms-checkbox.css') }}">
 
 <div class="event-page-container">
     <!-- Seção do Banner do Evento -->
@@ -313,7 +314,7 @@
 
                             <div class="ticket-options">
                                 {% for lote_tipo in lote_vigente.tipos_inscricao %}
-                                {% set final = preco_com_taxa(lote_tipo.preco, cliente_id=evento.cliente_id) %}
+                                {% set final = preco_com_taxa(lote_tipo.preco) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="lote_tipo_{{ lote_tipo.id }}"
@@ -345,7 +346,7 @@
                             {% elif evento and not evento.habilitar_lotes and tipos_inscricao %}
                             <div class="ticket-options">
                                 {% for tipo in tipos_inscricao %}
-                                {% set final = preco_com_taxa(tipo.preco, cliente_id=evento.cliente_id) %}
+                                {% set final = preco_com_taxa(tipo.preco) %}
                                 <div class="ticket-option">
                                     <input type="radio"
                                            id="tipo_{{ tipo.id }}"
@@ -409,15 +410,13 @@
                             <button type="button" id="add-address-btn" class="add-button">
                                 <i class="fas fa-plus"></i> Adicionar outro endereço
                             </button>
-                        </div>
-                        
-                        <!-- Termos e Submissão -->
+                        </div>                        <!-- Termos e Submissão -->
                         <div class="form-group full-width terms-group">
-                            <div class="terms-checkbox">
+                            <div class="terms-checkbox" tabindex="0">
                                 <input type="checkbox" id="accept-terms" name="accept_terms" required>
                                 <label for="accept-terms">
-                                    Li e aceito os <a href="#" target="_blank">Termos de Uso</a> e 
-                                    <a href="#" target="_blank">Política de Privacidade</a>
+                                    <div class="checkmark"></div>
+                                    <div class="terms-text">Concordo com os <a href="{{ url_for('static_page_routes.show_page', slug='termos-de-uso') }}" target="_blank">Termos de Uso</a> e <a href="{{ url_for('static_page_routes.show_page', slug='privacidade') }}" target="_blank">Política de Privacidade</a></div>
                                 </label>
                             </div>
                             
@@ -767,7 +766,8 @@
     
     // Formulário
     document.addEventListener('DOMContentLoaded', function() {
-        const MOSTRAR_TAXA = {{ 'true' if mostrar_taxa else 'false' }};
+        const MOSTRAR_TAXA = {{ 'true' if mostrar_taxa else 'false' }};        // O checkbox personalizado agora funciona nativamente com CSS
+        
         // Máscara de CPF
         const cpfField = document.getElementById('cpf');
         if (cpfField) {
@@ -814,11 +814,18 @@
                     e.preventDefault();
                     showAlert('Por favor, selecione um tipo de inscrição.', 'warning');
                     return false;
-                }
-                
-                if (!document.getElementById('accept-terms').checked) {
+                }                const acceptTermsCheckbox = document.getElementById('accept-terms');
+                if (!acceptTermsCheckbox || !acceptTermsCheckbox.checked) {
                     e.preventDefault();
-                    showAlert('Você precisa aceitar os termos para continuar.', 'warning');
+                    showAlert('Você precisa concordar com os termos para continuar.', 'warning');
+                    // Destaca visualmente o checkbox
+                    const termsContainer = document.querySelector('.terms-checkbox');
+                    termsContainer.classList.add('highlight-required');
+                    // Foca no elemento para melhor acessibilidade
+                    acceptTermsCheckbox.focus();
+                    setTimeout(() => {
+                        termsContainer.classList.remove('highlight-required');
+                    }, 2000);
                     return false;
                 }
                 
@@ -833,7 +840,45 @@
                     }
                 }
             });
+        }        // Garantir que o checkbox de termos funcione corretamente
+        function setupTermsCheckbox() {
+            const termsBox = document.querySelector('.terms-checkbox');
+            const checkbox = document.getElementById('accept-terms');
+            const label = document.querySelector('.terms-checkbox label');
+            
+            if (termsBox && checkbox) {
+                // Garantir que o clique no container marque o checkbox (exceto links)
+                termsBox.addEventListener('click', function(e) {
+                    // Não mudar estado se clicou nos links
+                    if (e.target.tagName.toLowerCase() === 'a') {
+                        return;
+                    }
+                    
+                    // Não ativar se o clique foi diretamente no checkbox ou label
+                    if (e.target === checkbox || e.target === label || label.contains(e.target)) {
+                        return;
+                    }
+                    
+                    // Alternar o checkbox
+                    checkbox.checked = !checkbox.checked;
+                    
+                    // Disparar evento de mudança para validações
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                
+                // Garantir acessibilidade via teclado
+                termsBox.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        checkbox.checked = !checkbox.checked;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
+            }
         }
+        
+        // Inicializar o checkbox
+        setupTermsCheckbox();
         
         // Carregar estados e inicializar mapa
         loadBrazilianStates();
