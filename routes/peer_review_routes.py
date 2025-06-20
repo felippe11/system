@@ -96,7 +96,7 @@ def editor_reviews(evento_id):
         return redirect(url_for('dashboard_routes.dashboard'))
     trabalhos = TrabalhoCientifico.query.filter_by(evento_id=evento_id).all()
     return render_template('peer_review/dashboard_editor.html', trabalhos=trabalhos)
-=======
+
 from flask import Blueprint, render_template
 
 peer_review_routes = Blueprint(
