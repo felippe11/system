@@ -1107,13 +1107,6 @@ class AuditLog(db.Model):
     def __repr__(self):
         return f"<AuditLog {self.user_id} {self.event_type} {self.submission_id}>"
 
-
-    def __repr__(self):
-        return (
-            f"<LoteTipoInscricao lote={self.lote_id} tipo={self.tipo_inscricao_id} "
-            f"preco={self.preco}>"
-        )
-
 # -----------------------------------------------------------------------------
 # CONFIGURAÇÃO DE REVISÃO POR EVENTO
 # -----------------------------------------------------------------------------

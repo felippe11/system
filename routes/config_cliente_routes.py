@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, redirect, url_for, flash
+from flask import Blueprint, jsonify, request, redirect, url_for, flash, render_template
 from flask_login import login_required, current_user
 from extensions import db
 from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig
@@ -378,5 +378,22 @@ def atualizar_revisao_config(evento_id):
     config.modelo_blind = data.get('modelo_blind', config.modelo_blind)
     db.session.commit()
     return jsonify({"success": True})
+
+
+@config_cliente_routes.route('/config_submissao')
+@login_required
+def config_submissao():
+    """Página de configuração das opções de submissão e revisão"""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+        db.session.commit()
+
+    return render_template('config/config_submissao.html', config_cliente=config_cliente)
 
 
