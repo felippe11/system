@@ -56,6 +56,9 @@ class Usuario(db.Model, UserMixin):
     
     def is_professor(self):
          return self.tipo == 'professor'
+
+    def is_revisor(self):
+         return self.tipo == 'revisor'
     
     def tem_pagamento_pendente(self):
         pendente = Inscricao.query.filter_by(
@@ -1066,4 +1069,69 @@ class ArquivoBinario(db.Model):
 
     def __repr__(self):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
+
+
+# =================================
+#            SUBMISSION
+# =================================
+class Submission(db.Model):
+    __tablename__ = 'submission'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    abstract = db.Column(db.Text, nullable=True)
+    file_path = db.Column(db.String(255), nullable=True)
+    locator = db.Column(db.String(255), nullable=True)
+    code_hash = db.Column(db.String(64), nullable=True)
+    status = db.Column(db.String(50), nullable=True)
+    area_id = db.Column(db.Integer, nullable=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    author = db.relationship('Usuario', backref=db.backref('submissions', lazy=True))
+
+    def __repr__(self):
+        return f"<Submission {self.title}>"
+
+
+# =================================
+#             REVIEW
+# =================================
+class Review(db.Model):
+    __tablename__ = 'review'
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    blind_type = db.Column(db.String(20), nullable=True)
+    scores = db.Column(db.JSON, nullable=True)
+    comments = db.Column(db.Text, nullable=True)
+    file_path = db.Column(db.String(255), nullable=True)
+    decision = db.Column(db.String(50), nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+
+    submission = db.relationship('Submission', backref=db.backref('reviews', lazy=True))
+    reviewer = db.relationship('Usuario', backref=db.backref('reviews', lazy=True))
+
+    def __repr__(self):
+        return f"<Review {self.id} submission={self.submission_id}>"
+
+
+# =================================
+#           ASSIGNMENT
+# =================================
+class Assignment(db.Model):
+    __tablename__ = 'assignment'
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    deadline = db.Column(db.DateTime, nullable=True)
+    completed = db.Column(db.Boolean, default=False)
+
+    submission = db.relationship('Submission', backref=db.backref('assignments', lazy=True))
+    reviewer = db.relationship('Usuario', backref=db.backref('assignments', lazy=True))
+
+    def __repr__(self):
+        return f"<Assignment submission={self.submission_id} reviewer={self.reviewer_id}>"
 
