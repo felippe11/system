@@ -1,0 +1,30 @@
+<h5 class="mb-3">Resumo Financeiro</h5>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Tipo de Inscrição</th>
+      <th>Quantidade</th>
+      <th>Valor Unitário</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for row in tipos %}
+    <tr>
+      <td>{{ row.nome }}</td>
+      <td>{{ row.quantidade }}</td>
+      <td>R$ {{ "%.2f"|format(row.preco) }}</td>
+    </tr>
+  {% else %}
+    <tr>
+      <td colspan="3" class="text-center">Nenhuma inscrição aprovada.</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="mt-3">
+  <strong>Total em caixa:</strong> R$ {{ "%.2f"|format(valor_caixa) }}
+</div>
+<div class="mt-3 d-flex gap-2">
+  <a href="{{ url_for('relatorio_pdf_routes.exportar_financeiro', formato='pdf') }}" class="btn btn-outline-primary">Exportar PDF</a>
+  <a href="{{ url_for('relatorio_pdf_routes.exportar_financeiro', formato='xlsx') }}" class="btn btn-outline-success">Exportar XLSX</a>
+</div>
