@@ -1,6 +1,7 @@
 import os
 import uuid
 from datetime import datetime
+import bcrypt
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
@@ -1066,4 +1067,38 @@ class ArquivoBinario(db.Model):
 
     def __repr__(self):
         return f"<ArquivoBinario id={self.id} nome={self.nome}>"
+
+
+# =================================
+#            SUBMISSION
+# =================================
+class Submission(db.Model):
+    """Model representing a generic submission that can be later reviewed."""
+    __tablename__ = 'submission'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=True)
+    locator = db.Column(db.String(36), unique=True, nullable=False)
+    code_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def check_code(self, code: str) -> bool:
+        """Return True if the provided code matches the stored hash."""
+        if not code:
+            return False
+        return bcrypt.checkpw(code.encode(), self.code_hash.encode())
+
+
+class Review(db.Model):
+    __tablename__ = 'review'
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'), nullable=False)
+    reviewer = db.Column(db.String(255), nullable=True)
+    comment = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    submission = db.relationship('Submission', backref=db.backref('reviews', lazy=True))
+
 
