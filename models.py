@@ -586,6 +586,8 @@ class ConfiguracaoCliente(db.Model):
 
     habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
 
+    allowed_file_types = db.Column(db.String(100), default="pdf")
+
     # Exibe a taxa de serviço separadamente no preço da inscrição
     mostrar_taxa = db.Column(db.Boolean, default=True)
 
