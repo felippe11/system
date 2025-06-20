@@ -3,6 +3,7 @@
 <div class="container mt-5">
   <h3 class="mb-4">Submissão de Trabalho Científico</h3>
   <form method="POST" enctype="multipart/form-data">
+    {{ csrf_token() }}
     <div class="mb-3">
       <label for="titulo" class="form-label">Título</label>
       <input type="text" class="form-control" name="titulo" required>
@@ -15,9 +16,12 @@
       <label for="area_tematica" class="form-label">Área Temática</label>
       <input type="text" class="form-control" name="area_tematica" required>
     </div>
+    {% set tipos = current_user.cliente.configuracao.allowed_file_types if current_user.cliente and current_user.cliente.configuracao else 'pdf' %}
+    {% set accept_str = '.' + tipos.replace(',', ',.').replace(' ', '') %}
     <div class="mb-3">
-      <label for="arquivo_pdf" class="form-label">Arquivo PDF</label>
-      <input type="file" class="form-control" name="arquivo_pdf" accept="application/pdf" required>
+      <label for="arquivo_pdf" class="form-label">Arquivo</label>
+      <input type="file" class="form-control" name="arquivo_pdf" accept="{{ accept_str }}" required>
+      <small class="text-muted">Tipos permitidos: {{ tipos }}</small>
     </div>
     <button type="submit" class="btn btn-success">
       <i class="bi bi-upload me-2"></i>Submeter Trabalho
