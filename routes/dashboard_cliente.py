@@ -5,7 +5,8 @@ from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
 from models import (
     Evento, Oficina, Inscricao, Checkin,
-    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario
+    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
+    EventoInscricaoTipo, Configuracao
 )
 
 # Importa o blueprint central para registrar as rotas deste módulo
@@ -183,6 +184,28 @@ def dashboard_cliente():
         db.session.add(config_cliente)
         db.session.commit()
 
+    # ---------------------------------------------------------------
+    # Dados financeiros - tipos de inscrição mais vendidos
+    # ---------------------------------------------------------------
+    finance_data = (
+        db.session.query(
+            EventoInscricaoTipo.nome.label('nome'),
+            func.count(Inscricao.id).label('quantidade'),
+            EventoInscricaoTipo.preco.label('preco')
+        )
+        .join(Evento, Evento.id == EventoInscricaoTipo.evento_id)
+        .join(Inscricao, Inscricao.tipo_inscricao_id == EventoInscricaoTipo.id)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            Inscricao.status_pagamento == 'approved'
+        )
+        .group_by(EventoInscricaoTipo.id)
+        .order_by(func.count(Inscricao.id).desc())
+        .all()
+    )
+
+    valor_caixa = sum(float(r.preco) * r.quantidade for r in finance_data)
+
     return render_template(
         'dashboard_cliente.html',
         usuario=current_user,
@@ -204,7 +227,9 @@ def dashboard_cliente():
         proximos_agendamentos=proximos_agendamentos,
         ocupacao_media=ocupacao_media,
         total_eventos=total_eventos,
-        eventos=eventos
+        eventos=eventos,
+        finance_data=finance_data,
+        valor_caixa=valor_caixa
     )
     
 def obter_configuracao_do_cliente(cliente_id):
@@ -419,6 +444,50 @@ def dashboard_aba_proximos_agendamentos():
     return render_template(
         'partials/proximos_agendamentos_lista.html',
         proximos_agendamentos=proximos_agendamentos
+    )
+
+@dashboard_routes.route('/dashboard_aba_financeiro')
+@login_required
+def dashboard_aba_financeiro():
+    """Rota para exibir resumo financeiro."""
+    if current_user.tipo != 'cliente':
+        return jsonify(error='Acesso negado'), 403
+
+    finance_data = (
+        db.session.query(
+            EventoInscricaoTipo.nome.label('nome'),
+            func.count(Inscricao.id).label('quantidade'),
+            EventoInscricaoTipo.preco.label('preco')
+        )
+        .join(Evento, Evento.id == EventoInscricaoTipo.evento_id)
+        .join(Inscricao, Inscricao.tipo_inscricao_id == EventoInscricaoTipo.id)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            Inscricao.status_pagamento == 'approved'
+        )
+        .group_by(EventoInscricaoTipo.id)
+        .order_by(func.count(Inscricao.id).desc())
+        .all()
+    )
+
+    valor_caixa = sum(float(r.preco) * r.quantidade for r in finance_data)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'tipos': [
+                {
+                    'nome': r.nome,
+                    'quantidade': r.quantidade,
+                    'preco': float(r.preco)
+                } for r in finance_data
+            ],
+            'valor_caixa': valor_caixa
+        })
+
+    return render_template(
+        'partials/dashboard_financeiro_aba.html',
+        tipos=finance_data,
+        valor_caixa=valor_caixa
     )
 
 # Função auxiliar para definir os valores na sessão
