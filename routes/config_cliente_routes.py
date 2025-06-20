@@ -233,7 +233,7 @@ def configuracao_cliente_atual():
         "review_model": config_cliente.review_model,
         "num_revisores_min": config_cliente.num_revisores_min,
         "num_revisores_max": config_cliente.num_revisores_max,
-        "prazo_parecer_dias": config_cliente.prazo_parecer_dias
+        "prazo_parecer_dias": config_cliente.prazo_parecer_dias,
         "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos
 
     })
