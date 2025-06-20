@@ -585,6 +585,11 @@ class ConfiguracaoCliente(db.Model):
     # Exibe a taxa de serviço separadamente no preço da inscrição
     mostrar_taxa = db.Column(db.Boolean, default=True)
 
+    review_model = db.Column(db.String(20), default="single")
+    num_revisores_min = db.Column(db.Integer, default=1)
+    num_revisores_max = db.Column(db.Integer, default=2)
+    prazo_parecer_dias = db.Column(db.Integer, default=14)
+
     
     
 class FeedbackCampo(db.Model):
