@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Minhas Submissões</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Título</th><th>Status</th><th>Revisões</th></tr>
+    </thead>
+    <tbody>
+    {% for t in trabalhos %}
+      <tr>
+        <td>{{ t.titulo }}</td>
+        <td>{{ t.status }}</td>
+        <td>{{ t.reviews|length }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
