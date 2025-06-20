@@ -64,3 +64,7 @@ Use a rota `/gerar_folder_evento/<evento_id>` para baixar a programacao do event
 ### Exportar participantes
 
 No dashboard do cliente é possível exportar a lista de inscritos de um evento em dois formatos. Escolha o evento desejado e utilize o botão **Exportar Participantes** para baixar um arquivo XLSX ou PDF contendo os campos padrões e personalizados do cadastro.
+
+### Placas de oficinas
+
+Para sinalizar as atividades de um evento, utilize a rota `/gerar_placas/<evento_id>` ou o botão **Baixar Placas** no dashboard do cliente. Um PDF é gerado com uma página por oficina, contendo título e ministrante.
