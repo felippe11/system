@@ -2,7 +2,11 @@
 {% block title %}Dashboard - Administrador{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4">
+<div class="co                          <th>Nome</th>
+                          <th>Email</th>
+                          <th class="text-center">Status</th>
+                          <th class="text-center">Taxa Diferenciada</th>
+                          <th>Ações</th>ner-fluid px-4">
   <!-- Header Section -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2 fw-bold text-primary">
@@ -130,12 +134,20 @@
                         {% if clientes %}
                           {% for cliente in clientes %}
                           <tr>
-                            <td>{{ cliente.nome }}</td>
-                            <td>{{ cliente.email }}</td>
+                            <td>{{ cliente.nome }}</td>                            <td>{{ cliente.email }}</td>
                             <td class="text-center">
                               <span class="badge bg-{{ 'success' if cliente.ativo else 'secondary' }}">
                                 {{ "Ativo" if cliente.ativo else "Inativo" }}
                               </span>
+                            </td>
+                            <td class="text-center">
+                              {% if cliente.configuracao and cliente.configuracao.taxa_diferenciada is not none %}
+                                <span class="badge bg-info" title="Taxa específica para este cliente">
+                                  {{ cliente.configuracao.taxa_diferenciada }}%
+                                </span>
+                              {% else %}
+                                <span class="badge bg-secondary">Padrão</span>
+                              {% endif %}
                             </td>
                             <td>
                               <div class="d-flex gap-2">
@@ -233,27 +245,142 @@
 
 <!-- Modal -->
 <div class="modal fade" id="modalTaxa" tabindex="-1">
-  <div class="modal-dialog"><div class="modal-content">
-   <form method="POST" action="{{ url_for('mercadopago_routes.atualizar_taxa') }}">
-     <div class="modal-header"><h5 class="modal-title">Taxa percentual</h5>
-       <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+   <form method="POST" action="{{ url_for('mercadopago_routes.atualizar_taxa') }}" id="taxaForm">
+     <div class="modal-header bg-primary text-white">
+       <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Configuração de Taxa</h5>
+       <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
      </div>
      <div class="modal-body">
-       <label class="form-label">Percentual (%)</label>
-       <div class="input-group">
-         <input type="number" step="0.01" min="0" max="100"
-                class="form-control" name="taxa_percentual"
-                value="{{ configuracao.taxa_percentual_inscricao or 0 }}">
-         <span class="input-group-text">%</span>
+       <!-- Taxa Geral do Sistema -->
+       <div class="card mb-3">
+         <div class="card-header bg-light">
+           <h6 class="fw-bold mb-0">Taxa Geral do Sistema</h6>
+         </div>
+         <div class="card-body">
+           <label class="form-label">Percentual Geral (%)</label>
+           <div class="input-group mb-2">
+             <input type="number" step="0.01" min="0" max="100"
+                    class="form-control" name="taxa_percentual" id="taxaGeral"
+                    value="{{ configuracao.taxa_percentual_inscricao or 0 }}">
+             <span class="input-group-text">%</span>
+           </div>
+           <small class="text-muted">Esta taxa será aplicada sobre cada inscrição paga de todos os clientes.</small>
+         </div>
        </div>
-       <small class="text-muted">Será aplicado sobre cada inscrição paga.</small>
+       
+       <!-- Taxa Diferenciada por Cliente -->
+       <div class="card">
+         <div class="card-header bg-light">
+           <h6 class="fw-bold mb-0">Taxa Diferenciada por Cliente</h6>
+         </div>
+         <div class="card-body">
+           <div class="row g-3">
+             <div class="col-12 col-md-6">
+               <label class="form-label">Selecione o Cliente</label>
+               <select class="form-select" name="cliente_id" id="clienteSelect">
+                 <option value="">-- Selecione um cliente --</option>
+                 {% for cliente in clientes %}
+                   <option value="{{ cliente.id }}" 
+                           data-taxa="{{ cliente.configuracao.taxa_diferenciada or '' }}"
+                           {% if cliente.configuracao and cliente.configuracao.taxa_diferenciada %}
+                           data-has-taxa="true"
+                           {% endif %}>
+                     {{ cliente.nome }} ({{ cliente.email }})
+                   </option>
+                 {% endfor %}
+               </select>
+             </div>
+             
+             <div class="col-12 col-md-6">
+               <label class="form-label">Taxa Diferenciada (%)</label>
+               <div class="input-group">
+                 <input type="number" step="0.01" min="0" max="100"
+                        class="form-control" name="taxa_diferenciada" id="taxaDiferenciada">
+                 <span class="input-group-text">%</span>
+               </div>
+               <small id="taxaHelp" class="form-text text-muted">Deve ser menor que a taxa geral do sistema.</small>
+             </div>
+           </div>
+           
+           <div id="clienteTaxaInfo" class="alert alert-info mt-3 d-none">
+             <i class="bi bi-info-circle me-2"></i>
+             <span id="taxaInfoText"></span>
+           </div>
+         </div>
+       </div>
      </div>
      <div class="modal-footer">
-       <button type="submit" class="btn btn-success">Salvar</button>
+       <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+       <button type="submit" class="btn btn-success">
+         <i class="bi bi-save me-2"></i>Salvar Alterações
+       </button>
      </div>
    </form>
   </div></div>
- </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const taxaGeral = document.getElementById('taxaGeral');
+    const taxaDiferenciada = document.getElementById('taxaDiferenciada');
+    const clienteSelect = document.getElementById('clienteSelect');
+    const clienteTaxaInfo = document.getElementById('clienteTaxaInfo');
+    const taxaInfoText = document.getElementById('taxaInfoText');
+    const taxaHelp = document.getElementById('taxaHelp');
+    
+    // Atualiza o campo de taxa diferenciada quando um cliente é selecionado
+    clienteSelect.addEventListener('change', function() {
+      const selectedOption = this.options[this.selectedIndex];
+      const hasTaxa = selectedOption.getAttribute('data-has-taxa');
+      const taxa = selectedOption.getAttribute('data-taxa');
+      
+      if (hasTaxa && taxa) {
+        taxaDiferenciada.value = taxa;
+        clienteTaxaInfo.classList.remove('d-none');
+        taxaInfoText.textContent = `Este cliente já possui uma taxa diferenciada de ${taxa}%`;
+      } else {
+        taxaDiferenciada.value = '';
+        clienteTaxaInfo.classList.add('d-none');
+      }
+      
+      validateTaxa();
+    });
+    
+    // Validação para garantir que a taxa diferenciada seja menor que a geral
+    taxaDiferenciada.addEventListener('input', validateTaxa);
+    taxaGeral.addEventListener('input', validateTaxa);
+    
+    function validateTaxa() {
+      const geralValue = parseFloat(taxaGeral.value) || 0;
+      const diferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
+      
+      if (diferenciadaValue >= geralValue && diferenciadaValue > 0) {
+        taxaHelp.classList.remove('text-muted');
+        taxaHelp.classList.add('text-danger');
+        taxaHelp.textContent = 'A taxa diferenciada deve ser menor que a taxa geral!';
+        taxaDiferenciada.setCustomValidity('Taxa diferenciada deve ser menor que taxa geral');
+      } else {
+        taxaHelp.classList.add('text-muted');
+        taxaHelp.classList.remove('text-danger');
+        taxaHelp.textContent = 'Deve ser menor que a taxa geral do sistema.';
+        taxaDiferenciada.setCustomValidity('');
+      }
+    }
+    
+    // Validação no envio do formulário
+    document.getElementById('taxaForm').addEventListener('submit', function(e) {
+      const geralValue = parseFloat(taxaGeral.value) || 0;
+      const diferenciadaValue = parseFloat(taxaDiferenciada.value) || 0;
+      const clienteId = clienteSelect.value;
+      
+      if (clienteId && diferenciadaValue > 0 && diferenciadaValue >= geralValue) {
+        e.preventDefault();
+        alert('A taxa diferenciada deve ser menor que a taxa geral do sistema!');
+      }
+    });
+  });
+</script>
 
 
 <!-- Modal de edição de cliente -->

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, redirect, url_for, flash, session, abort
 from flask_login import login_user, login_required, current_user
 from extensions import db
-from models import Inscricao, Configuracao
+from models import Inscricao, Configuracao, ConfiguracaoCliente, Cliente
 import os
 
 from services.mp_service import get_sdk
@@ -67,11 +67,14 @@ def atualizar_taxa():
         abort(403)
 
     valor = request.form.get("taxa_percentual", "0").replace(",", ".")
+    cliente_id = request.form.get("cliente_id")
+    taxa_diferenciada = request.form.get("taxa_diferenciada", "").replace(",", ".")
+    
     try:
         perc = round(Decimal(valor), 2)          # 0–100
         assert 0 <= perc <= 100
     except:
-        flash("Percentual inválido", "danger")
+        flash("Percentual da taxa geral inválido", "danger")
         return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
 
     cfg = Configuracao.query.first()
@@ -79,7 +82,34 @@ def atualizar_taxa():
         cfg = Configuracao()
         db.session.add(cfg)
 
+    # Atualiza a taxa geral do sistema
     cfg.taxa_percentual_inscricao = perc
+    
+    # Se um cliente específico foi selecionado e uma taxa diferenciada foi informada
+    if cliente_id and taxa_diferenciada:
+        try:
+            cliente_id = int(cliente_id)
+            perc_cliente = round(Decimal(taxa_diferenciada), 2)
+            assert 0 <= perc_cliente <= 100
+            
+            # Verifica se a taxa diferenciada é menor que a taxa geral
+            if perc_cliente >= perc:
+                flash("A taxa diferenciada deve ser menor que a taxa geral do sistema", "danger")
+                return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+                
+            # Busca a configuração do cliente ou cria uma nova
+            config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+            if not config_cliente:
+                config_cliente = ConfiguracaoCliente(cliente_id=cliente_id)
+                db.session.add(config_cliente)
+                
+            # Atualiza a taxa diferenciada do cliente
+            config_cliente.taxa_diferenciada = perc_cliente
+            flash(f"Taxa diferenciada para cliente ID {cliente_id} salva com sucesso!", "success")
+        except:
+            flash("Erro ao salvar a taxa diferenciada. Verifique os valores informados.", "danger")
+            return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+    
     db.session.commit()
-    flash("Percentual salvo!", "success")
+    flash("Percentual geral salvo!", "success")
     return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
