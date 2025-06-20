@@ -387,9 +387,9 @@
       <p class="card-text text-muted">Gere mensagem para compartilhar relatórios</p>
     </div>
     <div class="card-footer bg-white border-0 pt-0">
-      <button type="button" class="btn btn-info w-100 text-white" onclick="carregarRelatorioMensagem()">
+      <a href="{{ url_for('relatorio_routes.relatorio_mensagem') }}" class="btn btn-info w-100 text-white">
         <i class="bi bi-chat-left-text me-2"></i> Abrir Mensagem
-      </button>
+      </a>
     </div>
   </div>
 </div>
