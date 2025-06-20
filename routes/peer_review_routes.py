@@ -1,3 +1,4 @@
+
 from flask import Blueprint, request, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
@@ -95,3 +96,24 @@ def editor_reviews(evento_id):
         return redirect(url_for('dashboard_routes.dashboard'))
     trabalhos = TrabalhoCientifico.query.filter_by(evento_id=evento_id).all()
     return render_template('peer_review/dashboard_editor.html', trabalhos=trabalhos)
+=======
+from flask import Blueprint, render_template
+
+peer_review_routes = Blueprint(
+    'peer_review_routes',
+    __name__,
+    template_folder="../templates/peer_review"
+)
+
+@peer_review_routes.route('/peer-review/author')
+def author_dashboard():
+    return render_template('peer_review/author/dashboard.html', submissions=[])
+
+@peer_review_routes.route('/peer-review/reviewer')
+def reviewer_dashboard():
+    return render_template('peer_review/reviewer/dashboard.html', tasks=[])
+
+@peer_review_routes.route('/peer-review/editor')
+def editor_dashboard():
+    return render_template('peer_review/editor/dashboard.html', decisions=[])
+
