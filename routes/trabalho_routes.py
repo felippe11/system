@@ -1,7 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
 from utils.mfa import mfa_required
+from extensions import db
 from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog
+import os
 
 trabalho_routes = Blueprint(
     'trabalho_routes',
@@ -28,7 +31,7 @@ def submeter_trabalho():
             return redirect(url_for('trabalho_routes.submeter_trabalho'))
 
         filename = secure_filename(arquivo.filename)
-        caminho_pdf = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        caminho_pdf = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
         arquivo.save(caminho_pdf)
 
         trabalho = TrabalhoCientifico(
