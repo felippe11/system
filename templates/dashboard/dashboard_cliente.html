@@ -159,7 +159,6 @@
           </div>
 
           <!-- Detalhes das oficinas com tabela e gráficos -->
-          <!-- Detalhes das oficinas com tabela e gráficos -->
 <div class="card shadow">
   <div class="card-header">
     <h5 class="m-0 fw-bold">Detalhes das Atividades</h5>
@@ -911,23 +910,7 @@
                   </button>
                 </div>
 
-                <!-- Submissão de Trabalhos -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-upload text-primary me-2"></i>
-                      Submissão de Trabalhos
-                    </h6>
-                    <p class="text-muted small mb-0">Permite que participantes submetam trabalhos</p>
-                  </div>
-                  <button type="button"
-                          id="btnToggleSubmissao"
-                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'danger' }}"
-                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_submissao_trabalhos_cliente') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'Desativado' }}
-                  </button>
-                </div>
+
 
                 <!-- Mostrar Taxa de Serviço -->
                 <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
@@ -955,6 +938,7 @@
               <div class="d-flex align-items-center">
                 <i class="bi bi-journal-text me-2 fs-5"></i>
                 <h5 class="fw-bold mb-0">Submissões e Revisão</h5>
+                <a href="{{ url_for('config_cliente_routes.config_submissao') }}" class="ms-auto small text-decoration-none">Abrir página</a>
               </div>
             </div>
             <div class="card-body">
@@ -1448,6 +1432,10 @@
     const cdn = document.createElement('script');
     cdn.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js';
     document.head.appendChild(cdn);
+  }
+
+  if (typeof URL_CONFIG_CLIENTE_ATUAL === 'undefined') {
+    window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
   }
   
   // Declarar a variável somente se ainda não existir
