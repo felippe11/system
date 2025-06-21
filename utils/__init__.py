@@ -30,8 +30,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader
 
-# Configuração de logging
-logging.basicConfig(level=logging.DEBUG)
+# Logger do módulo
 logger = logging.getLogger(__name__)
 
 # Escopo necessário para envio de e-mails
