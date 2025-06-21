@@ -24,7 +24,10 @@ def upgrade():
         batch_op.alter_column('ministrante_id',
                existing_type=sa.INTEGER(),
                nullable=True)
-        batch_op.create_foreign_key(None, 'cliente', ['cliente_id'], ['id'])
+        batch_op.create_foreign_key(
+            'fk_feedback_campo_cliente_id_cliente',
+            'cliente', ['cliente_id'], ['id']
+        )
 
     with op.batch_alter_table('sorteio', schema=None) as batch_op:
         batch_op.add_column(sa.Column('num_vencedores', sa.Integer(), nullable=True))
@@ -38,7 +41,10 @@ def downgrade():
         batch_op.drop_column('num_vencedores')
 
     with op.batch_alter_table('feedback_campo', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
+        batch_op.drop_constraint(
+            'fk_feedback_campo_cliente_id_cliente',
+            type_='foreignkey'
+        )
         batch_op.alter_column('ministrante_id',
                existing_type=sa.INTEGER(),
                nullable=False)
