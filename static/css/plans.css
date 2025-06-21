@@ -1,0 +1,117 @@
+/* Estilos para a seção de planos */
+.features-section {
+    padding-top: 60px;
+    padding-bottom: 60px;
+}
+
+.plan-card {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+}
+
+.plan-header {
+    padding: 2rem;
+}
+
+.plan-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.plan-subtitle {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+.plan-price {
+    font-size: 2.5rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    margin-bottom: 1rem;
+}
+
+.plan-price .currency {
+    font-size: 1.2rem;
+    margin-right: 0.25rem;
+}
+
+.plan-price .period {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-left: 0.5rem;
+}
+
+.plan-transaction-fee {
+    margin-top: -1rem;
+}
+
+.plan-body {
+    padding: 2rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.feature-item i {
+    font-size: 1rem;
+    margin-right: 0.75rem;
+    color: #28a745; /* Cor padrão do ícone de check */
+}
+
+.plan-premium .feature-item i {
+    color: var(--primary-color); /* Usa a cor primária para o plano premium */
+}
+
+.plan-premium .plan-header {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.plan-premium .plan-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-premium .plan-price .period {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.btn-outline-primary {
+    border-radius: 2rem;
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    border-radius: 2rem;
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: darken(var(--primary-color), 10%);
+    border-color: darken(var(--primary-color), 10%);
+}
+
+/* Responsividade */
+@media (max-width: 991.98px) {
+    .col-lg-5 {
+        width: 70%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .col-lg-5 {
+        width: 90%;
+    }
+}

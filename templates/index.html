@@ -10,6 +10,7 @@
     <link rel='stylesheet' href='{{ url_for('static', filename='css/navbar.css') }}'>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel='stylesheet' href='{{ url_for('static', filename='css/plans.css') }}'>
 </head>
 <body>
     <!-- Navbar --> 
@@ -71,55 +72,63 @@
                 <h2>Funcionalidades & Planos</h2>
                 <p>Escolha o plano que melhor se adapta às suas necessidades</p>
             </div>
-
+    
             <div class="row gy-4 justify-content-center">
-
-                <!-- Plano Gratuito -->
-                <div class="col-lg-5 col-md-6">
-                    <div class="card h-100 shadow-sm border-0">
-                        <div class="card-header text-center bg-white border-0">
-                            <h3 class="mb-0">Plano Gratuito</h3>
-                            <p class="text-muted">Sem mensalidade • Limites generosos</p>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled mb-4">
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-success"></i>Até 5 eventos ativos simultâneos</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-success"></i>Até 1.000 inscrições por evento</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-success"></i>Check-in por QR Code</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-success"></i>Geração de certificados básicos</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-success"></i>Formulários personalizados (até 3 campos)</li>
-                            </ul>
-                            <div class="text-center">
-                                <span class="h1">0,00 R$</span><small class="text-muted">/ uso</small>
+    
+                <div class="col-lg-5 col-md-10">
+                    <div class="plan-card plan-free h-100 shadow-sm border-0 rounded-4">
+                        <div class="plan-header text-center bg-white rounded-top-4 py-3">
+                            <h3 class="plan-title mb-0">Plano Gratuito</h3>
+                            <p class="plan-subtitle text-muted">Ideal para começar</p>
+                            <div class="plan-price">
+                                <span class="price">0,00</span>
+                                <span class="currency">R$</span>
+                                <span class="period">/ uso</span>
                             </div>
                         </div>
-                        
-                    </div>
-                </div>
-
-                <!-- Plano Premium -->
-                <div class="col-lg-5 col-md-6">
-                    <div class="card h-100 shadow-sm border-0 border-primary">
-                        <div class="card-header text-center bg-white border-bottom-0">
-                            <h3 class="mb-0">Plano Premium</h3>
-                            <p class="text-muted">Acesso ilimitado a todas as funcionalidades</p>
-                        </div>
-                        <div class="card-body">
+                        <div class="plan-body card-body py-4">
                             <ul class="list-unstyled mb-4">
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Eventos ilimitados</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Inscrições ilimitadas</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Check-in e controle de presença avançado</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Certificados digitais customizáveis</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Formulários ilimitados e exportação completa</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Relatórios e análise de dados</li>
-                                <li class="mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Integração com APIs externas</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2"></i>Até 5 eventos ativos</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2"></i>Até 1.000 inscritos/evento</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2"></i>Check-in por QR Code</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2"></i>Certificados básicos</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2"></i>Formulários (até 3 campos)</li>
                             </ul>
-                        </div>
-                        <div class="card-footer bg-white border-top-0 text-center">
-                            <small class="text-muted">Taxa de transação: <strong>8% sob inscrição</strong></small>
+                            <div class="text-center">
+                                <button class="btn btn-outline-primary rounded-pill px-4">Começar agora</button>
+                            </div>
                         </div>
                     </div>
                 </div>
+    
+                <div class="col-lg-5 col-md-10">
+                    <div class="plan-card plan-premium h-100 shadow-lg border-0 rounded-4">
+                        <div class="plan-header text-center bg-primary text-white rounded-top-4 py-4">
+                            <h3 class="plan-title mb-0">Plano Premium</h3>
+                            <p class="plan-subtitle">Tudo ilimitado para o seu sucesso</p>
+                            <div class="plan-price">
+                                <span class="price">Sob</span>
+                                <span class="currency">consulta</span>
+                            </div>
+                            <p class="plan-transaction-fee mt-2"><small>Taxa de transação: <strong>8% sob inscrição</strong></small></p>
+                        </div>
+                        <div class="plan-body card-body py-4">
+                            <ul class="list-unstyled mb-4">
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Eventos ilimitados</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Inscrições ilimitadas</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Check-in avançado</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Certificados customizáveis</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Formulários ilimitados</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Relatórios e análise</li>
+                                <li class="feature-item mb-2"><i class="fas fa-check-circle me-2 text-primary"></i>Integração com APIs</li>
+                            </ul>
+                            <div class="text-center">
+                                <button class="btn btn-primary rounded-pill px-4">Fale Conosco</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
             </div>
         </div>
     </section>
