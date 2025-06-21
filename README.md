@@ -17,6 +17,14 @@ export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
 export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
 ```
 
+## Banco de Dados
+
+Depois de clonar o repositório ou atualizar o código, aplique as migrações executando:
+
+```bash
+flask db upgrade
+```
+
 `SECRET_KEY` garante que as sessões geradas por uma instância do Flask possam
 ser lidas por outra. Em produção, utilize um valor seguro e idêntico em todas as
 réplicas do aplicativo.
