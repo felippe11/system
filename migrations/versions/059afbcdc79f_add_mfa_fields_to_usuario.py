@@ -22,7 +22,10 @@ def upgrade():
         batch_op.add_column(sa.Column('locator', sa.String(length=36), nullable=True))
         batch_op.add_column(sa.Column('access_code', sa.String(length=50), nullable=True))
         batch_op.add_column(sa.Column('note', sa.Integer(), nullable=True))
-        batch_op.create_unique_constraint(None, ['locator'])
+        batch_op.create_unique_constraint(
+            'uq_review_locator',
+            ['locator']
+        )
 
     with op.batch_alter_table('submission', schema=None) as batch_op:
         batch_op.alter_column('locator',
@@ -48,7 +51,10 @@ def downgrade():
                nullable=False)
 
     with op.batch_alter_table('review', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='unique')
+        batch_op.drop_constraint(
+            'uq_review_locator',
+            type_='unique'
+        )
         batch_op.drop_column('note')
         batch_op.drop_column('access_code')
         batch_op.drop_column('locator')
