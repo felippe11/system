@@ -177,7 +177,7 @@ class Oficina(db.Model):
     inscricao_gratuita = db.Column(db.Boolean, default=True)
 
     # 🔥 Corrigido o método __init__
-    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, evento_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None, tipo_inscricao='com_inscricao_com_limite', tipo_oficina='Oficina', tipo_oficina_outro=None):
+    def __init__(self, titulo, descricao, ministrante_id, vagas, carga_horaria, estado, cidade, cliente_id=None, evento_id=None, qr_code=None, opcoes_checkin=None, palavra_correta=None, tipo_inscricao='com_inscricao_com_limite', tipo_oficina='Oficina', tipo_oficina_outro=None, inscricao_gratuita=True):
         self.titulo = titulo
         self.descricao = descricao
         self.ministrante_id = ministrante_id
@@ -192,6 +192,7 @@ class Oficina(db.Model):
         self.tipo_inscricao = tipo_inscricao
         self.tipo_oficina = tipo_oficina
         self.tipo_oficina_outro = tipo_oficina_outro
+        self.inscricao_gratuita = inscricao_gratuita
         
         # Define o valor de vagas com base no tipo de inscrição
         if tipo_inscricao == 'sem_inscricao':
