@@ -127,9 +127,14 @@ def criar_clientes(quantidade=5):
     """Cria clientes no sistema"""
     clientes = []
     for i in range(quantidade):
+        email = fake.unique.company_email()
+        while Cliente.query.filter_by(email=email).first():
+            fake.unique.clear()
+            email = fake.unique.company_email()
+
         cliente = Cliente(
             nome=fake.company(),
-            email=fake.company_email(),
+            email=email,
             senha=generate_password_hash(fake.password()),
             ativo=True,
             habilita_pagamento=random.choice([True, False])
@@ -165,6 +170,7 @@ def criar_clientes(quantidade=5):
         clientes.append(cliente)
     
     db.session.commit()
+    fake.unique.clear()
     return clientes
 
 def criar_eventos(clientes, quantidade_por_cliente=5):
