@@ -308,6 +308,7 @@ def criar_tipos_inscricao_evento(evento):
             preco=0.0
         )
         db.session.add(tipo)
+        db.session.flush()
         tipos.append(tipo)
     else:
         # Vários tipos de inscrição com preços diferentes
@@ -327,8 +328,9 @@ def criar_tipos_inscricao_evento(evento):
                 preco=preco
             )
             db.session.add(tipo)
+            db.session.flush()
             tipos.append(tipo)
-            
+
             # Criar regras de inscrição para alguns tipos
             if random.choice([True, False]):
                 regra = RegraInscricaoEvento(
@@ -337,8 +339,7 @@ def criar_tipos_inscricao_evento(evento):
                     limite_oficinas=random.choice([0, 2, 3, 5])
                 )
                 db.session.add(regra)
-    
-    db.session.flush()
+
     return tipos
 
 def criar_lotes_evento(evento):
