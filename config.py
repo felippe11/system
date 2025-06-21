@@ -13,11 +13,13 @@ class Config:
         SECRET_KEY = "6LcKl2YrAAAAAJ60mTLQ16l37kOmVXl8MDRy0bcy"  # Fixed key for development
 
     # URLs dos bancos de dados
-    DB_ONLINE = 'postgresql://iafap:tOsydfgBrVx1o57X7oqznlABbwlFek84@dpg-cug5itl6l47c739tgung-a/iafap_database'
-    DB_LOCAL = 'postgresql://iafap:iafap@localhost:5432/iafap_database'
+    DB_ONLINE = os.getenv('DB_ONLINE')
+    DB_LOCAL = os.getenv('DB_LOCAL') or f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}"
 
     # Testa a conexão com o banco online
     def test_db_connection(db_uri):
+        if not db_uri:
+            return False
         try:
             conn = psycopg2.connect(db_uri, connect_timeout=10)
             conn.close()

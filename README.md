@@ -15,6 +15,8 @@ export SECRET_KEY="<sua_chave_secreta>"
 export APP_BASE_URL="https://seu-dominio.com"
 export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
 export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
+export DB_ONLINE="<url_do_banco_online>"
+export DB_LOCAL="<url_do_banco_local>"
 ```
 
 `SECRET_KEY` garante que as sessões geradas por uma instância do Flask possam
