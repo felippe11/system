@@ -8,6 +8,13 @@ from extensions import db, login_manager, migrate, mail, socketio
 from models import Inscricao
 from utils import brasilia_filter
 import pytz
+import logging
+
+# Configuração centralizada de logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 from services.mp_service import get_sdk
 
