@@ -7,6 +7,8 @@ inserindo o sub-diretório adequado segundo o dicionário `mapping`.
 
 import os
 import re
+import argparse
+from pathlib import Path
 
 # ────────────────────────────────
 # 1) Mapeamento: arquivo → sub-pasta
@@ -112,9 +114,18 @@ mapping: dict[str, str] = {
 pattern = re.compile(r'render_template\(\s*([\'"])([^/\'"]+\.html)\1')
 
 # ────────────────────────────────
-# 3) Pasta base do projeto (ajuste se preciso)
+# 3) Pasta base do projeto
+#    (pode ser passado via --base-path, padrão é o diretório atual)
 # ────────────────────────────────
-base_path = '/mnt/c/Users/Felipe\\ Cabral/Music/system_iafap_two'
+parser = argparse.ArgumentParser(description="Atualiza caminhos de templates")
+parser.add_argument(
+    "--base-path",
+    type=Path,
+    default=Path.cwd(),
+    help="Diretório base para percorrer"
+)
+args = parser.parse_args()
+base_path: Path = args.base_path
 
 # ────────────────────────────────
 # 4) Função de atualização
