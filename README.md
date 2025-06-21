@@ -68,3 +68,10 @@ No dashboard do cliente é possível exportar a lista de inscritos de um evento 
 ### Placas de oficinas
 
 Para sinalizar as atividades de um evento, utilize a rota `/gerar_placas/<evento_id>` ou o botão **Baixar Placas** no dashboard do cliente. Um PDF é gerado com uma página por oficina, contendo título e ministrante.
+
+## Database maintenance
+
+`add_taxa_coluna.py` adiciona a coluna `taxa_diferenciada` na tabela `configuracao_cliente` caso ela ainda nao exista.
+`check_and_fix_taxa_column.py` verifica se a coluna esta presente e a cria automaticamente se necessario.
+Execute um desses scripts antes de rodar `populate_script.py` caso seu banco nao esteja com as migracoes atualizadas.
+
