@@ -47,6 +47,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 from faker import Faker
 import uuid
+import bcrypt
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -55,15 +56,40 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Importe suas extensões e modelos
 from extensions import db
-from models import (Cliente, Usuario, Evento, EventoInscricaoTipo,
-                   InscricaoTipo,
-                   Oficina, OficinaDia, Ministrante, Inscricao,
-                   RegraInscricaoEvento, Checkin, Feedback, 
-                   LinkCadastro, ConfiguracaoCliente, LoteInscricao,
-                   LoteTipoInscricao, ConfiguracaoAgendamento, SalaVisitacao,
-                   HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
-                   CertificadoTemplate, MaterialOficina, Sorteio, Pagamento,
-                   Patrocinador, oficina_ministrantes_association)
+from models import (
+    Cliente,
+    Usuario,
+    Evento,
+    EventoInscricaoTipo,
+    InscricaoTipo,
+    Oficina,
+    OficinaDia,
+    Ministrante,
+    Inscricao,
+    RegraInscricaoEvento,
+    Checkin,
+    Feedback,
+    LinkCadastro,
+    ConfiguracaoCliente,
+    LoteInscricao,
+    LoteTipoInscricao,
+    ConfiguracaoAgendamento,
+    SalaVisitacao,
+    HorarioVisitacao,
+    AgendamentoVisita,
+    AlunoVisitante,
+    CertificadoTemplate,
+    MaterialOficina,
+    Sorteio,
+    Pagamento,
+    Patrocinador,
+    oficina_ministrantes_association,
+    Submission,
+    Review,
+    Assignment,
+    AuditLog,
+    ArquivoBinario,
+)
 
 # Inicialize o Faker
 fake = Faker('pt_BR')
@@ -858,6 +884,102 @@ def criar_agendamentos_visita(eventos, usuarios):
     db.session.commit()
     return agendamentos
 
+
+def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
+    """Gera trabalhos submetidos (Submission) ligados a participantes."""
+    participantes = [u for u in usuarios if u.tipo in ("participante", "professor")]
+    if not participantes:
+        return [], []
+
+    submissoes = []
+    logs = []
+
+    for evento in eventos:
+        for _ in range(quantidade_por_evento):
+            autor = random.choice(participantes)
+            raw_code = fake.lexify(text="??????")
+            code_hash = bcrypt.hashpw(raw_code.encode(), bcrypt.gensalt()).decode()
+            sub = Submission(
+                title=fake.sentence(nb_words=6),
+                abstract=fake.paragraph(),
+                content=fake.paragraph(nb_sentences=3),
+                file_path=f"submissoes/{uuid.uuid4()}.pdf",
+                code_hash=code_hash,
+                status=random.choice(["submitted", "in_review", "accepted", "rejected"]),
+                area_id=evento.id,
+                author_id=autor.id,
+            )
+            db.session.add(sub)
+            db.session.flush()
+
+            log = AuditLog(user_id=autor.id, submission_id=sub.id, event_type="submission")
+            db.session.add(log)
+
+            submissoes.append(sub)
+            logs.append(log)
+
+    db.session.commit()
+    return submissoes, logs
+
+
+def criar_reviews_assignments(submissoes, usuarios):
+    """Cria tarefas de revisão e registros de Review para as submissões."""
+    revisores = [u for u in usuarios if u.tipo in ("professor", "cliente", "superadmin")]
+    if not revisores:
+        return [], [], []
+
+    reviews = []
+    assignments = []
+    logs = []
+
+    for sub in submissoes:
+        selecionados = random.sample(revisores, min(2, len(revisores)))
+        for reviewer in selecionados:
+            assignment = Assignment(
+                submission_id=sub.id,
+                reviewer_id=reviewer.id,
+                deadline=datetime.utcnow() + timedelta(days=random.randint(5, 15)),
+                completed=True,
+            )
+            db.session.add(assignment)
+            assignments.append(assignment)
+
+            review = Review(
+                submission_id=sub.id,
+                reviewer_id=reviewer.id,
+                locator=str(uuid.uuid4()),
+                access_code=str(random.randint(100000, 999999)),
+                blind_type=random.choice(["single", "double"]),
+                scores={"originalidade": random.randint(1, 5), "clareza": random.randint(1, 5)},
+                note=random.randint(0, 10),
+                comments=fake.paragraph(),
+                decision=random.choice(["accept", "minor", "major", "reject"]),
+            )
+            db.session.add(review)
+            reviews.append(review)
+
+            log = AuditLog(user_id=reviewer.id, submission_id=sub.id, event_type="review")
+            db.session.add(log)
+            logs.append(log)
+
+    db.session.commit()
+    return reviews, assignments, logs
+
+
+def criar_binarios(submissoes, quantidade=3):
+    """Gera alguns ArquivoBinario ligados às submissões."""
+    arquivos = []
+    alvos = random.sample(submissoes, min(len(submissoes), quantidade)) if submissoes else []
+    for sub in alvos:
+        conteudo = fake.text().encode()
+        arq = ArquivoBinario(nome=f"sub_{sub.id}.txt", conteudo=conteudo, mimetype="text/plain")
+        db.session.add(arq)
+        db.session.flush()
+        sub.file_path = f"binario_{arq.id}"  # referência simples
+        arquivos.append(arq)
+    db.session.commit()
+    return arquivos
+
 def popular_banco():
     """Função principal para popular o banco de dados"""
     print("Iniciando população do banco de dados...")
@@ -881,13 +1003,24 @@ def popular_banco():
     
     print("Criando usuários...")
     usuarios = criar_usuarios(200)
-    
+
     print("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
-    
+
+    print("Criando submissões...")
+    submissoes, logs_sub = criar_submissoes(eventos, usuarios)
+
+    print("Criando reviews e assignments...")
+    reviews, assignments, logs_rev = criar_reviews_assignments(submissoes, usuarios)
+
+    print("Criando arquivos binários...")
+    arquivos = criar_binarios(submissoes)
+
+    audit_logs = logs_sub + logs_rev
+
     print("Criando agendamentos de visita...")
     agendamentos = criar_agendamentos_visita(eventos, usuarios)
-    
+
     print("Banco de dados populado com sucesso!")
     print("Foram criados:")
     print(f"- {len(clientes)} clientes")
@@ -896,6 +1029,10 @@ def popular_banco():
     print(f"- {len(oficinas)} oficinas")
     print(f"- {len(usuarios)} usuários")
     print(f"- {len(inscricoes)} inscrições")
+    print(f"- {len(submissoes)} submissões")
+    print(f"- {len(reviews)} reviews")
+    print(f"- {len(assignments)} assignments")
+    print(f"- {len(arquivos)} arquivos binários")
     print(f"- {len(agendamentos)} agendamentos de visita")
     
     return {
@@ -905,6 +1042,11 @@ def popular_banco():
         'oficinas': oficinas,
         'usuarios': usuarios,
         'inscricoes': inscricoes,
+        'submissoes': submissoes,
+        'reviews': reviews,
+        'assignments': assignments,
+        'arquivos': arquivos,
+        'audit_logs': audit_logs,
         'agendamentos': agendamentos
     }
 
