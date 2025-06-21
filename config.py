@@ -27,20 +27,25 @@ class Config:
         except Exception:
             return False
 
+    @staticmethod
+    def build_engine_options(uri):
+        if uri.startswith('sqlite'):
+            return {}
+
+        return {
+            'pool_size': 10,
+            'max_overflow': 20,
+            'pool_timeout': 30,
+            'pool_recycle': 1800,
+            'pool_pre_ping': True,
+            'connect_args': {'connect_timeout': 10},
+        }
+
     # Define qual banco de dados será usado
     SQLALCHEMY_DATABASE_URI = DB_ONLINE if test_db_connection(DB_ONLINE) else DB_LOCAL
 
     # Configurações de pool de conexões
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_size': 10,  # Número máximo de conexões permanentes
-        'max_overflow': 20,  # Número máximo de conexões temporárias
-        'pool_timeout': 30,  # Tempo máximo de espera por uma conexão
-        'pool_recycle': 1800,  # Recicla conexões após 30 minutos
-        'pool_pre_ping': True,  # Verifica se a conexão está ativa antes de usar
-        'connect_args': {
-            'connect_timeout': 10  # Aumenta o timeout de conexão
-        }
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = build_engine_options(SQLALCHEMY_DATABASE_URI)
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
