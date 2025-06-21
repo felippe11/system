@@ -1,0 +1,56 @@
+                     List of relations
+ Schema |               Name               | Type  | Owner 
+--------+----------------------------------+-------+-------
+ public | agendamento_visita               | table | iafap
+ public | alembic_version                  | table | iafap
+ public | aluno_visitante                  | table | iafap
+ public | apresentacao_trabalho            | table | iafap
+ public | arquivo_binario                  | table | iafap
+ public | assignment                       | table | iafap
+ public | audit_log                        | table | iafap
+ public | avaliacao_trabalho               | table | iafap
+ public | campos_formulario                | table | iafap
+ public | campos_formulario_template       | table | iafap
+ public | campos_personalizados_cadastro   | table | iafap
+ public | certificado_template             | table | iafap
+ public | checkin                          | table | iafap
+ public | cliente                          | table | iafap
+ public | config_certificado_evento        | table | iafap
+ public | configuracao                     | table | iafap
+ public | configuracao_agendamento         | table | iafap
+ public | configuracao_cliente             | table | iafap
+ public | evento                           | table | iafap
+ public | evento_inscricao_tipo            | table | iafap
+ public | feedback                         | table | iafap
+ public | feedback_campo                   | table | iafap
+ public | formulario_templates             | table | iafap
+ public | formularios                      | table | iafap
+ public | horario_visitacao                | table | iafap
+ public | inscricao                        | table | iafap
+ public | inscricao_tipo                   | table | iafap
+ public | link_cadastro                    | table | iafap
+ public | lote_inscricao                   | table | iafap
+ public | lote_tipo_inscricao              | table | iafap
+ public | material_oficina                 | table | iafap
+ public | ministrante                      | table | iafap
+ public | oficina                          | table | iafap
+ public | oficina_ministrantes_association | table | iafap
+ public | oficinadia                       | table | iafap
+ public | pagamento                        | table | iafap
+ public | patrocinador                     | table | iafap
+ public | professor_bloqueado              | table | iafap
+ public | proposta                         | table | iafap
+ public | regra_inscricao_evento           | table | iafap
+ public | relatorio_oficina                | table | iafap
+ public | respostas_campo                  | table | iafap
+ public | respostas_formulario             | table | iafap
+ public | review                           | table | iafap
+ public | revisao_config                   | table | iafap
+ public | sala_visitacao                   | table | iafap
+ public | sorteio                          | table | iafap
+ public | sorteio_ganhadores               | table | iafap
+ public | submission                       | table | iafap
+ public | trabalhos_cientificos            | table | iafap
+ public | usuario                          | table | iafap
+(51 rows)
+
