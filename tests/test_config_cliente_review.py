@@ -54,7 +54,7 @@ def test_update_review_settings(client, app):
 
 def test_dashboard_defaults(client, app):
     login(client, 'cli@example.com', '123')
-    resp = client.get('/dashboard_cliente')
+    resp = client.get('/config_submissao')
     assert resp.status_code == 200
     assert b'value="single"' in resp.data
     assert b'id="inputRevisoresMin" value="1"' in resp.data
