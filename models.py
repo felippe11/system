@@ -585,11 +585,12 @@ class ConfiguracaoCliente(db.Model):
     cliente = db.relationship('Cliente', back_populates='configuracao')
 
     habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
-
-    allowed_file_types = db.Column(db.String(100), default="pdf")
-
     # Exibe a taxa de serviço separadamente no preço da inscrição
     mostrar_taxa = db.Column(db.Boolean, default=True)
+    # Taxa diferenciada específica para o cliente (se definida, sobrepõe a taxa geral)
+    taxa_diferenciada = db.Column(db.Numeric(5,2), nullable=True)
+
+    allowed_file_types = db.Column(db.String(100), default="pdf")    
 
     review_model = db.Column(db.String(20), default="single")
     num_revisores_min = db.Column(db.Integer, default=1)

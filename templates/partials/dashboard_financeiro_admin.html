@@ -26,10 +26,16 @@
           </tr>
           {% endfor %}
         </tbody>
-      </table>
-      <div class="p-3">
+      </table>      <div class="p-3">
         <strong>Total do Cliente:</strong> R$ {{ "%.2f"|format(cliente.receita_total) }}<br>
-        <small class="text-muted">Taxas: R$ {{ "%.2f"|format(cliente.taxas) }}</small>
+        <small class="text-muted">
+          Taxas: R$ {{ "%.2f"|format(cliente.taxas) }}
+          {% if cliente.usando_taxa_diferenciada %}
+            <span class="badge bg-info ms-1" title="Este cliente possui uma taxa diferenciada">{{ cliente.taxa_aplicada }}%</span>
+          {% else %}
+            <span class="text-muted">({{ cliente.taxa_aplicada }}%)</span>
+          {% endif %}
+        </small>
       </div>
     </div>
   </div>
@@ -40,4 +46,5 @@
   <strong>Total de Eventos com Receita:</strong> {{ total_eventos_receita }}<br>
   <strong>Receita Total:</strong> R$ {{ "%.2f"|format(receita_total) }}<br>
   <strong>Receita de Taxas:</strong> R$ {{ "%.2f"|format(receita_taxas) }}
+  <small class="text-muted ms-1">(Taxa geral do sistema: {{ configuracao.taxa_percentual_inscricao or 0 }}%)</small>
 </div>
