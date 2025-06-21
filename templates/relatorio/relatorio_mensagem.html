@@ -1,24 +1,44 @@
 {% extends 'base.html' %}
 {% block title %}Relatório por Mensagem{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/relatorio_mensagem.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container my-5">
-  <h2 class="mb-4">Relatório para Mensagem</h2>
-  <form method="get" class="mb-3">
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" value="1" id="financeiro" name="financeiro" {% if incluir_financeiro %}checked{% endif %}>
-      <label class="form-check-label" for="financeiro">
-        Incluir dados financeiros do evento
-      </label>
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+      <div class="card relatorio-card">
+        <div class="card-header text-center">
+          <h4 class="mb-0">Mensagem do Relatório</h4>
+        </div>
+        <div class="card-body">
+          <form method="get" class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" value="1" id="financeiro" name="financeiro" {% if incluir_financeiro %}checked{% endif %}>
+              <label class="form-check-label" for="financeiro">
+                Incluir dados financeiros do evento
+              </label>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Gerar Relatório</button>
+          </form>
+          <div class="mb-3">
+            <label for="textoRelatorio" class="form-label">Texto Gerado</label>
+            <textarea id="textoRelatorio" class="form-control" rows="12" readonly>{{ texto_relatorio }}</textarea>
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="copiarMensagem()"><i class="bi bi-clipboard me-2"></i>Copiar</button>
+            <button class="btn btn-success" onclick="enviarWhatsAppRelatorio()"><i class="bi bi-whatsapp me-2"></i>Enviar via WhatsApp</button>
+          </div>
+          <div class="text-center mt-3">
+            <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-link">Voltar ao Dashboard</a>
+          </div>
+        </div>
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary mt-2">Gerar Relatório</button>
-  </form>
-  <textarea id="textoRelatorio" class="form-control mb-3" rows="12" readonly>{{ texto_relatorio }}</textarea>
-  <div class="d-flex gap-2">
-    <button class="btn btn-primary" onclick="copiarMensagem()"><i class="bi bi-clipboard me-2"></i>Copiar</button>
-    <button class="btn btn-success" onclick="enviarWhatsAppRelatorio()"><i class="bi bi-whatsapp me-2"></i>Enviar via WhatsApp</button>
   </div>
-  <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-link mt-3">Voltar ao Dashboard</a>
 </div>
 {% endblock %}
 
