@@ -1,0 +1,25 @@
+.relatorio-card {
+    border: none;
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-md);
+}
+
+.relatorio-card .card-header {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+}
+
+.relatorio-card textarea {
+    resize: vertical;
+    min-height: 280px;
+}
+
+.relatorio-card .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.relatorio-card .action-buttons .btn {
+    flex: 1 1 160px;
+}
