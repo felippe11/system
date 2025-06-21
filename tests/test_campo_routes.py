@@ -1,7 +1,9 @@
 import pytest
 from config import Config
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-Config.SQLALCHEMY_ENGINE_OPTIONS = {}
+Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
+    Config.SQLALCHEMY_DATABASE_URI
+)
 from werkzeug.security import generate_password_hash
 
 from app import create_app

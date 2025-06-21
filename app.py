@@ -22,6 +22,10 @@ from services.mp_service import get_sdk
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Recalcula as opções de conexão caso o URI tenha sido alterado nos testes
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options(
+        app.config['SQLALCHEMY_DATABASE_URI']
+    )
     app.jinja_env.add_extension('jinja2.ext.do')
     app.config["UPLOAD_FOLDER"] = "uploads"
 
