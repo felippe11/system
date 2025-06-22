@@ -38,18 +38,33 @@ class Config:
         or f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
+    @staticmethod
+    def build_engine_options(uri: str) -> dict:
+        """Return engine options for the given database URI."""
+        options = dict(
+            poolclass=QueuePool,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=1800,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": 10},
+        )
+        # Para conexões SQLite em testes, diversas opções de pool não se aplicam
+        # e causam erros. Removemos "connect_args" e os parâmetros de pool
+        # relacionados.
+        if uri.startswith("sqlite:"):
+            options.pop("connect_args", None)
+            options.pop("pool_size", None)
+            options.pop("max_overflow", None)
+            options.pop("pool_timeout", None)
+            options.pop("poolclass", None)
+        return options
+
     # ------------------------------------------------------------------ #
     #  Pool de conexões                                                  #
     # ------------------------------------------------------------------ #
-    SQLALCHEMY_ENGINE_OPTIONS = dict(
-        poolclass=QueuePool,
-        pool_size=10,
-        max_overflow=20,
-        pool_timeout=30,
-        pool_recycle=1800,
-        pool_pre_ping=True,
-        connect_args={"connect_timeout": 10},
-    )
+    SQLALCHEMY_ENGINE_OPTIONS = build_engine_options(SQLALCHEMY_DATABASE_URI)
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
