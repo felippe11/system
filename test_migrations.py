@@ -1,7 +1,9 @@
-from app import app
+from app import create_app
 from extensions import db
 from models import Usuario, ConfiguracaoCliente, Cliente
 from sqlalchemy import text
+
+app = create_app()
 
 with app.app_context():
     print("\n=== Teste de funcionalidades pós-migração ===")
