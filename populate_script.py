@@ -834,8 +834,12 @@ def criar_agendamentos_visita(eventos, usuarios):
             if evento.horarios_visitacao:
                 horario = random.choice(evento.horarios_visitacao)
                 
-                # Define quantos alunos virão
-                qtd_alunos = random.randint(10, min(30, horario.vagas_disponiveis))
+                # Define quantos alunos virão respeitando as vagas disponíveis
+                max_alunos = min(30, horario.vagas_disponiveis)
+                if max_alunos <= 0:
+                    continue
+                min_alunos = min(10, max_alunos)
+                qtd_alunos = random.randint(min_alunos, max_alunos)
                 
                 # Escolhe o status do agendamento
                 status = random.choices(
