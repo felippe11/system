@@ -62,11 +62,23 @@ def create_app():
     with app.app_context():
         db.create_all()
 
+    # Agendamento do reconciliador e rotas utilitárias são registrados aqui
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)
+    scheduler.start()
+
+    @socketio.on('join', namespace='/checkins')
+    def on_join(data):
+        sala = data.get('sala')
+        if sala:
+            join_room(sala)
+
+    @app.route("/time")
+    def current_time():
+        now = datetime.utcnow()
+        return f"Horário de Brasília: {brasilia_filter(now)}"
+
     return app
-
-
-# Inicialização do app
-app = create_app()
 
 
 # Função para reconciliar pagamentos pendentes
@@ -87,26 +99,7 @@ def reconciliar_pendentes():
             db.session.commit()
 
 
-# Agendamento do reconciliador
-scheduler = BackgroundScheduler()
-scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)
-scheduler.start()
-
-
-# Socket.IO para check-ins
-@socketio.on('join', namespace='/checkins')
-def on_join(data):
-    sala = data.get('sala')
-    if sala:
-        join_room(sala)
-
-
-# Rota para verificar o horário atual do servidor
-@app.route("/time")
-def current_time():
-    now = datetime.utcnow()
-    return f"Horário de Brasília: {brasilia_filter(now)}"
-
 # Execução da aplicação
 if __name__ == '__main__':
+    app = create_app()
     socketio.run(app, debug=True)
