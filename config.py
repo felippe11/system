@@ -1,20 +1,12 @@
 import os
-import psycopg2
 from sqlalchemy.pool import QueuePool
-
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
-def _normalize_pg_dsn(uri: str) -> str:
-    """
-    Se a string vier como 'postgresql+psycopg2://', converte para
-    'postgresql://' para que psycopg2.connect aceite.
-    """
-    if uri and uri.startswith("postgresql+"):
-        return uri.replace("postgresql+psycopg2://", "postgresql://", 1)
-    return uri
+def normalize_pg(uri: str) -> str:
+    """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
+    return uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 
 # ------------------------------------------------------------------ #
@@ -24,62 +16,41 @@ class Config:
     # ------------------------------------------------------------------ #
     #  Chave secreta                                                     #
     # ------------------------------------------------------------------ #
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    if not SECRET_KEY:
-        if os.getenv("FLASK_ENV") == "production":
-            raise RuntimeError("SECRET_KEY environment variable not set")
-        # Apenas para ambiente de desenvolvimento
-        SECRET_KEY = "6LcKl2YrAAAAAJ60mTLQ16l37kOmVXl8MDRy0bcy"
+    SECRET_KEY = os.getenv("SECRET_KEY") or "dev-secret-key"
 
     # ------------------------------------------------------------------ #
-    #  Bancos de Dados                                                   #
+    #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
     # ------------------------------------------------------------------ #
-    DB_ONLINE = (
-        os.getenv("DB_ONLINE")          # seu nome antigo
-        or os.getenv("DATABASE_URL")    # padrão em muitos deploys
-        or ""
+    DB_USER = os.getenv("DB_USER", "postgres")
+    DB_PASS = os.getenv("DB_PASS", "postgres")          # <- senha padrão
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME", "iafap_database")
+
+    # Se existir DATABASE_URL / DB_ONLINE, ele tem prioridade
+    _URI_FROM_ENV = (
+        os.getenv("DB_ONLINE") or
+        os.getenv("DATABASE_URL")
     )
-    DB_LOCAL = f"sqlite:///{os.path.join(BASE_DIR, 'app.db')}"
 
-    # -- testa rapidamente se o Postgres está acessível ---------------- #
-    @staticmethod
-    def test_db_connection(db_uri: str) -> bool:
-        """
-        Faz um `connect_timeout` rápido (5 s). Somente para Postgres.
-        Outros dialetos retornam False para cair no SQLite local.
-        """
-        if not db_uri or db_uri.startswith("sqlite"):
-            return False
-        try:
-            psycopg2.connect(_normalize_pg_dsn(db_uri), connect_timeout=5).close()
-            return True
-        except Exception:
-            return False
-
-    # URI final utilizada pelo SQLAlchemy
-    SQLALCHEMY_DATABASE_URI = (
-        DB_ONLINE if test_db_connection(DB_ONLINE) else DB_LOCAL
+    SQLALCHEMY_DATABASE_URI = normalize_pg(
+        _URI_FROM_ENV
+        or f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     # ------------------------------------------------------------------ #
     #  Pool de conexões                                                  #
     # ------------------------------------------------------------------ #
-    @staticmethod
-    def build_engine_options(uri: str) -> dict:
-        """Usa opções de pool só quando o banco não é SQLite."""
-        if uri.startswith("sqlite"):
-            return {}  # SQLite não suporta pool do mesmo jeito
-        return dict(
-            poolclass=QueuePool,
-            pool_size=10,
-            max_overflow=20,
-            pool_timeout=30,
-            pool_recycle=1800,   # 30 min
-            pool_pre_ping=True,
-            connect_args={"connect_timeout": 10},
-        )
+    SQLALCHEMY_ENGINE_OPTIONS = dict(
+        poolclass=QueuePool,
+        pool_size=10,
+        max_overflow=20,
+        pool_timeout=30,
+        pool_recycle=1800,
+        pool_pre_ping=True,
+        connect_args={"connect_timeout": 10},
+    )
 
-    SQLALCHEMY_ENGINE_OPTIONS = build_engine_options(SQLALCHEMY_DATABASE_URI)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ------------------------------------------------------------------ #

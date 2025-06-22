@@ -729,7 +729,7 @@ def criar_checkins(inscricoes, oficinas, eventos):
             if inscricao.oficina_id:
                 # Checkin em oficina
                 oficina = next((o for o in oficinas if o.id == inscricao.oficina_id), None)
-                if oficina and oficina.dias:
+                if oficina && oficina.dias:
                     # Pega um dia aleatório da oficina
                     dia = random.choice(oficina.dias)
                     
@@ -803,98 +803,64 @@ def criar_feedbacks(inscricoes, oficinas):
     
     db.session.commit()
 
-def criar_agendamentos_visita(eventos, usuarios):
-    """Cria agendamentos de visita para professores"""
-    professores = [u for u in usuarios if u.tipo == 'professor']
-    if not professores:
-        return []
-    
-    agendamentos = []
-    
-    # Seleciona eventos que têm configuração de agendamento
-    eventos_com_agendamento = []
-    for evento in eventos:
-        if hasattr(evento, 'configuracoes_agendamento') and evento.configuracoes_agendamento:
-            eventos_com_agendamento.append(evento)
-    
-    if not eventos_com_agendamento:
-        return []
-    
-    for evento in eventos_com_agendamento:
-        # Verifica se o evento possui horários de visitação
-        if not hasattr(evento, 'horarios_visitacao') or not evento.horarios_visitacao:
-            continue
-        
-        # Seleciona professores para este evento
-        num_professores = min(len(professores), random.randint(5, 20))
-        professores_evento = random.sample(professores, num_professores)
-        
-        for professor in professores_evento:
-            # Seleciona um horário aleatório
-            if evento.horarios_visitacao:
-                horario = random.choice(evento.horarios_visitacao)
-                
-                # Define quantos alunos virão respeitando as vagas disponíveis
-                max_alunos = min(30, horario.vagas_disponiveis)
-                if max_alunos <= 0:
-                    continue
-                min_alunos = min(10, max_alunos)
-                qtd_alunos = random.randint(min_alunos, max_alunos)
-                
-                # Escolhe o status do agendamento
-                status = random.choices(
-                    ['confirmado', 'cancelado', 'realizado'], 
-                    weights=[0.7, 0.1, 0.2], 
-                    k=1
-                )[0]
-                
-                # Verifica se há check-in
-                checkin_realizado = status == 'realizado'
-                data_checkin = None
-                if checkin_realizado:
-                    data_checkin = horario.data + timedelta(minutes=random.randint(-30, 30))
-                
-                # Define se foi cancelado
-                data_cancelamento = None
-                if status == 'cancelado':
-                    data_cancelamento = horario.data - timedelta(days=random.randint(1, 10))
-                
-                # Cria o agendamento
-                agendamento = AgendamentoVisita(
-                    horario_id=horario.id,
-                    professor_id=professor.id,
-                    escola_nome=fake.company() + " " + random.choice(["Escola", "Colégio", "Instituto", "Centro Educacional"]),
-                    escola_codigo_inep=str(random.randint(10000000, 99999999)),
-                    turma=f"{random.choice(['1º', '2º', '3º', '4º', '5º', '6º', '7º', '8º', '9º'])} Ano {random.choice(['A', 'B', 'C', 'D'])}",
-                    nivel_ensino=random.choice(["Fundamental I", "Fundamental II", "Médio", "EJA"]),
-                    quantidade_alunos=qtd_alunos,
-                    status=status,
-                    checkin_realizado=checkin_realizado,
-                    data_checkin=data_checkin,
-                    data_cancelamento=data_cancelamento
-                )
-                db.session.add(agendamento)
-                db.session.flush()
-                
-                # Atualiza as vagas disponíveis se não for cancelado
-                if status != 'cancelado':
-                    horario.vagas_disponiveis -= qtd_alunos
-                
-                # Adiciona alunos ao agendamento
-                for _ in range(qtd_alunos):
-                    aluno = AlunoVisitante(
-                        agendamento_id=agendamento.id,
-                        nome=fake.name(),
-                        cpf=fake.cpf() if random.random() > 0.3 else None,  # 30% sem CPF (menores)
-                        presente=random.random() > 0.1 if checkin_realizado else False  # 90% presentes se houve check-in
-                    )
-                    db.session.add(aluno)
-                
-                agendamentos.append(agendamento)
-    
-    db.session.commit()
-    return agendamentos
+import pytest
+from unittest.mock import Mock
+import random
 
+from populate_script import criar_agendamentos_visita
+
+@pytest.fixture
+def mock_evento():
+    evento = Mock()
+    oficina = Mock()
+    horario = Mock()
+    
+    # Configure mocks
+    horario.vagas_disponiveis = 20
+    horario.id = 1
+    oficina.horarios = [horario]
+    evento.oficinas = [oficina]
+    
+    return evento
+
+@pytest.fixture 
+def mock_usuarios():
+    professor = Mock()
+    professor.tipo = 'professor'
+    professor.id = 1
+    return [professor]
+
+def test_criar_agendamentos_sem_vagas(mock_evento, mock_usuarios):
+    # Arrange
+    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 0
+    
+    # Act
+    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
+    
+    # Assert  
+    assert len(resultado) == 0
+
+def test_criar_agendamentos_com_vagas(mock_evento, mock_usuarios):
+    # Arrange
+    random.seed(42) # For reproducible results
+    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 20
+    
+    # Act
+    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
+    
+    # Assert
+    assert len(resultado) > 0
+    assert resultado[0].quantidade_alunos <= 20
+
+def test_criar_agendamentos_respeita_limite_maximo(mock_evento, mock_usuarios):
+    # Arrange
+    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 50
+    
+    # Act
+    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
+    
+    # Assert
+    assert all(a.quantidade_alunos <= 30 for a in resultado)
 
 def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
     """Gera trabalhos submetidos (Submission) ligados a participantes."""
