@@ -729,7 +729,7 @@ def criar_checkins(inscricoes, oficinas, eventos):
             if inscricao.oficina_id:
                 # Checkin em oficina
                 oficina = next((o for o in oficinas if o.id == inscricao.oficina_id), None)
-                if oficina && oficina.dias:
+                if oficina and oficina.dias:
                     # Pega um dia aleatório da oficina
                     dia = random.choice(oficina.dias)
                     
