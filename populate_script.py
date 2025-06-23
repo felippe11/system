@@ -93,6 +93,10 @@ from models import (
     Assignment,
     AuditLog,
     ArquivoBinario,
+    Formulario,
+    CampoFormulario,
+    RespostaFormulario,
+    RespostaCampo,
 )
 
 # Inicialize o Faker
@@ -1023,6 +1027,74 @@ def criar_binarios(submissoes, quantidade=3):
     db.session.commit()
     return arquivos
 
+
+def criar_formularios(clientes, quantidade_por_cliente=2):
+    """Gera formulários e campos básicos para cada cliente."""
+    formularios = []
+    for cliente in clientes:
+        for i in range(quantidade_por_cliente):
+            formulario = Formulario(
+                nome=f"Formulário {i+1} - {cliente.nome}",
+                descricao=fake.sentence(),
+                cliente_id=cliente.id,
+            )
+            db.session.add(formulario)
+            db.session.flush()
+
+            for _ in range(random.randint(3, 5)):
+                tipo = random.choice(["text", "textarea", "dropdown", "checkbox", "radio"])
+                opcoes = None
+                if tipo in ["dropdown", "checkbox", "radio"]:
+                    opcoes = ",".join(fake.words(nb=random.randint(2, 4)))
+                campo = CampoFormulario(
+                    formulario_id=formulario.id,
+                    nome=fake.word().capitalize(),
+                    tipo=tipo,
+                    opcoes=opcoes,
+                    obrigatorio=random.choice([True, False]),
+                )
+                db.session.add(campo)
+
+            formularios.append(formulario)
+
+    db.session.commit()
+    return formularios
+
+
+def criar_respostas_formularios(formularios, usuarios, quantidade_por_formulario=5):
+    """Cria respostas de participantes para os formulários."""
+    participantes = [u for u in usuarios if u.tipo in ("participante", "professor")]
+    respostas = []
+    if not participantes:
+        return respostas
+
+    for formulario in formularios:
+        for _ in range(quantidade_por_formulario):
+            usuario = random.choice(participantes)
+            resp_form = RespostaFormulario(
+                formulario_id=formulario.id,
+                usuario_id=usuario.id,
+            )
+            db.session.add(resp_form)
+            db.session.flush()
+
+            for campo in formulario.campos:
+                if campo.tipo in ["dropdown", "checkbox", "radio"] and campo.opcoes:
+                    valor = random.choice(campo.opcoes.split(','))
+                else:
+                    valor = fake.word()
+                resp_campo = RespostaCampo(
+                    resposta_formulario_id=resp_form.id,
+                    campo_id=campo.id,
+                    valor=valor,
+                )
+                db.session.add(resp_campo)
+
+            respostas.append(resp_form)
+
+    db.session.commit()
+    return respostas
+
 def popular_banco():
     """Função principal para popular o banco de dados"""
     print("Iniciando população do banco de dados...")
@@ -1037,18 +1109,24 @@ def popular_banco():
     
     print("Criando eventos...")
     eventos = criar_eventos(clientes, 10)
-    
+
     print("Criando ministrantes...")
     ministrantes = criar_ministrantes(clientes, 20)
-    
+
     print("Criando oficinas...")
     oficinas = criar_oficinas(eventos, ministrantes, 10)
-    
+
+    print("Criando formulários...")
+    formularios = criar_formularios(clientes, 2)
+
     print("Criando usuários...")
     usuarios = criar_usuarios(200)
 
     print("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
+
+    print("Criando respostas de formulários...")
+    respostas_formularios = criar_respostas_formularios(formularios, usuarios)
 
     print("Criando submissões...")
     submissoes, logs_sub = criar_submissoes(eventos, usuarios)
@@ -1071,6 +1149,8 @@ def popular_banco():
     print(f"- {len(ministrantes)} ministrantes")
     print(f"- {len(oficinas)} oficinas")
     print(f"- {len(usuarios)} usuários")
+    print(f"- {len(formularios)} formulários")
+    print(f"- {len(respostas_formularios)} respostas de formulário")
     print(f"- {len(inscricoes)} inscrições")
     print(f"- {len(submissoes)} submissões")
     print(f"- {len(reviews)} reviews")
@@ -1083,6 +1163,8 @@ def popular_banco():
         'eventos': eventos,
         'ministrantes': ministrantes,
         'oficinas': oficinas,
+        'formularios': formularios,
+        'respostas_formularios': respostas_formularios,
         'usuarios': usuarios,
         'inscricoes': inscricoes,
         'submissoes': submissoes,
