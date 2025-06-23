@@ -103,7 +103,9 @@ def reconciliar_pendentes():
             db.session.commit()
 
 
+# Instância para servidores WSGI como o gunicorn
+app = create_app()
+
 # Execução da aplicação
 if __name__ == '__main__':
-    app = create_app()
     socketio.run(app, debug=True)
