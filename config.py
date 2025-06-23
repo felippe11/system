@@ -4,8 +4,13 @@ from sqlalchemy.pool import QueuePool
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
-def normalize_pg(uri: str) -> str:
-    """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
+def normalize_pg(uri: str | bytes) -> str:
+    """Ensure the URI is a string compatible with SQLAlchemy/psycopg2."""
+    if isinstance(uri, bytes):
+        try:
+            uri = uri.decode()
+        except UnicodeDecodeError:
+            uri = uri.decode("latin1", errors="ignore")
     return uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 
