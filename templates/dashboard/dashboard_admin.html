@@ -151,6 +151,9 @@
                             </td>
                             <td>
                               <div class="d-flex gap-2">
+                                <a href="{{ url_for('dashboard_routes.login_as_cliente', cliente_id=cliente.id) }}" class="btn btn-sm btn-outline-primary" title="Acessar como cliente">
+                                  <i class="bi bi-box-arrow-in-right"></i>
+                                </a>
                                 <!-- Botão de Editar -->
                                 <button class="btn btn-sm btn-outline-warning"
                                         data-bs-toggle="modal"
