@@ -39,6 +39,20 @@ primeira autenticacao.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
+## Conflito com pacotes `config`
+
+Alguns ambientes podem ter instalado um pacote externo chamado `config`,
+causando importações incorretas. Para verificar qual arquivo está sendo usado no
+seu projeto, execute:
+
+```python
+import config
+print(config.__file__)
+```
+
+O caminho exibido deve apontar para o `config.py` deste repositório. Caso seja
+outro local, ajuste o `PYTHONPATH` ou remova o pacote conflitante.
+
 ## Instalação no Windows/WSL
 
 Siga as etapas abaixo para configurar o projeto no Windows ou dentro do WSL:
