@@ -39,6 +39,13 @@ primeira autenticacao.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
+## Execucao
+
+O arquivo `Procfile` usa `gunicorn app:app` para iniciar o servidor. O
+`gunicorn` é recomendado apenas para ambientes Linux ou WSL. No Windows,
+execute `python app.py` ou instale o pacote `waitress` para ter um servidor
+mais apropriado para produção.
+
 ## Acessibilidade
 
 Para oferecer acessibilidade em Libras e suporte a pessoas cegas:
