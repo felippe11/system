@@ -185,6 +185,10 @@ def excluir_cliente(cliente_id):
             Feedback.query.filter_by(oficina_id=oficina.id).delete()
 
             # Remove tipos de inscrição vinculados à oficina
+            tipo_ids = db.session.query(InscricaoTipo.id).filter_by(oficina_id=oficina.id)
+            Inscricao.query.filter(
+                Inscricao.tipo_inscricao_id.in_(tipo_ids)
+            ).delete(synchronize_session=False)
             InscricaoTipo.query.filter_by(oficina_id=oficina.id).delete()
 
             db.session.execute(
