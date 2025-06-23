@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - Administrador{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_admin.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="co                          <th>Nome</th>
-                          <th>Email</th>
-                          <th class="text-center">Status</th>
-                          <th class="text-center">Taxa Diferenciada</th>
-                          <th>Ações</th>ner-fluid px-4">
+<div class="container-fluid px-4">
   <!-- Header Section -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h2 fw-bold text-primary">
@@ -558,55 +559,6 @@
     });
   });
 </script>
-
-<style>
-  .stat-card {
-    border: none;
-    border-radius: 1rem;
-    transition: transform 0.3s ease;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-5px);
-  }
-
-  .bg-primary-gradient {
-    background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
-  }
-
-  .bg-success-gradient {
-    background: linear-gradient(135deg, #00b4d8 0%, #0094c3 100%);
-  }
-
-  .bg-info-gradient {
-    background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
-  }
-
-  .bg-warning-gradient {
-    background: linear-gradient(135deg, #ffd60a 0%, #ffc300 100%);
-  }
-
-  .bg-danger-gradient {
-    background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
-  }
-
-  .nav-tabs .nav-link {
-    font-weight: 500;
-    border: none;
-    color: #6c757d;
-    padding: 1rem 2rem;
-  }
-
-  .nav-tabs .nav-link.active {
-    color: #0094c3;
-    border-bottom: 3px solid #0094c3;
-    background: transparent;
-  }
-
-  .table-hover tbody tr:hover {
-    background-color: rgba(0, 148, 195, 0.05);
-  }
-</style>
 
 
 <script>
