@@ -68,7 +68,15 @@
                     </a>
                 </li>
                 {% endif %}
-                
+
+                {% if session.get('impersonator_id') %}
+                <li class="nav-item">
+                    <a class="nav-link text-warning" href="{{ url_for('dashboard_routes.encerrar_impersonacao') }}">
+                        <i class="bi bi-x-circle"></i> Sair do modo cliente
+                    </a>
+                </li>
+                {% endif %}
+
                 <li class="nav-item">
                     <a class="nav-link text-danger" href="{{ url_for('auth_routes.logout') }}">
                         <i class="bi bi-box-arrow-right"></i> Sair
