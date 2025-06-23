@@ -49,6 +49,10 @@ class Config:
     )
 
     @staticmethod
+    def normalize_pg(uri: str | bytes) -> str:
+        return normalize_pg(uri)
+
+    @staticmethod
     def build_engine_options(uri: str) -> dict:
         """Return engine options for the given database URI."""
         options = dict(
