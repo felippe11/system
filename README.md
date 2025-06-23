@@ -142,3 +142,22 @@ python organizar_templates.py
 
 Esse script substitui o antigo `organizar_templates.sh`.
 
+## Deployment
+
+The application exposes a module-level `app` inside `app.py`. To run it with
+Gunicorn in a production environment, execute:
+
+```bash
+gunicorn app:app
+```
+
+Many hosting platforms expect the server to listen on the port defined in the
+`PORT` environment variable. You can bind Gunicorn to this port with:
+
+```bash
+gunicorn app:app --bind 0.0.0.0:$PORT
+```
+
+Ensure all configuration variables described earlier are set before starting the
+server.
+
