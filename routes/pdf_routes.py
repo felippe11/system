@@ -4,7 +4,7 @@ import os
 from services.pdf_service import (
     gerar_etiquetas,
     gerar_pdf_checkins_qr as gerar_pdf_checkins_qr_service,
-    gerar_pdf_feedback_route,
+    gerar_pdf_feedback_route as gerar_pdf_feedback_service,
     gerar_pdf_inscritos_pdf,
     gerar_lista_frequencia,
     gerar_certificados,
@@ -56,6 +56,13 @@ def gerar_lista_frequencia_route(oficina_id):
 @login_required
 def gerar_certificados_route(oficina_id):
     return gerar_certificados(oficina_id)
+
+
+@routes.route('/gerar_pdf_feedback/<int:oficina_id>')
+@login_required
+def gerar_pdf_feedback_route(oficina_id):
+    """Gera um PDF com os feedbacks da oficina."""
+    return gerar_pdf_feedback_service(oficina_id)
 
 
 @routes.route('/gerar_certificado_individual_admin', methods=['POST'])
