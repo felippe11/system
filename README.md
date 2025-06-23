@@ -39,6 +39,35 @@ primeira autenticacao.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
+## Instalação no Windows/WSL
+
+Siga as etapas abaixo para configurar o projeto no Windows ou dentro do WSL:
+
+1. Instale **Python 3.x** e **Git** a partir dos sites oficiais.
+2. Crie e ative um ambiente virtual:
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+3. Instale as dependências do projeto:
+
+```bash
+pip install -r requirements.txt
+```
+
+4. Instale e configure o **PostgreSQL** para Windows ou utilize o serviço Linux pelo WSL.
+5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv`.
+6. Aplique as migrações e inicie o servidor:
+
+```bash
+flask db upgrade
+python app.py  # ou flask run
+```
+
+As instruções para Linux continuam as mesmas dentro do WSL.
+
 ## Acessibilidade
 
 Para oferecer acessibilidade em Libras e suporte a pessoas cegas:
@@ -88,4 +117,14 @@ Administradores podem acessar o painel de qualquer cliente clicando em **Acessar
 `add_taxa_coluna.py` adiciona a coluna `taxa_diferenciada` na tabela `configuracao_cliente` caso ela ainda nao exista.
 `check_and_fix_taxa_column.py` verifica se a coluna esta presente e a cria automaticamente se necessario.
 Execute um desses scripts antes de rodar `populate_script.py` caso seu banco nao esteja com as migracoes atualizadas.
+
+## Organização de templates
+
+Para mover arquivos de template para suas pastas corretas, utilize:
+
+```bash
+python organizar_templates.py
+```
+
+Esse script substitui o antigo `organizar_templates.sh`.
 
