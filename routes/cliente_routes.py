@@ -267,6 +267,10 @@ def excluir_cliente(cliente_id):
                     )
                 ).delete(synchronize_session=False)
                 LoteInscricao.query.filter_by(evento_id=evento.id).delete()
+
+                # Remover pagamentos do evento
+                Pagamento.query.filter_by(evento_id=evento.id).delete(synchronize_session=False)
+
                 RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
                 EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
 
@@ -295,9 +299,7 @@ def excluir_cliente(cliente_id):
         Pagamento.query.filter(
             Pagamento.usuario_id.in_(usuario_ids)
         ).delete(synchronize_session=False)
-        Pagamento.query.filter(
-            Pagamento.evento_id.in_(evento_ids)
-        ).delete(synchronize_session=False)
+        # Pagamentos dos eventos já foram removidos dentro do loop acima
 
         # ===============================
         # 6️⃣ EXCLUI O CLIENTE
