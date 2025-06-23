@@ -48,6 +48,10 @@ from werkzeug.security import generate_password_hash
 from faker import Faker
 import uuid
 import bcrypt
+import pytest
+from unittest.mock import Mock
+from slugify import slugify  # You may need to pip install python-slugify
+from sqlalchemy.exc import IntegrityError
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -173,6 +177,20 @@ def criar_clientes(quantidade=5):
     fake.unique.clear()
     return clientes
 
+def gerar_slug_unico(num_palavras=3, max_tentativas=10):
+    """Gera um slug único consultando o banco antes de retornar."""
+    for _ in range(max_tentativas):
+        # Generate a slug from random words
+        palavras = fake.words(num_palavras)
+        slug = slugify(" ".join(palavras))
+        
+        # Check if slug exists
+        if not LinkCadastro.query.filter_by(slug_customizado=slug).first():
+            return slug
+            
+    # If we couldn't find a unique slug after max attempts, add UUID suffix
+    return f"{slug}-{str(uuid.uuid4())[:8]}"
+
 def criar_eventos(clientes, quantidade_por_cliente=5):
     """Cria eventos para cada cliente"""
     todos_eventos = []
@@ -233,10 +251,11 @@ def criar_eventos(clientes, quantidade_por_cliente=5):
                 criar_lotes_evento(evento)
             
             # Criar um link de cadastro para o evento
+            slug = gerar_slug_unico()
             link = LinkCadastro(
                 cliente_id=cliente.id,
                 evento_id=evento.id,
-                slug_customizado=fake.slug(),
+                slug_customizado=slug,
                 token=str(uuid.uuid4())
             )
             db.session.add(link)
@@ -803,11 +822,6 @@ def criar_feedbacks(inscricoes, oficinas):
     
     db.session.commit()
 
-import pytest
-from unittest.mock import Mock
-import random
-
-from populate_script import criar_agendamentos_visita
 
 @pytest.fixture
 def mock_evento():
