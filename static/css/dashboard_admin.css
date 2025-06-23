@@ -1,0 +1,46 @@
+.stat-card {
+  border: none;
+  border-radius: 1rem;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+.bg-primary-gradient {
+  background: linear-gradient(135deg, #0094c3 0%, #4cd175 100%);
+}
+
+.bg-success-gradient {
+  background: linear-gradient(135deg, #00b4d8 0%, #0094c3 100%);
+}
+
+.bg-info-gradient {
+  background: linear-gradient(135deg, #00b4d8 0%, #48cae4 100%);
+}
+
+.bg-warning-gradient {
+  background: linear-gradient(135deg, #ffd60a 0%, #ffc300 100%);
+}
+
+.bg-danger-gradient {
+  background: linear-gradient(135deg, #d00000 0%, #dc2f02 100%);
+}
+
+.nav-tabs .nav-link {
+  font-weight: 500;
+  border: none;
+  color: #6c757d;
+  padding: 1rem 2rem;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0094c3;
+  border-bottom: 3px solid #0094c3;
+  background: transparent;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 148, 195, 0.05);
+}
