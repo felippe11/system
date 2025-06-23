@@ -254,6 +254,10 @@ def excluir_cliente(cliente_id):
                 Patrocinador.query.filter_by(evento_id=evento.id).delete()
                 SalaVisitacao.query.filter_by(evento_id=evento.id).delete()  # ✅ NOVO
 
+                # Remover inscrições e check-ins vinculados ao evento
+                Checkin.query.filter_by(evento_id=evento.id).delete()
+                Inscricao.query.filter_by(evento_id=evento.id).delete()
+
                 # Remover dependências de inscrição do evento
                 LoteTipoInscricao.query.filter(
                     LoteTipoInscricao.lote_id.in_(
