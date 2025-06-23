@@ -16,7 +16,7 @@ from models import (
     RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
     ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico,
-    Feedback
+    Feedback, Pagamento
 )
 from utils import preco_com_taxa
 
@@ -634,6 +634,9 @@ def excluir_evento(evento_id):
         if lotes_ids:
             LoteTipoInscricao.query.filter(LoteTipoInscricao.lote_id.in_(lotes_ids)).delete(synchronize_session=False)
         LoteInscricao.query.filter_by(evento_id=evento.id).delete()
+
+        # Remover pagamentos do evento
+        Pagamento.query.filter_by(evento_id=evento.id).delete(synchronize_session=False)
 
         # Excluir tipos e regras de inscrição
         RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
