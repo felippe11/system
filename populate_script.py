@@ -823,6 +823,58 @@ def criar_feedbacks(inscricoes, oficinas):
     db.session.commit()
 
 
+def criar_agendamentos_visita(eventos, usuarios, limite_maximo=30):
+    """Gera agendamentos de visitação para professores.
+
+    Os agendamentos utilizam horários disponíveis dos eventos e nunca
+    excedem o número de vagas ou o limite máximo definido.
+    """
+    agendamentos = []
+
+    professores = [u for u in usuarios if getattr(u, "tipo", "") == "professor"]
+    if not professores:
+        return agendamentos
+
+    for evento in eventos:
+        # Horários podem vir diretamente do evento ou estar anexados em
+        # objetos de teste dentro de ``evento.oficinas``.
+        horarios = list(getattr(evento, "horarios_visitacao", []) or [])
+        if not horarios and hasattr(evento, "oficinas"):
+            for oficina in evento.oficinas:
+                horarios.extend(getattr(oficina, "horarios", []))
+
+        for horario in horarios:
+            vagas = getattr(horario, "vagas_disponiveis", 0)
+            if vagas <= 0:
+                continue
+
+            quantidade_max = min(vagas, limite_maximo)
+            quantidade_alunos = random.randint(1, quantidade_max)
+
+            professor = random.choice(professores)
+
+            agendamento = AgendamentoVisita(
+                horario_id=horario.id,
+                professor_id=professor.id,
+                escola_nome=fake.company(),
+                escola_codigo_inep=str(random.randint(10000000, 99999999)),
+                turma=f"Turma {random.randint(1, 5)}",
+                nivel_ensino=random.choice(["fundamental", "medio", "infantil"]),
+                quantidade_alunos=quantidade_alunos,
+            )
+
+            if hasattr(horario, "vagas_disponiveis"):
+                horario.vagas_disponiveis = max(
+                    0, horario.vagas_disponiveis - quantidade_alunos
+                )
+
+            db.session.add(agendamento)
+            agendamentos.append(agendamento)
+
+    db.session.commit()
+    return agendamentos
+
+
 @pytest.fixture
 def mock_evento():
     evento = Mock()
