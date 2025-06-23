@@ -4,8 +4,18 @@ from sqlalchemy.pool import QueuePool
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
-def normalize_pg(uri: str) -> str:
-    """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
+def normalize_pg(uri: str | bytes) -> str:
+    """Garante o prefixo aceito pelo SQLAlchemy/psycopg2.
+
+    Aceita `str` ou `bytes` e sempre retorna `str`. Quando `uri` é
+    fornecido como bytes, ele é decodificado usando UTF-8 e, em caso de
+    falha, Latin-1 é utilizado como "fallback".
+    """
+    if isinstance(uri, bytes):
+        try:
+            uri = uri.decode("utf-8")
+        except UnicodeDecodeError:
+            uri = uri.decode("latin-1")
     return uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 
