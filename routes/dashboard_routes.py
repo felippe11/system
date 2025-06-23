@@ -9,7 +9,7 @@ from flask import (
     request,
     current_app,
 )
-from flask_login import login_required, current_user
+from flask_login import login_required, current_user, login_user
 from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
 
 dashboard_routes = Blueprint(
@@ -170,5 +170,47 @@ def dashboard_admin():
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
     )
+
+
+@dashboard_routes.route('/login_as_cliente/<int:cliente_id>')
+@login_required
+def login_as_cliente(cliente_id: int):
+    """Permite que um admin assuma a sessão de um cliente."""
+    if current_user.tipo not in {'admin', 'superadmin'}:
+        abort(403)
+
+    from models import Cliente, Usuario
+    admin_id = current_user.get_id()
+    session['impersonator_id'] = admin_id
+    session['impersonator_type'] = current_user.tipo
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+
+    login_user(cliente)
+    session['user_type'] = 'cliente'
+
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+
+@dashboard_routes.route('/encerrar_impersonacao')
+@login_required
+def encerrar_impersonacao():
+    """Retorna o usuário logado ao modo administrador."""
+    impersonator_id = session.get('impersonator_id')
+    impersonator_type = session.get('impersonator_type', 'admin')
+
+    if not impersonator_id:
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    from models import Usuario
+    admin = Usuario.query.get_or_404(int(impersonator_id))
+
+    login_user(admin)
+    session['user_type'] = impersonator_type
+
+    session.pop('impersonator_id', None)
+    session.pop('impersonator_type', None)
+
+    return redirect(url_for('dashboard_routes.dashboard_admin'))
 
 
