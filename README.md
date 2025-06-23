@@ -89,3 +89,13 @@ Administradores podem acessar o painel de qualquer cliente clicando em **Acessar
 `check_and_fix_taxa_column.py` verifica se a coluna esta presente e a cria automaticamente se necessario.
 Execute um desses scripts antes de rodar `populate_script.py` caso seu banco nao esteja com as migracoes atualizadas.
 
+## Organização de templates
+
+Para mover arquivos de template para suas pastas corretas, utilize:
+
+```bash
+python organizar_templates.py
+```
+
+Esse script substitui o antigo `organizar_templates.sh`.
+
