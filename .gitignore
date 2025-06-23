@@ -20,6 +20,7 @@ venv/
 SELECT
 .vscode/claudesync.json
 token.json
+instance/
 
 # Generated artifacts
 0e765b9c8390,
