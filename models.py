@@ -1214,6 +1214,9 @@ class Review(db.Model):
     comments = db.Column(db.Text, nullable=True)
     file_path = db.Column(db.String(255), nullable=True)  # PDF anotado etc.
     decision = db.Column(db.String(50), nullable=True)    # accept | minor | major | reject
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+    duration_seconds = db.Column(db.Integer, nullable=True)
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # relationships
@@ -1222,6 +1225,12 @@ class Review(db.Model):
 
     def __repr__(self):
         return f"<Review {self.id} submission={self.submission_id}>"
+
+    @property
+    def duration(self):
+        if self.started_at and self.finished_at:
+            return int((self.finished_at - self.started_at).total_seconds())
+        return None
 
 
 # -----------------------------------------------------------------------------
