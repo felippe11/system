@@ -583,8 +583,8 @@ def criar_tipos_inscricao_oficina(oficina):
         )
         db.session.add(tipo)
 
-def criar_usuarios(quantidade=150):
-    """Cria usuários para o sistema"""
+def criar_usuarios(clientes, quantidade=150):
+    """Cria usuários para o sistema associando-os a clientes"""
     usuarios = []
     
     # Criar um superadmin
@@ -603,8 +603,8 @@ def criar_usuarios(quantidade=150):
     for i in range(quantidade):
         # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
         tipo = random.choices(
-            TIPOS_USUARIO, 
-            weights=[0.7, 0.15, 0.1, 0.0, 0.05], 
+            TIPOS_USUARIO,
+            weights=[0.7, 0.15, 0.1, 0.0, 0.05],
             k=1
         )[0]
         
@@ -613,6 +613,8 @@ def criar_usuarios(quantidade=150):
         estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
         cidades_usuario = [fake.city() for _ in range(num_estados)]
         
+        cliente = random.choice(clientes)
+
         usuario = Usuario(
             nome=fake.name(),
             cpf=fake.cpf(),
@@ -621,7 +623,8 @@ def criar_usuarios(quantidade=150):
             formacao=random.choice(TIPOS_FORMACAO),
             tipo=tipo,
             estados=','.join(estados_usuario),
-            cidades=','.join(cidades_usuario)
+            cidades=','.join(cidades_usuario),
+            cliente_id=cliente.id
         )
         db.session.add(usuario)
         usuarios.append(usuario)
@@ -991,7 +994,7 @@ def popular_banco():
     oficinas = criar_oficinas(eventos, ministrantes, 10)
     
     print("Criando usuários...")
-    usuarios = criar_usuarios(200)
+    usuarios = criar_usuarios(clientes, 200)
 
     print("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
