@@ -192,6 +192,27 @@ def login_as_cliente(cliente_id: int):
     return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
+@dashboard_routes.route('/login_as_usuario/<int:usuario_id>')
+@login_required
+def login_as_usuario(usuario_id: int):
+    """Permite que um admin assuma a sessão de um usuário comum."""
+    if current_user.tipo not in {'admin', 'superadmin'}:
+        abort(403)
+
+    from models import Usuario
+
+    admin_id = current_user.get_id()
+    session['impersonator_id'] = admin_id
+    session['impersonator_type'] = current_user.tipo
+
+    usuario = Usuario.query.get_or_404(usuario_id)
+
+    login_user(usuario)
+    session['user_type'] = usuario.tipo
+
+    return redirect(url_for('dashboard_routes.dashboard'))
+
+
 @dashboard_routes.route('/encerrar_impersonacao')
 @login_required
 def encerrar_impersonacao():
