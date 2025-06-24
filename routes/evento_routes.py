@@ -43,6 +43,7 @@ def home():
                                eventos_destaque=_serializa_eventos(eventos))
     except Exception as e:
         print(f"[ERRO] home(): {e}")
+        db.session.rollback()  # ensure session not left in failed state
         return render_template('index.html', eventos_destaque=[])
 
 @evento_routes.route('/evento/<int:evento_id>/inscricao')
