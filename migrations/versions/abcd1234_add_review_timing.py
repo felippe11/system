@@ -1,12 +1,12 @@
-"""add review timing fields"""
+"""add review timing fields
 
 Revision ID: abcd1234
 Revises: edec4bcb5f46
 Create Date: 2025-06-30 00:00:00.000000
-
 """
 from alembic import op
 import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
 revision = 'abcd1234'
