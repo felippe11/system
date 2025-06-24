@@ -161,3 +161,8 @@ gunicorn app:app --bind 0.0.0.0:$PORT
 Ensure all configuration variables described earlier are set before starting the
 server.
 
+
+### Render deploy hook
+
+To trigger redeploys automatically when new commits are pushed, open your web service settings on Render. Under **Deploy Hooks**, click **Enable deploy hook** to generate the URL. Call this endpoint from your CI workflow or repository settings whenever you want Render to rebuild the service.
+
