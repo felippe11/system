@@ -592,7 +592,7 @@ def criar_usuarios(clientes, quantidade=150):
         # Criar um superadmin apenas se ainda não existir
         superadmin = Usuario(
             nome="Administrador do Sistema",
-            cpf=fake.cpf(),
+            cpf=fake.unique.cpf(),
             email="admin@sistema.com",
             senha=generate_password_hash("admin123"),
             formacao="Administrador de Sistemas",
@@ -620,9 +620,13 @@ def criar_usuarios(clientes, quantidade=150):
         
         cliente = random.choice(clientes)
 
+        cpf = fake.cpf()
+        while Usuario.query.filter_by(cpf=cpf).first():
+            cpf = fake.cpf()
+
         usuario = Usuario(
             nome=fake.name(),
-            cpf=fake.unique.cpf(),
+            cpf=cpf,
             email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             formacao=random.choice(TIPOS_FORMACAO),
