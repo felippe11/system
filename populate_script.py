@@ -424,11 +424,11 @@ def criar_ministrantes(clientes, quantidade=20):
             categorias_formacao=categorias_formacao,
             foto=f"fotos/ministrante_{i}.jpg",
             areas_atuacao=areas_atuacao,
-            cpf=fake.cpf(),
+            cpf=fake.unique.cpf(),
             pix=fake.email(),
             cidade=fake.city(),
             estado=random.choice(ESTADOS_BRASIL),
-            email=fake.email(),
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             cliente_id=cliente.id
         )
@@ -436,6 +436,7 @@ def criar_ministrantes(clientes, quantidade=20):
         ministrantes.append(ministrante)
     
     db.session.commit()
+    fake.unique.clear()
     return ministrantes
 
 def criar_oficinas(eventos, ministrantes, quantidade_por_evento=10):
@@ -583,28 +584,35 @@ def criar_tipos_inscricao_oficina(oficina):
         )
         db.session.add(tipo)
 
-def criar_usuarios(quantidade=150):
-    """Cria usuários para o sistema"""
+def criar_usuarios(clientes, quantidade=150):
+    """Cria usuários para o sistema associando-os a clientes"""
     usuarios = []
-    
-    # Criar um superadmin
-    superadmin = Usuario(
-        nome="Administrador do Sistema",
-        cpf=fake.cpf(),
-        email="admin@sistema.com",
-        senha=generate_password_hash("admin123"),
-        formacao="Administrador de Sistemas",
-        tipo="superadmin"
-    )
-    db.session.add(superadmin)
+
+    # Verifica se já existe um superadmin com o email especificado
+    superadmin = Usuario.query.filter_by(email="admin@sistema.com").first()
+
+    if not superadmin:
+        # Criar um superadmin apenas se ainda não existir
+        superadmin = Usuario(
+            nome="Administrador do Sistema",
+            cpf=fake.cpf(),
+            email="admin@sistema.com",
+            senha=generate_password_hash("admin123"),
+            formacao="Administrador de Sistemas",
+            tipo="superadmin"
+        )
+        db.session.add(superadmin)
+
+    # Adiciona o superadmin existente ou recém-criado à lista de usuários
     usuarios.append(superadmin)
+
     
     # Criar usuários regulares
     for i in range(quantidade):
         # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
         tipo = random.choices(
-            TIPOS_USUARIO, 
-            weights=[0.7, 0.15, 0.1, 0.0, 0.05], 
+            TIPOS_USUARIO,
+            weights=[0.7, 0.15, 0.1, 0.0, 0.05],
             k=1
         )[0]
         
@@ -613,20 +621,24 @@ def criar_usuarios(quantidade=150):
         estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
         cidades_usuario = [fake.city() for _ in range(num_estados)]
         
+        cliente = random.choice(clientes)
+
         usuario = Usuario(
             nome=fake.name(),
-            cpf=fake.cpf(),
-            email=fake.email(),
+            cpf=fake.unique.cpf(),
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             formacao=random.choice(TIPOS_FORMACAO),
             tipo=tipo,
             estados=','.join(estados_usuario),
-            cidades=','.join(cidades_usuario)
+            cidades=','.join(cidades_usuario),
+            cliente_id=cliente.id
         )
         db.session.add(usuario)
         usuarios.append(usuario)
     
     db.session.commit()
+    fake.unique.clear()
     return usuarios
 
 def criar_inscricoes(usuarios, eventos, oficinas):
@@ -991,7 +1003,7 @@ def popular_banco():
     oficinas = criar_oficinas(eventos, ministrantes, 10)
     
     print("Criando usuários...")
-    usuarios = criar_usuarios(200)
+    usuarios = criar_usuarios(clientes, 200)
 
     print("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
