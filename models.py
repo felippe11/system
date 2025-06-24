@@ -46,6 +46,7 @@ class Usuario(db.Model, UserMixin):
     # MFA
     mfa_enabled = db.Column(db.Boolean, default=False)
     mfa_secret = db.Column(db.String(32), nullable=True)
+    ativo = db.Column(db.Boolean, default=True)
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha, senha)
@@ -58,6 +59,9 @@ class Usuario(db.Model, UserMixin):
 
     def is_cliente(self):
         return self.tipo == "cliente"
+
+    def is_active(self):
+        return self.ativo
     
     def is_professor(self):
          return self.tipo == 'professor'
