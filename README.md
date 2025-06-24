@@ -4,7 +4,8 @@ A Flask-based management system.
 
 ## Configuracao
 
-Defina as variaveis de ambiente abaixo antes de iniciar a aplicacao:
+Defina as variaveis de ambiente abaixo antes de iniciar a aplicacao (veja
+`\.env.example` para um modelo completo):
 
 ```bash
 export MAIL_USERNAME="seu_email@gmail.com"
@@ -72,7 +73,7 @@ pip install -r requirements.txt
 ```
 
 4. Instale e configure o **PostgreSQL** para Windows ou utilize o serviço Linux pelo WSL.
-5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv`.
+5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv` (pode copiar o arquivo `\.env.example`).
 6. Aplique as migrações e inicie o servidor:
 
 ```bash
