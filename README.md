@@ -21,7 +21,14 @@ export DB_LOCAL="<url_do_banco_local>"
 
 ## Banco de Dados
 
-Depois de clonar o repositório ou atualizar o código, aplique as migrações executando:
+Depois de clonar o repositório ou atualizar o código, instale as dependências
+listadas em `requirements.txt` antes de rodar a aplicação ou os testes:
+
+```bash
+pip install -r requirements.txt
+```
+
+Com o ambiente configurado você pode aplicar as migrações executando:
 
 ```bash
 flask db upgrade
