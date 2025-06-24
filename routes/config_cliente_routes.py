@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig
 from datetime import datetime
+import logging
 
 config_cliente_routes = Blueprint('config_cliente_routes', __name__)
 
@@ -152,9 +153,9 @@ def toggle_cliente(cliente_id):
         return redirect(url_for('dashboard_routes.dashboard'))
     
     cliente = Cliente.query.get_or_404(cliente_id)
-    print(f"Antes: {cliente.ativo}")
-    cliente.ativo = not cliente.ativo  
-    print(f"Depois: {cliente.ativo}")
+    logging.debug("Antes: %s", cliente.ativo)
+    cliente.ativo = not cliente.ativo
+    logging.debug("Depois: %s", cliente.ativo)
     
 
     db.session.commit()
