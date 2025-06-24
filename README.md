@@ -134,6 +134,10 @@ Para sinalizar as atividades de um evento, utilize a rota `/gerar_placas/<evento
 
 Administradores podem acessar o painel de qualquer cliente clicando em **Acessar** na seção de Gestão de Clientes do dashboard. A navegação mostrará um link "Sair do modo cliente" para retornar à conta de administrador.
 
+### Impersonação de usuários
+
+É possível entrar como qualquer usuário vinculado a um cliente. Utilize o botão **Listar usuários** na tabela de clientes e, em seguida, clique em **Acessar** ao lado do participante desejado. Enquanto estiver nesse modo, a barra superior exibirá "Sair do modo usuário" para retornar ao perfil de administrador.
+
 ## Database maintenance
 
 `add_taxa_coluna.py` adiciona a coluna `taxa_diferenciada` na tabela `configuracao_cliente` caso ela ainda nao exista.
