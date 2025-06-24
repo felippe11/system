@@ -49,7 +49,6 @@ from faker import Faker
 import uuid
 import bcrypt
 from slugify import slugify  # You may need to pip install python-slugify
-from sqlalchemy.exc import IntegrityError
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
