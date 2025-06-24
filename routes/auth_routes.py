@@ -56,6 +56,11 @@ def login():
             flash('Sua conta está desativada. Contate o administrador.', 'danger')
             return render_template("login.html")
 
+        if isinstance(usuario, Usuario) and not getattr(usuario, 'ativo', True):
+            logout_user()
+            flash('Sua conta está bloqueada. Contate a administração do evento.', 'danger')
+            return render_template("login.html")
+
         if not check_password_hash(usuario.senha, senha):
             flash('E-mail ou senha incorretos!', 'danger')
             return render_template("login.html")
