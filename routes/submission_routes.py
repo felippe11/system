@@ -64,3 +64,22 @@ def add_review(locator):
     db.session.add(review)
     db.session.commit()
     return jsonify({'message': 'Review submitted'})
+
+
+@submission_routes.route('/submissions/<locator>/codes')
+def list_review_codes(locator):
+    submission = Submission.query.filter_by(locator=locator).first_or_404()
+    reviews = Review.query.filter_by(submission_id=submission.id).all()
+    return jsonify({
+        'locator': locator,
+        'reviews': [
+            {
+                'locator': r.locator,
+                'access_code': r.access_code,
+                'started_at': r.started_at.isoformat() if r.started_at else None,
+                'finished_at': r.finished_at.isoformat() if r.finished_at else None,
+                'duration_seconds': r.duration_seconds
+            }
+            for r in reviews
+        ]
+    })
