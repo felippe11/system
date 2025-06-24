@@ -46,6 +46,7 @@ eventlet==0.40.1
 exceptiongroup==1.2.2
 executing==2.2.0
 fake-useragent==2.2.0
+Faker==37.4.0
 fastjsonschema==2.21.1
 Flask==2.3.3
 Flask-Admin==1.6.1
@@ -160,6 +161,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.0.0
 python-engineio==4.12.2
 python-json-logger==3.3.0
+python-slugify==8.0.4
 python-socketio==5.13.0
 pytz==2025.1
 PyYAML==5.4.1
