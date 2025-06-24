@@ -321,3 +321,21 @@ def excluir_cliente(cliente_id):
         flash(f"Erro ao excluir cliente: {str(e)}", "danger")
 
     return redirect(url_for("dashboard_routes.dashboard"))
+
+
+@cliente_routes.route("/listar_usuarios/<int:cliente_id>")
+@login_required
+def listar_usuarios(cliente_id: int):
+    """Exibe os usuários vinculados a um cliente específico."""
+    if current_user.tipo != "admin":
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    from models import Usuario, Cliente
+
+    cliente = Cliente.query.get_or_404(cliente_id)
+    usuarios = Usuario.query.filter_by(cliente_id=cliente.id).all()
+
+    return render_template(
+        "cliente/listar_usuarios.html", cliente=cliente, usuarios=usuarios
+    )

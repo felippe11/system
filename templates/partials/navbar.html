@@ -72,7 +72,12 @@
                 {% if session.get('impersonator_id') %}
                 <li class="nav-item">
                     <a class="nav-link text-warning" href="{{ url_for('dashboard_routes.encerrar_impersonacao') }}">
-                        <i class="bi bi-x-circle"></i> Sair do modo cliente
+                        <i class="bi bi-x-circle"></i>
+                        {% if session.get('user_type') == 'cliente' %}
+                        Sair do modo cliente
+                        {% else %}
+                        Sair do modo usuário
+                        {% endif %}
                     </a>
                 </li>
                 {% endif %}
