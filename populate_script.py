@@ -587,18 +587,25 @@ def criar_tipos_inscricao_oficina(oficina):
 def criar_usuarios(clientes, quantidade=150):
     """Cria usuários para o sistema associando-os a clientes"""
     usuarios = []
-    
-    # Criar um superadmin
-    superadmin = Usuario(
-        nome="Administrador do Sistema",
-        cpf=fake.unique.cpf(),
-        email="admin@sistema.com",
-        senha=generate_password_hash("admin123"),
-        formacao="Administrador de Sistemas",
-        tipo="superadmin"
-    )
-    db.session.add(superadmin)
+
+    # Verifica se já existe um superadmin com o email especificado
+    superadmin = Usuario.query.filter_by(email="admin@sistema.com").first()
+
+    if not superadmin:
+        # Criar um superadmin apenas se ainda não existir
+        superadmin = Usuario(
+            nome="Administrador do Sistema",
+            cpf=fake.cpf(),
+            email="admin@sistema.com",
+            senha=generate_password_hash("admin123"),
+            formacao="Administrador de Sistemas",
+            tipo="superadmin"
+        )
+        db.session.add(superadmin)
+
+    # Adiciona o superadmin existente ou recém-criado à lista de usuários
     usuarios.append(superadmin)
+
     
     # Criar usuários regulares
     for i in range(quantidade):
