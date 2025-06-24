@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Usuários do Cliente{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Usuários de {{ cliente.nome }}</h2>
+  {% if usuarios %}
+  <table class="table table-striped">
+    <thead>
+      <tr><th>ID</th><th>Nome</th><th>Email</th><th>Ações</th></tr>
+    </thead>
+    <tbody>
+    {% for u in usuarios %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.nome }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <a href="{{ url_for('dashboard_routes.login_as_usuario', usuario_id=u.id) }}" class="btn btn-sm btn-outline-primary" title="Acessar como usuário">
+            <i class="bi bi-box-arrow-in-right"></i>
+          </a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nenhum usuário encontrado.</p>
+  {% endif %}
+  <a href="{{ url_for('dashboard_routes.dashboard_admin') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}
