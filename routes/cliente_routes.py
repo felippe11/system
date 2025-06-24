@@ -19,6 +19,19 @@ cliente_routes = Blueprint("cliente_routes", __name__)
 logger = logging.getLogger(__name__)
 
 
+def _admin_required():
+    """Verifica se o usuário corrente possui privilégios de administrador."""
+    user_type = getattr(current_user, "tipo", None)
+    session_type = session.get("user_type")
+    if user_type not in ("admin", "superadmin") and session_type not in (
+        "admin",
+        "superadmin",
+    ):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    return None
+
+
 @cliente_routes.route("/cadastrar_cliente", methods=["GET", "POST"])
 @login_required
 def cadastrar_cliente():
