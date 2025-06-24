@@ -424,11 +424,11 @@ def criar_ministrantes(clientes, quantidade=20):
             categorias_formacao=categorias_formacao,
             foto=f"fotos/ministrante_{i}.jpg",
             areas_atuacao=areas_atuacao,
-            cpf=fake.cpf(),
+            cpf=fake.unique.cpf(),
             pix=fake.email(),
             cidade=fake.city(),
             estado=random.choice(ESTADOS_BRASIL),
-            email=fake.email(),
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             cliente_id=cliente.id
         )
@@ -436,6 +436,7 @@ def criar_ministrantes(clientes, quantidade=20):
         ministrantes.append(ministrante)
     
     db.session.commit()
+    fake.unique.clear()
     return ministrantes
 
 def criar_oficinas(eventos, ministrantes, quantidade_por_evento=10):
@@ -590,7 +591,7 @@ def criar_usuarios(clientes, quantidade=150):
     # Criar um superadmin
     superadmin = Usuario(
         nome="Administrador do Sistema",
-        cpf=fake.cpf(),
+        cpf=fake.unique.cpf(),
         email="admin@sistema.com",
         senha=generate_password_hash("admin123"),
         formacao="Administrador de Sistemas",
@@ -617,8 +618,8 @@ def criar_usuarios(clientes, quantidade=150):
 
         usuario = Usuario(
             nome=fake.name(),
-            cpf=fake.cpf(),
-            email=fake.email(),
+            cpf=fake.unique.cpf(),
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             formacao=random.choice(TIPOS_FORMACAO),
             tipo=tipo,
@@ -630,6 +631,7 @@ def criar_usuarios(clientes, quantidade=150):
         usuarios.append(usuario)
     
     db.session.commit()
+    fake.unique.clear()
     return usuarios
 
 def criar_inscricoes(usuarios, eventos, oficinas):
