@@ -340,16 +340,60 @@ def listar_usuarios(cliente_id: int):
         "cliente/listar_usuarios.html", cliente=cliente, usuarios=usuarios
     )
 
+@cliente_routes.route("/restringir_clientes", methods=["POST"])
+@login_required
+def restringir_clientes():
+    """Ativa ou bloqueia em lote os *clientes* enviados por ID (check‑box)."""
+    # Somente admin
+    redirect_resp = _admin_required()
+    if redirect_resp:
+        return redirect_resp
 
-@cliente_routes.route('/toggle_usuario/<int:usuario_id>')
+    ids = request.form.getlist("cliente_ids")
+    if not ids:
+        flash("Nenhum cliente selecionado!", "warning")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    clientes = Cliente.query.filter(Cliente.id.in_(ids)).all()
+    for cliente in clientes:
+        cliente.ativo = not cliente.ativo
+    db.session.commit()
+
+    flash(f"{len(clientes)} cliente(s) atualizados com sucesso!", "success")
+    return redirect(url_for("dashboard_routes.dashboard"))
+
+
+@cliente_routes.route("/excluir_clientes", methods=["POST"])
+@login_required
+def excluir_clientes():
+    """Exclui, em lote, os *clientes* enviados via formulário (checkbox)."""
+    redirect_resp = _admin_required()
+    if redirect_resp:
+        return redirect_resp
+
+    ids = request.form.getlist("cliente_ids")
+    if not ids:
+        flash("Nenhum cliente selecionado!", "warning")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    for cid in ids:
+        excluir_cliente(int(cid))
+
+    flash(f"{len(ids)} cliente(s) excluídos!", "success")
+    return redirect(url_for("dashboard_routes.dashboard"))
+
+
+# ---------------------------------------------------------------------------
+# Rota de (des)ativação ⇢ Usuário específico
+# ---------------------------------------------------------------------------
+
+@cliente_routes.route("/toggle_usuario/<int:usuario_id>")
 @login_required
 def toggle_usuario(usuario_id: int):
-    """Ativa ou bloqueia o acesso de um usuário."""
-    if current_user.tipo != 'admin':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
-
-    from models import Usuario
+    """Ativa ou bloqueia o acesso de um *usuário* específico."""
+    redirect_resp = _admin_required()
+    if redirect_resp:
+        return redirect_resp
 
     usuario = Usuario.query.get_or_404(usuario_id)
     usuario.ativo = not usuario.ativo
@@ -357,6 +401,8 @@ def toggle_usuario(usuario_id: int):
 
     flash(
         f"Usuário {'bloqueado' if not usuario.ativo else 'ativado'} com sucesso!",
-        'success'
+        "success",
     )
-    return redirect(url_for('cliente_routes.listar_usuarios', cliente_id=usuario.cliente_id))
+
+    # Redireciona para a lista de usuários do cliente ao qual pertence
+    return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
