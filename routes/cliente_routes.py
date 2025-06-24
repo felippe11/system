@@ -339,3 +339,24 @@ def listar_usuarios(cliente_id: int):
     return render_template(
         "cliente/listar_usuarios.html", cliente=cliente, usuarios=usuarios
     )
+
+
+@cliente_routes.route('/toggle_usuario/<int:usuario_id>')
+@login_required
+def toggle_usuario(usuario_id: int):
+    """Ativa ou bloqueia o acesso de um usuário."""
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    from models import Usuario
+
+    usuario = Usuario.query.get_or_404(usuario_id)
+    usuario.ativo = not usuario.ativo
+    db.session.commit()
+
+    flash(
+        f"Usuário {'bloqueado' if not usuario.ativo else 'ativado'} com sucesso!",
+        'success'
+    )
+    return redirect(url_for('cliente_routes.listar_usuarios', cliente_id=usuario.cliente_id))
