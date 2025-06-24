@@ -832,6 +832,73 @@ def criar_feedbacks(inscricoes, oficinas):
     
     db.session.commit()
 
+def criar_agendamentos_visita(eventos, usuarios):
+    """Gera agendamentos de visita a partir dos horarios disponíveis."""
+    professores = [u for u in usuarios if getattr(u, "tipo", None) == "professor"]
+    if not professores:
+        return []
+
+    horarios_disponiveis = []
+    for evento in eventos:
+        for horario in getattr(evento, "horarios_visitacao", []):
+            if getattr(horario, "vagas_disponiveis", 0) > 0:
+                horarios_disponiveis.append(horario)
+
+    if not horarios_disponiveis:
+        return []
+
+    niveis = [
+        "Educação Infantil",
+        "Ensino Fundamental - Anos Iniciais",
+        "Ensino Fundamental - Anos Finais",
+        "Ensino Médio",
+        "Educação de Jovens e Adultos",
+        "Ensino Técnico",
+        "Ensino Superior",
+    ]
+
+    agendamentos = []
+    for professor in professores:
+        num_agendamentos = random.randint(0, min(2, len(horarios_disponiveis)))
+        for _ in range(num_agendamentos):
+            if not horarios_disponiveis:
+                break
+
+            horario = random.choice(horarios_disponiveis)
+            max_vagas = min(30, horario.vagas_disponiveis)
+            if max_vagas <= 0:
+                horarios_disponiveis.remove(horario)
+                continue
+
+            quantidade = random.randint(10, max_vagas)
+
+            salas_ids = []
+            if getattr(horario.evento, "salas_visitacao", None):
+                salas = [s.id for s in horario.evento.salas_visitacao]
+                if salas:
+                    qtd = random.randint(1, min(len(salas), 3))
+                    salas_ids = random.sample(salas, qtd)
+            salas_str = ",".join(str(i) for i in salas_ids) if salas_ids else None
+
+            agendamento = AgendamentoVisita(
+                horario_id=horario.id,
+                professor_id=professor.id,
+                escola_nome=fake.company(),
+                escola_codigo_inep=str(random.randint(10000000, 99999999)),
+                turma=f"Turma {random.randint(1, 5)}",
+                nivel_ensino=random.choice(niveis),
+                quantidade_alunos=quantidade,
+                salas_selecionadas=salas_str,
+            )
+            db.session.add(agendamento)
+            agendamentos.append(agendamento)
+
+            horario.vagas_disponiveis -= quantidade
+            if horario.vagas_disponiveis <= 0:
+                horarios_disponiveis.remove(horario)
+
+    db.session.commit()
+    return agendamentos
 
 @pytest.fixture
 def mock_evento():
