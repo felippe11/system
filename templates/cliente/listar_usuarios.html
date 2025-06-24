@@ -6,7 +6,7 @@
   {% if usuarios %}
   <table class="table table-striped">
     <thead>
-      <tr><th>ID</th><th>Nome</th><th>Email</th><th>Ações</th></tr>
+      <tr><th>ID</th><th>Nome</th><th>Email</th><th>Status</th><th>Ações</th></tr>
     </thead>
     <tbody>
     {% for u in usuarios %}
@@ -15,8 +15,18 @@
         <td>{{ u.nome }}</td>
         <td>{{ u.email }}</td>
         <td>
+          <span class="badge bg-{{ 'success' if u.ativo else 'secondary' }}">
+            {{ 'Ativo' if u.ativo else 'Bloqueado' }}
+          </span>
+        </td>
+        <td>
           <a href="{{ url_for('dashboard_routes.login_as_usuario', usuario_id=u.id) }}" class="btn btn-sm btn-outline-primary" title="Acessar como usuário">
             <i class="bi bi-box-arrow-in-right"></i>
+          </a>
+          <a href="{{ url_for('cliente_routes.toggle_usuario', usuario_id=u.id) }}"
+             class="btn btn-sm btn-outline-{{ 'danger' if u.ativo else 'success' }}"
+             title="{{ 'Bloquear' if u.ativo else 'Ativar' }}">
+            <i class="bi bi-slash-circle"></i>
           </a>
         </td>
       </tr>
