@@ -122,12 +122,17 @@
                 <div class="col-12">
                   <h4 class="mb-3">Gestão de Clientes</h4>
                   <div class="table-responsive">
+                    <form id="clientesForm" method="POST">
                     <table class="table table-hover align-middle">
                       <thead class="table-light">
                         <tr>
+                          <th class="text-center">
+                            <input class="form-check-input" type="checkbox" id="selecionarTodosClientes">
+                          </th>
                           <th>Nome</th>
                           <th>E-mail</th>
                           <th class="text-center">Status</th>
+                          <th class="text-center">Taxa</th>
                           <th>Ações</th>
                         </tr>
                       </thead>
@@ -135,7 +140,11 @@
                         {% if clientes %}
                           {% for cliente in clientes %}
                           <tr>
-                            <td>{{ cliente.nome }}</td>                            <td>{{ cliente.email }}</td>
+                            <td class="text-center">
+                              <input class="form-check-input cliente-checkbox" type="checkbox" name="cliente_ids" value="{{ cliente.id }}">
+                            </td>
+                            <td>{{ cliente.nome }}</td>
+                            <td>{{ cliente.email }}</td>
                             <td class="text-center">
                               <span class="badge bg-{{ 'success' if cliente.ativo else 'secondary' }}">
                                 {{ "Ativo" if cliente.ativo else "Inativo" }}
@@ -175,12 +184,9 @@
                                 </a>
                               
                                 <!-- Botão Excluir -->
-                                <form method="POST" action="{{ url_for('cliente_routes.excluir_cliente', cliente_id=cliente.id) }}"
-                                      onsubmit="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
-                                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="bi bi-trash"></i>
-                                  </button>
-                                </form>
+                                <button type="submit" formaction="{{ url_for('cliente_routes.excluir_cliente', cliente_id=cliente.id) }}" formmethod="POST" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja excluir este cliente e TODAS as informações vinculadas a ele?');">
+                                  <i class="bi bi-trash"></i>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -192,6 +198,11 @@
                         {% endif %}
                       </tbody>
                     </table>
+                    <div class="mt-2">
+                      <button type="submit" formaction="{{ url_for('cliente_routes.restringir_clientes') }}" class="btn btn-sm btn-outline-secondary me-2">Restringir Selecionados</button>
+                      <button type="submit" formaction="{{ url_for('cliente_routes.excluir_clientes') }}" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja excluir os clientes selecionados e TODAS as informações vinculadas a eles?');">Excluir Selecionados</button>
+                    </div>
+                    </form>
                   </div>
                 </div>
               </div>
@@ -560,6 +571,18 @@
           .catch(error => console.error('Erro ao buscar cidades:', error));
       }
     });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const selecionarTodos = document.getElementById('selecionarTodosClientes');
+    const checkboxes = document.querySelectorAll('.cliente-checkbox');
+    if (selecionarTodos) {
+      selecionarTodos.addEventListener('change', function() {
+        checkboxes.forEach(cb => cb.checked = this.checked);
+      });
+    }
   });
 </script>
 

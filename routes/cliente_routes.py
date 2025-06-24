@@ -339,3 +339,44 @@ def listar_usuarios(cliente_id: int):
     return render_template(
         "cliente/listar_usuarios.html", cliente=cliente, usuarios=usuarios
     )
+
+
+@cliente_routes.route('/restringir_clientes', methods=['POST'])
+@login_required
+def restringir_clientes():
+    """Ativa ou restringe uma lista de clientes enviados por ID."""
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    ids = request.form.getlist('cliente_ids')
+    if not ids:
+        flash('Nenhum cliente selecionado!', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    clientes = Cliente.query.filter(Cliente.id.in_(ids)).all()
+    for c in clientes:
+        c.ativo = not c.ativo
+    db.session.commit()
+    flash(f'{len(clientes)} cliente(s) atualizados com sucesso!', 'success')
+    return redirect(url_for('dashboard_routes.dashboard'))
+
+
+@cliente_routes.route('/excluir_clientes', methods=['POST'])
+@login_required
+def excluir_clientes():
+    """Exclui em lote os clientes informados."""
+    if current_user.tipo != 'admin':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    ids = request.form.getlist('cliente_ids')
+    if not ids:
+        flash('Nenhum cliente selecionado!', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    for cid in ids:
+        excluir_cliente(int(cid))
+
+    flash(f'{len(ids)} cliente(s) excluídos!', 'success')
+    return redirect(url_for('dashboard_routes.dashboard'))
