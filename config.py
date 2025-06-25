@@ -1,5 +1,9 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy.pool import QueuePool
+
+# Carrega o arquivo .env explicitamente
+load_dotenv()
 
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
