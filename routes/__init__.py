@@ -51,7 +51,6 @@ def register_routes(app):
     from .util_routes import util_routes
     from .relatorio_pdf_routes import relatorio_pdf_routes
     from .static_page_routes import static_page_routes
-    from .peer_review_routes import peer_review_routes
     # Importa servicos que registram rotas diretamente no blueprint
     from services import lote_service  # noqa: F401
 
