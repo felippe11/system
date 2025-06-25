@@ -4,7 +4,8 @@ A Flask-based management system.
 
 ## Configuracao
 
-Defina as variaveis de ambiente abaixo antes de iniciar a aplicacao:
+Defina as variaveis de ambiente abaixo antes de iniciar a aplicacao (veja
+`\.env.example` para um modelo completo):
 
 ```bash
 export MAIL_USERNAME="seu_email@gmail.com"
@@ -21,7 +22,14 @@ export DB_LOCAL="<url_do_banco_local>"
 
 ## Banco de Dados
 
-Depois de clonar o repositório ou atualizar o código, aplique as migrações executando:
+Depois de clonar o repositório ou atualizar o código, instale as dependências
+listadas em `requirements.txt` antes de rodar a aplicação ou os testes:
+
+```bash
+pip install -r requirements.txt
+```
+
+Com o ambiente configurado você pode aplicar as migrações executando:
 
 ```bash
 flask db upgrade
@@ -72,7 +80,7 @@ pip install -r requirements.txt
 ```
 
 4. Instale e configure o **PostgreSQL** para Windows ou utilize o serviço Linux pelo WSL.
-5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv`.
+5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv` (pode copiar o arquivo `\.env.example`).
 6. Aplique as migrações e inicie o servidor:
 
 ```bash
@@ -126,6 +134,10 @@ Para sinalizar as atividades de um evento, utilize a rota `/gerar_placas/<evento
 
 Administradores podem acessar o painel de qualquer cliente clicando em **Acessar** na seção de Gestão de Clientes do dashboard. A navegação mostrará um link "Sair do modo cliente" para retornar à conta de administrador.
 
+### Impersonação de usuários
+
+É possível entrar como qualquer usuário vinculado a um cliente. Utilize o botão **Listar usuários** na tabela de clientes e, em seguida, clique em **Acessar** ao lado do participante desejado. Enquanto estiver nesse modo, a barra superior exibirá "Sair do modo usuário" para retornar ao perfil de administrador.
+
 ## Database maintenance
 
 `add_taxa_coluna.py` adiciona a coluna `taxa_diferenciada` na tabela `configuracao_cliente` caso ela ainda nao exista.
@@ -145,19 +157,20 @@ Esse script substitui o antigo `organizar_templates.sh`.
 ## Deployment
 
 The application exposes a module-level `app` inside `app.py`. To run it with
-Gunicorn in a production environment, execute:
+Gunicorn in a production environment, use `eventlet` workers and bind to the
+`PORT` environment variable expected by most hosting platforms:
 
 ```bash
-gunicorn app:app
+gunicorn app:app --worker-class eventlet --bind 0.0.0.0:$PORT
 ```
 
-Many hosting platforms expect the server to listen on the port defined in the
-`PORT` environment variable. You can bind Gunicorn to this port with:
-
-```bash
-gunicorn app:app --bind 0.0.0.0:$PORT
-```
+The `eventlet` dependency is included in `requirements.txt`.
 
 Ensure all configuration variables described earlier are set before starting the
 server.
+
+
+### Render deploy hook
+
+To trigger redeploys automatically when new commits are pushed, open your web service settings on Render. Under **Deploy Hooks**, click **Enable deploy hook** to generate the URL. Call this endpoint from your CI workflow or repository settings whenever you want Render to rebuild the service.
 

@@ -48,10 +48,7 @@ from werkzeug.security import generate_password_hash
 from faker import Faker
 import uuid
 import bcrypt
-import pytest
-from unittest.mock import Mock
 from slugify import slugify  # You may need to pip install python-slugify
-from sqlalchemy.exc import IntegrityError
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -424,11 +421,11 @@ def criar_ministrantes(clientes, quantidade=20):
             categorias_formacao=categorias_formacao,
             foto=f"fotos/ministrante_{i}.jpg",
             areas_atuacao=areas_atuacao,
-            cpf=fake.cpf(),
+            cpf=fake.unique.cpf(),
             pix=fake.email(),
             cidade=fake.city(),
             estado=random.choice(ESTADOS_BRASIL),
-            email=fake.email(),
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             cliente_id=cliente.id
         )
@@ -436,6 +433,7 @@ def criar_ministrantes(clientes, quantidade=20):
         ministrantes.append(ministrante)
     
     db.session.commit()
+    fake.unique.clear()
     return ministrantes
 
 def criar_oficinas(eventos, ministrantes, quantidade_por_evento=10):
@@ -583,28 +581,35 @@ def criar_tipos_inscricao_oficina(oficina):
         )
         db.session.add(tipo)
 
-def criar_usuarios(quantidade=150):
-    """Cria usuários para o sistema"""
+def criar_usuarios(clientes, quantidade=150):
+    """Cria usuários para o sistema associando-os a clientes"""
     usuarios = []
-    
-    # Criar um superadmin
-    superadmin = Usuario(
-        nome="Administrador do Sistema",
-        cpf=fake.cpf(),
-        email="admin@sistema.com",
-        senha=generate_password_hash("admin123"),
-        formacao="Administrador de Sistemas",
-        tipo="superadmin"
-    )
-    db.session.add(superadmin)
+
+    # Verifica se já existe um superadmin com o email especificado
+    superadmin = Usuario.query.filter_by(email="admin@sistema.com").first()
+
+    if not superadmin:
+        # Criar um superadmin apenas se ainda não existir
+        superadmin = Usuario(
+            nome="Administrador do Sistema",
+            cpf=fake.unique.cpf(),
+            email="admin@sistema.com",
+            senha=generate_password_hash("admin123"),
+            formacao="Administrador de Sistemas",
+            tipo="superadmin"
+        )
+        db.session.add(superadmin)
+
+    # Adiciona o superadmin existente ou recém-criado à lista de usuários
     usuarios.append(superadmin)
+
     
     # Criar usuários regulares
     for i in range(quantidade):
         # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
         tipo = random.choices(
-            TIPOS_USUARIO, 
-            weights=[0.7, 0.15, 0.1, 0.0, 0.05], 
+            TIPOS_USUARIO,
+            weights=[0.7, 0.15, 0.1, 0.0, 0.05],
             k=1
         )[0]
         
@@ -613,20 +618,28 @@ def criar_usuarios(quantidade=150):
         estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
         cidades_usuario = [fake.city() for _ in range(num_estados)]
         
+        cliente = random.choice(clientes)
+
+        cpf = fake.cpf()
+        while Usuario.query.filter_by(cpf=cpf).first():
+            cpf = fake.cpf()
+
         usuario = Usuario(
             nome=fake.name(),
-            cpf=fake.cpf(),
-            email=fake.email(),
+            cpf=cpf,
+            email=fake.unique.email(),
             senha=generate_password_hash(fake.password()),
             formacao=random.choice(TIPOS_FORMACAO),
             tipo=tipo,
             estados=','.join(estados_usuario),
-            cidades=','.join(cidades_usuario)
+            cidades=','.join(cidades_usuario),
+            cliente_id=cliente.id
         )
         db.session.add(usuario)
         usuarios.append(usuario)
     
     db.session.commit()
+    fake.unique.clear()
     return usuarios
 
 def criar_inscricoes(usuarios, eventos, oficinas):
@@ -820,59 +833,74 @@ def criar_feedbacks(inscricoes, oficinas):
     
     db.session.commit()
 
+def criar_agendamentos_visita(eventos, usuarios):
+    """Gera agendamentos de visita a partir dos horarios disponíveis."""
+    professores = [u for u in usuarios if getattr(u, "tipo", None) == "professor"]
+    if not professores:
+        return []
 
-@pytest.fixture
-def mock_evento():
-    evento = Mock()
-    oficina = Mock()
-    horario = Mock()
-    
-    # Configure mocks
-    horario.vagas_disponiveis = 20
-    horario.id = 1
-    oficina.horarios = [horario]
-    evento.oficinas = [oficina]
-    
-    return evento
+    horarios_disponiveis = []
+    for evento in eventos:
+        for horario in getattr(evento, "horarios_visitacao", []):
+            if getattr(horario, "vagas_disponiveis", 0) > 0:
+                horarios_disponiveis.append(horario)
 
-@pytest.fixture 
-def mock_usuarios():
-    professor = Mock()
-    professor.tipo = 'professor'
-    professor.id = 1
-    return [professor]
+    if not horarios_disponiveis:
+        return []
 
-def test_criar_agendamentos_sem_vagas(mock_evento, mock_usuarios):
-    # Arrange
-    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 0
-    
-    # Act
-    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
-    
-    # Assert  
-    assert len(resultado) == 0
+    niveis = [
+        "Educação Infantil",
+        "Ensino Fundamental - Anos Iniciais",
+        "Ensino Fundamental - Anos Finais",
+        "Ensino Médio",
+        "Educação de Jovens e Adultos",
+        "Ensino Técnico",
+        "Ensino Superior",
+    ]
 
-def test_criar_agendamentos_com_vagas(mock_evento, mock_usuarios):
-    # Arrange
-    random.seed(42) # For reproducible results
-    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 20
-    
-    # Act
-    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
-    
-    # Assert
-    assert len(resultado) > 0
-    assert resultado[0].quantidade_alunos <= 20
+    agendamentos = []
+    for professor in professores:
+        num_agendamentos = random.randint(0, min(2, len(horarios_disponiveis)))
+        for _ in range(num_agendamentos):
+            if not horarios_disponiveis:
+                break
 
-def test_criar_agendamentos_respeita_limite_maximo(mock_evento, mock_usuarios):
-    # Arrange
-    mock_evento.oficinas[0].horarios[0].vagas_disponiveis = 50
-    
-    # Act
-    resultado = criar_agendamentos_visita([mock_evento], mock_usuarios)
-    
-    # Assert
-    assert all(a.quantidade_alunos <= 30 for a in resultado)
+            horario = random.choice(horarios_disponiveis)
+            max_vagas = min(30, horario.vagas_disponiveis)
+            if max_vagas <= 0:
+                horarios_disponiveis.remove(horario)
+                continue
+
+            quantidade = random.randint(10, max_vagas)
+
+            salas_ids = []
+            if getattr(horario.evento, "salas_visitacao", None):
+                salas = [s.id for s in horario.evento.salas_visitacao]
+                if salas:
+                    qtd = random.randint(1, min(len(salas), 3))
+                    salas_ids = random.sample(salas, qtd)
+            salas_str = ",".join(str(i) for i in salas_ids) if salas_ids else None
+
+            agendamento = AgendamentoVisita(
+                horario_id=horario.id,
+                professor_id=professor.id,
+                escola_nome=fake.company(),
+                escola_codigo_inep=str(random.randint(10000000, 99999999)),
+                turma=f"Turma {random.randint(1, 5)}",
+                nivel_ensino=random.choice(niveis),
+                quantidade_alunos=quantidade,
+                salas_selecionadas=salas_str,
+            )
+            db.session.add(agendamento)
+            agendamentos.append(agendamento)
+
+            horario.vagas_disponiveis -= quantidade
+            if horario.vagas_disponiveis <= 0:
+                horarios_disponiveis.remove(horario)
+
+    db.session.commit()
+    return agendamentos
+
 
 def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
     """Gera trabalhos submetidos (Submission) ligados a participantes."""
@@ -991,7 +1019,7 @@ def popular_banco():
     oficinas = criar_oficinas(eventos, ministrantes, 10)
     
     print("Criando usuários...")
-    usuarios = criar_usuarios(200)
+    usuarios = criar_usuarios(clientes, 200)
 
     print("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
