@@ -1,7 +1,7 @@
 from flask import Blueprint, request, redirect, url_for, flash
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
-from flask_login import login_required
+
 import pandas as pd
 import os
 
@@ -28,7 +28,7 @@ def importar_usuarios():
         return redirect(url_for('dashboard_routes.dashboard'))
     if arquivo and arquivo_permitido(arquivo.filename):
         filename = secure_filename(arquivo.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         arquivo.save(filepath)
         try:
             print("📌 [DEBUG] Lendo o arquivo Excel...")
