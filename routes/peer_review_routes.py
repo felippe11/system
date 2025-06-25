@@ -23,9 +23,9 @@ def assign_reviews():
             continue
         for reviewer_id in reviewers:
             rev = Review(
-                trabalho_id=trabalho.id,
-                revisor_id=reviewer_id,
-                codigo_acesso=str(uuid.uuid4())[:8]
+                submission_id=trabalho.id,
+                reviewer_id=reviewer_id,
+                access_code=str(uuid.uuid4())[:8]
             )
             db.session.add(rev)
     db.session.commit()
@@ -50,9 +50,9 @@ def auto_assign(evento_id):
         selecionados = revisores_area[:config.numero_revisores]
         for reviewer in selecionados:
             rev = Review(
-                trabalho_id=t.id,
-                revisor_id=reviewer.id,
-                codigo_acesso=str(uuid.uuid4())[:8]
+                submission_id=t.id,
+                reviewer_id=reviewer.id,
+                access_code=str(uuid.uuid4())[:8]
             )
             db.session.add(rev)
     db.session.commit()
@@ -61,15 +61,22 @@ def auto_assign(evento_id):
 @peer_review_routes.route('/review/<locator>', methods=['GET', 'POST'])
 def review_form(locator):
     review = Review.query.filter_by(locator=locator).first_or_404()
+    if request.method == 'GET':
+        if review.started_at is None:
+            review.started_at = datetime.utcnow()
+            db.session.commit()
     if request.method == 'POST':
         codigo = request.form.get('codigo')
-        if codigo != review.codigo_acesso:
+        if codigo != review.access_code:
             flash('Código incorreto!', 'danger')
             return render_template('peer_review/review_form.html', review=review)
-        review.nota = request.form.get('nota')
-        review.comentarios = request.form.get('comentarios')
+        review.note = request.form.get('nota')
+        review.comments = request.form.get('comentarios')
         review.blind_type = 'nome' if request.form.get('mostrar_nome') == 'on' else 'anonimo'
-        review.criado_em = datetime.utcnow()
+        review.finished_at = datetime.utcnow()
+        if review.started_at:
+            review.duration_seconds = int((review.finished_at - review.started_at).total_seconds())
+        review.submitted_at = review.finished_at
         db.session.commit()
         flash('Revisão enviada!', 'success')
         return redirect(url_for('peer_review_routes.review_form', locator=locator))
@@ -84,7 +91,7 @@ def author_reviews():
 @peer_review_routes.route('/dashboard/reviewer_reviews')
 @login_required
 def reviewer_reviews():
-    reviews = Review.query.filter_by(revisor_id=current_user.id).all()
+    reviews = Review.query.filter_by(reviewer_id=current_user.id).all()
     config = RevisaoConfig.query.first()
     return render_template('peer_review/dashboard_reviewer.html', reviews=reviews, config=config)
 
@@ -97,14 +104,6 @@ def editor_reviews(evento_id):
     trabalhos = TrabalhoCientifico.query.filter_by(evento_id=evento_id).all()
     return render_template('peer_review/dashboard_editor.html', trabalhos=trabalhos)
 
-from flask import Blueprint, render_template
-
-peer_review_routes = Blueprint(
-    'peer_review_routes',
-    __name__,
-    template_folder="../templates/peer_review"
-)
-
 @peer_review_routes.route('/peer-review/author')
 def author_dashboard():
     return render_template('peer_review/author/dashboard.html', submissions=[])
@@ -114,6 +113,7 @@ def reviewer_dashboard():
     return render_template('peer_review/reviewer/dashboard.html', tasks=[])
 
 @peer_review_routes.route('/peer-review/editor')
-def editor_dashboard():
+def editor_dashboard_page():
     return render_template('peer_review/editor/dashboard.html', decisions=[])
+
 

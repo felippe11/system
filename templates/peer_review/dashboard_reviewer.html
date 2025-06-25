@@ -6,13 +6,13 @@
   <table class="table table-striped">
     <thead><tr><th>Título</th><th>Status</th><th>Acessar</th></tr></thead>
     <tbody>
-    {% for r in reviews %}
+      {% for r in reviews %}
       <tr>
-        <td>{{ r.trabalho.titulo }}</td>
-        <td>{{ 'Concluída' if r.nota else 'Pendente' }}</td>
+        <td>{{ r.submission.title }}</td>
+        <td>{{ 'Concluída' if r.note else 'Pendente' }}</td>
         <td><a href="{{ url_for('peer_review_routes.review_form', locator=r.locator) }}">Revisar</a></td>
       </tr>
-    {% endfor %}
+      {% endfor %}
     </tbody>
   </table>
 </div>
