@@ -47,6 +47,27 @@ def remover_campo_personalizado(campo_id):
     return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
+@campo_routes.route('/toggle_obrigatorio_campo/<int:campo_id>', methods=['POST'])
+@login_required
+def toggle_obrigatorio_campo(campo_id):
+    """Alterna a obrigatoriedade de um campo personalizado de cadastro."""
+    if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
+        flash('Acesso negado', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    campo = CampoPersonalizadoCadastro.query.get_or_404(campo_id)
+
+    if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
+        flash('Você não tem permissão para alterar este campo.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    campo.obrigatorio = not campo.obrigatorio
+    db.session.commit()
+
+    flash('Campo atualizado com sucesso!', 'success')
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+
 
 
 
