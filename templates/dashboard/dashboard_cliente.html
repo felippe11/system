@@ -1122,7 +1122,12 @@
                           {% endif %}
                         </td>
                         <td class="text-center">
-                          <form method="POST" action="{{ url_for('campo_routes.remover_campo_personalizado', campo_id=campo.id) }}" 
+                          <form method="POST" action="{{ url_for('campo_routes.toggle_obrigatorio_campo', campo_id=campo.id) }}" class="d-inline">
+                            <button class="btn btn-padrao btn-table btn-sm btn-secondary" type="submit">
+                              {% if campo.obrigatorio %}Tornar Opcional{% else %}Tornar Obrigatório{% endif %}
+                            </button>
+                          </form>
+                          <form method="POST" action="{{ url_for('campo_routes.remover_campo_personalizado', campo_id=campo.id) }}"
                                 onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
                             <button class="btn btn-padrao btn-table btn-sm btn-danger" type="submit">
                               <i class="bi bi-trash-fill"></i> Remover
