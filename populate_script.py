@@ -49,6 +49,7 @@ from faker import Faker
 import uuid
 import bcrypt
 from slugify import slugify  # You may need to pip install python-slugify
+from sqlalchemy.exc import IntegrityError
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -599,46 +600,54 @@ def criar_usuarios(clientes, quantidade=150):
             tipo="superadmin"
         )
         db.session.add(superadmin)
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
 
     # Adiciona o superadmin existente ou recém-criado à lista de usuários
     usuarios.append(superadmin)
 
-    
     # Criar usuários regulares
-    for i in range(quantidade):
+    for _ in range(quantidade):
         # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
         tipo = random.choices(
             TIPOS_USUARIO,
             weights=[0.7, 0.15, 0.1, 0.0, 0.05],
             k=1
         )[0]
-        
+
         # Seleciona aleatoriamente estados e cidades
         num_estados = random.randint(1, 3)
         estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
         cidades_usuario = [fake.city() for _ in range(num_estados)]
-        
+
         cliente = random.choice(clientes)
 
-        cpf = fake.cpf()
-        while Usuario.query.filter_by(cpf=cpf).first():
+        while True:
             cpf = fake.cpf()
+            email = fake.unique.email()
 
-        usuario = Usuario(
-            nome=fake.name(),
-            cpf=cpf,
-            email=fake.unique.email(),
-            senha=generate_password_hash(fake.password()),
-            formacao=random.choice(TIPOS_FORMACAO),
-            tipo=tipo,
-            estados=','.join(estados_usuario),
-            cidades=','.join(cidades_usuario),
-            cliente_id=cliente.id
-        )
-        db.session.add(usuario)
-        usuarios.append(usuario)
-    
-    db.session.commit()
+            usuario = Usuario(
+                nome=fake.name(),
+                cpf=cpf,
+                email=email,
+                senha=generate_password_hash(fake.password()),
+                formacao=random.choice(TIPOS_FORMACAO),
+                tipo=tipo,
+                estados=','.join(estados_usuario),
+                cidades=','.join(cidades_usuario),
+                cliente_id=cliente.id
+            )
+            db.session.add(usuario)
+            try:
+                db.session.commit()
+                usuarios.append(usuario)
+                break
+            except IntegrityError:
+                db.session.rollback()
+                fake.unique.clear()
+
     fake.unique.clear()
     return usuarios
 
