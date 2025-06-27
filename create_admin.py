@@ -20,3 +20,5 @@ with app.app_context():  # ✅ Criando um contexto da aplicação Flask
         print("✅ Administrador criado com sucesso!")
     else:
         print("⚠️ O administrador já existe no banco de dados.")
+
+

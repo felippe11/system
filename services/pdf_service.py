@@ -3152,32 +3152,101 @@ def gerar_programacao_evento_pdf(evento_id):
 # Gerar placas simples para oficinas do evento
 
 def gerar_placas_oficinas_pdf(evento_id):
-    """Gera um PDF com uma pagina por oficina, exibindo titulo e ministrante."""
+    """
+    Gera um PDF com uma placa por página para cada oficina, em modo paisagem,
+    com design aprimorado e quebra de linha automática.
+    """
     from models import Evento, Oficina
     from flask import current_app, send_file
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm
     import os
+
+    # Importações do ReportLab para um layout mais avançado
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.lib.units import cm
+    from reportlab.lib.enums import TA_CENTER
+
+    # 1. Busca dos dados no banco
     evento = Evento.query.get_or_404(evento_id)
     oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
+
+    # 2. Configuração de diretórios e arquivos
     pdf_dir = os.path.join(current_app.static_folder, "placas", str(evento_id))
     os.makedirs(pdf_dir, exist_ok=True)
-    filename = f"placas_oficinas_{evento_id}.pdf"
+    
+    # LINHA CORRIGIDA: Usando evento.id em vez de evento.slug
+    filename = f"placas_oficinas_{evento.id}.pdf"
+    
     pdf_path = os.path.join(pdf_dir, filename)
-    c = canvas.Canvas(pdf_path, pagesize=A4)
-    width, height = A4
+
+    # 3. Criação do Documento com orientação paisagem (folha virada) e margens
+    doc = SimpleDocTemplate(
+        pdf_path,
+        pagesize=landscape(A4),
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+
+    # 4. Definição dos Estilos de Parágrafo (controla fonte, tamanho, alinhamento, etc.)
+    styles = getSampleStyleSheet()
+    
+    # Estilo para o título da oficina
+    titulo_style = ParagraphStyle(
+        name='TituloOficina',
+        parent=styles['h1'],
+        fontName='Helvetica-Bold',
+        fontSize=42,
+        leading=50,  # Espaçamento entre linhas
+        alignment=TA_CENTER
+    )
+
+    # Estilo para o nome do ministrante
+    ministrante_style = ParagraphStyle(
+        name='Ministrante',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique', # Usando itálico para diferenciar
+        fontSize=24,
+        leading=28,
+        alignment=TA_CENTER,
+        spaceBefore=1*cm  # Espaço antes deste parágrafo
+    )
+
+    # 5. Construção da "História" do PDF (uma lista de elementos a serem renderizados)
+    story = []
+
     for ofi in oficinas:
-        c.setFont("Helvetica-Bold", 28)
-        c.drawCentredString(width/2, height-5*cm, ofi.titulo)
+        # Adiciona um espaço no topo para centralizar o conteúdo verticalmente na página
+        story.append(Spacer(1, 6*cm))
+
+        # Adiciona o título da oficina como um Parágrafo (com quebra de linha automática)
+        texto_titulo = ofi.titulo.upper() # Colocando em maiúsculas para dar destaque
+        story.append(Paragraph(texto_titulo, titulo_style))
+
+        # Adiciona o nome do ministrante, se houver
         if ofi.ministrante_obj:
-            c.setFont("Helvetica", 20)
-            c.drawCentredString(width/2, height-7*cm, ofi.ministrante_obj.nome)
-        c.showPage()
-    c.save()
+            texto_ministrante = f"com {ofi.ministrante_obj.nome}"
+            story.append(Paragraph(texto_ministrante, ministrante_style))
 
+        # Força a criação de uma nova página para a próxima oficina
+        story.append(PageBreak())
+
+    # 6. Geração do arquivo PDF
+    if story: # Evita criar um PDF em branco se não houver oficinas
+        doc.build(story)
+    else:
+        # Se não houver oficinas, podemos criar um PDF com uma mensagem
+        c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+        c.setFont("Helvetica", 20)
+        width, height = landscape(A4)
+        c.drawCentredString(width/2, height/2, "Nenhuma oficina encontrada para este evento.")
+        c.save()
+
+
+    # 7. Envio do arquivo para o usuário
     return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
-
 
 
 def gerar_etiquetas(cliente_id):
