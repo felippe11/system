@@ -207,6 +207,76 @@ def toggle_mostrar_taxa():
         "message": "Exibição da taxa atualizada!"
     })
 
+@config_cliente_routes.route('/toggle_obrigatorio_nome', methods=['POST'])
+@login_required
+def toggle_obrigatorio_nome():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    config.obrigatorio_nome = not config.obrigatorio_nome
+    db.session.commit()
+    return jsonify({"success": True, "value": config.obrigatorio_nome})
+
+@config_cliente_routes.route('/toggle_obrigatorio_cpf', methods=['POST'])
+@login_required
+def toggle_obrigatorio_cpf():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    config.obrigatorio_cpf = not config.obrigatorio_cpf
+    db.session.commit()
+    return jsonify({"success": True, "value": config.obrigatorio_cpf})
+
+@config_cliente_routes.route('/toggle_obrigatorio_email', methods=['POST'])
+@login_required
+def toggle_obrigatorio_email():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    config.obrigatorio_email = not config.obrigatorio_email
+    db.session.commit()
+    return jsonify({"success": True, "value": config.obrigatorio_email})
+
+@config_cliente_routes.route('/toggle_obrigatorio_senha', methods=['POST'])
+@login_required
+def toggle_obrigatorio_senha():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    config.obrigatorio_senha = not config.obrigatorio_senha
+    db.session.commit()
+    return jsonify({"success": True, "value": config.obrigatorio_senha})
+
+@config_cliente_routes.route('/toggle_obrigatorio_formacao', methods=['POST'])
+@login_required
+def toggle_obrigatorio_formacao():
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    config = current_user.configuracao
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    config.obrigatorio_formacao = not config.obrigatorio_formacao
+    db.session.commit()
+    return jsonify({"success": True, "value": config.obrigatorio_formacao})
+
 @config_cliente_routes.route("/api/configuracao_cliente_atual", methods=["GET"])
 @login_required
 def configuracao_cliente_atual():
@@ -236,6 +306,11 @@ def configuracao_cliente_atual():
         "num_revisores_max": config_cliente.num_revisores_max,
         "prazo_parecer_dias": config_cliente.prazo_parecer_dias,
         "habilitar_submissao_trabalhos": config_cliente.habilitar_submissao_trabalhos,
+        "obrigatorio_nome": config_cliente.obrigatorio_nome,
+        "obrigatorio_cpf": config_cliente.obrigatorio_cpf,
+        "obrigatorio_email": config_cliente.obrigatorio_email,
+        "obrigatorio_senha": config_cliente.obrigatorio_senha,
+        "obrigatorio_formacao": config_cliente.obrigatorio_formacao,
         "allowed_file_types": config_cliente.allowed_file_types
 
     })

@@ -9,6 +9,10 @@ from werkzeug.security import generate_password_hash
 from app import create_app
 from extensions import db
 from models import Usuario, Cliente, CampoPersonalizadoCadastro
+import os
+import tempfile
+from unittest.mock import patch
+from models import ConfiguracaoCliente
 
 @pytest.fixture
 def app():
@@ -59,3 +63,49 @@ def test_remover_campo_personalizado_unauthorized(client, app):
     assert b'Acesso negado' in resp.data
     with app.app_context():
         assert CampoPersonalizadoCadastro.query.get(field_id) is not None
+
+
+def test_preview_certificado_logged_in(client, app):
+    with app.app_context():
+        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123'))
+        db.session.add(cliente)
+        db.session.commit()
+        cid = cliente.id
+
+    dummy = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+    dummy.write(b'PDF')
+    dummy.close()
+
+    with patch('routes.certificado_routes.gerar_certificado_personalizado', return_value=dummy.name):
+        login(client, 'cli@example.com', '123')
+        resp = client.get('/preview_certificado')
+        assert resp.status_code == 200
+        assert resp.mimetype == 'application/pdf'
+    os.remove(dummy.name)
+
+
+import pytest
+
+@pytest.mark.parametrize('route,field,default', [
+    ('/toggle_checkin_global_cliente', 'permitir_checkin_global', False),
+    ('/toggle_feedback_cliente', 'habilitar_feedback', False),
+    ('/toggle_certificado_cliente', 'habilitar_certificado_individual', False),
+    ('/toggle_qrcode_evento_credenciamento', 'habilitar_qrcode_evento_credenciamento', False),
+    ('/toggle_submissao_trabalhos', 'habilitar_submissao_trabalhos', False),
+    ('/toggle_mostrar_taxa', 'mostrar_taxa', True),
+])
+def test_toggle_default_fields(client, app, route, field, default):
+    with app.app_context():
+        cliente = Cliente(nome='Cli', email='toggler@example.com', senha=generate_password_hash('123'))
+        db.session.add(cliente)
+        db.session.commit()
+        db.session.add(ConfiguracaoCliente(cliente_id=cliente.id))
+        db.session.commit()
+        cid = cliente.id
+    login(client, 'toggler@example.com', '123')
+    resp = client.post(route)
+    assert resp.status_code == 200
+    with app.app_context():
+        cfg = ConfiguracaoCliente.query.filter_by(cliente_id=cid).first()
+        assert getattr(cfg, field) == (not default)
+

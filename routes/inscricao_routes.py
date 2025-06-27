@@ -101,7 +101,19 @@ def cadastro_participante(identifier: str | None = None):
 
         try:
             solicitar_senha = False
-            if not all([nome, cpf, email, senha, formacao]):
+
+            config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+
+            def obrig(attr):
+                return getattr(config_cli, attr) if config_cli else True
+
+            if (
+                (obrig("obrigatorio_nome") and not nome) or
+                (obrig("obrigatorio_cpf") and not cpf) or
+                (obrig("obrigatorio_email") and not email) or
+                (obrig("obrigatorio_senha") and not senha) or
+                (obrig("obrigatorio_formacao") and not formacao)
+            ):
                 raise ValueError("Preencha todos os campos obrigatórios.")
 
             duplicado = Usuario.query.filter(
@@ -461,6 +473,11 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
 
     config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     mostrar_taxa = config_cli.mostrar_taxa if config_cli else True
+    obrigatorio_nome = config_cli.obrigatorio_nome if config_cli else True
+    obrigatorio_cpf = config_cli.obrigatorio_cpf if config_cli else True
+    obrigatorio_email = config_cli.obrigatorio_email if config_cli else True
+    obrigatorio_senha = config_cli.obrigatorio_senha if config_cli else True
+    obrigatorio_formacao = config_cli.obrigatorio_formacao if config_cli else True
 
     # Estatísticas do lote vigente
     lote_stats = None
@@ -503,7 +520,12 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
         mostrar_taxa=mostrar_taxa,
         preco_com_taxa=preco_com_taxa,
         solicitar_senha=solicitar_senha,
-        cliente_id=cliente_id
+        cliente_id=cliente_id,
+        obrigatorio_nome=obrigatorio_nome,
+        obrigatorio_cpf=obrigatorio_cpf,
+        obrigatorio_email=obrigatorio_email,
+        obrigatorio_senha=obrigatorio_senha,
+        obrigatorio_formacao=obrigatorio_formacao
     )
 
 @inscricao_routes.route('/editar_participante', methods=['GET', 'POST'])

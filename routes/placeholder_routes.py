@@ -37,7 +37,7 @@ def placeholder_image(width, height):
         return send_file(img_io, mimetype='image/jpeg')
     except Exception as e:
         # Em caso de erro, retorne uma imagem padrão muito simples
-        app.logger.error(f"Erro ao gerar imagem placeholder: {str(e)}")
+        current_app.logger.error(f"Erro ao gerar imagem placeholder: {str(e)}")
         img = Image.new('RGB', (width, height), color=(200, 200, 200))
         img_io = io.BytesIO()
         img.save(img_io, 'JPEG', quality=70)

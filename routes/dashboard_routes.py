@@ -44,6 +44,9 @@ def dashboard():
     elif tipo == "professor":
         return redirect(url_for("dashboard_professor.dashboard_professor"))
 
+    elif tipo == "superadmin":
+        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+
     abort(403)
 
 @dashboard_routes.route("/dashboard_admin")
@@ -169,6 +172,22 @@ def dashboard_admin():
         receita_taxas=receita_taxas,
         estado_filter=estado_filter,
         cidade_filter=cidade_filter,
+    )
+
+
+@dashboard_routes.route("/dashboard_superadmin")
+@login_required
+def dashboard_superadmin():
+    """Painel reservado ao superadministrador."""
+    if not current_app.config.get("LOGIN_DISABLED") and getattr(current_user, "tipo", None) != "superadmin":
+        abort(403)
+
+    from models import Cliente
+    clientes = Cliente.query.all()
+
+    return render_template(
+        "dashboard/dashboard_superadmin.html",
+        clientes=clientes,
     )
 
 

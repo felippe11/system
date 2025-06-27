@@ -608,6 +608,12 @@ class ConfiguracaoCliente(db.Model):
     num_revisores_max = db.Column(db.Integer, default=2)
     prazo_parecer_dias = db.Column(db.Integer, default=14)
 
+    obrigatorio_nome = db.Column(db.Boolean, default=True)
+    obrigatorio_cpf = db.Column(db.Boolean, default=True)
+    obrigatorio_email = db.Column(db.Boolean, default=True)
+    obrigatorio_senha = db.Column(db.Boolean, default=True)
+    obrigatorio_formacao = db.Column(db.Boolean, default=True)
+
     
     
 class FeedbackCampo(db.Model):
