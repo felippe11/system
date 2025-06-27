@@ -1,0 +1,20 @@
+{% extends "auth/cadastro_participante.html" %}
+
+{% block title %}Pré-visualização do Cadastro{% endblock %}
+
+{% block content %}
+<div class="alert alert-info text-center mb-3">
+    Esta é uma pré-visualização do formulário de cadastro. O envio está desativado.
+</div>
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('registrationForm');
+        if (form) {
+            form.addEventListener('submit', function(e) { e.preventDefault(); });
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) { btn.disabled = true; }
+        }
+    });
+</script>
+{% endblock %}

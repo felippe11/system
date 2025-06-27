@@ -90,7 +90,8 @@ def login():
             'cliente':      'dashboard_routes.dashboard',
             'participante': 'dashboard_participante_routes.dashboard_participante',
             'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
-            'professor':    'dashboard_professor.dashboard_professor'
+            'professor':    'dashboard_professor.dashboard_professor',
+            'superadmin':   'dashboard_routes.dashboard_superadmin'
         }.get(session.get('user_type'), 'dashboard_routes.dashboard')
 
         return redirect(url_for(destino))
@@ -123,7 +124,8 @@ def mfa():
                 'cliente':      'dashboard_routes.dashboard',
                 'participante': 'dashboard_participante_routes.dashboard_participante',
                 'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
-                'professor':    'dashboard_professor.dashboard_professor'
+                'professor':    'dashboard_professor.dashboard_professor',
+                'superadmin':   'dashboard_routes.dashboard_superadmin'
             }.get(session.get('user_type'), 'dashboard_routes.dashboard')
             return redirect(url_for(destino))
         else:
