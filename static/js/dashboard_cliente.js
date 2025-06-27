@@ -107,6 +107,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
         const btnMostrarTaxa = document.getElementById('btnToggleMostrarTaxa');
         const btnSubmissao = document.getElementById('btnToggleSubmissao');
+        const btnObrigNome = document.getElementById('btnToggleObrigatorioNome');
+        const btnObrigCpf = document.getElementById('btnToggleObrigatorioCpf');
+        const btnObrigEmail = document.getElementById('btnToggleObrigatorioEmail');
+        const btnObrigSenha = document.getElementById('btnToggleObrigatorioSenha');
+        const btnObrigFormacao = document.getElementById('btnToggleObrigatorioFormacao');
 
         if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
         if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
@@ -114,6 +119,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
         if (btnMostrarTaxa) atualizarBotao(btnMostrarTaxa, data.mostrar_taxa);
         if (btnSubmissao) atualizarBotao(btnSubmissao, data.habilitar_submissao_trabalhos);
+        if (btnObrigNome) atualizarBotao(btnObrigNome, data.obrigatorio_nome);
+        if (btnObrigCpf) atualizarBotao(btnObrigCpf, data.obrigatorio_cpf);
+        if (btnObrigEmail) atualizarBotao(btnObrigEmail, data.obrigatorio_email);
+        if (btnObrigSenha) atualizarBotao(btnObrigSenha, data.obrigatorio_senha);
+        if (btnObrigFormacao) atualizarBotao(btnObrigFormacao, data.obrigatorio_formacao);
         const inputAllowed = document.getElementById('inputAllowedFiles');
         if (inputAllowed && data.allowed_file_types) inputAllowed.value = data.allowed_file_types;
       })
@@ -131,7 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnToggleCertificado'),
     document.getElementById('btnToggleQrCredenciamento'),
     document.getElementById('btnToggleMostrarTaxa'),
-    document.getElementById('btnToggleSubmissao')
+    document.getElementById('btnToggleSubmissao'),
+    document.getElementById('btnToggleObrigatorioNome'),
+    document.getElementById('btnToggleObrigatorioCpf'),
+    document.getElementById('btnToggleObrigatorioEmail'),
+    document.getElementById('btnToggleObrigatorioSenha'),
+    document.getElementById('btnToggleObrigatorioFormacao')
   ];
 
   toggleButtons.forEach(button => {
