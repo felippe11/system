@@ -328,6 +328,11 @@ class EventoInscricaoTipo(db.Model):
         self.nome = nome
         self.preco = preco
 
+    @property
+    def tipo_inscricao(self):
+        """Alias to self for template compatibility."""
+        return self
+
 
 class RegraInscricaoEvento(db.Model):
     __tablename__ = 'regra_inscricao_evento'
