@@ -106,7 +106,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form method="get" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
+        <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
           <div class="mb-3">
             <label for="locatorInput" class="form-label">Localizador</label>
             <input type="text" class="form-control" id="locatorInput" name="locator">
