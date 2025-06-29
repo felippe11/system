@@ -41,37 +41,13 @@
                                            title="Editar Formulário">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <button type="button" 
-                                                class="btn btn-outline-danger btn-sm" 
-                                                data-bs-toggle="modal" 
+                                        <button type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                data-bs-toggle="modal"
                                                 data-bs-target="#deleteModal{{ formulario.id }}"
                                                 title="Excluir Formulário">
                                             <i class="bi bi-trash"></i>
                                         </button>
-                                    </div>
-                                    
-                                    <!-- Modal de confirmação para exclusão -->
-                                    <div class="modal fade" id="deleteModal{{ formulario.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Confirmar exclusão</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Tem certeza que deseja excluir o formulário <strong>{{ formulario.nome }}</strong>?</p>
-                                                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                    <form action="{{ url_for('formularios_routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
-                                                        <button type="submit" class="btn btn-danger">
-                                                            Excluir Formulário
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -90,9 +66,34 @@
             {% endif %}
         </div>
     </div>
-</div>
+    </div>
 
-<script>
+    {% for formulario in formularios %}
+    <div class="modal fade" id="deleteModal{{ formulario.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir o formulário <strong>{{ formulario.nome }}</strong>?</p>
+                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('formularios_routes.excluir_formulario', formulario_id=formulario.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger">
+                            Excluir Formulário
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
     // Inicializar tooltips
     document.addEventListener('DOMContentLoaded', function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))

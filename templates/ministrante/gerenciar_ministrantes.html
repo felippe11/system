@@ -97,45 +97,13 @@
                     <i class="bi bi-pencil"></i>
                   </a>
                   
-                  <button type="button" 
-                          class="btn btn-outline-danger btn-sm" 
-                          data-bs-toggle="modal" 
+                  <button type="button"
+                          class="btn btn-outline-danger btn-sm"
+                          data-bs-toggle="modal"
                           data-bs-target="#deleteModal{{ ministrante.id }}"
                           title="Excluir Ministrante">
                     <i class="bi bi-trash"></i>
                   </button>
-                </div>
-                
-                <!-- Modal de confirmação para exclusão -->
-                <div class="modal fade" id="deleteModal{{ ministrante.id }}" tabindex="-1" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title">Confirmar exclusão</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <div class="d-flex align-items-center mb-3">
-                          <div class="avatar-circle bg-danger text-white me-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
-                            {{ ministrante.nome[:1].upper() }}
-                          </div>
-                          <div>
-                            <p class="mb-0">Tem certeza que deseja excluir o ministrante:</p>
-                            <h5 class="mt-1 mb-0">{{ ministrante.nome }}</h5>
-                          </div>
-                        </div>
-                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
-                      </div>
-                      <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <form action="{{ url_for('ministrante_routes.excluir_ministrante', ministrante_id=ministrante.id) }}" method="POST" class="d-inline">
-                          <button type="submit" class="btn btn-danger">
-                            <i class="bi bi-trash me-1"></i> Excluir Ministrante
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </td>
             </tr>
@@ -162,6 +130,39 @@
     {% endif %}
   </div>
 </div>
+
+{% for ministrante in ministrantes %}
+<div class="modal fade" id="deleteModal{{ ministrante.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="avatar-circle bg-danger text-white me-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; font-size: 20px;">
+            {{ ministrante.nome[:1].upper() }}
+          </div>
+          <div>
+            <p class="mb-0">Tem certeza que deseja excluir o ministrante:</p>
+            <h5 class="mt-1 mb-0">{{ ministrante.nome }}</h5>
+          </div>
+        </div>
+        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form action="{{ url_for('ministrante_routes.excluir_ministrante', ministrante_id=ministrante.id) }}" method="POST" class="d-inline">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash me-1"></i> Excluir Ministrante
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 
 <script>
   // Inicializar tooltips

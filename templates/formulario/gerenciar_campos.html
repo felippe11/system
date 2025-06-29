@@ -46,38 +46,16 @@
                                     <a href="{{ url_for('formularios_routes.editar_campo', campo_id=campo.id) }}" class="btn btn-outline-warning">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Modal para exclusão -->
-                        <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Confirmar exclusão</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
-                                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <form action="{{ url_for('formularios_routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
-                                            <button type="submit" class="btn btn-danger">Remover Campo</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center p-4">
+                          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
+                              <i class="bi bi-trash"></i>
+                          </button>
+                      </div>
+                  </div>
+              </div>
+              {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center p-4">
                         <i class="bi bi-dash-circle text-muted fs-1"></i>
                         <p class="text-muted mt-2">Nenhum campo adicionado ainda.</p>
                     </div>
@@ -161,9 +139,32 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
 
-<script>
+    {% for campo in formulario.campos %}
+    <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
+                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('formularios_routes.deletar_campo', campo_id=campo.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Remover Campo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
     // Controle de exibição do campo opções
     document.addEventListener('DOMContentLoaded', function() {
         const tipoSelect = document.getElementById('tipo');
