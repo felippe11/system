@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
 from extensions import db
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
 from models import (
@@ -18,14 +21,14 @@ def dashboard_cliente():
     if current_user.tipo != 'cliente':
         return redirect(url_for('dashboard_routes.dashboard'))
 
-    print(f"📌 [DEBUG] Cliente autenticado: {current_user.email} (ID: {current_user.id})")
-    print("Usuário logado:", current_user.email)
-    print("ID:", current_user.id)
-    print("Tipo:", current_user.tipo if hasattr(current_user, 'tipo') else "N/A")
+    logger.debug("Cliente autenticado: %s (ID: %s)", current_user.email, current_user.id)
+    logger.debug("Usuário logado: %s", current_user.email)
+    logger.debug("ID: %s", current_user.id)
+    logger.debug("Tipo: %s", current_user.tipo if hasattr(current_user, 'tipo') else "N/A")
 
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
-    print("✅ Eventos:", eventos)
+    logger.debug("Eventos: %s", eventos)
   
     
 
