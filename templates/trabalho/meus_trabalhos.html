@@ -8,6 +8,7 @@
         <th>Título</th>
         <th>Área</th>
         <th>Status</th>
+        <th>Locator</th>
         <th>PDF</th>
       </tr>
     </thead>
@@ -17,6 +18,7 @@
         <td>{{ trabalho.titulo }}</td>
         <td>{{ trabalho.area_tematica }}</td>
         <td>{{ trabalho.status }}</td>
+        <td><code>{{ trabalho.locator }}</code></td>
         <td><a href="{{ url_for('static', filename=trabalho.arquivo_pdf.split('static/')[-1]) }}" target="_blank">Abrir</a></td>
       </tr>
       {% endfor %}
