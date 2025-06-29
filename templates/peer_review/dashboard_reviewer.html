@@ -4,13 +4,13 @@
   <h3>Trabalhos para Revisão</h3>
   <p>Prazo: {{ config.prazo_revisao.strftime('%d/%m/%Y') if config and config.prazo_revisao else 'N/A' }}</p>
   <table class="table table-striped">
-    <thead><tr><th>Título</th><th>Status</th><th>Acessar</th></tr></thead>
+    <thead><tr><th>Título</th><th>Status</th><th>Prazo</th></tr></thead>
     <tbody>
-      {% for r in reviews %}
+      {% for a in assignments %}
       <tr>
-        <td>{{ r.submission.title }}</td>
-        <td>{{ 'Concluída' if r.note else 'Pendente' }}</td>
-        <td><a href="{{ url_for('peer_review_routes.review_form', locator=r.locator) }}">Revisar</a></td>
+        <td>{{ a.submission.title }}</td>
+        <td>{{ 'Concluída' if a.completed else 'Pendente' }}</td>
+        <td>{{ a.deadline.strftime('%d/%m/%Y') if a.deadline else '' }}</td>
       </tr>
       {% endfor %}
     </tbody>
