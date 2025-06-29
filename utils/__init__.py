@@ -2,33 +2,45 @@ from .time_helpers import formatar_brasilia, determinar_turno
 __all__ = ["formatar_brasilia", "determinar_turno"]
 
 
-import requests
-from reportlab.lib.units import inch
+try:
+    import requests  # Optional dependency
+except Exception:  # pragma: no cover - used only in production
+    requests = None
+try:
+    from reportlab.lib.units import inch
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib import colors
+    from reportlab.lib.utils import ImageReader
+except Exception:  # pragma: no cover
+    inch = mm = canvas = letter = landscape = colors = ImageReader = None
+    A4 = None
 import os
 import base64
 
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+try:
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+except Exception:  # pragma: no cover
+    Credentials = InstalledAppFlow = Request = build = HttpError = None
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime
-import qrcode
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
+try:
+    import qrcode
+except Exception:  # pragma: no cover
+    qrcode = None
 from models import CertificadoTemplate, Usuario, Inscricao, Evento
 import logging
 
 
-# ReportLab para PDFs
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.lib import colors
-from reportlab.lib.utils import ImageReader
 
 # Logger do módulo
 logger = logging.getLogger(__name__)
