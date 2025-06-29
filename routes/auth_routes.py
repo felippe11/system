@@ -58,8 +58,9 @@ def login():
 
         if isinstance(usuario, Usuario) and not getattr(usuario, 'ativo', True):
             logout_user()
-            flash('Sua conta está bloqueada. Contate a administração do evento.', 'danger')
-            return render_template("login.html")
+            msg = 'Sua conta está bloqueada. Contate a administração do evento.'
+            flash(msg, 'danger')
+            return msg
 
         if not check_password_hash(usuario.senha, senha):
             flash('E-mail ou senha incorretos!', 'danger')
