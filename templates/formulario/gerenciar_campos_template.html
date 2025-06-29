@@ -60,39 +60,17 @@
                                             <a href="#" class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar Campo">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <button type="button" class="btn btn-outline-danger" 
-                                                    data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}"
-                                                    title="Remover Campo">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                        
-                                        <!-- Modal para exclusão -->
-                                        <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title">Confirmar exclusão</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
-                                                        <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                        <form action="#" method="POST" class="d-inline">
-                                                            <button type="submit" class="btn btn-danger">Remover Campo</button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                              <button type="button" class="btn btn-outline-danger"
+                                                      data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}"
+                                                      title="Remover Campo">
+                                                  <i class="bi bi-trash"></i>
+                                              </button>
+                                          </div>
+                                      </td>
+                                  </tr>
+                                  {% endfor %}
+                              </tbody>
+                          </table>
                     </div>
                     {% else %}
                     <div class="text-center p-4">
@@ -170,9 +148,32 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
 
-<script>
+    {% for campo in template.campos|sort(attribute='ordem') %}
+    <div class="modal fade" id="deleteFieldModal{{ campo.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja remover o campo <strong>{{ campo.nome }}</strong>?</p>
+                    <p class="text-danger"><small>Esta ação não pode ser desfeita.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="#" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Remover Campo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script>
     // Controle de exibição do campo opções
     document.addEventListener('DOMContentLoaded', function() {
         const tipoSelect = document.getElementById('tipo');
