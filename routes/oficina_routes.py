@@ -2,6 +2,9 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, s
 from flask_login import login_required, current_user
 from models import Oficina, OficinaDia, Ministrante, Evento, Cliente, Checkin, Inscricao, MaterialOficina, RelatorioOficina, InscricaoTipo, Feedback
 from extensions import db
+import logging
+
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
 from routes.auth_routes import login_required
@@ -58,7 +61,7 @@ def criar_oficina():
     )
 
     if request.method == 'POST':
-        print("Dados recebidos do formulário:", request.form)  # Log para depuração
+        logger.debug("Dados recebidos do formulário: %s", request.form)
 
         # Captura os campos do formulário
         titulo = request.form.get('titulo')
@@ -175,7 +178,7 @@ def criar_oficina():
 
         except Exception as e:
             db.session.rollback()
-            print(f"Erro ao criar oficina: {str(e)}")  # Log do erro
+            logger.error("Erro ao criar oficina: %s", str(e))
             flash(f"Erro ao criar oficina: {str(e)}", "danger")
             return render_template(
                 'criar_oficina.html',
@@ -341,52 +344,52 @@ def excluir_oficina(oficina_id):
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     try:
-        print(f"📌 [DEBUG] Excluindo oficina ID: {oficina_id}")
+        logger.debug("Excluindo oficina ID: %s", oficina_id)
 
         # 1️⃣ **Excluir check-ins relacionados à oficina**
         db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Check-ins removidos.")
+        logger.debug("Check-ins removidos.")
 
         # 2️⃣ **Excluir inscrições associadas à oficina**
         db.session.query(Inscricao).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Inscrições removidas.")
+        logger.debug("Inscrições removidas.")
 
         # 3️⃣ **Excluir registros de datas da oficina (OficinaDia)**
         db.session.query(OficinaDia).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Dias da oficina removidos.")
+        logger.debug("Dias da oficina removidos.")
 
         # 4️⃣ **Excluir materiais da oficina**
         db.session.query(MaterialOficina).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Materiais da oficina removidos.")
+        logger.debug("Materiais da oficina removidos.")
 
         # 5️⃣ **Excluir relatórios associados à oficina**
         db.session.query(RelatorioOficina).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Relatórios da oficina removidos.")
+        logger.debug("Relatórios da oficina removidos.")
 
         # 6️⃣ **Excluir feedbacks relacionados à oficina**
         db.session.query(Feedback).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Feedbacks da oficina removidos.")
+        logger.debug("Feedbacks da oficina removidos.")
 
         # 7️⃣ **Excluir tipos de inscrição da oficina**
         db.session.query(InscricaoTipo).filter_by(oficina_id=oficina.id).delete()
-        print("✅ [DEBUG] Tipos de inscrição removidos.")
+        logger.debug("Tipos de inscrição removidos.")
         # 8️⃣ **Excluir associações com ministrantes na tabela de associação**
         from sqlalchemy import text
         db.session.execute(
             text('DELETE FROM oficina_ministrantes_association WHERE oficina_id = :oficina_id'),
             {'oficina_id': oficina.id}
         )
-        print("✅ [DEBUG] Associações com ministrantes removidas.")
+        logger.debug("Associações com ministrantes removidas.")
 
         # 9️⃣ **Excluir a própria oficina**
         db.session.delete(oficina)
         db.session.commit()
-        print("✅ [DEBUG] Oficina removida com sucesso!")
+        logger.info("Oficina removida com sucesso!")
         flash('Oficina excluída com sucesso!', 'success')
 
     except Exception as e:
         db.session.rollback()
-        print(f"❌ [ERRO] Erro ao excluir oficina {oficina_id}: {str(e)}")
+        logger.error("Erro ao excluir oficina %s: %s", oficina_id, str(e))
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
     return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
