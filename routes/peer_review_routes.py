@@ -1,7 +1,9 @@
 
-from flask import Blueprint, request, render_template, redirect, url_for, flash
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from extensions import db
+
+from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
  
 from models import (
     TrabalhoCientifico,
@@ -195,6 +197,29 @@ def editor_reviews(evento_id):
 @peer_review_routes.route('/peer-review/author')
 def author_dashboard():
     return render_template('peer_review/author/dashboard.html', submissions=[])
+
+
+@peer_review_routes.route('/peer-review/reviewer')
+def reviewer_dashboard():
+    locator = request.args.get('locator') or session.get('reviewer_locator')
+    code = request.args.get('code') or session.get('reviewer_code')
+
+    if locator and code:
+        review = Review.query.filter_by(locator=locator).first()
+        if review and review.access_code == code:
+            session['reviewer_locator'] = locator
+            session['reviewer_code'] = code
+            tasks = Review.query.filter_by(reviewer_id=review.reviewer_id).all()
+            return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
+
+        submission = Submission.query.filter_by(locator=locator).first()
+        if submission and submission.check_code(code):
+            session['reviewer_locator'] = locator
+            session['reviewer_code'] = code
+            return render_template('peer_review/reviewer/dashboard.html', tasks=[])
+
+    flash('Credenciais inválidas para acesso de revisor.', 'danger')
+    return redirect(url_for('evento_routes.home') + '#revisorModal')
 
 @peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
 def reviewer_dashboard(
