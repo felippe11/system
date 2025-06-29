@@ -2,11 +2,20 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig
+from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
 import uuid
 from datetime import datetime
 
 peer_review_routes = Blueprint('peer_review_routes', __name__, template_folder="../templates/peer_review")
+
+@peer_review_routes.route('/submissoes/controle')
+@login_required
+def submission_control():
+    if current_user.tipo not in ('cliente', 'admin', 'superadmin'):
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    submissions = Submission.query.all()
+    return render_template('peer_review/submission_control.html', submissions=submissions)
 
 @peer_review_routes.route('/assign_reviews', methods=['POST'])
 @login_required
@@ -108,9 +117,25 @@ def editor_reviews(evento_id):
 def author_dashboard():
     return render_template('peer_review/author/dashboard.html', submissions=[])
 
-@peer_review_routes.route('/peer-review/reviewer')
+@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
 def reviewer_dashboard():
-    return render_template('peer_review/reviewer/dashboard.html', tasks=[])
+    if request.method == 'POST':
+        locator = request.form.get('locator')
+        code = request.form.get('code')
+        return redirect(url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code))
+
+    locator = request.args.get('locator')
+    code = request.args.get('code')
+    tasks = []
+    if locator and code:
+        review = Review.query.filter_by(locator=locator).first()
+        if review and review.access_code == code:
+            tasks = [review]
+        else:
+            flash('Localizador ou código inválido', 'danger')
+    elif locator or code:
+        flash('Localizador e código são obrigatórios', 'danger')
+    return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
 
 @peer_review_routes.route('/peer-review/editor')
 def editor_dashboard_page():
