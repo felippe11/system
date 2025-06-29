@@ -3,7 +3,8 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from utils.mfa import mfa_required
 from extensions import db
-from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog
+from sqlalchemy import or_
+from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento
 import os
 
 trabalho_routes = Blueprint(
@@ -23,11 +24,22 @@ def submeter_trabalho():
         flash("Apenas participantes podem submeter trabalhos.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
+    # Eventos disponíveis (cliente ou globais) para seleção no formulário
+    eventos = Evento.query.filter(
+        or_(Evento.cliente_id == current_user.cliente_id, Evento.cliente_id == None)
+    ).all()
+
     if request.method == "POST":
         titulo = request.form.get("titulo")
         resumo = request.form.get("resumo")
         area_tematica = request.form.get("area_tematica")
         arquivo = request.files.get("arquivo_pdf")
+        evento_id = request.form.get("evento_id") or getattr(current_user, "evento_id", None)
+
+        # Se nenhum evento foi informado ou está associado ao usuário
+        if not evento_id:
+            flash("Escolha um evento antes de submeter o trabalho", "danger")
+            return redirect(url_for("trabalho_routes.submeter_trabalho"))
 
         # Validação básica
         if not all([titulo, resumo, area_tematica, arquivo]):
@@ -59,7 +71,7 @@ def submeter_trabalho():
             area_tematica=area_tematica,
             arquivo_pdf=caminho_pdf,
             usuario_id=current_user.id,
-            evento_id=getattr(current_user, "evento_id", None),
+            evento_id=evento_id,
         )
         db.session.add(trabalho)
         db.session.commit()
@@ -77,7 +89,7 @@ def submeter_trabalho():
         flash("Trabalho submetido com sucesso!", "success")
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
 
-    return render_template("submeter_trabalho.html")
+    return render_template("submeter_trabalho.html", eventos=eventos)
 
 
 # ──────────────────────────────── AVALIAÇÃO ──────────────────────────────── #
