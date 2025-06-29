@@ -9,6 +9,9 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db, mail
+import logging
+
+logger = logging.getLogger(__name__)
 from models import (
     AgendamentoVisita, HorarioVisitacao, Evento,
     EventoInscricaoTipo, ConfiguracaoAgendamento,
@@ -1727,7 +1730,7 @@ def toggle_agendamento_publico():
             
     except Exception as e:
         # Log de erro para depuração
-        print(f"Erro ao alternar status de agendamento público: {str(e)}")
+        logger.error("Erro ao alternar status de agendamento público: %s", str(e))
         
         # Retornar erro para a aplicação
         return jsonify({
@@ -1782,7 +1785,7 @@ def toggle_aprovacao_manual():
             
     except Exception as e:
         # Log de erro para depuração
-        print(f"Erro ao alternar status de aprovação manual: {str(e)}")
+        logger.error("Erro ao alternar status de aprovação manual: %s", str(e))
         
         # Retornar erro para a aplicação
         return jsonify({
@@ -1837,7 +1840,7 @@ def toggle_limite_capacidade():
             
     except Exception as e:
         # Log de erro para depuração
-        print(f"Erro ao alternar status de limite de capacidade: {str(e)}")
+        logger.error("Erro ao alternar status de limite de capacidade: %s", str(e))
         
         # Retornar erro para a aplicação
         return jsonify({
@@ -1910,7 +1913,7 @@ def salvar_config_agendamento():
             
     except Exception as e:
         # Log de erro para depuração
-        print(f"Erro ao salvar configurações de agendamento: {str(e)}")
+        logger.error("Erro ao salvar configurações de agendamento: %s", str(e))
         
         # Notificar o usuário
         flash(f"Erro ao salvar configurações: {str(e)}", "danger")
@@ -2061,9 +2064,9 @@ def excluir_todos_agendamentos():
         # Em caso de erro, fazer rollback das alterações
         if 'db' in globals() and hasattr(db, 'session'):
             db.session.rollback()
-        
+
         # Log do erro para depuração
-        print(f"Erro ao excluir agendamentos: {str(e)}")
+        logger.error("Erro ao excluir agendamentos: %s", str(e))
         
         # Notificar o usuário do erro
         flash(f"Erro ao excluir agendamentos: {str(e)}", "danger")
@@ -2131,9 +2134,9 @@ def resetar_configuracoes_agendamento():
         # Em caso de erro, fazer rollback das alterações
         if 'db' in globals() and hasattr(db, 'session'):
             db.session.rollback()
-        
+
         # Log do erro para depuração
-        print(f"Erro ao resetar configurações: {str(e)}")
+        logger.error("Erro ao resetar configurações: %s", str(e))
         
         # Notificar o usuário do erro
         flash(f"Erro ao resetar configurações: {str(e)}", "danger")
@@ -2352,7 +2355,7 @@ def exportar_agendamentos():
         
     except Exception as e:
         # Log de erro para depuração
-        print(f"Erro ao exportar agendamentos: {str(e)}")
+        logger.error("Erro ao exportar agendamentos: %s", str(e))
         
         # Notificar o usuário do erro
         flash(f"Erro ao exportar agendamentos: {str(e)}", "danger")
@@ -2935,7 +2938,7 @@ def processar_qrcode_agendamento():
         }), 200
     
     except Exception as e:
-        print(f"Erro ao processar QR code: {str(e)}")
+        logger.error("Erro ao processar QR code: %s", str(e))
         return jsonify({
             'success': False,
             'message': f'Erro ao processar o QR Code: {str(e)}'
@@ -3152,7 +3155,7 @@ def adicionar_alunos():
                     ).first()
 
                     if usuario_existente:
-                        print(f"⚠️ Usuário {row['nome']} já existe. Pulando...")
+                        logger.warning("Usuário %s já existe. Pulando...", row['nome'])
                         continue
 
                     novo_usuario = Usuario(
@@ -3180,7 +3183,7 @@ def adicionar_alunos():
             except Exception as e:
                 db.session.rollback()
                 flash(f"Erro ao processar arquivo: {str(e)}", "danger")
-                print(f"❌ Erro na importação: {e}")
+                logger.error("Erro na importação: %s", e)
                 return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
         # Processamento de entrada manual
@@ -3215,7 +3218,7 @@ def adicionar_alunos():
             except Exception as e:
                 db.session.rollback()
                 flash(f"Erro ao adicionar aluno: {str(e)}", "danger")
-                print(f"❌ Erro na adição manual: {e}")
+                logger.error("Erro na adição manual: %s", e)
                 return redirect(url_for('agendamento_routes.adicionar_alunos'))
 
         else:
@@ -3350,7 +3353,7 @@ def importar_alunos():
         except Exception as e:
             db.session.rollback()
             flash(f"Erro ao processar arquivo: {str(e)}", "danger")
-            print(f"❌ Erro na importação: {e}")
+            logger.error("Erro na importação: %s", e)
             return redirect(url_for('agendamento_routes.importar_alunos'))
 
     # GET: Renderiza o formulário de importação
