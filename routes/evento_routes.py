@@ -180,8 +180,8 @@ def configurar_evento():
         flash('Acesso negado!', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
-    # Lista todos os eventos do cliente
-    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    # Lista apenas eventos ativos do cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id, status='ativo').all()
     
     # Evento selecionado (por padrão, None até que o usuário escolha)
     evento_id = request.args.get('evento_id') or (request.form.get('evento_id') if request.method == 'POST' else None)
@@ -190,10 +190,14 @@ def configurar_evento():
     oficinas = []
     if evento_id:
         # Carregamento eager de todos os relacionamentos necessários
-        evento = Evento.query.options(
-            db.joinedload(Evento.tipos_inscricao),
-            db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
-        ).filter_by(id=evento_id, cliente_id=current_user.id).first()
+        evento = (
+            Evento.query.options(
+                db.joinedload(Evento.tipos_inscricao),
+                db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
+            )
+            .filter_by(id=evento_id, cliente_id=current_user.id, status='ativo')
+            .first()
+        )
         if evento:
             config_certificado = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento.id).first()
             oficinas = Oficina.query.filter_by(evento_id=evento.id).order_by(Oficina.titulo).all()
@@ -542,13 +546,17 @@ def configurar_evento():
                                     db.session.add(novo_lote_tipo)
 
             db.session.commit()
-            
+
             # Recarregar o evento com todos os relacionamentos para exibição
             if evento:
-                evento = Evento.query.options(
-                    db.joinedload(Evento.tipos_inscricao),
-                    db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
-                ).filter_by(id=evento.id, cliente_id=current_user.id).first()
+                evento = (
+                    Evento.query.options(
+                        db.joinedload(Evento.tipos_inscricao),
+                        db.joinedload(Evento.lotes).joinedload(LoteInscricao.tipos_inscricao)
+                    )
+                    .filter_by(id=evento.id, cliente_id=current_user.id, status='ativo')
+                    .first()
+                )
                 
             flash('Evento salvo com sucesso!', 'success')
             return redirect(url_for('dashboard_routes.dashboard_cliente'))
@@ -931,3 +939,34 @@ def detalhes_evento(evento_id):
     oficinas = Oficina.query.filter_by(evento_id=evento_id).order_by(Oficina.titulo).all()
 
     return render_template('professor/detalhes_evento.html', evento=evento, oficinas=oficinas)
+
+
+# ---------------------------------------------------------------------------
+# Novo: listagem e arquivamento de eventos do cliente
+# ---------------------------------------------------------------------------
+
+@evento_routes.route('/meus_eventos')
+@login_required
+def meus_eventos():
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.data_inicio.desc()).all()
+    return render_template('evento/meus_eventos.html', eventos=eventos)
+
+
+@evento_routes.route('/toggle_arquivamento/<int:evento_id>', methods=['POST'])
+@login_required
+def toggle_arquivamento(evento_id):
+    evento = Evento.query.get_or_404(evento_id)
+    if current_user.tipo != 'cliente' or evento.cliente_id != current_user.id:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('evento_routes.meus_eventos'))
+
+    novo_status = 'arquivado' if evento.status == 'ativo' else 'ativo'
+    evento.status = novo_status
+    db.session.commit()
+
+    flash(f"Evento {'arquivado' if novo_status == 'arquivado' else 'reativado'} com sucesso!", 'success')
+    return redirect(url_for('evento_routes.meus_eventos'))
