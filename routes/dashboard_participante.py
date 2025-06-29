@@ -13,7 +13,7 @@ from models import (
     Usuario, Formulario, RegraInscricaoEvento
 )
 
-dashboard_participante_routes = Bluelogger.debug('dashboard_participante_routes', __name__)
+dashboard_participante_routes = Blueprint('dashboard_participante_routes', __name__)
 
 
 @dashboard_participante_routes.route('/dashboard_participante')

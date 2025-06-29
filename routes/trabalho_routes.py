@@ -5,6 +5,7 @@ from utils.mfa import mfa_required
 from extensions import db
 from sqlalchemy import or_
 from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento
+import uuid
 import os
 
 trabalho_routes = Blueprint(
@@ -72,6 +73,7 @@ def submeter_trabalho():
             arquivo_pdf=caminho_pdf,
             usuario_id=current_user.id,
             evento_id=evento_id,
+            locator=str(uuid.uuid4()),
         )
         db.session.add(trabalho)
         db.session.commit()
