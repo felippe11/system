@@ -900,23 +900,23 @@ def configurar_regras_inscricao():
 @inscricao_routes.route('/inscrever_participantes_lote', methods=['POST'])
 @login_required
 def inscrever_participantes_lote():
-    print("📌 [DEBUG] Iniciando processo de inscrição em lote...")
+    logger.debug("Iniciando processo de inscrição em lote...")
 
     oficina_id = request.form.get('oficina_id')
     usuario_ids = request.form.getlist('usuario_ids')
 
-    print(f"📌 [DEBUG] Oficina selecionada: {oficina_id}")
-    print(f"📌 [DEBUG] Usuários selecionados: {usuario_ids}")
+    logger.debug("Oficina selecionada: %s", oficina_id)
+    logger.debug("Usuários selecionados: %s", usuario_ids)
 
     if not oficina_id or not usuario_ids:
         flash('Oficina ou participantes não selecionados corretamente.', 'warning')
-        print("❌ [DEBUG] Erro: Oficina ou participantes não foram selecionados corretamente.")
+        logger.error("Oficina ou participantes não foram selecionados corretamente.")
         return redirect(url_for('dashboard_routes.dashboard'))
 
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash('Oficina não encontrada!', 'danger')
-        print("❌ [DEBUG] Erro: Oficina não encontrada no banco de dados.")
+        logger.error("Oficina não encontrada no banco de dados.")
         return redirect(url_for('dashboard_routes.dashboard'))
 
     inscritos_sucesso = 0
@@ -924,17 +924,17 @@ def inscrever_participantes_lote():
 
     try:
         for usuario_id in usuario_ids:
-            print(f"🔄 [DEBUG] Tentando inscrever usuário {usuario_id} na oficina {oficina.titulo}...")
+            logger.debug("Tentando inscrever usuário %s na oficina %s...", usuario_id, oficina.titulo)
 
             ja_inscrito = Inscricao.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
 
             if ja_inscrito:
-                print(f"⚠️ [DEBUG] Usuário {usuario_id} já está inscrito na oficina. Pulando...")
+                logger.warning("Usuário %s já está inscrito na oficina. Pulando...", usuario_id)
                 continue  # Evita duplicação
 
             # Verifica se há vagas disponíveis
             if oficina.vagas <= 0:
-                print(f"❌ [DEBUG] Sem vagas para a oficina {oficina.titulo}. Usuário {usuario_id} não pode ser inscrito.")
+                logger.warning("Sem vagas para a oficina %s. Usuário %s não pode ser inscrito.", oficina.titulo, usuario_id)
                 erros += 1
                 continue
 
@@ -949,16 +949,16 @@ def inscrever_participantes_lote():
             oficina.vagas -= 1  # Reduz a quantidade de vagas disponíveis
 
             inscritos_sucesso += 1
-            print(f"✅ [DEBUG] Usuário {usuario_id} inscrito com sucesso!")
+            logger.info("Usuário %s inscrito com sucesso!", usuario_id)
 
         db.session.commit()
         flash(f'{inscritos_sucesso} participantes inscritos com sucesso! {erros} não foram inscritos por falta de vagas.', 'success')
-        print(f"🎯 [DEBUG] {inscritos_sucesso} inscrições concluídas. {erros} falharam.")
+        logger.info("%s inscrições concluídas. %s falharam.", inscritos_sucesso, erros)
 
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao inscrever participantes em lote: {str(e)}", "danger")
-        print(f"❌ [DEBUG] Erro ao inscrever participantes: {e}")
+        logger.error("Erro ao inscrever participantes: %s", e)
 
     return redirect(url_for('dashboard_routes.dashboard'))
 

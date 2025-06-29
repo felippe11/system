@@ -9,6 +9,9 @@ from datetime import date
 
 
 from extensions import db
+import logging
+
+logger = logging.getLogger(__name__)
 from models import (
     Evento, Oficina, LinkCadastro, LoteInscricao, EventoInscricaoTipo,
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
@@ -42,7 +45,7 @@ def home():
         return render_template('index.html',
                                eventos_destaque=_serializa_eventos(eventos))
     except Exception as e:
-        print(f"[ERRO] home(): {e}")
+        logger.error("home(): %s", e)
         db.session.rollback()  # ensure session not left in failed state
         return render_template('index.html', eventos_destaque=[])
 
@@ -170,7 +173,7 @@ def listar_eventos():
         return render_template('evento/eventos_disponiveis.html', eventos=eventos_processed)
     
     except Exception as e:
-        print(f"Erro em listar_eventos: {str(e)}")
+        logger.error("Erro em listar_eventos: %s", str(e))
         return render_template('evento/eventos_disponiveis.html', eventos=[])
 
 @evento_routes.route('/configurar_evento', methods=['GET', 'POST'])
@@ -565,7 +568,7 @@ def configurar_evento():
             db.session.rollback()
             flash(f'Erro ao salvar evento: {str(e)}', 'danger')
             # Adicionar log para debugging
-            print(f"Erro ao salvar evento: {str(e)}")
+            logger.error("Erro ao salvar evento: %s", str(e))
             import traceback
             traceback.print_exc()
 

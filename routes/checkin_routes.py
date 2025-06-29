@@ -3,6 +3,9 @@ from flask_login import login_required, current_user
 from extensions import db, socketio
 from werkzeug.utils import secure_filename
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 from models import (
     Checkin, Inscricao, Oficina, ConfiguracaoCliente, AgendamentoVisita, Evento
 )
@@ -14,25 +17,25 @@ checkin_routes = Blueprint('checkin_routes', __name__)
 @checkin_routes.route('/leitor_checkin', methods=['GET'])
 @login_required
 def leitor_checkin():
-    print("➡️ Entrou em /leitor_checkin")
+    logger.debug("Entrou em /leitor_checkin")
 
     token = request.args.get('token')
-    print(f"➡️ token recebido: {token}")
+    logger.debug("Token recebido: %s", token)
 
     if not token:
         mensagem = "Token não fornecido ou inválido."
-        print(f"➡️ Erro: {mensagem}")
+        logger.error(mensagem)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
         return redirect(url_for('dashboard_routes.dashboard'))
 
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
-    print(f"➡️ Inscricao encontrada: {inscricao} (ID: {inscricao.id if inscricao else 'None'})")
+    logger.debug("Inscricao encontrada: %s (ID: %s)", inscricao, inscricao.id if inscricao else 'None')
 
     if not inscricao:
         mensagem = "Inscrição não encontrada para este token."
-        print(f"➡️ Erro: {mensagem}")
+        logger.error(mensagem)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
@@ -40,14 +43,14 @@ def leitor_checkin():
 
     # Verifica se é check-in de evento ou oficina
     if inscricao.evento_id:
-        print(f"➡️ Esta inscrição pertence a um EVENTO (ID={inscricao.evento_id})")
+        logger.debug("Inscrição pertence a EVENTO (ID=%s)", inscricao.evento_id)
         checkin_existente = Checkin.query.filter_by(
             usuario_id=inscricao.usuario_id,
             evento_id=inscricao.evento_id
         ).first()
         if checkin_existente:
             mensagem = "Check-in de evento já foi realizado!"
-            print(f"➡️ Aviso: {mensagem}")
+            logger.warning(mensagem)
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
@@ -63,17 +66,17 @@ def leitor_checkin():
             'evento': inscricao.evento.nome,
             'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
         }
-        print(f"➡️ Check-in de EVENTO criado. Usuario={inscricao.usuario_id}, Evento={inscricao.evento_id}")
+        logger.info("Check-in de EVENTO criado. Usuario=%s, Evento=%s", inscricao.usuario_id, inscricao.evento_id)
 
     elif inscricao.oficina_id:
-        print(f"➡️ Esta inscrição pertence a uma OFICINA (ID={inscricao.oficina_id})")
+        logger.debug("Inscrição pertence a OFICINA (ID=%s)", inscricao.oficina_id)
         checkin_existente = Checkin.query.filter_by(
             usuario_id=inscricao.usuario_id,
             oficina_id=inscricao.oficina_id
         ).first()
         if checkin_existente:
             mensagem = "Check-in da oficina já foi realizado!"
-            print(f"➡️ Aviso: {mensagem}")
+            logger.warning(mensagem)
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
@@ -89,11 +92,11 @@ def leitor_checkin():
             'oficina': inscricao.oficina.titulo,
             'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
         }
-        print(f"➡️ Check-in de OFICINA criado. Usuario={inscricao.usuario_id}, Oficina={inscricao.oficina_id}")
+        logger.info("Check-in de OFICINA criado. Usuario=%s, Oficina=%s", inscricao.usuario_id, inscricao.oficina_id)
 
     else:
         mensagem = "Inscrição sem evento ou oficina vinculada."
-        print(f"➡️ Erro: {mensagem}")
+        logger.error(mensagem)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
@@ -101,18 +104,18 @@ def leitor_checkin():
 
     db.session.add(novo_checkin)
     db.session.commit()
-    print(f"➡️ Check-in salvo no banco: ID={novo_checkin.id}")
+    logger.info("Check-in salvo no banco: ID=%s", novo_checkin.id)
 
     # Emitir via Socket.IO (se você usa Socket.IO)
     socketio.emit('novo_checkin', dados_checkin, broadcast=True)
-    print(f"➡️ Socket.IO emit -> {dados_checkin}")
+    logger.debug("Socket.IO emit -> %s", dados_checkin)
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        print("➡️ Retornando JSON para AJAX")
+        logger.debug("Retornando JSON para AJAX")
         return jsonify({'status': 'ok', **dados_checkin})
 
     flash("Check-in realizado com sucesso!", "success")
-    print("➡️ Check-in concluído e flash exibido, redirecionando para dashboard.")
+    logger.info("Check-in concluído e flash exibido, redirecionando para dashboard.")
     return redirect(url_for('dashboard_routes.dashboard'))
 
 @checkin_routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
