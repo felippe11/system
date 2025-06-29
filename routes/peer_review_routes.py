@@ -58,6 +58,35 @@ def auto_assign(evento_id):
     db.session.commit()
     return {'success': True}
 
+
+@peer_review_routes.route('/create_review', methods=['POST'])
+@login_required
+def create_review():
+    """Cria uma revisão única para um trabalho e revisor."""
+    if current_user.tipo not in ('cliente', 'admin', 'superadmin'):
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    trabalho_id = request.form.get('trabalho_id') or request.json.get('trabalho_id')
+    reviewer_id = request.form.get('reviewer_id') or request.json.get('reviewer_id')
+    if not trabalho_id or not reviewer_id:
+        return {'success': False, 'message': 'dados insuficientes'}, 400
+    rev = Review(
+        submission_id=int(trabalho_id),
+        reviewer_id=int(reviewer_id),
+        locator=str(uuid.uuid4()),
+        access_code=str(uuid.uuid4())[:8]
+    )
+    db.session.add(rev)
+    db.session.commit()
+    if request.is_json:
+        return {
+            'success': True,
+            'locator': rev.locator,
+            'access_code': rev.access_code
+        }
+    flash(f'Código do revisor: {rev.access_code}', 'success')
+    return redirect(request.referrer or url_for('peer_review_routes.editor_reviews', evento_id=trabalho_id))
+
 @peer_review_routes.route('/review/<locator>', methods=['GET', 'POST'])
 def review_form(locator):
     review = Review.query.filter_by(locator=locator).first_or_404()
