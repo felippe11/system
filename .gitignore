@@ -1,28 +1,16 @@
-# Ignorar arquivos de cache do Python
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 
-# Ignorar arquivos de ambiente virtual
+# Virtual environments
 venv/
 .env
 
-# Ignorar arquivos do sistema
+# OS files
 .DS_Store
-.tables
-SELECT__pycache__/
-*.pyc
-*.pyo
-venv/
-.env
-.DS_Store
-.tables
-SELECT
+
+# Local configuration
 .vscode/claudesync.json
 token.json
 instance/
-
-# Generated artifacts
-0e765b9c8390,
-backup_pos_script_2025-05-24_15-16-45.tar.gz
-static/placas/411/placas_oficinas_411.pdf
