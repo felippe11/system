@@ -2,7 +2,8 @@ from flask import Blueprint, request, jsonify, abort
 import uuid
 import secrets
 import bcrypt
-from models import Submission, Review
+from datetime import datetime, timedelta
+from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db, mail
 from flask_mail import Message
 
@@ -60,8 +61,35 @@ def add_review(locator):
 
     reviewer = request.form.get('reviewer')
     comment = request.form.get('comment')
-    review = Review(submission=submission, reviewer=reviewer, comment=comment)
+
+    review = Review(
+        submission_id=submission.id,
+        reviewer_name=reviewer,
+        comments=comment,
+    )
     db.session.add(review)
+
+    cliente_id = submission.author.cliente_id if submission.author else None
+    config = None
+    if cliente_id:
+        config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    prazo_dias = config.prazo_parecer_dias if config else 14
+
+    assignment = Assignment(
+        submission_id=submission.id,
+        reviewer_id=int(reviewer) if reviewer and str(reviewer).isdigit() else None,
+        deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+    )
+    db.session.add(assignment)
+
+    db.session.add(
+        AuditLog(
+            user_id=None,
+            submission_id=submission.id,
+            event_type="assignment",
+        )
+    )
+
     db.session.commit()
     return jsonify({'message': 'Review submitted'})
 
