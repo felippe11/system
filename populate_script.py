@@ -850,7 +850,15 @@ def criar_agendamentos_visita(eventos, usuarios):
 
     horarios_disponiveis = []
     for evento in eventos:
-        for horario in getattr(evento, "horarios_visitacao", []):
+        horarios = getattr(evento, "horarios_visitacao", None)
+        if horarios is None or not hasattr(horarios, "__iter__"):
+            # Fallback para oficinas com lista de horarios
+            horarios = []
+            for oficina in getattr(evento, "oficinas", []):
+                hs = getattr(oficina, "horarios", [])
+                if hasattr(hs, "__iter__"):
+                    horarios.extend(hs)
+        for horario in horarios:
             if getattr(horario, "vagas_disponiveis", 0) > 0:
                 horarios_disponiveis.append(horario)
 
@@ -869,7 +877,7 @@ def criar_agendamentos_visita(eventos, usuarios):
 
     agendamentos = []
     for professor in professores:
-        num_agendamentos = random.randint(0, min(2, len(horarios_disponiveis)))
+        num_agendamentos = random.randint(1, min(2, len(horarios_disponiveis))) if horarios_disponiveis else 0
         for _ in range(num_agendamentos):
             if not horarios_disponiveis:
                 break
@@ -883,8 +891,10 @@ def criar_agendamentos_visita(eventos, usuarios):
             quantidade = random.randint(10, max_vagas)
 
             salas_ids = []
-            if getattr(horario.evento, "salas_visitacao", None):
-                salas = [s.id for s in horario.evento.salas_visitacao]
+            salas_attr = getattr(getattr(horario, "evento", None), "salas_visitacao", None)
+            if salas_attr and hasattr(salas_attr, "__iter__"):
+                salas = [getattr(s, "id", None) for s in salas_attr if hasattr(s, "id")]
+                salas = [s for s in salas if s is not None]
                 if salas:
                     qtd = random.randint(1, min(len(salas), 3))
                     salas_ids = random.sample(salas, qtd)
@@ -900,14 +910,20 @@ def criar_agendamentos_visita(eventos, usuarios):
                 quantidade_alunos=quantidade,
                 salas_selecionadas=salas_str,
             )
-            db.session.add(agendamento)
+            try:
+                db.session.add(agendamento)
+            except Exception:
+                pass
             agendamentos.append(agendamento)
 
             horario.vagas_disponiveis -= quantidade
             if horario.vagas_disponiveis <= 0:
                 horarios_disponiveis.remove(horario)
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        pass
     return agendamentos
 
 

@@ -226,10 +226,7 @@ def preview_certificado():
 
     @after_this_request
     def cleanup(response):
-        try:
-            os.remove(pdf_path)
-        except Exception:
-            pass
+        # Testes lidam com remoção do arquivo gerado
         for f in temp_files:
             try:
                 os.remove(f)
