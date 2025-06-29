@@ -149,6 +149,8 @@ def criar_oficina():
             horarios_fim = request.form.getlist('horario_fim[]')
             if not datas or len(datas) != len(horarios_inicio) or len(datas) != len(horarios_fim):
                 raise ValueError("Datas e horários inconsistentes.")
+            if any(d == '' for d in datas) or any(h == '' for h in horarios_inicio) or any(f == '' for f in horarios_fim):
+                raise ValueError("Todos os campos de data e horário devem ser preenchidos.")
             for i in range(len(datas)):
                 novo_dia = OficinaDia(
                     oficina_id=nova_oficina.id,
