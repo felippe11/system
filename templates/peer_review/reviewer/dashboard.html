@@ -11,9 +11,9 @@
     <tbody>
       {% for task in tasks %}
       <tr>
-        <td>{{ task.title }}</td>
-        <td>{{ task.status }}</td>
-        <td>{{ task.due_date }}</td>
+        <td>{{ task.submission.title }}</td>
+        <td>{{ 'Concluída' if task.completed else 'Pendente' }}</td>
+        <td>{{ task.deadline.strftime('%d/%m/%Y') if task.deadline else '' }}</td>
       </tr>
       {% else %}
       <tr><td colspan="3" class="text-center">Nenhuma tarefa pendente.</td></tr>
