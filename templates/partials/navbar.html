@@ -55,6 +55,11 @@
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('evento_routes.meus_eventos') }}">
+                        <i class="bi bi-calendar-event"></i> Meus Eventos
+                    </a>
+                </li>
                 {% elif current_user.tipo == 'ministrante' %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
