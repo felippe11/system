@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Controle de Submissões{% endblock %}
+{% block content %}
+<div class="container mt-5">
+  <h3 class="mb-4">Controle de Submissões</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Localizador</th>
+        <th>Revisores</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sub in submissions %}
+      <tr>
+        <td>{{ sub.title }}</td>
+        <td>{{ sub.locator }}</td>
+        <td>
+          <ul class="mb-0">
+            {% for rev in sub.reviews %}
+            <li>{{ rev.reviewer.nome if rev.reviewer else 'N/A' }} - {{ rev.access_code }}</li>
+            {% else %}
+            <li>Nenhum revisor atribuído</li>
+            {% endfor %}
+          </ul>
+          <button class="btn btn-sm btn-secondary mt-1 gerar-codigos" data-locator="{{ sub.locator }}">Gerar Códigos</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.gerar-codigos').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        const loc = this.dataset.locator;
+        fetch(`/submissions/${loc}/codes`).then(r=>r.json()).then(data=>{
+          if(data.reviews){
+            alert(data.reviews.map(r=>r.access_code).join('\n'));
+          }
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}
