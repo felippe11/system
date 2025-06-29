@@ -404,6 +404,7 @@ def excluir_clientes():
 @login_required
 def toggle_usuario(usuario_id: int):
     """Ativa ou bloqueia o acesso de um *usuário* específico."""
+    from models import Usuario
     redirect_resp = _admin_required()
     if redirect_resp:
         return redirect_resp
@@ -418,4 +419,6 @@ def toggle_usuario(usuario_id: int):
     )
 
     # Redireciona para a lista de usuários do cliente ao qual pertence
-    return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
+    if usuario.cliente_id:
+        return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
+    return redirect(url_for("dashboard_routes.dashboard"))

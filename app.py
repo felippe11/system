@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from config import Config
 from extensions import db, login_manager, migrate, mail, socketio
 from models import Inscricao
-from utils import brasilia_filter
 import pytz
 import logging
 
@@ -99,9 +98,8 @@ def reconciliar_pendentes():
             db.session.commit()
 
 
-# Instância para servidores WSGI como o gunicorn
-app = create_app()
-
 # Execução da aplicação
 if __name__ == '__main__':
+    # Instância para servidores WSGI como o gunicorn
+    app = create_app()
     socketio.run(app, debug=True)
