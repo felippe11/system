@@ -2,9 +2,17 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig
+from models import (
+    TrabalhoCientifico,
+    Usuario,
+    Review,
+    RevisaoConfig,
+    Assignment,
+    ConfiguracaoCliente,
+    AuditLog,
+)
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 peer_review_routes = Blueprint('peer_review_routes', __name__, template_folder="../templates/peer_review")
 
@@ -28,6 +36,25 @@ def assign_reviews():
                 access_code=str(uuid.uuid4())[:8]
             )
             db.session.add(rev)
+
+            config = ConfiguracaoCliente.query.filter_by(
+                cliente_id=trabalho.evento.cliente_id
+            ).first()
+            prazo_dias = config.prazo_parecer_dias if config else 14
+            assignment = Assignment(
+                submission_id=trabalho.id,
+                reviewer_id=reviewer_id,
+                deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+            )
+            db.session.add(assignment)
+
+            db.session.add(
+                AuditLog(
+                    user_id=current_user.id,
+                    submission_id=trabalho.id,
+                    event_type="assignment",
+                )
+            )
     db.session.commit()
     return {'success': True}
 
@@ -55,6 +82,25 @@ def auto_assign(evento_id):
                 access_code=str(uuid.uuid4())[:8]
             )
             db.session.add(rev)
+
+            config_cli = ConfiguracaoCliente.query.filter_by(
+                cliente_id=t.evento.cliente_id
+            ).first()
+            prazo_dias = config_cli.prazo_parecer_dias if config_cli else 14
+            assignment = Assignment(
+                submission_id=t.id,
+                reviewer_id=reviewer.id,
+                deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+            )
+            db.session.add(assignment)
+
+            db.session.add(
+                AuditLog(
+                    user_id=current_user.id,
+                    submission_id=t.id,
+                    event_type="assignment",
+                )
+            )
     db.session.commit()
     return {'success': True}
 
@@ -91,9 +137,9 @@ def author_reviews():
 @peer_review_routes.route('/dashboard/reviewer_reviews')
 @login_required
 def reviewer_reviews():
-    reviews = Review.query.filter_by(reviewer_id=current_user.id).all()
+    assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all()
     config = RevisaoConfig.query.first()
-    return render_template('peer_review/dashboard_reviewer.html', reviews=reviews, config=config)
+    return render_template('peer_review/dashboard_reviewer.html', assignments=assignments, config=config)
 
 @peer_review_routes.route('/dashboard/editor_reviews/<int:evento_id>')
 @login_required
@@ -110,7 +156,8 @@ def author_dashboard():
 
 @peer_review_routes.route('/peer-review/reviewer')
 def reviewer_dashboard():
-    return render_template('peer_review/reviewer/dashboard.html', tasks=[])
+    assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all() if current_user.is_authenticated else []
+    return render_template('peer_review/reviewer/dashboard.html', tasks=assignments)
 
 @peer_review_routes.route('/peer-review/editor')
 def editor_dashboard_page():
