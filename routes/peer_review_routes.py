@@ -3,19 +3,16 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from extensions import db
 
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
- 
 from models import (
     TrabalhoCientifico,
     Usuario,
     Review,
     RevisaoConfig,
+    Submission,
     Assignment,
     ConfiguracaoCliente,
     AuditLog
 )
-
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
 
 import uuid
 from datetime import datetime, timedelta
@@ -200,11 +197,26 @@ def author_dashboard():
 
 
 @peer_review_routes.route('/peer-review/reviewer')
+@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
 def reviewer_dashboard():
+    # Processa o formulário se for um POST
+    if request.method == 'POST':
+        locator = request.form.get('locator')
+        code = request.form.get('code')
+        return redirect(url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code))
+
+    # Obtém os parâmetros da URL ou da sessão
     locator = request.args.get('locator') or session.get('reviewer_locator')
     code = request.args.get('code') or session.get('reviewer_code')
-
+    
+    # Verifica se o usuário está autenticado
+    if current_user.is_authenticated:
+        tasks = Assignment.query.filter_by(reviewer_id=current_user.id).all()
+        return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
+    
+    # Se não está autenticado, verifica se tem localizador e código
     if locator and code:
+        # Verifica se é um revisor pelo código de review
         review = Review.query.filter_by(locator=locator).first()
         if review and review.access_code == code:
             session['reviewer_locator'] = locator
@@ -212,37 +224,21 @@ def reviewer_dashboard():
             tasks = Review.query.filter_by(reviewer_id=review.reviewer_id).all()
             return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
 
+        # Verifica se é uma submissão
         submission = Submission.query.filter_by(locator=locator).first()
         if submission and submission.check_code(code):
             session['reviewer_locator'] = locator
             session['reviewer_code'] = code
             return render_template('peer_review/reviewer/dashboard.html', tasks=[])
 
-    flash('Credenciais inválidas para acesso de revisor.', 'danger')
-    return redirect(url_for('evento_routes.home') + '#revisorModal')
-
-@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
-def reviewer_dashboard(
-    assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all() if current_user.is_authenticated else []
-    return render_template('peer_review/reviewer/dashboard.html', tasks=assignments
-                           
-    if request.method == 'POST':
-        locator = request.form.get('locator')
-        code = request.form.get('code')
-        return redirect(url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code))
-
-    locator = request.args.get('locator')
-    code = request.args.get('code')
-    tasks = []
-    if locator and code:
-        review = Review.query.filter_by(locator=locator).first()
-        if review and review.access_code == code:
-            tasks = [review]
-        else:
-            flash('Localizador ou código inválido', 'danger')
+        # Código ou localizador inválido
+        flash('Localizador ou código inválido', 'danger')
     elif locator or code:
         flash('Localizador e código são obrigatórios', 'danger')
-    return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
+    
+    # Se chegou até aqui, as credenciais são inválidas
+    flash('Credenciais inválidas para acesso de revisor.', 'danger')
+    return redirect(url_for('evento_routes.home') + '#revisorModal')
 
 
 @peer_review_routes.route('/peer-review/editor')
