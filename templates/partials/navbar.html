@@ -55,6 +55,11 @@
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('evento_routes.meus_eventos') }}">
+                        <i class="bi bi-calendar-event"></i> Meus Eventos
+                    </a>
+                </li>
                 {% elif current_user.tipo == 'ministrante' %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
@@ -101,7 +106,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form method="get" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
+        <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
           <div class="mb-3">
             <label for="locatorInput" class="form-label">Localizador</label>
             <input type="text" class="form-control" id="locatorInput" name="locator">

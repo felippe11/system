@@ -16,6 +16,15 @@
       <label for="area_tematica" class="form-label">Área Temática</label>
       <input type="text" class="form-control" name="area_tematica" required>
     </div>
+    <div class="mb-3">
+      <label for="evento_id" class="form-label">Evento</label>
+      <select class="form-select" name="evento_id">
+        <option value="">-- Selecione um Evento --</option>
+        {% for evento in eventos %}
+          <option value="{{ evento.id }}" {% if current_user.evento_id == evento.id %}selected{% endif %}>{{ evento.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
     {% set tipos = current_user.cliente.configuracao.allowed_file_types if current_user.cliente and current_user.cliente.configuracao else 'pdf' %}
     {% set accept_str = '.' + tipos.replace(',', ',.').replace(' ', '') %}
     <div class="mb-3">
