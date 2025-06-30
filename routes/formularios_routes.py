@@ -8,6 +8,9 @@ from flask import (
     send_from_directory,
     send_file,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 from flask_login import login_required, current_user
 from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
@@ -364,7 +367,7 @@ def gerar_pdf_respostas_route(formulario_id):
 @login_required
 @mfa_required
 def get_resposta_file(filename):
-    print(">> get_resposta_file foi chamado com:", filename)
+    logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     uid = current_user.id if hasattr(current_user, 'id') else None
     log = AuditLog(user_id=uid, submission_id=None, event_type='download')

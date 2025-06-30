@@ -9,6 +9,7 @@
         <th>Área Temática</th>
         <th>Autor</th>
         <th>Status</th>
+        <th>Locator</th>
         <th>Ação</th>
       </tr>
     </thead>
@@ -19,6 +20,7 @@
         <td>{{ trabalho.area_tematica }}</td>
         <td>{{ trabalho.usuario.nome }}</td>
         <td>{{ trabalho.status }}</td>
+        <td><code>{{ trabalho.locator }}</code></td>
         <td>
           <a href="{{ url_for('trabalho_routes.avaliar_trabalho', trabalho_id=trabalho.id) }}" class="btn btn-primary btn-sm">Avaliar</a>
         </td>

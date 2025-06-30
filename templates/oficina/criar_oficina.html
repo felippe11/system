@@ -640,11 +640,23 @@
         case 3:
           const dataItems = document.querySelectorAll('.data-item');
           const cargaHoraria = document.getElementById('carga_horaria').value;
-          
+
           if (dataItems.length === 0 || !cargaHoraria) {
             alert("Por favor, defina pelo menos uma data e a carga horária.");
             return false;
           }
+
+          for (const item of dataItems) {
+            const dataInput = item.querySelector('input[name="data[]"]');
+            const inicioInput = item.querySelector('input[name="horario_inicio[]"]');
+            const fimInput = item.querySelector('input[name="horario_fim[]"]');
+
+            if (!dataInput.value || !inicioInput.value || !fimInput.value) {
+              alert('Por favor, preencha todas as datas e horários antes de continuar.');
+              return false;
+            }
+          }
+
           return true;
           
         case 4:

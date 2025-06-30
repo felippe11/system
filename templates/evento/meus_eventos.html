@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Meus Eventos{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Meus Eventos</h2>
+    <a href="{{ url_for('evento_routes.criar_evento') }}" class="btn btn-primary">
+      <i class="bi bi-plus-circle me-1"></i> Novo Evento
+    </a>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+      {% if eventos %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Nome</th>
+              <th>Período</th>
+              <th>Status</th>
+              <th class="text-center">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ev in eventos %}
+            <tr>
+              <td>{{ ev.nome }}</td>
+              <td>
+                {% if ev.data_inicio %}
+                  {{ ev.data_inicio.strftime('%d/%m/%Y') }}
+                  {% if ev.data_fim %}- {{ ev.data_fim.strftime('%d/%m/%Y') }}{% endif %}
+                {% else %}
+                  <span class="text-muted">A definir</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if ev.status == 'arquivado' %}
+                  <span class="badge bg-secondary">Arquivado</span>
+                {% else %}
+                  <span class="badge bg-success">Ativo</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="btn-group">
+                  {% if ev.status == 'ativo' %}
+                  <a href="{{ url_for('evento_routes.configurar_evento', evento_id=ev.id) }}" class="btn btn-outline-primary btn-sm" title="Editar">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  {% endif %}
+                  <form action="{{ url_for('evento_routes.toggle_arquivamento', evento_id=ev.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="{{ 'Arquivar' if ev.status=='ativo' else 'Reativar' }}">
+                      {% if ev.status == 'ativo' %}<i class="bi bi-archive"></i>{% else %}<i class="bi bi-arrow-counterclockwise"></i>{% endif %}
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <h4 class="text-muted">Nenhum evento cadastrado</h4>
+        <a href="{{ url_for('evento_routes.criar_evento') }}" class="btn btn-primary mt-3">
+          <i class="bi bi-plus-circle me-1"></i> Criar Evento
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

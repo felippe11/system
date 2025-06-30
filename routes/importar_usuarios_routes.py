@@ -9,6 +9,9 @@ from extensions import db
 from models import Usuario
 from flask import current_app
 from utils.arquivo_utils import arquivo_permitido
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -31,9 +34,9 @@ def importar_usuarios():
         filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
         arquivo.save(filepath)
         try:
-            print("📌 [DEBUG] Lendo o arquivo Excel...")
+            logger.debug("Lendo o arquivo Excel...")
             df = pd.read_excel(filepath, dtype={"cpf": str})
-            print(f"📌 [DEBUG] Colunas encontradas: {df.columns.tolist()}")
+            logger.debug("Colunas encontradas: %s", df.columns.tolist())
             colunas_obrigatorias = ["nome", "cpf", "email", "senha", "formacao", "tipo"]
             if not all(col in df.columns for col in colunas_obrigatorias):
                 flash("Erro: O arquivo deve conter as colunas: " + ", ".join(colunas_obrigatorias), "danger")
@@ -43,11 +46,11 @@ def importar_usuarios():
                 cpf_str = str(row["cpf"]).strip()
                 usuario_existente = Usuario.query.filter_by(email=row["email"]).first()
                 if usuario_existente:
-                    print(f"⚠️ [DEBUG] Usuário com e-mail {row['email']} já existe. Pulando...")
+                    logger.warning("Usuário com e-mail %s já existe. Pulando...", row['email'])
                     continue
                 usuario_existente = Usuario.query.filter_by(cpf=cpf_str).first()
                 if usuario_existente:
-                    print(f"⚠️ [DEBUG] Usuário com CPF {cpf_str} já existe. Pulando...")
+                    logger.warning("Usuário com CPF %s já existe. Pulando...", cpf_str)
                     continue
                 senha_hash = generate_password_hash(str(row["senha"]))
                 novo_usuario = Usuario(
@@ -60,12 +63,12 @@ def importar_usuarios():
                 )
                 db.session.add(novo_usuario)
                 total_importados += 1
-                print(f"✅ [DEBUG] Usuário '{row['nome']}' cadastrado com sucesso!")
+                logger.info("Usuário '%s' cadastrado com sucesso!", row['nome'])
             db.session.commit()
             flash(f"{total_importados} usuários importados com sucesso!", "success")
         except Exception as e:
             db.session.rollback()
-            print(f"❌ [ERRO] Erro ao importar usuários: {str(e)}")
+            logger.error("Erro ao importar usuários: %s", str(e))
             flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
         os.remove(filepath)
     else:
