@@ -81,6 +81,7 @@ def test_process_creation_with_dates(app):
         assert proc.availability_start <= date.today() <= proc.availability_end
 
 
+
 def test_visibility_flag_filters(app):
     with app.app_context():
         visible = RevisorProcess.query.filter_by(exibir_para_participantes=True).all()
@@ -96,4 +97,37 @@ def test_eligible_events_route(client, app):
     with app.app_context():
         e1 = Evento.query.filter_by(nome='E1').first()
     assert data == [{'id': e1.id, 'nome': 'E1'}]
+
+
+def test_config_route_saves_availability(client, app):
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='c1@test').first()
+        formulario = Formulario.query.filter_by(cliente_id=cliente.id).first()
+        start = date.today()
+        end = start + timedelta(days=2)
+
+        from flask_login import login_user, logout_user
+
+        with client:
+            with app.test_request_context():
+                login_user(cliente)
+            resp = client.post(
+                '/config_revisor',
+                data={
+                    'formulario_id': formulario.id,
+                    'num_etapas': 1,
+                    'stage_name': ['Etapa 1'],
+                    'titulo': 'Proc',
+                    'availability_start': start.strftime('%Y-%m-%d'),
+                    'availability_end': end.strftime('%Y-%m-%d'),
+                    'exibir_participantes': 'on',
+                },
+            )
+            with app.test_request_context():
+                logout_user()
+
+        assert resp.status_code in (302, 200)
+        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert proc.availability_start.date() == start
+        assert proc.availability_end.date() == end
 
