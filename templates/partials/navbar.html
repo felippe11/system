@@ -160,14 +160,10 @@
         <!-- Candidatura ou acompanhamento -->
         <hr class="my-4">
         <h6 class="fw-bold text-primary text-center mb-2">Novo cadastro</h6>
-        {% if revisor_process_id %}
-          <a class="btn btn-outline-success w-100 mb-2"
-             href="{{ url_for('revisor_routes.submit_application', process_id=revisor_process_id) }}">
-            Quero ser revisor
-          </a>
-        {% else %}
-          <p class="text-muted text-center">Processo indisponível</p>
-        {% endif %}
+        <a class="btn btn-outline-success w-100 mb-2"
+           href="{{ url_for('revisor_routes.select_event') }}">
+          Quero ser revisor
+        </a>
 
         <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
           <div class="mb-3">
