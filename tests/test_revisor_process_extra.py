@@ -78,7 +78,8 @@ def test_process_creation_with_dates(app):
         proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
         assert proc.availability_start is not None
         assert proc.availability_end is not None
-        assert proc.availability_start.date() <= date.today() <= proc.availability_end.date()
+        assert proc.availability_start <= date.today() <= proc.availability_end
+
 
 
 def test_visibility_flag_filters(app):
