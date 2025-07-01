@@ -1,3 +1,4 @@
+
 import os
 import uuid
 from datetime import datetime, date
@@ -1266,22 +1267,6 @@ class Assignment(db.Model):
     submission = db.relationship("Submission", backref=db.backref("assignments", lazy=True))
     reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
 
-# -----------------------------------------------------------------------------
-# APPLICATION DE USUÁRIOS (REGISTRADOS) PARA SEREM REVISORES
-# -----------------------------------------------------------------------------
-class ReviewerApplication(db.Model):
-    """Candidatura de usuário autenticado para atuar como revisor."""
-
-    __tablename__ = "reviewer_application"
-
-    id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-    stage = db.Column(db.String(50), default="novo")  # e.g. novo → aprovado → rejeitado
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    usuario = db.relationship(
-        "Usuario", backref=db.backref("reviewer_applications", lazy=True)
-    )
 
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
