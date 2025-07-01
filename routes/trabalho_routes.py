@@ -77,6 +77,7 @@ def submeter_trabalho():
         )
         db.session.add(trabalho)
         db.session.commit()
+        locator = trabalho.locator
 
         # Audit log
         db.session.add(
@@ -88,7 +89,10 @@ def submeter_trabalho():
         )
         db.session.commit()
 
-        flash("Trabalho submetido com sucesso!", "success")
+        flash(
+            f"Trabalho submetido com sucesso! Localizador: {locator}",
+            "success",
+        )
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
 
     return render_template("submeter_trabalho.html", eventos=eventos)
