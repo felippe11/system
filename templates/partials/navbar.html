@@ -148,14 +148,6 @@
           <button type="submit" class="btn btn-primary">Entrar</button>
         </form>
 
-        <!-- Registro opcional de novos revisores -->
-        {% if show_reviewer_registration %}
-          <div class="mt-3">
-            <a class="btn btn-outline-secondary w-100" href="{{ url_for('peer_review_routes.reviewer_registration') }}">
-              Inscrever-se como revisor
-            </a>
-          </div>
-        {% endif %}
 
         <!-- Candidatura ou acompanhamento -->
         <hr class="my-4">

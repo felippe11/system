@@ -130,6 +130,7 @@ def test_application_and_approval_flow(client, app):
 
     resp = client.get(f"/revisor/progress/{code}")
     assert resp.status_code == 200
+    assert code in resp.get_data(as_text=True)
 
     login(client, "cli@test", "123")
     resp = client.post(f"/revisor/approve/{cand_id}", json={})
@@ -149,6 +150,12 @@ def test_navbar_shows_correct_process_id(app):
     with app.test_request_context("/"):
         html = render_template("partials/navbar.html")
     assert "/processo_seletivo" in html
+
+
+def test_navbar_without_reviewer_registration_link(app):
+    with app.test_request_context("/"):
+        html = render_template("partials/navbar.html")
+    assert "Inscrever-se como revisor" not in html
 
 
 def test_navbar_shows_link_when_unavailable(app):
