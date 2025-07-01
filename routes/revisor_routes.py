@@ -81,8 +81,8 @@ def config_revisor():
         num_etapas = request.form.get("num_etapas", type=int, default=1)
         stage_names: List[str] = request.form.getlist("stage_name")
         titulo = request.form.get("titulo")
-        data_inicio_raw = request.form.get("data_inicio")
-        data_fim_raw = request.form.get("data_fim")
+        start_raw = request.form.get("availability_start")
+        end_raw = request.form.get("availability_end")
         exibir_val = request.form.get("exibir_participantes")
         exibir_para_participantes = exibir_val in {"on", "1", "true"}
 
@@ -93,8 +93,8 @@ def config_revisor():
             except ValueError:
                 return None
 
-        data_inicio = _parse_dt(data_inicio_raw)
-        data_fim = _parse_dt(data_fim_raw)
+        start_dt = _parse_dt(start_raw)
+        end_dt = _parse_dt(end_raw)
 
         # --- cria ou atualiza processo ---------------------------------------
         if not processo:
@@ -104,8 +104,8 @@ def config_revisor():
         processo.formulario_id = formulario_id
         processo.num_etapas = num_etapas
         processo.titulo = titulo
-        processo.data_inicio = data_inicio
-        processo.data_fim = data_fim
+        processo.availability_start = start_dt
+        processo.availability_end = end_dt
         processo.exibir_para_participantes = exibir_para_participantes
         db.session.commit()
 
