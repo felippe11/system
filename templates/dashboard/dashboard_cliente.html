@@ -82,6 +82,12 @@
             <i class="bi bi-cash-coin me-1"></i> Financeiro
           </button>
         </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="revisores-tab" data-bs-toggle="tab"
+                  data-bs-target="#revisores" type="button">
+            <i class="bi bi-people-fill me-1"></i> Revisores
+          </button>
+        </li>
       </ul>
 
       <!-- Conteúdo das Abas -->
@@ -1419,6 +1425,40 @@
     {% include 'partials/dashboard_financeiro_aba.html' %}
   </div>
   <!-- /ABA 5: FINANCEIRO -->
+  <!-- ABA 6: REVISORES -->
+  <div class="tab-pane fade" id="revisores" role="tabpanel">
+    <h5 class="fw-bold mb-3">Candidaturas de Revisores</h5>
+    <table class="table table-sm">
+      <thead>
+        <tr><th>Usuário</th><th>Status</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for app in reviewer_apps %}
+        <tr>
+          <td>{{ app.usuario.nome }}</td>
+          <td>{{ app.stage }}</td>
+          <td>
+            <form method="post" action="{{ url_for('dashboard_routes.update_reviewer_application', app_id=app.id) }}" class="d-inline">
+              <input type="hidden" name="action" value="advance">
+              <button class="btn btn-sm btn-primary">Avançar</button>
+            </form>
+            <form method="post" action="{{ url_for('dashboard_routes.update_reviewer_application', app_id=app.id) }}" class="d-inline ms-1">
+              <input type="hidden" name="action" value="approve">
+              <button class="btn btn-sm btn-success">Aprovar</button>
+            </form>
+            <form method="post" action="{{ url_for('dashboard_routes.update_reviewer_application', app_id=app.id) }}" class="d-inline ms-1">
+              <input type="hidden" name="action" value="reject">
+              <button class="btn btn-sm btn-danger">Rejeitar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">Nenhuma candidatura.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
 <!-- Javascript com ícones e labels melhorados -->
 
