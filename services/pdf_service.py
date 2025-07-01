@@ -2890,102 +2890,365 @@ def gerar_programacao_evento_pdf(evento_id):
     return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
 # Gerar placas simples para oficinas do evento
 
-def gerar_placas_oficinas_pdf(evento_id):
-    """
-    Gera um PDF com uma placa por página para cada oficina, em modo paisagem,
-    com design aprimorado e quebra de linha automática.
-    """
+def gerar_programacao_evento_pdf(evento_id):
+    """Gera um PDF profissional e organizado da programação do evento"""
     from models import Evento, Oficina
+    from extensions import db
     from flask import current_app, send_file
     import os
-
-    # Importações do ReportLab para um layout mais avançado
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm, mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.pagesizes import landscape, A4
-    from reportlab.lib.units import cm
-    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+    from reportlab.lib.colors import HexColor, black, white
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+        PageBreak, Frame, PageTemplate, BaseDocTemplate
+    )
+    from reportlab.platypus.tableofcontents import TableOfContents
 
-    # 1. Busca dos dados no banco
+    # 1. Data Retrieval and Preparation
     evento = Evento.query.get_or_404(evento_id)
-    oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
 
-    # 2. Configuração de diretórios e arquivos
-    pdf_dir = os.path.join(current_app.static_folder, "placas", str(evento_id))
+    oficinas = (
+        Oficina.query
+        .filter_by(evento_id=evento_id)
+        .options(db.joinedload(Oficina.dias), db.joinedload(Oficina.ministrante_obj))
+        .all()
+    )
+
+    # Agrupar oficinas por data
+    grouped_oficinas = {}
+    for oficina in oficinas:
+        for dia in oficina.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            if data_str not in grouped_oficinas:
+                grouped_oficinas[data_str] = []
+            
+            # Tratar horários que podem ser string ou datetime
+            def format_horario(horario):
+                if not horario:
+                    return ''
+                if isinstance(horario, str):
+                    return horario
+                return horario.strftime('%H:%M')
+            
+            grouped_oficinas[data_str].append({
+                'titulo': oficina.titulo,
+                'ministrante': oficina.ministrante_obj.nome if oficina.ministrante_obj else 'A definir',
+                'inicio': format_horario(dia.horario_inicio),
+                'fim': format_horario(dia.horario_fim),
+                'descricao': getattr(oficina, 'descricao', '') or '',
+                'local': getattr(oficina, 'local', '') or ''
+            })
+
+    # Ordenar datas
+    sorted_dates = sorted(
+        grouped_oficinas.keys(), 
+        key=lambda d: datetime.strptime(d, '%d/%m/%Y')
+    )
+
+    # 2. PDF File Setup
+    pdf_dir = os.path.join(current_app.static_folder, 'programacoes', str(evento_id))
     os.makedirs(pdf_dir, exist_ok=True)
-    
-    # LINHA CORRIGIDA: Usando evento.id em vez de evento.slug
-    filename = f"placas_oficinas_{evento.id}.pdf"
-    
+    filename = f"programacao_evento_{evento_id}.pdf"
     pdf_path = os.path.join(pdf_dir, filename)
 
-    # 3. Criação do Documento com orientação paisagem (folha virada) e margens
+    # 3. Create Document with Custom Styles
     doc = SimpleDocTemplate(
         pdf_path,
-        pagesize=landscape(A4),
+        pagesize=A4,
         rightMargin=2*cm,
         leftMargin=2*cm,
-        topMargin=2*cm,
+        topMargin=2.5*cm,
         bottomMargin=2*cm
     )
 
-    # 4. Definição dos Estilos de Parágrafo (controla fonte, tamanho, alinhamento, etc.)
+    # 4. Define Custom Styles
     styles = getSampleStyleSheet()
     
-    # Estilo para o título da oficina
-    titulo_style = ParagraphStyle(
-        name='TituloOficina',
-        parent=styles['h1'],
-        fontName='Helvetica-Bold',
-        fontSize=42,
-        leading=50,  # Espaçamento entre linhas
-        alignment=TA_CENTER
-    )
-
-    # Estilo para o nome do ministrante
-    ministrante_style = ParagraphStyle(
-        name='Ministrante',
-        parent=styles['Normal'],
-        fontName='Helvetica-Oblique', # Usando itálico para diferenciar
-        fontSize=24,
-        leading=28,
+    # Cores do tema
+    primary_color = HexColor('#2C3E50')      # Azul escuro
+    secondary_color = HexColor('#3498DB')     # Azul claro
+    accent_color = HexColor('#E74C3C')        # Vermelho
+    text_color = HexColor('#34495E')          # Cinza escuro
+    light_gray = HexColor('#ECF0F1')          # Cinza claro
+    
+    # Estilos customizados
+    styles.add(ParagraphStyle(
+        name='EventTitle',
+        parent=styles['Heading1'],
+        fontSize=28,
+        textColor=primary_color,
         alignment=TA_CENTER,
-        spaceBefore=1*cm  # Espaço antes deste parágrafo
+        spaceAfter=8*mm,
+        spaceBefore=5*mm,
+        fontName='Helvetica-Bold'
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='EventSubtitle',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=secondary_color,
+        alignment=TA_CENTER,
+        spaceAfter=12*mm,
+        fontName='Helvetica-Oblique'
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='EventDescription',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=text_color,
+        alignment=TA_JUSTIFY,
+        spaceAfter=15*mm,
+        leading=14
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='DateHeader',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=primary_color,
+        spaceBefore=15*mm,
+        spaceAfter=8*mm,
+        fontName='Helvetica-Bold',
+        borderWidth=0,
+        borderColor=secondary_color,
+        borderPadding=3*mm
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='OficinaTitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=primary_color,
+        fontName='Helvetica-Bold',
+        spaceAfter=2*mm
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='OficinaDetails',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=text_color,
+        leftIndent=5*mm,
+        spaceAfter=1*mm
+    ))
+    
+    styles.add(ParagraphStyle(
+        name='Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        textColor=HexColor('#7F8C8D'),
+        alignment=TA_CENTER,
+        spaceBefore=20*mm
+    ))
+
+    # 5. Build Document Content
+    story = []
+    
+    # Cabeçalho do evento
+    story.append(Paragraph(f"{evento.nome}", styles['EventTitle']))
+    
+    if hasattr(evento, 'data_inicio') and evento.data_inicio:
+        data_evento = evento.data_inicio.strftime('%d de %B de %Y')
+        story.append(Paragraph(f"Programação do Evento - {data_evento}", styles['EventSubtitle']))
+    else:
+        story.append(Paragraph("Programação do Evento", styles['EventSubtitle']))
+    
+    # Descrição do evento
+    if evento.descricao:
+        story.append(Paragraph(evento.descricao, styles['EventDescription']))
+    
+    # Linha separadora
+    story.append(Spacer(1, 5*mm))
+    
+    # Programação por data
+    for i, data in enumerate(sorted_dates):
+        # Cabeçalho da data
+        data_formatada = datetime.strptime(data, '%d/%m/%Y').strftime('%A, %d de %B de %Y')
+        story.append(Paragraph(data_formatada.title(), styles['DateHeader']))
+        
+        # Criar tabela para as oficinas do dia
+        oficinas_do_dia = sorted(grouped_oficinas[data], key=lambda x: x['inicio'])
+        
+        if oficinas_do_dia:
+            # Dados da tabela
+            table_data = [['Horário', 'Oficina', 'Ministrante']]
+            
+            for oficina in oficinas_do_dia:
+                horario = f"{oficina['inicio']} - {oficina['fim']}" if oficina['inicio'] and oficina['fim'] else "A definir"
+                
+                # Título da oficina
+                titulo_oficina = oficina['titulo']
+                if oficina['local']:
+                    titulo_oficina += f"<br/><i>Local: {oficina['local']}</i>"
+                
+                # Descrição se houver
+                if oficina['descricao']:
+                    descricao_truncada = oficina['descricao'][:100] + "..." if len(oficina['descricao']) > 100 else oficina['descricao']
+                    titulo_oficina += f"<br/><font size='9' color='#7F8C8D'>{descricao_truncada}</font>"
+                
+                table_data.append([
+                    horario,
+                    Paragraph(titulo_oficina, styles['Normal']),
+                    oficina['ministrante']
+                ])
+            
+            # Criar e estilizar tabela
+            table = Table(table_data, colWidths=[3.5*cm, 9*cm, 4*cm])
+            table.setStyle(TableStyle([
+                # Cabeçalho
+                ('BACKGROUND', (0, 0), (-1, 0), secondary_color),
+                ('TEXTCOLOR', (0, 0), (-1, 0), white),
+                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8*mm),
+                ('TOPPADDING', (0, 0), (-1, 0), 8*mm),
+                
+                # Corpo da tabela
+                ('BACKGROUND', (0, 1), (-1, -1), white),
+                ('TEXTCOLOR', (0, 1), (-1, -1), text_color),
+                ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Horário centralizado
+                ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Oficina à esquerda
+                ('ALIGN', (2, 1), (2, -1), 'LEFT'),    # Ministrante à esquerda
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [white, light_gray]),
+                ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#BDC3C7')),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 5*mm),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 5*mm),
+                ('TOPPADDING', (0, 1), (-1, -1), 5*mm),
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 8*mm),
+            ]))
+            
+            story.append(table)
+        else:
+            story.append(Paragraph("Nenhuma oficina programada para este dia.", styles['OficinaDetails']))
+        
+        story.append(Spacer(1, 8*mm))
+        
+        # Quebra de página entre datas (exceto na última)
+        if i < len(sorted_dates) - 1:
+            story.append(PageBreak())
+    
+    # Rodapé
+    footer_text = f"Documento gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}"
+    if hasattr(evento, 'organizador') and evento.organizador:
+        footer_text += f"<br/>Organização: {evento.organizador}"
+    if hasattr(evento, 'contato') and evento.contato:
+        footer_text += f"<br/>Contato: {evento.contato}"
+        
+    story.append(Paragraph(footer_text, styles['Footer']))
+
+    # 6. Build PDF
+    doc.build(story)
+
+    return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+
+
+def gerar_placas_oficinas_pdf(evento_id):
+    """Gera placas individuais para cada oficina do evento"""
+    from models import Evento, Oficina
+    from extensions import db
+    from flask import current_app, send_file
+    import os
+    from datetime import datetime
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import cm
+    from reportlab.lib.colors import HexColor, white
+
+    # Buscar dados
+    evento = Evento.query.get_or_404(evento_id)
+    oficinas = (
+        Oficina.query
+        .filter_by(evento_id=evento_id)
+        .options(db.joinedload(Oficina.dias), db.joinedload(Oficina.ministrante_obj))
+        .all()
     )
 
-    # 5. Construção da "História" do PDF (uma lista de elementos a serem renderizados)
-    story = []
+    # Setup do arquivo
+    pdf_dir = os.path.join(current_app.static_folder, 'placas', str(evento_id))
+    os.makedirs(pdf_dir, exist_ok=True)
+    filename = f"placas_oficinas_{evento_id}.pdf"
+    pdf_path = os.path.join(pdf_dir, filename)
 
-    for ofi in oficinas:
-        # Adiciona um espaço no topo para centralizar o conteúdo verticalmente na página
-        story.append(Spacer(1, 6*cm))
+    # Criar PDF em modo paisagem para placas maiores
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+    
+    primary_color = HexColor('#2C3E50')
+    secondary_color = HexColor('#3498DB')
 
-        # Adiciona o título da oficina como um Parágrafo (com quebra de linha automática)
-        texto_titulo = ofi.titulo.upper() # Colocando em maiúsculas para dar destaque
-        story.append(Paragraph(texto_titulo, titulo_style))
-
-        # Adiciona o nome do ministrante, se houver
-        if ofi.ministrante_obj:
-            texto_ministrante = f"com {ofi.ministrante_obj.nome}"
-            story.append(Paragraph(texto_ministrante, ministrante_style))
-
-        # Força a criação de uma nova página para a próxima oficina
-        story.append(PageBreak())
-
-    # 6. Geração do arquivo PDF
-    if story: # Evita criar um PDF em branco se não houver oficinas
-        doc.build(story)
-    else:
-        # Se não houver oficinas, podemos criar um PDF com uma mensagem
-        c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
-        c.setFont("Helvetica", 20)
-        width, height = landscape(A4)
-        c.drawCentredString(width/2, height/2, "Nenhuma oficina encontrada para este evento.")
-        c.save()
-
-
-    # 7. Envio do arquivo para o usuário
-    return send_file(pdf_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
+    for oficina in oficinas:
+        # Fundo da placa
+        c.setFillColor(primary_color)
+        c.rect(1*cm, 1*cm, width-2*cm, height-2*cm, fill=1)
+        
+        # Borda interna
+        c.setFillColor(white)
+        c.rect(1.5*cm, 1.5*cm, width-3*cm, height-3*cm, fill=1)
+        
+        # Título da oficina
+        c.setFillColor(primary_color)
+        c.setFont('Helvetica-Bold', 24)
+        text_width = c.stringWidth(oficina.titulo, 'Helvetica-Bold', 24)
+        c.drawString((width - text_width) / 2, height - 4*cm, oficina.titulo)
+        
+        # Ministrante
+        if oficina.ministrante_obj:
+            c.setFont('Helvetica', 18)
+            ministrante_text = f"Ministrante: {oficina.ministrante_obj.nome}"
+            text_width = c.stringWidth(ministrante_text, 'Helvetica', 18)
+            c.drawString((width - text_width) / 2, height - 6*cm, ministrante_text)
+        
+        # Horários
+        if oficina.dias:
+            c.setFont('Helvetica', 14)
+            y_pos = height - 8*cm
+            for dia in oficina.dias:
+                # Tratar data
+                if isinstance(dia.data, str):
+                    data_str = dia.data
+                else:
+                    data_str = dia.data.strftime('%d/%m/%Y')
+                
+                # Tratar horários
+                def format_horario_placa(horario):
+                    if not horario:
+                        return ''
+                    if isinstance(horario, str):
+                        return horario
+                    return horario.strftime('%H:%M')
+                
+                inicio_str = format_horario_placa(dia.horario_inicio)
+                fim_str = format_horario_placa(dia.horario_fim)
+                horario_str = f"{inicio_str} - {fim_str}" if inicio_str and fim_str else ""
+                
+                horario_text = f"{data_str} - {horario_str}"
+                text_width = c.stringWidth(horario_text, 'Helvetica', 14)
+                c.drawString((width - text_width) / 2, y_pos, horario_text)
+                y_pos -= 1*cm
+        
+        # Local se houver
+        if hasattr(oficina, 'local') and oficina.local:
+            c.setFont('Helvetica-Bold', 16)
+            local_text = f"Local: {oficina.local}"
+            text_width = c.stringWidth(local_text, 'Helvetica-Bold', 16)
+            c.drawString((width - text_width) / 2, 3*cm, local_text)
+        
+        c.showPage()
+    
+    c.save()
+    
+    return send_file(pdf_path, as_attachment=True, download_name=f"placas_{filename}", mimetype='application/pdf')
 
 
 def gerar_etiquetas(cliente_id):
