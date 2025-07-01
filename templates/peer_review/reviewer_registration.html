@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Cadastro de Revisor{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow-sm border-0 rounded-lg">
+    <div class="card-header bg-primary text-white">
+      <h2 class="mb-0 fs-4">Cadastro de Revisor</h2>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        <div class="mb-3">
+          <label for="nome" class="form-label">Nome</label>
+          <input type="text" class="form-control" id="nome" name="nome" required>
+        </div>
+        <div class="mb-3">
+          <label for="cpf" class="form-label">CPF</label>
+          <input type="text" class="form-control" id="cpf" name="cpf" required>
+        </div>
+        <div class="mb-3">
+          <label for="email" class="form-label">E-mail</label>
+          <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <div class="mb-3">
+          <label for="formacao" class="form-label">Formação</label>
+          <input type="text" class="form-control" id="formacao" name="formacao" required>
+        </div>
+        <div class="mb-3">
+          <label for="senha" class="form-label">Senha</label>
+          <input type="password" class="form-control" id="senha" name="senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Registrar</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
