@@ -1,103 +1,121 @@
 {% set current_path = request.path %}
-<!-- Adicione o link para o CSS da navbar caso ainda não esteja incluído no head -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}" rel="stylesheet">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
-    <div class="container">
-        <a class="navbar-brand" href="{{ url_for('evento_routes.home') }}">
-            App<span>Fiber</span>
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">                <li class="nav-item">
-                    <a class="nav-link home-link" href="{{ url_for('evento_routes.home') }}{% if current_path == '/' %}#home{% endif %}">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link eventos-link" href="{{ url_for('evento_routes.home') }}#eventos">Eventos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link recursos-link" href="{{ url_for('evento_routes.home') }}#recursos">Recursos</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
-                </li>
-                <li class="nav-item ms-lg-3">
-                    <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">Revisores</a>
-                </li>
-                <li class="nav-item me-2" id="pwa-install-btn">
-                    <a class="nav-link btn btn-primary text-white px-3" href="#">
-                        <i class="bi bi-download me-1"></i> Instalar App
-                    </a>
-                </li>                {% if not current_user.is_authenticated %}
-                <li class="nav-item ms-lg-3">
-                    <a class="btn btn-register" href="{{ url_for('auth_routes.cadastrar_cliente_publico') }}">Criar Conta</a>
-                </li>
-                <li class="nav-item ms-lg-3">
-                    <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
-                </li>
+  <div class="container">
+    <a class="navbar-brand" href="{{ url_for('evento_routes.home') }}">
+      App<span>Fiber</span>
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+      data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+      aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link home-link"
+             href="{{ url_for('evento_routes.home') }}{% if current_path == '/' %}#home{% endif %}">
+            Home
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link eventos-link" href="{{ url_for('evento_routes.home') }}#eventos">Eventos</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link recursos-link" href="{{ url_for('evento_routes.home') }}#recursos">Recursos</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
+        </li>
+
+        <li class="nav-item ms-lg-3">
+          <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">
+            Revisores
+          </a>
+        </li>
+
+        <li class="nav-item me-2" id="pwa-install-btn">
+          <a class="nav-link btn btn-primary text-white px-3" href="#">
+            <i class="bi bi-download me-1"></i> Instalar App
+          </a>
+        </li>
+
+        {% if not current_user.is_authenticated %}
+          <li class="nav-item ms-lg-3">
+            <a class="btn btn-register" href="{{ url_for('auth_routes.cadastrar_cliente_publico') }}">
+              Criar Conta
+            </a>
+          </li>
+          <li class="nav-item ms-lg-3">
+            <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
+          </li>
+        {% else %}
+          {# --- PERFIS --- #}
+          {% if current_user.tipo == 'participante' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('inscricao_routes.editar_participante') }}">
+                <i class="bi bi-person-badge"></i> Perfil
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
+            </li>
+          {% elif current_user.tipo == 'cliente' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard_cliente') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('evento_routes.meus_eventos') }}">
+                <i class="bi bi-calendar-event"></i> Meus Eventos
+              </a>
+            </li>
+          {% elif current_user.tipo == 'ministrante' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
+            </li>
+          {% elif current_user.tipo == 'admin' %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard') }}">
+                <i class="bi bi-speedometer2"></i> Dashboard
+              </a>
+            </li>
+          {% endif %}
+
+          {# --- IMPERSONAÇÃO --- #}
+          {% if session.get('impersonator_id') %}
+            <li class="nav-item">
+              <a class="nav-link text-warning" href="{{ url_for('dashboard_routes.encerrar_impersonacao') }}">
+                <i class="bi bi-x-circle"></i>
+                {% if session.get('user_type') == 'cliente' %}
+                  Sair do modo cliente
                 {% else %}
-                
-                {% if current_user.tipo == 'participante' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('inscricao_routes.editar_participante') }}">
-                        <i class="bi bi-person-badge"></i> Perfil
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
-                    </a>
-                </li>
-                {% elif current_user.tipo == 'cliente' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard_cliente') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('evento_routes.meus_eventos') }}">
-                        <i class="bi bi-calendar-event"></i> Meus Eventos
-                    </a>
-                </li>
-                {% elif current_user.tipo == 'ministrante' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard_ministrante_routes.dashboard_ministrante') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
-                    </a>
-                </li>
-                {% elif current_user.tipo == 'admin' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard_routes.dashboard') }}">
-                        <i class="bi bi-speedometer2"></i> Dashboard
-                    </a>
-                </li>
+                  Sair do modo usuário
                 {% endif %}
+              </a>
+            </li>
+          {% endif %}
 
-                {% if session.get('impersonator_id') %}
-                <li class="nav-item">
-                    <a class="nav-link text-warning" href="{{ url_for('dashboard_routes.encerrar_impersonacao') }}">
-                        <i class="bi bi-x-circle"></i>
-                        {% if session.get('user_type') == 'cliente' %}
-                        Sair do modo cliente
-                        {% else %}
-                        Sair do modo usuário
-                        {% endif %}
-                    </a>
-                </li>
-                {% endif %}
-
-                <li class="nav-item">
-                    <a class="nav-link text-danger" href="{{ url_for('auth_routes.logout') }}">
-                        <i class="bi bi-box-arrow-right"></i> Sair
-                    </a>
-                </li>
-                {% endif %}
-            </ul>
-        </div>
+          <li class="nav-item">
+            <a class="nav-link text-danger" href="{{ url_for('auth_routes.logout') }}">
+              <i class="bi bi-box-arrow-right"></i> Sair
+            </a>
+          </li>
+        {% endif %}
+      </ul>
     </div>
+  </div>
 </nav>
-<!-- Modal Revisores -->
+
+{# ------------------- MODAL REVISOR ------------------- #}
 <div class="modal fade" id="revisorModal" tabindex="-1" aria-labelledby="revisorModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -105,8 +123,10 @@
         <h5 class="modal-title" id="revisorModalLabel">Acesso dos Revisores</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
+
       <div class="modal-body">
         <p>Insira abaixo o localizador e o código fornecidos para acessar suas tarefas de revisão.</p>
+
         <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
           <div class="mb-3">
             <label for="locatorInput" class="form-label">Localizador</label>
@@ -118,96 +138,98 @@
           </div>
           <button type="submit" class="btn btn-primary">Entrar</button>
         </form>
+
+        {# Botão opcional para registro de novos revisores #}
         {% if show_reviewer_registration %}
-        <div class="mt-3">
-          <a class="btn btn-outline-secondary w-100" href="{{ url_for('peer_review_routes.reviewer_registration') }}">Inscrever-se como revisor</a>
-        </div>
+          <div class="mt-3">
+            <a class="btn btn-outline-secondary w-100"
+               href="{{ url_for('peer_review_routes.reviewer_registration') }}">
+              Inscrever-se como revisor
+            </a>
+          </div>
         {% endif %}
+
+        {# Fluxo alternativo de candidatura / acompanhamento #}
+        <hr class="my-3">
+        <a class="btn btn-outline-success w-100 mb-2"
+           href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
+          Quero ser revisor
+        </a>
+
+        <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
+          <div class="mb-3">
+            <label for="codigoAcomp" class="form-label">Código da Candidatura</label>
+            <input type="text" class="form-control" id="codigoAcomp" name="codigo">
+          </div>
+          <button type="submit" class="btn btn-secondary">Acompanhar</button>
+        </form>
       </div>
     </div>
   </div>
 </div>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Obtém o path atual
-        const currentPath = window.location.pathname;
-        const currentHash = window.location.hash;
-        
-        // Verifica se estamos na página inicial
-        const isHomePage = currentPath === '/' || currentPath === '/index' || currentPath === '/index.html';
-        
-        // Gerencia links ativos
-        const navLinks = document.querySelectorAll('.navbar .nav-link');
-        
-        // Remove a classe active de todos os links
-        navLinks.forEach(link => link.classList.remove('active'));
-        
-        if (isHomePage) {
-            // Se estiver na home, ativa com base no hash
-            if (currentHash) {
-                // Remove o # do hash
-                const activeSection = currentHash.substring(1);
-                // Procura o link correspondente
-                const activeLink = document.querySelector(`.navbar .${activeSection}-link`);
-                if (activeLink) {
-                    activeLink.classList.add('active');
-                } else {
-                    // Se não há hash ou o hash não corresponde a nenhum link, ativa o Home
-                    document.querySelector('.navbar .home-link').classList.add('active');
-                }
-            } else {
-                // Se não há hash, ativa o Home
-                document.querySelector('.navbar .home-link').classList.add('active');
-            }
-        } else {
-            // Nas outras páginas, não marca nenhum link de seção como ativo
-            // Mas poderia ativar outros links específicos se necessário
-        }
-        
-        // Atualiza os links ativos quando há rolagem na página inicial
-        if (isHomePage) {
-            window.addEventListener('scroll', function() {
-                // Somente executa esse código na página inicial
-                const scrollPosition = window.scrollY;
 
-                // Obtém as seções
-                const homeSection = document.querySelector('#home');
-                const eventosSection = document.querySelector('#eventos');
-                const recursosSection = document.querySelector('#recursos');
-                const contatoSection = document.querySelector('#contato');
-                
-                // Remove active de todos os links
-                navLinks.forEach(link => link.classList.remove('active'));
-                
-                // Adiciona active ao link correspondente com base na posição da rolagem
-                if (homeSection && scrollPosition < eventosSection?.offsetTop - 100) {
-                    document.querySelector('.navbar .home-link').classList.add('active');
-                } else if (eventosSection && scrollPosition < recursosSection?.offsetTop - 100) {
-                    document.querySelector('.navbar .eventos-link').classList.add('active');
-                } else if (recursosSection && scrollPosition < contatoSection?.offsetTop - 100) {
-                    document.querySelector('.navbar .recursos-link').classList.add('active');
-                } else if (contatoSection) {
-                    document.querySelector('.navbar .contato-link').classList.add('active');
-                }
-            });
-        }
-    });
-</script>
+{# ------------------- JS: ACTIVE LINKS & SCROLL EFFECT ------------------- #}
 <script>
-    // Script para efeito de scroll na navbar
-    window.addEventListener('scroll', function() {
-        const navbar = document.querySelector('.navbar');
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
+document.addEventListener('DOMContentLoaded', () => {
+  const currentPath = window.location.pathname;
+  const currentHash = window.location.hash;
+
+  const isHomePage = currentPath === '/' ||
+                     currentPath === '/index' ||
+                     currentPath === '/index.html';
+
+  const navLinks = document.querySelectorAll('.navbar .nav-link');
+
+  function clearActive() {
+    navLinks.forEach(link => link.classList.remove('active'));
+  }
+
+  function setActive(linkSelector) {
+    const link = document.querySelector(linkSelector);
+    if (link) link.classList.add('active');
+  }
+
+  // Estado inicial
+  clearActive();
+  if (isHomePage) {
+    if (currentHash) {
+      setActive(`.navbar .${currentHash.substring(1)}-link`);
+    } else {
+      setActive('.navbar .home-link');
+    }
+  }
+
+  // Scroll spy simples para seções da home
+  if (isHomePage) {
+    window.addEventListener('scroll', () => {
+      const scrollY = window.scrollY;
+
+      const homeSection     = document.querySelector('#home');
+      const eventosSection  = document.querySelector('#eventos');
+      const recursosSection = document.querySelector('#recursos');
+      const contatoSection  = document.querySelector('#contato');
+
+      clearActive();
+
+      if (homeSection && scrollY < eventosSection?.offsetTop - 100) {
+        setActive('.navbar .home-link');
+      } else if (eventosSection && scrollY < recursosSection?.offsetTop - 100) {
+        setActive('.navbar .eventos-link');
+      } else if (recursosSection && scrollY < contatoSection?.offsetTop - 100) {
+        setActive('.navbar .recursos-link');
+      } else {
+        setActive('.navbar .contato-link');
+      }
     });
-    
-    // Verifica se a página foi carregada já com scroll (por exemplo, refresh)
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.scrollY > 50) {
-            document.querySelector('.navbar').classList.add('scrolled');
-        }
-    });
+  }
+
+  // Navbar background on scroll
+  function toggleScrolledClass() {
+    const navbar = document.querySelector('.navbar');
+    navbar.classList.toggle('scrolled', window.scrollY > 50);
+  }
+
+  window.addEventListener('scroll', toggleScrolledClass);
+  toggleScrolledClass(); // executa uma vez no load
+});
 </script>
