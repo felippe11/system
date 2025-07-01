@@ -77,17 +77,9 @@ def create_app():
             process = RevisorProcess.query.first()
 
         process_id = None
-        if process:
-            now = datetime.utcnow()
-            if not (
-                process.availability_start
-                and process.availability_end
-                and process.availability_start <= now <= process.availability_end
-            ):
-                process = None
+        if process and process.is_available():
             if (
-                process
-                and current_user.is_authenticated
+                current_user.is_authenticated
                 and current_user.tipo == "participante"
                 and not process.exibir_para_participantes
             ):
