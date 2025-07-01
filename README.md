@@ -23,10 +23,19 @@ export DB_LOCAL="<url_do_banco_local>"
 ## Banco de Dados
 
 Depois de clonar o repositório ou atualizar o código, instale as dependências
-listadas em `requirements.txt` antes de rodar a aplicação ou os testes:
+listadas em `requirements.txt` antes de rodar a aplicação ou os testes. Esse
+arquivo inclui o `python-dotenv`, usado para carregar automaticamente as
+variáveis definidas em `.env`:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Para rodar a suíte de testes ou trabalhar no desenvolvimento, instale também os
+pacotes opcionais descritos em `requirements-dev.txt`:
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 Com o ambiente configurado você pode aplicar as migrações executando:
@@ -79,9 +88,13 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Instale e configure o **PostgreSQL** para Windows ou utilize o serviço Linux pelo WSL.
-5. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv` (pode copiar o arquivo `\.env.example`).
-6. Aplique as migrações e inicie o servidor:
+4. Para executar os testes, instale também as dependências de desenvolvimento:
+```bash
+pip install -r requirements-dev.txt
+```
+5. Instale e configure o **PostgreSQL** para Windows ou utilize o serviço Linux pelo WSL.
+6. Defina as variáveis de ambiente com `set` ou crie um arquivo `.env` lido pelo `python-dotenv` (pode copiar o arquivo `\.env.example`).
+7. Aplique as migrações e inicie o servidor:
 
 ```bash
 flask db upgrade
