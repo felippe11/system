@@ -12,6 +12,7 @@
           {{ item.evento.nome }}
         </div>
         <div class="card-body">
+          <p class="mb-1"><strong>Cliente:</strong> {{ item.evento.cliente.nome }}</p>
           <p class="mb-1"><strong>Período:</strong>
             {% if item.evento.data_inicio %}{{ item.evento.data_inicio.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
             a
