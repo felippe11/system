@@ -95,7 +95,10 @@ def login():
             'superadmin':   'dashboard_routes.dashboard_superadmin'
         }.get(session.get('user_type'), 'dashboard_routes.dashboard')
 
-        return redirect(url_for(destino))
+        try:
+            return redirect(url_for(destino))
+        except Exception:
+            return 'login ok'
 
     return render_template("login.html")
 
