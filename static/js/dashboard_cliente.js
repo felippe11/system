@@ -263,14 +263,15 @@ document.addEventListener('DOMContentLoaded', function() {
 // Funções auxiliares
 function atualizarBotao(btn, valorAtivo) {
   if (!btn) return;
+  const label = btn.dataset.label;
   if (valorAtivo) {
     btn.classList.remove("btn-danger", "btn-outline-danger");
     btn.classList.add("btn-success");
-    btn.textContent = "Ativo";
+    btn.textContent = label ? `${label} - Ativo` : "Ativo";
   } else {
     btn.classList.remove("btn-success", "btn-outline-success");
     btn.classList.add("btn-danger");
-    btn.textContent = "Desativado";
+    btn.textContent = label ? `${label} - Desativado` : "Desativado";
   }
 }
 
