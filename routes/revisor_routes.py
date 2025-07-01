@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from extensions import db
+from datetime import datetime
 from models import (Formulario, CampoFormulario, RevisorProcess, RevisorEtapa,
                     RevisorCandidatura, RevisorCandidaturaEtapa, Usuario, Assignment, Submission)
 import os
@@ -34,11 +35,34 @@ def config_revisor():
         formulario_id = request.form.get('formulario_id', type=int)
         num_etapas = request.form.get('num_etapas', type=int, default=1)
         stage_names = request.form.getlist('stage_name')
+        titulo = request.form.get('titulo')
+        data_inicio_raw = request.form.get('data_inicio')
+        data_fim_raw = request.form.get('data_fim')
+        exibir_val = request.form.get('exibir_participantes')
+        exibir_participantes = exibir_val in ['on', '1', 'true']
+
+        data_inicio = None
+        if data_inicio_raw:
+            try:
+                data_inicio = datetime.strptime(data_inicio_raw, '%Y-%m-%d')
+            except ValueError:
+                data_inicio = None
+
+        data_fim = None
+        if data_fim_raw:
+            try:
+                data_fim = datetime.strptime(data_fim_raw, '%Y-%m-%d')
+            except ValueError:
+                data_fim = None
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)
             db.session.add(processo)
         processo.formulario_id = formulario_id
         processo.num_etapas = num_etapas
+        processo.titulo = titulo
+        processo.data_inicio = data_inicio
+        processo.data_fim = data_fim
+        processo.exibir_participantes = exibir_participantes
         db.session.commit()
         RevisorEtapa.query.filter_by(process_id=processo.id).delete()
         for idx, nome in enumerate(stage_names, start=1):
