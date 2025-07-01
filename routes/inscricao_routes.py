@@ -19,7 +19,7 @@ from dateutil import parser
 
 # Configuração de logging
 logger = logging.getLogger(__name__)
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from services.lote_service import lote_disponivel
 from utils import external_url, preco_com_taxa, gerar_comprovante_pdf, enviar_email
 
@@ -428,7 +428,22 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
     """Coleta dados de contexto e renderiza template."""
     from collections import defaultdict
 
-    oficinas = Oficina.query.filter_by(evento_id=evento.id).all() if evento else []
+    if evento:
+        query = Oficina.query.filter(
+            or_(
+                Oficina.evento_id == evento.id,
+                and_(
+                    Oficina.evento_id.is_(None),
+                    or_(
+                        Oficina.cliente_id == evento.cliente_id,
+                        Oficina.cliente_id.is_(None)
+                    )
+                )
+            )
+        )
+        oficinas = query.all()
+    else:
+        oficinas = []
 
     # Coleta ministrantes associados ao evento tanto diretamente quanto via
     # relacionamento many-to-many. Utiliza um set para evitar duplicidade
