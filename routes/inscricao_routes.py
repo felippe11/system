@@ -178,6 +178,7 @@ def cadastro_participante(identifier: str | None = None):
                 db.session.commit()
                 return redirect(url_pagamento)
 
+            inscricao.status_pagamento = "approved"
             db.session.commit()
             flash("Inscrição realizada com sucesso!", "success")
             return redirect(url_for("auth_routes.login"))
@@ -734,6 +735,7 @@ def inscrever(oficina_id):
                     })
             
         # Se chegou aqui, é porque a inscrição é gratuita ou não precisa de pagamento
+        inscricao.status_pagamento = "approved"
         db.session.commit()
 
         # Gera o comprovante
