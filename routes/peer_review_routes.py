@@ -221,28 +221,6 @@ def reviewer_dashboard():
     flash('Credenciais inválidas para acesso de revisor.', 'danger')
     return redirect(url_for('evento_routes.home') + '#revisorModal')
 
-@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
-def reviewer_dashboard(
-    assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all() if current_user.is_authenticated else []
-    return render_template('peer_review/reviewer/dashboard.html', tasks=assignments
-                           
-    if request.method == 'POST':
-        locator = request.form.get('locator')
-        code = request.form.get('code')
-        return redirect(url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code))
-
-    locator = request.args.get('locator')
-    code = request.args.get('code')
-    tasks = []
-    if locator and code:
-        review = Review.query.filter_by(locator=locator).first()
-        if review and review.access_code == code:
-            tasks = [review]
-        else:
-            flash('Localizador ou código inválido', 'danger')
-    elif locator or code:
-        flash('Localizador e código são obrigatórios', 'danger')
-    return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
 
 
 @peer_review_routes.route('/peer-review/editor')
