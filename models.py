@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 import bcrypt
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1273,24 +1273,50 @@ class Assignment(db.Model):
 # -----------------------------------------------------------------------------
 # PROCESSO PARA SELEÇÃO DE REVISORES
 # -----------------------------------------------------------------------------
+"""Model definition for the review‑process (RevisorProcess).
+
+This class centralises the configuration of an open call for reviewers
+(avaliadores) linked to an event/cliente.
+"""
+from extensions import db
+
+
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
 
     __tablename__ = "revisor_process"
 
     id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
-    num_etapas = db.Column(db.Integer, default=1)
-    titulo = db.Column(db.String(255), nullable=True)
-    inicio_disponibilidade = db.Column(db.DateTime, nullable=True)
-    fim_disponibilidade = db.Column(db.DateTime, nullable=True)
-    exibir_para_participantes = db.Column(db.Boolean, default=False)
 
+    # — Relações obrigatórias —
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    formulario_id = db.Column(
+        db.Integer, db.ForeignKey("formularios.id"), nullable=True
+    )
+
+    # — Metadados do processo —
     titulo = db.Column(db.String(255), nullable=True)
+    num_etapas = db.Column(db.Integer, default=1)
+
+    # — Janela de disponibilidade —
     data_inicio = db.Column(db.DateTime, nullable=True)
     data_fim = db.Column(db.DateTime, nullable=True)
-    exibir_participantes = db.Column(db.Boolean, default=False)
+
+    # — Opções —
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
+
+    # ------------------------------------------------------------------
+    # Relationships (lazy optional)
+    # ------------------------------------------------------------------
+    # cliente      = db.relationship("Cliente", back_populates="revisor_processes")
+    # formulario   = db.relationship("Formulario", back_populates="revisor_process")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<RevisorProcess id={self.id} cliente_id={self.cliente_id} "
+            f"titulo={self.titulo!r} inicio={self.data_inicio} fim={self.data_fim}>"
+        )
+
 
     cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
     formulario = db.relationship("Formulario")
