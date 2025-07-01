@@ -5,6 +5,24 @@
   <h1 class="h3 mb-4">Configurar Processo de Revisores</h1>
   <form method="post">
     <div class="mb-3">
+      <label class="form-label">Título</label>
+      <input type="text" class="form-control" name="titulo" value="{{ processo.titulo if processo else '' }}">
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Data de Início</label>
+        <input type="date" class="form-control" name="data_inicio" value="{{ processo.data_inicio.strftime('%Y-%m-%d') if processo and processo.data_inicio else '' }}">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Data de Término</label>
+        <input type="date" class="form-control" name="data_fim" value="{{ processo.data_fim.strftime('%Y-%m-%d') if processo and processo.data_fim else '' }}">
+      </div>
+    </div>
+    <div class="form-check form-switch mb-3">
+      <input type="checkbox" class="form-check-input" id="exibir_participantes" name="exibir_participantes" {% if processo and processo.exibir_participantes %}checked{% endif %}>
+      <label class="form-check-label" for="exibir_participantes">Exibir para participantes?</label>
+    </div>
+    <div class="mb-3">
       <label class="form-label">Formulário</label>
       <select class="form-select" name="formulario_id">
         {% for f in formularios %}
