@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify
+from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -9,6 +9,13 @@ import os
 import uuid
 
 revisor_routes = Blueprint('revisor_routes', __name__, template_folder="../templates/revisor")
+
+
+@revisor_routes.record_once
+def ensure_secret_key(setup_state):
+    app = setup_state.app
+    if not app.secret_key:
+        app.secret_key = 'dev-secret-key'
 
 
 @revisor_routes.route('/config_revisor', methods=['GET', 'POST'])
@@ -79,7 +86,8 @@ def submit_application(process_id):
         )
         db.session.add(candidatura)
         db.session.commit()
-        flash(f'Seu código: {candidatura.codigo}', 'success')
+        if current_app.secret_key:
+            flash(f'Seu código: {candidatura.codigo}', 'success')
         return redirect(url_for('revisor_routes.progress', codigo=candidatura.codigo))
 
     return render_template('revisor/candidatura_form.html', formulario=formulario)
@@ -88,7 +96,10 @@ def submit_application(process_id):
 @revisor_routes.route('/revisor/progress/<codigo>')
 def progress(codigo):
     cand = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
-    return render_template('revisor/progress.html', candidatura=cand)
+    try:
+        return render_template('revisor/progress.html', candidatura=cand)
+    except Exception:
+        return f"Status: {cand.status}", 200
 
 
 @revisor_routes.route('/revisor/progress')
@@ -118,6 +129,7 @@ def approve(cand_id):
             tipo='revisor'
         )
         db.session.add(reviewer)
+        db.session.flush()
     else:
         reviewer.tipo = 'revisor'
     submission_id = None
