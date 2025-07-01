@@ -106,6 +106,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
+        <p>Insira abaixo o localizador e o código fornecidos para acessar suas tarefas de revisão.</p>
         <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
           <div class="mb-3">
             <label for="locatorInput" class="form-label">Localizador</label>
@@ -117,6 +118,11 @@
           </div>
           <button type="submit" class="btn btn-primary">Entrar</button>
         </form>
+        {% if show_reviewer_registration %}
+        <div class="mt-3">
+          <a class="btn btn-outline-secondary w-100" href="{{ url_for('peer_review_routes.reviewer_registration') }}">Inscrever-se como revisor</a>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
