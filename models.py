@@ -1289,6 +1289,15 @@ class RevisorProcess(db.Model):
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
 
+    def is_available(self) -> bool:
+        """Return True if the process is currently available."""
+        now = datetime.utcnow()
+        if self.availability_start and now < self.availability_start:
+            return False
+        if self.availability_end and now > self.availability_end:
+            return False
+        return True
+
 
 class RevisorEtapa(db.Model):
     __tablename__ = "revisor_etapa"
