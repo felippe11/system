@@ -14,3 +14,9 @@ venv/
 .vscode/claudesync.json
 token.json
 instance/
+
+# Database
+app.db
+
+# Uploaded files
+uploads/
