@@ -117,7 +117,6 @@ def test_config_route_saves_availability(client, app):
                     'formulario_id': formulario.id,
                     'num_etapas': 1,
                     'stage_name': ['Etapa 1'],
-                    'titulo': 'Proc',
                     'availability_start': start.strftime('%Y-%m-%d'),
                     'availability_end': end.strftime('%Y-%m-%d'),
                     'exibir_participantes': 'on',
