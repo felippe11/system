@@ -174,3 +174,14 @@ server.
 
 To trigger redeploys automatically when new commits are pushed, open your web service settings on Render. Under **Deploy Hooks**, click **Enable deploy hook** to generate the URL. Call this endpoint from your CI workflow or repository settings whenever you want Render to rebuild the service.
 
+
+## Running Tests
+
+Install dependencies and run the test suite using:
+
+```bash
+bash scripts/install_test_deps.sh
+pytest -q
+```
+
+Continuous integration uses the same script to install packages defined in `requirements.txt` before executing `pytest`.
