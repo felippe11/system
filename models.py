@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 import bcrypt
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1265,14 +1265,140 @@ class Assignment(db.Model):
 
     submission = db.relationship("Submission", backref=db.backref("assignments", lazy=True))
     reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
+"""Modelos relacionados ao processo seletivo de revisores (peer‑review).
 
-    def __repr__(self):
-        return f"<Assignment submission={self.submission_id} reviewer={self.reviewer_id}>"
+Este módulo define todas as tabelas/entidades necessárias para configurar
+processos seletivos de avaliadores, suas etapas, candidaturas e aplicações
+por usuários registrados.
+"""
+import uuid
+from datetime import datetime
 
+from extensions import db
 
 # -----------------------------------------------------------------------------
 # PROCESSO PARA SELEÇÃO DE REVISORES
 # -----------------------------------------------------------------------------
+class RevisorProcess(db.Model):
+    """Configura um processo seletivo de revisores (avaliadores)."""
+
+    __tablename__ = "revisor_process"
+
+    # Chave primária -----------------------------------------------------------
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Relações obrigatórias ----------------------------------------------------
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
+
+    # Metadados do processo ----------------------------------------------------
+    titulo = db.Column(db.String(255), nullable=True)
+    num_etapas = db.Column(db.Integer, default=1)
+
+    # Janela de disponibilidade ------------------------------------------------
+    data_inicio = db.Column(db.DateTime, nullable=True)
+    data_fim = db.Column(db.DateTime, nullable=True)
+
+    # Opções -------------------------------------------------------------------
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
+
+    # Relações ORM -------------------------------------------------------------
+    cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
+    formulario = db.relationship("Formulario")
+
+    # Métodos utilitários ------------------------------------------------------
+    def is_available(self) -> bool:
+        """Retorna *True* se o processo está dentro da janela disponível."""
+        now = datetime.utcnow()
+        if self.data_inicio and now < self.data_inicio:
+            return False
+        if self.data_fim and now > self.data_fim:
+            return False
+        return True
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<RevisorProcess id={self.id} cliente_id={self.cliente_id} "
+            f"titulo={self.titulo!r} inicio={self.data_inicio} fim={self.data_fim}>"
+        )
+
+
+# -----------------------------------------------------------------------------
+# ETAPAS DO PROCESSO
+# -----------------------------------------------------------------------------
+class RevisorEtapa(db.Model):
+    __tablename__ = "revisor_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    numero = db.Column(db.Integer, nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("etapas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorEtapa id={self.id} proc={self.process_id} nº={self.numero}>"
+
+
+# -----------------------------------------------------------------------------
+# CANDIDATURA (PÚBLICA) AO PROCESSO
+# -----------------------------------------------------------------------------
+class RevisorCandidatura(db.Model):
+    __tablename__ = "revisor_candidatura"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    respostas = db.Column(db.JSON, nullable=True)
+    nome = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    codigo = db.Column(db.String(8), unique=True, default=lambda: str(uuid.uuid4())[:8])
+    etapa_atual = db.Column(db.Integer, default=1)
+    status = db.Column(db.String(50), default="pendente")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("candidaturas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCandidatura id={self.id} proc={self.process_id} status={self.status}>"
+
+
+# -----------------------------------------------------------------------------
+# STATUS DA CANDIDATURA POR ETAPA
+# -----------------------------------------------------------------------------
+class RevisorCandidaturaEtapa(db.Model):
+    __tablename__ = "revisor_candidatura_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    candidatura_id = db.Column(db.Integer, db.ForeignKey("revisor_candidatura.id"), nullable=False)
+    etapa_id = db.Column(db.Integer, db.ForeignKey("revisor_etapa.id"), nullable=False)
+    status = db.Column(db.String(50), default="pendente")
+    observacoes = db.Column(db.Text, nullable=True)
+
+    candidatura = db.relationship("RevisorCandidatura", backref=db.backref("etapas_status", lazy=True))
+    etapa = db.relationship("RevisorEtapa")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCandidaturaEtapa id={self.id} cand={self.candidatura_id} etapa={self.etapa_id}>"
+
+
+# -----------------------------------------------------------------------------
+# APPLICATION DE USUÁRIOS (REGISTRADOS) PARA SEREM REVISORES
+# -----------------------------------------------------------------------------
+class ReviewerApplication(db.Model):
+    """Candidatura de usuário autenticado para atuar como revisor."""
+
+    __tablename__ = "reviewer_application"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    stage = db.Column(db.String(50), default="novo")  # e.g. novo → aprovado → rejeitado
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuario = db.relationship(
+        "Usuario", backref=db.backref("reviewer_applications", lazy=True)
+    )
+
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
 
@@ -1282,13 +1408,17 @@ class RevisorProcess(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
     formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
-    # Novos campos para controlar disponibilidade do processo
+
+    # Controle de disponibilidade do processo
     availability_start = db.Column(db.DateTime, nullable=True)
     availability_end = db.Column(db.DateTime, nullable=True)
     exibir_para_participantes = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
     formulario = db.relationship("Formulario")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
 
 
 class RevisorEtapa(db.Model):
@@ -1301,6 +1431,9 @@ class RevisorEtapa(db.Model):
     descricao = db.Column(db.Text, nullable=True)
 
     process = db.relationship("RevisorProcess", backref=db.backref("etapas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
 
 
 class RevisorCandidatura(db.Model):
@@ -1318,6 +1451,9 @@ class RevisorCandidatura(db.Model):
 
     process = db.relationship("RevisorProcess", backref=db.backref("candidaturas", lazy=True))
 
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCandidatura process={self.process_id} status={self.status}>"
+
 
 class RevisorCandidaturaEtapa(db.Model):
     __tablename__ = "revisor_candidatura_etapa"
@@ -1331,21 +1467,27 @@ class RevisorCandidaturaEtapa(db.Model):
     candidatura = db.relationship("RevisorCandidatura", backref=db.backref("etapas_status", lazy=True))
     etapa = db.relationship("RevisorEtapa")
 
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<RevisorCandidaturaEtapa candidatura={self.candidatura_id} "
+            f"etapa={self.etapa_id} status={self.status}>"
+        )
+
 
 # -----------------------------------------------------------------------------
-# REVIEWER APPLICATION
+# REVIEWER APPLICATION (para usuários internos do sistema)
 # -----------------------------------------------------------------------------
 class ReviewerApplication(db.Model):
     """Candidatura de usuário para atuar como revisor."""
 
-    __tablename__ = 'reviewer_application'
+    __tablename__ = "reviewer_application"
 
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    stage = db.Column(db.String(50), default='novo')
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    stage = db.Column(db.String(50), default="novo")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    usuario = db.relationship('Usuario', backref=db.backref('reviewer_applications', lazy=True))
+    usuario = db.relationship("Usuario", backref=db.backref("reviewer_applications", lazy=True))
 
-    def __repr__(self):
+    def __repr__(self) -> str:  # pragma: no cover
         return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
