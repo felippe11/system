@@ -8,8 +8,10 @@ load_dotenv()
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
-def normalize_pg(uri: str) -> str:
+def normalize_pg(uri: str | bytes) -> str:
     """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
+    if isinstance(uri, bytes):
+        uri = uri.decode()
     return uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 
