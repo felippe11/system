@@ -1,5 +1,6 @@
 {% set current_path = request.path %}
 
+<!-- Navbar stylesheet -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
 
 <nav class="navbar navbar-expand-lg navbar-light fixed-top">
@@ -7,14 +8,16 @@
     <a class="navbar-brand" href="{{ url_for('evento_routes.home') }}">
       App<span>Fiber</span>
     </a>
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-      data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
-      aria-expanded="false" aria-label="Toggle navigation">
+            data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+            aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <!-- Links para a landing page -->
         <li class="nav-item">
           <a class="nav-link home-link"
              href="{{ url_for('evento_routes.home') }}{% if current_path == '/' %}#home{% endif %}">
@@ -31,12 +34,14 @@
           <a class="nav-link contato-link" href="{{ url_for('evento_routes.home') }}#contato">Contato</a>
         </li>
 
+        <!-- Botão modal de revisores -->
         <li class="nav-item ms-lg-3">
           <a class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#revisorModal">
             Revisores
           </a>
         </li>
 
+        <!-- Botão de instalação PWA -->
         <li class="nav-item me-2" id="pwa-install-btn">
           <a class="nav-link btn btn-primary text-white px-3" href="#">
             <i class="bi bi-download me-1"></i> Instalar App
@@ -44,6 +49,7 @@
         </li>
 
         {% if not current_user.is_authenticated %}
+          <!-- Ações para visitantes -->
           <li class="nav-item ms-lg-3">
             <a class="btn btn-register" href="{{ url_for('auth_routes.cadastrar_cliente_publico') }}">
               Criar Conta
@@ -53,7 +59,7 @@
             <a class="btn btn-login" href="{{ url_for('auth_routes.login') }}">Entrar</a>
           </li>
         {% else %}
-          {# --- PERFIS --- #}
+          <!-- Dashboards e perfis -->
           {% if current_user.tipo == 'participante' %}
             <li class="nav-item">
               <a class="nav-link" href="{{ url_for('inscricao_routes.editar_participante') }}">
@@ -90,7 +96,7 @@
             </li>
           {% endif %}
 
-          {# --- IMPERSONAÇÃO --- #}
+          <!-- Impersonação -->
           {% if session.get('impersonator_id') %}
             <li class="nav-item">
               <a class="nav-link text-warning" href="{{ url_for('dashboard_routes.encerrar_impersonacao') }}">
@@ -104,6 +110,7 @@
             </li>
           {% endif %}
 
+          <!-- Logout -->
           <li class="nav-item">
             <a class="nav-link text-danger" href="{{ url_for('auth_routes.logout') }}">
               <i class="bi bi-box-arrow-right"></i> Sair
@@ -115,7 +122,7 @@
   </div>
 </nav>
 
-{# ------------------- MODAL REVISOR ------------------- #}
+<!-- ======================= MODAL REVISOR ======================= -->
 <div class="modal fade" id="revisorModal" tabindex="-1" aria-labelledby="revisorModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -125,6 +132,7 @@
       </div>
 
       <div class="modal-body">
+        <!-- Acesso para revisores já cadastrados -->
         <h6 class="fw-bold text-primary text-center mb-2">Acesso de revisores existentes</h6>
         <p>Insira abaixo o localizador e o código fornecidos para acessar suas tarefas de revisão.</p>
 
@@ -140,23 +148,30 @@
           <button type="submit" class="btn btn-primary">Entrar</button>
         </form>
 
-        {# Botão opcional para registro de novos revisores #}
+        <!-- Registro opcional de novos revisores -->
         {% if show_reviewer_registration %}
           <div class="mt-3">
-            <a class="btn btn-outline-secondary w-100"
-               href="{{ url_for('peer_review_routes.reviewer_registration') }}">
+            <a class="btn btn-outline-secondary w-100" href="{{ url_for('peer_review_routes.reviewer_registration') }}">
               Inscrever-se como revisor
             </a>
           </div>
         {% endif %}
 
-        {# Fluxo alternativo de candidatura / acompanhamento #}
+        <!-- Candidatura ou acompanhamento -->
         <hr class="my-4">
         <h6 class="fw-bold text-primary text-center mb-2">Novo cadastro</h6>
-        <a class="btn btn-outline-success w-100 mb-2"
-           href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
-          Quero ser revisor
-        </a>
+        {% if revisor_process_id %}
+          <a class="btn btn-outline-success w-100 mb-2"
+             href="{{ url_for('revisor_routes.submit_application', process_id=revisor_process_id) }}">
+            Quero ser revisor
+          </a>
+        {% else %}
+          {# Fallback para process_id=1 caso a variável não exista #}
+          <a class="btn btn-outline-success w-100 mb-2"
+             href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
+            Quero ser revisor
+          </a>
+        {% endif %}
 
         <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
           <div class="mb-3">
@@ -170,68 +185,62 @@
   </div>
 </div>
 
-{# ------------------- JS: ACTIVE LINKS & SCROLL EFFECT ------------------- #}
+<!-- =================== JS: ACTIVE LINKS & SCROLL EFFECT =================== -->
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  const currentPath = window.location.pathname;
-  const currentHash = window.location.hash;
+  document.addEventListener('DOMContentLoaded', () => {
+    const currentPath = window.location.pathname;
+    const currentHash = window.location.hash;
 
-  const isHomePage = currentPath === '/' ||
-                     currentPath === '/index' ||
-                     currentPath === '/index.html';
+    const isHomePage = currentPath === '/' ||
+                       currentPath === '/index' ||
+                       currentPath === '/index.html';
 
-  const navLinks = document.querySelectorAll('.navbar .nav-link');
+    const navLinks = document.querySelectorAll('.navbar .nav-link');
 
-  function clearActive() {
-    navLinks.forEach(link => link.classList.remove('active'));
-  }
+    // Helpers
+    const clearActive = () => navLinks.forEach(link => link.classList.remove('active'));
+    const setActive   = selector => document.querySelector(selector)?.classList.add('active');
 
-  function setActive(linkSelector) {
-    const link = document.querySelector(linkSelector);
-    if (link) link.classList.add('active');
-  }
-
-  // Estado inicial
-  clearActive();
-  if (isHomePage) {
-    if (currentHash) {
-      setActive(`.navbar .${currentHash.substring(1)}-link`);
-    } else {
-      setActive('.navbar .home-link');
-    }
-  }
-
-  // Scroll spy simples para seções da home
-  if (isHomePage) {
-    window.addEventListener('scroll', () => {
-      const scrollY = window.scrollY;
-
-      const homeSection     = document.querySelector('#home');
-      const eventosSection  = document.querySelector('#eventos');
-      const recursosSection = document.querySelector('#recursos');
-      const contatoSection  = document.querySelector('#contato');
-
-      clearActive();
-
-      if (homeSection && scrollY < eventosSection?.offsetTop - 100) {
-        setActive('.navbar .home-link');
-      } else if (eventosSection && scrollY < recursosSection?.offsetTop - 100) {
-        setActive('.navbar .eventos-link');
-      } else if (recursosSection && scrollY < contatoSection?.offsetTop - 100) {
-        setActive('.navbar .recursos-link');
+    // Estado inicial
+    clearActive();
+    if (isHomePage) {
+      if (currentHash) {
+        setActive(`.navbar .${currentHash.substring(1)}-link`);
       } else {
-        setActive('.navbar .contato-link');
+        setActive('.navbar .home-link');
       }
-    });
-  }
+    }
 
-  // Navbar background on scroll
-  function toggleScrolledClass() {
-    const navbar = document.querySelector('.navbar');
-    navbar.classList.toggle('scrolled', window.scrollY > 50);
-  }
+    // Scroll spy simples (apenas na home)
+    if (isHomePage) {
+      window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY;
 
-  window.addEventListener('scroll', toggleScrolledClass);
-  toggleScrolledClass(); // executa uma vez no load
-});
+        const homeSection     = document.querySelector('#home');
+        const eventosSection  = document.querySelector('#eventos');
+        const recursosSection = document.querySelector('#recursos');
+        const contatoSection  = document.querySelector('#contato');
+
+        clearActive();
+
+        if (homeSection && scrollY < (eventosSection?.offsetTop || 0) - 100) {
+          setActive('.navbar .home-link');
+        } else if (eventosSection && scrollY < (recursosSection?.offsetTop || 0) - 100) {
+          setActive('.navbar .eventos-link');
+        } else if (recursosSection && scrollY < (contatoSection?.offsetTop || 0) - 100) {
+          setActive('.navbar .recursos-link');
+        } else {
+          setActive('.navbar .contato-link');
+        }
+      });
+    }
+
+    // Altera o background da navbar ao rolar
+    const toggleScrolledClass = () => {
+      document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', toggleScrolledClass);
+    toggleScrolledClass(); // executa uma vez no load
+  });
 </script>
