@@ -11,8 +11,7 @@ import logging
 
 # Configuração centralizada de logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 from services.mp_service import get_sdk
@@ -22,14 +21,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     # Normaliza o URI para garantir que seja uma string
-    app.config['SQLALCHEMY_DATABASE_URI'] = Config.normalize_pg(
-        app.config['SQLALCHEMY_DATABASE_URI']
+    app.config["SQLALCHEMY_DATABASE_URI"] = Config.normalize_pg(
+        app.config["SQLALCHEMY_DATABASE_URI"]
     )
     # Recalcula as opções de conexão caso o URI tenha sido alterado nos testes
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options(
-        app.config['SQLALCHEMY_DATABASE_URI']
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = Config.build_engine_options(
+        app.config["SQLALCHEMY_DATABASE_URI"]
     )
-    app.jinja_env.add_extension('jinja2.ext.do')
+    app.jinja_env.add_extension("jinja2.ext.do")
     app.config["UPLOAD_FOLDER"] = "uploads"
 
     # Inicialização de extensões
@@ -44,52 +43,23 @@ def create_app():
     login_manager.session_protection = "strong"
 
     # Filtros Jinja2
-    @app.template_filter('string_to_date')
+    @app.template_filter("string_to_date")
     def string_to_date(value):
         try:
-            return datetime.strptime(value, '%Y-%m-%d').strftime('%d/%m/%Y')
+            return datetime.strptime(value, "%Y-%m-%d").strftime("%d/%m/%Y")
         except (ValueError, TypeError):
             return value
 
-    @app.template_filter('brasilia')
+    @app.template_filter("brasilia")
     def brasilia_filter(dt):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=pytz.utc)
         dt_brasilia = dt.astimezone(pytz.timezone("America/Sao_Paulo"))
         return dt_brasilia.strftime("%d/%m/%Y %H:%M:%S")
 
-    # Context processor para fornecer o processo seletivo de revisores
-    from flask_login import current_user
-    from models import RevisorProcess
-
-    @app.context_processor
-    def inject_revisor_process():
-        process = None
-        if current_user.is_authenticated:
-            cliente_id = getattr(current_user, "cliente_id", None)
-            if getattr(current_user, "tipo", None) == "cliente":
-                cliente_id = current_user.id
-            if cliente_id:
-                process = (
-                    RevisorProcess.query.filter_by(cliente_id=cliente_id).first()
-                )
-        if not process:
-            process = RevisorProcess.query.first()
-
-        process_id = None
-        if process and process.is_available():
-            if (
-                current_user.is_authenticated
-                and current_user.tipo == "participante"
-                and not process.exibir_para_participantes
-            ):
-                process = None
-            if process:
-                process_id = process.id
-        return {"revisor_process_id": process_id}
-
     # Registro de rotas
     from routes import register_routes
+
     register_routes(app)
 
     with app.app_context():
@@ -100,9 +70,9 @@ def create_app():
     scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)
     scheduler.start()
 
-    @socketio.on('join', namespace='/checkins')
+    @socketio.on("join", namespace="/checkins")
     def on_join(data):
-        sala = data.get('sala')
+        sala = data.get("sala")
         if sala:
             join_room(sala)
 
@@ -121,8 +91,7 @@ def reconciliar_pendentes():
         return
     ontem = datetime.utcnow() - timedelta(hours=24)
     pendentes = Inscricao.query.filter(
-        Inscricao.status_pagamento == "pending",
-        Inscricao.created_at < ontem
+        Inscricao.status_pagamento == "pending", Inscricao.created_at < ontem
     ).all()
 
     for ins in pendentes:
@@ -133,7 +102,7 @@ def reconciliar_pendentes():
 
 
 # Execução da aplicação
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Instância para servidores WSGI como o gunicorn
     app = create_app()
     socketio.run(app, debug=True)
