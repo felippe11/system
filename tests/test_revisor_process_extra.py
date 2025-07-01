@@ -1,0 +1,99 @@
+import os
+from datetime import date, timedelta
+import pytest
+from werkzeug.security import generate_password_hash
+from config import Config
+Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
+Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
+
+from flask import Flask
+from extensions import db, login_manager
+
+from models import Cliente, Formulario, RevisorProcess, Evento
+from routes.revisor_routes import revisor_routes
+
+@pytest.fixture
+def app():
+    templates_path = os.path.join(os.path.dirname(__file__), '..', 'templates')
+    app = Flask(__name__, template_folder=templates_path)
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options('sqlite://')
+    login_manager.init_app(app)
+    db.init_app(app)
+    app.register_blueprint(revisor_routes)
+    with app.app_context():
+        db.create_all()
+        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123'))
+        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123'))
+        db.session.add_all([c1, c2])
+        db.session.commit()
+        f1 = Formulario(nome='F1', cliente_id=c1.id)
+        f2 = Formulario(nome='F2', cliente_id=c2.id)
+        db.session.add_all([f1, f2])
+        db.session.commit()
+        e1 = Evento(cliente_id=c1.id, nome='E1', inscricao_gratuita=True, publico=True)
+        e2 = Evento(cliente_id=c2.id, nome='E2', inscricao_gratuita=True, publico=True)
+        db.session.add_all([e1, e2])
+        db.session.commit()
+        db.session.add(
+            RevisorProcess(
+                cliente_id=c1.id,
+                formulario_id=f1.id,
+                num_etapas=1,
+                data_inicio=date.today() - timedelta(days=1),
+                data_fim=date.today() + timedelta(days=1),
+                exibir_para_participantes=True,
+            )
+        )
+        db.session.add(
+            RevisorProcess(
+                cliente_id=c2.id,
+                formulario_id=f2.id,
+                num_etapas=1,
+                data_inicio=date.today() - timedelta(days=3),
+                data_fim=date.today() - timedelta(days=1),
+                exibir_para_participantes=True,
+            )
+        )
+        db.session.add(
+            RevisorProcess(
+                cliente_id=c1.id,
+                formulario_id=f1.id,
+                num_etapas=1,
+                exibir_para_participantes=False,
+            )
+        )
+        db.session.commit()
+    yield app
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def test_process_creation_with_dates(app):
+    with app.app_context():
+        proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
+        assert proc.data_inicio is not None
+        assert proc.data_fim is not None
+        assert proc.data_inicio <= date.today() <= proc.data_fim
+
+
+def test_visibility_flag_filters(app):
+    with app.app_context():
+        visible = RevisorProcess.query.filter_by(exibir_para_participantes=True).all()
+        hidden = RevisorProcess.query.filter_by(exibir_para_participantes=False).all()
+        assert len(visible) == 2
+        assert len(hidden) == 1
+
+
+def test_eligible_events_route(client, app):
+    resp = client.get('/revisor/eligible_events')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    with app.app_context():
+        e1 = Evento.query.filter_by(nome='E1').first()
+    assert data == [{'id': e1.id, 'nome': 'E1'}]
+
