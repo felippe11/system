@@ -1269,3 +1269,21 @@ class Assignment(db.Model):
     def __repr__(self):
         return f"<Assignment submission={self.submission_id} reviewer={self.reviewer_id}>"
 
+
+# -----------------------------------------------------------------------------
+# REVIEWER APPLICATION
+# -----------------------------------------------------------------------------
+class ReviewerApplication(db.Model):
+    """Candidatura de usuário para atuar como revisor."""
+
+    __tablename__ = 'reviewer_application'
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    stage = db.Column(db.String(50), default='novo')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuario = db.relationship('Usuario', backref=db.backref('reviewer_applications', lazy=True))
+
+    def __repr__(self):
+        return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
