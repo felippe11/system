@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Processo de Revisores{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 mb-4">Configurar Processo de Revisores</h1>
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">Formulário</label>
+      <select class="form-select" name="formulario_id">
+        {% for f in formularios %}
+        <option value="{{ f.id }}" {% if processo and f.id == processo.formulario_id %}selected{% endif %}>{{ f.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Número de Etapas</label>
+      <input type="number" class="form-control" name="num_etapas" value="{{ processo.num_etapas if processo else 1 }}">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Nomes das Etapas</label>
+      {% set total = processo.num_etapas if processo else 1 %}
+      {% for i in range(total) %}
+      <input type="text" class="form-control mb-2" name="stage_name" value="{{ etapas[i].nome if etapas|length > i else '' }}">
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+  </form>
+</div>
+{% endblock %}

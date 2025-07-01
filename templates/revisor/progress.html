@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Acompanhamento{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Acompanhamento da Candidatura</h1>
+  <p><strong>Status geral:</strong> {{ candidatura.status }}</p>
+  <table class="table table-striped">
+    <thead>
+      <tr><th>Etapa</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for est in candidatura.etapas_status %}
+      <tr><td>{{ est.etapa.nome }}</td><td>{{ est.status }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
