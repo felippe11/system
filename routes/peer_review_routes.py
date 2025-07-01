@@ -1,4 +1,5 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
 
@@ -12,6 +13,7 @@ from models import (
     ConfiguracaoCliente,
     AuditLog,
     Evento,
+    ReviewerApplication,
 )
 
 import uuid
@@ -21,6 +23,12 @@ from datetime import datetime, timedelta
 peer_review_routes = Blueprint(
     "peer_review_routes", __name__, template_folder="../templates/peer_review"
 )
+
+
+@peer_review_routes.app_context_processor
+def inject_reviewer_registration_flag():
+    """Determina se o link de inscrição de revisores deve ser exibido."""
+    return {"show_reviewer_registration": True}
 
 
 # ---------------------------------------------------------------------------
@@ -307,3 +315,40 @@ def reviewer_dashboard():
 @peer_review_routes.route("/peer-review/editor")
 def editor_dashboard_page():
     return render_template("peer_review/editor/dashboard.html", decisions=[])
+
+
+@peer_review_routes.route("/peer-review/register", methods=["GET", "POST"])
+def reviewer_registration():
+    """Registro simples de novos revisores."""
+    if request.method == "POST":
+        nome = request.form.get("nome")
+        cpf = request.form.get("cpf")
+        email = request.form.get("email")
+        senha = request.form.get("senha")
+        formacao = request.form.get("formacao")
+
+        if not all([nome, cpf, email, senha, formacao]):
+            flash("Preencha todos os campos obrigatórios.", "danger")
+            return render_template("peer_review/reviewer_registration.html")
+
+        usuario = Usuario.query.filter(
+            (Usuario.email == email) | (Usuario.cpf == cpf)
+        ).first()
+        if usuario is None:
+            usuario = Usuario(
+                nome=nome,
+                cpf=cpf,
+                email=email,
+                senha=generate_password_hash(senha),
+                formacao=formacao,
+                tipo="revisor",
+            )
+            db.session.add(usuario)
+            db.session.flush()
+
+        db.session.add(ReviewerApplication(usuario_id=usuario.id))
+        db.session.commit()
+        flash("Candidatura registrada!", "success")
+        return redirect(url_for("auth_routes.login"))
+
+    return render_template("peer_review/reviewer_registration.html")
