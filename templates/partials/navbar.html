@@ -125,6 +125,7 @@
       </div>
 
       <div class="modal-body">
+        <h6 class="fw-bold text-primary text-center mb-2">Acesso de revisores existentes</h6>
         <p>Insira abaixo o localizador e o código fornecidos para acessar suas tarefas de revisão.</p>
 
         <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
@@ -150,7 +151,8 @@
         {% endif %}
 
         {# Fluxo alternativo de candidatura / acompanhamento #}
-        <hr class="my-3">
+        <hr class="my-4">
+        <h6 class="fw-bold text-primary text-center mb-2">Novo cadastro</h6>
         <a class="btn btn-outline-success w-100 mb-2"
            href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
           Quero ser revisor
