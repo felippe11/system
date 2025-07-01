@@ -21,6 +21,10 @@ from services.mp_service import get_sdk
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Normaliza o URI para garantir que seja uma string
+    app.config['SQLALCHEMY_DATABASE_URI'] = Config.normalize_pg(
+        app.config['SQLALCHEMY_DATABASE_URI']
+    )
     # Recalcula as opções de conexão caso o URI tenha sido alterado nos testes
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options(
         app.config['SQLALCHEMY_DATABASE_URI']
