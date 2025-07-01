@@ -206,8 +206,8 @@ def select_event():
             Evento.status == "ativo",
             Evento.publico.is_(True),
             ConfiguracaoCliente.habilitar_submissao_trabalhos.is_(True),
-            or_(RevisorProcess.data_inicio.is_(None), RevisorProcess.data_inicio <= now),
-            or_(RevisorProcess.data_fim.is_(None), RevisorProcess.data_fim >= now),
+            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= now),
+            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= now),
         )
         .all()
     )
@@ -275,8 +275,8 @@ def eligible_events():
             Evento.status == "ativo",
             Evento.publico.is_(True),
             RevisorProcess.exibir_para_participantes.is_(True),
-            or_(RevisorProcess.data_inicio.is_(None), RevisorProcess.data_inicio <= hoje),
-            or_(RevisorProcess.data_fim.is_(None), RevisorProcess.data_fim >= hoje),
+            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= hoje),
+            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= hoje),
         )
         .distinct()
         .all()

@@ -59,17 +59,9 @@ def app():
             process = RevisorProcess.query.first()
 
         process_id = None
-        if process:
-            now = datetime.utcnow()
-            if not (
-                process.availability_start
-                and process.availability_end
-                and process.availability_start <= now <= process.availability_end
-            ):
-                process = None
+        if process and process.is_available():
             if (
-                process
-                and current_user.is_authenticated
+                current_user.is_authenticated
                 and current_user.tipo == 'participante'
                 and not process.exibir_para_participantes
             ):
@@ -199,3 +191,15 @@ def test_navbar_hides_for_participant_when_disabled(client, app):
             html = render_template('partials/navbar.html')
             logout_user()
         assert f'/revisor/apply/{proc.id}' not in html
+
+
+def test_is_available_method():
+    now = datetime.utcnow()
+    proc = RevisorProcess(
+        availability_start=now - timedelta(hours=1),
+        availability_end=now + timedelta(hours=1),
+    )
+    assert proc.is_available()
+
+    proc.availability_end = now - timedelta(minutes=1)
+    assert not proc.is_available()
