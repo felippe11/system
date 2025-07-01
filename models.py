@@ -1282,9 +1282,16 @@ class RevisorProcess(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
     formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
+    titulo = db.Column(db.String(255), nullable=True)
+    inicio_disponibilidade = db.Column(db.DateTime, nullable=True)
+    fim_disponibilidade = db.Column(db.DateTime, nullable=True)
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
     formulario = db.relationship("Formulario")
+
+    def __repr__(self):
+        return f"<RevisorProcess id={self.id} titulo={self.titulo}>"
 
 
 class RevisorEtapa(db.Model):
