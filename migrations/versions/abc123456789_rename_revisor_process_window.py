@@ -15,12 +15,20 @@ depends_on = None
 
 
 def upgrade():
+    conn = op.get_bind()
+    cols = [c['name'] for c in sa.inspect(conn).get_columns('revisor_process')]
     with op.batch_alter_table('revisor_process', schema=None) as batch_op:
-        batch_op.alter_column('inicio_disponibilidade', new_column_name='availability_start')
-        batch_op.alter_column('fim_disponibilidade', new_column_name='availability_end')
+        if 'inicio_disponibilidade' in cols:
+            batch_op.alter_column('inicio_disponibilidade', new_column_name='availability_start')
+        if 'fim_disponibilidade' in cols:
+            batch_op.alter_column('fim_disponibilidade', new_column_name='availability_end')
 
 
 def downgrade():
+    conn = op.get_bind()
+    cols = [c['name'] for c in sa.inspect(conn).get_columns('revisor_process')]
     with op.batch_alter_table('revisor_process', schema=None) as batch_op:
-        batch_op.alter_column('availability_start', new_column_name='inicio_disponibilidade')
-        batch_op.alter_column('availability_end', new_column_name='fim_disponibilidade')
+        if 'availability_start' in cols:
+            batch_op.alter_column('availability_start', new_column_name='inicio_disponibilidade')
+        if 'availability_end' in cols:
+            batch_op.alter_column('availability_end', new_column_name='fim_disponibilidade')
