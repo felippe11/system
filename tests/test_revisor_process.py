@@ -9,8 +9,17 @@ from flask import Flask
 from flask import render_template
 from extensions import db, login_manager
 
-from models import (Cliente, Formulario, CampoFormulario, RevisorProcess,
-                    RevisorCandidatura, Usuario, Submission, Assignment)
+from datetime import datetime, timedelta
+from models import (
+    Cliente,
+    Formulario,
+    CampoFormulario,
+    RevisorProcess,
+    RevisorCandidatura,
+    Usuario,
+    Submission,
+    Assignment,
+)
 from routes.auth_routes import auth_routes
 from routes.revisor_routes import revisor_routes
 from routes.submission_routes import submission_routes
@@ -18,6 +27,8 @@ from routes.evento_routes import evento_routes
 from routes.peer_review_routes import peer_review_routes
 from routes.static_page_routes import static_page_routes
 from routes.dashboard_routes import dashboard_routes
+from routes.inscricao_routes import inscricao_routes
+from routes.dashboard_participante import dashboard_participante_routes
 import routes.dashboard_cliente  # noqa: F401
 
 @pytest.fixture
@@ -46,7 +57,26 @@ def app():
                 process = RevisorProcess.query.filter_by(cliente_id=cliente_id).first()
         if not process:
             process = RevisorProcess.query.first()
-        return {'revisor_process_id': process.id if process else None}
+
+        process_id = None
+        if process:
+            now = datetime.utcnow()
+            if not (
+                process.availability_start
+                and process.availability_end
+                and process.availability_start <= now <= process.availability_end
+            ):
+                process = None
+            if (
+                process
+                and current_user.is_authenticated
+                and current_user.tipo == 'participante'
+                and not process.exibir_para_participantes
+            ):
+                process = None
+            if process:
+                process_id = process.id
+        return {'revisor_process_id': process_id}
 
     app.register_blueprint(auth_routes)
     app.register_blueprint(revisor_routes)
@@ -55,6 +85,8 @@ def app():
     app.register_blueprint(peer_review_routes)
     app.register_blueprint(static_page_routes)
     app.register_blueprint(dashboard_routes)
+    app.register_blueprint(inscricao_routes)
+    app.register_blueprint(dashboard_participante_routes)
 
     with app.app_context():
         db.create_all()
@@ -68,11 +100,28 @@ def app():
         campo_nome = CampoFormulario(formulario_id=form.id, nome='nome', tipo='text')
         db.session.add_all([campo_email, campo_nome])
         db.session.commit()
-        proc = RevisorProcess(cliente_id=cliente.id, formulario_id=form.id, num_etapas=1)
+        now = datetime.utcnow()
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            availability_start=now - timedelta(days=1),
+            availability_end=now + timedelta(days=1),
+            exibir_para_participantes=True,
+        )
         db.session.add(proc)
         db.session.commit()
         sub = Submission(title='T', locator='loc', code_hash='x')
         db.session.add(sub)
+        participante = Usuario(
+            nome='Part',
+            cpf='3',
+            email='part@test',
+            senha=generate_password_hash('123'),
+            formacao='x',
+            tipo='participante',
+        )
+        db.session.add(participante)
         db.session.commit()
     yield app
 
@@ -124,3 +173,29 @@ def test_navbar_shows_correct_process_id(app):
         with app.test_request_context('/'):
             html = render_template('partials/navbar.html')
         assert f'/revisor/apply/{proc.id}' in html
+
+
+def test_navbar_hides_when_unavailable(app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        # torna o processo indisponivel
+        proc.availability_start = datetime.utcnow() - timedelta(days=2)
+        proc.availability_end = datetime.utcnow() - timedelta(days=1)
+        db.session.commit()
+        with app.test_request_context('/'):
+            html = render_template('partials/navbar.html')
+        assert f'/revisor/apply/{proc.id}' not in html
+
+
+def test_navbar_hides_for_participant_when_disabled(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        proc.exibir_para_participantes = False
+        participante = Usuario.query.filter_by(email='part@test').first()
+        db.session.commit()
+        from flask_login import login_user, logout_user
+        with app.test_request_context('/'):
+            login_user(participante)
+            html = render_template('partials/navbar.html')
+            logout_user()
+        assert f'/revisor/apply/{proc.id}' not in html

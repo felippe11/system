@@ -166,11 +166,7 @@
             Quero ser revisor
           </a>
         {% else %}
-          {# Fallback para process_id=1 caso a variável não exista #}
-          <a class="btn btn-outline-success w-100 mb-2"
-             href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
-            Quero ser revisor
-          </a>
+          <p class="text-muted text-center">Processo indisponível</p>
         {% endif %}
 
         <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
