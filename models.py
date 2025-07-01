@@ -1282,9 +1282,19 @@ class RevisorProcess(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
     formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
+    data_inicio = db.Column(db.DateTime, nullable=True)
+    data_fim = db.Column(db.DateTime, nullable=True)
 
     cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
     formulario = db.relationship("Formulario")
+
+    def is_available(self):
+        now = datetime.utcnow()
+        if self.data_inicio and now < self.data_inicio:
+            return False
+        if self.data_fim and now > self.data_fim:
+            return False
+        return True
 
 
 class RevisorEtapa(db.Model):

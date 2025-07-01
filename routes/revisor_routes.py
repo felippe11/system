@@ -2,9 +2,22 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
+from datetime import datetime
 from extensions import db
-from models import (Formulario, CampoFormulario, RevisorProcess, RevisorEtapa,
-                    RevisorCandidatura, RevisorCandidaturaEtapa, Usuario, Assignment, Submission)
+from models import (
+    Formulario,
+    CampoFormulario,
+    RevisorProcess,
+    RevisorEtapa,
+    RevisorCandidatura,
+    RevisorCandidaturaEtapa,
+    Usuario,
+    Assignment,
+    Submission,
+    Evento,
+    Cliente,
+    ConfiguracaoCliente,
+)
 import os
 import uuid
 
@@ -108,6 +121,32 @@ def progress_query():
     if codigo:
         return redirect(url_for('revisor_routes.progress', codigo=codigo))
     return redirect(url_for('evento_routes.home'))
+
+
+@revisor_routes.route('/processo_seletivo')
+def select_event():
+    now = datetime.utcnow()
+    eventos = (
+        db.session.query(Evento, RevisorProcess)
+        .join(Cliente, Cliente.id == Evento.cliente_id)
+        .join(ConfiguracaoCliente, ConfiguracaoCliente.cliente_id == Cliente.id)
+        .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
+        .filter(
+            Evento.status == 'ativo',
+            Evento.publico.is_(True),
+            ConfiguracaoCliente.habilitar_submissao_trabalhos.is_(True),
+            db.or_(RevisorProcess.data_inicio == None, RevisorProcess.data_inicio <= now),
+            db.or_(RevisorProcess.data_fim == None, RevisorProcess.data_fim >= now),
+        )
+        .all()
+    )
+
+    registros = []
+    for ev, proc in eventos:
+        status = 'Aberto' if proc.is_available() else 'Encerrado'
+        registros.append({'evento': ev, 'processo': proc, 'status': status})
+
+    return render_template('revisor/select_event.html', eventos=registros)
 
 
 @revisor_routes.route('/revisor/approve/<int:cand_id>', methods=['POST'])
