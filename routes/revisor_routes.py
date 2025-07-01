@@ -1,5 +1,7 @@
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
+from datetime import date
+from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from extensions import db
@@ -165,3 +167,26 @@ def approve(cand_id):
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
     db.session.commit()
     return jsonify({'success': True, 'reviewer_id': reviewer.id})
+
+
+@revisor_routes.route('/revisor/eligible_events')
+def eligible_events():
+    """Lista eventos com processo de revisão disponível para participantes."""
+    hoje = date.today()
+    from models import Evento
+
+    eventos = (
+        Evento.query
+        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        .filter(
+            Evento.status == 'ativo',
+            Evento.publico.is_(True),
+            RevisorProcess.exibir_para_participantes.is_(True),
+            or_(RevisorProcess.data_inicio.is_(None), RevisorProcess.data_inicio <= hoje),
+            or_(RevisorProcess.data_fim.is_(None), RevisorProcess.data_fim >= hoje),
+        )
+        .distinct()
+        .all()
+    )
+
+    return jsonify([{'id': e.id, 'nome': e.nome} for e in eventos])
