@@ -1,96 +1,166 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, current_app
-from flask_login import login_required, current_user
-from werkzeug.security import generate_password_hash
-from werkzeug.utils import secure_filename
-from datetime import datetime
-from extensions import db
-from models import (
-    Formulario,
-    CampoFormulario,
-    RevisorProcess,
-    RevisorEtapa,
-    RevisorCandidatura,
-    RevisorCandidaturaEtapa,
-    Usuario,
-    Assignment,
-    Submission,
-    Evento,
-    Cliente,
-    ConfiguracaoCliente,
-)
+"""Rotas relacionadas ao processo seletivo de revisores (avaliadores).
+
+Este blueprint permite que clientes configurem o processo, que candidatos
+submetam formulários, acompanhem o andamento e que administradores aprovem
+candidaturas. Também expõe endpoints para listar eventos elegíveis a partir
+da perspectiva de participantes.
+"""
+from __future__ import annotations
+
 import os
 import uuid
+from datetime import date, datetime
+from typing import Any, Dict, List
 
-revisor_routes = Blueprint('revisor_routes', __name__, template_folder="../templates/revisor")
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import current_user, login_required
+from sqlalchemy import or_
+from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
+
+from extensions import db
+from models import (
+    Assignment,
+    CampoFormulario,
+    Cliente,
+    ConfiguracaoCliente,
+    Evento,
+    Formulario,
+    RevisorCandidatura,
+    RevisorCandidaturaEtapa,
+    RevisorEtapa,
+    RevisorProcess,
+    Submission,
+    Usuario,
+)
+
+# -----------------------------------------------------------------------------
+# Blueprint
+# -----------------------------------------------------------------------------
+revisor_routes = Blueprint("revisor_routes", __name__, template_folder="../templates/revisor")
 
 
 @revisor_routes.record_once
-def ensure_secret_key(setup_state):
+def _ensure_secret_key(setup_state):  # pragma: no cover
+    """Garante que a aplicação tenha uma *secret_key* mesmo em dev."""
     app = setup_state.app
     if not app.secret_key:
-        app.secret_key = 'dev-secret-key'
+        app.secret_key = "dev-secret-key"
 
 
-@revisor_routes.route('/config_revisor', methods=['GET', 'POST'])
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DO PROCESSO PELO CLIENTE
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/config_revisor", methods=["GET", "POST"])
 @login_required
 def config_revisor():
-    if current_user.tipo != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
 
-    processo = RevisorProcess.query.filter_by(cliente_id=current_user.id).first()
-    formularios = Formulario.query.filter_by(cliente_id=current_user.id).all()
+    # Um cliente pode ter no máximo 1 processo configurado.
+    processo: RevisorProcess | None = RevisorProcess.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).first()
+    formularios: List[Formulario] = Formulario.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
 
-    if request.method == 'POST':
-        formulario_id = request.form.get('formulario_id', type=int)
-        num_etapas = request.form.get('num_etapas', type=int, default=1)
-        stage_names = request.form.getlist('stage_name')
+    if request.method == "POST":
+        # --- coleta de dados do formulário -----------------------------------
+        formulario_id = request.form.get("formulario_id", type=int)
+        num_etapas = request.form.get("num_etapas", type=int, default=1)
+        stage_names: List[str] = request.form.getlist("stage_name")
+        titulo = request.form.get("titulo")
+        data_inicio_raw = request.form.get("data_inicio")
+        data_fim_raw = request.form.get("data_fim")
+        exibir_val = request.form.get("exibir_participantes")
+        exibir_para_participantes = exibir_val in {"on", "1", "true"}
+
+        # --- parse de datas ---------------------------------------------------
+        def _parse_dt(raw: str | None) -> datetime | None:
+            try:
+                return datetime.strptime(raw, "%Y-%m-%d") if raw else None
+            except ValueError:
+                return None
+
+        data_inicio = _parse_dt(data_inicio_raw)
+        data_fim = _parse_dt(data_fim_raw)
+
+        # --- cria ou atualiza processo ---------------------------------------
         if not processo:
-            processo = RevisorProcess(cliente_id=current_user.id)
+            processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
+
         processo.formulario_id = formulario_id
         processo.num_etapas = num_etapas
+        processo.titulo = titulo
+        processo.data_inicio = data_inicio
+        processo.data_fim = data_fim
+        processo.exibir_para_participantes = exibir_para_participantes
         db.session.commit()
+
+        # --- (re)cria etapas --------------------------------------------------
         RevisorEtapa.query.filter_by(process_id=processo.id).delete()
         for idx, nome in enumerate(stage_names, start=1):
             if nome:
                 db.session.add(RevisorEtapa(process_id=processo.id, numero=idx, nome=nome))
         db.session.commit()
-        flash('Processo atualizado', 'success')
-        return redirect(url_for('revisor_routes.config_revisor'))
 
-    etapas = processo.etapas if processo else []
-    return render_template('revisor/config.html', processo=processo, formularios=formularios, etapas=etapas)
+        flash("Processo atualizado", "success")
+        return redirect(url_for("revisor_routes.config_revisor"))
+
+    etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
+    return render_template(
+        "revisor/config.html", processo=processo, formularios=formularios, etapas=etapas
+    )
 
 
-@revisor_routes.route('/revisor/apply/<int:process_id>', methods=['GET', 'POST'])
-def submit_application(process_id):
-    processo = RevisorProcess.query.get_or_404(process_id)
-    formulario = processo.formulario
+# -----------------------------------------------------------------------------
+# INSCRIÇÃO/CANDIDATURA PÚBLICA
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/apply/<int:process_id>", methods=["GET", "POST"])
+def submit_application(process_id: int):
+    processo: RevisorProcess = RevisorProcess.query.get_or_404(process_id)
+    formulario: Formulario | None = processo.formulario
+
     if not formulario:
-        flash('Formulário não configurado.', 'danger')
-        return redirect(url_for('evento_routes.home'))
+        flash("Formulário não configurado.", "danger")
+        return redirect(url_for("evento_routes.home"))
 
-    if request.method == 'POST':
-        respostas = {}
-        nome = None
-        email = None
-        for campo in formulario.campos:
-            valor = request.form.get(str(campo.id))
-            if campo.tipo == 'file' and 'file_' + str(campo.id) in request.files:
-                arquivo = request.files['file_' + str(campo.id)]
+    if request.method == "POST":
+        respostas: Dict[str, Any] = {}
+        nome: str | None = None
+        email: str | None = None
+
+        for campo in formulario.campos:  # type: ignore[attr-defined]
+            raw_val = request.form.get(str(campo.id))
+            valor: Any = raw_val
+            if campo.tipo == "file" and f"file_{campo.id}" in request.files:
+                arquivo = request.files[f"file_{campo.id}"]
                 if arquivo.filename:
                     filename = secure_filename(arquivo.filename)
-                    path = os.path.join('uploads', 'candidaturas', filename)
+                    path = os.path.join("uploads", "candidaturas", filename)
                     os.makedirs(os.path.dirname(path), exist_ok=True)
                     arquivo.save(path)
                     valor = path
             respostas[campo.nome] = valor
+
             low = campo.nome.lower()
-            if low == 'nome':
-                nome = valor
-            if low == 'email':
-                email = valor
+            if low == "nome":
+                nome = valor  # type: ignore[assignment]
+            elif low == "email":
+                email = valor  # type: ignore[assignment]
+
         candidatura = RevisorCandidatura(
             process_id=process_id,
             respostas=respostas,
@@ -99,84 +169,117 @@ def submit_application(process_id):
         )
         db.session.add(candidatura)
         db.session.commit()
-        if current_app.secret_key:
-            flash(f'Seu código: {candidatura.codigo}', 'success')
-        return redirect(url_for('revisor_routes.progress', codigo=candidatura.codigo))
 
-    return render_template('revisor/candidatura_form.html', formulario=formulario)
+        flash(f"Seu código: {candidatura.codigo}", "success")
+        return redirect(url_for("revisor_routes.progress", codigo=candidatura.codigo))
 
-
-@revisor_routes.route('/revisor/progress/<codigo>')
-def progress(codigo):
-    cand = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
-    try:
-        return render_template('revisor/progress.html', candidatura=cand)
-    except Exception:
-        return f"Status: {cand.status}", 200
+    return render_template("revisor/candidatura_form.html", formulario=formulario)
 
 
-@revisor_routes.route('/revisor/progress')
+@revisor_routes.route("/revisor/progress/<codigo>")
+def progress(codigo: str):
+    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
+    return render_template("revisor/progress.html", candidatura=cand)
+
+
+@revisor_routes.route("/revisor/progress")
 def progress_query():
-    codigo = request.args.get('codigo')
+    codigo = request.args.get("codigo")
     if codigo:
-        return redirect(url_for('revisor_routes.progress', codigo=codigo))
-    return redirect(url_for('evento_routes.home'))
+        return redirect(url_for("revisor_routes.progress", codigo=codigo))
+    return redirect(url_for("evento_routes.home"))
 
 
-@revisor_routes.route('/processo_seletivo')
+# -----------------------------------------------------------------------------
+# LISTAGEM DE EVENTOS COM PROCESSO ABERTO (VISÃO CANDIDATO)
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/processo_seletivo")
 def select_event():
     now = datetime.utcnow()
-    eventos = (
+
+    eventos_proc = (
         db.session.query(Evento, RevisorProcess)
         .join(Cliente, Cliente.id == Evento.cliente_id)
         .join(ConfiguracaoCliente, ConfiguracaoCliente.cliente_id == Cliente.id)
         .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
         .filter(
-            Evento.status == 'ativo',
+            Evento.status == "ativo",
             Evento.publico.is_(True),
             ConfiguracaoCliente.habilitar_submissao_trabalhos.is_(True),
-            db.or_(RevisorProcess.data_inicio == None, RevisorProcess.data_inicio <= now),
-            db.or_(RevisorProcess.data_fim == None, RevisorProcess.data_fim >= now),
+            or_(RevisorProcess.data_inicio.is_(None), RevisorProcess.data_inicio <= now),
+            or_(RevisorProcess.data_fim.is_(None), RevisorProcess.data_fim >= now),
         )
         .all()
     )
 
-    registros = []
-    for ev, proc in eventos:
-        status = 'Aberto' if proc.is_available() else 'Encerrado'
-        registros.append({'evento': ev, 'processo': proc, 'status': status})
+    registros = [
+        {"evento": ev, "processo": proc, "status": "Aberto" if proc.is_available() else "Encerrado"}
+        for ev, proc in eventos_proc
+    ]
 
-    return render_template('revisor/select_event.html', eventos=registros)
+    return render_template("revisor/select_event.html", eventos=registros)
 
 
-@revisor_routes.route('/revisor/approve/<int:cand_id>', methods=['POST'])
+# -----------------------------------------------------------------------------
+# APROVAÇÃO DE CANDIDATURA (CLIENTE/ADMIN)
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/approve/<int:cand_id>", methods=["POST"])
 @login_required
-def approve(cand_id):
-    if current_user.tipo not in ('cliente', 'admin', 'superadmin'):
-        return jsonify({'success': False}), 403
-    cand = RevisorCandidatura.query.get_or_404(cand_id)
-    cand.status = 'aprovado'
-    cand.etapa_atual = cand.process.num_etapas
-    reviewer = Usuario.query.filter_by(email=cand.email).first()
+def approve(cand_id: int):
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        return jsonify({"success": False}), 403
+
+    cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    cand.status = "aprovado"
+    cand.etapa_atual = cand.process.num_etapas  # type: ignore[attr-defined]
+
+    # Cria (ou atualiza) usuário revisor
+    reviewer: Usuario | None = Usuario.query.filter_by(email=cand.email).first()
     if not reviewer:
         reviewer = Usuario(
             nome=cand.nome or cand.email,
             cpf=str(uuid.uuid4()),
             email=cand.email,
-            senha=generate_password_hash('temp123'),
-            formacao='',
-            tipo='revisor'
+            senha=generate_password_hash("temp123"),
+            formacao="",
+            tipo="revisor",
         )
         db.session.add(reviewer)
         db.session.flush()
     else:
-        reviewer.tipo = 'revisor'
-    submission_id = None
-    if request.is_json:
-        submission_id = request.json.get('submission_id')
-    else:
-        submission_id = request.form.get('submission_id', type=int)
+        reviewer.tipo = "revisor"  # garante a role
+
+    # Se informado, cria assignment imediato
+    submission_id: int | None = (
+        request.json.get("submission_id") if request.is_json else request.form.get("submission_id", type=int)
+    )
     if submission_id:
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
+
     db.session.commit()
-    return jsonify({'success': True, 'reviewer_id': reviewer.id})
+    return jsonify({"success": True, "reviewer_id": reviewer.id})
+
+
+# -----------------------------------------------------------------------------
+# EVENTOS ELEGÍVEIS PARA PARTICIPANTES
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/eligible_events")
+def eligible_events():
+    """Endpoint JSON que lista eventos com processo visível a participantes."""
+    hoje = date.today()
+
+    eventos = (
+        Evento.query
+        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        .filter(
+            Evento.status == "ativo",
+            Evento.publico.is_(True),
+            RevisorProcess.exibir_para_participantes.is_(True),
+            or_(RevisorProcess.data_inicio.is_(None), RevisorProcess.data_inicio <= hoje),
+            or_(RevisorProcess.data_fim.is_(None), RevisorProcess.data_fim >= hoje),
+        )
+        .distinct()
+        .all()
+    )
+
+    return jsonify([{"id": e.id, "nome": e.nome} for e in eventos])
