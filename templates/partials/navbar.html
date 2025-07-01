@@ -151,10 +151,12 @@
 
         {# Fluxo alternativo de candidatura / acompanhamento #}
         <hr class="my-3">
-        <a class="btn btn-outline-success w-100 mb-2"
-           href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">
-          Quero ser revisor
-        </a>
+        {% if revisor_process_id %}
+          <a class="btn btn-outline-success w-100 mb-2"
+             href="{{ url_for('revisor_routes.submit_application', process_id=revisor_process_id) }}">
+            Quero ser revisor
+          </a>
+        {% endif %}
 
         <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
           <div class="mb-3">

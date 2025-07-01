@@ -58,6 +58,23 @@ def create_app():
         dt_brasilia = dt.astimezone(pytz.timezone("America/Sao_Paulo"))
         return dt_brasilia.strftime("%d/%m/%Y %H:%M:%S")
 
+    # Context processor para fornecer o processo seletivo de revisores
+    from flask_login import current_user
+    from models import RevisorProcess
+
+    @app.context_processor
+    def inject_revisor_process():
+        process = None
+        if current_user.is_authenticated:
+            cliente_id = getattr(current_user, "cliente_id", None)
+            if getattr(current_user, "tipo", None) == "cliente":
+                cliente_id = current_user.id
+            if cliente_id:
+                process = RevisorProcess.query.filter_by(cliente_id=cliente_id).first()
+        if not process:
+            process = RevisorProcess.query.first()
+        return {"revisor_process_id": process.id if process else None}
+
     # Registro de rotas
     from routes import register_routes
     register_routes(app)
