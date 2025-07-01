@@ -3,8 +3,6 @@ from flask import Blueprint, request, render_template, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from extensions import db
 
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
- 
 from models import (
     TrabalhoCientifico,
     Usuario,
@@ -12,10 +10,10 @@ from models import (
     RevisaoConfig,
     Assignment,
     ConfiguracaoCliente,
-    AuditLog
+    AuditLog,
+    Submission,
+    Evento,
 )
-
-from models import TrabalhoCientifico, Usuario, Review, RevisaoConfig, Submission
 
 import uuid
 from datetime import datetime, timedelta
@@ -52,8 +50,10 @@ def assign_reviews():
             )
             db.session.add(rev)
 
+            evento = Evento.query.get(trabalho.evento_id)
+            cliente_id = evento.cliente_id if evento else None
             config = ConfiguracaoCliente.query.filter_by(
-                cliente_id=trabalho.evento.cliente_id
+                cliente_id=cliente_id
             ).first()
             prazo_dias = config.prazo_parecer_dias if config else 14
             assignment = Assignment(
@@ -199,8 +199,20 @@ def author_dashboard():
     return render_template('peer_review/author/dashboard.html', submissions=[])
 
 
-@peer_review_routes.route('/peer-review/reviewer')
+@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
 def reviewer_dashboard():
+    """Dashboard de revisão para revisores autenticados ou via código."""
+    if request.method == 'POST':
+        locator = request.form.get('locator')
+        code = request.form.get('code')
+        return redirect(
+            url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code)
+        )
+
+    if current_user.is_authenticated:
+        assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all()
+        return render_template('peer_review/reviewer/dashboard.html', tasks=assignments)
+
     locator = request.args.get('locator') or session.get('reviewer_locator')
     code = request.args.get('code') or session.get('reviewer_code')
 
@@ -209,7 +221,7 @@ def reviewer_dashboard():
         if review and review.access_code == code:
             session['reviewer_locator'] = locator
             session['reviewer_code'] = code
-            tasks = Review.query.filter_by(reviewer_id=review.reviewer_id).all()
+            tasks = Assignment.query.filter_by(reviewer_id=review.reviewer_id).all()
             return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
 
         submission = Submission.query.filter_by(locator=locator).first()
@@ -220,29 +232,6 @@ def reviewer_dashboard():
 
     flash('Credenciais inválidas para acesso de revisor.', 'danger')
     return redirect(url_for('evento_routes.home') + '#revisorModal')
-
-@peer_review_routes.route('/peer-review/reviewer', methods=['GET', 'POST'])
-def reviewer_dashboard(
-    assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all() if current_user.is_authenticated else []
-    return render_template('peer_review/reviewer/dashboard.html', tasks=assignments
-                           
-    if request.method == 'POST':
-        locator = request.form.get('locator')
-        code = request.form.get('code')
-        return redirect(url_for('peer_review_routes.reviewer_dashboard', locator=locator, code=code))
-
-    locator = request.args.get('locator')
-    code = request.args.get('code')
-    tasks = []
-    if locator and code:
-        review = Review.query.filter_by(locator=locator).first()
-        if review and review.access_code == code:
-            tasks = [review]
-        else:
-            flash('Localizador ou código inválido', 'danger')
-    elif locator or code:
-        flash('Localizador e código são obrigatórios', 'danger')
-    return render_template('peer_review/reviewer/dashboard.html', tasks=tasks)
 
 
 @peer_review_routes.route('/peer-review/editor')
