@@ -70,10 +70,31 @@ def create_app():
             if getattr(current_user, "tipo", None) == "cliente":
                 cliente_id = current_user.id
             if cliente_id:
-                process = RevisorProcess.query.filter_by(cliente_id=cliente_id).first()
+                process = (
+                    RevisorProcess.query.filter_by(cliente_id=cliente_id).first()
+                )
         if not process:
             process = RevisorProcess.query.first()
-        return {"revisor_process_id": process.id if process else None}
+
+        process_id = None
+        if process:
+            now = datetime.utcnow()
+            if not (
+                process.availability_start
+                and process.availability_end
+                and process.availability_start <= now <= process.availability_end
+            ):
+                process = None
+            if (
+                process
+                and current_user.is_authenticated
+                and current_user.tipo == "participante"
+                and not process.exibir_para_participantes
+            ):
+                process = None
+            if process:
+                process_id = process.id
+        return {"revisor_process_id": process_id}
 
     # Registro de rotas
     from routes import register_routes
