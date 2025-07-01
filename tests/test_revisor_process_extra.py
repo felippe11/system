@@ -42,8 +42,8 @@ def app():
                 cliente_id=c1.id,
                 formulario_id=f1.id,
                 num_etapas=1,
-                data_inicio=date.today() - timedelta(days=1),
-                data_fim=date.today() + timedelta(days=1),
+                availability_start=date.today() - timedelta(days=1),
+                availability_end=date.today() + timedelta(days=1),
                 exibir_para_participantes=True,
             )
         )
@@ -52,8 +52,8 @@ def app():
                 cliente_id=c2.id,
                 formulario_id=f2.id,
                 num_etapas=1,
-                data_inicio=date.today() - timedelta(days=3),
-                data_fim=date.today() - timedelta(days=1),
+                availability_start=date.today() - timedelta(days=3),
+                availability_end=date.today() - timedelta(days=1),
                 exibir_para_participantes=True,
             )
         )
@@ -76,9 +76,9 @@ def client(app):
 def test_process_creation_with_dates(app):
     with app.app_context():
         proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
-        assert proc.data_inicio is not None
-        assert proc.data_fim is not None
-        assert proc.data_inicio <= date.today() <= proc.data_fim
+        assert proc.availability_start is not None
+        assert proc.availability_end is not None
+        assert proc.availability_start <= date.today() <= proc.availability_end
 
 
 def test_visibility_flag_filters(app):
