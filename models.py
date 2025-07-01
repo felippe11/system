@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 import bcrypt
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1282,6 +1282,9 @@ class RevisorProcess(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
     formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
+    data_inicio = db.Column(db.Date, nullable=True)
+    data_fim = db.Column(db.Date, nullable=True)
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
     formulario = db.relationship("Formulario")
