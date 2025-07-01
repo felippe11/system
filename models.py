@@ -1399,5 +1399,95 @@ class ReviewerApplication(db.Model):
         "Usuario", backref=db.backref("reviewer_applications", lazy=True)
     )
 
+class RevisorProcess(db.Model):
+    """Configura um processo seletivo de revisores."""
+
+    __tablename__ = "revisor_process"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
+    num_etapas = db.Column(db.Integer, default=1)
+
+    # Controle de disponibilidade do processo
+    availability_start = db.Column(db.DateTime, nullable=True)
+    availability_end = db.Column(db.DateTime, nullable=True)
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
+    formulario = db.relationship("Formulario")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
+
+
+class RevisorEtapa(db.Model):
+    __tablename__ = "revisor_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    numero = db.Column(db.Integer, nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("etapas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
+
+
+class RevisorCandidatura(db.Model):
+    __tablename__ = "revisor_candidatura"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    respostas = db.Column(db.JSON, nullable=True)
+    nome = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    codigo = db.Column(db.String(8), unique=True, default=lambda: str(uuid.uuid4())[:8])
+    etapa_atual = db.Column(db.Integer, default=1)
+    status = db.Column(db.String(50), default="pendente")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("candidaturas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCandidatura process={self.process_id} status={self.status}>"
+
+
+class RevisorCandidaturaEtapa(db.Model):
+    __tablename__ = "revisor_candidatura_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    candidatura_id = db.Column(db.Integer, db.ForeignKey("revisor_candidatura.id"), nullable=False)
+    etapa_id = db.Column(db.Integer, db.ForeignKey("revisor_etapa.id"), nullable=False)
+    status = db.Column(db.String(50), default="pendente")
+    observacoes = db.Column(db.Text, nullable=True)
+
+    candidatura = db.relationship("RevisorCandidatura", backref=db.backref("etapas_status", lazy=True))
+    etapa = db.relationship("RevisorEtapa")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<RevisorCandidaturaEtapa candidatura={self.candidatura_id} "
+            f"etapa={self.etapa_id} status={self.status}>"
+        )
+
+
+# -----------------------------------------------------------------------------
+# REVIEWER APPLICATION (para usuários internos do sistema)
+# -----------------------------------------------------------------------------
+class ReviewerApplication(db.Model):
+    """Candidatura de usuário para atuar como revisor."""
+
+    __tablename__ = "reviewer_application"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    stage = db.Column(db.String(50), default="novo")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuario = db.relationship("Usuario", backref=db.backref("reviewer_applications", lazy=True))
+
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
