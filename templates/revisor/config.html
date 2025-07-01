@@ -11,11 +11,11 @@
     <div class="row">
       <div class="col-md-6 mb-3">
         <label class="form-label">Data de Início</label>
-        <input type="date" class="form-control" name="data_inicio" value="{{ processo.data_inicio.strftime('%Y-%m-%d') if processo and processo.data_inicio else '' }}">
+        <input type="date" class="form-control" name="availability_start" value="{{ processo.availability_start.strftime('%Y-%m-%d') if processo and processo.availability_start else '' }}">
       </div>
       <div class="col-md-6 mb-3">
         <label class="form-label">Data de Término</label>
-        <input type="date" class="form-control" name="data_fim" value="{{ processo.data_fim.strftime('%Y-%m-%d') if processo and processo.data_fim else '' }}">
+        <input type="date" class="form-control" name="availability_end" value="{{ processo.availability_end.strftime('%Y-%m-%d') if processo and processo.availability_end else '' }}">
       </div>
     </div>
     <div class="form-check form-switch mb-3">
