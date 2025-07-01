@@ -173,13 +173,13 @@
       
       /* Botões de alternância (toggle) */
 .btn-toggle {
-  min-width: 120px;
+  min-width: 150px;
   padding: 0.5rem 1rem;
 }
 
 /* Versão pequena dos botões de alternância */
 .btn-toggle.btn-sm {
-  min-width: 60px;
+  min-width: 120px;
   padding: 0.25rem 0.5rem;
 }
       
