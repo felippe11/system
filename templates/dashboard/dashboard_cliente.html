@@ -982,11 +982,11 @@
                   </h6>
                 </div>
                   <div class="d-flex gap-2">
-                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_nome else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_nome') }}">Nome</button>
-                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_cpf else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_cpf') }}">CPF</button>
-                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_email else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_email') }}">Email</button>
-                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_senha else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_senha') }}">Senha</button>
-                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_formacao else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_formacao') }}">Formação</button>
+                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_nome else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_nome') }}" data-label="Nome">Nome</button>
+                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_cpf else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_cpf') }}" data-label="CPF">CPF</button>
+                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_email else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_email') }}" data-label="Email">Email</button>
+                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_senha else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_senha') }}" data-label="Senha">Senha</button>
+                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_formacao else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_formacao') }}" data-label="Formação">Formação</button>
                   </div>
               </div>
             </div>
