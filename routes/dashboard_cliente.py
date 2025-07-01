@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from models import (
     Evento, Oficina, Inscricao, Checkin,
     ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
-    EventoInscricaoTipo, Configuracao
+    EventoInscricaoTipo, Configuracao, ReviewerApplication
 )
 
 # Importa o blueprint central para registrar as rotas deste módulo
@@ -209,6 +209,8 @@ def dashboard_cliente():
 
     valor_caixa = sum(float(r.preco) * r.quantidade for r in finance_data)
 
+    reviewer_apps = ReviewerApplication.query.all()
+
     return render_template(
         'dashboard_cliente.html',
         usuario=current_user,
@@ -232,7 +234,8 @@ def dashboard_cliente():
         total_eventos=total_eventos,
         eventos=eventos,
         finance_data=finance_data,
-        valor_caixa=valor_caixa
+        valor_caixa=valor_caixa,
+        reviewer_apps=reviewer_apps
     )
     
 def obter_configuracao_do_cliente(cliente_id):
@@ -668,3 +671,35 @@ def dashboard_agendamentos():
                           todos_agendamentos=todos_agendamentos,
                           periodos_agendamento=periodos_agendamento,
                           config_agendamento=config_agendamento)
+
+@dashboard_routes.route('/reviewer_applications/<int:app_id>', methods=['POST'])
+@login_required
+def update_reviewer_application(app_id):
+    """Atualiza o estágio ou status de uma candidatura de revisor."""
+    if current_user.tipo not in ('cliente', 'admin'):
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    action = request.form.get('action')
+    if request.is_json and not action:
+        action = request.json.get('action')
+    app_obj = ReviewerApplication.query.get_or_404(app_id)
+
+    if action == 'advance':
+        stages = ['novo', 'triagem', 'avaliacao', 'aprovado']
+        try:
+            idx = stages.index(app_obj.stage)
+            if idx < len(stages) - 1:
+                app_obj.stage = stages[idx + 1]
+        except ValueError:
+            app_obj.stage = 'triagem'
+    elif action == 'approve':
+        app_obj.stage = 'aprovado'
+        if app_obj.usuario:
+            app_obj.usuario.tipo = 'revisor'
+    elif action == 'reject':
+        app_obj.stage = 'rejeitado'
+    db.session.commit()
+
+    if request.is_json:
+        return {'success': True}
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
