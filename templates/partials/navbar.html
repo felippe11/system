@@ -117,6 +117,15 @@
           </div>
           <button type="submit" class="btn btn-primary">Entrar</button>
         </form>
+        <hr class="my-3">
+        <a class="btn btn-outline-success w-100 mb-2" href="{{ url_for('revisor_routes.submit_application', process_id=1) }}">Quero ser revisor</a>
+        <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
+          <div class="mb-3">
+            <label for="codigoAcomp" class="form-label">Código da Candidatura</label>
+            <input type="text" class="form-control" id="codigoAcomp" name="codigo">
+          </div>
+          <button type="submit" class="btn btn-secondary">Acompanhar</button>
+        </form>
       </div>
     </div>
   </div>
