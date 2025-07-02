@@ -105,8 +105,8 @@
                                 {% if item.ministrante or (item.oficina and item.oficina.ministrantes_associados) %}
                                 <div class="speakers-container">
                                     {% if item.ministrante %}
-                                    <div class="speaker-card" onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ url_for('static', filename=item.ministrante.foto or 'uploads/ministrantes/default-profile.png') }}')">
-                                        <img src="{{ url_for('static', filename=item.ministrante.foto or 'uploads/ministrantes/default-profile.png') }}" 
+                                    <div class="speaker-card" onclick="openSpeakerModal('{{ item.ministrante.nome }}', '{{ item.ministrante.formacao }}', '{{ url_for('static', filename=item.ministrante.foto or 'default-profile.png') }}')">
+                                        <img src="{{ url_for('static', filename=item.ministrante.foto or 'default-profile.png') }}"
                                              alt="{{ item.ministrante.nome }}" 
                                              class="speaker-photo">
                                         <span class="speaker-name">{{ item.ministrante.nome }}</span>
