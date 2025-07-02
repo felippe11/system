@@ -76,6 +76,12 @@
             </h2>
 
             <div class="schedule-container">
+                {% if not sorted_keys %}
+                <div class="empty-message">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Nenhuma atividade cadastrada.</p>
+                </div>
+                {% else %}
                 {% for data_str in sorted_keys %}
                 <div class="day-schedule">
                     <h3 class="day-title">{{ data_str }}</h3>
@@ -125,6 +131,7 @@
                     </div>
                 </div>
                 {% endfor %}
+                {% endif %}
             </div>
         </div>
 
