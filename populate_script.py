@@ -414,37 +414,60 @@ def criar_lotes_evento(evento):
     
     return lotes
 
+def gerar_email_unico(fake, tentativa_max=50):
+    """Gera um e‑mail realmente único, verificando no banco de dados.
+
+    Se, por alguma razão extraordinária, todas as tentativas falharem, gera um
+    endereço sintético baseado em UUID para garantir unicidade absoluta.
+    """
+    for _ in range(tentativa_max):
+        email = fake.unique.email()
+        if not Ministrante.query.filter_by(email=email).first():
+            return email
+    # Fallback – extremamente improvável de ser acionado
+    return f"{uuid.uuid4()}@email.test"
+
+
 def criar_ministrantes(clientes, quantidade=20):
-    """Cria ministrantes para as oficinas"""
+    """Cria ministrantes para as oficinas garantindo unicidade de e‑mail e CPF.
+
+    A função agora é *idempotente*: caso seja executada mais de uma vez, não
+    quebrará por violação de restrição UNIQUE. Se um registro colidir em algum
+    outro campo exclusivo (por exemplo, CPF), a exceção é tratada e a iteração
+    continua sem abortar todo o lote.
+    """
     ministrantes = []
-    
+
     for i in range(quantidade):
         cliente = random.choice(clientes)
-        
         categorias = random.sample(TIPOS_FORMACAO, random.randint(1, 3))
-        categorias_formacao = ','.join(categorias)
-        
         areas = random.sample(AREAS_ATUACAO, random.randint(1, 3))
-        areas_atuacao = ','.join(areas)
-        
+
         ministrante = Ministrante(
             nome=fake.name(),
             formacao=random.choice(TIPOS_FORMACAO),
-            categorias_formacao=categorias_formacao,
+            categorias_formacao=",".join(categorias),
             foto=f"fotos/ministrante_{i}.jpg",
-            areas_atuacao=areas_atuacao,
+            areas_atuacao=",".join(areas),
             cpf=fake.unique.cpf(),
             pix=fake.email(),
             cidade=fake.city(),
             estado=random.choice(ESTADOS_BRASIL),
-            email=fake.unique.email(),
+            email=gerar_email_unico(fake),
             senha=generate_password_hash(fake.password()),
-            cliente_id=cliente.id
+            cliente_id=cliente.id,
         )
+
         db.session.add(ministrante)
-        ministrantes.append(ministrante)
-    
-    db.session.commit()
+        try:
+            db.session.commit()
+            ministrantes.append(ministrante)
+        except IntegrityError:
+            # Se algum campo ainda colidir (muito improvável), desfaz a transação
+            # e simplesmente tenta a próxima iteração.
+            db.session.rollback()
+            continue
+
     fake.unique.clear()
     return ministrantes
 
