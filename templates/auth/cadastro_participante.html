@@ -487,10 +487,10 @@
             loteCheckInterval = setInterval(() => checkCurrentLote(false), 30000);
         }
         
-        // Inicializar campos de endereço
-        if (document.getElementById('address-fields-container').children.length === 0) {
-            addAddressField(statesFailed);
-        }
+        // Campos de endereço agora são inicializados em loadBrazilianStates()
+        // if (document.getElementById('address-fields-container').children.length === 0) {
+        //     addAddressField(statesFailed);
+        // }
     }
       function fecharModal() {
         document.getElementById('cadastroModal').style.display = 'none';
