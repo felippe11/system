@@ -796,16 +796,22 @@
         
         // Seleção de tipo de ingresso
         const ticketRadios = document.querySelectorAll('input[type="radio"][name^="lote_tipo"], input[type="radio"][name^="tipo_inscricao"]');
+        const inscricaoGratuita = {{ 'true' if evento and evento.inscricao_gratuita else 'false' }};
         if (ticketRadios.length === 1) {
             ticketRadios[0].checked = true;
             ticketRadios[0].dispatchEvent(new Event('change'));
+        } else if (ticketRadios.length === 0 && inscricaoGratuita) {
+            const display = document.getElementById('selectedTicketText');
+            if (display) {
+                display.textContent = 'Inscrição gratuita';
+            }
+            updateHiddenFields({ getAttribute: () => null, value: '' });
         }
         ticketRadios.forEach(radio => {
             radio.addEventListener('change', function() {
                 if (this.checked) {
                     const preco = this.getAttribute('data-preco');
                     const precoFinal = this.getAttribute('data-preco-final');
-                    const inscricaoGratuita = {{ 'true' if evento and evento.inscricao_gratuita else 'false' }};
                     const display = document.getElementById('selectedTicketText');
                     
                     if (inscricaoGratuita) {
@@ -833,11 +839,16 @@
         const form = document.getElementById('registrationForm');
         if (form) {
             form.addEventListener('submit', function(e) {
-                const selectedTicket = document.querySelector('input[type="radio"][name^="lote_tipo"]:checked, input[type="radio"][name^="tipo_inscricao"]:checked');
+                let selectedTicket = document.querySelector('input[type="radio"][name^="lote_tipo"]:checked, input[type="radio"][name^="tipo_inscricao"]:checked');
                 if (!selectedTicket) {
-                    e.preventDefault();
-                    showAlert('Por favor, selecione um tipo de inscrição.', 'warning');
-                    return false;
+                    if (inscricaoGratuita && ticketRadios.length === 0) {
+                        updateHiddenFields({ getAttribute: () => null, value: '' });
+                        selectedTicket = { name: '' };
+                    } else {
+                        e.preventDefault();
+                        showAlert('Por favor, selecione um tipo de inscrição.', 'warning');
+                        return false;
+                    }
                 }                const acceptTermsCheckbox = document.getElementById('accept-terms');
                 if (!acceptTermsCheckbox || !acceptTermsCheckbox.checked) {
                     e.preventDefault();
