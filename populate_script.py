@@ -50,6 +50,7 @@ import uuid
 import bcrypt
 from slugify import slugify  # You may need to pip install python-slugify
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -129,49 +130,59 @@ def criar_clientes(quantidade=5):
     """Cria clientes no sistema"""
     clientes = []
     for i in range(quantidade):
-        email = fake.unique.company_email()
-        while Cliente.query.filter_by(email=email).first():
-            fake.unique.clear()
+        try:
             email = fake.unique.company_email()
+            while Cliente.query.filter_by(email=email).first():
+                fake.unique.clear()
+                email = fake.unique.company_email()
 
-        cliente = Cliente(
-            nome=fake.company(),
-            email=email,
-            senha=generate_password_hash(fake.password()),
-            ativo=True,
-            habilita_pagamento=random.choice([True, False])
-        )
-        db.session.add(cliente)
-        
-        # Criar configuração para o cliente
-        config = ConfiguracaoCliente(
-            cliente=cliente,
-            permitir_checkin_global=random.choice([True, False]),
-            habilitar_feedback=random.choice([True, False]),
-            habilitar_certificado_individual=random.choice([True, False]),
-            habilitar_qrcode_evento_credenciamento=random.choice([True, False]),
-            habilitar_submissao_trabalhos=random.choice([True, False])
-        )
-        db.session.add(config)
-        
-        # Criar um template de certificado para o cliente
-        template = CertificadoTemplate(
-            cliente=cliente,
-            titulo=f"Certificado Padrão - {cliente.nome}",
-            conteudo=f"""
-            <h1>CERTIFICADO</h1>
-            <p>Certificamos que {{nome_participante}} participou do evento {{nome_evento}} 
-            realizado por {cliente.nome} com carga horária de {{carga_horaria}} horas.</p>
-            <p>Data: {{data_emissao}}</p>
-            <p>Assinatura: ___________________</p>
-            """,
-            ativo=True
-        )
-        db.session.add(template)
-        
-        clientes.append(cliente)
+            cliente = Cliente(
+                nome=fake.company(),
+                email=email,
+                senha=generate_password_hash(fake.password()),
+                ativo=True,
+                habilita_pagamento=random.choice([True, False])
+            )
+            db.session.add(cliente)
+            db.session.flush()  # Obter o ID sem fazer commit
+            
+            # Criar configuração para o cliente
+            config = ConfiguracaoCliente(
+                cliente=cliente,
+                permitir_checkin_global=random.choice([True, False]),
+                habilitar_feedback=random.choice([True, False]),
+                habilitar_certificado_individual=random.choice([True, False]),
+                habilitar_qrcode_evento_credenciamento=random.choice([True, False]),
+                habilitar_submissao_trabalhos=random.choice([True, False])
+            )
+            db.session.add(config)
+            
+            # Criar um template de certificado para o cliente
+            template = CertificadoTemplate(
+                cliente=cliente,
+                titulo=f"Certificado Padrão - {cliente.nome}",
+                conteudo=f"""
+                <h1>CERTIFICADO</h1>
+                <p>Certificamos que {{nome_participante}} participou do evento {{nome_evento}} 
+                realizado por {cliente.nome} com carga horária de {{carga_horaria}} horas.</p>
+                <p>Data: {{data_emissao}}</p>
+                <p>Assinatura: ___________________</p>
+                """,
+                ativo=True
+            )
+            db.session.add(template)
+            
+            clientes.append(cliente)
+        except Exception as e:
+            print(f"Erro ao criar cliente #{i+1}: {str(e)}")
+            db.session.rollback()
     
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Erro ao fazer commit dos clientes: {str(e)}")
+        db.session.rollback()
+    
     fake.unique.clear()
     return clientes
 
@@ -591,42 +602,55 @@ def criar_usuarios(clientes, quantidade=150):
 
     if not superadmin:
         # Criar um superadmin apenas se ainda não existir
-        superadmin = Usuario(
-            nome="Administrador do Sistema",
-            cpf=fake.unique.cpf(),
-            email="admin@sistema.com",
-            senha=generate_password_hash("admin123"),
-            formacao="Administrador de Sistemas",
-            tipo="superadmin"
-        )
-        db.session.add(superadmin)
         try:
+            superadmin = Usuario(
+                nome="Administrador do Sistema",
+                cpf=fake.unique.cpf(),
+                email="admin@sistema.com",
+                senha=generate_password_hash("admin123"),
+                formacao="Administrador de Sistemas",
+                tipo="superadmin"
+            )
+            db.session.add(superadmin)
             db.session.commit()
-        except IntegrityError:
+            print("Superadmin criado com sucesso")
+        except IntegrityError as e:
+            print(f"Erro ao criar superadmin (possivelmente já existe): {str(e)}")
             db.session.rollback()
+            # Tenta buscar novamente após o rollback
+            superadmin = Usuario.query.filter_by(email="admin@sistema.com").first()
 
     # Adiciona o superadmin existente ou recém-criado à lista de usuários
-    usuarios.append(superadmin)
+    if superadmin:
+        usuarios.append(superadmin)
+        print("Superadmin adicionado à lista de usuários")
 
-    # Criar usuários regulares
-    for _ in range(quantidade):
-        # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
-        tipo = random.choices(
-            TIPOS_USUARIO,
-            weights=[0.7, 0.15, 0.1, 0.0, 0.05],
-            k=1
-        )[0]
+    # Criar usuários regulares em lotes para melhorar desempenho
+    usuario_batch = []
+    
+    for i in range(quantidade):
+        try:
+            # Define o tipo aleatoriamente, mas com maior probabilidade para participantes
+            tipo = random.choices(
+                TIPOS_USUARIO,
+                weights=[0.7, 0.15, 0.1, 0.0, 0.05],
+                k=1
+            )[0]
 
-        # Seleciona aleatoriamente estados e cidades
-        num_estados = random.randint(1, 3)
-        estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
-        cidades_usuario = [fake.city() for _ in range(num_estados)]
+            # Seleciona aleatoriamente estados e cidades
+            num_estados = random.randint(1, 3)
+            estados_usuario = random.sample(ESTADOS_BRASIL, num_estados)
+            cidades_usuario = [fake.city() for _ in range(num_estados)]
 
-        cliente = random.choice(clientes)
+            cliente = random.choice(clientes)
 
-        while True:
-            cpf = fake.cpf()
+            # Gera CPF e email únicos
+            cpf = fake.unique.cpf()
             email = fake.unique.email()
+
+            # Verifica se o CPF ou email já existem no banco
+            if Usuario.query.filter((Usuario.cpf == cpf) | (Usuario.email == email)).first():
+                continue
 
             usuario = Usuario(
                 nome=fake.name(),
@@ -640,13 +664,32 @@ def criar_usuarios(clientes, quantidade=150):
                 cliente_id=cliente.id
             )
             db.session.add(usuario)
-            try:
-                db.session.commit()
-                usuarios.append(usuario)
-                break
-            except IntegrityError:
-                db.session.rollback()
-                fake.unique.clear()
+            usuario_batch.append(usuario)
+            
+            # Faz commit a cada 50 usuários para evitar transações muito grandes
+            if len(usuario_batch) >= 50:
+                try:
+                    db.session.commit()
+                    usuarios.extend(usuario_batch)
+                    usuario_batch = []
+                    print(f"Lote de 50 usuários criado. Total: {len(usuarios)}")
+                except IntegrityError as e:
+                    print(f"Erro ao criar lote de usuários: {str(e)}")
+                    db.session.rollback()
+                    
+        except Exception as e:
+            print(f"Erro ao criar usuário #{i+1}: {str(e)}")
+            db.session.rollback()
+    
+    # Commit do lote final
+    if usuario_batch:
+        try:
+            db.session.commit()
+            usuarios.extend(usuario_batch)
+            print(f"Lote final de {len(usuario_batch)} usuários criado. Total: {len(usuarios)}")
+        except IntegrityError as e:
+            print(f"Erro ao criar lote final de usuários: {str(e)}")
+            db.session.rollback()
 
     fake.unique.clear()
     return usuarios
@@ -656,104 +699,167 @@ def criar_inscricoes(usuarios, eventos, oficinas):
     # Filtra usuários que são participantes ou professores
     participantes = [u for u in usuarios if u.tipo in ('participante', 'professor')]
     
+    if not participantes:
+        print("Aviso: Nenhum participante ou professor encontrado para criar inscrições")
+        return []
+        
     inscricoes = []
+    inscritos_por_lote = 50  # Processa em lotes para evitar transações muito grandes
     
     # Inscrições em eventos
-    for evento in eventos:
-        # Seleciona aleatoriamente usuários para inscrever neste evento
-        num_inscritos = random.randint(10, min(len(participantes), 100))
-        inscritos_evento = random.sample(participantes, num_inscritos)
-        
-        # Lista de tipos de inscrição disponíveis
-        tipos_inscricao = evento.tipos_inscricao
-        
-        # Se o evento tem lotes, pega o lote ativo
-        lotes_ativos = [l for l in evento.lotes if l.ativo]
-        lote_atual = random.choice(lotes_ativos) if lotes_ativos else None
-        
-        for usuario in inscritos_evento:
-            # Escolhe um tipo de inscrição aleatório
-            tipo_inscricao = random.choice(tipos_inscricao) if tipos_inscricao else None
+    for i, evento in enumerate(eventos):
+        try:
+            print(f"Processando inscrições para evento {i+1}/{len(eventos)}")
             
-            # Define o status do pagamento
-            # Eventos gratuitos sempre têm pagamento aprovado
-            if evento.inscricao_gratuita:
-                status = 'approved'
-            else:
-                status = random.choices(
-                    STATUS_PAGAMENTO, 
-                    weights=[0.2, 0.6, 0.1, 0.1], 
-                    k=1
-                )[0]
+            # Seleciona aleatoriamente usuários para inscrever neste evento
+            num_inscritos = random.randint(10, min(len(participantes), 100))
+            inscritos_evento = random.sample(participantes, num_inscritos)
             
-            # Cria a inscrição
-            inscricao = Inscricao(
-                usuario_id=usuario.id,
-                cliente_id=evento.cliente_id,
-                evento_id=evento.id,
-                status_pagamento=status,
-                tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else None,
-                lote_id=lote_atual.id if lote_atual else None
-            )
-            db.session.add(inscricao)
-            inscricoes.append(inscricao)
+            # Lista de tipos de inscrição disponíveis
+            tipos_inscricao = evento.tipos_inscricao
+            if not tipos_inscricao:
+                print(f"Aviso: Evento {evento.nome} não possui tipos de inscrição. Pulando...")
+                continue
             
-            # Adiciona informações de pagamento para inscrições pagas
-            if not evento.inscricao_gratuita:
-                payment_id = str(uuid.uuid4())
-                inscricao.payment_id = payment_id
-                
-                # Para boletos, adiciona URL
-                if random.choice([True, False]):
-                    inscricao.boleto_url = f"https://exemplo.com/boletos/{payment_id}"
-                
-                # Cria registro de pagamento
-                pagamento = Pagamento(
-                    usuario_id=usuario.id,
-                    evento_id=evento.id,
-                    tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else 1,
-                    status=status,
-                    mercado_pago_id=f"MP-{uuid.uuid4()}"
-                )
-                db.session.add(pagamento)
+            # Se o evento tem lotes, pega o lote ativo
+            lotes_ativos = [l for l in evento.lotes if l.ativo]
+            lote_atual = random.choice(lotes_ativos) if lotes_ativos else None
             
-            # Para alguns usuários, criar também inscrições em oficinas
-            if random.random() < 0.7:  # 70% de chance
-                # Pega oficinas deste evento
-                oficinas_evento = [o for o in oficinas if o.evento_id == evento.id]
-                
-                if oficinas_evento:
-                    # Número de oficinas que o usuário se inscreverá
-                    num_oficinas = min(random.randint(1, 3), len(oficinas_evento))
-                    oficinas_inscritas = random.sample(oficinas_evento, num_oficinas)
+            inscricoes_lote = []
+            for idx, usuario in enumerate(inscritos_evento):
+                try:
+                    # Verifica se já existe uma inscrição para este usuário neste evento
+                    inscricao_existente = Inscricao.query.filter_by(
+                        usuario_id=usuario.id, 
+                        evento_id=evento.id
+                    ).first()
                     
-                    for oficina in oficinas_inscritas:
-                        # Define status de pagamento para oficina
-                        if oficina.inscricao_gratuita:
-                            status_oficina = 'approved'
-                        else:
-                            status_oficina = random.choices(
-                                STATUS_PAGAMENTO, 
-                                weights=[0.2, 0.6, 0.1, 0.1], 
-                                k=1
-                            )[0]
+                    if inscricao_existente:
+                        continue
                         
-                        inscricao_oficina = Inscricao(
+                    # Escolhe um tipo de inscrição aleatório
+                    tipo_inscricao = random.choice(tipos_inscricao) if tipos_inscricao else None
+                    
+                    # Define o status do pagamento
+                    # Eventos gratuitos sempre têm pagamento aprovado
+                    if evento.inscricao_gratuita:
+                        status = 'approved'
+                    else:
+                        status = random.choices(
+                            STATUS_PAGAMENTO, 
+                            weights=[0.2, 0.6, 0.1, 0.1], 
+                            k=1
+                        )[0]
+                    
+                    # Cria a inscrição
+                    inscricao = Inscricao(
+                        usuario_id=usuario.id,
+                        cliente_id=evento.cliente_id,
+                        evento_id=evento.id,
+                        status_pagamento=status,
+                        tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else None,
+                        lote_id=lote_atual.id if lote_atual else None
+                    )
+                    db.session.add(inscricao)
+                    inscricoes_lote.append(inscricao)
+                    
+                    # Adiciona informações de pagamento para inscrições pagas
+                    if not evento.inscricao_gratuita:
+                        payment_id = str(uuid.uuid4())
+                        inscricao.payment_id = payment_id
+                        
+                        # Para boletos, adiciona URL
+                        if random.choice([True, False]):
+                            inscricao.boleto_url = f"https://exemplo.com/boletos/{payment_id}"
+                        
+                        # Cria registro de pagamento
+                        pagamento = Pagamento(
                             usuario_id=usuario.id,
-                            cliente_id=evento.cliente_id,
-                            oficina_id=oficina.id,
-                            status_pagamento=status_oficina
+                            evento_id=evento.id,
+                            tipo_inscricao_id=tipo_inscricao.id if tipo_inscricao else 1,
+                            status=status,
+                            mercado_pago_id=f"MP-{uuid.uuid4()}"
                         )
-                        db.session.add(inscricao_oficina)
-                        inscricoes.append(inscricao_oficina)
-    
-    db.session.commit()
+                        db.session.add(pagamento)
+                    
+                    # Para alguns usuários, criar também inscrições em oficinas
+                    if random.random() < 0.7:  # 70% de chance
+                        # Pega oficinas deste evento
+                        oficinas_evento = [o for o in oficinas if o.evento_id == evento.id]
+                        
+                        if oficinas_evento:
+                            # Número de oficinas que o usuário se inscreverá
+                            num_oficinas = min(random.randint(1, 3), len(oficinas_evento))
+                            oficinas_inscritas = random.sample(oficinas_evento, num_oficinas)
+                            
+                            for oficina in oficinas_inscritas:
+                                # Verifica se já existe inscrição para esta oficina
+                                inscricao_oficina_existente = Inscricao.query.filter_by(
+                                    usuario_id=usuario.id, 
+                                    oficina_id=oficina.id
+                                ).first()
+                                
+                                if inscricao_oficina_existente:
+                                    continue
+                                
+                                # Define status de pagamento para oficina
+                                if oficina.inscricao_gratuita:
+                                    status_oficina = 'approved'
+                                else:
+                                    status_oficina = random.choices(
+                                        STATUS_PAGAMENTO, 
+                                        weights=[0.2, 0.6, 0.1, 0.1], 
+                                        k=1
+                                    )[0]
+                                
+                                inscricao_oficina = Inscricao(
+                                    usuario_id=usuario.id,
+                                    cliente_id=evento.cliente_id,
+                                    oficina_id=oficina.id,
+                                    status_pagamento=status_oficina
+                                )
+                                db.session.add(inscricao_oficina)
+                                inscricoes_lote.append(inscricao_oficina)
+                    
+                    # Commit a cada lote para evitar transações muito grandes
+                    if len(inscricoes_lote) >= inscritos_por_lote:
+                        try:
+                            db.session.commit()
+                            inscricoes.extend(inscricoes_lote)
+                            print(f"Lote de {len(inscricoes_lote)} inscrições criado. Total: {len(inscricoes)}")
+                            inscricoes_lote = []
+                        except IntegrityError as e:
+                            print(f"Erro ao criar lote de inscrições: {str(e)}")
+                            db.session.rollback()
+                
+                except Exception as e:
+                    print(f"Erro ao criar inscrição para usuário {idx+1}: {str(e)}")
+                    continue
+            
+            # Commit do lote final de inscrições
+            if inscricoes_lote:
+                try:
+                    db.session.commit()
+                    inscricoes.extend(inscricoes_lote)
+                    print(f"Lote final de {len(inscricoes_lote)} inscrições criado. Total: {len(inscricoes)}")
+                except IntegrityError as e:
+                    print(f"Erro ao criar lote final de inscrições: {str(e)}")
+                    db.session.rollback()
+                    
+        except Exception as e:
+            print(f"Erro ao processar evento {i+1}: {str(e)}")
+            db.session.rollback()
     
     # Após criar inscrições, criar checkins para algumas delas
-    criar_checkins(inscricoes, oficinas, eventos)
-    
-    # Criar feedbacks para algumas oficinas
-    criar_feedbacks(inscricoes, oficinas)
+    if inscricoes:
+        print("Criando checkins...")
+        criar_checkins(inscricoes, oficinas, eventos)
+        
+        # Criar feedbacks para algumas oficinas
+        print("Criando feedbacks...")
+        criar_feedbacks(inscricoes, oficinas)
+    else:
+        print("Nenhuma inscrição criada para gerar checkins ou feedbacks")
     
     return inscricoes
 
@@ -876,19 +982,26 @@ def criar_agendamentos_visita(eventos, usuarios):
     ]
 
     agendamentos = []
+    # Criamos uma cópia da lista para poder remover itens com segurança
+    horarios_disponiveis_copia = horarios_disponiveis.copy()
+    
     for professor in professores:
-        num_agendamentos = random.randint(1, min(2, len(horarios_disponiveis))) if horarios_disponiveis else 0
+        # Usa a lista copiada para calcular o número de agendamentos
+        num_agendamentos = random.randint(1, min(2, len(horarios_disponiveis_copia))) if horarios_disponiveis_copia else 0
         for _ in range(num_agendamentos):
-            if not horarios_disponiveis:
+            if not horarios_disponiveis_copia:
                 break
 
-            horario = random.choice(horarios_disponiveis)
+            # Escolhe um horário aleatório da lista copiada
+            horario = random.choice(horarios_disponiveis_copia)
+            # Remove o horário da lista de disponíveis imediatamente
+            horarios_disponiveis_copia.remove(horario)
+            
             max_vagas = min(30, horario.vagas_disponiveis)
-            if max_vagas <= 0:
-                horarios_disponiveis.remove(horario)
-                continue
+            if max_vagas < 10:  # Evita o erro quando max_vagas é menor que o mínimo
+                continue  # Não precisamos remover novamente, já removemos acima
 
-            quantidade = random.randint(10, max_vagas)
+            quantidade = random.randint(10, max_vagas) if max_vagas > 10 else max_vagas
 
             salas_ids = []
             salas_attr = getattr(getattr(horario, "evento", None), "salas_visitacao", None)
@@ -898,6 +1011,7 @@ def criar_agendamentos_visita(eventos, usuarios):
                 if salas:
                     qtd = random.randint(1, min(len(salas), 3))
                     salas_ids = random.sample(salas, qtd)
+                    # Removida a duplicação da geração de salas_ids
             salas_str = ",".join(str(i) for i in salas_ids) if salas_ids else None
 
             agendamento = AgendamentoVisita(
@@ -912,18 +1026,27 @@ def criar_agendamentos_visita(eventos, usuarios):
             )
             try:
                 db.session.add(agendamento)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Erro ao criar agendamento: {str(e)}")
+                db.session.rollback()
+                continue
+                
             agendamentos.append(agendamento)
 
+            # Atualiza as vagas disponíveis do horário
             horario.vagas_disponiveis -= quantidade
-            if horario.vagas_disponiveis <= 0:
-                horarios_disponiveis.remove(horario)
+            # Não precisamos mais remover horário da lista, já removemos no início do loop
 
     try:
         db.session.commit()
-    except Exception:
-        pass
+        print(f"Criados {len(agendamentos)} agendamentos de visita com sucesso.")
+    except Exception as e:
+        print(f"Erro ao salvar agendamentos: {str(e)}")
+        db.session.rollback()
+    
+    # Resumo dos horários e agendamentos criados
+    print(f"Total de horários disponíveis: {len(horarios_disponiveis)}")
+    print(f"Total de agendamentos criados: {len(agendamentos)}")
     return agendamentos
 
 
@@ -980,7 +1103,7 @@ def criar_reviews_assignments(submissoes, usuarios):
             assignment = Assignment(
                 submission_id=sub.id,
                 reviewer_id=reviewer.id,
-                deadline=datetime.utcnow() + timedelta(days=random.randint(5, 15)),
+                deadline=datetime.now() + timedelta(days=random.randint(5, 15)),  # Usando now() em vez de utcnow() para evitar aviso
                 completed=True,
             )
             db.session.add(assignment)
@@ -1027,9 +1150,19 @@ def popular_banco():
     print("Iniciando população do banco de dados...")
     
     # Limpa tabelas existentes (opcional - tenha cuidado em produção!)
-    # db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
-    # Adicione comandos para limpar tabelas se necessário
-    # db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+    try:
+        # Para PostgreSQL, desabilite temporariamente as verificações de chave estrangeira
+        db.session.execute(text("SET CONSTRAINTS ALL DEFERRED"))
+        
+        # Se quiser limpar tabelas, descomente as linhas abaixo
+        # db.session.execute(text("TRUNCATE TABLE usuario RESTART IDENTITY CASCADE"))
+        # db.session.execute(text("TRUNCATE TABLE cliente RESTART IDENTITY CASCADE"))
+        # ... adicione outras tabelas conforme necessário
+        
+        db.session.commit()
+    except Exception as e:
+        print(f"Aviso ao preparar banco: {e}")
+        db.session.rollback()
     
     print("Criando clientes...")
     clientes = criar_clientes(5)
@@ -1094,18 +1227,29 @@ def popular_banco():
 
 # Se este script for executado diretamente, popula o banco
 if __name__ == "__main__":
-    # Aqui você deve importar seu app Flask e contexto
-    # from app import app, db
-    # with app.app_context():
-    #     popular_banco()
-    
-    # Se você estiver usando este script fora do aplicativo Flask, configure o contexto
-    print("Para executar este script, você deve importá-lo em seu aplicativo Flask")
-    print("e executá-lo dentro de um contexto de aplicativo.")
-    print("Exemplo:")
-    print("```")
-    print("from app import app, db")
-    print("from populate_script import popular_banco")
-    print("with app.app_context():")
-    print("    popular_banco()")
-    print("```")
+    try:
+        # Tenta importar o app e executar
+        from app import create_app, db
+        
+        # Configuração específica do banco PostgreSQL
+        import os
+        os.environ["DATABASE_URL"] = "postgresql://iafap:123456@localhost:5432/iafap_database"
+        
+        app = create_app()
+        with app.app_context():
+            print("Iniciando população do banco com app.context()")
+            dados = popular_banco()
+            print("População concluída com sucesso!")
+    except ImportError:
+        # Se você estiver usando este script fora do aplicativo Flask, configure o contexto
+        print("Para executar este script, você deve importá-lo em seu aplicativo Flask")
+        print("e executá-lo dentro de um contexto de aplicativo.")
+        print("Exemplo:")
+        print("```")
+        print("from app import app, db")
+        print("from populate_script import popular_banco")
+        print("with app.app_context():")
+        print("    popular_banco()")
+        print("```")
+        print("\nOu execute diretamente com:")
+        print("python populate_script.py")
