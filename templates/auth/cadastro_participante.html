@@ -795,8 +795,14 @@
         }
         
         // Seleção de tipo de ingresso
-        document.querySelectorAll('input[type="radio"][name^="lote_tipo"], input[type="radio"][name^="tipo_inscricao"]').forEach(radio => {
-            radio.addEventListener('change', function() {                if (this.checked) {
+        const ticketRadios = document.querySelectorAll('input[type="radio"][name^="lote_tipo"], input[type="radio"][name^="tipo_inscricao"]');
+        if (ticketRadios.length === 1) {
+            ticketRadios[0].checked = true;
+            ticketRadios[0].dispatchEvent(new Event('change'));
+        }
+        ticketRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.checked) {
                     const preco = this.getAttribute('data-preco');
                     const precoFinal = this.getAttribute('data-preco-final');
                     const inscricaoGratuita = {{ 'true' if evento and evento.inscricao_gratuita else 'false' }};
