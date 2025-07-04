@@ -8,7 +8,7 @@ from datetime import datetime
 from models import (
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
-    CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, RegraInscricaoEvento,
+    CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, Formulario, RegraInscricaoEvento,
     Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente
 )
 import os
@@ -223,8 +223,16 @@ def _reservar_vaga(lote_id: int) -> None:
 def _salvar_campos_personalizados(user_id: int, cliente_id: int, form):
     """Salva respostas de campos personalizados vinculadas a um RespostaFormulario."""
 
+    # Formulário padrão para o cadastro de participante utilizado quando
+    # não há um formulário específico configurado.
+    formulario = Formulario.query.get(1)
+    if not formulario:
+        formulario = Formulario(id=1, nome="Cadastro de Participante")
+        db.session.add(formulario)
+        db.session.commit()
+
     resposta_formulario = RespostaFormulario(
-        formulario_id=1,  # Formulário padrão para cadastro de participante
+        formulario_id=formulario.id,
         usuario_id=user_id,
     )
     db.session.add(resposta_formulario)
