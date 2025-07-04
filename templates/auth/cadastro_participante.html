@@ -900,7 +900,11 @@
         
         // Carregar estados e inicializar mapa
         loadBrazilianStates();
-        initMap();
+        if (typeof L !== 'undefined') {
+            initMap();
+        } else {
+            console.warn('Leaflet not loaded, skipping map initialization');
+        }
     });
     
     function updateHiddenFields(selectedOption) {
