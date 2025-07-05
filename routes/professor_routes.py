@@ -12,7 +12,7 @@ from PIL import Image
 from extensions import db
 from models import (
     Evento, ProfessorBloqueado, SalaVisitacao, HorarioVisitacao,
-    AgendamentoVisita, AlunoVisitante,
+    AgendamentoVisita, AlunoVisitante, ConfiguracaoAgendamento
 )
 from services.pdf_service import gerar_pdf_comprovante_agendamento
 from . import routes
@@ -135,6 +135,13 @@ def criar_agendamento_professor(horario_id):
     
     horario = HorarioVisitacao.query.get_or_404(horario_id)
     evento = horario.evento
+
+    config = ConfiguracaoAgendamento.query.filter_by(evento_id=evento.id).first()
+    if config:
+        permitidos = config.get_tipos_inscricao_list()
+        if permitidos and current_user.tipo_inscricao_id not in permitidos:
+            flash('Seu tipo de inscrição não permite agendar visitas neste evento.', 'danger')
+            return redirect(url_for('routes.horarios_disponiveis_professor', evento_id=evento.id))
     
     # Verificar se o professor está bloqueado
     bloqueio = ProfessorBloqueado.query.filter_by(

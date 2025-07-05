@@ -130,8 +130,24 @@
                   </div>
                 </div>
               </div>
-              <div class="form-text">Selecione os dias da semana em que o evento estará aberto para visitação.</div>
+            <div class="form-text">Selecione os dias da semana em que o evento estará aberto para visitação.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Tipos de Inscrição Permitidos</label>
+            <div class="card">
+              <div class="card-body">
+                {% set tipos_sel = config.get_tipos_inscricao_list() if config else [] %}
+                {% for tipo in tipos_inscricao %}
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" name="tipos_inscricao_permitidos" value="{{ tipo.id }}" id="tipo-{{ tipo.id }}" {% if tipo.id in tipos_sel %}checked{% endif %}>
+                  <label class="form-check-label" for="tipo-{{ tipo.id }}">{{ tipo.nome }}</label>
+                </div>
+                {% endfor %}
+              </div>
             </div>
+            <div class="form-text">Marque para restringir o agendamento apenas a estes tipos de inscrição. Deixe vazio para liberar para todos.</div>
+          </div>
             
             <div class="alert alert-info">
               <i class="bi bi-info-circle"></i> Após salvar as configurações, você será redirecionado para gerar os horários de visitação.
