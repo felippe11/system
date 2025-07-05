@@ -321,13 +321,15 @@ class EventoInscricaoTipo(db.Model):
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     preco = db.Column(db.Float, nullable=False)
+    submission_only = db.Column(db.Boolean, default=False)
 
     # Relação com Evento - removendo backref para evitar conflito
 
-    def __init__(self, evento_id, nome, preco):
+    def __init__(self, evento_id, nome, preco, submission_only=False):
         self.evento_id = evento_id
         self.nome = nome
         self.preco = preco
+        self.submission_only = submission_only
 
     @property
     def tipo_inscricao(self):
