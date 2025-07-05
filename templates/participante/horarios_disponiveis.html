@@ -1,0 +1,85 @@
+<!-- Template: participante/horarios_disponiveis.html -->
+{% extends 'base.html' %}
+
+{% block title %}Horários Disponíveis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Horários Disponíveis - {{ evento.nome }}</h2>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Filtrar Horários
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}">
+                <div class="form-group">
+                    <label for="data">Selecione uma data específica:</label>
+                    <input type="date" class="form-control" id="data" name="data" value="{{ data_filtro }}">
+                </div>
+                <button type="submit" class="btn btn-primary mt-2">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+                {% if data_filtro %}
+                    <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-outline-secondary mt-2">
+                        <i class="fas fa-times"></i> Limpar Filtro
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    {% if horarios_por_data %}
+        {% for data_str, horarios in horarios_por_data.items() %}
+            {% set data = horarios[0].data %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data.strftime('%A')|capitalize }})
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Horário</th>
+                                <th class="text-center">Vagas Disponíveis</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for horario in horarios %}
+                                <tr>
+                                    <td>{{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</td>
+                                    <td class="text-center">
+                                        {% if horario.vagas_disponiveis > 10 %}
+                                            <span class="badge bg-success">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% elif horario.vagas_disponiveis > 5 %}
+                                            <span class="badge bg-warning text-dark">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ horario.vagas_disponiveis }} vagas</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-calendar-plus"></i> Agendar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> Não há horários disponíveis para os critérios selecionados.
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="btn btn-secondary">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+    </div>
+</div>
+{% endblock %}
