@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, redirect, url_for, flash, render_template
 from flask_login import login_required, current_user
 from extensions import db
-from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig
+from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento
 from datetime import datetime
 import logging
 
@@ -477,6 +477,22 @@ def atualizar_revisao_config(evento_id):
     return jsonify({"success": True})
 
 
+@config_cliente_routes.route('/toggle_submissao_evento/<int:evento_id>', methods=['POST'])
+@login_required
+def toggle_submissao_evento(evento_id):
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+
+    evento.submissao_aberta = not bool(evento.submissao_aberta)
+    db.session.commit()
+
+    return jsonify({"success": True, "value": evento.submissao_aberta})
+
+
 @config_cliente_routes.route('/config_submissao')
 @login_required
 def config_submissao():
@@ -491,6 +507,12 @@ def config_submissao():
         db.session.add(config_cliente)
         db.session.commit()
 
-    return render_template('config/config_submissao.html', config_cliente=config_cliente)
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+
+    return render_template(
+        'config/config_submissao.html',
+        config_cliente=config_cliente,
+        eventos=eventos,
+    )
 
 

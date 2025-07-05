@@ -23,41 +23,23 @@ from models import (
     Submission,
     Assignment,
 )
-from routes.auth_routes import auth_routes
-from routes.revisor_routes import revisor_routes
-from routes.submission_routes import submission_routes
-from routes.evento_routes import evento_routes
-from routes.peer_review_routes import peer_review_routes
-from routes.static_page_routes import static_page_routes
-from routes.dashboard_routes import dashboard_routes
-from routes.inscricao_routes import inscricao_routes
-from routes.dashboard_participante import dashboard_participante_routes
+from app import create_app
 import routes.dashboard_cliente  # noqa: F401
 
 
 @pytest.fixture
 def app():
+    app = create_app()
+    app.config.update(
+        TESTING=True,
+        WTF_CSRF_ENABLED=False,
+        SQLALCHEMY_DATABASE_URI="sqlite://",
+        SQLALCHEMY_ENGINE_OPTIONS=Config.build_engine_options("sqlite://"),
+        SECRET_KEY="test",
+    )
     templates_path = os.path.join(os.path.dirname(__file__), "..", "templates")
-    app = Flask(__name__, template_folder=templates_path)
-    app.config["TESTING"] = True
-    app.config["WTF_CSRF_ENABLED"] = False
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = Config.build_engine_options("sqlite://")
-    app.config["SECRET_KEY"] = "test"
-    login_manager.init_app(app)
-    db.init_app(app)
+    app.template_folder = templates_path
 
-    from models import RevisorProcess
-
-    app.register_blueprint(auth_routes)
-    app.register_blueprint(revisor_routes)
-    app.register_blueprint(submission_routes)
-    app.register_blueprint(evento_routes)
-    app.register_blueprint(peer_review_routes)
-    app.register_blueprint(static_page_routes)
-    app.register_blueprint(dashboard_routes)
-    app.register_blueprint(inscricao_routes)
-    app.register_blueprint(dashboard_participante_routes)
 
     with app.app_context():
         db.create_all()
@@ -195,3 +177,32 @@ def test_is_available_method():
 
     proc.availability_end = now - timedelta(minutes=1)
     assert not proc.is_available()
+
+
+def test_dashboard_lists_candidaturas_and_status_update(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+
+    client.post(
+        f"/revisor/apply/{proc.id}",
+        data={str(campos["email"]): "cand@test", str(campos["nome"]): "Cand"},
+    )
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(email="cand@test").first()
+        assert cand is not None
+        cand_id = cand.id
+
+    login(client, "cli@test", "123")
+    resp = client.get("/dashboard_cliente")
+    assert resp.status_code == 200
+    assert "Cand" in resp.get_data(as_text=True)
+
+    resp = client.post(f"/revisor/reject/{cand_id}", json={})
+    assert resp.status_code == 200
+    assert resp.get_json()["success"]
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.get(cand_id)
+        assert cand.status == "rejeitado"
