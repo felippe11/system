@@ -230,6 +230,9 @@ def dashboard_participante():
     
     logger.debug(f"DEBUG [49] -> Total de oficinas encontradas: {len(oficinas)}")
 
+    if current_user.tipo_inscricao and getattr(current_user.tipo_inscricao, 'submission_only', False):
+        oficinas = []
+
     # CORREÇÃO 7: Filtrar inscrições válidas (com oficina_id não nulo)
     logger.debug(f"DEBUG [50] -> Montando lista de inscrições do participante_id = {current_user.id}")
     inscricoes_ids = [i.oficina_id for i in inscricoes_validas if i.oficina_id is not None]

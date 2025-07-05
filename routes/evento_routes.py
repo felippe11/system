@@ -217,6 +217,7 @@ def configurar_evento():
         habilitar_lotes = habilitar_lotes_val in ['on', '1', 'true']
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
+        submission_flags = request.form.getlist('submission_only[]')
         
         banner = request.files.get('banner')
         banner_url = evento.banner_url if evento else None
@@ -301,11 +302,12 @@ def configurar_evento():
                 
                 # Adicionar novos tipos ou atualizar existentes
                 tipos_inscricao = []
-                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                for idx, (nome_tipo, preco_tipo) in enumerate(zip(nomes_tipos, precos_tipos)):
                     if nome_tipo:  # Só adicionar se o nome for preenchido
                         # Se o preço estiver vazio, trata como 0
                         preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
                         preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
+                        flag = idx < len(submission_flags) and submission_flags[idx] in ['on', '1', 'true']
                         
                         # Verificar se já existe um tipo com este nome
                         tipo_existente = None
@@ -318,13 +320,15 @@ def configurar_evento():
                         if tipo_existente:
                             # Atualiza o preço do tipo existente
                             tipo_existente.preco = preco_efetivo
+                            tipo_existente.submission_only = flag
                             tipos_inscricao.append(tipo_existente)
                         else:
                             # Cria um novo tipo
                             tipo = EventoInscricaoTipo(
                                 evento_id=evento.id,
                                 nome=nome_tipo,
-                                preco=preco_efetivo
+                                preco=preco_efetivo,
+                                submission_only=flag
                             )
                             db.session.add(tipo)
                             db.session.flush()  # Para obter o ID do tipo
@@ -463,16 +467,18 @@ def configurar_evento():
 
                 # Adicionar tipos de inscrição
                 tipos_inscricao = []
-                for nome_tipo, preco_tipo in zip(nomes_tipos, precos_tipos):
+                for idx, (nome_tipo, preco_tipo) in enumerate(zip(nomes_tipos, precos_tipos)):
                     if nome_tipo:  # Só adicionar se o nome for preenchido
                         # Se o preço estiver vazio, trata como 0
                         preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
                         preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
-                        
+                        flag = idx < len(submission_flags) and submission_flags[idx] in ['on', '1', 'true']
+
                         tipo = EventoInscricaoTipo(
                             evento_id=evento.id,
                             nome=nome_tipo,
-                            preco=preco_efetivo
+                            preco=preco_efetivo,
+                            submission_only=flag
                         )
                         db.session.add(tipo)
                         db.session.flush()  # Para obter o ID
