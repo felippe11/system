@@ -526,6 +526,15 @@ class LinkCadastro(db.Model):
 
 from extensions import db
 
+# -------------------------------------------------
+#  Associacao Formulario <-> Evento (Many-to-Many)
+# -------------------------------------------------
+formulario_evento_association = db.Table(
+    'formulario_evento_association',
+    db.Column('formulario_id', db.Integer, db.ForeignKey('formularios.id'), primary_key=True),
+    db.Column('evento_id', db.Integer, db.ForeignKey('evento.id'), primary_key=True)
+)
+
 # Associação entre eventos e formulários (N:N)
 evento_formulario = db.Table(
     'evento_formulario',
@@ -548,6 +557,7 @@ class Formulario(db.Model):
     # Relacionamento com respostas do formulário.
     respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
     # Eventos associados a este formulário
+ 
 
     eventos = db.relationship(
         'Evento',
