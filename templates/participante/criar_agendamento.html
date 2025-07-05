@@ -1,0 +1,33 @@
+<!-- Template: participante/criar_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Criar Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Confirmar Agendamento</h2>
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Horário Selecionado
+        </div>
+        <div class="card-body">
+            <p><strong>Evento:</strong> {{ evento.nome }}</p>
+            <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
+            <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
+            <p><strong>Vagas disponíveis:</strong> {{ horario.vagas_disponiveis }}</p>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}">
+        <div class="alert alert-info">Confirme para reservar este horário para você.</div>
+        <div class="d-grid gap-2 d-md-flex">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i> Confirmar Agendamento
+            </button>
+            <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-secondary">
+                <i class="fas fa-times"></i> Cancelar
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
