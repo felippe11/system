@@ -32,6 +32,7 @@ from models import (
     Oficina,
     Ministrante,
     AuditLog,
+    Evento,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -231,13 +232,17 @@ def listar_formularios_participante():
     # Busca apenas formulários disponíveis para o participante
     # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
     cliente_id = current_user.cliente_id
+    evento_id = request.args.get('evento_id', type=int) or current_user.evento_id
     
     if not cliente_id:
         flash("Você não está associado a nenhum cliente.", "warning")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         
-    # Busca formulários criados pelo cliente do participante
-    formularios = Formulario.query.filter_by(cliente_id=cliente_id).all()
+    # Base query: formulários criados pelo cliente do participante
+    query = Formulario.query.filter_by(cliente_id=cliente_id)
+    if evento_id:
+        query = query.join(Formulario.eventos).filter(Evento.id == evento_id)
+    formularios = query.all()
     
     # Não há relação direta entre formulários e ministrantes no modelo atual,
     # então estamos filtrando apenas pelo cliente_id do participante

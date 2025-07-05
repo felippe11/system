@@ -55,7 +55,11 @@ def dashboard_participante():
     formularios_disponiveis = False
     if current_user.cliente_id:
         logger.debug(f"DEBUG [9] -> Verificando formulários disponíveis para cliente_id = {current_user.cliente_id}")
-        form_count = Formulario.query.filter_by(cliente_id=current_user.cliente_id).count()
+        form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
+        evento_ref = evento.id if evento else current_user.evento_id
+        if evento_ref:
+            form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
+        form_count = form_query.count()
         formularios_disponiveis = form_count > 0
         logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
     
