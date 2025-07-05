@@ -83,21 +83,33 @@ def listar_formularios():
 @formularios_routes.route('/formularios/novo', methods=['GET', 'POST'])
 @login_required
 def criar_formulario():
+    eventos_disponiveis = (
+        Evento.query.filter_by(cliente_id=current_user.id).all()
+        if current_user.tipo == 'cliente'
+        else Evento.query.all()
+    )
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
-        
+        evento_ids = request.form.getlist('eventos')
+
         novo_formulario = Formulario(
             nome=nome,
             descricao=descricao,
             cliente_id=current_user.id  # Relaciona com o cliente logado
         )
+
+        if evento_ids:
+            eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
+            novo_formulario.eventos = eventos_sel
+
         db.session.add(novo_formulario)
         db.session.commit()
         flash('Formulário criado com sucesso!', 'success')
         return redirect(url_for('formularios_routes.listar_formularios'))
-    
-    return render_template("criar_formulario.html")
+
+    return render_template("criar_formulario.html", eventos=eventos_disponiveis)
 
 @formularios_routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
 @login_required
