@@ -215,7 +215,7 @@
               <p class="text-muted small mb-3">Configure os tipos de inscrição e seus respectivos valores:</p>
               <div id="tipos-inscricao-list">
                 <div class="row mb-3 align-items-center tipo-inscricao-item">
-                  <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
+                  <div class="col-md-5 col-sm-12 mb-2 mb-md-0">
                     <label class="form-label">Tipo de Inscrição:</label>
                     <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição">
                     <input type="hidden" name="id_tipo[]" value="">
@@ -224,7 +224,11 @@
                     <label class="form-label">Preço:</label>
                     <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" placeholder="Preço">
                   </div>
-                  <div class="col-md-3 col-sm-6">
+                  <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+                    <label class="form-label">Somente Submissão</label>
+                    <input type="checkbox" class="form-check-input" name="submission_only[]">
+                  </div>
+                  <div class="col-md-2 col-sm-6">
                     <button type="button" class="btn btn-danger w-100 remover-tipo-inscricao" data-inscricoes="0">
                       <i class="bi bi-trash"></i> Remover
                     </button>
@@ -692,17 +696,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const newItem = document.createElement('div');
     newItem.className = 'row mb-3 align-items-center tipo-inscricao-item';
     newItem.innerHTML = `
-      <div class="col-md-6 col-sm-12 mb-2 mb-md-0">
+      <div class="col-md-5 col-sm-12 mb-2 mb-md-0">
         <label class="form-label">Tipo de Inscrição:</label>
         <input type="text" class="form-control border border-secondary bg-white" name="nome_tipo[]" placeholder="Nome do Tipo de Inscrição" value="${nome}">
         <input type="hidden" name="id_tipo[]" value="">
       </div>
       <div class="col-md-3 col-sm-6 mb-2 mb-md-0 preco-container">
         <label class="form-label">Preço:</label>
-        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]" 
+        <input type="number" step="0.01" class="form-control border border-secondary bg-white" name="preco_tipo[]"
               placeholder="Preço" value="${preco}">
       </div>
-      <div class="col-md-3 col-sm-6">
+      <div class="col-md-2 col-sm-6 mb-2 mb-md-0">
+        <label class="form-label">Somente Submissão</label>
+        <input type="checkbox" class="form-check-input" name="submission_only[]">
+      </div>
+      <div class="col-md-2 col-sm-6">
         <button type="button" class="btn btn-danger w-100 remover-tipo-inscricao" data-inscricoes="0">
           <i class="bi bi-trash"></i> Remover
         </button>

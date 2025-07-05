@@ -32,6 +32,7 @@ from models import (
     Oficina,
     Ministrante,
     AuditLog,
+    Evento,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -82,21 +83,33 @@ def listar_formularios():
 @formularios_routes.route('/formularios/novo', methods=['GET', 'POST'])
 @login_required
 def criar_formulario():
+    eventos_disponiveis = (
+        Evento.query.filter_by(cliente_id=current_user.id).all()
+        if current_user.tipo == 'cliente'
+        else Evento.query.all()
+    )
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
-        
+        evento_ids = request.form.getlist('eventos')
+
         novo_formulario = Formulario(
             nome=nome,
             descricao=descricao,
             cliente_id=current_user.id  # Relaciona com o cliente logado
         )
+
+        if evento_ids:
+            eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
+            novo_formulario.eventos = eventos_sel
+
         db.session.add(novo_formulario)
         db.session.commit()
         flash('Formulário criado com sucesso!', 'success')
         return redirect(url_for('formularios_routes.listar_formularios'))
-    
-    return render_template("criar_formulario.html")
+
+    return render_template("criar_formulario.html", eventos=eventos_disponiveis)
 
 @formularios_routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -120,6 +133,28 @@ def deletar_formulario(formulario_id):
     db.session.commit()
     flash('Formulário deletado com sucesso!', 'success')
     return redirect(url_for('formularios_routes.listar_formularios'))
+
+
+@formularios_routes.route('/formularios/<int:formulario_id>/eventos', methods=['GET', 'POST'])
+@login_required
+def editar_eventos_formulario(formulario_id):
+    """Permite atribuir eventos a um formulário."""
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    # Admins podem ver todos eventos, clientes apenas os seus
+    if getattr(current_user, 'tipo', None) in ('admin', 'superadmin'):
+        eventos = Evento.query.order_by(Evento.nome).all()
+    else:
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.nome).all()
+
+    if request.method == 'POST':
+        selecionados = [int(eid) for eid in request.form.getlist('eventos')]
+        formulario.eventos = [e for e in eventos if e.id in selecionados]
+        db.session.commit()
+        flash('Eventos atualizados com sucesso!', 'success')
+        return redirect(url_for('formularios_routes.editar_eventos_formulario', formulario_id=formulario_id))
+
+    return render_template('atribuir_eventos.html', formulario=formulario, eventos=eventos)
 
 @formularios_routes.route('/formularios/<int:formulario_id>/campos', methods=['GET', 'POST'])
 @login_required
@@ -231,13 +266,17 @@ def listar_formularios_participante():
     # Busca apenas formulários disponíveis para o participante
     # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
     cliente_id = current_user.cliente_id
+    evento_id = request.args.get('evento_id', type=int) or current_user.evento_id
     
     if not cliente_id:
         flash("Você não está associado a nenhum cliente.", "warning")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         
-    # Busca formulários criados pelo cliente do participante
-    formularios = Formulario.query.filter_by(cliente_id=cliente_id).all()
+    # Base query: formulários criados pelo cliente do participante
+    query = Formulario.query.filter_by(cliente_id=cliente_id)
+    if evento_id:
+        query = query.join(Formulario.eventos).filter(Evento.id == evento_id)
+    formularios = query.all()
     
     # Não há relação direta entre formulários e ministrantes no modelo atual,
     # então estamos filtrando apenas pelo cliente_id do participante
