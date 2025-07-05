@@ -134,6 +134,28 @@ def deletar_formulario(formulario_id):
     flash('Formulário deletado com sucesso!', 'success')
     return redirect(url_for('formularios_routes.listar_formularios'))
 
+
+@formularios_routes.route('/formularios/<int:formulario_id>/eventos', methods=['GET', 'POST'])
+@login_required
+def editar_eventos_formulario(formulario_id):
+    """Permite atribuir eventos a um formulário."""
+    formulario = Formulario.query.get_or_404(formulario_id)
+
+    # Admins podem ver todos eventos, clientes apenas os seus
+    if getattr(current_user, 'tipo', None) in ('admin', 'superadmin'):
+        eventos = Evento.query.order_by(Evento.nome).all()
+    else:
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.nome).all()
+
+    if request.method == 'POST':
+        selecionados = [int(eid) for eid in request.form.getlist('eventos')]
+        formulario.eventos = [e for e in eventos if e.id in selecionados]
+        db.session.commit()
+        flash('Eventos atualizados com sucesso!', 'success')
+        return redirect(url_for('formularios_routes.editar_eventos_formulario', formulario_id=formulario_id))
+
+    return render_template('atribuir_eventos.html', formulario=formulario, eventos=eventos)
+
 @formularios_routes.route('/formularios/<int:formulario_id>/campos', methods=['GET', 'POST'])
 @login_required
 def gerenciar_campos(formulario_id):
