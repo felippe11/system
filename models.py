@@ -108,6 +108,13 @@ oficina_ministrantes_association = db.Table(
     db.Column('ministrante_id', db.Integer, db.ForeignKey('ministrante.id'), primary_key=True)
 )
 
+# Association table linking formulários to eventos
+evento_formulario_association = db.Table(
+    'evento_formulario_association',
+    db.Column('evento_id', db.Integer, db.ForeignKey('evento.id'), primary_key=True),
+    db.Column('formulario_id', db.Integer, db.ForeignKey('formularios.id'), primary_key=True)
+)
+
 
 class Ministrante(db.Model, UserMixin):
     __tablename__ = 'ministrante'
@@ -321,13 +328,15 @@ class EventoInscricaoTipo(db.Model):
     evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     preco = db.Column(db.Float, nullable=False)
+    submission_only = db.Column(db.Boolean, default=False)
 
     # Relação com Evento - removendo backref para evitar conflito
 
-    def __init__(self, evento_id, nome, preco):
+    def __init__(self, evento_id, nome, preco, submission_only=False):
         self.evento_id = evento_id
         self.nome = nome
         self.preco = preco
+        self.submission_only = submission_only
 
     @property
     def tipo_inscricao(self):
@@ -532,13 +541,19 @@ class Formulario(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
     
+
     cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
+
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
     # Relacionamento com respostas do formulário.
     respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
     # Eventos associados a este formulário
-    eventos = db.relationship('Evento', secondary=evento_formulario, backref='formularios')
 
+    eventos = db.relationship(
+        'Evento',
+        secondary='evento_formulario_association',
+        backref=db.backref('formularios', lazy='dynamic')
+    )
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
