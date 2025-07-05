@@ -258,6 +258,33 @@ def approve(cand_id: int):
     return jsonify({"success": True, "reviewer_id": reviewer.id})
 
 
+@revisor_routes.route("/revisor/reject/<int:cand_id>", methods=["POST"])
+@login_required
+def reject(cand_id: int):
+    """Marca a candidatura como rejeitada."""
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        return jsonify({"success": False}), 403
+
+    cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    cand.status = "rejeitado"
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@revisor_routes.route("/revisor/advance/<int:cand_id>", methods=["POST"])
+@login_required
+def advance(cand_id: int):
+    """Avança a candidatura para a próxima etapa."""
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        return jsonify({"success": False}), 403
+
+    cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    if cand.etapa_atual < cand.process.num_etapas:
+        cand.etapa_atual += 1
+    db.session.commit()
+    return jsonify({"success": True, "etapa_atual": cand.etapa_atual})
+
+
 # -----------------------------------------------------------------------------
 # EVENTOS ELEGÍVEIS PARA PARTICIPANTES
 # -----------------------------------------------------------------------------
