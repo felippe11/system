@@ -526,6 +526,13 @@ class LinkCadastro(db.Model):
 
 from extensions import db
 
+# Associação entre eventos e formulários (N:N)
+evento_formulario = db.Table(
+    'evento_formulario',
+    db.Column('evento_id', db.Integer, db.ForeignKey('evento.id'), primary_key=True),
+    db.Column('formulario_id', db.Integer, db.ForeignKey('formularios.id'), primary_key=True)
+)
+
 class Formulario(db.Model):
     __tablename__ = 'formularios'
     
@@ -534,17 +541,19 @@ class Formulario(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
     
+
     cliente = db.relationship('Cliente', backref=db.backref('formularios', lazy=True))
+
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
     # Relacionamento com respostas do formulário.
     respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
     # Eventos associados a este formulário
+
     eventos = db.relationship(
         'Evento',
         secondary='evento_formulario_association',
         backref=db.backref('formularios', lazy='dynamic')
     )
-
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
