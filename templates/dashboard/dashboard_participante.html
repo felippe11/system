@@ -387,6 +387,14 @@
 
   {% endif %}
 
+  <div class="container-fluid px-4 mt-2">
+    <div class="d-flex justify-content-end mb-4">
+      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
+        <i class="fas fa-calendar-alt me-2"></i> AGENDAMENTOS
+      </a>
+    </div>
+  </div>
+
   {% if current_user.tem_pagamento_pendente() %}
 
 {% endif %}
