@@ -12,7 +12,7 @@ from PIL import Image
 from extensions import db
 from models import (
     Evento, ProfessorBloqueado, SalaVisitacao, HorarioVisitacao,
-    AgendamentoVisita, AlunoVisitante,
+    AgendamentoVisita, AlunoVisitante, Inscricao, Oficina,
 )
 from services.pdf_service import gerar_pdf_comprovante_agendamento
 from . import routes
@@ -415,5 +415,106 @@ def qrcode_agendamento_professor(agendamento_id):
         'professor/qrcode_agendamento.html',
         agendamento=agendamento,
         token=agendamento.qr_code_token
+    )
+
+
+@routes.route('/participante/horarios_disponiveis/<int:evento_id>')
+@login_required
+def horarios_disponiveis_participante(evento_id):
+    """Lista horários disponíveis para participantes."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    evento = Evento.query.get_or_404(evento_id)
+
+    # Verificar se o participante está inscrito no evento (diretamente ou por oficina)
+    inscrito = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento_id).first()
+    if not inscrito:
+        inscrito = Inscricao.query.join(Oficina).filter(
+            Inscricao.usuario_id == current_user.id,
+            Oficina.evento_id == evento_id
+        ).first()
+
+    if not inscrito:
+        flash('Você não está inscrito neste evento.', 'warning')
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
+
+    data_filtro = request.args.get('data')
+
+    query = HorarioVisitacao.query.filter_by(evento_id=evento_id).filter(
+        HorarioVisitacao.vagas_disponiveis > 0,
+        HorarioVisitacao.data >= datetime.now().date() + timedelta(days=1)
+    )
+
+    if data_filtro:
+        data_filtrada = datetime.strptime(data_filtro, '%Y-%m-%d').date()
+        query = query.filter(HorarioVisitacao.data == data_filtrada)
+
+    horarios = query.order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+
+    horarios_por_data = {}
+    for h in horarios:
+        data_str = h.data.strftime('%Y-%m-%d')
+        horarios_por_data.setdefault(data_str, []).append(h)
+
+    return render_template(
+        'participante/horarios_disponiveis.html',
+        evento=evento,
+        horarios_por_data=horarios_por_data,
+        data_filtro=data_filtro
+    )
+
+
+@routes.route('/participante/criar_agendamento/<int:horario_id>', methods=['GET', 'POST'])
+@login_required
+def criar_agendamento_participante(horario_id):
+    """Permite que o participante faça um agendamento simples."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    horario = HorarioVisitacao.query.get_or_404(horario_id)
+    evento = horario.evento
+
+    inscrito = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento.id).first()
+    if not inscrito:
+        inscrito = Inscricao.query.join(Oficina).filter(
+            Inscricao.usuario_id == current_user.id,
+            Oficina.evento_id == evento.id
+        ).first()
+
+    if not inscrito:
+        flash('Você não está inscrito neste evento.', 'warning')
+        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
+
+    if horario.vagas_disponiveis <= 0:
+        flash('Não há mais vagas disponíveis para este horário!', 'warning')
+        return redirect(url_for('routes.horarios_disponiveis_participante', evento_id=evento.id))
+
+    if request.method == 'POST':
+        agendamento = AgendamentoVisita(
+            horario_id=horario.id,
+            professor_id=current_user.id,
+            escola_nome='Participante Individual',
+            escola_codigo_inep=None,
+            turma='-',
+            nivel_ensino='-',
+            quantidade_alunos=1
+        )
+        horario.vagas_disponiveis -= 1
+        db.session.add(agendamento)
+        try:
+            db.session.commit()
+            flash('Agendamento realizado com sucesso!', 'success')
+            return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao realizar agendamento: {str(e)}', 'danger')
+
+    return render_template(
+        'participante/criar_agendamento.html',
+        horario=horario,
+        evento=evento
     )
     

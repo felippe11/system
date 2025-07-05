@@ -333,7 +333,7 @@
                                            data-preco-final="{{ final }}"
                                            required>
                                     <label for="lote_tipo_{{ lote_tipo.id }}">
-                                        <span class="ticket-name">{{ lote_tipo.tipo_inscricao.nome }}</span>
+                                        <span class="ticket-name">{{ lote_tipo.tipo_inscricao.nome }}{% if lote_tipo.tipo_inscricao.submission_only %} <small class="badge bg-info">Somente Submissão</small>{% endif %}</span>
                                         {% if not evento.inscricao_gratuita %}
                                         <span class="ticket-price">
                                             {% if mostrar_taxa %}
@@ -363,7 +363,7 @@
                                            data-preco-final="{{ final }}"
                                            required>
                                     <label for="tipo_{{ tipo.id }}">
-                                        <span class="ticket-name">{{ tipo.nome }}</span>
+                                        <span class="ticket-name">{{ tipo.nome }}{% if tipo.submission_only %} <small class="badge bg-info">Somente Submissão</small>{% endif %}</span>
                                         {% if not evento.inscricao_gratuita %}
                                         <span class="ticket-price">
                                             {% if mostrar_taxa %}
@@ -396,7 +396,7 @@
                                            data-preco-final="0"
                                            required>
                                     <label for="tipo_{{ tipo.id }}">
-                                        <span class="ticket-name">{{ tipo.nome }}</span>
+                                        <span class="ticket-name">{{ tipo.nome }}{% if tipo.submission_only %} <small class="badge bg-info">Somente Submissão</small>{% endif %}</span>
                                     </label>
                                 </div>
                                 {% endfor %}

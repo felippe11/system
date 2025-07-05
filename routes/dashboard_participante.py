@@ -55,7 +55,11 @@ def dashboard_participante():
     formularios_disponiveis = False
     if current_user.cliente_id:
         logger.debug(f"DEBUG [9] -> Verificando formulários disponíveis para cliente_id = {current_user.cliente_id}")
-        form_count = Formulario.query.filter_by(cliente_id=current_user.cliente_id).count()
+        form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
+        evento_ref = evento.id if evento else current_user.evento_id
+        if evento_ref:
+            form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
+        form_count = form_query.count()
         formularios_disponiveis = form_count > 0
         logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
     
@@ -229,6 +233,9 @@ def dashboard_participante():
             logger.debug(f"DEBUG [48] -> Encontradas {len(oficinas_cliente)} oficinas pelo cliente_id")
     
     logger.debug(f"DEBUG [49] -> Total de oficinas encontradas: {len(oficinas)}")
+
+    if current_user.tipo_inscricao and getattr(current_user.tipo_inscricao, 'submission_only', False):
+        oficinas = []
 
     # CORREÇÃO 7: Filtrar inscrições válidas (com oficina_id não nulo)
     logger.debug(f"DEBUG [50] -> Montando lista de inscrições do participante_id = {current_user.id}")
