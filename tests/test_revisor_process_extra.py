@@ -78,7 +78,9 @@ def test_process_creation_with_dates(app):
         proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
         assert proc.availability_start is not None
         assert proc.availability_end is not None
-        assert proc.availability_start <= date.today() <= proc.availability_end
+        start = proc.availability_start.date() if hasattr(proc.availability_start, 'date') else proc.availability_start
+        end = proc.availability_end.date() if hasattr(proc.availability_end, 'date') else proc.availability_end
+        assert start <= date.today() <= end
 
 
 

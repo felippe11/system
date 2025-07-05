@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from models import (
     Evento, Oficina, Inscricao, Checkin,
     ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
-    EventoInscricaoTipo, Configuracao, ReviewerApplication
+    EventoInscricaoTipo, Configuracao, ReviewerApplication,
+    RevisorCandidatura, RevisorProcess
 )
 
 # Importa o blueprint central para registrar as rotas deste módulo
@@ -211,6 +212,13 @@ def dashboard_cliente():
 
     reviewer_apps = ReviewerApplication.query.all()
 
+    revisor_candidaturas = (
+        RevisorCandidatura.query
+        .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
+        .filter(RevisorProcess.cliente_id == current_user.id)
+        .all()
+    )
+
     return render_template(
         'dashboard_cliente.html',
         usuario=current_user,
@@ -235,7 +243,8 @@ def dashboard_cliente():
         eventos=eventos,
         finance_data=finance_data,
         valor_caixa=valor_caixa,
-        reviewer_apps=reviewer_apps
+        reviewer_apps=reviewer_apps,
+        revisor_candidaturas=revisor_candidaturas
     )
     
 def obter_configuracao_do_cliente(cliente_id):
