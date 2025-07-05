@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">Atribuir Eventos</h2>
+  <form method="post">
+    {% for evento in eventos %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="evento_{{ evento.id }}" name="eventos" value="{{ evento.id }}" {% if evento in formulario.eventos %}checked{% endif %}>
+      <label class="form-check-label" for="evento_{{ evento.id }}">{{ evento.nome }}</label>
+    </div>
+    {% else %}
+    <p>Nenhum evento disponível.</p>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary mt-3">Salvar</button>
+    <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-secondary mt-3 ms-2">Voltar</a>
+  </form>
+</div>
+{% endblock %}
