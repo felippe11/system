@@ -6,7 +6,9 @@
   <h1 class="h3 mb-4"><i class="bi bi-gear me-2"></i>Configurações do Sistema</h1>
 
   <form method="POST" class="card p-4 shadow-sm" style="max-width: 440px;">
-    {{ csrf_token() }} {# se CSRF estiver habilitado #}
+    {% if csrf_token is defined %}
+      {{ csrf_token() }}
+    {% endif %} {# se CSRF estiver habilitado #}
     <div class="mb-3">
       <label class="form-label fw-bold">Taxa fixa por inscrição (R$)</label>
       <input type="number"
