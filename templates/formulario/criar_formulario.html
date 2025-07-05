@@ -22,9 +22,19 @@
                 
                 <div class="mb-4">
                     <label for="descricao" class="form-label fw-medium">Descrição</label>
-                    <textarea id="descricao" name="descricao" class="form-control" 
+                    <textarea id="descricao" name="descricao" class="form-control"
                               rows="4" placeholder="Adicione uma descrição (opcional)"></textarea>
                     <div class="form-text">Uma breve descrição sobre o propósito deste formulário.</div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="eventos" class="form-label fw-medium">Eventos Relacionados</label>
+                    <select id="eventos" name="eventos" class="form-select" multiple>
+                        {% for ev in eventos %}
+                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Segure Ctrl para selecionar vários eventos</div>
                 </div>
                 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">

@@ -387,6 +387,14 @@
 
   {% endif %}
 
+  <div class="container-fluid px-4 mt-2">
+    <div class="d-flex justify-content-end mb-4">
+      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
+        <i class="fas fa-calendar-alt me-2"></i> AGENDAMENTOS
+      </a>
+    </div>
+  </div>
+
   {% if current_user.tem_pagamento_pendente() %}
 
 {% endif %}
@@ -395,7 +403,7 @@
   {% if formularios_disponiveis %}
     <div class="formularios-card">
       <strong>Formulários Disponíveis</strong>
-      <a href="{{ url_for('formularios_routes.listar_formularios_participante') }}" class="btn btn-primary">
+      <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}" class="btn btn-primary">
         <i class="fas fa-clipboard-list"></i> Acessar Formulários
       </a>
     </div>
