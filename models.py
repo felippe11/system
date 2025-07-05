@@ -108,6 +108,13 @@ oficina_ministrantes_association = db.Table(
     db.Column('ministrante_id', db.Integer, db.ForeignKey('ministrante.id'), primary_key=True)
 )
 
+# Association table linking formulários to eventos
+evento_formulario_association = db.Table(
+    'evento_formulario_association',
+    db.Column('evento_id', db.Integer, db.ForeignKey('evento.id'), primary_key=True),
+    db.Column('formulario_id', db.Integer, db.ForeignKey('formularios.id'), primary_key=True)
+)
+
 
 class Ministrante(db.Model, UserMixin):
     __tablename__ = 'ministrante'
@@ -529,6 +536,12 @@ class Formulario(db.Model):
     campos = db.relationship('CampoFormulario', backref='formulario', lazy=True, cascade="all, delete-orphan")
     # Relacionamento com respostas do formulário.
     respostas = db.relationship('RespostaFormulario', back_populates='formulario', cascade="all, delete-orphan")
+    # Eventos associados a este formulário
+    eventos = db.relationship(
+        'Evento',
+        secondary='evento_formulario_association',
+        backref=db.backref('formularios', lazy='dynamic')
+    )
 
 
     def __repr__(self):

@@ -395,7 +395,7 @@
   {% if formularios_disponiveis %}
     <div class="formularios-card">
       <strong>Formulários Disponíveis</strong>
-      <a href="{{ url_for('formularios_routes.listar_formularios_participante') }}" class="btn btn-primary">
+      <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}" class="btn btn-primary">
         <i class="fas fa-clipboard-list"></i> Acessar Formulários
       </a>
     </div>
