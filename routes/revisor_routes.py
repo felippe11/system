@@ -236,7 +236,7 @@ def approve(cand_id: int):
     if not reviewer:
         reviewer = Usuario(
             nome=cand.nome or cand.email,
-            cpf=str(uuid.uuid4()),
+            cpf=str(uuid.uuid4().int)[:11],
             email=cand.email,
             senha=generate_password_hash("temp123"),
             formacao="",
@@ -255,7 +255,9 @@ def approve(cand_id: int):
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
 
     db.session.commit()
-    return jsonify({"success": True, "reviewer_id": reviewer.id})
+    if request.is_json:
+        return jsonify({"success": True, "reviewer_id": reviewer.id})
+    return redirect(url_for("dashboard_routes.dashboard_cliente"))
 
 
 @revisor_routes.route("/revisor/reject/<int:cand_id>", methods=["POST"])
@@ -268,7 +270,9 @@ def reject(cand_id: int):
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     cand.status = "rejeitado"
     db.session.commit()
-    return jsonify({"success": True})
+    if request.is_json:
+        return jsonify({"success": True})
+    return redirect(url_for("dashboard_routes.dashboard_cliente"))
 
 
 @revisor_routes.route("/revisor/advance/<int:cand_id>", methods=["POST"])
@@ -282,7 +286,9 @@ def advance(cand_id: int):
     if cand.etapa_atual < cand.process.num_etapas:
         cand.etapa_atual += 1
     db.session.commit()
-    return jsonify({"success": True, "etapa_atual": cand.etapa_atual})
+    if request.is_json:
+        return jsonify({"success": True, "etapa_atual": cand.etapa_atual})
+    return redirect(url_for("dashboard_routes.dashboard_cliente"))
 
 
 # -----------------------------------------------------------------------------
