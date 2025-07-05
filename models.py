@@ -803,6 +803,8 @@ class ConfiguracaoAgendamento(db.Model):
     tempo_bloqueio = db.Column(db.Integer, nullable=False, default=7)  # Dias de bloqueio por violação
     capacidade_padrao = db.Column(db.Integer, nullable=False, default=30)  # Quantidade padrão de alunos por horário
     intervalo_minutos = db.Column(db.Integer, nullable=False, default=60)  # Minutos entre agendamentos
+
+    tipos_inscricao_permitidos = db.Column(db.Text, nullable=True)
     
     # Horários de disponibilidade
     horario_inicio = db.Column(db.Time, nullable=False)
@@ -812,6 +814,11 @@ class ConfiguracaoAgendamento(db.Model):
     # Relações
     cliente = db.relationship('Cliente', backref=db.backref('configuracoes_agendamento', lazy=True))
     evento = db.relationship('Evento', backref=db.backref('configuracoes_agendamento', lazy=True))
+
+    def get_tipos_inscricao_list(self):
+        if not self.tipos_inscricao_permitidos:
+            return []
+        return [int(t) for t in self.tipos_inscricao_permitidos.split(',') if t]
     
     def __repr__(self):
         return f"<ConfiguracaoAgendamento {self.id} - Evento {self.evento_id}>"
