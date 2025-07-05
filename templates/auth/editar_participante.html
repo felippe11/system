@@ -2,126 +2,142 @@
 {% block title %}Editar Participante{% endblock %}
 
 {% block content %}
-<!-- Estilos personalizados para o formulário de edição -->
 <style>
-  /* Fundo moderno em degradê */
-  body {
-    background: linear-gradient(135deg, #74ABE2, #5563DE);
-    font-family: "Poppins", sans-serif;
+  /* Define variáveis de cor para fácil manutenção */
+  :root {
+    --primary-color: #5D69D9;
+    --secondary-color: #4D5AC7;
+    --accent-color: #4CAF50;
+    --accent-hover-color: #45a049;
+    --light-gray: #f8f9fa;
+    --dark-gray: #343a40;
+    --text-color: #495057;
   }
 
-  /* Centraliza o card na tela */
+  /* Fundo moderno e suave */
+  body {
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+    font-family: "Poppins", sans-serif;
+    color: var(--text-color);
+  }
+
+  /* Card com design aprimorado */
   .card-register {
-    max-width: 500px;
+    max-width: 600px;
     width: 100%;
     border: none;
-    border-radius: 10px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    overflow: hidden;
   }
 
-  /* Cabeçalho do card */
+  /* Cabeçalho do card mais limpo */
   .card-register .card-header {
-    background: #fff;
-    border-bottom: none;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #007bff;
-    text-align: center;
-    padding: 1.5rem 1rem;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-  }
-
-  /* Corpo do card */
-  .card-register .card-body {
-    padding: 2rem;
-  }
-
-  /* Espaçamento para os alertas */
-  .alert-container {
-    margin-bottom: 1rem;
-  }
-
-  /* Link */
-  .login-link {
-    color: #007bff;
+    background-color: transparent;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 1.5rem;
     font-weight: 600;
+    color: var(--primary-color);
+    text-align: center;
+    padding: 2rem 1.5rem;
+  }
+
+  /* Corpo do card com melhor espaçamento */
+  .card-register .card-body {
+    padding: 2.5rem;
+  }
+
+  /* Estilos de formulário modernos */
+  .form-label {
+    font-weight: 600;
+    color: var(--dark-gray);
+  }
+
+  .form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 0.75rem 1rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(93, 105, 217, 0.2);
+  }
+
+  /* Botão principal com visual atraente */
+  .btn-success {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    border-radius: 8px;
+    padding: 0.85rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+  }
+
+  .btn-success:hover {
+    background-color: var(--accent-hover-color);
+    transform: translateY(-2px); /* Efeito de elevação sutil */
+  }
+
+  /* Link de voltar com melhor destaque */
+  .back-link {
+    color: var(--primary-color);
+    font-weight: 500;
     text-decoration: none;
+    transition: color 0.2s ease;
   }
-  .login-link:hover {
+  .back-link:hover {
+    color: var(--secondary-color);
     text-decoration: underline;
-  }
-  
-  /* Estilos para o bloco de localização */
-  .location-block {
-    border: 1px solid #ccc;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    border-radius: 5px;
-    position: relative;
-  }
-  .remove-location-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
   }
 </style>
 
-<div class="d-flex justify-content-center align-items-center vh-100">
-  <div class="card card-register shadow-lg rounded bg-white">
+<div class="d-flex justify-content-center align-items-center min-vh-100 py-5">
+  <div class="card card-register shadow-lg">
     <div class="card-header">
       Editar Participante
     </div>
     <div class="card-body">
-    
 
-      <!-- Formulário de Edição -->
       <form method="POST">
         <div class="mb-3">
-          <label for="nome" class="form-label fw-bold">Nome Completo</label>
+          <label for="nome" class="form-label">Nome Completo</label>
           <input type="text" class="form-control" name="nome" id="nome" placeholder="Digite seu nome completo" value="{{ usuario.nome }}" required>
         </div>
 
-        <div class="mb-3">
-          <label for="cpf" class="form-label fw-bold">CPF</label>
-          <input type="text" class="form-control" name="cpf" id="cpf" placeholder="000.000.000-00" value="{{ usuario.cpf }}" required>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="cpf" class="form-label">CPF</label>
+                <input type="text" class="form-control" name="cpf" id="cpf" placeholder="000.000.000-00" value="{{ usuario.cpf }}" required>
+            </div>
+            <div class="col-md-6">
+                <label for="formacao" class="form-label">Formação</label>
+                <input type="text" class="form-control" name="formacao" id="formacao" placeholder="Ex: Engenheiro(a) de Software" value="{{ usuario.formacao }}" required>
+            </div>
         </div>
 
         <div class="mb-3">
-          <label for="email" class="form-label fw-bold">E-mail</label>
+          <label for="email" class="form-label">E-mail</label>
           <input type="email" class="form-control" name="email" id="email" placeholder="Digite seu e-mail" value="{{ usuario.email }}" required>
         </div>
 
-        <!-- Campo de senha opcional -->
-        <div class="mb-3">
-          <label for="senha" class="form-label fw-bold">Senha (deixe em branco para manter a mesma)</label>
-          <input type="password" class="form-control" name="senha" id="senha" placeholder="Digite uma nova senha, se desejar">
+        <div class="mb-4">
+          <label for="senha" class="form-label">Nova Senha</label>
+          <input type="password" class="form-control" name="senha" id="senha" placeholder="Deixe em branco para não alterar">
         </div>
 
-        <div class="mb-3">
-          <label for="formacao" class="form-label fw-bold">Formação</label>
-          <input type="text" class="form-control" name="formacao" id="formacao" placeholder="Informe sua formação acadêmica" value="{{ usuario.formacao }}" required>
-        </div>
-
-        <!-- Seção para Locais de Atuação -->
-        <div class="mb-3">
-          <label class="form-label fw-bold">Locais onde atua</label>
-          <div id="locations-container">
-            <!-- Os blocos de localização serão adicionados aqui dinamicamente -->
-          </div>
-          <button type="button" id="add-location-btn" class="btn btn-secondary btn-sm">Adicionar Local</button>
-        </div>
-
-        <button type="submit" class="btn btn-success w-100 fw-bold">Salvar Alterações</button>
+        <button type="submit" class="btn btn-success w-100 fw-bold py-2 mt-4">Salvar Alterações</button>
       </form>
 
-      <p class="text-center mt-3">
-        <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="login-link">Voltar ao Dashboard</a>
+      <p class="text-center mt-4">
+        <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="back-link">Voltar ao Dashboard</a>
       </p>
     </div>
   </div>
 </div>
 
-<!-- Script para aplicar máscara ao CPF -->
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     const cpfInput = document.getElementById("cpf");
@@ -135,136 +151,4 @@
   });
 </script>
 
-<!-- Script para adicionar/remover blocos de localização e preencher os selects via API do IBGE -->
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-      // Variável global para armazenar os dados dos estados
-      let statesData = [];
-  
-      // Recupera os locais já cadastrados do usuário.
-      // Use o filtro |safe para que o JSON não seja escapado.
-      var existingStatesStr = "{{ usuario.estados or '' |tojson|safe }}";
-      var existingCitiesStr = "{{ usuario.cidades or '' |tojson|safe }}";
-      
-      // Se a string estiver vazia ou for "null", converte para array vazio
-      var existingStates = (existingStatesStr && existingStatesStr !== "") ? existingStatesStr.split(",") : [];
-      var existingCities = (existingCitiesStr && existingCitiesStr !== "") ? existingCitiesStr.split(",") : [];
-  
-      // Busca os estados utilizando a API do IBGE
-      fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados')
-        .then(response => response.json())
-        .then(data => {
-            data.sort((a, b) => a.nome.localeCompare(b.nome));
-            statesData = data;
-            // Se o usuário já tiver locais cadastrados, cria um bloco para cada par;
-            // caso contrário, cria um bloco vazio.
-            if(existingStates.length > 0) {
-                for(let i = 0; i < existingStates.length; i++){
-                    // Se não houver valor para cidade, passa string vazia
-                    let stateValue = existingStates[i].trim();
-                    let cityValue = existingCities[i] ? existingCities[i].trim() : "";
-                    addLocationBlock(stateValue, cityValue);
-                }
-            } else {
-                addLocationBlock();
-            }
-        })
-        .catch(error => console.error('Erro ao buscar estados:', error));
-  
-      const locationsContainer = document.getElementById('locations-container');
-      const addLocationBtn = document.getElementById('add-location-btn');
-  
-      addLocationBtn.addEventListener('click', function() {
-          addLocationBlock();
-      });
-  
-      // Função que cria um bloco de localização; aceita parâmetros opcionais para pré‑selecionar estado e cidade.
-      function addLocationBlock(preselectedState = "", preselectedCity = "") {
-          // Cria um container para o bloco de localização
-          const block = document.createElement('div');
-          block.classList.add('location-block');
-  
-          // Cria o label e o select para Estado
-          const stateLabel = document.createElement('label');
-          stateLabel.classList.add('form-label', 'fw-bold');
-          stateLabel.textContent = "Estado";
-          const stateSelect = document.createElement('select');
-          stateSelect.name = 'estados[]';
-          stateSelect.classList.add('form-select', 'mb-2');
-          stateSelect.innerHTML = '<option value="">Selecione o Estado</option>';
-          // Popula o select de estados
-          statesData.forEach(state => {
-              const option = document.createElement('option');
-              option.value = state.sigla;
-              option.text = state.nome;
-              if(preselectedState && state.sigla === preselectedState){
-                  option.selected = true;
-              }
-              stateSelect.add(option);
-          });
-  
-          // Cria o label e o select para Cidade
-          const cityLabel = document.createElement('label');
-          cityLabel.classList.add('form-label', 'fw-bold');
-          cityLabel.textContent = "Cidade";
-          const citySelect = document.createElement('select');
-          citySelect.name = 'cidades[]';
-          citySelect.classList.add('form-select', 'mb-2');
-          citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
-  
-          // Função para preencher o select de cidades com base no estado selecionado
-          function fillCities(uf, preselectedCity) {
-              citySelect.innerHTML = '<option value="">Selecione a Cidade</option>';
-              if (uf) {
-                  fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
-                    .then(response => response.json())
-                    .then(cities => {
-                        cities.sort((a, b) => a.nome.localeCompare(b.nome));
-                        cities.forEach(city => {
-                            const option = document.createElement('option');
-                            option.value = city.nome;
-                            option.text = city.nome;
-                            if(preselectedCity && city.nome === preselectedCity){
-                                option.selected = true;
-                            }
-                            citySelect.add(option);
-                        });
-                    })
-                    .catch(error => console.error('Erro ao buscar cidades para ' + uf + ':', error));
-              }
-          }
-  
-          // Ao mudar o estado, preenche as cidades
-          stateSelect.addEventListener('change', function() {
-              const uf = this.value;
-              fillCities(uf, "");
-          });
-  
-          // Se houver estado pré‑selecionado, preenche imediatamente o select de cidades
-          if(preselectedState){
-              fillCities(preselectedState, preselectedCity);
-          }
-  
-          // Cria o botão para remover o bloco de localização
-          const removeBtn = document.createElement('button');
-          removeBtn.type = 'button';
-          removeBtn.textContent = 'Remover Local';
-          removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-location-btn');
-          removeBtn.addEventListener('click', function() {
-              locationsContainer.removeChild(block);
-          });
-  
-          // Adiciona os elementos ao bloco
-          block.appendChild(removeBtn);
-          block.appendChild(stateLabel);
-          block.appendChild(stateSelect);
-          block.appendChild(cityLabel);
-          block.appendChild(citySelect);
-  
-          // Adiciona o bloco no container de localizações
-          locationsContainer.appendChild(block);
-      }
-  });
-  </script>
-  
 {% endblock %}
