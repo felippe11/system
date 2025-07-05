@@ -799,6 +799,7 @@ def configurar_agendamentos(evento_id):
         return redirect(url_for('dashboard_routes.dashboard'))
     
     evento = Evento.query.get_or_404(evento_id)
+    tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento_id).all()
     
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
@@ -828,6 +829,8 @@ def configurar_agendamentos(evento_id):
             # Dias da semana selecionados
             dias_semana = request.form.getlist('dias_semana')
             config.dias_semana = ','.join(dias_semana)
+            selecionados = request.form.getlist('tipos_inscricao_permitidos')
+            config.tipos_inscricao_permitidos = ','.join(selecionados) if selecionados else None
         else:
             # Criar nova configuração
             hora_inicio = request.form.get('horario_inicio')
@@ -842,7 +845,8 @@ def configurar_agendamentos(evento_id):
                 intervalo_minutos=request.form.get('intervalo_minutos', type=int),
                 horario_inicio=datetime.strptime(hora_inicio, '%H:%M').time(),
                 horario_fim=datetime.strptime(hora_fim, '%H:%M').time(),
-                dias_semana=','.join(request.form.getlist('dias_semana'))
+                dias_semana=','.join(request.form.getlist('dias_semana')),
+                tipos_inscricao_permitidos=','.join(request.form.getlist('tipos_inscricao_permitidos')) or None
             )
             db.session.add(config)
         
@@ -857,7 +861,8 @@ def configurar_agendamentos(evento_id):
     return render_template(
         'configurar_agendamentos.html',
         evento=evento,
-        config=config
+        config=config,
+        tipos_inscricao=tipos_inscricao
     )
 
 
