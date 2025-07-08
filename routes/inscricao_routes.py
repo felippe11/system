@@ -100,8 +100,6 @@ def cadastro_participante(identifier: str | None = None):
         tipo_insc_id = request.form.get("tipo_inscricao_id")
 
         try:
-            solicitar_senha = False
-
             config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
 
             def obrig(attr):
@@ -122,13 +120,13 @@ def cadastro_participante(identifier: str | None = None):
 
             usuario = None
             if duplicado:
-                senha_existente = sanitize_input(request.form.get("senha_existente"))
-                if senha_existente and check_password_hash(duplicado.senha, senha_existente):
-                    usuario = duplicado
-                else:
-                    solicitar_senha = True
-                    msg = "Usuário já cadastrado. Confirme sua senha para prosseguir."
-                    raise ValueError(msg)
+                usuario = duplicado
+                inscr_existente = Inscricao.query.filter_by(
+                    usuario_id=duplicado.id, evento_id=evento.id
+                ).first()
+                if inscr_existente:
+                    flash("Você já possui inscrição neste evento. Faça login.", "warning")
+                    return redirect(url_for("auth_routes.login"))
 
             resolved_tipo = None
             if lote_tipo_id:
@@ -159,6 +157,9 @@ def cadastro_participante(identifier: str | None = None):
                 )
                 db.session.add(usuario)
                 db.session.flush()
+            else:
+                if usuario.evento_id != evento.id:
+                    usuario.evento_id = evento.id
 
             inscricao = Inscricao(
                 usuario_id=usuario.id,
@@ -180,7 +181,10 @@ def cadastro_participante(identifier: str | None = None):
 
             inscricao.status_pagamento = "approved"
             db.session.commit()
-            flash("Inscrição realizada com sucesso!", "success")
+            if duplicado:
+                flash("Conta já existente. Utilize seus dados para acessar.", "info")
+            else:
+                flash("Inscrição realizada com sucesso!", "success")
             return redirect(url_for("auth_routes.login"))
 
         except LoteEsgotadoError:
@@ -192,15 +196,13 @@ def cadastro_participante(identifier: str | None = None):
             db.session.rollback()
             flash(str(e), "danger")
             return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                               lotes_ativos=lotes_ativos, cliente_id=cliente_id,
-                               solicitar_senha=solicitar_senha)
+                               lotes_ativos=lotes_ativos, cliente_id=cliente_id)
 
     # ------------------------------------------------------------------
     # 4) GET - apenas renderiza o formulário
     # ------------------------------------------------------------------
     return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                        lotes_ativos=lotes_ativos, cliente_id=cliente_id,
-                        solicitar_senha=False)
+                        lotes_ativos=lotes_ativos, cliente_id=cliente_id)
 
 
 
@@ -433,7 +435,7 @@ def _criar_preferencia_mp(sdk, preco: float, titulo: str, inscricao: Inscricao, 
     return init_point
 
 
-def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solicitar_senha=False):
+def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
     """Coleta dados de contexto e renderiza template."""
     from collections import defaultdict
 
@@ -543,7 +545,6 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id, solici
         tipos_inscricao=tipos_inscricao,
         mostrar_taxa=mostrar_taxa,
         preco_com_taxa=preco_com_taxa,
-        solicitar_senha=solicitar_senha,
         cliente_id=cliente_id,
         obrigatorio_nome=obrigatorio_nome,
         obrigatorio_cpf=obrigatorio_cpf,
