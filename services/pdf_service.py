@@ -1,6 +1,32 @@
 from flask_login import login_required
 from utils import external_url, determinar_turno
 
+
+def gerar_revisor_details_pdf(cand, pdf_path=None):
+    """Gera um PDF simples com dados do revisor."""
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+    import tempfile
+    import os
+    from flask import send_file
+
+    if pdf_path is None:
+        pdf_filename = f"revisor_{cand.codigo}.pdf"
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    width, height = letter
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(72, height - 72, "Dados do Revisor")
+    c.setFont("Helvetica", 12)
+    c.drawString(72, height - 100, f"Nome: {cand.nome}")
+    c.drawString(72, height - 120, f"E-mail: {cand.email}")
+    c.drawString(72, height - 140, f"Código: {cand.codigo}")
+    c.showPage()
+    c.save()
+
+    return send_file(pdf_path, as_attachment=True, download_name=os.path.basename(pdf_path))
+
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     """
     Generates a modern and professional attendance list PDF for a workshop.
