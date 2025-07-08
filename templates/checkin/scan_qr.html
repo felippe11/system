@@ -183,7 +183,8 @@
                         <div>${data.message}</div>
                     </div>
                 </div>`;
-                addScannedItem(data.participante, data.oficina, data.turno, data.data_hora);
+                const atividade = data.oficina || data.evento || 'Credenciamento';
+                addScannedItem(data.participante, atividade, data.turno, data.data_hora);
             } else if (data.status === "warning") {
                 // ex.: "Check-in já realizado!"
                 resultElement.innerHTML = `<div class="alert alert-warning">
@@ -246,7 +247,8 @@
             const data = await resp.json();
             if (data.status === 'success' && Array.isArray(data.checkins)) {
                 data.checkins.forEach(chk => {
-                    addScannedItem(chk.participante, chk.oficina, chk.turno, chk.data_hora);
+                    const atividade = chk.oficina || chk.evento || 'Credenciamento';
+                    addScannedItem(chk.participante, atividade, chk.turno, chk.data_hora);
                 });
             }
         } catch (err) {
@@ -310,13 +312,7 @@
 
   // Receber apenas os check-ins do cliente logado
   socket.on("novo_checkin", function (data) {
-    const tabela = document.getElementById("tabelaCheckins");
-    const novaLinha = tabela.insertRow(1);
-    novaLinha.innerHTML = `
-      <td>${data.nome}</td>
-      <td>${data.oficina}</td>
-      <td>${data.hora}</td>
-    `;
+    const atividade = data.oficina || data.evento || 'Credenciamento';
+    addScannedItem(data.participante, atividade, data.turno, data.data_hora);
   });
-</script>
-{% endblock %}
+</script>{% endblock %}
