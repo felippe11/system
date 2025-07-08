@@ -1460,16 +1460,16 @@
           <td>{{ cand.status }}</td>
           <td>
             <form method="post" action="{{ url_for('revisor_routes.advance', cand_id=cand.id) }}" class="d-inline">
-              {{ csrf_token() }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-primary">Avançar</button>
             </form>
 
             <form method="post" action="{{ url_for('revisor_routes.approve', cand_id=cand.id) }}" class="d-inline ms-1">
-              {{ csrf_token() }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-success">Aprovar</button>
             </form>
             <form method="post" action="{{ url_for('revisor_routes.reject', cand_id=cand.id) }}" class="d-inline ms-1">
-              {{ csrf_token() }}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-danger">Rejeitar</button>
             </form>
           </td>
