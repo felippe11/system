@@ -19,7 +19,7 @@
 
   <form method="POST" class="feedback-form">
     {% if form is defined %}
-      {{ form.csrf_token() }}
+      <input type="hidden" name="csrf_token" value="{{ form.csrf_token() }}">
     {% endif %}
     
     <div class="feedback-items">
