@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db, mail
 import logging
+from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
 from models import (
@@ -3716,11 +3717,7 @@ def importar_oficinas():
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     # Verifica se a extensão é permitida (.xlsx)
-    ALLOWED_EXTENSIONS = {"xlsx"}
-    def arquivo_permitido(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-    if not arquivo_permitido(arquivo.filename):
+    if not (arquivo_permitido(arquivo.filename) and arquivo.filename.rsplit('.', 1)[1].lower() == "xlsx"):
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
