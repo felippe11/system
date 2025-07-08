@@ -91,17 +91,26 @@ def dashboard_participante():
     logger.debug(f"DEBUG [15] -> Configurações: checkin={permitir_checkin}, feedback={habilitar_feedback}, certificado={habilitar_certificado}")
 
     # CORREÇÃO: Limpar inscrições inválidas (oficina_id = None)
-    inscricoes_validas = [i for i in current_user.inscricoes if i.oficina_id is not None]
+    # Incluir inscrições que possuam somente evento_id
+    inscricoes_validas = [
+        i for i in current_user.inscricoes
+        if i.oficina_id is not None or i.evento_id is not None
+    ]
     logger.debug(f"DEBUG [16] -> Filtrando inscrições válidas: {len(current_user.inscricoes)} -> {len(inscricoes_validas)}")
     
     # Obter os eventos em que o participante está inscrito
     logger.debug(f"DEBUG [17] -> Buscando eventos inscritos para participante_id = {current_user.id}")
     eventos_inscritos = []
     for inscricao in inscricoes_validas:
-        logger.debug(f"DEBUG [18] -> Verificando inscrição: {inscricao.id}, oficina_id: {inscricao.oficina_id}")
+        logger.debug(
+            f"DEBUG [18] -> Verificando inscrição: {inscricao.id}, oficina_id: {inscricao.oficina_id}, evento_id: {inscricao.evento_id}"
+        )
         if inscricao.oficina and inscricao.oficina.evento_id:
             eventos_inscritos.append(inscricao.oficina.evento_id)
             logger.debug(f"DEBUG [19] -> Adicionado evento_id: {inscricao.oficina.evento_id}")
+        elif inscricao.evento_id:
+            eventos_inscritos.append(inscricao.evento_id)
+            logger.debug(f"DEBUG [19b] -> Adicionado evento_id sem oficina: {inscricao.evento_id}")
     
     # Remover duplicatas
     eventos_inscritos_original = eventos_inscritos.copy()
@@ -278,12 +287,19 @@ def dashboard_participante():
     logger.debug(f"DEBUG [59] -> Contando inscrições do usuário por evento")
     inscricoes_por_evento = {}
     for inscricao in inscricoes_validas:
+        evento_id = None
         if inscricao.oficina and inscricao.oficina.evento_id:
             evento_id = inscricao.oficina.evento_id
+        elif inscricao.evento_id:
+            evento_id = inscricao.evento_id
+
+        if evento_id:
             if evento_id not in inscricoes_por_evento:
                 inscricoes_por_evento[evento_id] = 0
             inscricoes_por_evento[evento_id] += 1
-            logger.debug(f"DEBUG [60] -> Evento {evento_id}: {inscricoes_por_evento[evento_id]} inscrições")
+            logger.debug(
+                f"DEBUG [60] -> Evento {evento_id}: {inscricoes_por_evento[evento_id]} inscrições"
+            )
     
     # Monte a estrutura que o template "dashboard_participante.html" precisa
     logger.debug(f"DEBUG [61] -> Formatando {len(oficinas)} oficinas para exibição")
