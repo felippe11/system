@@ -4,6 +4,7 @@
   <h3>Revisar Trabalho</h3>
   <p><strong>{{ review.submission.title }}</strong></p>
   <form method="POST">
+    {{ csrf_token() }}
     <div class="mb-3">
       <label>Código de Acesso</label>
       <input type="text" name="codigo" class="form-control" required>
