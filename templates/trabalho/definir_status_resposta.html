@@ -8,7 +8,7 @@
 
   <form method="POST">
     <!-- Se estiver usando Flask-WTF, inclua o CSRF -->
-    <!-- {{ form.csrf_token() }} -->
+    <input type="hidden" name="csrf_token" value="{{ form.csrf_token() if form is defined }}">
 
     <div class="mb-3">
       <label for="status_avaliacao" class="form-label">Status da Resposta</label>
