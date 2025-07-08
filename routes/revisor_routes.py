@@ -236,6 +236,13 @@ def approve(cand_id: int):
         return jsonify({"success": False}), 403
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    if not cand.email:
+        msg = "Candidatura sem email"
+        if request.is_json:
+            return jsonify({"success": False, "message": msg}), 400
+        flash(msg, "danger")
+        return redirect(url_for("dashboard_routes.dashboard_cliente"))
+
     cand.status = "aprovado"
     cand.etapa_atual = cand.process.num_etapas  # type: ignore[attr-defined]
 
