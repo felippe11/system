@@ -65,11 +65,15 @@ def gerar_pdf_feedback_route(oficina_id):
     return gerar_pdf_feedback_service(oficina_id)
 
 
-@routes.route('/gerar_certificado_individual_admin', methods=['POST'])
+@routes.route('/gerar_certificado_individual_admin', methods=['GET', 'POST'])
 @login_required
 def gerar_certificado_individual_admin():
-    oficina_id = request.form.get('oficina_id', type=int)
-    usuario_id = request.form.get('usuario_id', type=int)
+    if request.method == 'POST':
+        oficina_id = request.form.get('oficina_id', type=int)
+        usuario_id = request.form.get('usuario_id', type=int)
+    else:
+        oficina_id = request.args.get('oficina_id', type=int)
+        usuario_id = request.args.get('usuario_id', type=int)
     from models import Oficina, Inscricao
 
     oficina = Oficina.query.get_or_404(oficina_id)
