@@ -1446,25 +1446,30 @@
   <!-- ABA 6: REVISORES -->
   <div class="tab-pane fade" id="revisores" role="tabpanel">
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
-      <table class="table table-sm">
-        <thead>
-          <tr><th>Nome</th><th>Código</th><th>Etapa</th><th>Status</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-          {% for cand in revisor_candidaturas %}
-          <tr>
-            <td>{{ cand.nome or cand.email }}</td>
-            <td>{{ cand.codigo }}</td>
-            <td>{{ cand.etapa_atual }}</td>
-            <td>{{ cand.status }}</td>
-            <td>
-              <form method="post" action="{{ url_for('revisor_routes.advance', cand_id=cand.id) }}" class="d-inline">
-                <button class="btn btn-sm btn-primary">Avançar</button>
-              </form>
+
+
+    <table class="table table-sm">
+      <thead>
+        <tr><th>Nome</th><th>Etapa</th><th>Status</th><th>Ações</th></tr>
+      </thead>
+      <tbody>
+        {% for cand in revisor_candidaturas %}
+        <tr>
+          <td>{{ cand.nome or cand.email }}</td>
+          <td>{{ cand.etapa_atual }}</td>
+          <td>{{ cand.status }}</td>
+          <td>
+            <form method="post" action="{{ url_for('revisor_routes.advance', cand_id=cand.id) }}" class="d-inline">
+              {{ csrf_token() }}
+              <button class="btn btn-sm btn-primary">Avançar</button>
+            </form>
+
             <form method="post" action="{{ url_for('revisor_routes.approve', cand_id=cand.id) }}" class="d-inline ms-1">
+              {{ csrf_token() }}
               <button class="btn btn-sm btn-success">Aprovar</button>
             </form>
             <form method="post" action="{{ url_for('revisor_routes.reject', cand_id=cand.id) }}" class="d-inline ms-1">
+              {{ csrf_token() }}
               <button class="btn btn-sm btn-danger">Rejeitar</button>
             </form>
           </td>
