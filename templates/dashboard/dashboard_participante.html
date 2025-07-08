@@ -604,7 +604,11 @@ function inscrever(oficinaId) {
 
     // Monta o corpo da requisição
     const tipoId = oficinaCard.dataset.tipoInscricaoId;
-    const options = { method: 'POST' };
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const options = { 
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    };
     if (tipoId) {
         const body = new URLSearchParams();
         body.append('tipo_inscricao_id', tipoId);
