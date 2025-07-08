@@ -128,6 +128,25 @@ def test_application_and_approval_flow(client, app):
         assert ass is None
 
 
+def test_progress_pdf_download(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+
+    client.post(
+        f"/revisor/apply/{proc.id}",
+        data={str(campos["email"]): "pdf@test", str(campos["nome"]): "Pdf"},
+    )
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(email="pdf@test").first()
+        code = cand.codigo
+
+    resp = client.get(f"/revisor/progress/{code}/pdf")
+    assert resp.status_code == 200
+    assert resp.mimetype == "application/pdf"
+
+
 def test_navbar_shows_correct_process_id(app):
     with app.test_request_context("/"):
         html = render_template("partials/navbar.html")
