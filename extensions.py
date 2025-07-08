@@ -3,6 +3,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_mail import Mail
 from flask_socketio import SocketIO
+from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import MetaData
 
 socketio = SocketIO()
@@ -20,3 +21,4 @@ db = SQLAlchemy(metadata=MetaData(naming_convention=naming_convention))
 login_manager = LoginManager()
 migrate = Migrate()
 mail = Mail()
+csrf = CSRFProtect()

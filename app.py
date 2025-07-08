@@ -4,7 +4,7 @@ from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 from config import Config
-from extensions import db, login_manager, migrate, mail, socketio
+from extensions import db, login_manager, migrate, mail, socketio, csrf
 from models import Inscricao
 import pytz
 import logging
@@ -37,6 +37,7 @@ def create_app():
     login_manager.init_app(app)
     migrate.init_app(app, db)
     mail.init_app(app)
+    csrf.init_app(app)
     CORS(app)
 
     login_manager.login_view = "auth_routes.login"
