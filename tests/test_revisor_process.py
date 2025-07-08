@@ -212,11 +212,14 @@ def test_dashboard_lists_candidaturas_and_status_update(client, app):
         cand = RevisorCandidatura.query.filter_by(email="cand@test").first()
         assert cand is not None
         cand_id = cand.id
+        cand_code = cand.codigo
 
     login(client, "cli@test", "123")
     resp = client.get("/dashboard_cliente")
     assert resp.status_code == 200
-    assert "Cand" in resp.get_data(as_text=True)
+    html = resp.get_data(as_text=True)
+    assert "Cand" in html
+    assert cand_code in html
 
     resp = client.post(f"/revisor/reject/{cand_id}", json={})
     assert resp.status_code == 200

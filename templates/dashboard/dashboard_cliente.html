@@ -1446,6 +1446,8 @@
   <!-- ABA 6: REVISORES -->
   <div class="tab-pane fade" id="revisores" role="tabpanel">
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
+
+
     <table class="table table-sm">
       <thead>
         <tr><th>Nome</th><th>Etapa</th><th>Status</th><th>Ações</th></tr>
@@ -1461,6 +1463,7 @@
               {{ csrf_token() }}
               <button class="btn btn-sm btn-primary">Avançar</button>
             </form>
+
             <form method="post" action="{{ url_for('revisor_routes.approve', cand_id=cand.id) }}" class="d-inline ms-1">
               {{ csrf_token() }}
               <button class="btn btn-sm btn-success">Aprovar</button>
@@ -1472,10 +1475,10 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="4">Nenhum candidato.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          <tr><td colspan="5">Nenhum candidato.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
   </div>
   <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
