@@ -109,7 +109,6 @@ def preview_cadastro():
         tipos_inscricao=tipos_inscricao,
         mostrar_taxa=mostrar_taxa,
         preco_com_taxa=preco_com_taxa,
-        solicitar_senha=False,
         cliente_id=current_user.id,
         disable_submit=True
     )
