@@ -16,4 +16,11 @@
     </tbody>
   </table>
 </div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    {% if pdf_url %}
+    window.location.href = '{{ pdf_url }}';
+    {% endif %}
+  });
+</script>
 {% endblock %}

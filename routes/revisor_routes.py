@@ -42,6 +42,7 @@ from models import (
     Submission,
     Usuario,
 )
+from services.pdf_service import gerar_revisor_details_pdf
 
 # -----------------------------------------------------------------------------
 # Blueprint
@@ -177,7 +178,14 @@ def submit_application(process_id: int):
 @revisor_routes.route("/revisor/progress/<codigo>")
 def progress(codigo: str):
     cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
-    return render_template("revisor/progress.html", candidatura=cand)
+    pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
+    return render_template("revisor/progress.html", candidatura=cand, pdf_url=pdf_url)
+
+
+@revisor_routes.route("/revisor/progress/<codigo>/pdf")
+def progress_pdf(codigo: str):
+    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
+    return gerar_revisor_details_pdf(cand)
 
 
 @revisor_routes.route("/revisor/progress")
