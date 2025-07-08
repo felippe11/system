@@ -228,3 +228,27 @@ def test_dashboard_lists_candidaturas_and_status_update(client, app):
     with app.app_context():
         cand = RevisorCandidatura.query.get(cand_id)
         assert cand.status == "rejeitado"
+
+
+def test_approve_candidatura_without_email(client, app):
+    """Approving a candidatura without email should fail gracefully."""
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+
+    # submit candidatura only with nome
+    client.post(
+        f"/revisor/apply/{proc.id}",
+        data={str(campos["nome"]): "SemEmail"},
+    )
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(nome="SemEmail").first()
+        assert cand.email is None
+        cand_id = cand.id
+
+    login(client, "cli@test", "123")
+    resp = client.post(f"/revisor/approve/{cand_id}", json={})
+    assert resp.status_code == 400
+    data = resp.get_json()
+    assert not data["success"]
