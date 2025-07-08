@@ -4,7 +4,7 @@
   <h3 class="mb-4">Submissão de Trabalho Científico</h3>
   <form method="POST" enctype="multipart/form-data">
     {% if csrf_token is defined %}
-      {{ csrf_token() }}
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% endif %}
     <div class="mb-3">
       <label for="titulo" class="form-label">Título</label>
