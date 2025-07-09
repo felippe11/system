@@ -158,7 +158,7 @@ def cadastro_participante(identifier: str | None = None):
                 db.session.add(usuario)
                 db.session.flush()
             else:
-                if usuario.evento_id != evento.id:
+                if usuario.evento_id is None:
                     usuario.evento_id = evento.id
 
             inscricao = Inscricao(
@@ -1092,7 +1092,7 @@ def inscricoes_lote():
         for uid in usuarios_afetados:
             usuario = Usuario.query.get(uid)
             # se o sistema admite apenas 1 evento corrente por usuário:
-            if usuario and usuario.evento_id != oficina_destino.evento_id:
+            if usuario and usuario.evento_id is None:
                 usuario.evento_id = oficina_destino.evento_id
 
         db.session.commit()
