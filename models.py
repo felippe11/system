@@ -981,11 +981,13 @@ class CampoPersonalizadoCadastro(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     tipo = db.Column(db.String(50), nullable=False)  # texto, número, email, data, etc.
     obrigatorio = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship('Cliente', backref=db.backref('campos_personalizados', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('campos_personalizados', lazy=True))
 
 class TrabalhoCientifico(db.Model):
     __tablename__ = 'trabalhos_cientificos'
