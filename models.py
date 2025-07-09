@@ -643,7 +643,29 @@ class ConfiguracaoCliente(db.Model):
     limite_formularios = db.Column(db.Integer, default=3)
     limite_revisores = db.Column(db.Integer, default=2)
 
-    
+
+class ConfiguracaoEvento(db.Model):
+    """Configuracoes específicas de cada evento."""
+
+    __tablename__ = 'configuracao_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False, unique=True)
+
+    permitir_checkin_global = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
+
+    obrigatorio_nome = db.Column(db.Boolean, default=True)
+    obrigatorio_cpf = db.Column(db.Boolean, default=True)
+    obrigatorio_email = db.Column(db.Boolean, default=True)
+    obrigatorio_senha = db.Column(db.Boolean, default=True)
+    obrigatorio_formacao = db.Column(db.Boolean, default=True)
+
+    evento = db.relationship('Evento', backref=db.backref('configuracao_evento', uselist=False))
+
+
     
 class FeedbackCampo(db.Model):
     __tablename__ = 'feedback_campo'
