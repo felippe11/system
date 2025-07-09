@@ -634,6 +634,7 @@ class ConfiguracaoCliente(db.Model):
 
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
+
     obrigatorio_email = db.Column(db.Boolean, default=True)
     obrigatorio_senha = db.Column(db.Boolean, default=True)
     obrigatorio_formacao = db.Column(db.Boolean, default=True)
@@ -682,6 +683,11 @@ class ConfiguracaoEvento(db.Model):
     limite_formularios = db.Column(db.Integer, default=3)
     limite_revisores = db.Column(db.Integer, default=2)
 
+
+
+
+    
+    
 
 class FeedbackCampo(db.Model):
     __tablename__ = 'feedback_campo'
@@ -848,9 +854,428 @@ class ConfiguracaoAgendamento(db.Model):
         if not self.tipos_inscricao_permitidos:
             return []
         return [int(t) for t in self.tipos_inscricao_permitidos.split(',') if t]
-    
+
     def __repr__(self):
         return f"<ConfiguracaoAgendamento {self.id} - Evento {self.evento_id}>"
+
+
+
+class ConfiguracaoEvento(db.Model):
+    """Configuracoes especificas de cada evento."""
+
+    __tablename__ = "configuracao_evento"
+
+class ConfiguracaoCertificadoEvento(db.Model):
+    """Regras personalizadas para emissão de certificados em eventos."""
+    __tablename__ = 'config_certificado_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+
+    checkins_minimos = db.Column(db.Integer, default=0)
+    percentual_minimo = db.Column(db.Integer, default=0)
+    oficinas_obrigatorias = db.Column(db.Text, nullable=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('configs_certificado_evento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('config_certificado', uselist=False))
+
+    def get_oficinas_obrigatorias_list(self):
+        if not self.oficinas_obrigatorias:
+            return []
+        return [int(o) for o in self.oficinas_obrigatorias.split(',') if o]
+
+
+
+class ConfiguracaoEvento(db.Model):
+    """Configurações específicas de um evento."""
+    __tablename__ = 'configuracao_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False, unique=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+
+    permitir_checkin = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_credenciamento = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado = db.Column(db.Boolean, default=False)
+    mostrar_taxa = db.Column(db.Boolean, default=False)
+
+    obrigatorio_nome = db.Column(db.Boolean, default=True)
+    obrigatorio_cpf = db.Column(db.Boolean, default=True)
+    obrigatorio_email = db.Column(db.Boolean, default=True)
+    obrigatorio_senha = db.Column(db.Boolean, default=True)
+    obrigatorio_formacao = db.Column(db.Boolean, default=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('configuracoes_evento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('configuracao_evento', uselist=False))
+
+    def to_dict(self):
+        return {
+            'permitir_checkin': self.permitir_checkin,
+            'habilitar_qrcode_credenciamento': self.habilitar_qrcode_credenciamento,
+            'habilitar_feedback': self.habilitar_feedback,
+            'habilitar_certificado': self.habilitar_certificado,
+            'mostrar_taxa': self.mostrar_taxa,
+            'obrigatorio_nome': self.obrigatorio_nome,
+            'obrigatorio_cpf': self.obrigatorio_cpf,
+            'obrigatorio_email': self.obrigatorio_email,
+            'obrigatorio_senha': self.obrigatorio_senha,
+            'obrigatorio_formacao': self.obrigatorio_formacao,
+        }
+
+class SalaVisitacao(db.Model):
+    """Salas disponíveis para visitação em um evento."""
+    __tablename__ = 'sala_visitacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    capacidade = db.Column(db.Integer, nullable=False, default=30)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    
+    # Relações
+    evento = db.relationship('Evento', backref=db.backref('salas_visitacao', lazy=True))
+    
+    def __repr__(self):
+        return f"<SalaVisitacao {self.nome} - Evento {self.evento_id}>"
+
+
+class HorarioVisitacao(db.Model):
+    """Slots de horários disponíveis para agendamento."""
+    __tablename__ = 'horario_visitacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    horario_inicio = db.Column(db.Time, nullable=False)
+    horario_fim = db.Column(db.Time, nullable=False)
+    capacidade_total = db.Column(db.Integer, nullable=False)
+    vagas_disponiveis = db.Column(db.Integer, nullable=False)
+    
+    # Relações
+    evento = db.relationship('Evento', backref=db.backref('horarios_visitacao', lazy=True))
+    
+    def __repr__(self):
+        return f"<HorarioVisitacao {self.data} {self.horario_inicio}-{self.horario_fim} ({self.vagas_disponiveis} vagas)>"
+
+
+class AgendamentoVisita(db.Model):
+    """Agendamento realizado por um professor para uma turma."""
+    __tablename__ = 'agendamento_visita'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    horario_id = db.Column(db.Integer, db.ForeignKey('horario_visitacao.id'), nullable=False)
+    professor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
+    # Informações da escola e turma
+    escola_nome = db.Column(db.String(200), nullable=False)
+    escola_codigo_inep = db.Column(db.String(20), nullable=True)
+    turma = db.Column(db.String(50), nullable=False)
+    nivel_ensino = db.Column(db.String(50), nullable=False)  # Anos iniciais, finais, etc.
+    quantidade_alunos = db.Column(db.Integer, nullable=False)
+    
+    # Status do agendamento
+    data_agendamento = db.Column(db.DateTime, default=datetime.utcnow)
+    data_cancelamento = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='confirmado')  # confirmado, cancelado, realizado
+    checkin_realizado = db.Column(db.Boolean, default=False)
+    data_checkin = db.Column(db.DateTime, nullable=True)
+    
+    # QR Code para check-in
+    qr_code_token = db.Column(db.String(100), unique=True, nullable=False)
+    
+    # Salas selecionadas para visitação
+    salas_selecionadas = db.Column(db.String(200), nullable=True)  # IDs separados por vírgula
+    
+    # Relações
+    horario = db.relationship('HorarioVisitacao', backref=db.backref('agendamentos', lazy=True))
+    professor = db.relationship('Usuario', backref=db.backref('agendamentos_visitas', lazy=True))
+    
+    def __init__(self, **kwargs):
+        super(AgendamentoVisita, self).__init__(**kwargs)
+        import uuid
+        self.qr_code_token = str(uuid.uuid4())
+    
+    def __repr__(self):
+        return f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - {self.escola_nome}>"
+
+
+class AlunoVisitante(db.Model):
+    """Alunos participantes de uma visita agendada."""
+    __tablename__ = 'aluno_visitante'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey('agendamento_visita.id'), nullable=False)
+    nome = db.Column(db.String(150), nullable=False)
+    cpf = db.Column(db.String(14), nullable=True)  # Opcional para menores
+    presente = db.Column(db.Boolean, default=False)
+    
+    # Relações
+    agendamento = db.relationship('AgendamentoVisita', backref=db.backref('alunos', lazy=True))
+    
+    def __repr__(self):
+        return f"<AlunoVisitante {self.nome} - Agendamento {self.agendamento_id}>"
+
+
+class ProfessorBloqueado(db.Model):
+    """Registro de professores bloqueados por violação de regras."""
+    __tablename__ = 'professor_bloqueado'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    professor_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    data_inicial = db.Column(db.DateTime, default=datetime.utcnow)
+    data_final = db.Column(db.DateTime, nullable=False)
+    motivo = db.Column(db.Text, nullable=False)
+    
+    # Relações
+    professor = db.relationship('Usuario', backref=db.backref('bloqueios', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('professores_bloqueados', lazy=True))
+    
+    def __repr__(self):
+        return f"<ProfessorBloqueado {self.professor_id} até {self.data_final.strftime('%d/%m/%Y')}>"
+    
+
+class Patrocinador(db.Model):
+    __tablename__ = 'patrocinador'
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    logo_path = db.Column(db.String(255), nullable=False)
+    categoria = db.Column(db.String(50), nullable=False)  # Ex: 'Realização', 'Patrocínio', etc.
+    
+    evento = db.relationship('Evento', backref=db.backref('patrocinadores', lazy=True))
+
+    def __init__(self, evento_id, logo_path, categoria):
+        self.evento_id = evento_id
+        self.logo_path = logo_path
+        self.categoria = categoria
+
+class CertificadoTemplate(db.Model):
+    __tablename__ = 'certificado_template'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    titulo = db.Column(db.String(100), nullable=False)
+    conteudo = db.Column(db.Text, nullable=False)  # HTML ou texto estruturado
+    ativo = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship("Cliente", backref="certificados_templates")
+
+
+class CampoPersonalizadoCadastro(db.Model):
+    __tablename__ = 'campos_personalizados_cadastro'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # texto, número, email, data, etc.
+    obrigatorio = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship('Cliente', backref=db.backref('campos_personalizados', lazy=True))
+
+class TrabalhoCientifico(db.Model):
+    __tablename__ = 'trabalhos_cientificos'
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(255), nullable=False)
+    resumo = db.Column(db.Text, nullable=True)
+    arquivo_pdf = db.Column(db.String(255), nullable=True)
+    area_tematica = db.Column(db.String(100), nullable=True)
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    status = db.Column(db.String(50), default="submetido")  # Ex: submetido, em avaliação, aceito, rejeitado, revisando
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+
+class AvaliacaoTrabalho(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
+    avaliador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    nota = db.Column(db.Float, nullable=True)
+    conceito = db.Column(db.String(20), nullable=True)
+    estrelas = db.Column(db.Integer, nullable=True)
+    comentario = db.Column(db.Text)
+    status = db.Column(db.String(20), default='avaliado')
+
+class ApresentacaoTrabalho(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey('trabalhos_cientificos.id'), nullable=False)
+    data = db.Column(db.Date, nullable=False)
+    horario = db.Column(db.String(5), nullable=False)
+    local = db.Column(db.String(100), nullable=True)
+
+
+class Pagamento(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=False)
+    status = db.Column(db.String(50), default="pendente")
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    mercado_pago_id = db.Column(db.String(255), nullable=True)
+
+    usuario = db.relationship("Usuario")
+    evento = db.relationship("Evento")
+    tipo_inscricao = db.relationship("EventoInscricaoTipo")
+
+
+
+# Tabela de associação para múltiplos ganhadores por sorteio
+sorteio_ganhadores = db.Table('sorteio_ganhadores',
+    db.Column('sorteio_id', db.Integer, db.ForeignKey('sorteio.id'), primary_key=True),
+    db.Column('usuario_id', db.Integer, db.ForeignKey('usuario.id'), primary_key=True)
+)
+
+
+class Sorteio(db.Model):
+    __tablename__ = 'sorteio'
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    premio = db.Column(db.String(255), nullable=False)
+    data_sorteio = db.Column(db.DateTime, default=datetime.utcnow)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)
+    ganhador_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)  # Mantido para compatibilidade
+    num_vencedores = db.Column(db.Integer, default=1)  # Número de vencedores do sorteio
+    status = db.Column(db.String(20), default='pendente')  # pendente, realizado, cancelado
+    
+    # Relacionamentos
+    cliente = db.relationship('Cliente', backref=db.backref('sorteios', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('sorteios', lazy=True))
+    oficina = db.relationship('Oficina', backref=db.backref('sorteios', lazy=True))
+    ganhador = db.relationship('Usuario', backref=db.backref('sorteios_ganhos', lazy=True))  # Mantido para compatibilidade
+    
+    # Nova relação para múltiplos ganhadores
+    ganhadores = db.relationship('Usuario', secondary='sorteio_ganhadores', lazy='subquery',
+                                  backref=db.backref('sorteios_vencidos', lazy=True))
+
+    def __repr__(self):
+        return f"<Sorteio {self.titulo} - Prêmio: {self.premio}>"
+
+
+
+class LoteInscricao(db.Model):
+    __tablename__ = 'lote_inscricao'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)
+    data_inicio = db.Column(db.DateTime, nullable=True)
+    data_fim = db.Column(db.DateTime, nullable=True)
+    qtd_maxima = db.Column(db.Integer, nullable=True)  # Limite de inscrições
+    ordem = db.Column(db.Integer, nullable=False, default=0)  # Para ordenar lotes
+    ativo = db.Column(db.Boolean, default=True)
+
+    # Relacionamento com o evento
+    evento = db.relationship('Evento', backref=db.backref('lotes', lazy=True, order_by='LoteInscricao.ordem'))
+
+    def __repr__(self):
+        return f"<LoteInscricao {self.nome}>"
+    
+    def is_valid(self):
+        """Verifica se o lote está válido (dentro da data ou limite de inscritos)"""
+        now = datetime.utcnow()
+        
+        # Verificar por data
+        if self.data_inicio and self.data_fim:
+            if now < self.data_inicio or now > self.data_fim:
+                return False
+        
+        # Verificar por quantidade de inscrições
+        if self.qtd_maxima is not None:
+            count = Inscricao.query.filter_by(
+                evento_id=self.evento_id, 
+                lote_id=self.id
+            ).count()
+            if count >= self.qtd_maxima:
+                return False
+        
+        return True
+    
+class LoteTipoInscricao(db.Model):
+    """Associa um *lote* de inscrição a um *tipo* de inscrição com preço."""
+
+    __tablename__ = "lote_tipo_inscricao"
+
+    id = db.Column(db.Integer, primary_key=True)
+    lote_id = db.Column(db.Integer, db.ForeignKey("lote_inscricao.id"), nullable=False)
+    tipo_inscricao_id = db.Column(
+        db.Integer, db.ForeignKey("evento_inscricao_tipo.id"), nullable=False
+    )
+    preco = db.Column(db.Float, nullable=False)
+
+    # relationships
+    lote = db.relationship(
+        "LoteInscricao", backref=db.backref("tipos_inscricao", lazy=True)
+    )
+    tipo_inscricao = db.relationship(
+        "EventoInscricaoTipo", backref=db.backref("lotes_precos", lazy=True)
+    )
+
+
+    def __repr__(self):
+        return f"<LoteTipoInscricao Lote={self.lote_id}, Tipo={self.tipo_inscricao_id}, Preço={self.preco}>"
+
+
+# =================================
+#            ARQUIVO BINÁRIO
+# =================================
+class ArquivoBinario(db.Model):
+    """Modelo para armazenar arquivos binários no banco de dados."""
+    __tablename__ = 'arquivo_binario'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(255), nullable=False)
+    conteudo = db.Column(db.LargeBinary, nullable=False)
+    mimetype = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<ArquivoBinario id={self.id} nome={self.nome}>"
+
+
+# =================================
+#            AUDIT LOG
+# =================================
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    submission_id = db.Column(db.Integer, nullable=True)
+    event_type = db.Column(db.String(50), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    usuario = db.relationship('Usuario')
+
+    def __repr__(self):
+        return f"<AuditLog {self.user_id} {self.event_type} {self.submission_id}>"
+
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DE REVISÃO POR EVENTO
+# -----------------------------------------------------------------------------
+class RevisaoConfig(db.Model):
+    """Define regras globais de revisão para um evento (nº revisores, blind etc.)."""
+
+    __tablename__ = "revisao_config"
+
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(
+        db.Integer, db.ForeignKey("evento.id"), nullable=False, unique=True
+    )
+    permitir_checkin_global = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
+    habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
+    mostrar_taxa = db.Column(db.Boolean, default=True)
+
+    evento = db.relationship(
+        "Evento", backref=db.backref("configuracao_evento", uselist=False)
+    )
 
 
 class ConfiguracaoCertificadoEvento(db.Model):
@@ -1019,11 +1444,13 @@ class CampoPersonalizadoCadastro(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     tipo = db.Column(db.String(50), nullable=False)  # texto, número, email, data, etc.
     obrigatorio = db.Column(db.Boolean, default=False)
 
     cliente = db.relationship('Cliente', backref=db.backref('campos_personalizados', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('campos_personalizados', lazy=True))
 
 class TrabalhoCientifico(db.Model):
     __tablename__ = 'trabalhos_cientificos'
@@ -1439,3 +1866,228 @@ class ReviewerApplication(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
+
+    numero_revisores = db.Column(db.Integer, default=2)
+    prazo_revisao = db.Column(db.DateTime, nullable=True)
+    modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
+
+    evento = db.relationship(
+        "Evento", backref=db.backref("revisao_config", uselist=False)
+    )
+
+    def __repr__(self):
+        return (
+            f"<RevisaoConfig evento={self.evento_id} revisores={self.numero_revisores} "
+            f"blind={self.modelo_blind}>"
+        )
+
+
+# -----------------------------------------------------------------------------
+# SUBMISSION (trabalhos científicos, resumos, etc.)
+# -----------------------------------------------------------------------------
+class Submission(db.Model):
+    """Representa um trabalho submetido para avaliação em um evento."""
+
+    __tablename__ = "submission"
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+
+    # textual fields
+    abstract = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)
+
+    # file upload (caminho para o arquivo no sistema de arquivos ou S3 etc.)
+    file_path = db.Column(db.String(255), nullable=True)
+
+    # locator & code (para acesso do autor e revisores externos)
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    code_hash = db.Column(db.String(128), nullable=False)
+
+    # metadata
+    status = db.Column(db.String(50), nullable=True)
+    area_id = db.Column(db.Integer, nullable=True)
+    author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # relationships
+    author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))
+
+    # ------------------------------------------------------------------
+    # utility
+    # ------------------------------------------------------------------
+    def __repr__(self):
+        return f"<Submission {self.title}>"
+
+    def check_code(self, code: str) -> bool:
+        """Valida o código de acesso enviado pelo usuário."""
+        if not code:
+            return False
+        return bcrypt.checkpw(code.encode(), self.code_hash.encode())
+
+
+# -----------------------------------------------------------------------------
+# REVIEW (parecer da submissão)
+# -----------------------------------------------------------------------------
+class Review(db.Model):
+    """Armazena o parecer de um revisor sobre uma submissão."""
+
+    __tablename__ = "review"
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
+
+    # revisor (identificado ou anônimo)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    reviewer_name = db.Column(db.String(255), nullable=True)
+
+    # segurança/acesso externo
+    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    access_code = db.Column(db.String(50), nullable=True)
+
+    # detalhes
+    blind_type = db.Column(db.String(20), nullable=True)  # single | double | open | anonimo
+    scores = db.Column(db.JSON, nullable=True)            # ex.: {"originalidade": 4}
+    note = db.Column(db.Integer, nullable=True)           # nota geral (0‑10) opcional
+    comments = db.Column(db.Text, nullable=True)
+    file_path = db.Column(db.String(255), nullable=True)  # PDF anotado etc.
+    decision = db.Column(db.String(50), nullable=True)    # accept | minor | major | reject
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+    duration_seconds = db.Column(db.Integer, nullable=True)
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # relationships
+    submission = db.relationship("Submission", backref=db.backref("reviews", lazy=True))
+    reviewer = db.relationship("Usuario", backref=db.backref("reviews", lazy=True))
+
+    def __repr__(self):
+        return f"<Review {self.id} submission={self.submission_id}>"
+
+    @property
+    def duration(self):
+        if self.started_at and self.finished_at:
+            return int((self.finished_at - self.started_at).total_seconds())
+        return None
+
+
+# -----------------------------------------------------------------------------
+# ASSIGNMENT (vincula revisor ↔ submissão)
+# -----------------------------------------------------------------------------
+class Assignment(db.Model):
+    """Liga um revisor a uma submissão, controlando prazo e conclusão."""
+
+    __tablename__ = "assignment"
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    deadline = db.Column(db.DateTime, nullable=True)
+    completed = db.Column(db.Boolean, default=False)
+
+    submission = db.relationship("Submission", backref=db.backref("assignments", lazy=True))
+    reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
+
+
+class RevisorProcess(db.Model):
+    """Configura um processo seletivo de revisores."""
+
+    __tablename__ = "revisor_process"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
+    num_etapas = db.Column(db.Integer, default=1)
+
+    # Controle de disponibilidade do processo
+    availability_start = db.Column(db.DateTime, nullable=True)
+    availability_end = db.Column(db.DateTime, nullable=True)
+    exibir_para_participantes = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
+    formulario = db.relationship("Formulario")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
+
+    def is_available(self) -> bool:
+        """Return True if the process is currently available."""
+        now = datetime.utcnow()
+        if self.availability_start and now < self.availability_start:
+            return False
+        if self.availability_end and now > self.availability_end:
+            return False
+        return True
+
+
+class RevisorEtapa(db.Model):
+    __tablename__ = "revisor_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    numero = db.Column(db.Integer, nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("etapas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
+
+
+class RevisorCandidatura(db.Model):
+    __tablename__ = "revisor_candidatura"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    respostas = db.Column(db.JSON, nullable=True)
+    nome = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True)
+    codigo = db.Column(db.String(8), unique=True, default=lambda: str(uuid.uuid4())[:8])
+    etapa_atual = db.Column(db.Integer, default=1)
+    status = db.Column(db.String(50), default="pendente")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("candidaturas", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCandidatura process={self.process_id} status={self.status}>"
+
+
+class RevisorCandidaturaEtapa(db.Model):
+    __tablename__ = "revisor_candidatura_etapa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    candidatura_id = db.Column(db.Integer, db.ForeignKey("revisor_candidatura.id"), nullable=False)
+    etapa_id = db.Column(db.Integer, db.ForeignKey("revisor_etapa.id"), nullable=False)
+    status = db.Column(db.String(50), default="pendente")
+    observacoes = db.Column(db.Text, nullable=True)
+
+    candidatura = db.relationship("RevisorCandidatura", backref=db.backref("etapas_status", lazy=True))
+    etapa = db.relationship("RevisorEtapa")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return (
+            f"<RevisorCandidaturaEtapa candidatura={self.candidatura_id} "
+            f"etapa={self.etapa_id} status={self.status}>"
+        )
+
+
+# -----------------------------------------------------------------------------
+# REVIEWER APPLICATION (para usuários internos do sistema)
+# -----------------------------------------------------------------------------
+class ReviewerApplication(db.Model):
+    """Candidatura de usuário para atuar como revisor."""
+
+    __tablename__ = "reviewer_application"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    stage = db.Column(db.String(50), default="novo")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    usuario = db.relationship("Usuario", backref=db.backref("reviewer_applications", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
+

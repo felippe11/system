@@ -14,9 +14,17 @@ def adicionar_campo_personalizado():
     nome_campo = request.form.get('nome_campo')
     tipo_campo = request.form.get('tipo_campo')
     obrigatorio = bool(request.form.get('obrigatorio'))
+    evento_id = request.form.get('evento_id', type=int)
+
+    from models import Evento
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash('Evento inválido', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
     novo_campo = CampoPersonalizadoCadastro(
         cliente_id=current_user.id,
+        evento_id=evento_id,
         nome=nome_campo,
         tipo=tipo_campo,
         obrigatorio=obrigatorio
@@ -34,7 +42,8 @@ def remover_campo_personalizado(campo_id):
         flash('Acesso negado', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
-    campo = CampoPersonalizadoCadastro.query.get_or_404(campo_id)
+    evento_id = request.form.get('evento_id', type=int)
+    campo = CampoPersonalizadoCadastro.query.filter_by(id=campo_id, evento_id=evento_id).first_or_404()
 
     if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
         flash('Você não tem permissão para remover este campo.', 'danger')
@@ -55,7 +64,8 @@ def toggle_obrigatorio_campo(campo_id):
         flash('Acesso negado', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
-    campo = CampoPersonalizadoCadastro.query.get_or_404(campo_id)
+    evento_id = request.form.get('evento_id', type=int)
+    campo = CampoPersonalizadoCadastro.query.filter_by(id=campo_id, evento_id=evento_id).first_or_404()
 
     if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
         flash('Você não tem permissão para alterar este campo.', 'danger')
@@ -83,9 +93,12 @@ def preview_cadastro():
     from models import Evento, EventoInscricaoTipo, ConfiguracaoCliente
     from utils import preco_com_taxa
 
-    evento = Evento.query.filter_by(cliente_id=current_user.id).first()
+    evento_id = request.args.get('evento_id', type=int)
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
 
-    campos = CampoPersonalizadoCadastro.query.filter_by(cliente_id=current_user.id).all()
+    campos = []
+    if evento:
+        campos = CampoPersonalizadoCadastro.query.filter_by(cliente_id=current_user.id, evento_id=evento.id).all()
     tipos_inscricao = []
     mostrar_taxa = True
 

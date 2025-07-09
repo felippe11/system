@@ -3706,7 +3706,14 @@ def importar_oficinas():
     Exemplo de rota para importar oficinas de um arquivo Excel (.xlsx).
     Inclui o cadastro da própria oficina e também das datas (OficinaDia).
     """
-    # 1. Verificar se foi enviado um arquivo
+    # 1. Obter o evento selecionado e validar
+    evento_id = request.form.get("evento_id", type=int)
+    evento = Evento.query.get(evento_id) if evento_id else None
+    if not evento or evento.cliente_id != current_user.id:
+        flash("Evento inválido ou não pertence a você!", "danger")
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    # 2. Verificar se foi enviado um arquivo
     if "arquivo" not in request.files:
         flash("Nenhum arquivo enviado!", "danger")
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
@@ -3721,7 +3728,7 @@ def importar_oficinas():
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
-    # 2. Salvar o arquivo em local temporário
+    # 3. Salvar o arquivo em local temporário
     from werkzeug.utils import secure_filename
     import os
     filename = secure_filename(arquivo.filename)
@@ -3791,11 +3798,10 @@ def importar_oficinas():
                     vagas=vagas,
                     carga_horaria=carga_horaria,
                     estado=estado,
-                    cidade=cidade
+                    cidade=cidade,
+                    evento_id=evento_id,
+                    cliente_id=current_user.id
                 )
-
-                # Se quiser vincular a um cliente específico:
-                # nova_oficina.cliente_id = current_user.id
 
                 db.session.add(nova_oficina)
                 db.session.flush()  # para garantir que nova_oficina.id exista
