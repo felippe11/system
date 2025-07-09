@@ -634,6 +634,7 @@ class ConfiguracaoCliente(db.Model):
 
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
+
     obrigatorio_email = db.Column(db.Boolean, default=True)
     obrigatorio_senha = db.Column(db.Boolean, default=True)
     obrigatorio_formacao = db.Column(db.Boolean, default=True)
@@ -643,8 +644,51 @@ class ConfiguracaoCliente(db.Model):
     limite_formularios = db.Column(db.Integer, default=3)
     limite_revisores = db.Column(db.Integer, default=2)
 
+
+
+class ConfiguracaoEvento(db.Model):
+    __tablename__ = 'configuracao_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False)
+
+    permitir_checkin_global = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship('Cliente', backref=db.backref('configuracoes_evento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('configuracao_evento', uselist=False))
+
+    habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
+    mostrar_taxa = db.Column(db.Boolean, default=True)
+    taxa_diferenciada = db.Column(db.Numeric(5, 2), nullable=True)
+
+    allowed_file_types = db.Column(db.String(100), default='pdf')
+
+    review_model = db.Column(db.String(20), default='single')
+    num_revisores_min = db.Column(db.Integer, default=1)
+    num_revisores_max = db.Column(db.Integer, default=2)
+    prazo_parecer_dias = db.Column(db.Integer, default=14)
+
+    obrigatorio_nome = db.Column(db.Boolean, default=True)
+    obrigatorio_cpf = db.Column(db.Boolean, default=True)
+    obrigatorio_email = db.Column(db.Boolean, default=True)
+    obrigatorio_senha = db.Column(db.Boolean, default=True)
+    obrigatorio_formacao = db.Column(db.Boolean, default=True)
+
+    limite_eventos = db.Column(db.Integer, default=5)
+    limite_inscritos = db.Column(db.Integer, default=1000)
+    limite_formularios = db.Column(db.Integer, default=3)
+    limite_revisores = db.Column(db.Integer, default=2)
+
+
+
+
     
     
+
 class FeedbackCampo(db.Model):
     __tablename__ = 'feedback_campo'
 
