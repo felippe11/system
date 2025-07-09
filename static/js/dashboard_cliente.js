@@ -758,6 +758,17 @@ document.addEventListener('DOMContentLoaded', function() {
       window.location.href = `${base}${encodeURIComponent(eventoId)}`;
     });
   }
+
+  const eventoCampoSelect = document.getElementById('evento_campo');
+  const previewCamposBtn = document.getElementById('previewCamposBtn');
+  if (eventoCampoSelect && previewCamposBtn) {
+    const updatePreview = () => {
+      const base = previewCamposBtn.dataset.baseUrl;
+      previewCamposBtn.href = `${base}?evento_id=${encodeURIComponent(eventoCampoSelect.value)}`;
+    };
+    eventoCampoSelect.addEventListener('change', updatePreview);
+    updatePreview();
+  }
   
   // Melhorar estilo dos selects ao focar/desfocar
   const selects = document.querySelectorAll('.form-select');
