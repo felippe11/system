@@ -90,56 +90,76 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.warn("Elementos select de estado ou cidade não encontrados.");
   }
-  const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? URL_EVENTO_CONFIG_BASE : "/api/configuracao_evento";
-  let EVENTO_ATUAL = null;
-  const fieldButtonMap = {
-    "permitir_checkin": document.getElementById("btnToggleCheckin"),
-    "habilitar_qrcode_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
-    "habilitar_feedback": document.getElementById("btnToggleFeedback"),
-    "habilitar_certificado": document.getElementById("btnToggleCertificado"),
-    "mostrar_taxa": document.getElementById("btnToggleMostrarTaxa"),
-    "obrigatorio_nome": document.getElementById("btnToggleObrigatorioNome"),
-    "obrigatorio_cpf": document.getElementById("btnToggleObrigatorioCpf"),
-    "obrigatorio_email": document.getElementById("btnToggleObrigatorioEmail"),
-    "obrigatorio_senha": document.getElementById("btnToggleObrigatorioSenha"),
-    "obrigatorio_formacao": document.getElementById("btnToggleObrigatorioFormacao")
-  };
-  const eventoSelect = document.getElementById("selectConfigEvento");
-  if (eventoSelect) {
-    eventoSelect.addEventListener("change", function() {
-      if (!this.value) return;
-      EVENTO_ATUAL = this.value;
-      carregarConfigEvento();
-    });
-  }
-  function carregarConfigEvento() {
-    if (!EVENTO_ATUAL) return;
-    fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}`, { credentials: "include" })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.success) return;
-        Object.entries(fieldButtonMap).forEach(([campo, btn]) => {
-          if (btn) atualizarBotao(btn, data[campo]);
-        });
+const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? URL_EVENTO_CONFIG_BASE : "/api/configuracao_evento";
+let EVENTO_ATUAL = null;
+
+const fieldButtonMap = {
+  "permitir_checkin": document.getElementById("btnToggleCheckin"),
+  "habilitar_qrcode_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
+  "habilitar_feedback": document.getElementById("btnToggleFeedback"),
+  "habilitar_certificado": document.getElementById("btnToggleCertificado"),
+  "mostrar_taxa": document.getElementById("btnToggleMostrarTaxa"),
+  "obrigatorio_nome": document.getElementById("btnToggleObrigatorioNome"),
+  "obrigatorio_cpf": document.getElementById("btnToggleObrigatorioCpf"),
+  "obrigatorio_email": document.getElementById("btnToggleObrigatorioEmail"),
+  "obrigatorio_senha": document.getElementById("btnToggleObrigatorioSenha"),
+  "obrigatorio_formacao": document.getElementById("btnToggleObrigatorioFormacao")
+};
+
+const eventoSelect = document.getElementById("selectConfigEvento");
+if (eventoSelect) {
+  EVENTO_ATUAL = eventoSelect.value;
+  carregarConfiguracao(EVENTO_ATUAL);
+  eventoSelect.addEventListener("change", function () {
+    if (!this.value) return;
+    EVENTO_ATUAL = this.value;
+    carregarConfiguracao(EVENTO_ATUAL);
+  });
+}
+
+function carregarConfiguracao(eventoId) {
+  if (!eventoId) return;
+  fetch(`${URL_EVENTO_CONFIG_BASE}/${eventoId}`, { credentials: "include" })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) return;
+      Object.entries(fieldButtonMap).forEach(([campo, btn]) => {
+        if (btn) atualizarBotao(btn, data[campo]);
       });
-  }
-  const toggleButtons = Object.values(fieldButtonMap);
-  toggleButtons.forEach(btn => {
-    if (!btn) return;
-    const campo = btn.dataset.field;
-    if (!campo) return;
-    btn.addEventListener("click", function() {
-      if (!EVENTO_ATUAL) {
-        alert("Selecione um evento");
-        return;
-      }
-      fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        credentials: "include"
+    });
+}
+
+const toggleButtons = Object.values(fieldButtonMap);
+toggleButtons.forEach(button => {
+  if (!button) return;
+  const campo = button.dataset.field;
+  if (!campo) return;
+
+  button.addEventListener("click", function () {
+    if (!EVENTO_ATUAL) {
+      alert("Selecione um evento");
+      return;
+    }
+
+    fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      credentials: "include"
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          atualizarBotao(button, data.value);
+        } else {
+          alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
+        }
+      });
+  });
+});
+
       })
       .then(r => r.json())
       .then(data => { if (data.success) atualizarBotao(btn, data.value); });
