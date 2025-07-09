@@ -33,12 +33,16 @@ def login(client, email, senha):
 
 def test_adicionar_campo_personalizado_unauthorized(client, app):
     with app.app_context():
+        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123'))
+        db.session.add(cliente)
+        db.session.commit()
+        evento = Evento(cliente_id=cliente.id, nome='EV')
         user = Usuario(nome='User', cpf='1', email='u@example.com', senha=generate_password_hash('123'), formacao='x')
-        db.session.add(user)
+        db.session.add_all([user, evento])
         db.session.commit()
 
     login(client, 'u@example.com', '123')
-    resp = client.post('/adicionar_campo_personalizado', data={'nome_campo': 'Campo', 'tipo_campo': 'texto', 'obrigatorio': 'on'}, follow_redirects=True)
+    resp = client.post('/adicionar_campo_personalizado', data={'nome_campo': 'Campo', 'tipo_campo': 'texto', 'obrigatorio': 'on', 'evento_id': evento.id}, follow_redirects=True)
     assert resp.status_code == 200
     assert b'Acesso negado' in resp.data
     with app.app_context():
@@ -50,14 +54,15 @@ def test_remover_campo_personalizado_unauthorized(client, app):
         cliente = Cliente(nome='Cli', email='c@example.com', senha=generate_password_hash('123'))
         db.session.add(cliente)
         db.session.commit()
-        campo = CampoPersonalizadoCadastro(cliente_id=cliente.id, nome='C', tipo='texto')
+        evento = Evento(cliente_id=cliente.id, nome='EV')
+        campo = CampoPersonalizadoCadastro(cliente_id=cliente.id, evento_id=evento.id, nome='C', tipo='texto')
         user = Usuario(nome='User', cpf='2', email='user2@example.com', senha=generate_password_hash('123'), formacao='y')
-        db.session.add_all([campo, user])
+        db.session.add_all([evento, campo, user])
         db.session.commit()
         field_id = campo.id
 
     login(client, 'user2@example.com', '123')
-    resp = client.post(f'/remover_campo_personalizado/{field_id}', follow_redirects=True)
+    resp = client.post(f'/remover_campo_personalizado/{field_id}', data={'evento_id': evento.id}, follow_redirects=True)
     assert resp.status_code == 200
     assert b'Acesso negado' in resp.data
     with app.app_context():
