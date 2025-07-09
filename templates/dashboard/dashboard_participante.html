@@ -422,7 +422,7 @@
   <!-- Obtem a lista de IDs das oficinas em que o usuário já está inscrito -->
   {% set inscricoes_ids = usuario.inscricoes | map(attribute='oficina_id') | list %}
   
-  {% if not usuario.evento_id %}
+  {% if not eventos_sorted %}
     <div class="row justify-content-center">
       <div class="col-md-8">
         <div class="alert alert-info text-center p-4">
@@ -435,7 +435,7 @@
     <!-- Agrupa oficinas por evento -->
     {% set eventos = {} %}
     {% for oficina in oficinas %}
-      {% if (oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite') and oficina.evento_id == usuario.evento_id %}
+      {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
         {% if oficina.evento_id not in eventos %}
           {% set _ = eventos.update({
             oficina.evento_id: {
