@@ -881,6 +881,17 @@
                 </div>
               </div>
               <div class="card-body">
+                <div class="mb-3">
+
+                  <label for="selectConfigEvento" class="form-label">Evento</label>
+                  <select id="selectConfigEvento" class="form-select">
+                    <option value="">-- Selecione um evento --</option>
+                    {% for evento in eventos %}
+
+                    <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
                 <!-- Check-in Global -->
                 <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
                   <div>
@@ -890,12 +901,12 @@
                     </h6>
                     <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
                   </div>
-                  <button type="button" 
+                  <button type="button"
                           id="btnToggleCheckin"
-                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.permitir_checkin_global else 'danger' }}"
-                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_checkin_global_cliente') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.permitir_checkin_global else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.permitir_checkin_global else 'Desativado' }}
+                          class="btn btn-padrao btn-toggle btn-danger"
+                          data-field="permitir_checkin">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Desativado
                   </button>
                 </div>
 
@@ -908,12 +919,12 @@
                     </h6>
                     <p class="text-muted small mb-0">Habilita uso de QR code para credenciamento em eventos</p>
                   </div>
-                  <button type="button" 
+                  <button type="button"
                           id="btnToggleQrCredenciamento"
-                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'danger' }}"
-                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_qrcode_evento_credenciamento') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento else 'Desativado' }}
+                          class="btn btn-padrao btn-toggle btn-danger"
+                          data-field="habilitar_qrcode_credenciamento">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Desativado
                   </button>
                 </div>
 
@@ -928,10 +939,10 @@
                   </div>
                   <button type="button"
                           id="btnToggleFeedback"
-                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_feedback else 'danger' }}"
-                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_feedback_cliente') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_feedback else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_feedback else 'Desativado' }}
+                          class="btn btn-padrao btn-toggle btn-danger"
+                          data-field="habilitar_feedback">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Desativado
                   </button>
                 </div>
 
@@ -946,10 +957,10 @@
                   </div>
                   <button type="button"
                           id="btnToggleCertificado"
-                          class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_certificado_individual else 'danger' }}"
-                          data-toggle-url="{{ url_for('config_cliente_routes.toggle_certificado_cliente') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_certificado_individual else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.habilitar_certificado_individual else 'Desativado' }}
+                          class="btn btn-padrao btn-toggle btn-danger"
+                          data-field="habilitar_certificado">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Desativado
                   </button>
                 </div>
 
@@ -966,10 +977,10 @@
                   </div>
                 <button type="button"
                         id="btnToggleMostrarTaxa"
-                        class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.mostrar_taxa else 'danger' }}"
-                        data-toggle-url="{{ url_for('config_cliente_routes.toggle_mostrar_taxa') }}">
-                    <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.mostrar_taxa else 'x-circle-fill' }}"></i>
-                    {{ 'Ativo' if config_cliente and config_cliente.mostrar_taxa else 'Desativado' }}
+                        class="btn btn-padrao btn-toggle btn-danger"
+                        data-field="mostrar_taxa">
+                    <i class="bi bi-x-circle-fill"></i>
+                    Desativado
                 </button>
               </div>
 
@@ -982,11 +993,11 @@
                   </h6>
                 </div>
                   <div class="d-flex gap-2">
-                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_nome else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_nome') }}" data-label="Nome">Nome</button>
-                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_cpf else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_cpf') }}" data-label="CPF">CPF</button>
-                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_email else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_email') }}" data-label="Email">Email</button>
-                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_senha else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_senha') }}" data-label="Senha">Senha</button>
-                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-padrao btn-sm btn-toggle btn-{{ 'success' if config_cliente and config_cliente.obrigatorio_formacao else 'danger' }}" data-toggle-url="{{ url_for('config_cliente_routes.toggle_obrigatorio_formacao') }}" data-label="Formação">Formação</button>
+                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_nome" data-label="Nome">Nome</button>
+                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_cpf" data-label="CPF">CPF</button>
+                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_email" data-label="Email">Email</button>
+                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_senha" data-label="Senha">Senha</button>
+                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_formacao" data-label="Formação">Formação</button>
                   </div>
               </div>
             </div>
@@ -1284,6 +1295,15 @@
               
                 <!-- Formulário de Upload -->
                 <form action="{{ url_for('agendamento_routes.importar_oficinas') }}" method="POST" enctype="multipart/form-data">
+                  <div class="mb-3">
+                    <label for="evento_id" class="form-label fw-bold">Evento</label>
+                    <select name="evento_id" id="evento_id" class="form-select" required>
+                      <option value="">-- Selecione o evento --</option>
+                      {% for ev in usuario.eventos %}
+                        <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
                   <div class="file-drop-area bg-white p-4 rounded-3 border-2 border-primary border-dashed text-center">
                     <div class="mb-3 text-primary">
                       <i class="bi bi-cloud-upload fs-1"></i>
@@ -1515,6 +1535,9 @@
   if (typeof URL_CONFIG_CLIENTE_ATUAL === 'undefined') {
     window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
   }
+  if (typeof URL_EVENTO_CONFIG_BASE === 'undefined') {
+    window.URL_EVENTO_CONFIG_BASE = "{{ url_for('config_cliente_routes.configuracao_evento', evento_id=0)[:-2] }}";
+  }
   
   // Declarar a variável somente se ainda não existir
   if (typeof URL_EXPORTAR_CHECKINS_PDF === 'undefined') {
@@ -1527,6 +1550,4 @@
     window.URL_EXPORTAR_FINANCEIRO = "{{ url_for('relatorio_pdf_routes.exportar_financeiro') }}";
   }
 </script>
-{% endblock %}
-
-{% endblock %}
+{% endblock %}{% endblock %}
