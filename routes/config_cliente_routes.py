@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, redirect, url_for, flash, render_template
 from flask_login import login_required, current_user
 from extensions import db
-from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento
+from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento, ConfiguracaoEvento
 from datetime import datetime
 import logging
 
@@ -567,6 +567,51 @@ def toggle_submissao_evento(evento_id):
     db.session.commit()
 
     return jsonify({"success": True, "value": evento.submissao_aberta})
+
+
+@config_cliente_routes.route('/api/configuracao_evento/<int:evento_id>', methods=['GET'])
+@login_required
+def configuracao_evento(evento_id):
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    config = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+    if not config:
+        config = ConfiguracaoEvento(evento_id=evento_id, cliente_id=current_user.id)
+        db.session.add(config)
+        db.session.commit()
+    data = config.to_dict()
+    data['success'] = True
+    return jsonify(data)
+
+
+@config_cliente_routes.route('/api/configuracao_evento/<int:evento_id>/<campo>', methods=['POST'])
+@login_required
+def toggle_configuracao_evento(evento_id, campo):
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    valid = {
+        'permitir_checkin',
+        'habilitar_qrcode_credenciamento',
+        'habilitar_feedback',
+        'habilitar_certificado',
+        'mostrar_taxa',
+        'obrigatorio_nome',
+        'obrigatorio_cpf',
+        'obrigatorio_email',
+        'obrigatorio_senha',
+        'obrigatorio_formacao',
+    }
+    if campo not in valid:
+        return jsonify({"success": False, "message": "Campo inválido"}), 400
+    config = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+    if not config:
+        config = ConfiguracaoEvento(evento_id=evento_id, cliente_id=current_user.id)
+        db.session.add(config)
+    setattr(config, campo, not getattr(config, campo))
+    db.session.commit()
+    return jsonify({"success": True, "value": getattr(config, campo)})
 
 
 @config_cliente_routes.route('/config_submissao')
