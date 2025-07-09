@@ -30,8 +30,10 @@
  * var ESTADO_FILTER_INICIAL = "SP"; // Exemplo
  * var CIDADE_FILTER_INICIAL = "São Paulo"; // Exemplo
  * </script>
- */
+*/
 
+// Token CSRF lido do meta tag
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 
 // Carregamento inicial - Estados, cidades e configurações
@@ -141,14 +143,31 @@ toggleButtons.forEach(button => {
       return;
     }
 
-    fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Requested-With": "XMLHttpRequest"
-      },
-      credentials: "include"
-    })
+button.addEventListener('click', function () {
+  if (!EVENTO_ATUAL) {
+    alert("Selecione um evento");
+    return;
+  }
+
+  fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-CSRFToken": csrfToken  // Inclui o token CSRF
+    },
+    credentials: "include"
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        atualizarBotao(button, data.value);
+      } else {
+        alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
+      }
+    });
+});
+
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -176,7 +195,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ review_model: this.value })
       })
@@ -194,7 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -208,7 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -222,7 +250,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -236,7 +267,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -417,7 +451,8 @@ if (btnConfirmarGeracaoLink) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest"
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrfToken
             },
             body: JSON.stringify({
                 evento_id: eventoId,
@@ -574,7 +609,11 @@ function atualizarTabelaLinks(eventoId, listId, tableId, loaderId, emptyId, cont
                             }
                             fetch(URL_EXCLUIR_LINK, {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-Requested-With": "XMLHttpRequest",
+                                    "X-CSRFToken": csrfToken
+                                },
                                 body: JSON.stringify({ link_id: link.id })
                             })
                             .then(response => response.json())
