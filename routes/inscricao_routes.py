@@ -105,6 +105,12 @@ def cadastro_participante(identifier: str | None = None):
             def obrig(attr):
                 return getattr(config_cli, attr) if config_cli else True
 
+            total_insc = Inscricao.query.filter_by(cliente_id=cliente_id).count()
+            if config_cli and config_cli.limite_inscritos is not None and total_insc >= config_cli.limite_inscritos:
+                flash('Limite de inscritos atingido.', 'danger')
+                return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
+                                   lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+
             if (
                 (obrig("obrigatorio_nome") and not nome) or
                 (obrig("obrigatorio_cpf") and not cpf) or

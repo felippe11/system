@@ -638,6 +638,11 @@ class ConfiguracaoCliente(db.Model):
     obrigatorio_senha = db.Column(db.Boolean, default=True)
     obrigatorio_formacao = db.Column(db.Boolean, default=True)
 
+    limite_eventos = db.Column(db.Integer, default=5)
+    limite_inscritos = db.Column(db.Integer, default=1000)
+    limite_formularios = db.Column(db.Integer, default=3)
+    limite_revisores = db.Column(db.Integer, default=2)
+
     
     
 class FeedbackCampo(db.Model):
