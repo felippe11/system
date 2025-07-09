@@ -92,100 +92,100 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.warn("Elementos select de estado ou cidade não encontrados.");
   }
+const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? URL_EVENTO_CONFIG_BASE : "/api/configuracao_evento";
+let EVENTO_ATUAL = null;
 
-  // 3. Buscar estado atual das configurações do cliente
-  if (typeof URL_CONFIG_CLIENTE_ATUAL !== 'undefined') {
-    fetch(URL_CONFIG_CLIENTE_ATUAL, { credentials: 'include' })
-      .then(response => response.json())
-      .then(data => {
-        if (!data.success) {
-          console.warn("Não foi possível obter estado do cliente:", data.message || data);
-          return;
-        }
-        
-        const btnCheckin = document.getElementById('btnToggleCheckin');
-        const btnFeedback = document.getElementById('btnToggleFeedback');
-        const btnCertificado = document.getElementById('btnToggleCertificado');
-        const btnQrCredenciamento = document.getElementById('btnToggleQrCredenciamento');
-        const btnMostrarTaxa = document.getElementById('btnToggleMostrarTaxa');
-        const btnSubmissao = document.getElementById('btnToggleSubmissao');
-        const btnObrigNome = document.getElementById('btnToggleObrigatorioNome');
-        const btnObrigCpf = document.getElementById('btnToggleObrigatorioCpf');
-        const btnObrigEmail = document.getElementById('btnToggleObrigatorioEmail');
-        const btnObrigSenha = document.getElementById('btnToggleObrigatorioSenha');
-        const btnObrigFormacao = document.getElementById('btnToggleObrigatorioFormacao');
+const fieldButtonMap = {
+  "permitir_checkin": document.getElementById("btnToggleCheckin"),
+  "habilitar_qrcode_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
+  "habilitar_feedback": document.getElementById("btnToggleFeedback"),
+  "habilitar_certificado": document.getElementById("btnToggleCertificado"),
+  "mostrar_taxa": document.getElementById("btnToggleMostrarTaxa"),
+  "obrigatorio_nome": document.getElementById("btnToggleObrigatorioNome"),
+  "obrigatorio_cpf": document.getElementById("btnToggleObrigatorioCpf"),
+  "obrigatorio_email": document.getElementById("btnToggleObrigatorioEmail"),
+  "obrigatorio_senha": document.getElementById("btnToggleObrigatorioSenha"),
+  "obrigatorio_formacao": document.getElementById("btnToggleObrigatorioFormacao")
+};
 
-        if (btnCheckin) atualizarBotao(btnCheckin, data.permitir_checkin_global);
-        if (btnFeedback) atualizarBotao(btnFeedback, data.habilitar_feedback);
-        if (btnCertificado) atualizarBotao(btnCertificado, data.habilitar_certificado_individual);
-        if (btnQrCredenciamento) atualizarBotao(btnQrCredenciamento, data.habilitar_qrcode_evento_credenciamento);
-        if (btnMostrarTaxa) atualizarBotao(btnMostrarTaxa, data.mostrar_taxa);
-        if (btnSubmissao) atualizarBotao(btnSubmissao, data.habilitar_submissao_trabalhos);
-        if (btnObrigNome) atualizarBotao(btnObrigNome, data.obrigatorio_nome);
-        if (btnObrigCpf) atualizarBotao(btnObrigCpf, data.obrigatorio_cpf);
-        if (btnObrigEmail) atualizarBotao(btnObrigEmail, data.obrigatorio_email);
-        if (btnObrigSenha) atualizarBotao(btnObrigSenha, data.obrigatorio_senha);
-        if (btnObrigFormacao) atualizarBotao(btnObrigFormacao, data.obrigatorio_formacao);
-        const inputAllowed = document.getElementById('inputAllowedFiles');
-        if (inputAllowed && data.allowed_file_types) inputAllowed.value = data.allowed_file_types;
-      })
-      .catch(err => {
-        console.error("Erro ao buscar config do cliente:", err);
+const eventoSelect = document.getElementById("selectConfigEvento");
+if (eventoSelect) {
+  EVENTO_ATUAL = eventoSelect.value;
+  carregarConfiguracao(EVENTO_ATUAL);
+  eventoSelect.addEventListener("change", function () {
+    if (!this.value) return;
+    EVENTO_ATUAL = this.value;
+    carregarConfiguracao(EVENTO_ATUAL);
+  });
+}
+
+function carregarConfiguracao(eventoId) {
+  if (!eventoId) return;
+  fetch(`${URL_EVENTO_CONFIG_BASE}/${eventoId}`, { credentials: "include" })
+    .then(response => response.json())
+    .then(data => {
+      if (!data.success) return;
+      Object.entries(fieldButtonMap).forEach(([campo, btn]) => {
+        if (btn) atualizarBotao(btn, data[campo]);
       });
-  } else {
-    console.warn("URL_CONFIG_CLIENTE_ATUAL não definida. Não foi possível buscar configurações do cliente.");
-  }
+    });
+}
 
-  // 4. Configurar botões de toggle (check-in, QR code, feedback, certificado)
-  const toggleButtons = [
-    document.getElementById('btnToggleCheckin'),
-    document.getElementById('btnToggleFeedback'),
-    document.getElementById('btnToggleCertificado'),
-    document.getElementById('btnToggleQrCredenciamento'),
-    document.getElementById('btnToggleMostrarTaxa'),
-    document.getElementById('btnToggleSubmissao'),
-    document.getElementById('btnToggleObrigatorioNome'),
-    document.getElementById('btnToggleObrigatorioCpf'),
-    document.getElementById('btnToggleObrigatorioEmail'),
-    document.getElementById('btnToggleObrigatorioSenha'),
-    document.getElementById('btnToggleObrigatorioFormacao')
-  ];
+const toggleButtons = Object.values(fieldButtonMap);
+toggleButtons.forEach(button => {
+  if (!button) return;
+  const campo = button.dataset.field;
+  if (!campo) return;
 
-  toggleButtons.forEach(button => {
-    if (!button) return;
-    
-    const toggleUrl = button.dataset.toggleUrl; // URLs devem vir do HTML via data-attributes
-    if (!toggleUrl) {
-        console.warn("Botão de toggle sem data-toggle-url:", button.id);
-        return;
+  button.addEventListener("click", function () {
+    if (!EVENTO_ATUAL) {
+      alert("Selecione um evento");
+      return;
     }
 
-    button.addEventListener('click', function() {
-      fetch(toggleUrl, {
-        method: "POST", // Geralmente POST para alterar estado
-        headers: {
-          "Content-Type": "application/json", // Se enviar corpo JSON
-          "X-Requested-With": "XMLHttpRequest", // Comum para requisições AJAX
-          "X-CSRFToken": csrfToken
-        },
-        credentials: 'include'
-        // body: JSON.stringify({}) // Adicione um corpo se sua API necessitar
-      })
+button.addEventListener('click', function () {
+  if (!EVENTO_ATUAL) {
+    alert("Selecione um evento");
+    return;
+  }
+
+  fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+      "X-CSRFToken": csrfToken  // Inclui o token CSRF
+    },
+    credentials: "include"
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        atualizarBotao(button, data.value);
+      } else {
+        alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
+      }
+    });
+});
+
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          atualizarBotao(button, data.value); // 'value' deve ser o novo estado (true/false)
+          atualizarBotao(button, data.value);
         } else {
           alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
         }
-      })
-      .catch(err => {
-        console.error("Erro na requisição de toggle:", err);
-        alert("Erro ao conectar com o servidor para atualizar configuração.");
       });
-    });
   });
 });
+
+      })
+      .then(r => r.json())
+      .then(data => { if (data.success) atualizarBotao(btn, data.value); });
+    });
+  });
+  }
+
 
 document.addEventListener('DOMContentLoaded', function() {
   const selectReview = document.getElementById('selectReviewModel');
