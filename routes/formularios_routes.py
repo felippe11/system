@@ -33,6 +33,7 @@ from models import (
     Ministrante,
     AuditLog,
     Evento,
+    ConfiguracaoCliente,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -89,7 +90,13 @@ def criar_formulario():
         else Evento.query.all()
     )
 
+    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+
     if request.method == 'POST':
+        count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
+        if config_cli and config_cli.limite_formularios is not None and count_forms >= config_cli.limite_formularios:
+            flash('Limite de formulários atingido.', 'danger')
+            return redirect(url_for('formularios_routes.listar_formularios'))
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
         evento_ids = request.form.getlist('eventos')
