@@ -837,6 +837,43 @@ class ConfiguracaoCertificadoEvento(db.Model):
 
 
 
+class ConfiguracaoEvento(db.Model):
+    """Configurações específicas de um evento."""
+    __tablename__ = 'configuracao_evento'
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=False, unique=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+
+    permitir_checkin = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_credenciamento = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado = db.Column(db.Boolean, default=False)
+    mostrar_taxa = db.Column(db.Boolean, default=False)
+
+    obrigatorio_nome = db.Column(db.Boolean, default=True)
+    obrigatorio_cpf = db.Column(db.Boolean, default=True)
+    obrigatorio_email = db.Column(db.Boolean, default=True)
+    obrigatorio_senha = db.Column(db.Boolean, default=True)
+    obrigatorio_formacao = db.Column(db.Boolean, default=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('configuracoes_evento', lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('configuracao_evento', uselist=False))
+
+    def to_dict(self):
+        return {
+            'permitir_checkin': self.permitir_checkin,
+            'habilitar_qrcode_credenciamento': self.habilitar_qrcode_credenciamento,
+            'habilitar_feedback': self.habilitar_feedback,
+            'habilitar_certificado': self.habilitar_certificado,
+            'mostrar_taxa': self.mostrar_taxa,
+            'obrigatorio_nome': self.obrigatorio_nome,
+            'obrigatorio_cpf': self.obrigatorio_cpf,
+            'obrigatorio_email': self.obrigatorio_email,
+            'obrigatorio_senha': self.obrigatorio_senha,
+            'obrigatorio_formacao': self.obrigatorio_formacao,
+        }
+
 class SalaVisitacao(db.Model):
     """Salas disponíveis para visitação em um evento."""
     __tablename__ = 'sala_visitacao'
