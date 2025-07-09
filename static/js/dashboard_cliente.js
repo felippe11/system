@@ -91,9 +91,17 @@ document.addEventListener('DOMContentLoaded', function() {
     console.warn("Elementos select de estado ou cidade não encontrados.");
   }
 
-  // 3. Buscar estado atual das configurações do cliente
-  if (typeof URL_CONFIG_CLIENTE_ATUAL !== 'undefined') {
-    fetch(URL_CONFIG_CLIENTE_ATUAL, { credentials: 'include' })
+  // 3. Buscar estado atual das configurações do cliente/evento
+  const selectEventoGlobal = document.getElementById('eventoGlobalConfigSelect');
+
+  function carregarConfiguracao(eventoId) {
+    if (typeof URL_CONFIG_CLIENTE_ATUAL === 'undefined') {
+      console.warn("URL_CONFIG_CLIENTE_ATUAL não definida. Não foi possível buscar configurações do cliente.");
+      return;
+    }
+
+    const url = eventoId ? `${URL_CONFIG_CLIENTE_ATUAL}?evento_id=${encodeURIComponent(eventoId)}` : URL_CONFIG_CLIENTE_ATUAL;
+    fetch(url, { credentials: 'include' })
       .then(response => response.json())
       .then(data => {
         if (!data.success) {
@@ -130,8 +138,15 @@ document.addEventListener('DOMContentLoaded', function() {
       .catch(err => {
         console.error("Erro ao buscar config do cliente:", err);
       });
+  }
+
+  if (selectEventoGlobal) {
+    carregarConfiguracao(selectEventoGlobal.value);
+    selectEventoGlobal.addEventListener('change', function() {
+      carregarConfiguracao(this.value);
+    });
   } else {
-    console.warn("URL_CONFIG_CLIENTE_ATUAL não definida. Não foi possível buscar configurações do cliente.");
+    carregarConfiguracao();
   }
 
   // 4. Configurar botões de toggle (check-in, QR code, feedback, certificado)
@@ -159,14 +174,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     button.addEventListener('click', function() {
+      const eventoId = selectEventoGlobal ? selectEventoGlobal.value : '';
       fetch(toggleUrl, {
         method: "POST", // Geralmente POST para alterar estado
         headers: {
-          "Content-Type": "application/json", // Se enviar corpo JSON
-          "X-Requested-With": "XMLHttpRequest" // Comum para requisições AJAX
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
         },
-        credentials: 'include'
-        // body: JSON.stringify({}) // Adicione um corpo se sua API necessitar
+        credentials: 'include',
+        body: JSON.stringify({ evento_id: eventoId })
       })
       .then(res => res.json())
       .then(data => {
