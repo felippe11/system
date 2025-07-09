@@ -815,6 +815,28 @@ class ConfiguracaoAgendamento(db.Model):
         return f"<ConfiguracaoAgendamento {self.id} - Evento {self.evento_id}>"
 
 
+class ConfiguracaoEvento(db.Model):
+    """Configuracoes especificas de cada evento."""
+
+    __tablename__ = "configuracao_evento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(
+        db.Integer, db.ForeignKey("evento.id"), nullable=False, unique=True
+    )
+
+    permitir_checkin_global = db.Column(db.Boolean, default=False)
+    habilitar_feedback = db.Column(db.Boolean, default=False)
+    habilitar_certificado_individual = db.Column(db.Boolean, default=False)
+    habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
+    habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
+    mostrar_taxa = db.Column(db.Boolean, default=True)
+
+    evento = db.relationship(
+        "Evento", backref=db.backref("configuracao_evento", uselist=False)
+    )
+
+
 class ConfiguracaoCertificadoEvento(db.Model):
     """Regras personalizadas para emissão de certificados em eventos."""
     __tablename__ = 'config_certificado_evento'
