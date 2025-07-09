@@ -133,7 +133,17 @@ def dashboard_participante():
         # Atualizar lista de IDs
         eventos_disponiveis_ids = [e.id for e in eventos]
         logger.debug(f"DEBUG [23] -> Total de eventos após adicionar ausentes: {len(eventos)}")
-    
+
+    # Ordenar eventos por data_inicio e nome do cliente
+    eventos_sorted = sorted(
+        eventos,
+        key=lambda e: (
+            (e.data_inicio or datetime.min),
+            (e.cliente.nome if getattr(e, "cliente", None) else "")
+        )
+    )
+    logger.debug(f"DEBUG [23b] -> Ordem final dos eventos: {[e.id for e in eventos_sorted]}")
+
     # Combinar todos os IDs de eventos (disponíveis + inscritos) e remover duplicatas
     todos_eventos_ids = list(set(eventos_disponiveis_ids + eventos_inscritos))
     logger.debug(f"DEBUG [24] -> IDs de todos os eventos (disponíveis + inscritos): {todos_eventos_ids}")
@@ -437,10 +447,10 @@ def dashboard_participante():
     logger.debug(f"DEBUG [85] -> Renderizando template dashboard_participante.html")
     
      # NOVA CORREÇÃO: agrupar eventos por status usando eventos_info
-    eventos_futuros = [e for e in eventos if eventos_info.get(e.id, {}).get('eh_futuro')]
-    eventos_atuais = [e for e in eventos if not eventos_info.get(e.id, {}).get('eh_futuro')
+    eventos_futuros = [e for e in eventos_sorted if eventos_info.get(e.id, {}).get('eh_futuro')]
+    eventos_atuais = [e for e in eventos_sorted if not eventos_info.get(e.id, {}).get('eh_futuro')
                        and not eventos_info.get(e.id, {}).get('ja_ocorreu')]
-    eventos_encerrados = [e for e in eventos if eventos_info.get(e.id, {}).get('ja_ocorreu')]
+    eventos_encerrados = [e for e in eventos_sorted if eventos_info.get(e.id, {}).get('ja_ocorreu')]
     logger.debug(f"DEBUG -> Eventos futuros: {len(eventos_futuros)}, atuais: {len(eventos_atuais)}, encerrados: {len(eventos_encerrados)}")
     
     return render_template(
@@ -449,6 +459,7 @@ def dashboard_participante():
         usuario=current_user,
         evento=evento,
         eventos=eventos,
+        eventos_sorted=eventos_sorted,
         eventos_futuros=eventos_futuros,
         eventos_atuais=eventos_atuais,
         eventos_encerrados=eventos_encerrados,
