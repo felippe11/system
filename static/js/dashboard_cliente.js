@@ -30,8 +30,10 @@
  * var ESTADO_FILTER_INICIAL = "SP"; // Exemplo
  * var CIDADE_FILTER_INICIAL = "São Paulo"; // Exemplo
  * </script>
- */
+*/
 
+// Token CSRF lido do meta tag
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
 
 // Carregamento inicial - Estados, cidades e configurações
@@ -163,7 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
         method: "POST", // Geralmente POST para alterar estado
         headers: {
           "Content-Type": "application/json", // Se enviar corpo JSON
-          "X-Requested-With": "XMLHttpRequest" // Comum para requisições AJAX
+          "X-Requested-With": "XMLHttpRequest", // Comum para requisições AJAX
+          "X-CSRFToken": csrfToken
         },
         credentials: 'include'
         // body: JSON.stringify({}) // Adicione um corpo se sua API necessitar
@@ -192,7 +195,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ review_model: this.value })
       })
@@ -210,7 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -224,7 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -238,7 +250,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -252,7 +267,10 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!url) return;
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ value: this.value })
       });
@@ -433,7 +451,8 @@ if (btnConfirmarGeracaoLink) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-Requested-With": "XMLHttpRequest"
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRFToken": csrfToken
             },
             body: JSON.stringify({
                 evento_id: eventoId,
@@ -590,7 +609,11 @@ function atualizarTabelaLinks(eventoId, listId, tableId, loaderId, emptyId, cont
                             }
                             fetch(URL_EXCLUIR_LINK, {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-Requested-With": "XMLHttpRequest",
+                                    "X-CSRFToken": csrfToken
+                                },
                                 body: JSON.stringify({ link_id: link.id })
                             })
                             .then(response => response.json())
