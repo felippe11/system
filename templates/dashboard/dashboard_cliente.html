@@ -1515,7 +1515,7 @@
     window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
   }
   if (typeof URL_EVENTO_CONFIG_BASE === 'undefined') {
-    window.URL_EVENTO_CONFIG_BASE = "{{ url_for('config_cliente_routes.configuracao_evento', evento_id=0)[:-1] }}";
+    window.URL_EVENTO_CONFIG_BASE = "{{ url_for('config_cliente_routes.configuracao_evento', evento_id=0)[:-2] }}";
   }
   
   // Declarar a variável somente se ainda não existir
@@ -1529,5 +1529,4 @@
     window.URL_EXPORTAR_FINANCEIRO = "{{ url_for('relatorio_pdf_routes.exportar_financeiro') }}";
   }
 </script>
-{% endblock %}
-{% endblock %}
+{% endblock %}{% endblock %}
