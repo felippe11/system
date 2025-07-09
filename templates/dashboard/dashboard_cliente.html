@@ -1049,7 +1049,7 @@
               </div>
               <div class="card-body">
                 <p class="mb-3">Veja como os campos personalizados aparecem para seus participantes.</p>
-                <a href="{{ url_for('campo_routes.preview_cadastro') }}" class="btn btn-padrao btn-outline-secondary w-100">
+                <a id="previewCamposBtn" data-base-url="{{ url_for('campo_routes.preview_cadastro') }}" href="{{ url_for('campo_routes.preview_cadastro') }}" class="btn btn-padrao btn-outline-secondary w-100">
                   <i class="bi bi-eye-fill"></i> Visualizar Formulário
                 </a>
               </div>
@@ -1110,6 +1110,14 @@
               </h6>
               <form method="POST" action="{{ url_for('campo_routes.adicionar_campo_personalizado') }}" class="mb-0">
                 <div class="row g-3">
+                  <div class="col-md-4">
+                    <label for="evento_campo" class="form-label fw-medium">Evento</label>
+                    <select class="form-select" id="evento_campo" name="evento_id" required>
+                      {% for ev in usuario.eventos %}
+                        <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
                   <div class="col-md-4">
                     <label for="nome_campo" class="form-label fw-medium">Nome do Campo</label>
                     <div class="input-group">
@@ -1191,12 +1199,14 @@
                         </td>
                         <td class="text-center">
                           <form method="POST" action="{{ url_for('campo_routes.toggle_obrigatorio_campo', campo_id=campo.id) }}" class="d-inline">
+                            <input type="hidden" name="evento_id" value="{{ campo.evento_id }}">
                             <button class="btn btn-padrao btn-table btn-sm btn-secondary" type="submit">
                               {% if campo.obrigatorio %}Tornar Opcional{% else %}Tornar Obrigatório{% endif %}
                             </button>
                           </form>
                           <form method="POST" action="{{ url_for('campo_routes.remover_campo_personalizado', campo_id=campo.id) }}"
                                 onsubmit="return confirm('Tem certeza que deseja remover este campo?');">
+                            <input type="hidden" name="evento_id" value="{{ campo.evento_id }}">
                             <button class="btn btn-padrao btn-table btn-sm btn-danger" type="submit">
                               <i class="bi bi-trash-fill"></i> Remover
                             </button>
