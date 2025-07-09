@@ -236,6 +236,18 @@ def approve(cand_id: int):
         return jsonify({"success": False}), 403
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+
+    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cand.process.cliente_id).first()
+    if config_cli:
+        aprovados = (
+            RevisorCandidatura.query
+            .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
+            .filter(RevisorProcess.cliente_id == cand.process.cliente_id, RevisorCandidatura.status == 'aprovado')
+            .count()
+        )
+        if config_cli.limite_revisores is not None and aprovados >= config_cli.limite_revisores:
+            flash('Limite de revisores atingido.', 'danger')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
     if not cand.email:
         msg = "Candidatura sem email"
         if request.is_json:

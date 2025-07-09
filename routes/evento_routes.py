@@ -19,7 +19,7 @@ from models import (
     RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
     ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico,
-    Feedback, Pagamento
+    Feedback, Pagamento, ConfiguracaoCliente
 )
 from utils import preco_com_taxa
 
@@ -733,11 +733,18 @@ def criar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
-    
+
     # Para evitar o erro 'evento is undefined' no template
     evento = None
 
+    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+
     if request.method == 'POST':
+        count_ev = Evento.query.filter_by(cliente_id=current_user.id).count()
+        if config_cli and config_cli.limite_eventos is not None and count_ev >= config_cli.limite_eventos:
+            flash('Limite de eventos atingido.', 'danger')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
         programacao = request.form.get('programacao')

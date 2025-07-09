@@ -172,7 +172,11 @@
                                         data-bs-target="#modalEditarCliente"
                                         data-id="{{ cliente.id }}"
                                         data-nome="{{ cliente.nome }}"
-                                        data-email="{{ cliente.email }}">
+                                        data-email="{{ cliente.email }}"
+                                        data-limite-eventos="{{ cliente.configuracao.limite_eventos if cliente.configuracao else '' }}"
+                                        data-limite-inscritos="{{ cliente.configuracao.limite_inscritos if cliente.configuracao else '' }}"
+                                        data-limite-formularios="{{ cliente.configuracao.limite_formularios if cliente.configuracao else '' }}"
+                                        data-limite-revisores="{{ cliente.configuracao.limite_revisores if cliente.configuracao else '' }}">
                                   <i class="bi bi-pencil"></i>
                                 </button>
                               
@@ -493,6 +497,22 @@
             <input type="password" class="form-control" name="senha" id="clienteSenha" placeholder="Deixe em branco para manter a senha atual">
             <small class="form-text text-muted">A senha só será alterada se você preencher este campo.</small>
           </div>
+          <div class="mb-3">
+            <label for="clienteLimiteEventos" class="form-label">Limite de Eventos</label>
+            <input type="number" class="form-control" name="limite_eventos" id="clienteLimiteEventos" min="0">
+          </div>
+          <div class="mb-3">
+            <label for="clienteLimiteInscritos" class="form-label">Limite de Inscritos</label>
+            <input type="number" class="form-control" name="limite_inscritos" id="clienteLimiteInscritos" min="0">
+          </div>
+          <div class="mb-3">
+            <label for="clienteLimiteFormularios" class="form-label">Limite de Formulários</label>
+            <input type="number" class="form-control" name="limite_formularios" id="clienteLimiteFormularios" min="0">
+          </div>
+          <div class="mb-3">
+            <label for="clienteLimiteRevisores" class="form-label">Limite de Revisores</label>
+            <input type="number" class="form-control" name="limite_revisores" id="clienteLimiteRevisores" min="0">
+          </div>
         </div>
         <div class="modal-footer">
           <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -513,11 +533,19 @@
       var clienteId = button.getAttribute('data-id');
       var nome = button.getAttribute('data-nome');
       var email = button.getAttribute('data-email');
+      var limiteEventos = button.getAttribute('data-limite-eventos');
+      var limiteInscritos = button.getAttribute('data-limite-inscritos');
+      var limiteFormularios = button.getAttribute('data-limite-formularios');
+      var limiteRevisores = button.getAttribute('data-limite-revisores');
       var form = modalEditarCliente.querySelector('#formEditarCliente');
       form.querySelector('#clienteNome').value = nome;
       form.querySelector('#clienteEmail').value = email;
       form.querySelector('#clienteSenha').value = ''; // Mantém em branco
-      
+      form.querySelector('#clienteLimiteEventos').value = limiteEventos;
+      form.querySelector('#clienteLimiteInscritos').value = limiteInscritos;
+      form.querySelector('#clienteLimiteFormularios').value = limiteFormularios;
+      form.querySelector('#clienteLimiteRevisores').value = limiteRevisores;
+
       form.action = editarClienteBaseUrl + '/' + clienteId;
   });
 </script>

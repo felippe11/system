@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 import logging
 
 from extensions import db
-from models import Cliente
+from models import Cliente, ConfiguracaoCliente
 
 cliente_routes = Blueprint("cliente_routes", __name__)
 logger = logging.getLogger(__name__)
@@ -83,6 +83,22 @@ def editar_cliente(cliente_id):
 
         # Pagamento sempre habilitado para clientes
         cliente.habilita_pagamento = True
+
+        config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente.id).first()
+        if not config:
+            config = ConfiguracaoCliente(cliente_id=cliente.id)
+            db.session.add(config)
+
+        def _parse_int(field, default):
+            try:
+                return int(request.form.get(field, default))
+            except (TypeError, ValueError):
+                return default
+
+        config.limite_eventos = _parse_int('limite_eventos', config.limite_eventos)
+        config.limite_inscritos = _parse_int('limite_inscritos', config.limite_inscritos)
+        config.limite_formularios = _parse_int('limite_formularios', config.limite_formularios)
+        config.limite_revisores = _parse_int('limite_revisores', config.limite_revisores)
 
         try:
             db.session.commit()

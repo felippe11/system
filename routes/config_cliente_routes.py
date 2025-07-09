@@ -458,6 +458,82 @@ def set_allowed_file_types():
 
     return jsonify({"success": True, "value": config_cliente.allowed_file_types})
 
+
+@config_cliente_routes.route('/set_limite_eventos/<int:cliente_id>', methods=['POST'])
+@login_required
+def set_limite_eventos(cliente_id):
+    if current_user.tipo != 'admin':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    value = request.form.get('value') or request.json.get('value')
+    try:
+        value_int = int(value)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config)
+    config.limite_eventos = value_int
+    db.session.commit()
+    return jsonify({"success": True, "value": config.limite_eventos})
+
+
+@config_cliente_routes.route('/set_limite_inscritos/<int:cliente_id>', methods=['POST'])
+@login_required
+def set_limite_inscritos(cliente_id):
+    if current_user.tipo != 'admin':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    value = request.form.get('value') or request.json.get('value')
+    try:
+        value_int = int(value)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config)
+    config.limite_inscritos = value_int
+    db.session.commit()
+    return jsonify({"success": True, "value": config.limite_inscritos})
+
+
+@config_cliente_routes.route('/set_limite_formularios/<int:cliente_id>', methods=['POST'])
+@login_required
+def set_limite_formularios(cliente_id):
+    if current_user.tipo != 'admin':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    value = request.form.get('value') or request.json.get('value')
+    try:
+        value_int = int(value)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config)
+    config.limite_formularios = value_int
+    db.session.commit()
+    return jsonify({"success": True, "value": config.limite_formularios})
+
+
+@config_cliente_routes.route('/set_limite_revisores/<int:cliente_id>', methods=['POST'])
+@login_required
+def set_limite_revisores(cliente_id):
+    if current_user.tipo != 'admin':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    value = request.form.get('value') or request.json.get('value')
+    try:
+        value_int = int(value)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=cliente_id)
+        db.session.add(config)
+    config.limite_revisores = value_int
+    db.session.commit()
+    return jsonify({"success": True, "value": config.limite_revisores})
+
 @config_cliente_routes.route('/revisao_config/<int:evento_id>', methods=['POST'])
 @login_required
 def atualizar_revisao_config(evento_id):
