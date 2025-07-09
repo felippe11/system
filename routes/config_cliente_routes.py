@@ -1,32 +1,51 @@
 from flask import Blueprint, jsonify, request, redirect, url_for, flash, render_template
 from flask_login import login_required, current_user
 from extensions import db
+
+
 from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento, ConfiguracaoEvento
+
 from datetime import datetime
 import logging
 
 config_cliente_routes = Blueprint('config_cliente_routes', __name__)
 
+
+def _get_evento_config(evento_id: int):
+    """Retorna a configuracao do evento, criando caso nao exista."""
+    config = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+    if not config:
+        config = ConfiguracaoEvento(evento_id=evento_id)
+        db.session.add(config)
+        db.session.commit()
+    return config
+
 @config_cliente_routes.route("/toggle_checkin_global_cliente", methods=["POST"])
 @login_required
 def toggle_checkin_global_cliente():
-    # Permite apenas clientes acessarem esta rota
-    #if current_user.tipo != "cliente":
-        #flash("Acesso Autorizado!", "danger")
-        
-        
-    
-    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
-    
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int) or request.args.get('evento_id', type=int)
+
     if evento_id:
+        evento = Evento.query.get_or_404(evento_id)
+        if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
         config_evento = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
         if not config_evento:
             config_evento = ConfiguracaoEvento(evento_id=evento_id)
             db.session.add(config_evento)
+
         config_evento.permitir_checkin_global = not config_evento.permitir_checkin_global
         db.session.commit()
-        return jsonify({"success": True, "value": config_evento.permitir_checkin_global})
-    
+
+        return jsonify({
+            "success": True,
+            "value": config_evento.permitir_checkin_global,
+            "message": "Check-in Global do evento atualizado com sucesso!"
+        })
+
+    # Caso não tenha evento_id, alterna a configuração do cliente
     cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
@@ -39,36 +58,48 @@ def toggle_checkin_global_cliente():
         )
         db.session.add(config_cliente)
         db.session.commit()
-    
+
     config_cliente.permitir_checkin_global = not config_cliente.permitir_checkin_global
     db.session.commit()
-    
+
     return jsonify({
         "success": True,
         "value": config_cliente.permitir_checkin_global,
-        "message": "Check-in Global atualizado com sucesso!",
+        "message": "Check-in Global do cliente atualizado com sucesso!"
     })
+
 
 
 @config_cliente_routes.route("/toggle_feedback_cliente", methods=["POST"])
 @login_required
 def toggle_feedback_cliente():
-    # Permite apenas clientes
-    #if current_user.tipo != "cliente":
-        #flash("Acesso Autorizado!", "danger")
-        
-        
-    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
-    
+    data = request.get_json(silent=True) or {}
+    evento_id = (
+        data.get("evento_id")
+        or request.form.get("evento_id", type=int)
+        or request.args.get("evento_id", type=int)
+    )
+
     if evento_id:
-        cfg = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
-        if not cfg:
-            cfg = ConfiguracaoEvento(evento_id=evento_id)
-            db.session.add(cfg)
-        cfg.habilitar_feedback = not cfg.habilitar_feedback
+        evento = Evento.query.get_or_404(evento_id)
+        if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+        config_evento = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+        if not config_evento:
+            config_evento = ConfiguracaoEvento(evento_id=evento_id)
+            db.session.add(config_evento)
+
+        config_evento.habilitar_feedback = not config_evento.habilitar_feedback
         db.session.commit()
-        return jsonify({"success": True, "value": cfg.habilitar_feedback})
-    
+
+        return jsonify({
+            "success": True,
+            "value": config_evento.habilitar_feedback,
+            "message": "Feedback do evento atualizado com sucesso!"
+        })
+
+    # Se não houver evento_id, alterna a configuração do cliente
     cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
@@ -83,35 +114,47 @@ def toggle_feedback_cliente():
         db.session.add(config_cliente)
         db.session.commit()
 
-config_cliente.habilitar_feedback = not config_cliente.habilitar_feedback
-db.session.commit()
+    config_cliente.habilitar_feedback = not config_cliente.habilitar_feedback
+    db.session.commit()
 
-return jsonify({
-    "success": True,
-    "value": config_cliente.habilitar_feedback,
-    "message": "Feedback atualizado com sucesso!",
-})
+    return jsonify({
+        "success": True,
+        "value": config_cliente.habilitar_feedback,
+        "message": "Feedback do cliente atualizado com sucesso!"
+    })
+
 
 
 @config_cliente_routes.route("/toggle_certificado_cliente", methods=["POST"])
 @login_required
 def toggle_certificado_cliente():
-    # Permite apenas clientes
-    #if current_user.tipo != "cliente":
-        #flash("Acesso Autorizado!", "danger")
-        
-    
-    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
-    
+    data = request.get_json(silent=True) or {}
+    evento_id = (
+        data.get("evento_id")
+        or request.form.get("evento_id", type=int)
+        or request.args.get("evento_id", type=int)
+    )
+
     if evento_id:
-        cfg = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
-        if not cfg:
-            cfg = ConfiguracaoEvento(evento_id=evento_id)
-            db.session.add(cfg)
-        cfg.habilitar_certificado_individual = not cfg.habilitar_certificado_individual
+        evento = Evento.query.get_or_404(evento_id)
+        if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+        config_evento = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+        if not config_evento:
+            config_evento = ConfiguracaoEvento(evento_id=evento_id)
+            db.session.add(config_evento)
+
+        config_evento.habilitar_certificado_individual = not config_evento.habilitar_certificado_individual
         db.session.commit()
-        return jsonify({"success": True, "value": cfg.habilitar_certificado_individual})
-    
+
+        return jsonify({
+            "success": True,
+            "value": config_evento.habilitar_certificado_individual,
+            "message": "Certificado individual do evento atualizado com sucesso!"
+        })
+
+    # Caso não haja evento_id, atualiza configuração do cliente
     cliente_id = current_user.id
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     if not config_cliente:
@@ -124,18 +167,19 @@ def toggle_certificado_cliente():
         )
         db.session.add(config_cliente)
         db.session.commit()
-    
+
     config_cliente.habilitar_certificado_individual = not config_cliente.habilitar_certificado_individual
     db.session.commit()
-    
+
     return jsonify({
         "success": True,
         "value": config_cliente.habilitar_certificado_individual,
-        "message": "Certificado Individual atualizado com sucesso!",
+        "message": "Certificado individual do cliente atualizado com sucesso!"
     })
+
     
     
-    @config_cliente_routes.route("/toggle_certificado_individual", methods=["POST"])
+@config_cliente_routes.route("/toggle_certificado_individual", methods=["POST"])
 @login_required
 def toggle_certificado_individual():
     # Permite apenas clientes (já que esta rota altera uma configuração global de certificado)
@@ -259,11 +303,16 @@ def toggle_mostrar_taxa():
 def toggle_obrigatorio_nome():
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
-    config = current_user.configuracao
-    if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
-        db.session.add(config)
-        db.session.commit()
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento não informado"}), 400
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = _get_evento_config(evento_id)
     config.obrigatorio_nome = not config.obrigatorio_nome
     db.session.commit()
     return jsonify({"success": True, "value": config.obrigatorio_nome})
@@ -273,11 +322,16 @@ def toggle_obrigatorio_nome():
 def toggle_obrigatorio_cpf():
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
-    config = current_user.configuracao
-    if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
-        db.session.add(config)
-        db.session.commit()
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento não informado"}), 400
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = _get_evento_config(evento_id)
     config.obrigatorio_cpf = not config.obrigatorio_cpf
     db.session.commit()
     return jsonify({"success": True, "value": config.obrigatorio_cpf})
@@ -287,11 +341,16 @@ def toggle_obrigatorio_cpf():
 def toggle_obrigatorio_email():
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
-    config = current_user.configuracao
-    if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
-        db.session.add(config)
-        db.session.commit()
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento não informado"}), 400
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = _get_evento_config(evento_id)
     config.obrigatorio_email = not config.obrigatorio_email
     db.session.commit()
     return jsonify({"success": True, "value": config.obrigatorio_email})
@@ -301,11 +360,16 @@ def toggle_obrigatorio_email():
 def toggle_obrigatorio_senha():
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
-    config = current_user.configuracao
-    if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
-        db.session.add(config)
-        db.session.commit()
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento não informado"}), 400
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = _get_evento_config(evento_id)
     config.obrigatorio_senha = not config.obrigatorio_senha
     db.session.commit()
     return jsonify({"success": True, "value": config.obrigatorio_senha})
@@ -315,11 +379,16 @@ def toggle_obrigatorio_senha():
 def toggle_obrigatorio_formacao():
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
-    config = current_user.configuracao
-    if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id)
-        db.session.add(config)
-        db.session.commit()
+    data = request.get_json(silent=True) or {}
+    evento_id = data.get('evento_id') or request.form.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento não informado"}), 400
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config = _get_evento_config(evento_id)
     config.obrigatorio_formacao = not config.obrigatorio_formacao
     db.session.commit()
     return jsonify({"success": True, "value": config.obrigatorio_formacao})
@@ -362,24 +431,63 @@ def configuracao_cliente_atual():
 
     })
 
+
+@config_cliente_routes.route('/api/configuracao_evento/<int:evento_id>', methods=['GET'])
+@login_required
+def configuracao_evento(evento_id):
+    """Retorna configuracao do evento selecionado."""
+    evento = Evento.query.get_or_404(evento_id)
+    if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    config_evento = _get_evento_config(evento_id)
+    return jsonify({
+        "success": True,
+        "permitir_checkin_global": config_evento.permitir_checkin_global,
+        "habilitar_feedback": config_evento.habilitar_feedback,
+        "habilitar_certificado_individual": config_evento.habilitar_certificado_individual,
+        "habilitar_qrcode_evento_credenciamento": config_evento.habilitar_qrcode_evento_credenciamento,
+        "obrigatorio_nome": config_evento.obrigatorio_nome,
+        "obrigatorio_cpf": config_evento.obrigatorio_cpf,
+        "obrigatorio_email": config_evento.obrigatorio_email,
+        "obrigatorio_senha": config_evento.obrigatorio_senha,
+        "obrigatorio_formacao": config_evento.obrigatorio_formacao
+    })
+
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
 @login_required
 def toggle_qrcode_evento_credenciamento():
-    # Garante que apenas o cliente (dono) possa mudar
+    # Garante que apenas clientes possam alterar
     if current_user.tipo != 'cliente':
         return jsonify({"success": False, "message": "Acesso negado!"}), 403
 
-    evento_id = request.args.get("evento_id", type=int) or request.form.get("evento_id", type=int)
-    
+    data = request.get_json(silent=True) or {}
+    evento_id = (
+        data.get("evento_id")
+        or request.form.get("evento_id", type=int)
+        or request.args.get("evento_id", type=int)
+    )
+
     if evento_id:
-        cfg = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
-        if not cfg:
-            cfg = ConfiguracaoEvento(evento_id=evento_id)
-            db.session.add(cfg)
-        cfg.habilitar_qrcode_evento_credenciamento = not cfg.habilitar_qrcode_evento_credenciamento
+        evento = Evento.query.get_or_404(evento_id)
+        if evento.cliente_id != current_user.id:
+            return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+        config_evento = ConfiguracaoEvento.query.filter_by(evento_id=evento_id).first()
+        if not config_evento:
+            config_evento = ConfiguracaoEvento(evento_id=evento_id)
+            db.session.add(config_evento)
+
+        config_evento.habilitar_qrcode_evento_credenciamento = not config_evento.habilitar_qrcode_evento_credenciamento
         db.session.commit()
-        return jsonify({"success": True, "value": cfg.habilitar_qrcode_evento_credenciamento, "message": "Habilitação de QRCode de Evento atualizada!"})
-    
+
+        return jsonify({
+            "success": True,
+            "value": config_evento.habilitar_qrcode_evento_credenciamento,
+            "message": "Habilitação de QRCode de credenciamento do evento atualizada!"
+        })
+
+    # Caso não tenha evento_id, aplica configuração global do cliente
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
     if not config_cliente:
         config_cliente = ConfiguracaoCliente(
@@ -392,15 +500,16 @@ def toggle_qrcode_evento_credenciamento():
         )
         db.session.add(config_cliente)
         db.session.commit()
-    
+
     config_cliente.habilitar_qrcode_evento_credenciamento = not config_cliente.habilitar_qrcode_evento_credenciamento
     db.session.commit()
-    
+
     return jsonify({
         "success": True,
         "value": config_cliente.habilitar_qrcode_evento_credenciamento,
-        "message": "Habilitação de QRCode de Evento atualizada!",
+        "message": "Habilitação de QRCode de credenciamento do cliente atualizada!"
     })
+
     
     
     

@@ -90,33 +90,44 @@ def test_preview_certificado_logged_in(client, app):
 
 import pytest
 
-@pytest.mark.parametrize('route,field,default', [
-    ('/toggle_checkin_global_cliente', 'permitir_checkin_global', False),
-    ('/toggle_feedback_cliente', 'habilitar_feedback', False),
-    ('/toggle_certificado_cliente', 'habilitar_certificado_individual', False),
-    ('/toggle_qrcode_evento_credenciamento', 'habilitar_qrcode_evento_credenciamento', False),
-    ('/toggle_submissao_trabalhos', 'habilitar_submissao_trabalhos', False),
-    ('/toggle_mostrar_taxa', 'mostrar_taxa', True),
+@pytest.mark.parametrize('route,field,default,event_based', [
+    ('/toggle_checkin_global_cliente', 'permitir_checkin_global', False, True),
+    ('/toggle_feedback_cliente', 'habilitar_feedback', False, True),
+    ('/toggle_certificado_cliente', 'habilitar_certificado_individual', False, True),
+    ('/toggle_qrcode_evento_credenciamento', 'habilitar_qrcode_evento_credenciamento', False, True),
+    ('/toggle_submissao_trabalhos', 'habilitar_submissao_trabalhos', False, False),
+    ('/toggle_mostrar_taxa', 'mostrar_taxa', True, False),
 ])
-def test_toggle_default_fields(client, app, route, field, default):
+def test_toggle_default_fields(client, app, route, field, default, event_based):
     with app.app_context():
+        # Cria cliente e evento
         cliente = Cliente(nome='Cli', email='toggler@example.com', senha=generate_password_hash('123'))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')
         db.session.add(evento)
         db.session.commit()
+
+        # Cria configurações padrão
         db.session.add(ConfiguracaoCliente(cliente_id=cliente.id))
         db.session.add(ConfiguracaoEvento(evento_id=evento.id))
         db.session.commit()
+
         cid = cliente.id
         eid = evento.id
+
     login(client, 'toggler@example.com', '123')
-    resp = client.post(route, query_string={'evento_id': eid})
+    data = {'evento_id': eid} if event_based else {}
+    resp = client.post(route, json=data)
     assert resp.status_code == 200
+
     with app.app_context():
-        cfg = ConfiguracaoEvento.query.filter_by(evento_id=eid).first()
+        if event_based:
+            cfg = ConfiguracaoEvento.query.filter_by(evento_id=eid).first()
+        else:
+            cfg = ConfiguracaoCliente.query.filter_by(cliente_id=cid).first()
         assert getattr(cfg, field) == (not default)
+
 
 
 @pytest.mark.parametrize('route,field,default', [
