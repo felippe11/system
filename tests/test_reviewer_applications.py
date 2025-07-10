@@ -49,6 +49,7 @@ pdf_service_stub.gerar_qrcode_token = lambda *a, **k: send_file(BytesIO(b''), do
 pdf_service_stub.gerar_programacao_evento_pdf = lambda *a, **k: send_file(BytesIO(b''), download_name='x.pdf')
 pdf_service_stub.gerar_placas_oficinas_pdf = lambda *a, **k: send_file(BytesIO(b''), download_name='x.pdf')
 pdf_service_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: send_file(BytesIO(b''), download_name='x.pdf')
+pdf_service_stub.gerar_revisor_details_pdf = lambda *a, **k: send_file(BytesIO(b''), download_name='x.pdf')
 sys.modules.setdefault('services.pdf_service', pdf_service_stub)
 arquivo_utils_stub = types.ModuleType('utils.arquivo_utils')
 arquivo_utils_stub.arquivo_permitido = lambda *a, **k: True
