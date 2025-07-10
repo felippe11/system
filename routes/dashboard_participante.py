@@ -269,6 +269,16 @@ def dashboard_participante():
     ).all()
     logger.debug(f"DEBUG [53] -> Encontrados {len(horarios_disponiveis)} horários disponíveis")
 
+    # Verificar se o evento atual possui horários disponíveis e configuração de
+    # agendamento habilitada
+    tem_horarios_agendamento = False
+    if evento:
+        horarios_evento = [h for h in horarios_disponiveis if h.evento_id == evento.id]
+        tem_horarios_agendamento = bool(horarios_evento) and bool(evento.configuracoes_agendamento)
+    logger.debug(
+        f"DEBUG [53A] -> Evento possui horários para agendamento? {tem_horarios_agendamento}"
+    )
+
     # Carregar regras de inscrição para o tipo de inscrição do usuário por evento
     logger.debug(f"DEBUG [54] -> Carregando regras de inscrição para tipo_inscricao_id = {current_user.tipo_inscricao_id}")
     regras_inscricao = {}
@@ -473,6 +483,7 @@ def dashboard_participante():
         habilitar_certificado_individual=habilitar_certificado,
         formularios_disponiveis=formularios_disponiveis,
         horarios_disponiveis=horarios_disponiveis,
+        tem_horarios_agendamento=tem_horarios_agendamento,
         # Variáveis para diagnóstico
         debug_total_oficinas=len(oficinas_formatadas),
         debug_oficinas_encerradas=len([o for o in oficinas_formatadas if o['evento_encerrado']]),
