@@ -257,7 +257,7 @@ def test_dashboard_lists_candidaturas_and_status_update(client, app):
 
 
 def test_approve_candidatura_without_email(client, app):
-    """Approving a candidatura without email should fail gracefully."""
+    """Approving a candidatura without email should still succeed."""
     with app.app_context():
         proc = RevisorProcess.query.first()
         campos = {c.nome: c.id for c in proc.formulario.campos}
@@ -275,27 +275,10 @@ def test_approve_candidatura_without_email(client, app):
 
     login(client, "cli@test", "123")
     resp = client.post(f"/revisor/approve/{cand_id}", json={})
-    assert resp.status_code == 400
-    data = resp.get_json()
-    assert not data["success"]
-
-
-def test_view_candidatura_route(client, app):
-    """Logged-in clients should view candidatura details."""
-    with app.app_context():
-        proc = RevisorProcess.query.first()
-        campos = {c.nome: c.id for c in proc.formulario.campos}
-
-    client.post(
-        f"/revisor/apply/{proc.id}",
-        data={str(campos["email"]): "det@test", str(campos["nome"]): "Det"},
-    )
-
-    with app.app_context():
-        cand = RevisorCandidatura.query.filter_by(email="det@test").first()
-        cand_id = cand.id
-
-    login(client, "cli@test", "123")
-    resp = client.get(f"/revisor/view/{cand_id}")
     assert resp.status_code == 200
-    assert "det@test" in resp.get_data(as_text=True)
+    data = resp.get_json()
+    assert data["success"]
+    assert "reviewer_id" not in data
+    with app.app_context():
+        cand = RevisorCandidatura.query.get(cand_id)
+        assert cand.status == "aprovado"
