@@ -137,54 +137,33 @@ toggleButtons.forEach(button => {
   const campo = button.dataset.field;
   if (!campo) return;
 
-  button.addEventListener("click", function () {
+  button.addEventListener('click', function () {
     if (!EVENTO_ATUAL) {
-      alert("Selecione um evento");
+      alert('Selecione um evento');
       return;
     }
 
-button.addEventListener('click', function () {
-  if (!EVENTO_ATUAL) {
-    alert("Selecione um evento");
-    return;
-  }
-
-  fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest",
-      "X-CSRFToken": csrfToken  // Inclui o token CSRF
-    },
-    credentials: "include"
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        atualizarBotao(button, data.value);
-      } else {
-        alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
-      }
-    });
-});
-
+    fetch(`${URL_EVENTO_CONFIG_BASE}/${EVENTO_ATUAL}/${campo}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken
+      },
+      credentials: 'include'
+    })
       .then(res => res.json())
-      .then(data => {
+  .then(data => {
         if (data.success) {
           atualizarBotao(button, data.value);
         } else {
-          alert("Falha ao atualizar configuração: " + (data.message || "Erro desconhecido."));
+          alert('Falha ao atualizar configuração: ' + (data.message || 'Erro desconhecido.'));
         }
       });
   });
 });
 
-      })
-      .then(r => r.json())
-      .then(data => { if (data.success) atualizarBotao(btn, data.value); });
-    });
-  });
-  }
+});
 
 
 document.addEventListener('DOMContentLoaded', function() {
