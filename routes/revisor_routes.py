@@ -319,6 +319,18 @@ def advance(cand_id: int):
     return redirect(url_for("dashboard_routes.dashboard_cliente"))
 
 
+@revisor_routes.route("/revisor/view/<int:cand_id>")
+@login_required
+def view_candidatura(cand_id: int):
+    """Exibe os detalhes e respostas de uma candidatura."""
+    if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
+    return render_template("revisor/candidatura_detail.html", candidatura=cand)
+
+
 # -----------------------------------------------------------------------------
 # EVENTOS ELEGÍVEIS PARA PARTICIPANTES
 # -----------------------------------------------------------------------------
