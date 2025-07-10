@@ -389,9 +389,14 @@
 
   <div class="container-fluid px-4 mt-2">
     <div class="d-flex justify-content-end mb-4">
-      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
+      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg me-2">
         <i class="fas fa-calendar-alt me-2"></i> AGENDAMENTOS
       </a>
+      {% if tem_horarios_agendamento %}
+      <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
+      </a>
+      {% endif %}
     </div>
   </div>
 
