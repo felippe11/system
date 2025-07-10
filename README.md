@@ -44,6 +44,9 @@ Com o ambiente configurado você pode aplicar as migrações executando:
 flask db upgrade
 ```
 
+Uma nova revisão `671cbede4123` adiciona os campos `numero_revisores`, `prazo_revisao` e
+`modelo_blind` à tabela `reviewer_application`.
+
 `SECRET_KEY` garante que as sessões geradas por uma instância do Flask possam
 ser lidas por outra. Em produção, utilize um valor seguro e idêntico em todas as
 réplicas do aplicativo.
