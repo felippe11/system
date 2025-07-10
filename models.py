@@ -1210,7 +1210,7 @@ class RevisaoConfig(db.Model):
     mostrar_taxa = db.Column(db.Boolean, default=True)
 
     evento = db.relationship(
-        "Evento", backref=db.backref("configuracao_evento", uselist=False)
+        "Evento", backref=db.backref("revisao_config", uselist=False)
     )
 
 
