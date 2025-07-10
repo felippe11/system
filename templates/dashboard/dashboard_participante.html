@@ -375,27 +375,29 @@
     {% endif %}
   </div>
 
-  {% if config_cliente and config_cliente.habilitar_submissao_trabalhos %}
+  <!-- Container unificado para as ações -->
   <div class="container-fluid px-4 mt-5">
-    <div class="d-flex justify-content-end mb-4">
-      <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
-        <i class="bi bi-upload me-2"></i> Submeter Trabalho
-      </a>
-    </div>
-  </div>
-  {% else %}
+    <div class="d-flex flex-wrap justify-content-center gap-3">
+      {% if config_cliente and config_cliente.habilitar_submissao_trabalhos %}
+        <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
+          <i class="bi bi-upload me-2"></i> Submeter Trabalho
+        </a>
+      {% endif %}
 
-  {% endif %}
-
-  <div class="container-fluid px-4 mt-2">
-    <div class="d-flex justify-content-end mb-4">
-      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg me-2">
-        <i class="fas fa-calendar-alt me-2"></i> AGENDAMENTOS
+      <a href="{{ url_for('agendamento_routes.meus_agendamentos_participante') }}" class="btn btn-info btn-lg">
+        <i class="fas fa-calendar-alt me-2"></i> Meus Agendamentos
       </a>
+      
       {% if tem_horarios_agendamento %}
-      <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-primary btn-lg">
-        <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
-      </a>
+        <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-primary btn-lg">
+          <i class="fas fa-calendar-plus me-2"></i> Agendar Visita
+        </a>
+      {% endif %}
+
+      {% if formularios_disponiveis %}
+        <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}" class="btn btn-primary btn-lg">
+          <i class="fas fa-clipboard-list me-2"></i> Formulários
+        </a>
       {% endif %}
     </div>
   </div>
@@ -404,15 +406,6 @@
 
 {% endif %}
   
-
-  {% if formularios_disponiveis %}
-    <div class="formularios-card">
-      <strong>Formulários Disponíveis</strong>
-      <a href="{{ url_for('formularios_routes.listar_formularios_participante', evento_id=evento.id if evento else None) }}" class="btn btn-primary">
-        <i class="fas fa-clipboard-list"></i> Acessar Formulários
-      </a>
-    </div>
-  {% endif %}
 
   {% if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento %}
     <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
