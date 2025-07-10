@@ -1,7 +1,33 @@
 import os
+import sys
+import types
 import pytest
 from werkzeug.security import generate_password_hash
 from config import Config
+
+# Stubs to avoid heavy optional dependencies
+mercadopago_stub = types.ModuleType('mercadopago')
+mercadopago_stub.SDK = lambda *a, **k: None
+sys.modules.setdefault('mercadopago', mercadopago_stub)
+pdf_stub = types.ModuleType('services.pdf_service')
+pdf_stub.gerar_pdf_respostas = lambda *a, **k: None
+pdf_stub.gerar_comprovante_pdf = lambda *a, **k: ''
+pdf_stub.gerar_certificados_pdf = lambda *a, **k: ''
+pdf_stub.gerar_certificado_personalizado = lambda *a, **k: ''
+pdf_stub.gerar_pdf_comprovante_agendamento = lambda *a, **k: ''
+pdf_stub.gerar_pdf_inscritos_pdf = lambda *a, **k: ''
+pdf_stub.gerar_lista_frequencia_pdf = lambda *a, **k: ''
+pdf_stub.gerar_pdf_feedback = lambda *a, **k: ''
+pdf_stub.gerar_etiquetas = lambda *a, **k: None
+pdf_stub.gerar_lista_frequencia = lambda *a, **k: None
+pdf_stub.gerar_certificados = lambda *a, **k: None
+pdf_stub.gerar_evento_qrcode_pdf = lambda *a, **k: None
+pdf_stub.gerar_qrcode_token = lambda *a, **k: None
+pdf_stub.gerar_programacao_evento_pdf = lambda *a, **k: None
+pdf_stub.gerar_placas_oficinas_pdf = lambda *a, **k: None
+pdf_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
+pdf_stub.gerar_revisor_details_pdf = lambda *a, **k: None
+sys.modules.setdefault('services.pdf_service', pdf_stub)
 
 Config.SQLALCHEMY_DATABASE_URI = "sqlite://"
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
@@ -252,3 +278,24 @@ def test_approve_candidatura_without_email(client, app):
     assert resp.status_code == 400
     data = resp.get_json()
     assert not data["success"]
+
+
+def test_view_candidatura_route(client, app):
+    """Logged-in clients should view candidatura details."""
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+
+    client.post(
+        f"/revisor/apply/{proc.id}",
+        data={str(campos["email"]): "det@test", str(campos["nome"]): "Det"},
+    )
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(email="det@test").first()
+        cand_id = cand.id
+
+    login(client, "cli@test", "123")
+    resp = client.get(f"/revisor/view/{cand_id}")
+    assert resp.status_code == 200
+    assert "det@test" in resp.get_data(as_text=True)
