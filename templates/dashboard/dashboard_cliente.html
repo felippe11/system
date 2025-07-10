@@ -1502,6 +1502,7 @@
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn btn-sm btn-danger">Rejeitar</button>
             </form>
+            <a href="{{ url_for('revisor_routes.view_candidatura', cand_id=cand.id) }}" class="btn btn-sm btn-secondary ms-1">Ver Detalhes</a>
           </td>
         </tr>
         {% else %}
