@@ -1235,67 +1235,6 @@ class ConfiguracaoCertificadoEvento(db.Model):
         return [int(o) for o in self.oficinas_obrigatorias.split(',') if o]
 
 
-
-    # segurança/acesso externo
-    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
-    access_code = db.Column(db.String(50), nullable=True)
-
-    # detalhes
-    blind_type = db.Column(db.String(20), nullable=True)  # single | double | open | anonimo
-    scores = db.Column(db.JSON, nullable=True)            # ex.: {"originalidade": 4}
-    note = db.Column(db.Integer, nullable=True)           # nota geral (0‑10) opcional
-    comments = db.Column(db.Text, nullable=True)
-    file_path = db.Column(db.String(255), nullable=True)  # PDF anotado etc.
-    decision = db.Column(db.String(50), nullable=True)    # accept | minor | major | reject
-    started_at = db.Column(db.DateTime, nullable=True)
-    finished_at = db.Column(db.DateTime, nullable=True)
-    duration_seconds = db.Column(db.Integer, nullable=True)
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # relationships
-    submission = db.relationship("Submission", backref=db.backref("reviews", lazy=True))
-    reviewer = db.relationship("Usuario", backref=db.backref("reviews", lazy=True))
-
-    def __repr__(self):
-        return f"<Review {self.id} submission={self.submission_id}>"
-
-    @property
-    def duration(self):
-        if self.started_at and self.finished_at:
-            return int((self.finished_at - self.started_at).total_seconds())
-        return None
-
-
-    """Configura um processo seletivo de revisores."""
-
-    __tablename__ = "revisor_process"
-
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    formulario_id = db.Column(db.Integer, db.ForeignKey("formularios.id"), nullable=True)
-    num_etapas = db.Column(db.Integer, default=1)
-
-    # Controle de disponibilidade do processo
-    availability_start = db.Column(db.DateTime, nullable=True)
-    availability_end = db.Column(db.DateTime, nullable=True)
-    exibir_para_participantes = db.Column(db.Boolean, default=False)
-
-    cliente = db.relationship("Cliente", backref=db.backref("revisor_processes", lazy=True))
-    formulario = db.relationship("Formulario")
-
-    def __repr__(self) -> str:  # pragma: no cover
-        return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
-
-    def is_available(self) -> bool:
-        """Return True if the process is currently available."""
-        now = datetime.utcnow()
-        if self.availability_start and now < self.availability_start:
-            return False
-        if self.availability_end and now > self.availability_end:
-            return False
-        return True
-
-
 class RevisorEtapa(db.Model):
     __tablename__ = "revisor_etapa"
 
