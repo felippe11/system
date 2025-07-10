@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Detalhes da Candidatura{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">Detalhes da Candidatura</h1>
+  <p><strong>Nome:</strong> {{ candidatura.nome or candidatura.email }}</p>
+  <p><strong>Status:</strong> {{ candidatura.status }}</p>
+  <table class="table table-striped mt-4">
+    <thead>
+      <tr><th>Campo</th><th>Resposta</th></tr>
+    </thead>
+    <tbody>
+    {% for key, value in candidatura.respostas.items() %}
+      <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}
