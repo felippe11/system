@@ -432,27 +432,6 @@ def configuracao_cliente_atual():
     })
 
 
-@config_cliente_routes.route('/api/configuracao_evento/<int:evento_id>', methods=['GET'])
-@login_required
-def configuracao_evento(evento_id):
-    """Retorna configuracao do evento selecionado."""
-    evento = Evento.query.get_or_404(evento_id)
-    if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
-        return jsonify({"success": False, "message": "Acesso negado!"}), 403
-
-    config_evento = _get_evento_config(evento_id)
-    return jsonify({
-        "success": True,
-        "permitir_checkin_global": config_evento.permitir_checkin_global,
-        "habilitar_feedback": config_evento.habilitar_feedback,
-        "habilitar_certificado_individual": config_evento.habilitar_certificado_individual,
-        "habilitar_qrcode_evento_credenciamento": config_evento.habilitar_qrcode_evento_credenciamento,
-        "obrigatorio_nome": config_evento.obrigatorio_nome,
-        "obrigatorio_cpf": config_evento.obrigatorio_cpf,
-        "obrigatorio_email": config_evento.obrigatorio_email,
-        "obrigatorio_senha": config_evento.obrigatorio_senha,
-        "obrigatorio_formacao": config_evento.obrigatorio_formacao
-    })
 
 @config_cliente_routes.route("/toggle_qrcode_evento_credenciamento", methods=["POST"])
 @login_required
