@@ -57,7 +57,15 @@ sys.modules.setdefault('utils.arquivo_utils', arquivo_utils_stub)
 
 from app import create_app
 from extensions import db, login_manager
-from models import Usuario, Cliente, ReviewerApplication
+from models import (
+    Usuario,
+    Cliente,
+    ReviewerApplication,
+    Formulario,
+    CampoFormulario,
+    RevisorProcess,
+    RevisorCandidatura,
+)
 from routes.auth_routes import auth_routes
 
 @pytest.fixture
@@ -150,3 +158,35 @@ def test_submit_application_and_visibility(client, app):
     login(client, 'cli@test', '123')
     resp = client.get('/dashboard_cliente')
     assert b'Applicant' in resp.data
+
+
+def test_revisor_approval_without_email(client, app):
+    """Candidaturas sem email devem ser aprovadas sem criar usuario."""
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        form = Formulario(nome='Form', cliente_id=cliente.id)
+        db.session.add(form)
+        db.session.commit()
+        campo_nome = CampoFormulario(formulario_id=form.id, nome='nome', tipo='text')
+        db.session.add(campo_nome)
+        db.session.commit()
+        proc = RevisorProcess(cliente_id=cliente.id, formulario_id=form.id, num_etapas=1)
+        db.session.add(proc)
+        db.session.commit()
+        campo_id = campo_nome.id
+        proc_id = proc.id
+
+    client.post(f'/revisor/apply/{proc_id}', data={str(campo_id): 'NoEmail'})
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(nome='NoEmail').first()
+        cand_id = cand.id
+
+    login(client, 'cli@test', '123')
+    resp = client.post(f'/revisor/approve/{cand_id}', json={})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success']
+    assert 'reviewer_id' not in data
+    with app.app_context():
+        cand = RevisorCandidatura.query.get(cand_id)
+        assert cand.status == 'aprovado'
