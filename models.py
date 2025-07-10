@@ -1300,8 +1300,10 @@ class ReviewerApplication(db.Model):
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
     stage = db.Column(db.String(50), default="novo")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)
 
     usuario = db.relationship("Usuario", backref=db.backref("reviewer_applications", lazy=True))
+    evento = db.relationship('Evento', backref=db.backref('reviewer_applications', lazy=True))
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
@@ -1309,16 +1311,6 @@ class ReviewerApplication(db.Model):
     numero_revisores = db.Column(db.Integer, default=2)
     prazo_revisao = db.Column(db.DateTime, nullable=True)
     modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
-
-    evento = db.relationship(
-        "Evento", backref=db.backref("revisao_config", uselist=False)
-    )
-
-    def __repr__(self):
-        return (
-            f"<RevisaoConfig evento={self.evento_id} revisores={self.numero_revisores} "
-            f"blind={self.modelo_blind}>"
-        )
 
 
 # -----------------------------------------------------------------------------
