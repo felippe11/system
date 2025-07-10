@@ -248,42 +248,43 @@ def approve(cand_id: int):
         if config_cli.limite_revisores is not None and aprovados >= config_cli.limite_revisores:
             flash('Limite de revisores atingido.', 'danger')
             return redirect(url_for('dashboard_routes.dashboard_cliente'))
-    if not cand.email:
-        msg = "Candidatura sem email"
-        if request.is_json:
-            return jsonify({"success": False, "message": msg}), 400
-        flash(msg, "danger")
-        return redirect(url_for("dashboard_routes.dashboard_cliente"))
-
     cand.status = "aprovado"
     cand.etapa_atual = cand.process.num_etapas  # type: ignore[attr-defined]
 
-    # Cria (ou atualiza) usuário revisor
-    reviewer: Usuario | None = Usuario.query.filter_by(email=cand.email).first()
-    if not reviewer:
-        reviewer = Usuario(
-            nome=cand.nome or cand.email,
-            cpf=str(uuid.uuid4().int)[:11],
-            email=cand.email,
-            senha=generate_password_hash("temp123"),
-            formacao="",
-            tipo="revisor",
-        )
-        db.session.add(reviewer)
-        db.session.flush()
-    else:
-        reviewer.tipo = "revisor"  # garante a role
+    reviewer: Usuario | None = None
+    if cand.email:
+        # Cria (ou atualiza) usuário revisor
+        reviewer = Usuario.query.filter_by(email=cand.email).first()
+        if not reviewer:
+            reviewer = Usuario(
+                nome=cand.nome or cand.email,
+                cpf=str(uuid.uuid4().int)[:11],
+                email=cand.email,
+                senha=generate_password_hash("temp123"),
+                formacao="",
+                tipo="revisor",
+            )
+            db.session.add(reviewer)
+            db.session.flush()
+        else:
+            reviewer.tipo = "revisor"  # garante a role
 
     # Se informado, cria assignment imediato
     submission_id: int | None = (
         request.json.get("submission_id") if request.is_json else request.form.get("submission_id", type=int)
     )
-    if submission_id:
+    if submission_id and reviewer:
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
 
     db.session.commit()
+    msg = "Candidatura aprovada"
     if request.is_json:
-        return jsonify({"success": True, "reviewer_id": reviewer.id})
+        resp = {"success": True}
+        if reviewer:
+            resp["reviewer_id"] = reviewer.id
+        resp["message"] = msg
+        return jsonify(resp)
+    flash(msg, "success")
     return redirect(url_for("dashboard_routes.dashboard_cliente"))
 
 

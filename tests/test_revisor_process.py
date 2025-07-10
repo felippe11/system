@@ -231,7 +231,7 @@ def test_dashboard_lists_candidaturas_and_status_update(client, app):
 
 
 def test_approve_candidatura_without_email(client, app):
-    """Approving a candidatura without email should fail gracefully."""
+    """Approving a candidatura without email should still succeed."""
     with app.app_context():
         proc = RevisorProcess.query.first()
         campos = {c.nome: c.id for c in proc.formulario.campos}
@@ -249,6 +249,10 @@ def test_approve_candidatura_without_email(client, app):
 
     login(client, "cli@test", "123")
     resp = client.post(f"/revisor/approve/{cand_id}", json={})
-    assert resp.status_code == 400
+    assert resp.status_code == 200
     data = resp.get_json()
-    assert not data["success"]
+    assert data["success"]
+    assert "reviewer_id" not in data
+    with app.app_context():
+        cand = RevisorCandidatura.query.get(cand_id)
+        assert cand.status == "aprovado"
