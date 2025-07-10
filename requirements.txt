@@ -190,6 +190,7 @@ pyasn1==0.4.8
 pyasn1-modules==0.2.1
 pycparser==2.22
 pydyf==0.11.0
+pyotp==2.9.0
 Pygments==2.19.1
 PyHamcrest==2.0.2
 pyOpenSSL==21.0.0
