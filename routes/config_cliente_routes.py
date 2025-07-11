@@ -736,10 +736,10 @@ def toggle_configuracao_evento(evento_id, campo):
     if evento.cliente_id != current_user.id:
         return jsonify({"success": False, "message": "Acesso negado"}), 403
     valid = {
-        'permitir_checkin',
-        'habilitar_qrcode_credenciamento',
+        'permitir_checkin_global',
+        'habilitar_qrcode_evento_credenciamento',
         'habilitar_feedback',
-        'habilitar_certificado',
+        'habilitar_certificado_individual',
         'mostrar_taxa',
         'obrigatorio_nome',
         'obrigatorio_cpf',

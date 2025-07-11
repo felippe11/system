@@ -96,10 +96,10 @@ const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? U
 let EVENTO_ATUAL = null;
 
 const fieldButtonMap = {
-  "permitir_checkin": document.getElementById("btnToggleCheckin"),
-  "habilitar_qrcode_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
+  "permitir_checkin_global": document.getElementById("btnToggleCheckin"),
+  "habilitar_qrcode_evento_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
   "habilitar_feedback": document.getElementById("btnToggleFeedback"),
-  "habilitar_certificado": document.getElementById("btnToggleCertificado"),
+  "habilitar_certificado_individual": document.getElementById("btnToggleCertificado"),
   "mostrar_taxa": document.getElementById("btnToggleMostrarTaxa"),
   "obrigatorio_nome": document.getElementById("btnToggleObrigatorioNome"),
   "obrigatorio_cpf": document.getElementById("btnToggleObrigatorioCpf"),
