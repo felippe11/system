@@ -727,6 +727,38 @@ def exibir_evento(evento_id):
         grouped_oficinas=grouped_oficinas
     )
 
+
+@evento_routes.route('/preview_evento/<int:evento_id>')
+def preview_evento(evento_id):
+    """Versão pública da visualização de um evento."""
+    evento = Evento.query.get_or_404(evento_id)
+
+    oficinas = Oficina.query.filter_by(cliente_id=evento.cliente_id).all()
+
+    grouped_oficinas = defaultdict(list)
+    for oficina in oficinas:
+        for dia in oficina.dias:
+            data_str = dia.data.strftime('%d/%m/%Y')
+            grouped_oficinas[data_str].append({
+                'titulo': oficina.titulo,
+                'descricao': oficina.descricao,
+                'ministrante': oficina.ministrante_obj,
+                'horario_inicio': dia.horario_inicio,
+                'horario_fim': dia.horario_fim
+            })
+
+    sorted_keys = sorted(
+        grouped_oficinas.keys(),
+        key=lambda d: datetime.strptime(d, '%d/%m/%Y')
+    )
+
+    return render_template(
+        'evento/preview_evento.html',
+        evento=evento,
+        sorted_keys=sorted_keys,
+        grouped_oficinas=grouped_oficinas
+    )
+
 @evento_routes.route('/criar_evento', methods=['GET', 'POST'])
 @login_required
 def criar_evento():
