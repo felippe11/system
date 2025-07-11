@@ -691,6 +691,33 @@ class ConfiguracaoEvento(db.Model):
     limite_formularios = db.Column(db.Integer, default=3)
     limite_revisores = db.Column(db.Integer, default=2)
 
+    def to_dict(self):
+        """Return a dictionary representation of configuration flags."""
+        fields = [
+            "permitir_checkin_global",
+            "habilitar_qrcode_evento_credenciamento",
+            "habilitar_feedback",
+            "habilitar_certificado_individual",
+            "mostrar_taxa",
+            "habilitar_submissao_trabalhos",
+            "review_model",
+            "num_revisores_min",
+            "num_revisores_max",
+            "prazo_parecer_dias",
+            "obrigatorio_nome",
+            "obrigatorio_cpf",
+            "obrigatorio_email",
+            "obrigatorio_senha",
+            "obrigatorio_formacao",
+            "allowed_file_types",
+            "taxa_diferenciada",
+            "limite_eventos",
+            "limite_inscritos",
+            "limite_formularios",
+            "limite_revisores",
+        ]
+        return {f: getattr(self, f) for f in fields}
+
 
 
 
