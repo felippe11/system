@@ -10,6 +10,7 @@ from models import (
     Checkin, Inscricao, Oficina, ConfiguracaoCliente, AgendamentoVisita, Evento
 )
 from utils import formatar_brasilia, determinar_turno
+from .agendamento_routes import agendamento_routes  # Needed for URL generation
 
 checkin_routes = Blueprint('checkin_routes', __name__)
 
@@ -267,9 +268,8 @@ def checkin_token():
     else:
         # Realizar check-in
         return redirect(url_for(
-            'routes.checkin_agendamento', 
-            agendamento_id=agendamento.id,
-            token=token
+            'agendamento_routes.checkin_agendamento',
+            qr_code_token=token
         ))
     
     # Redirecionar para detalhes do agendamento
