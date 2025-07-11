@@ -61,6 +61,11 @@ class Usuario(db.Model, UserMixin):
     def is_cliente(self):
         return self.tipo == "cliente"
 
+    
+    @property
+    def is_admin(self):
+        return self.tipo == "admin"
+
     def is_active(self):
         return self.ativo
     
@@ -506,6 +511,10 @@ class Cliente(db.Model, UserMixin):
         return str(self.id)
     def is_cliente(self):
         return self.tipo == 'cliente'
+
+    @property
+    def is_admin(self):
+        return self.tipo == "admin"
 
 class LinkCadastro(db.Model):
     __tablename__ = 'link_cadastro'
