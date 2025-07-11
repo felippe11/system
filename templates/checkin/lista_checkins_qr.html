@@ -53,9 +53,11 @@
           <tbody>
             {% if checkins_via_qr and checkins_via_qr|length > 0 %}
               {% for checkin in checkins_via_qr %}
-              <tr data-oficina="{{ checkin.oficina.id }}">
+              <tr data-oficina="{{ checkin.oficina.id if checkin.oficina else '' }}">
                 <td>{{ checkin.usuario.nome }}</td>
-                <td>{{ checkin.oficina.titulo }}</td>
+                <td>
+                  {{ checkin.oficina.titulo if checkin.oficina else checkin.evento.nome }}
+                </td>
                 <td>{{ checkin.data_hora|brasilia }}</td>
               </tr>
               {% endfor %}
@@ -110,7 +112,7 @@
         const rows = checkinsTable.querySelectorAll('tbody tr:not(#noDataRow)');
         
         rows.forEach(row => {
-          const oficinaId = row.getAttribute('data-oficina');
+          const oficinaId = row.getAttribute('data-oficina') || '';
           const matchOficina = !selectedOficina || oficinaId === selectedOficina;
 
           if (matchOficina) {
