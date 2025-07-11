@@ -92,7 +92,10 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.warn("Elementos select de estado ou cidade não encontrados.");
   }
-const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? URL_EVENTO_CONFIG_BASE : "/api/configuracao_evento";
+const URL_EVENTO_CONFIG_BASE =
+  typeof window.URL_EVENTO_CONFIG_BASE !== "undefined"
+    ? window.URL_EVENTO_CONFIG_BASE
+    : "/api/configuracao_evento";
 let EVENTO_ATUAL = null;
 
 const fieldButtonMap = {
