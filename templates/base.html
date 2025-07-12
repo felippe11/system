@@ -280,21 +280,22 @@
                 </div>
                 
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
-                    <h6 class="fw-bold mb-3">Plataforma</h6>
+                    <h6 class="fw-bold mb-3">Eventos</h6>
                     <ul class="list-unstyled">
-                        <li class="mb-2"><a href="#">Recursos</a></li>
-                        <li class="mb-2"><a href="#">Planos</a></li>
-                        <li class="mb-2"><a href="#">Novidades</a></li>
-                        <li><a href="#">Roadmap</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='conferencias') }}">Conferências</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='workshops') }}">Workshops</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='formacoes') }}">Formações</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='seminarios') }}">Seminários</a></li>
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-4 col-6 mb-4">
                     <h6 class="fw-bold mb-3">Suporte</h6>
                     <ul class="list-unstyled">
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='faq') }}">FAQ</a></li>
                         <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='central-de-ajuda') }}">Central de Ajuda</a></li>
-                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='tutoriais') }}">Documentação</a></li>
-                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='suporte') }}">Status do Sistema</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='tutoriais') }}">Tutoriais</a></li>
+                        <li class="mb-2"><a href="{{ url_for('static_page_routes.show_page', slug='suporte') }}">Suporte</a></li>
                         <li><a href="{{ url_for('static_page_routes.show_page', slug='contato') }}">Contato</a></li>
                     </ul>
                 </div>

@@ -94,6 +94,7 @@
 <script>
 const API        = "{{ url_for('gerar_link_routes.gerar_link') }}";
 const API_DELETE = "{{ url_for('gerar_link_routes.excluir_link') }}";
+const CSRF_TOKEN = "{{ csrf_token() }}";
 
 function toast(message, type = 'info') {
   const icons = {
@@ -137,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function listarLinks() {
-    const id = eventoSelect.value;
+    const id = parseInt(eventoSelect.value);
     if (!id) {
       linksArea.style.display = 'none';
       return;
@@ -178,13 +179,16 @@ document.addEventListener('DOMContentLoaded', () => {
   async function criarLink(e) {
     e.preventDefault();
     const payload = {
-      evento_id: eventoSelect.value,
+      evento_id: parseInt(eventoSelect.value),
       slug_customizado: linkForm.slug_customizado.value.trim() || null
     };
     try {
       const r = await fetch(API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': CSRF_TOKEN
+        },
         body: JSON.stringify(payload)
       });
       const d = await r.json();
@@ -215,8 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const r = await fetch(API_DELETE, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ link_id: row.dataset.linkId })
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN
+          },
+          body: JSON.stringify({ link_id: parseInt(row.dataset.linkId) })
         });
         const d = await r.json();
         if (d.success) {
