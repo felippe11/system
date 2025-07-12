@@ -315,7 +315,7 @@ def leitor_checkin_json():
         novo = Checkin(usuario_id = inscricao.usuario_id,
                        evento_id  = inscricao.evento_id,
                        cliente_id = cliente_id,          # ★ grava aqui
-                       palavra_chave = "QR‑EVENTO")
+                       palavra_chave = "QR-EVENTO")
     # ---------- OFICINA ----------
     elif inscricao.oficina_id:
         if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
@@ -326,7 +326,7 @@ def leitor_checkin_json():
         novo = Checkin(usuario_id = inscricao.usuario_id,
                        oficina_id = inscricao.oficina_id,
                        cliente_id = cliente_id,          # ★ grava aqui
-                       palavra_chave = "QR‑OFICINA")
+                       palavra_chave = "QR-OFICINA")
     else:
         return jsonify(status='error',
                        message='Inscrição sem evento ou oficina.'), 400
@@ -378,8 +378,7 @@ def lista_checkins_qr():
             Checkin.palavra_chave.in_([
                 'QR-AUTO',
                 'QR-EVENTO',
-                'QR-OFICINA',
-                'QR‑OFICINA'
+                'QR-OFICINA'
             ]),
             or_(
                 Usuario.cliente_id == current_user.id,
