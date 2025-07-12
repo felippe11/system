@@ -10,6 +10,7 @@ from models import (
     Checkin, Inscricao, Oficina, ConfiguracaoCliente, AgendamentoVisita, Evento
 )
 from utils import formatar_brasilia, determinar_turno
+from .agendamento_routes import agendamento_routes  # Needed for URL generation
 
 checkin_routes = Blueprint('checkin_routes', __name__)
 
@@ -267,9 +268,8 @@ def checkin_token():
     else:
         # Realizar check-in
         return redirect(url_for(
-            'routes.checkin_agendamento', 
-            agendamento_id=agendamento.id,
-            token=token
+            'agendamento_routes.checkin_agendamento',
+            qr_code_token=token
         ))
     
     # Redirecionar para detalhes do agendamento
@@ -301,7 +301,7 @@ def leitor_checkin_json():
         return jsonify(status='error',
                        message='Inscrição não encontrada.'), 404
 
-    cliente_id   = inscricao.cliente_id        # já existe no modelo :contentReference[oaicite:0]{index=0}
+    cliente_id   = inscricao.cliente_id
     sala_cliente = f"cliente_{cliente_id}"     # sala usada no Socket.IO
 
     # ---------- EVENTO ----------
@@ -315,7 +315,7 @@ def leitor_checkin_json():
         novo = Checkin(usuario_id = inscricao.usuario_id,
                        evento_id  = inscricao.evento_id,
                        cliente_id = cliente_id,          # ★ grava aqui
-                       palavra_chave = "QR‑EVENTO")
+                       palavra_chave = "QR-EVENTO")
     # ---------- OFICINA ----------
     elif inscricao.oficina_id:
         if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
@@ -326,7 +326,7 @@ def leitor_checkin_json():
         novo = Checkin(usuario_id = inscricao.usuario_id,
                        oficina_id = inscricao.oficina_id,
                        cliente_id = cliente_id,          # ★ grava aqui
-                       palavra_chave = "QR‑OFICINA")
+                       palavra_chave = "QR-OFICINA")
     else:
         return jsonify(status='error',
                        message='Inscrição sem evento ou oficina.'), 400
@@ -378,8 +378,7 @@ def lista_checkins_qr():
             Checkin.palavra_chave.in_([
                 'QR-AUTO',
                 'QR-EVENTO',
-                'QR-OFICINA',
-                'QR‑OFICINA'
+                'QR-OFICINA'
             ]),
             or_(
                 Usuario.cliente_id == current_user.id,

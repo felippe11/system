@@ -881,206 +881,198 @@
                 </div>
               </div>
               <div class="card-body">
-                <div class="mb-3">
-
+                <!-- Seletor de Evento -->
+                <div class="mb-4">
                   <label for="selectConfigEvento" class="form-label">Evento</label>
-                  <select id="selectConfigEvento" class="form-select">
-                    <option value="">-- Selecione um evento --</option>
-                    {% for evento in eventos %}
-
-                    <option value="{{ evento.id }}">{{ evento.nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <!-- Check-in Global -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-qr-code-scan text-primary me-2"></i>
-                      Check-in Global
-                    </h6>
-                    <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
-                  </div>
-                  <button type="button"
-                          id="btnToggleCheckin"
-                          class="btn btn-padrao btn-toggle btn-danger"
-                          data-field="permitir_checkin">
-                    <i class="bi bi-x-circle-fill"></i>
-                    Desativado
-                  </button>
-                </div>
-
-                <!-- QR Code de Evento -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-qr-code text-primary me-2"></i>
-                      QR Code de Credenciamento
-                    </h6>
-                    <p class="text-muted small mb-0">Habilita uso de QR code para credenciamento em eventos</p>
-                  </div>
-                  <button type="button"
-                          id="btnToggleQrCredenciamento"
-                          class="btn btn-padrao btn-toggle btn-danger"
-                          data-field="habilitar_qrcode_credenciamento">
-                    <i class="bi bi-x-circle-fill"></i>
-                    Desativado
-                  </button>
-                </div>
-
-                <!-- Feedback -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-chat-square-text text-primary me-2"></i>
-                      Feedback dos Participantes
-                    </h6>
-                    <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
-                  </div>
-                  <button type="button"
-                          id="btnToggleFeedback"
-                          class="btn btn-padrao btn-toggle btn-danger"
-                          data-field="habilitar_feedback">
-                    <i class="bi bi-x-circle-fill"></i>
-                    Desativado
-                  </button>
-                </div>
-
-                <!-- Certificado -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-award text-primary me-2"></i>
-                      Download de Certificado
-                    </h6>
-                    <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
-                  </div>
-                  <button type="button"
-                          id="btnToggleCertificado"
-                          class="btn btn-padrao btn-toggle btn-danger"
-                          data-field="habilitar_certificado">
-                    <i class="bi bi-x-circle-fill"></i>
-                    Desativado
-                  </button>
-                </div>
-
-
-
-                <!-- Mostrar Taxa de Serviço -->
-                <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                  <div>
-                    <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                      <i class="bi bi-cash-coin text-primary me-2"></i>
-                      Mostrar Taxa de Serviço
-                    </h6>
-                    <p class="text-muted small mb-0">Exibe a taxa de serviço separadamente no valor da inscrição</p>
-                  </div>
-                <button type="button"
-                        id="btnToggleMostrarTaxa"
-                        class="btn btn-padrao btn-toggle btn-danger"
-                        data-field="mostrar_taxa">
-                    <i class="bi bi-x-circle-fill"></i>
-                    Desativado
-                </button>
-              </div>
-
-              <!-- Requisitos de Cadastro -->
-              <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
-                <div>
-                  <h6 class="mb-0 fw-semibold d-flex align-items-center">
-                    <i class="bi bi-card-checklist text-primary me-2"></i>
-                    Campos Obrigatórios
-                  </h6>
-                </div>
                   <div class="d-flex gap-2">
-                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_nome" data-label="Nome">Nome</button>
-                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_cpf" data-label="CPF">CPF</button>
-                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_email" data-label="Email">Email</button>
-                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_senha" data-label="Senha">Senha</button>
-                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-padrao btn-sm btn-toggle btn-success" data-field="obrigatorio_formacao" data-label="Formação">Formação</button>
+                    <select id="selectConfigEvento" class="form-select">
+                      <option value="">-- Selecione um evento --</option>
+                      {% for evento in eventos %}
+                        <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                      {% endfor %}
+                    </select>
+                    <a id="previewEventoBtn"
+                       class="btn btn-outline-secondary"
+                       target="_blank"
+                       data-base-url="{{ url_for('evento_routes.preview_evento', evento_id=0)[:-1] }}"
+                       href="{{ url_for('evento_routes.preview_evento', evento_id=0)[:-1] }}">
+                      <i class="bi bi-eye-fill me-2"></i> Visualizar Evento
+                    </a>
                   </div>
+                </div>
+
+                <!-- Itens de Configuração -->
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="config-item d-flex justify-content-between align-items-center p-3 border rounded">
+                      <div>
+                        <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                          <i class="bi bi-qr-code-scan text-primary me-2"></i>
+                          Check-in Global
+                        </h6>
+                        <p class="text-muted small mb-0">Permite que participantes façam check-in pelo aplicativo</p>
+                      </div>
+                      <button type="button" id="btnToggleCheckin" class="btn btn-toggle btn-danger" data-field="permitir_checkin_global">
+                        <i class="bi bi-x-circle-fill"></i> Desativado
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="config-item d-flex justify-content-between align-items-center p-3 border rounded">
+                      <div>
+                        <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                          <i class="bi bi-qr-code text-primary me-2"></i>
+                          QR Code de Credenciamento
+                        </h6>
+                        <p class="text-muted small mb-0">Habilita uso de QR code para credenciamento em eventos</p>
+                      </div>
+                      <button type="button" id="btnToggleQrCredenciamento" class="btn btn-toggle btn-danger" data-field="habilitar_qrcode_evento_credenciamento">
+                        <i class="bi bi-x-circle-fill"></i> Desativado
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div class="col-md-6">
+                    <div class="config-item d-flex justify-content-between align-items-center p-3 border rounded">
+                      <div>
+                        <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                          <i class="bi bi-chat-square-text text-primary me-2"></i>
+                          Feedback dos Participantes
+                        </h6>
+                        <p class="text-muted small mb-0">Habilita envio de feedback nas atividades</p>
+                      </div>
+                      <button type="button" id="btnToggleFeedback" class="btn btn-toggle btn-danger" data-field="habilitar_feedback">
+                        <i class="bi bi-x-circle-fill"></i> Desativado
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="config-item d-flex justify-content-between align-items-center p-3 border rounded">
+                      <div>
+                        <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                          <i class="bi bi-award text-primary me-2"></i>
+                          Download de Certificado
+                        </h6>
+                        <p class="text-muted small mb-0">Permite que participantes baixem certificados</p>
+                      </div>
+                      <button type="button" id="btnToggleCertificado" class="btn btn-toggle btn-danger" data-field="habilitar_certificado_individual">
+                        <i class="bi bi-x-circle-fill"></i> Desativado
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="config-item d-flex justify-content-between align-items-center p-3 border rounded">
+                      <div>
+                        <h6 class="mb-0 fw-semibold d-flex align-items-center">
+                          <i class="bi bi-cash-coin text-primary me-2"></i>
+                          Mostrar Taxa de Serviço
+                        </h6>
+                        <p class="text-muted small mb-0">Exibe a taxa de serviço separadamente</p>
+                      </div>
+                      <button type="button" id="btnToggleMostrarTaxa" class="btn btn-toggle btn-danger" data-field="mostrar_taxa">
+                        <i class="bi bi-x-circle-fill"></i> Desativado
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Campos Obrigatórios -->
+                <div class="mt-4">
+                  <h6 class="fw-semibold d-flex align-items-center mb-2">
+                    <i class="bi bi-card-checklist text-primary me-2"></i> Campos Obrigatórios
+                  </h6>
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="btnToggleObrigatorioNome" class="btn btn-sm btn-toggle btn-success" data-field="obrigatorio_nome" data-label="Nome">
+                      Nome
+                    </button>
+                    <button type="button" id="btnToggleObrigatorioCpf" class="btn btn-sm btn-toggle btn-success" data-field="obrigatorio_cpf" data-label="CPF">
+                      CPF
+                    </button>
+                    <button type="button" id="btnToggleObrigatorioEmail" class="btn btn-sm btn-toggle btn-success" data-field="obrigatorio_email" data-label="Email">
+                      Email
+                    </button>
+                    <button type="button" id="btnToggleObrigatorioSenha" class="btn btn-sm btn-toggle btn-success" data-field="obrigatorio_senha" data-label="Senha">
+                      Senha
+                    </button>
+                    <button type="button" id="btnToggleObrigatorioFormacao" class="btn btn-sm btn-toggle btn-success" data-field="obrigatorio_formacao" data-label="Formação">
+                      Formação
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
 
 
           <!-- Modelos e Manutenção Cards -->
           <div class="col-md-5">
-            <!-- Baixar Modelos Excel Card -->
-            <div class="card border-success border-top border-4 shadow-sm mb-4">
-              <div class="card-header bg-success text-white">
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-download me-2 fs-5"></i>
-                  <h5 class="fw-bold mb-0">Modelos Excel</h5>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                  <div class="d-flex">
-                    <div class="me-3"><i class="bi bi-lightbulb-fill fs-4"></i></div>
-                    <div>Baixe os modelos para importação de dados em massa.</div>
-                  </div>
-                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                <div class="d-grid gap-2">
-                  <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='usuarios') }}"
-                    class="btn btn-padrao btn-file btn-outline-success">
-                    <i class="bi bi-file-earmark-excel"></i>
-                    <span>Modelo de Usuários</span>
-                  </a>
-                  <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='oficinas') }}"
-                    class="btn btn-padrao btn-file btn-outline-success">
-                    <i class="bi bi-file-earmark-excel"></i>
-                    <span>Modelo de Atividades</span>
-                  </a>
-                </div>
-              </div>
-            </div>
+  <!-- Baixar Modelos Excel Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-success text-white d-flex align-items-center">
+      <i class="bi bi-download me-2 fs-5"></i>
+      <h5 class="fw-bold mb-0">Modelos Excel</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-lightbulb-fill fs-4 me-3"></i>
+          <span>Baixe os modelos para importação de dados em massa.</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <div class="d-flex flex-column gap-2">
+        <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='usuarios') }}"
+           class="btn btn-outline-success text-start">
+          <i class="bi bi-file-earmark-excel me-2"></i> Modelo de Usuários
+        </a>
+        <a href="{{ url_for('relatorio_routes.gerar_modelo', tipo='oficinas') }}"
+           class="btn btn-outline-success text-start">
+          <i class="bi bi-file-earmark-excel me-2"></i> Modelo de Atividades
+        </a>
+      </div>
+    </div>
+  </div>
 
-            <!-- Visualizar Campos de Inscrição Card -->
-            <div class="card border-secondary border-top border-4 shadow-sm mb-4">
-              <div class="card-header bg-secondary text-white">
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-ui-checks-grid me-2 fs-5"></i>
-                  <h5 class="fw-bold mb-0">Campos de Inscrição</h5>
-                </div>
-              </div>
-              <div class="card-body">
-                <p class="mb-3">Veja como os campos personalizados aparecem para seus participantes.</p>
-                <a id="previewCamposBtn" data-base-url="{{ url_for('campo_routes.preview_cadastro') }}" href="{{ url_for('campo_routes.preview_cadastro') }}" class="btn btn-padrao btn-outline-secondary w-100">
-                  <i class="bi bi-eye-fill"></i> Visualizar Formulário
-                </a>
-              </div>
-            </div>
+  <!-- Visualizar Campos de Inscrição Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-secondary text-white d-flex align-items-center">
+      <i class="bi bi-ui-checks-grid me-2 fs-5"></i>
+      <h5 class="fw-bold mb-0">Campos de Inscrição</h5>
+    </div>
+    <div class="card-body">
+      <p class="mb-3">Confira como os campos personalizados aparecem para seus participantes.</p>
+      <a id="previewCamposBtn" data-base-url="{{ url_for('campo_routes.preview_cadastro') }}" 
+         href="{{ url_for('campo_routes.preview_cadastro') }}" 
+         class="btn btn-outline-secondary w-100">
+        <i class="bi bi-eye-fill me-2"></i> Visualizar Formulário
+      </a>
+    </div>
+  </div>
 
-            <!-- Manutenção do Sistema Card -->
-            <div class="card border-danger border-top border-4 shadow-sm mb-4">
-              <div class="card-header bg-danger text-white">
-                <div class="d-flex align-items-center">
-                  <i class="bi bi-shield-exclamation me-2 fs-5"></i>
-                  <h5 class="fw-bold mb-0">Manutenção</h5>
-                </div>
-              </div>
-              <div class="card-body">
-                <div class="alert alert-danger d-flex" role="alert">
-                  <div class="me-3 fs-4"><i class="bi bi-exclamation-triangle-fill"></i></div>
-                  <div>
-                    <h6 class="alert-heading fw-bold mb-1">Atenção!</h6>
-                    <p class="mb-0 small">As operações abaixo não podem ser desfeitas. Use com cautela.</p>
-                  </div>
-                </div>
-
-                <form action="{{ url_for('oficina_routes.excluir_todas_oficinas') }}" method="post"
-                      onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Tem certeza que deseja continuar?');">
-                  <button type="submit" class="btn btn-padrao btn-danger w-100">
-                    <i class="bi bi-trash-fill"></i> Excluir Todas as Atividades
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
+  <!-- Manutenção do Sistema Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-danger text-white d-flex align-items-center">
+      <i class="bi bi-shield-exclamation me-2 fs-5"></i>
+      <h5 class="fw-bold mb-0">Manutenção</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div>
+          <h6 class="fw-bold mb-1">Atenção!</h6>
+          <p class="mb-0 small">As operações abaixo são irreversíveis. Use com cautela.</p>
+        </div>
+      </div>
+      <form action="{{ url_for('oficina_routes.excluir_todas_oficinas') }}" method="post"
+            onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODAS as oficinas e não pode ser desfeita! Deseja continuar?');">
+        <button type="submit" class="btn btn-danger w-100">
+          <i class="bi bi-trash-fill me-2"></i> Excluir Todas as Atividades
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
         </div>
       </div>
 
