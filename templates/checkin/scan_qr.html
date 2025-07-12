@@ -141,6 +141,7 @@
     
     let scanner = null;
     const checkinsRegistrados = new Set(); // Evita duplicar a mesma pessoa+oficina
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
     function onScanSuccess(decodedText) {
         let scannedToken = null;
@@ -171,7 +172,10 @@
         try {
             const response = await fetch("{{ url_for('checkin_routes.leitor_checkin_json') }}", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
                 body: JSON.stringify({ token })
             });
     
