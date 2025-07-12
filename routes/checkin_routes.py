@@ -301,7 +301,7 @@ def leitor_checkin_json():
         return jsonify(status='error',
                        message='Inscrição não encontrada.'), 404
 
-    cliente_id   = inscricao.cliente_id        # já existe no modelo :contentReference[oaicite:0]{index=0}
+    cliente_id   = inscricao.cliente_id
     sala_cliente = f"cliente_{cliente_id}"     # sala usada no Socket.IO
 
     # ---------- EVENTO ----------
