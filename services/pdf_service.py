@@ -1313,7 +1313,7 @@ def gerar_pdf_checkins_qr():
         .outerjoin(Checkin.oficina)
         .outerjoin(Checkin.usuario)
         .filter(
-            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO', 'QR-OFICINA', 'QR‑OFICINA']),
+            Checkin.palavra_chave.in_(['QR-AUTO', 'QR-EVENTO', 'QR-OFICINA']),
             or_(
                 Usuario.cliente_id == current_user.id,
                 Oficina.cliente_id == current_user.id,
