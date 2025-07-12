@@ -478,7 +478,7 @@ def horarios_disponiveis_participante(evento_id):
 @routes.route('/participante/criar_agendamento/<int:horario_id>', methods=['GET', 'POST'])
 @login_required
 def criar_agendamento_participante(horario_id):
-    """Permite que o participante faça um agendamento simples."""
+    """Permite que o participante faça um agendamento de visita em grupo."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
@@ -486,6 +486,7 @@ def criar_agendamento_participante(horario_id):
     horario = HorarioVisitacao.query.get_or_404(horario_id)
     evento = horario.evento
 
+    # Verificar se o usuário está inscrito no evento (diretamente ou por oficina)
     inscrito = Inscricao.query.filter_by(usuario_id=current_user.id, evento_id=evento.id).first()
     if not inscrito:
         inscrito = Inscricao.query.join(Oficina).filter(
@@ -497,33 +498,56 @@ def criar_agendamento_participante(horario_id):
         flash('Você não está inscrito neste evento.', 'warning')
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
+    # Verificar vagas disponíveis
     if horario.vagas_disponiveis <= 0:
         flash('Não há mais vagas disponíveis para este horário!', 'warning')
         return redirect(url_for('routes.horarios_disponiveis_participante', evento_id=evento.id))
 
+    # Salas disponíveis para seleção
+    salas = SalaVisitacao.query.filter_by(evento_id=evento.id).all()
+
     if request.method == 'POST':
-        agendamento = AgendamentoVisita(
-            horario_id=horario.id,
-            professor_id=current_user.id,
-            escola_nome='Participante Individual',
-            escola_codigo_inep=None,
-            turma='-',
-            nivel_ensino='-',
-            quantidade_alunos=1
-        )
-        horario.vagas_disponiveis -= 1
-        db.session.add(agendamento)
-        try:
-            db.session.commit()
-            flash('Agendamento realizado com sucesso!', 'success')
-            return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao realizar agendamento: {str(e)}', 'danger')
+        # Obter dados do formulário
+        escola_nome = request.form.get('escola_nome')
+        escola_codigo_inep = request.form.get('escola_codigo_inep')
+        turma = request.form.get('turma')
+        nivel_ensino = request.form.get('nivel_ensino')
+        quantidade_alunos = request.form.get('quantidade_alunos', type=int)
+        salas_selecionadas = request.form.getlist('salas_selecionadas')
+
+        # Validações básicas
+        if not escola_nome or not turma or not nivel_ensino or not quantidade_alunos:
+            flash('Preencha todos os campos obrigatórios!', 'danger')
+        elif quantidade_alunos <= 0:
+            flash('A quantidade de alunos deve ser maior que zero!', 'danger')
+        elif quantidade_alunos > horario.vagas_disponiveis:
+            flash(f'Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}', 'danger')
+        else:
+            agendamento = AgendamentoVisita(
+                horario_id=horario.id,
+                professor_id=current_user.id,
+                escola_nome=escola_nome,
+                escola_codigo_inep=escola_codigo_inep,
+                turma=turma,
+                nivel_ensino=nivel_ensino,
+                quantidade_alunos=quantidade_alunos,
+                salas_selecionadas=','.join(salas_selecionadas) if salas_selecionadas else None
+            )
+
+            horario.vagas_disponiveis -= quantidade_alunos
+            db.session.add(agendamento)
+            try:
+                db.session.commit()
+                flash('Agendamento realizado com sucesso!', 'success')
+                return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao realizar agendamento: {str(e)}', 'danger')
 
     return render_template(
         'participante/criar_agendamento.html',
         horario=horario,
-        evento=evento
+        evento=evento,
+        salas=salas
     )
     

@@ -65,8 +65,7 @@ def dashboard_cliente():
             Checkin.palavra_chave.in_([
                 'QR-AUTO',
                 'QR-EVENTO',
-                'QR-OFICINA',
-                'QR‑OFICINA'
+                'QR-OFICINA'
             ]),
             or_(
                 Usuario.cliente_id == current_user.id,
