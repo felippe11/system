@@ -92,14 +92,17 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.warn("Elementos select de estado ou cidade não encontrados.");
   }
-const URL_EVENTO_CONFIG_BASE = typeof URL_EVENTO_CONFIG_BASE !== "undefined" ? URL_EVENTO_CONFIG_BASE : "/api/configuracao_evento";
+const URL_EVENTO_CONFIG_BASE =
+  typeof window.URL_EVENTO_CONFIG_BASE !== "undefined"
+    ? window.URL_EVENTO_CONFIG_BASE
+    : "/api/configuracao_evento";
 let EVENTO_ATUAL = null;
 
 const fieldButtonMap = {
-  "permitir_checkin": document.getElementById("btnToggleCheckin"),
-  "habilitar_qrcode_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
+  "permitir_checkin_global": document.getElementById("btnToggleCheckin"),
+  "habilitar_qrcode_evento_credenciamento": document.getElementById("btnToggleQrCredenciamento"),
   "habilitar_feedback": document.getElementById("btnToggleFeedback"),
-  "habilitar_certificado": document.getElementById("btnToggleCertificado"),
+  "habilitar_certificado_individual": document.getElementById("btnToggleCertificado"),
   "mostrar_taxa": document.getElementById("btnToggleMostrarTaxa"),
   "obrigatorio_nome": document.getElementById("btnToggleObrigatorioNome"),
   "obrigatorio_cpf": document.getElementById("btnToggleObrigatorioCpf"),
@@ -109,12 +112,21 @@ const fieldButtonMap = {
 };
 
 const eventoSelect = document.getElementById("selectConfigEvento");
+const previewEventoBtn = document.getElementById("previewEventoBtn");
 if (eventoSelect) {
   EVENTO_ATUAL = eventoSelect.value;
+  const updatePreview = () => {
+    if (previewEventoBtn) {
+      const base = previewEventoBtn.dataset.baseUrl || previewEventoBtn.href;
+      previewEventoBtn.href = `${base}${encodeURIComponent(eventoSelect.value)}`;
+    }
+  };
+  updatePreview();
   carregarConfiguracao(EVENTO_ATUAL);
   eventoSelect.addEventListener("change", function () {
     if (!this.value) return;
     EVENTO_ATUAL = this.value;
+    updatePreview();
     carregarConfiguracao(EVENTO_ATUAL);
   });
 }
