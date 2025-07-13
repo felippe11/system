@@ -1,1 +1,462 @@
-{% extends 'pages/base_page.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .hero-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .formacao-title {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 2rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .formacao-subtitle {
+        font-size: 1.4rem;
+        color: var(--text-dark);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .formacao-text {
+        font-size: 1.1rem;
+        color: var(--text-dark);
+        line-height: 1.7;
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin: 3rem 0;
+    }
+
+    .feature-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .feature-card .feature-title,
+    .feature-card .feature-description {
+        transition: color 0.6s ease;
+        will-change: color;
+        position: relative;
+        z-index: 2;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        padding: 2px;
+        background: var(--primary-gradient);
+        border-radius: 20px;
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: xor;
+        opacity: 0;
+        transition: all 0.4s ease;
+    }
+
+    .feature-card:hover::before {
+        opacity: 1;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 30px 80px rgba(102, 126, 234, 0.3);
+        background: var(--primary-gradient);
+    }
+    
+    .feature-card:hover .feature-title,
+    .feature-card:hover .feature-description {
+        color: white !important;
+        opacity: 1 !important;
+    }
+
+    .feature-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        background: var(--primary-gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        color: white;
+        position: relative;
+    }
+
+    .feature-icon::after {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        background: var(--primary-gradient);
+        border-radius: 18px;
+        z-index: -1;
+        filter: blur(8px);
+        opacity: 0.5;
+    }
+
+    .feature-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 1rem;
+    }
+
+    .feature-description {
+        color: var(--text-dark);
+        line-height: 1.6;
+    }
+
+    .cta-section {
+        margin-top: 3rem;
+        text-align: center;
+    }
+
+    .cta-button {
+        display: inline-block;
+        padding: 1rem 2rem;
+        background: var(--primary-gradient);
+        border: none;
+        border-radius: 50px;
+        color: white;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .cta-button:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.5);
+        color: white;
+    }
+    
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .feature-card {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .formacao-subtitle,
+    [data-bs-theme="dark"] .formacao-text,
+    [data-bs-theme="dark"] .feature-title,
+    [data-bs-theme="dark"] .feature-description {
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .feature-card:hover .feature-title,
+    [data-bs-theme="dark"] .feature-card:hover .feature-description {
+        color: white !important;
+    }
+
+    .highlighted-text {
+        font-weight: 700;
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="hero-section">
+    <div class="container">
+        <div class="glass-container">
+            <h1 class="formacao-title">{{ page_title }}</h1>
+            <p class="formacao-subtitle">Cursos estruturados para capacitar profissionais e estudantes em diversos temas.</p>
+            
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <p class="formacao-text">
+                        A <span class="highlighted-text">AppFiber</span> auxilia na organização de módulos, inscrições e pagamentos, proporcionando praticidade para instrutores e participantes. Com nossas ferramentas, é possível acompanhar a presença e emitir certificados automaticamente, garantindo uma experiência completa.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-person-plus"></i>
+                    </div>
+                    <h3 class="feature-title">Inscrições Online</h3>
+                    <p class="feature-description">
+                        Sistema de inscrição automatizado com confirmação imediata para os participantes.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h3 class="feature-title">Pagamento Seguro</h3>
+                    <p class="feature-description">
+                        Processo de pagamento facilitado e seguro com diversas opções de pagamento.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-card-checklist"></i>
+                    </div>
+                    <h3 class="feature-title">Controle de Frequência</h3>
+                    <p class="feature-description">
+                        Acompanhamento de presença e emissão automática de certificados para participantes.
+                    </p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <h3 class="feature-title">Relatórios Detalhados</h3>
+                    <p class="feature-description">
+                        Relatórios completos para acompanhar o progresso e engajamento dos alunos.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <p class="formacao-text text-center">
+                        Com a <span class="highlighted-text">AppFiber</span>, suas formações tornam-se mais profissionais e eficientes.
+                    </p>
+                    
+                    <div class="cta-section">
+                        <a href="{{ url_for('static_page_routes.show_page', slug='contato') }}" class="cta-button">
+                            Comece sua formação
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Animação para o título
+        const title = document.querySelector('.formacao-title');
+        if (title) {
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(-20px)';
+            title.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(title);
+        }
+        
+        // Animação para o subtítulo
+        const subtitle = document.querySelector('.formacao-subtitle');
+        if (subtitle) {
+            subtitle.style.opacity = '0';
+            subtitle.style.transform = 'translateY(-15px)';
+            subtitle.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s';
+            observer.observe(subtitle);
+        }
+        
+        // Animação para os parágrafos de texto
+        document.querySelectorAll('.formacao-text').forEach((text, index) => {
+            text.style.opacity = '0';
+            text.style.transform = 'translateY(20px)';
+            text.style.transition = `all 0.6s cubic-bezier(0.4, 0, 0.2, 1) ${0.2 + index * 0.1}s`;
+            observer.observe(text);
+        });
+
+        // Animação para os cards de recursos
+        document.querySelectorAll('.feature-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.6s cubic-bezier(0.4, 0, 0.2, 1) ${0.3 + index * 0.1}s`;
+            observer.observe(card);
+        });
+        
+        // Animação para o botão CTA
+        const ctaButton = document.querySelector('.cta-button');
+        if (ctaButton) {
+            ctaButton.style.opacity = '0';
+            ctaButton.style.transform = 'scale(0.9)';
+            ctaButton.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.7s';
+            observer.observe(ctaButton);
+        }
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            
+            shapes.forEach((shape, index) => {
+                const speed = (index + 1) * 0.05;
+                shape.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+        
+        // Destaque para texto em hover dos cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const title = this.querySelector('.feature-title');
+                const description = this.querySelector('.feature-description');
+                
+                if (title) title.style.transform = 'translateY(-5px)';
+                if (description) description.style.transform = 'translateY(-3px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const title = this.querySelector('.feature-title');
+                const description = this.querySelector('.feature-description');
+                
+                if (title) title.style.transform = '';
+                if (description) description.style.transform = '';
+            });
+        });
+    });
+</script>
+{% endblock %}

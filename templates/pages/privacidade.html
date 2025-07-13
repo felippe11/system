@@ -1,1 +1,440 @@
-{% extends 'pages/base_page.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .privacy-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+        color: var(--text-dark);
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .page-title {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 2rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    .page-subtitle {
+        font-size: 1.25rem;
+        color: var(--text-dark);
+        margin-bottom: 3rem;
+        line-height: 1.6;
+        text-align: center;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    .custom-accordion .accordion-item {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        margin-bottom: 1rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .custom-accordion .accordion-item:hover {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        transform: translateY(-3px);
+    }
+    
+    .custom-accordion .accordion-button {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        color: var(--text-dark);
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding: 1.5rem;
+        position: relative;
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+    
+    .custom-accordion .accordion-button:not(.collapsed) {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: none;
+    }
+    
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+        border-color: rgba(102, 126, 234, 0.5);
+    }
+    
+    .custom-accordion .accordion-body {
+        padding: 1.5rem;
+        color: var(--text-dark);
+        line-height: 1.7;
+        font-size: 1.05rem;
+    }
+    
+    .custom-accordion a {
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
+        text-decoration: none;
+        position: relative;
+    }
+
+    .custom-accordion a::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        bottom: -2px;
+        left: 0;
+        background: var(--primary-gradient);
+        transform: scaleX(0);
+        transform-origin: bottom right;
+        transition: transform 0.3s ease-out;
+    }
+
+    .custom-accordion a:hover::after {
+        transform: scaleX(1);
+        transform-origin: bottom left;
+    }
+    
+    .custom-accordion strong {
+        font-weight: 600;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .custom-accordion .accordion-button::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23667eea'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+        transition: all 0.3s ease;
+    }
+    
+    .custom-accordion .accordion-button:not(.collapsed)::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+    }
+
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .custom-accordion .accordion-item {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .custom-accordion .accordion-button {
+        background: rgba(30, 30, 50, 0.8);
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .custom-accordion .accordion-body {
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .page-subtitle {
+        color: var(--text-light);
+    }
+    
+    @media (max-width: 768px) {
+        .glass-container {
+            padding: 40px 20px;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="privacy-section">
+    <div class="container">
+        <div class="glass-container">
+            <h1 class="page-title">{{ page_title }}</h1>
+            
+            <p class="page-subtitle">
+                Esta Política de Privacidade explica como a <strong>AppFiber</strong> coleta, utiliza e protege as
+                informações dos usuários. Ao utilizar nossa plataforma, você concorda com as práticas descritas aqui.
+            </p>
+
+            <div class="accordion custom-accordion" id="accordionPrivacidade">
+                <!-- 1. Dados coletados -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading1">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1" aria-expanded="true">
+                            1. Dados coletados
+                        </button>
+                    </h2>
+                    <div id="collapse1" class="accordion-collapse collapse show" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Coletamos as informações que você fornece ao se cadastrar e utilizar nossos serviços, como nome, e-mail, telefone e dados de pagamento. Também registramos automaticamente dados de acesso, como endereço IP, tipo de navegador e páginas visitadas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Uso das informações -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading2">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">
+                            2. Uso das informações
+                        </button>
+                    </h2>
+                    <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Utilizamos seus dados para fornecer e aprimorar nossos serviços, processar pagamentos, enviar comunicações importantes e cumprir obrigações legais. Podemos usar informações agregadas de forma anônima para fins estatísticos e de melhoria da plataforma.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Compartilhamento -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading3">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3">
+                            3. Compartilhamento
+                        </button>
+                    </h2>
+                    <div id="collapse3" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Somente compartilhamos informações com terceiros quando necessário para a prestação do serviço ou cumprimento de obrigações legais. Não vendemos dados pessoais a anunciantes ou outras entidades.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Seus direitos -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading4">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse4">
+                            4. Seus direitos
+                        </button>
+                    </h2>
+                    <div id="collapse4" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Você pode solicitar acesso, correção ou exclusão de seus dados pessoais, bem como revogar consentimentos concedidos. Entre em contato conosco caso deseje exercer esses direitos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Segurança -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading5">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse5">
+                            5. Segurança dos dados
+                        </button>
+                    </h2>
+                    <div id="collapse5" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Adotamos medidas técnicas e organizacionais adequadas para proteger suas informações contra acesso não autorizado, alteração ou destruição. Apesar dos esforços, nenhum método é totalmente seguro.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Retenção -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading6">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse6">
+                            6. Retenção dos dados
+                        </button>
+                    </h2>
+                    <div id="collapse6" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Armazenamos suas informações pelo tempo necessário para cumprir as finalidades descritas nesta política e exigências legais. Dados cadastrais podem ser mantidos após o encerramento da conta para fins de obrigação regulatória.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Atualizações -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading7">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse7">
+                            7. Atualizações da política
+                        </button>
+                    </h2>
+                    <div id="collapse7" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Poderemos atualizar esta política periodicamente. A versão mais recente estará sempre disponível em nosso site, com a data de última atualização indicada no início do documento.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. Contato -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading8">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse8">
+                            8. Contato
+                        </button>
+                    </h2>
+                    <div id="collapse8" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                        <div class="accordion-body">
+                            <p>Para esclarecer dúvidas ou exercer seus direitos relativos a dados pessoais, envie um e-mail para <a href="mailto:privacidade@appfiber.com.br">privacidade@appfiber.com.br</a>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Anima o container principal
+        const content = document.querySelector('.glass-container');
+        if (content) {
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(30px)';
+            content.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(content);
+        }
+
+        // Anima cada item do accordion com um pequeno atraso
+        document.querySelectorAll('.accordion-item').forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+            item.style.transition = `all 0.6s cubic-bezier(0.4, 0, 0.2, 1) ${0.2 + index * 0.1}s`;
+            observer.observe(item);
+        });
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            const speed = 0.05;
+            
+            shapes.forEach((shape, index) => {
+                shape.style.transform = `translateY(${scrolled * speed * (index + 1)}px)`;
+            });
+        });
+    });
+</script>
+{% endblock %}
