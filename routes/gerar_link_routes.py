@@ -26,6 +26,12 @@ def gerar_link():
 
         if not evento_id:
             return jsonify({'success': False, 'message': 'Evento não especificado'}), 400
+            
+        # Garantir que evento_id seja um inteiro
+        try:
+            evento_id = int(evento_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'ID do evento inválido'}), 400
 
         # Verifica se o evento pertence ao cliente
         evento = Evento.query.filter_by(id=evento_id, cliente_id=cliente_id).first()
@@ -69,6 +75,12 @@ def gerar_link():
     # Para GET, verificamos se é uma solicitação para listar links de um evento específico
     evento_id = request.args.get('evento_id')
     if evento_id:
+        # Converter para inteiro, pois o ID do evento é um inteiro no banco de dados
+        try:
+            evento_id = int(evento_id)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': 'ID do evento inválido'}), 400
+            
         # Verificar se o evento pertence ao cliente atual
         evento = Evento.query.filter_by(id=evento_id, cliente_id=cliente_id).first()
         if not evento and current_user.tipo != 'admin':

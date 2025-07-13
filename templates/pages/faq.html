@@ -1,1 +1,346 @@
-{% extends 'pages/base_page.html' %}
+{% extends "base.html" %}
+
+{% block title %}FAQ - AppFiber{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .hero-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .faq-title {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 1.5rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .faq-subtitle {
+        font-size: 1.25rem;
+        color: var(--text-dark);
+        margin-bottom: 3rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    /* Estilo personalizado para o accordion */
+    .custom-accordion {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        background: transparent;
+    }
+
+    .custom-accordion .accordion-item {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        margin-bottom: 1rem;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .custom-accordion .accordion-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .custom-accordion .accordion-button {
+        padding: 1.5rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--text-dark);
+        background: transparent;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+
+    .custom-accordion .accordion-button:not(.collapsed) {
+        color: #667eea;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .custom-accordion .accordion-button:focus {
+        box-shadow: none;
+        border-color: transparent;
+    }
+
+    .custom-accordion .accordion-button::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23667eea'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+        transition: all 0.3s ease;
+    }
+
+    .custom-accordion .accordion-body {
+        padding: 1rem 1.5rem 1.5rem;
+        line-height: 1.6;
+        color: var(--text-dark);
+    }
+
+    .custom-accordion .accordion-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.15);
+    }
+
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .custom-accordion .accordion-item {
+        background: rgba(40, 40, 60, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .faq-subtitle,
+    [data-bs-theme="dark"] .custom-accordion .accordion-button,
+    [data-bs-theme="dark"] .custom-accordion .accordion-body {
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .custom-accordion .accordion-button:not(.collapsed) {
+        color: #a3b4ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="hero-section">
+    <div class="container">
+        <div class="glass-container">
+            <h1 class="faq-title">Perguntas Frequentes</h1>
+            <p class="faq-subtitle">Encontre respostas para as dúvidas mais comuns sobre nossa plataforma.</p>
+            
+            <div class="accordion custom-accordion" id="faqAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq1-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="false" aria-controls="faq1">
+                            O que é o AppFiber?
+                        </button>
+                    </h2>
+                    <div id="faq1" class="accordion-collapse collapse" aria-labelledby="faq1-heading" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            O AppFiber é uma plataforma completa para criar, gerenciar e divulgar eventos de forma simples e eficiente.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq2-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
+                            Como faço meu cadastro na plataforma?
+                        </button>
+                    </h2>
+                    <div id="faq2" class="accordion-collapse collapse" aria-labelledby="faq2-heading" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Clique em "Criar Conta" na página inicial e preencha o formulário com seus dados. Em poucos minutos você receberá um e-mail para confirmação.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq3-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+                            Como criar meu primeiro evento?
+                        </button>
+                    </h2>
+                    <div id="faq3" class="accordion-collapse collapse" aria-labelledby="faq3-heading" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Após realizar o login, acesse o menu "Eventos" e clique em "Novo Evento". Siga o passo a passo informando os detalhes de programação, inscrições e comunicação.
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="faq5-heading">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">
+                            Como entro em contato com o suporte?
+                        </button>
+                    </h2>
+                    <div id="faq5" class="accordion-collapse collapse" aria-labelledby="faq5-heading" data-bs-parent="#faqAccordion">
+                        <div class="accordion-body">
+                            Caso tenha dúvidas ou precise de ajuda, envie uma mensagem pela página de contato ou pelo e-mail suporte@appfiber.com.br.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Animação para o título e subtítulo
+        const faqTitle = document.querySelector('.faq-title');
+        const faqSubtitle = document.querySelector('.faq-subtitle');
+        
+        if (faqTitle) {
+            faqTitle.style.opacity = '0';
+            faqTitle.style.transform = 'translateY(-20px)';
+            faqTitle.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(faqTitle);
+        }
+        
+        if (faqSubtitle) {
+            faqSubtitle.style.opacity = '0';
+            faqSubtitle.style.transform = 'translateY(-10px)';
+            faqSubtitle.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s';
+            observer.observe(faqSubtitle);
+        }
+
+        // Animação para os itens do accordion
+        document.querySelectorAll('.accordion-item').forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(30px)';
+            item.style.transition = `all 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${0.3 + index * 0.1}s`;
+            observer.observe(item);
+        });
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            
+            shapes.forEach((shape, index) => {
+                const speed = (index + 1) * 0.05;
+                shape.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+
+        // Adiciona efeito de hover mais suave ao accordion
+        document.querySelectorAll('.accordion-button').forEach(button => {
+            button.addEventListener('mouseenter', function() {
+                this.style.color = '#667eea';
+            });
+            
+            button.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('collapsed')) return;
+                this.style.color = '';
+            });
+        });
+    });
+</script>
+{% endblock %}
