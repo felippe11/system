@@ -1,1 +1,44 @@
 {% extends 'pages/base_page.html' %}
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">{{ page_title }}</h1>
+    <p class="lead text-muted">Encontre respostas e orientações para utilizar todos os recursos da plataforma.</p>
+
+    <form class="input-group my-4" method="get" action="#">
+        <input type="text" class="form-control" placeholder="Pesquisar na central..." aria-label="Pesquisar"/>
+        <button class="btn btn-primary" type="submit">Buscar</button>
+    </form>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-question-circle-fill me-2"></i>FAQ</h5>
+                    <p class="card-text">Perguntas frequentes e soluções rápidas para problemas comuns.</p>
+                    <a href="{{ url_for('static_page_routes.show_page', slug='faq') }}" class="stretched-link">Acessar FAQ</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-play-circle-fill me-2"></i>Tutoriais</h5>
+                    <p class="card-text">Guias passo a passo para aproveitar ao máximo a plataforma.</p>
+                    <a href="{{ url_for('static_page_routes.show_page', slug='tutoriais') }}" class="stretched-link">Ver tutoriais</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-envelope-fill me-2"></i>Fale Conosco</h5>
+                    <p class="card-text">Se não encontrar sua resposta, nossa equipe está pronta para ajudar.</p>
+                    <a href="{{ url_for('static_page_routes.show_page', slug='contato') }}" class="stretched-link">Entre em contato</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
