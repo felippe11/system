@@ -1,1 +1,323 @@
-{% extends 'pages/base_page.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+    
+    .cookies-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+        color: var(--text-dark);
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .page-title {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 2rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+    
+    .section-heading {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: var(--text-dark);
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .cookies-content p, 
+    .cookies-content li {
+        color: var(--text-dark);
+        line-height: 1.7;
+        font-size: 1.05rem;
+    }
+    
+    .cookies-content strong {
+        font-weight: 600;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .cookies-content a {
+        background: var(--primary-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 600;
+        text-decoration: none;
+        position: relative;
+    }
+
+    .cookies-content a::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 2px;
+        bottom: -2px;
+        left: 0;
+        background: var(--primary-gradient);
+        transform: scaleX(0);
+        transform-origin: bottom right;
+        transition: transform 0.3s ease-out;
+    }
+
+    .cookies-content a:hover::after {
+        transform: scaleX(1);
+        transform-origin: bottom left;
+    }
+
+    .cookies-content ul {
+        list-style-type: none;
+        padding-left: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .cookies-content li {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .cookies-content li::before {
+        content: "🍪";
+        position: absolute;
+        left: 0;
+        top: 0;
+        transform: scale(1.2);
+        animation: cookie-spin 3s ease-in-out infinite;
+    }
+    
+    @keyframes cookie-spin {
+        0%, 100% { transform: rotate(0deg) scale(1.2); }
+        50% { transform: rotate(10deg) scale(1.3); }
+    }
+    
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .section-heading {
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .cookies-content p, 
+    [data-bs-theme="dark"] .cookies-content li {
+        color: var(--text-light);
+    }
+    
+    @media (max-width: 768px) {
+        .glass-container {
+            padding: 40px 20px;
+        }
+        
+        .page-title {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="cookies-section">
+    <div class="container">
+        <div class="glass-container cookies-content">
+            <h1 class="page-title">{{ page_title }}</h1>
+            
+            <p class="lead text-center mb-5">
+                Esta Política de Cookies explica como a <strong>AppFiber</strong> utiliza
+                cookies e tecnologias semelhantes para melhorar sua experiência em nossa
+                plataforma.
+            </p>
+
+    <h2 class="section-heading">O que são cookies?</h2>
+    <p>
+        Cookies são pequenos arquivos de texto armazenados em seu navegador
+        quando você visita um site. Eles ajudam a lembrar suas preferências e a
+        personalizar o conteúdo apresentado.
+    </p>
+
+    <h2 class="section-heading">Como usamos cookies</h2>
+    <ul>
+        <li><strong>Essenciais:</strong> necessários para que o site funcione
+            corretamente e para manter você conectado.</li>
+        <li><strong>Desempenho:</strong> coletam informações anônimas para nos
+            ajudar a entender como o site é utilizado.</li>
+        <li><strong>Funcionais:</strong> lembram suas escolhas, como idioma ou
+            região, proporcionando recursos aprimorados.</li>
+        <li><strong>Publicidade:</strong> usados para apresentar ofertas
+            relevantes, podendo ser definidos por parceiros.</li>
+    </ul>
+
+    <h2 class="section-heading">Gerenciando cookies</h2>
+    <p>
+        A maioria dos navegadores permite que você recuse ou apague cookies nas
+        configurações. No entanto, desabilitá-los pode afetar o correto
+        funcionamento de algumas funcionalidades da plataforma.
+    </p>
+
+    <div class="text-center mt-5">
+        <p>
+            Para dúvidas sobre esta política, entre em contato pelo e-mail
+            <a href="mailto:suporte@appfiber.com.br">suporte@appfiber.com.br</a>
+        </p>
+    </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Anima o container principal
+        const content = document.querySelector('.glass-container');
+        if (content) {
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(30px)';
+            content.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+            observer.observe(content);
+        }
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            const speed = 0.05;
+            
+            shapes.forEach((shape, index) => {
+                shape.style.transform = `translateY(${scrolled * speed * (index + 1)}px)`;
+            });
+        });
+    });
+</script>
+{% endblock %}

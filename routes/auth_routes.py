@@ -192,31 +192,41 @@ def logout():
 @auth_routes.route('/registrar_cliente', methods=['GET', 'POST'])
 def cadastrar_cliente_publico():
     form = PublicClienteForm()
-    if form.validate_on_submit():
-        nome = request.form['nome']
-        email = request.form['email']
-        senha = request.form['senha']
-
-        cliente_existente = Cliente.query.filter_by(email=email).first()
-        if cliente_existente:
-            flash('Já existe um cliente com esse e-mail!', 'danger')
-            return redirect(url_for('auth_routes.cadastrar_cliente_publico'))
-
-        # Pagamento habilitado por padrão para novos clientes
-        novo_cliente = Cliente(
-            nome=nome,
-            email=email,
-            senha=generate_password_hash(senha),
-            habilita_pagamento=True,
-        )
-
-        db.session.add(novo_cliente)
-        db.session.commit()
-
-        flash('Cliente cadastrado com sucesso!', 'success')
-        return redirect(url_for('auth_routes.login'))
-
+    
     if request.method == 'POST':
-        flash('Falha na validação do CAPTCHA, tente novamente.', 'danger')
+        if not form.validate():
+            # Verificar especificamente erros do reCAPTCHA
+            if form.recaptcha.errors:
+                erro_captcha = form.recaptcha.errors[0] if form.recaptcha.errors else "Falha na validação do CAPTCHA"
+                flash(f'Erro no CAPTCHA: {erro_captcha}', 'danger')
+            else:
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        flash(f'Erro no campo {field}: {error}', 'danger')
+        
+        # Caso o formulário seja válido
+        elif form.validate_on_submit():
+            nome = request.form['nome']
+            email = request.form['email']
+            senha = request.form['senha']
+
+            cliente_existente = Cliente.query.filter_by(email=email).first()
+            if cliente_existente:
+                flash('Já existe um cliente com esse e-mail!', 'danger')
+                return redirect(url_for('auth_routes.cadastrar_cliente_publico'))
+
+            # Pagamento habilitado por padrão para novos clientes
+            novo_cliente = Cliente(
+                nome=nome,
+                email=email,
+                senha=generate_password_hash(senha),
+                habilita_pagamento=True,
+            )
+
+            db.session.add(novo_cliente)
+            db.session.commit()
+
+            flash('Cliente cadastrado com sucesso!', 'success')
+            return redirect(url_for('auth_routes.login'))
 
     return render_template('auth/cadastrar_cliente_publico.html', form=form)

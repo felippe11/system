@@ -477,7 +477,7 @@
         /* Footer */
         .footer {
             background-color: var(--primary-dark);
-            color: #aaa;
+            color: var(--white);
             padding: 70px 0 30px;
         }
 
@@ -516,7 +516,7 @@
         }
 
         .footer-links a {
-            color: #aaa;
+            color: var(--white);
             text-decoration: none;
             transition: all 0.3s;
             font-size: 0.95rem;

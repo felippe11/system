@@ -23,6 +23,11 @@ class Config:
     #  Chave secreta                                                     #
     # ------------------------------------------------------------------ #
     SECRET_KEY = os.getenv("SECRET_KEY") or "dev-secret-key"
+    
+    # ------------------------------------------------------------------ #
+    #  Ambiente de desenvolvimento                                       #
+    # ------------------------------------------------------------------ #
+    DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
 
     # ------------------------------------------------------------------ #
     #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
@@ -91,5 +96,11 @@ class Config:
     # ------------------------------------------------------------------ #
     #  reCAPTCHA                                                         #
     # ------------------------------------------------------------------ #
-    RECAPTCHA_PUBLIC_KEY = os.getenv("RECAPTCHA_PUBLIC_KEY", "")
-    RECAPTCHA_PRIVATE_KEY = os.getenv("RECAPTCHA_PRIVATE_KEY", "")
+    RECAPTCHA_PUBLIC_KEY = os.getenv("RECAPTCHA_PUBLIC_KEY", "6LfGD4ErAAAAAKDLENHMM6imTgokwkDCeiYRf-aG")
+    RECAPTCHA_PRIVATE_KEY = os.getenv("RECAPTCHA_PRIVATE_KEY", "6LfGD4ErAAAAALJ_5l8SLpF1Bp64C2hzb4rHPvdg")
+    # Suas chaves reais de reCAPTCHA
+    
+    # Para ambiente de produção, sempre use chaves reais do reCAPTCHA
+    RECAPTCHA_VERIFY_SERVER = "https://www.google.com/recaptcha/api/siteverify"
+    RECAPTCHA_PARAMETERS = {"hl": "pt-BR"}
+    RECAPTCHA_DATA_ATTRS = {"theme": "light"}

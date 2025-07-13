@@ -1,13 +1,243 @@
-{% extends 'pages/base_page.html' %}
+{% extends 'base.html' %}
 {% block title %}{{ page_title }} - AppFiber{% endblock %}
 
-{% block content %}
-<div class="container py-5">
-    <h1 class="mb-4">{{ page_title }}</h1>
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
 
-    <p class="lead">
-        Bem-vindo à <strong>AppFiber</strong>, plataforma para gestão de eventos. Ao acessar ou utilizar nossos serviços, você concorda integralmente com estes Termos de Uso. Leia com atenção.
-    </p>
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .hero-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .terms-title {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 2rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .terms-subtitle {
+        font-size: 1.2rem;
+        color: var(--text-dark);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .accordion {
+        margin-top: 2rem;
+    }
+
+    .accordion-item {
+        background: transparent;
+        border: none;
+        margin-bottom: 1rem;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .accordion-header {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .accordion-button {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px !important;
+        font-weight: 600;
+        color: var(--bs-dark);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .accordion-button:not(.collapsed) {
+        background: var(--primary-gradient);
+        color: white;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+    }
+
+    .accordion-button:focus {
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
+    }
+
+    .accordion-button::after {
+        transition: all 0.3s ease;
+    }
+
+    .accordion-button:not(.collapsed)::after {
+        filter: brightness(10);
+    }
+
+    .accordion-body {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(8px);
+        border-radius: 0 0 12px 12px;
+        padding: 1.5rem;
+        border: 1px solid var(--glass-border);
+        border-top: none;
+    }
+
+    .terms-button {
+        display: inline-block;
+        padding: 1rem 2rem;
+        background: var(--primary-gradient);
+        border: none;
+        border-radius: 50px;
+        color: white;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    
+    .terms-button:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container,
+    [data-bs-theme="dark"] .accordion-button {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .accordion-body {
+        background: rgba(30, 30, 50, 0.6);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .accordion-button:not(.collapsed) {
+        background: var(--primary-gradient);
+    }
+    
+    [data-bs-theme="dark"] .terms-subtitle {
+        color: var(--text-light);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="hero-section">
+    <div class="container">
+        <div class="glass-container">
+            <h1 class="terms-title">{{ page_title }}</h1>
+
+            <p class="terms-subtitle">
+                Bem-vindo à <strong>AppFiber</strong>, plataforma para gestão de eventos. Ao acessar ou utilizar nossos serviços, você concorda integralmente com estes Termos de Uso. Leia com atenção.
+            </p>
 
     <div class="accordion" id="accordionTermos">
 
@@ -192,11 +422,90 @@
 
     </div>
 
-    <div class="text-center mt-4">
-        <button class="btn btn-primary" onclick="alert('Você aceitou os Termos de Uso!')">
+    <div class="text-center mt-5">
+        <button class="btn terms-button" onclick="alert('Você aceitou os Termos de Uso!')">
             Concordo com os Termos
         </button>
     </div>
 
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = entry.target.dataset.transform || 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Animação para o título
+        const title = document.querySelector('.terms-title');
+        if (title) {
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(-20px)';
+            title.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            title.dataset.transform = 'translateY(0)';
+            observer.observe(title);
+        }
+        
+        // Animação para o subtítulo
+        const subtitle = document.querySelector('.terms-subtitle');
+        if (subtitle) {
+            subtitle.style.opacity = '0';
+            subtitle.style.transform = 'translateY(-15px)';
+            subtitle.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s';
+            title.dataset.transform = 'translateY(0)';
+            observer.observe(subtitle);
+        }
+        
+        // Animação para os itens do accordion
+        document.querySelectorAll('.accordion-item').forEach((item, index) => {
+            item.style.transition = `all 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${0.2 + index * 0.1}s`;
+            observer.observe(item);
+        });
+        
+        // Animação para o botão
+        const button = document.querySelector('.terms-button');
+        if (button) {
+            button.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.7s';
+            observer.observe(button);
+        }
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            
+            shapes.forEach((shape, index) => {
+                const speed = (index + 1) * 0.05;
+                shape.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+        
+        // Efeito hover para os botões do accordion
+        document.querySelectorAll('.accordion-button').forEach(button => {
+            button.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+            
+            button.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+            });
+        });
+    });
+</script>
 {% endblock %}
