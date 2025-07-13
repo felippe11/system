@@ -1,17 +1,532 @@
-{% extends 'pages/base_page.html' %}
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        --glass-bg: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .floating-shapes {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .shape {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(40px);
+        animation: float 20s infinite ease-in-out;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    [data-bs-theme="dark"] .shape {
+        opacity: 0.15;
+    }
+
+    .shape:nth-child(1) {
+        width: 300px;
+        height: 300px;
+        background: var(--primary-gradient);
+        top: 10%;
+        left: 10%;
+        animation-delay: 0s;
+    }
+
+    .shape:nth-child(2) {
+        width: 200px;
+        height: 200px;
+        background: var(--secondary-gradient);
+        top: 70%;
+        right: 20%;
+        animation-delay: -7s;
+    }
+
+    .shape:nth-child(3) {
+        width: 250px;
+        height: 250px;
+        background: var(--accent-gradient);
+        bottom: 20%;
+        left: 60%;
+        animation-delay: -14s;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translate(0px, 0px) rotate(0deg); }
+        33% { transform: translate(30px, -30px) rotate(120deg); }
+        66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+
+    .hero-section {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        position: relative;
+        padding: 40px 0;
+        z-index: 1;
+    }
+
+    .glass-container {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        padding: 60px 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    }
+
+    .conference-title {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+        background-size: 300% 300%;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        animation: gradientShift 4s ease-in-out infinite;
+        margin-bottom: 2rem;
+        line-height: 1.1;
+        text-align: center;
+    }
+
+    @keyframes gradientShift {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .conference-subtitle {
+        font-size: 1.4rem;
+        color: var(--text-dark);
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+        text-align: center;
+    }
+
+    .conference-text {
+        font-size: 1.1rem;
+        color: var(--text-dark);
+        line-height: 1.7;
+        margin-bottom: 1.5rem;
+    }
+
+    .feature-section {
+        margin: 4rem 0;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+    }
+
+    .feature-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .feature-card .feature-title,
+    .feature-card .feature-description {
+        transition: color 0.6s ease;
+        will-change: color;
+        position: relative;
+        z-index: 2;
+    }
+
+    .feature-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        padding: 2px;
+        background: var(--primary-gradient);
+        border-radius: 20px;
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: xor;
+        opacity: 0;
+        transition: all 0.4s ease;
+    }
+
+    .feature-card:hover::before {
+        opacity: 1;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        box-shadow: 0 30px 80px rgba(102, 126, 234, 0.3);
+        background: var(--primary-gradient);
+    }
+    
+    .feature-card:hover .feature-title,
+    .feature-card:hover .feature-description {
+        color: white !important;
+        opacity: 1 !important;
+    }
+
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--primary-gradient);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        font-size: 2rem;
+        color: white;
+        position: relative;
+    }
+
+    .feature-icon::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        background: var(--primary-gradient);
+        border-radius: 50%;
+        z-index: -1;
+        filter: blur(10px);
+        opacity: 0.5;
+    }
+
+    .feature-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text-dark);
+        margin-bottom: 1rem;
+    }
+
+    .feature-description {
+        color: var(--text-dark);
+        line-height: 1.6;
+    }
+
+    .banner-section {
+        position: relative;
+        margin: 3rem 0;
+        padding: 3rem 0;
+        background: var(--primary-gradient);
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .banner-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('https://images.unsplash.com/photo-1505373877841-8d25f7d46678?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
+        opacity: 0.2;
+        z-index: 0;
+    }
+
+    .banner-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        color: white;
+    }
+
+    .banner-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .banner-text {
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+        max-width: 700px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .cta-button {
+        display: inline-block;
+        padding: 1rem 2.5rem;
+        background: white;
+        border: none;
+        border-radius: 50px;
+        color: #764ba2;
+        font-weight: 600;
+        text-decoration: none;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .cta-button:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        color: #764ba2;
+    }
+    
+    .highlight {
+        font-weight: 700;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    /* Ajustes para o modo escuro */
+    [data-bs-theme="dark"] .glass-container {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .feature-card {
+        background: rgba(30, 30, 50, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-bs-theme="dark"] .conference-subtitle,
+    [data-bs-theme="dark"] .conference-text,
+    [data-bs-theme="dark"] .feature-title,
+    [data-bs-theme="dark"] .feature-description {
+        color: var(--text-light);
+    }
+    
+    [data-bs-theme="dark"] .cta-button {
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    [data-bs-theme="dark"] .feature-card:hover .feature-title,
+    [data-bs-theme="dark"] .feature-card:hover .feature-description {
+        color: white !important;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <h1 class="mb-4">{{ page_title }}</h1>
-    <p class="lead">Conferências são encontros que reúnem grandes públicos para compartilhar conhecimento, trocar ideias e promover networking.</p>
-    <p>A <strong>AppFiber</strong> facilita todo o processo de organização, desde as inscrições até o acompanhamento financeiro, oferecendo uma experiência integrada para organizadores e participantes.</p>
-    <p>Com nossas ferramentas de gestão em tempo real, é possível monitorar presenças, pagamentos e demais detalhes de forma simples e eficiente.</p>
-    <ul>
-        <li>Inscrições online fáceis e seguras</li>
-        <li>Controle de pagamentos automático</li>
-        <li>Check-in rápido via QR Code</li>
-        <li>Relatórios detalhados de participação</li>
-    </ul>
-    <p>Utilize a AppFiber e potencialize a organização das suas conferências.</p>
+<div class="floating-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
 </div>
+
+<div class="hero-section">
+    <div class="container">
+        <div class="glass-container">
+            <h1 class="conference-title">{{ page_title }}</h1>
+            <p class="conference-subtitle">Encontros que reúnem grandes públicos para compartilhar conhecimento, trocar ideias e promover networking.</p>
+            
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <p class="conference-text">
+                        A <span class="highlight">AppFiber</span> facilita todo o processo de organização, desde as inscrições até o acompanhamento financeiro, oferecendo uma experiência integrada para organizadores e participantes. Com nossas ferramentas de gestão em tempo real, é possível monitorar presenças, pagamentos e demais detalhes de forma simples e eficiente.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="feature-section">
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        <h3 class="feature-title">Inscrições Online</h3>
+                        <p class="feature-description">
+                            Processo de inscrição fácil, seguro e totalmente online para os participantes.
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <h3 class="feature-title">Controle Financeiro</h3>
+                        <p class="feature-description">
+                            Gestão automática de pagamentos com relatórios detalhados em tempo real.
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-qrcode"></i>
+                        </div>
+                        <h3 class="feature-title">Check-in QR Code</h3>
+                        <p class="feature-description">
+                            Sistema de check-in rápido e eficiente via código QR para os participantes.
+                        </p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h3 class="feature-title">Relatórios Detalhados</h3>
+                        <p class="feature-description">
+                            Informações completas sobre participação, engajamento e feedback dos participantes.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="banner-section">
+                <div class="banner-content">
+                    <h2 class="banner-title">Potencialize suas conferências</h2>
+                    <p class="banner-text">Utilize a AppFiber e torne seus eventos mais profissionais, organizados e impactantes para todos os participantes.</p>
+                    <a href="{{ url_for('static_page_routes.show_page', slug='contato') }}" class="cta-button">
+                        Fale com um especialista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona Intersection Observer para animações
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = entry.target.dataset.transform || 'translateY(0)';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Animação para o título
+        const title = document.querySelector('.conference-title');
+        if (title) {
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(-20px)';
+            title.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            title.dataset.transform = 'translateY(0)';
+            observer.observe(title);
+        }
+        
+        // Animação para o subtítulo
+        const subtitle = document.querySelector('.conference-subtitle');
+        if (subtitle) {
+            subtitle.style.opacity = '0';
+            subtitle.style.transform = 'translateY(-15px)';
+            subtitle.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s';
+            subtitle.dataset.transform = 'translateY(0)';
+            observer.observe(subtitle);
+        }
+        
+        // Animação para os parágrafos de texto
+        document.querySelectorAll('.conference-text').forEach((text, index) => {
+            text.style.opacity = '0';
+            text.style.transform = 'translateY(20px)';
+            text.style.transition = `all 0.6s cubic-bezier(0.4, 0, 0.2, 1) ${0.2 + index * 0.1}s`;
+            text.dataset.transform = 'translateY(0)';
+            observer.observe(text);
+        });
+
+        // Animação para os cards
+        document.querySelectorAll('.feature-card').forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = `all 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${0.3 + index * 0.1}s`;
+            card.dataset.transform = 'translateY(0)';
+            observer.observe(card);
+        });
+        
+        // Animação para a seção banner
+        const banner = document.querySelector('.banner-section');
+        if (banner) {
+            banner.style.opacity = '0';
+            banner.style.transform = 'scale(0.95)';
+            banner.style.transition = 'all 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.5s';
+            banner.dataset.transform = 'scale(1)';
+            observer.observe(banner);
+        }
+        
+        // Animação para o botão CTA
+        const ctaButton = document.querySelector('.cta-button');
+        if (ctaButton) {
+            ctaButton.style.opacity = '0';
+            ctaButton.style.transform = 'translateY(20px)';
+            ctaButton.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.7s';
+            ctaButton.dataset.transform = 'translateY(0)';
+            observer.observe(ctaButton);
+        }
+
+        // Efeito Parallax para as formas flutuantes
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const shapes = document.querySelectorAll('.shape');
+            
+            shapes.forEach((shape, index) => {
+                const speed = (index + 1) * 0.05;
+                shape.style.transform = `translateY(${scrolled * speed}px)`;
+            });
+        });
+        
+        // Efeito hover para os ícones dos cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                const icon = this.querySelector('.feature-icon');
+                if (icon) {
+                    icon.style.transform = 'scale(1.1) rotate(10deg)';
+                    icon.style.transition = 'all 0.3s ease';
+                }
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                const icon = this.querySelector('.feature-icon');
+                if (icon) {
+                    icon.style.transform = '';
+                }
+            });
+        });
+        
+        // Animação para os ícones dos recursos
+        document.querySelectorAll('.feature-icon').forEach((icon, index) => {
+            setTimeout(() => {
+                icon.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                icon.style.transform = 'scale(1.1)';
+                
+                setTimeout(() => {
+                    icon.style.transform = 'scale(1)';
+                }, 300);
+            }, 1000 + (index * 300));
+        });
+    });
+</script>
 {% endblock %}
