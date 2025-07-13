@@ -1,1 +1,126 @@
 {% extends 'pages/base_page.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">{{ page_title }}</h1>
+
+    <p class="lead">
+        Esta Política de Privacidade explica como a <strong>AppFiber</strong> coleta, utiliza e protege as
+        informações dos usuários. Ao utilizar nossa plataforma, você concorda com as práticas descritas aqui.
+    </p>
+
+    <div class="accordion" id="accordionPrivacidade">
+        <!-- 1. Dados coletados -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading1">
+                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1" aria-expanded="true">
+                    1. Dados coletados
+                </button>
+            </h2>
+            <div id="collapse1" class="accordion-collapse collapse show" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Coletamos as informações que você fornece ao se cadastrar e utilizar nossos serviços, como nome, e-mail, telefone e dados de pagamento. Também registramos automaticamente dados de acesso, como endereço IP, tipo de navegador e páginas visitadas.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Uso das informações -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading2">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2">
+                    2. Uso das informações
+                </button>
+            </h2>
+            <div id="collapse2" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Utilizamos seus dados para fornecer e aprimorar nossos serviços, processar pagamentos, enviar comunicações importantes e cumprir obrigações legais. Podemos usar informações agregadas de forma anônima para fins estatísticos e de melhoria da plataforma.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Compartilhamento -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading3">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3">
+                    3. Compartilhamento
+                </button>
+            </h2>
+            <div id="collapse3" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Somente compartilhamos informações com terceiros quando necessário para a prestação do serviço ou cumprimento de obrigações legais. Não vendemos dados pessoais a anunciantes ou outras entidades.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Seus direitos -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading4">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse4">
+                    4. Seus direitos
+                </button>
+            </h2>
+            <div id="collapse4" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Você pode solicitar acesso, correção ou exclusão de seus dados pessoais, bem como revogar consentimentos concedidos. Entre em contato conosco caso deseje exercer esses direitos.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Segurança -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading5">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse5">
+                    5. Segurança dos dados
+                </button>
+            </h2>
+            <div id="collapse5" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Adotamos medidas técnicas e organizacionais adequadas para proteger suas informações contra acesso não autorizado, alteração ou destruição. Apesar dos esforços, nenhum método é totalmente seguro.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Retenção -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading6">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse6">
+                    6. Retenção dos dados
+                </button>
+            </h2>
+            <div id="collapse6" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Armazenamos suas informações pelo tempo necessário para cumprir as finalidades descritas nesta política e exigências legais. Dados cadastrais podem ser mantidos após o encerramento da conta para fins de obrigação regulatória.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Atualizações -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading7">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse7">
+                    7. Atualizações da política
+                </button>
+            </h2>
+            <div id="collapse7" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Poderemos atualizar esta política periodicamente. A versão mais recente estará sempre disponível em nosso site, com a data de última atualização indicada no início do documento.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Contato -->
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading8">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse8">
+                    8. Contato
+                </button>
+            </h2>
+            <div id="collapse8" class="accordion-collapse collapse" data-bs-parent="#accordionPrivacidade">
+                <div class="accordion-body">
+                    <p>Para esclarecer dúvidas ou exercer seus direitos relativos a dados pessoais, envie um e-mail para <a href="mailto:privacidade@appfiber.com.br">privacidade@appfiber.com.br</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

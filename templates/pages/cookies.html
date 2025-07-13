@@ -1,1 +1,45 @@
 {% extends 'pages/base_page.html' %}
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">{{ page_title }}</h1>
+
+    <p class="lead">
+        Esta Política de Cookies explica como a <strong>AppFiber</strong> utiliza
+        cookies e tecnologias semelhantes para melhorar sua experiência em nossa
+        plataforma.
+    </p>
+
+    <h2 class="h4 mt-4">O que são cookies?</h2>
+    <p>
+        Cookies são pequenos arquivos de texto armazenados em seu navegador
+        quando você visita um site. Eles ajudam a lembrar suas preferências e a
+        personalizar o conteúdo apresentado.
+    </p>
+
+    <h2 class="h4 mt-4">Como usamos cookies</h2>
+    <ul>
+        <li><strong>Essenciais:</strong> necessários para que o site funcione
+            corretamente e para manter você conectado.</li>
+        <li><strong>Desempenho:</strong> coletam informações anônimas para nos
+            ajudar a entender como o site é utilizado.</li>
+        <li><strong>Funcionais:</strong> lembram suas escolhas, como idioma ou
+            região, proporcionando recursos aprimorados.</li>
+        <li><strong>Publicidade:</strong> usados para apresentar ofertas
+            relevantes, podendo ser definidos por parceiros.</li>
+    </ul>
+
+    <h2 class="h4 mt-4">Gerenciando cookies</h2>
+    <p>
+        A maioria dos navegadores permite que você recuse ou apague cookies nas
+        configurações. No entanto, desabilitá-los pode afetar o correto
+        funcionamento de algumas funcionalidades da plataforma.
+    </p>
+
+    <p class="mt-4">
+        Para dúvidas sobre esta política, entre em contato pelo e-mail
+        <a href="mailto:suporte@appfiber.com.br">suporte@appfiber.com.br</a>.
+    </p>
+</div>
+{% endblock %}

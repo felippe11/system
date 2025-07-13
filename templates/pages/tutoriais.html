@@ -1,1 +1,30 @@
 {% extends 'pages/base_page.html' %}
+{% block title %}{{ page_title }} - AppFiber{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <h1 class="mb-4">{{ page_title }}</h1>
+  <p class="lead">Plataforma completa para gestão de eventos, criando experiências memoráveis e simplificando todos os processos administrativos.</p>
+  <p>Assista aos tutoriais abaixo e acompanhe cada etapa diretamente nesta página.</p>
+
+  <div class="row g-4">
+    <!-- Tutorial 1 -->
+    <div class="col-md-6">
+      <div class="ratio ratio-16x9">
+        <!-- Substitua VIDEO_ID_1 pelo código do vídeo no YouTube -->
+        <iframe src="https://www.youtube.com/embed/VIDEO_ID_1" title="Tutorial 1" allowfullscreen></iframe>
+      </div>
+      <p class="mt-2 text-center">Tutorial 1 - Introdução</p>
+    </div>
+
+    <!-- Tutorial 2 -->
+    <div class="col-md-6">
+      <div class="ratio ratio-16x9">
+        <!-- Substitua VIDEO_ID_2 pelo código do vídeo no YouTube -->
+        <iframe src="https://www.youtube.com/embed/VIDEO_ID_2" title="Tutorial 2" allowfullscreen></iframe>
+      </div>
+      <p class="mt-2 text-center">Tutorial 2 - Funcionalidade X</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,1 +1,54 @@
 {% extends 'pages/base_page.html' %}
+
+{% block page_content %}
+<div class="accordion" id="faqAccordion">
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="faq1-heading">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1" aria-expanded="false" aria-controls="faq1">
+        O que é o AppFiber?
+      </button>
+    </h2>
+    <div id="faq1" class="accordion-collapse collapse" aria-labelledby="faq1-heading" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        O AppFiber é uma plataforma completa para criar, gerenciar e divulgar eventos de forma simples e eficiente.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="faq2-heading">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2" aria-expanded="false" aria-controls="faq2">
+        Como faço meu cadastro na plataforma?
+      </button>
+    </h2>
+    <div id="faq2" class="accordion-collapse collapse" aria-labelledby="faq2-heading" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Clique em "Criar Conta" na página inicial e preencha o formulário com seus dados. Em poucos minutos você receberá um e-mail para confirmação.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="faq3-heading">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3" aria-expanded="false" aria-controls="faq3">
+        Como criar meu primeiro evento?
+      </button>
+    </h2>
+    <div id="faq3" class="accordion-collapse collapse" aria-labelledby="faq3-heading" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Após realizar o login, acesse o menu "Eventos" e clique em "Novo Evento". Siga o passo a passo informando os detalhes de programação, inscrições e comunicação.
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header" id="faq5-heading">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5" aria-expanded="false" aria-controls="faq5">
+        Como entro em contato com o suporte?
+      </button>
+    </h2>
+    <div id="faq5" class="accordion-collapse collapse" aria-labelledby="faq5-heading" data-bs-parent="#faqAccordion">
+      <div class="accordion-body">
+        Caso tenha dúvidas ou precise de ajuda, envie uma mensagem pela página de contato ou pelo e-mail suporte@appfiber.com.br.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
