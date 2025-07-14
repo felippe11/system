@@ -293,41 +293,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <!-- Importação do arquivo JavaScript customizado -->
     <script src="{{ url_for('static', filename='js/index.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const eventosContainer = document.getElementById('eventos-container');
-
-            fetch('/api/eventos/destaque')
-                .then(response => response.json())
-                .then(data => {
-                    eventosContainer.innerHTML = ''; // limpa spinner
-
-                    if (data.length > 0) {
-                        data.forEach(evento => {
-                            const card = `
-                                <div class="event-card">
-                                    <img src="${evento.banner_url}" alt="${evento.nome}" class="event-banner"/>
-                                    <h3>${evento.nome}</h3>
-                                    <p>${evento.descricao}</p>
-                                    <p><strong>Data:</strong> ${evento.data_inicio}</p>
-                                    ${evento.link_inscricao
-                                        ? `<a href="${evento.link_inscricao}" class="btn btn-primary">Inscreva-se</a>`
-                                        : ''
-                                    }
-                                </div>
-                            `;
-                            eventosContainer.insertAdjacentHTML('beforeend', card);
-                        });
-                    } else {
-                        eventosContainer.innerHTML = '<p class="text-center">Nenhum evento disponível no momento.</p>';
-                    }
-                })
-                .catch(err => {
-                    console.error('Erro ao carregar eventos:', err);
-                    eventosContainer.innerHTML = '<p class="text-center text-danger">Erro ao carregar eventos.</p>';
-                });
-        });
-    </script>
     <!-- Integracao com VLibras para acessibilidade em Libras -->
     <div vw class="enabled">
         <div vw-access-button class="active"></div>
