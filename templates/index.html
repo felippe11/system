@@ -220,6 +220,16 @@
                 </div>
                 
                 <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
+                    <h4 class="footer-heading">Empresa</h4>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='sobre-nos') }}">Sobre nós</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='nosso-time') }}">Nosso time</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='carreiras') }}">Carreiras</a></li>
+                        <li><a href="{{ url_for('static_page_routes.show_page', slug='blog') }}">Blog</a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
                     <h4 class="footer-heading">Eventos</h4>
                     <ul class="footer-links">
                         <li><a href="{{ url_for('static_page_routes.show_page', slug='conferencias') }}">Conferências</a></li>
@@ -247,31 +257,10 @@
                         <li><a href="{{ url_for('static_page_routes.show_page', slug='cookies') }}">Cookies</a></li>
                     </ul>
                 </div>
-
-                <div class="col-lg-2 col-md-6 mb-4 mb-md-0">
-                    <h4 class="footer-heading">Empresa</h4>
-                    <ul class="footer-links">
-                        <li><a href="{{ url_for('static_page_routes.show_page', slug='sobre-nos') }}">Sobre nós</a></li>
-                        <li><a href="{{ url_for('static_page_routes.show_page', slug='nosso-time') }}">Nosso time</a></li>
-                        <li><a href="{{ url_for('static_page_routes.show_page', slug='carreiras') }}">Carreiras</a></li>
-                        <li><a href="{{ url_for('static_page_routes.show_page', slug='blog') }}">Blog</a></li>
-                    </ul>
-                </div>
             </div>
             
             <div class="footer-bottom">
-                <div class="row align-items-center">
-                    <div class="col-lg-6 mb-3 mb-lg-0">
-                        <p>
-                            &copy; 2023-{{ current_year|default('2025') }} AppFiber. Todos os direitos reservados.
-                        </p>
-                    </div>
-                    <div class="col-lg-6 text-lg-end">
-                        <p>
-                            CNPJ 00.000.000/0000-00 • Versão 2.2.0
-                        </p>
-                    </div>
-                </div>
+                <p>&copy; <span id="currentYear">2025</span> AppFiber. Todos os direitos reservados.</p>
             </div>
         </div>
     </footer>
