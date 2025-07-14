@@ -116,8 +116,8 @@ def _serializa_eventos(eventos):
             'data_fim':    ev.data_fim.strftime('%d/%m/%Y')
                            if ev.data_fim else '',
             'localizacao': ev.localizacao or 'Local a definir',
-            'banner_url':  ev.banner_url or url_for('static',
-                                                    filename='images/event-placeholder.jpg'),
+            'banner_url':  ev.banner_url or url_for('placeholder_routes.placeholder_image',
+                                                    width=800, height=200),
             'preco_base':  preco_base,
             'preco_final': float(preco_com_taxa(preco_base)),
             'link_inscricao': None
