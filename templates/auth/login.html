@@ -294,6 +294,9 @@
                 
                 <form action="{{ url_for('auth_routes.login') }}" method="POST" class="login-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
                     <div class="form-group">
                         <label for="email">E-mail</label>
                         <div class="input-wrapper">
