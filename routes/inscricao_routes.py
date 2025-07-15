@@ -126,6 +126,9 @@ def cadastro_participante(identifier: str | None = None):
 
             usuario = None
             if duplicado:
+                if not check_password_hash(duplicado.senha, senha):
+                    flash("Senha incorreta. Faça login.", "warning")
+                    return redirect(url_for("auth_routes.login"))
                 usuario = duplicado
                 inscr_existente = Inscricao.query.filter_by(
                     usuario_id=duplicado.id, evento_id=evento.id
