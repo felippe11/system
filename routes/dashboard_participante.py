@@ -39,11 +39,26 @@ def dashboard_participante():
         eventos_cliente = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
         logger.debug(f"DEBUG [5] -> Encontrados {len(eventos_cliente)} eventos do cliente")
         eventos.extend(eventos_cliente)
-    
+
     # Buscar eventos sem cliente associado (eventos globais)
     eventos_globais = Evento.query.filter_by(cliente_id=None).all()
     logger.debug(f"DEBUG [6] -> Encontrados {len(eventos_globais)} eventos globais")
     eventos.extend(eventos_globais)
+
+    # Incluir eventos públicos de outros clientes
+    eventos_publicos_outros = (
+        Evento.query
+        .filter(
+            Evento.cliente_id.isnot(None),
+            Evento.publico.is_(True),
+            Evento.cliente_id != current_user.cliente_id,
+        )
+        .all()
+    )
+    logger.debug(
+        f"DEBUG [6b] -> Encontrados {len(eventos_publicos_outros)} eventos públicos de outros clientes"
+    )
+    eventos.extend(eventos_publicos_outros)
     
     logger.debug(f"DEBUG [7] -> Total de eventos (cliente + globais): {len(eventos)}")
     
