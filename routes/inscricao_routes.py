@@ -837,28 +837,13 @@ def cancelar_inscricao(inscricao_id):
     
 @inscricao_routes.route('/inscricao/<slug>')
 def abrir_inscricao_customizada(slug):
-    link = LinkCadastro.query.filter_by(slug_customizado=slug).first()
-    
-    if not link or not link.evento:
-        return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
-        
-    evento = link.evento
-    cliente_id = link.cliente_id
-    return render_template("auth/cadastro_participante.html", evento=evento, cliente_id=cliente_id)
+    """Exibe o formulário de inscrição usando o slug personalizado."""
+    return cadastro_participante(slug)
 
 @inscricao_routes.route('/inscricao/token/<token>', methods=['GET', 'POST'])
 def abrir_inscricao_token(token):
-    if request.method == 'POST':
-        # Reutiliza a lógica de cadastro para processar o formulário
-        return cadastro_participante(token)
-    link = LinkCadastro.query.filter_by(token=token).first()
-    
-    if not link or not link.evento:
-        return render_template('erro.html', mensagem="Link de inscrição inválido ou evento não encontrado."), 404
-
-    evento = link.evento
-    cliente_id = link.cliente_id
-    return render_template("auth/cadastro_participante.html", evento=evento, cliente_id=cliente_id)
+    """Exibe ou processa inscrição usando o token fornecido."""
+    return cadastro_participante(token)
 
 @inscricao_routes.route('/configurar_regras_inscricao', methods=['GET', 'POST'])
 @login_required
@@ -1222,13 +1207,12 @@ def mover_inscricoes_lote():
 
 @inscricao_routes.route('/inscricao/<slug_customizado>', methods=['GET'])
 def inscricao_personalizada(slug_customizado):
-    # Busca o LinkCadastro pelo slug personalizado
+    """Redireciona slug personalizado para a rota principal de inscrição."""
     link = LinkCadastro.query.filter_by(slug_customizado=slug_customizado).first()
     if not link or not link.evento_id:
         return "Link inválido ou sem evento associado", 404
 
-    # Redireciona para a rota cadastro_participante com o token
-    return redirect(url_for('inscricao_routes.cadastro_participante', token=link.token))
+    return redirect(url_for('inscricao_routes.cadastro_participante', identifier=link.token))
 
 
 @inscricao_routes.route('/admin/inscricao/<int:inscricao_id>/editar', methods=['GET', 'POST'])
