@@ -39,7 +39,12 @@ def app():
         db.session.add(lt)
         db.session.commit()
 
-        link = LinkCadastro(cliente_id=cliente.id, evento_id=evento.id, token='testtoken')
+        link = LinkCadastro(
+            cliente_id=cliente.id,
+            evento_id=evento.id,
+            token='testtoken',
+            slug_customizado='test-slug'
+        )
         db.session.add(link)
         db.session.commit()
 
@@ -57,6 +62,12 @@ def client(app):
 
 def test_get_inscricao_page(client):
     resp = client.get('/inscricao/token/testtoken')
+    assert resp.status_code == 200
+    assert b'Evento Teste' in resp.data
+
+
+def test_get_inscricao_page_slug(client):
+    resp = client.get('/inscricao/test-slug', follow_redirects=True)
     assert resp.status_code == 200
     assert b'Evento Teste' in resp.data
 
