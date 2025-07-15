@@ -38,6 +38,7 @@ def load_user(user_id):
 # =======================================
 @auth_routes.route('/login', methods=['GET', 'POST'], endpoint='login')
 def login():
+    next_page = request.args.get('next') or request.form.get('next')
     if request.method == 'POST':
         email = request.form['email']
         senha = request.form['senha']
@@ -49,12 +50,12 @@ def login():
 
         if not usuario:
             flash('E-mail ou senha incorretos!', 'danger')
-            return render_template("login.html")
+            return render_template("login.html", next=next_page)
 
         if isinstance(usuario, Cliente) and not usuario.ativo:
             logout_user()
             flash('Sua conta está desativada. Contate o administrador.', 'danger')
-            return render_template("login.html")
+            return render_template("login.html", next=next_page)
 
         if isinstance(usuario, Usuario) and not getattr(usuario, 'ativo', True):
             logout_user()
@@ -64,10 +65,12 @@ def login():
 
         if not check_password_hash(usuario.senha, senha):
             flash('E-mail ou senha incorretos!', 'danger')
-            return render_template("login.html")
+            return render_template("login.html", next=next_page)
 
         if getattr(usuario, 'mfa_enabled', False):
             session['pre_mfa_user_id'] = usuario.id
+            if next_page:
+                session['next_page'] = next_page
             if isinstance(usuario, Cliente):
                 session['pre_mfa_user_type'] = 'cliente'
             elif isinstance(usuario, Ministrante):
@@ -96,11 +99,11 @@ def login():
         }.get(session.get('user_type'), 'dashboard_routes.dashboard')
 
         try:
-            return redirect(url_for(destino))
+            return redirect(next_page or url_for(destino))
         except Exception:
             return 'login ok'
 
-    return render_template("login.html")
+    return render_template("login.html", next=next_page)
 
 
 @auth_routes.route('/mfa', methods=['GET', 'POST'])
@@ -121,6 +124,7 @@ def mfa():
             login_user(usuario)
             session['user_type'] = session.pop('pre_mfa_user_type', usuario.tipo)
             session.pop('pre_mfa_user_id', None)
+            next_page = session.pop('next_page', None)
             session['mfa_authenticated'] = True
             flash('Login realizado com sucesso!', 'success')
             destino = {
@@ -131,7 +135,7 @@ def mfa():
                 'professor':    'dashboard_professor.dashboard_professor',
                 'superadmin':   'dashboard_routes.dashboard_superadmin'
             }.get(session.get('user_type'), 'dashboard_routes.dashboard')
-            return redirect(url_for(destino))
+            return redirect(next_page or url_for(destino))
         else:
             flash('Código inválido', 'danger')
     return render_template('auth/mfa.html')
