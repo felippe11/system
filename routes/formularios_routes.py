@@ -279,10 +279,14 @@ def listar_formularios_participante():
         flash("Você não está associado a nenhum cliente.", "warning")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
         
-    # Base query: formulários criados pelo cliente do participante
-    query = Formulario.query.filter_by(cliente_id=cliente_id)
+    # Base query
     if evento_id:
-        query = query.join(Formulario.eventos).filter(Evento.id == evento_id)
+        # Se um evento foi selecionado, exibe formulários associados
+        # independentemente do cliente do participante
+        query = Formulario.query.join(Formulario.eventos).filter(Evento.id == evento_id)
+    else:
+        # Mantém o comportamento atual quando nenhum evento é fornecido
+        query = Formulario.query.filter_by(cliente_id=cliente_id)
     formularios = query.all()
     
     # Não há relação direta entre formulários e ministrantes no modelo atual,
