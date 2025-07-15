@@ -73,7 +73,7 @@ def inscricao_evento(evento_id):
     if link:
         # Se existe um link personalizado, usa ele
         if link.slug_customizado:
-            return redirect(url_for('inscricao_routes.abrir_inscricao_customizada', slug=link.slug_customizado))
+            return redirect(url_for('inscricao_routes.cadastro_participante', identifier=link.slug_customizado))
         # Senão, usa o token
         return redirect(url_for('inscricao_routes.cadastro_participante', identifier=link.token))
     
@@ -127,9 +127,9 @@ def _serializa_eventos(eventos):
         if ev.links_cadastro:
             link = ev.links_cadastro[0]
             dado['link_inscricao'] = (
-                url_for('inscricao_routes.abrir_inscricao_customizada', slug=link.slug_customizado)
+                url_for('inscricao_routes.cadastro_participante', identifier=link.slug_customizado)
                 if link.slug_customizado else
-                url_for('inscricao_routes.abrir_inscricao_token', token=link.token)
+                url_for('inscricao_routes.cadastro_participante', identifier=link.token)
             )
         else:
             # Habilita inscrição se o evento estiver em andamento (data atual entre início e fim)

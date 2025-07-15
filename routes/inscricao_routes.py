@@ -835,10 +835,6 @@ def cancelar_inscricao(inscricao_id):
     else:
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
-@inscricao_routes.route('/inscricao/<slug>')
-def abrir_inscricao_customizada(slug):
-    """Exibe o formulário de inscrição usando o slug personalizado."""
-    return cadastro_participante(slug)
 
 @inscricao_routes.route('/inscricao/token/<token>', methods=['GET', 'POST'])
 def abrir_inscricao_token(token):
