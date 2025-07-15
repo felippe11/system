@@ -79,3 +79,24 @@ def test_existing_user_registers_new_event(client, app):
         assert Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento1.id).count() == 1
         assert Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento2.id).count() == 1
         assert Inscricao.query.count() == 2
+
+
+def test_existing_user_wrong_password_fails(client, app):
+    data = {
+        'nome': 'User',
+        'cpf': '111',
+        'email': 'user@example.com',
+        'senha': 'wrong',
+        'formacao': 'F',
+    }
+
+    resp = client.post('/inscricao/token/t2', data=data, follow_redirects=True)
+    assert resp.status_code in (200, 302)
+    assert b'Login AppFiber' in resp.data
+
+    with app.app_context():
+        usuario = Usuario.query.filter_by(email='user@example.com').first()
+        evento2 = Evento.query.filter_by(nome='E2').first()
+        assert Usuario.query.count() == 1
+        assert Inscricao.query.filter_by(usuario_id=usuario.id, evento_id=evento2.id).count() == 0
+        assert Inscricao.query.count() == 1
