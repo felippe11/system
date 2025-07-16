@@ -169,3 +169,28 @@ def test_processar_qrcode_invalid(client, app):
     data = resp.get_json()
     assert data['success'] is False
     assert 'Agendamento n' in data['message']
+
+
+def test_lista_checkins_json_related_ids(client, app):
+    """Check-ins sem cliente_id devem aparecer se vinculados por oficina ou usuário."""
+    with app.app_context():
+        oficina = Oficina.query.first()
+        participante = Usuario.query.filter_by(email='part@test').first()
+        professor = Usuario.query.filter_by(email='prof@test').first()
+
+        chk_usuario = Checkin(usuario_id=participante.id,
+                              palavra_chave='manual')
+        chk_oficina = Checkin(usuario_id=professor.id,
+                              oficina_id=oficina.id,
+                              palavra_chave='QR-OFICINA')
+        db.session.add_all([chk_usuario, chk_oficina])
+        db.session.commit()
+
+    login(client, 'cli@test', '123')
+    resp = client.get('/lista_checkins_json')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['status'] == 'success'
+    nomes = [c['participante'] for c in data['checkins']]
+    assert 'Part' in nomes
+    assert 'Prof' in nomes
