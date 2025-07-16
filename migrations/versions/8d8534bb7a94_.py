@@ -7,7 +7,7 @@ Create Date: 2025-07-16 15:44:47.171920
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy import text  # Import necessário para executar SQL bruto
+from sqlalchemy import text  # IMPORTANTE para comandos SQL diretos
 
 
 # revision identifiers, used by Alembic.
