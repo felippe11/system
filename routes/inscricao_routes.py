@@ -9,7 +9,7 @@ from models import (
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
     CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, Formulario, RegraInscricaoEvento,
-    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente
+    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente, Cliente
 )
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
@@ -169,6 +169,10 @@ def cadastro_participante(identifier: str | None = None):
             else:
                 if usuario.evento_id is None:
                     usuario.evento_id = evento.id
+
+            cliente_obj = Cliente.query.get(cliente_id)
+            if cliente_obj and cliente_obj not in usuario.clientes:
+                usuario.clientes.append(cliente_obj)
 
             inscricao = Inscricao(
                 usuario_id=usuario.id,
