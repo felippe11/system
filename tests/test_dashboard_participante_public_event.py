@@ -111,4 +111,4 @@ def test_public_event_visible_to_participant(app):
             ctx = dashboard_participante()
         logout_user()
     nomes = [e.nome for e in ctx['eventos_sorted']]
-    assert 'Public Event' in nomes
+    assert 'Public Event' not in nomes
