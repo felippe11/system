@@ -7,7 +7,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 from models import (
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, AgendamentoVisita, Evento
+    Checkin, Inscricao, Oficina, ConfiguracaoCliente,
+    AgendamentoVisita, Evento, Usuario
 )
 from utils import formatar_brasilia, determinar_turno
 from .agendamento_routes import agendamento_routes  # Needed for URL generation
@@ -407,15 +408,25 @@ def lista_checkins_json():
     Retorna os últimos check‑ins do cliente logado em formato JSON.
     Identifica se o check‑in é de evento ou de oficina.
     """
-    if current_user.is_cliente():
-        base_query = Checkin.query.filter_by(cliente_id=current_user.id)
-    else:
-        base_query = Checkin.query
+    from sqlalchemy import or_
 
-    checkins = (base_query
-                .order_by(Checkin.data_hora.desc())
-                .limit(50)
-                .all())
+    base_query = Checkin.query.outerjoin(Checkin.oficina).outerjoin(Checkin.usuario)
+
+    if current_user.is_cliente():
+        base_query = base_query.filter(
+            or_(
+                Usuario.cliente_id == current_user.id,
+                Oficina.cliente_id == current_user.id,
+                Checkin.cliente_id == current_user.id,
+            )
+        )
+
+    checkins = (
+        base_query
+        .order_by(Checkin.data_hora.desc())
+        .limit(50)
+        .all()
+    )
 
     resultado = []
     for c in checkins:
