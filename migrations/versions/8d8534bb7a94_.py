@@ -7,6 +7,7 @@ Create Date: 2025-07-16 15:44:47.171920
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text  # Import necessário para executar SQL bruto
 
 
 # revision identifiers, used by Alembic.
@@ -20,12 +21,12 @@ def upgrade():
     conn = op.get_bind()
 
     # Drop table if exists: formulario_evento_association
-    result = conn.execute("SELECT to_regclass('formulario_evento_association')").scalar()
+    result = conn.execute(text("SELECT to_regclass('formulario_evento_association')")).scalar()
     if result:
         op.drop_table('formulario_evento_association')
 
     # Drop table if exists: evento_formulario
-    result = conn.execute("SELECT to_regclass('evento_formulario')").scalar()
+    result = conn.execute(text("SELECT to_regclass('evento_formulario')")).scalar()
     if result:
         op.drop_table('evento_formulario')
 
