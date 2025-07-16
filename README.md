@@ -172,12 +172,10 @@ Esse script substitui o antigo `organizar_templates.sh`.
 
 ## Deployment
 
-The application exposes a module-level `app` inside `app.py`. To run it with
-Gunicorn in a production environment, use `eventlet` workers and bind to the
-`PORT` environment variable expected by most hosting platforms:
+Run the application with Gunicorn using the WSGI entry point from `wsgi.py`. Use `eventlet` workers and bind to the `PORT` environment variable expected by most hosting platforms:
 
 ```bash
-gunicorn app:app --worker-class eventlet --bind 0.0.0.0:$PORT
+gunicorn wsgi:app --worker-class eventlet --bind 0.0.0.0:$PORT
 ```
 
 The `eventlet` dependency is included in `requirements.txt`.
