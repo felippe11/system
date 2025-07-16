@@ -38,7 +38,8 @@ class Usuario(db.Model, UserMixin):
     tipo_inscricao_id = db.Column(db.Integer, db.ForeignKey('evento_inscricao_tipo.id'), nullable=True)
 
     tipo_inscricao = db.relationship('EventoInscricaoTipo', backref=db.backref('usuarios', lazy=True))
-    cliente = db.relationship('Cliente', backref=db.backref('usuarios', lazy=True))
+    cliente = db.relationship('Cliente', backref=db.backref('usuarios_legacy', lazy=True))
+    clientes = db.relationship('Cliente', secondary='usuario_clientes', back_populates='usuarios')
     evento = db.relationship('Evento', backref=db.backref('usuarios', lazy=True))
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
@@ -118,6 +119,13 @@ evento_formulario_association = db.Table(
     'evento_formulario_association',
     db.Column('evento_id', db.Integer, db.ForeignKey('evento.id'), primary_key=True),
     db.Column('formulario_id', db.Integer, db.ForeignKey('formularios.id'), primary_key=True)
+)
+
+# Association table linking usuarios e clientes
+usuario_clientes = db.Table(
+    'usuario_clientes',
+    db.Column('usuario_id', db.Integer, db.ForeignKey('usuario.id')),
+    db.Column('cliente_id', db.Integer, db.ForeignKey('cliente.id')),
 )
 
 
@@ -493,8 +501,9 @@ class Cliente(db.Model, UserMixin):
 
      # Relacionamento com Oficina
     oficinas = db.relationship("Oficina", back_populates="cliente")  # ✅ Agora usa `back_populates`
-    
+
     configuracao = db.relationship('ConfiguracaoCliente', back_populates='cliente', uselist=False)
+    usuarios = db.relationship('Usuario', secondary='usuario_clientes', back_populates='clientes')
     
     # Novos campos (caminho das imagens):
     logo_certificado = db.Column(db.String(255), nullable=True)       # Logo

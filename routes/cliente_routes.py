@@ -360,10 +360,15 @@ def listar_usuarios(cliente_id: int):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    from models import Usuario, Cliente
+    from models import Usuario, Cliente, usuario_clientes
 
     cliente = Cliente.query.get_or_404(cliente_id)
-    usuarios = Usuario.query.filter_by(cliente_id=cliente.id).all()
+    usuarios = (
+        Usuario.query
+        .join(usuario_clientes)
+        .filter(usuario_clientes.c.cliente_id == cliente.id)
+        .all()
+    )
 
     return render_template(
         "cliente/listar_usuarios.html", cliente=cliente, usuarios=usuarios
