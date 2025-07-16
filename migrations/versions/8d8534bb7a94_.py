@@ -7,7 +7,7 @@ Create Date: 2025-07-16 15:44:47.171920
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy import text  # IMPORTANTE para comandos SQL diretos
+from sqlalchemy import text
 
 
 # revision identifiers, used by Alembic.
@@ -29,6 +29,9 @@ def upgrade():
     result = conn.execute(text("SELECT to_regclass('evento_formulario')")).scalar()
     if result:
         op.drop_table('evento_formulario')
+
+    # ✅ Deletar registros com evento_id NULL antes de aplicar NOT NULL
+    conn.execute(text("DELETE FROM campos_personalizados_cadastro WHERE evento_id IS NULL"))
 
     # Tornar evento_id obrigatório em campos_personalizados_cadastro
     with op.batch_alter_table('campos_personalizados_cadastro') as batch_op:
