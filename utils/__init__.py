@@ -71,13 +71,13 @@ def preco_com_taxa(base, cliente_id=None):
         Decimal: Valor com taxa aplicada
     """
     logger = logging.getLogger("preco_com_taxa")
-    logger.info(f"Calculando preço com taxa - base: {base}, cliente_id: {cliente_id}")
+    logger.debug(f"Calculando preço com taxa - base: {base}, cliente_id: {cliente_id}")
     
     try:
         # Converter base para Decimal de forma segura
         try:
             base = Decimal(str(base)) 
-            logger.info(f"Preço base convertido para Decimal: {base}")
+            logger.debug(f"Preço base convertido para Decimal: {base}")
         except Exception as e:
             logger.error(f"Erro ao converter preço base para Decimal: {str(e)}")
             # Fallback para um valor padrão se houver erro
@@ -87,7 +87,7 @@ def preco_com_taxa(base, cliente_id=None):
         try:
             cfg = Configuracao.query.first()
             taxa_geral = float(cfg.taxa_percentual_inscricao or 0) if cfg else 0.0
-            logger.info(f"Taxa geral obtida: {taxa_geral}%")
+            logger.debug(f"Taxa geral obtida: {taxa_geral}%")
         except Exception as e:
             logger.error(f"Erro ao obter taxa geral: {str(e)}")
             taxa_geral = 0.0
@@ -96,13 +96,13 @@ def preco_com_taxa(base, cliente_id=None):
         perc = Decimal(str(taxa_geral))  # valor padrão
         if cliente_id:
             try:
-                logger.info(f"Buscando cliente ID={cliente_id}")
+                logger.debug(f"Buscando cliente ID={cliente_id}")
                 cliente = Cliente.query.get(cliente_id)
                 if cliente:
-                    logger.info(f"Cliente encontrado: {cliente.nome}")
+                    logger.debug(f"Cliente encontrado: {cliente.nome}")
                     resultado_taxa = calcular_taxa_cliente(cliente, taxa_geral)
                     taxa_aplicada = resultado_taxa["taxa_aplicada"]
-                    logger.info(f"Taxa aplicada após cálculo: {taxa_aplicada}")
+                    logger.debug(f"Taxa aplicada após cálculo: {taxa_aplicada}")
                     perc = Decimal(str(taxa_aplicada))
                 else:
                     logger.warning(f"Cliente ID={cliente_id} não encontrado, usando taxa geral")
@@ -110,10 +110,10 @@ def preco_com_taxa(base, cliente_id=None):
                 logger.exception(f"Erro ao processar taxa diferenciada: {str(e)}")
         
         # Calcular preço final com taxa
-        logger.info(f"Percentual final da taxa: {perc}%")
+        logger.debug(f"Percentual final da taxa: {perc}%")
         valor = base * (Decimal('1') + perc/Decimal('100'))
         resultado = valor.quantize(Decimal("0.01"), ROUND_HALF_UP)
-        logger.info(f"Preço final com taxa: {resultado}")
+        logger.debug(f"Preço final com taxa: {resultado}")
         return resultado
         
     except Exception as e:
