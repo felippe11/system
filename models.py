@@ -540,6 +540,21 @@ class LinkCadastro(db.Model):
 
     def __repr__(self):
         return f"<LinkCadastro cliente_id={self.cliente_id}, evento_id={self.evento_id}, token={self.token}, slug={self.slug_customizado}>"
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = 'password_reset_token'
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    token = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+
+    usuario = db.relationship('Usuario')
+
+    def __repr__(self):
+        return f"<PasswordResetToken usuario_id={self.usuario_id} token={self.token}>"
     
 
 from extensions import db
