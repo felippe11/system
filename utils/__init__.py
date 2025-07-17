@@ -52,6 +52,11 @@ TOKEN_FILE = "token.json"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
+if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+    raise EnvironmentError(
+        "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in the environment"
+    )
+
 from decimal import Decimal, ROUND_HALF_UP
 from models import Configuracao, Cliente
 from flask import current_app, request

@@ -20,6 +20,10 @@ export DB_ONLINE="<url_do_banco_online>"
 export DB_LOCAL="<url_do_banco_local>"
 ```
 
+As variáveis `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` são **obrigatórias**
+para a autenticação via Gmail. A aplicação encerrará a inicialização caso elas
+não estejam definidas no ambiente.
+
 ## Banco de Dados
 
 Depois de clonar o repositório ou atualizar o código, instale as dependências
