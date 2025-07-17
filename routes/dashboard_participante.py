@@ -31,36 +31,24 @@ def dashboard_participante():
     # Se o participante está associado a um cliente, buscamos a config desse cliente
     config_cliente = None
     
-    # CORREÇÃO 1: Buscar TODOS os eventos, não só do cliente do participante
-    logger.debug(f"DEBUG [4] -> Buscando eventos do cliente_id = {current_user.cliente_id} e eventos globais")
-    # Incluir eventos do cliente E eventos sem cliente (eventos globais)
-    eventos = []
-    if current_user.cliente_id:
-        eventos_cliente = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
-        logger.debug(f"DEBUG [5] -> Encontrados {len(eventos_cliente)} eventos do cliente")
-        eventos.extend(eventos_cliente)
+    # NOVA LOGICA: considerar apenas eventos vinculados ao participante
+    logger.debug("DEBUG [4] -> Calculando conjunto de eventos do participante")
 
-    # Buscar eventos sem cliente associado (eventos globais)
-    eventos_globais = Evento.query.filter_by(cliente_id=None).all()
-    logger.debug(f"DEBUG [6] -> Encontrados {len(eventos_globais)} eventos globais")
-    eventos.extend(eventos_globais)
+    evento_ids = set()
+    for insc in current_user.inscricoes:
+        if insc.oficina and insc.oficina.evento_id:
+            evento_ids.add(insc.oficina.evento_id)
+        elif insc.evento_id:
+            evento_ids.add(insc.evento_id)
 
-    # Incluir eventos públicos de outros clientes
-    eventos_publicos_outros = (
-        Evento.query
-        .filter(
-            Evento.cliente_id.isnot(None),
-            Evento.publico.is_(True),
-            Evento.cliente_id != current_user.cliente_id,
-        )
-        .all()
-    )
-    logger.debug(
-        f"DEBUG [6b] -> Encontrados {len(eventos_publicos_outros)} eventos públicos de outros clientes"
-    )
-    eventos.extend(eventos_publicos_outros)
-    
-    logger.debug(f"DEBUG [7] -> Total de eventos (cliente + globais): {len(eventos)}")
+    if current_user.evento_id:
+        evento_ids.add(current_user.evento_id)
+
+    logger.debug(f"DEBUG [5] -> Evento IDs coletados: {evento_ids}")
+
+    eventos = Evento.query.filter(Evento.id.in_(evento_ids)).all() if evento_ids else []
+
+    logger.debug(f"DEBUG [6] -> Total de eventos do participante: {len(eventos)}")
     
     # Se não houver eventos específicos, usamos o primeiro como fallback (comportamento anterior)
     evento = eventos[0] if eventos else None
