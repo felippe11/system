@@ -392,14 +392,14 @@ class Checkin(db.Model):
     __tablename__ = 'checkin'
 
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True)  # agora pode ser nulo
-    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True)    # novo campo
-    data_hora = db.Column(db.DateTime, default=datetime.utcnow)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False, index=True)
+    oficina_id = db.Column(db.Integer, db.ForeignKey('oficina.id'), nullable=True, index=True)  # agora pode ser nulo
+    evento_id = db.Column(db.Integer, db.ForeignKey('evento.id'), nullable=True, index=True)    # novo campo
+    data_hora = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     palavra_chave = db.Column(db.String(50), nullable=False)
     
      # NOVO  ▼▼▼
-    cliente_id  = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    cliente_id  = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True, index=True)
     cliente     = db.relationship('Cliente', backref=db.backref('checkins', lazy=True))
 
     usuario = db.relationship('Usuario', backref=db.backref('checkins', lazy=True))

@@ -74,6 +74,7 @@ Pillow==10.2.0
 
 # Production server
 gunicorn==21.2.0
+celery==5.3.6
 
 # Development and testing
 Faker==37.4.0
