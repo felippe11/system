@@ -2,12 +2,15 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_mail import Message
 from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import datetime, timedelta
 import pyotp
 
-from models import Usuario, Ministrante, Cliente
-from extensions import login_manager, db
+from models import Usuario, Ministrante, Cliente, PasswordResetToken
+from extensions import login_manager, db, mail
 from forms import PublicClienteForm
+from utils.security import password_is_strong
 
 auth_routes = Blueprint(
     'auth_routes',
@@ -149,35 +152,55 @@ def esqueci_senha_cpf():
         cpf = request.form.get('cpf')
         usuario = Usuario.query.filter_by(cpf=cpf).first()
         if usuario:
-            session['reset_user_id'] = usuario.id
-            return redirect(url_for('auth_routes.reset_senha_cpf'))
-        else:
-            flash('CPF não encontrado!', 'danger')
-            return redirect(url_for('auth_routes.esqueci_senha_cpf'))
+            token = PasswordResetToken(
+                usuario_id=usuario.id,
+                expires_at=datetime.utcnow() + timedelta(hours=1)
+            )
+            db.session.add(token)
+            db.session.commit()
+
+            link = url_for('auth_routes.reset_senha_cpf', token=token.token, _external=True)
+            msg = Message(
+                subject='Redefini\u00e7\u00e3o de Senha',
+                recipients=[usuario.email],
+                body=f'Acesse o link para redefinir sua senha: {link}'
+            )
+            try:
+                mail.send(msg)
+            except Exception:
+                pass
+        flash('Se o CPF estiver cadastrado, enviamos um link para o e-mail associado.', 'info')
+        return redirect(url_for('auth_routes.login'))
     return render_template("esqueci_senha_cpf.html")
 
 @auth_routes.route('/reset_senha_cpf', methods=['GET', 'POST'])
 def reset_senha_cpf():
-    user_id = session.get('reset_user_id')
-    if not user_id:
-        flash('Nenhum usuário selecionado para redefinição!', 'danger')
+    token_str = request.args.get('token') or request.form.get('token')
+    if not token_str:
+        flash('Token inválido ou expirado.', 'danger')
         return redirect(url_for('auth_routes.esqueci_senha_cpf'))
-    usuario = db.session.get(Usuario, user_id)
-    if not usuario:
-        flash('Usuário não encontrado no banco de dados!', 'danger')
+
+    token_obj = PasswordResetToken.query.filter_by(token=token_str, used=False).first()
+    if not token_obj or token_obj.expires_at < datetime.utcnow():
+        flash('Token inválido ou expirado.', 'danger')
         return redirect(url_for('auth_routes.esqueci_senha_cpf'))
+
+    usuario = token_obj.usuario
+
     if request.method == 'POST':
         nova_senha = request.form.get('nova_senha')
         confirmar_senha = request.form.get('confirmar_senha')
-        if not nova_senha or nova_senha != confirmar_senha:
-            flash('As senhas não coincidem ou são inválidas.', 'danger')
-            return redirect(url_for('auth_routes.reset_senha_cpf'))
+        if not password_is_strong(nova_senha) or nova_senha != confirmar_senha:
+            flash('As senhas não coincidem ou não atendem aos requisitos.', 'danger')
+            return redirect(url_for('auth_routes.reset_senha_cpf', token=token_str))
+
         usuario.senha = generate_password_hash(nova_senha)
+        token_obj.used = True
         db.session.commit()
-        session.pop('reset_user_id', None)
         flash('Senha redefinida com sucesso! Faça login novamente.', 'success')
         return redirect(url_for('auth_routes.login'))
-    return render_template('reset_senha_cpf.html', usuario=usuario)
+
+    return render_template('reset_senha_cpf.html', token=token_str)
 
 # =======================================
 # Logout
