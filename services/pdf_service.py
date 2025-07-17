@@ -1,7 +1,36 @@
 from flask_login import login_required
 from utils import external_url, determinar_turno
+import logging
+import psutil
+import os
+import time
+
+logger = logging.getLogger(__name__)
 
 
+def _profile(func):
+    """Log memory usage and execution time around heavy tasks."""
+    def wrapper(*args, **kwargs):
+        process = psutil.Process(os.getpid())
+        mem_before = process.memory_info().rss
+        start = time.perf_counter()
+        try:
+            return func(*args, **kwargs)
+        finally:
+            duration = time.perf_counter() - start
+            mem_after = process.memory_info().rss
+            logger.info(
+                "%s took %.2fs | mem %.2f -> %.2f MB",
+                func.__name__,
+                duration,
+                mem_before / (1024 * 1024),
+                mem_after / (1024 * 1024),
+            )
+
+    return wrapper
+
+
+@_profile
 def gerar_revisor_details_pdf(cand, pdf_path=None):
     """Gera um PDF simples com dados do revisor."""
     from reportlab.lib.pagesizes import letter
@@ -27,6 +56,7 @@ def gerar_revisor_details_pdf(cand, pdf_path=None):
 
     return send_file(pdf_path, as_attachment=True, download_name=os.path.basename(pdf_path))
 
+@_profile
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
     """
     Generates a modern and professional attendance list PDF for a workshop.
@@ -650,6 +680,7 @@ def gerar_lista_frequencia(oficina_id, pdf_path=None):
     return send_file(pdf_path)
 
 
+@_profile
 def gerar_comprovante_pdf(usuario, oficina, inscricao):
     """
     Gera um comprovante de inscrição em PDF com design moderno e organizado.
@@ -3354,6 +3385,11 @@ TOKEN_FILE = "token.json"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
+if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+    raise EnvironmentError(
+        "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in the environment"
+    )
+
 from decimal import Decimal, ROUND_HALF_UP
 from models import Configuracao
 
@@ -3714,6 +3750,7 @@ def obter_credenciais():
     return creds
 
 
+@_profile
 def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
     """Envia um e-mail personalizado via API do Gmail usando OAuth 2.0"""
     creds = obter_credenciais()

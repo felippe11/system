@@ -20,6 +20,10 @@ export DB_ONLINE="<url_do_banco_online>"
 export DB_LOCAL="<url_do_banco_local>"
 ```
 
+As variáveis `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` são **obrigatórias**
+para a autenticação via Gmail. A aplicação encerrará a inicialização caso elas
+não estejam definidas no ambiente.
+
 ## Banco de Dados
 
 Depois de clonar o repositório ou atualizar o código, instale as dependências
@@ -174,14 +178,27 @@ Esse script substitui o antigo `organizar_templates.sh`.
 
 Run the application with Gunicorn using the WSGI entry point from `wsgi.py`. Use `eventlet` workers and bind to the `PORT` environment variable expected by most hosting platforms:
 
-```bash
-gunicorn wsgi:app --worker-class eventlet --bind 0.0.0.0:$PORT
+```
+
+gunicorn app:app --worker-class eventlet --workers 4 --timeout 120 --bind 0.0.0.0:$PORT
+
 ```
 
 The `eventlet` dependency is included in `requirements.txt`.
 
 Ensure all configuration variables described earlier are set before starting the
 server.
+
+## Background jobs
+
+Heavy PDF generation and e-mail sending can block a request. Use Celery to run
+these tasks asynchronously. Start a worker with:
+
+```bash
+celery -A tasks.celery worker --loglevel=info
+```
+
+Set `REDIS_URL` to your broker URI and run the worker alongside Gunicorn.
 
 
 ### Render deploy hook
