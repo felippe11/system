@@ -302,6 +302,10 @@ def leitor_checkin_json():
         return jsonify(status='error',
                        message='Inscrição não encontrada.'), 404
 
+    if inscricao.cliente_id != current_user.id:
+        return jsonify(status='error',
+                       message='Esta inscrição não pertence a um evento ou atividade sua!'), 403
+
     cliente_id   = inscricao.cliente_id
     sala_cliente = f"cliente_{cliente_id}"     # sala usada no Socket.IO
 
