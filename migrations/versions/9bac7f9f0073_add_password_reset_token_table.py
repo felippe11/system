@@ -7,6 +7,7 @@ Create Date: 2025-07-20 04:08:13
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 # revision identifiers, used by Alembic.
 revision = '9bac7f9f0073'
@@ -16,6 +17,10 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    if 'password_reset_token' in inspector.get_table_names():
+        return
     op.create_table(
         'password_reset_token',
         sa.Column('id', sa.Integer(), primary_key=True),
@@ -27,4 +32,7 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table('password_reset_token')
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    if 'password_reset_token' in inspector.get_table_names():
+        op.drop_table('password_reset_token')
