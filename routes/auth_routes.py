@@ -150,11 +150,11 @@ def mfa():
 def esqueci_senha_cpf():
     if request.method == 'POST':
         cpf = request.form.get('cpf')
-        current_app.logger.debug(f"CPF recebido: {cpf}")
+        print(f"CPF recebido: {cpf}")
         usuario = Usuario.query.filter_by(cpf=cpf).first()
-        
+
         if usuario:
-            current_app.logger.debug(f"Usuário encontrado: ID {usuario.id}, Email {usuario.email}")
+            print(f"Usuário encontrado: ID {usuario.id}, Email {usuario.email}")
             token = PasswordResetToken(
                 usuario_id=usuario.id,
                 expires_at=datetime.utcnow() + timedelta(hours=1)
@@ -168,13 +168,13 @@ def esqueci_senha_cpf():
                 body=f'Acesse o link para redefinir sua senha: {link}'
             )
             try:
-                current_app.logger.debug("Tentando enviar email de redefinição de senha")
+                print("Tentando enviar email de redefinição de senha")
                 mail.send(msg)
-                current_app.logger.debug("Email enviado com sucesso")
+                print("Email enviado com sucesso")
             except Exception as e:
-                current_app.logger.exception("Erro ao enviar email")
+                print(f"Erro ao enviar email: {e}")
         else:
-            current_app.logger.debug("Nenhum usuário encontrado com o CPF informado")
+            print("Nenhum usuário encontrado com o CPF informado")
         flash('Se o CPF estiver cadastrado, enviamos um link para o e-mail associado.', 'info')
         return redirect(url_for('auth_routes.login'))
     return render_template("esqueci_senha_cpf.html")
