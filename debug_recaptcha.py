@@ -18,10 +18,17 @@ app.config["SECRET_KEY"] = "chave-secreta-para-teste"
 app.config["RECAPTCHA_PUBLIC_KEY"] = os.getenv("RECAPTCHA_PUBLIC_KEY")
 app.config["RECAPTCHA_PRIVATE_KEY"] = os.getenv("RECAPTCHA_PRIVATE_KEY")
 app.config["RECAPTCHA_DATA_ATTRS"] = {"theme": "light", "size": "normal"}
+# Configurações adicionais que podem ajudar
+app.config["RECAPTCHA_OPTIONS"] = {"hl": "pt-BR"}
+# Use isso se você estiver usando reCAPTCHA v2 Invisible
+# app.config["RECAPTCHA_USE_SSL"] = False
 
 # Informações de debug
 print("DEBUG: RECAPTCHA_PUBLIC_KEY =", app.config["RECAPTCHA_PUBLIC_KEY"])
 print("DEBUG: RECAPTCHA_PRIVATE_KEY =", "*" * len(app.config["RECAPTCHA_PRIVATE_KEY"]) if app.config["RECAPTCHA_PRIVATE_KEY"] else "Não definida")
+print("DEBUG: Chave pública parece ser v3?", app.config["RECAPTCHA_PUBLIC_KEY"].startswith("6Lf") if app.config["RECAPTCHA_PUBLIC_KEY"] else "N/A")
+print("DEBUG: Comprimento da chave pública:", len(app.config["RECAPTCHA_PUBLIC_KEY"]) if app.config["RECAPTCHA_PUBLIC_KEY"] else 0)
+print("DEBUG: Comprimento da chave privada:", len(app.config["RECAPTCHA_PRIVATE_KEY"]) if app.config["RECAPTCHA_PRIVATE_KEY"] else 0)
 
 # Formulário de teste simples
 class TestForm(FlaskForm):
@@ -85,4 +92,5 @@ def test_recaptcha():
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Usar porta diferente para evitar conflito
+    app.run(debug=True, port=5050)
