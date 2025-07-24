@@ -1,6 +1,6 @@
 # routes/auth_routes.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -150,15 +150,17 @@ def mfa():
 def esqueci_senha_cpf():
     if request.method == 'POST':
         cpf = request.form.get('cpf')
+        current_app.logger.debug(f"CPF recebido: {cpf}")
         usuario = Usuario.query.filter_by(cpf=cpf).first()
+        
         if usuario:
+            current_app.logger.debug(f"Usuário encontrado: ID {usuario.id}, Email {usuario.email}")
             token = PasswordResetToken(
                 usuario_id=usuario.id,
                 expires_at=datetime.utcnow() + timedelta(hours=1)
             )
             db.session.add(token)
             db.session.commit()
-
             link = url_for('auth_routes.reset_senha_cpf', token=token.token, _external=True)
             msg = Message(
                 subject='Redefini\u00e7\u00e3o de Senha',
@@ -166,9 +168,13 @@ def esqueci_senha_cpf():
                 body=f'Acesse o link para redefinir sua senha: {link}'
             )
             try:
+                current_app.logger.debug("Tentando enviar email de redefinição de senha")
                 mail.send(msg)
-            except Exception:
-                pass
+                current_app.logger.debug("Email enviado com sucesso")
+            except Exception as e:
+                current_app.logger.exception("Erro ao enviar email")
+        else:
+            current_app.logger.debug("Nenhum usuário encontrado com o CPF informado")
         flash('Se o CPF estiver cadastrado, enviamos um link para o e-mail associado.', 'info')
         return redirect(url_for('auth_routes.login'))
     return render_template("esqueci_senha_cpf.html")
