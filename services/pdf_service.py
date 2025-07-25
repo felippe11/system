@@ -3342,6 +3342,7 @@ import requests
 from reportlab.lib.units import inch
 import os
 import base64
+import json
 import google.auth
 import google.auth.transport.requests
 from google.oauth2.credentials import Credentials
@@ -3384,6 +3385,8 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 TOKEN_FILE = "token.json"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+TOKEN_ENV_VAR = "GMAIL_TOKEN"
+TOKEN_FILE_ENV_VAR = "GMAIL_TOKEN_FILE"
 
 if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     raise EnvironmentError(
@@ -3709,43 +3712,42 @@ def gerar_qr_code_inscricao(token):
     img.save(img_path)
     return img_path
 
-def obter_credenciais():
-    """Autentica e retorna credenciais OAuth 2.0 para envio de e-mails"""
+def obter_credenciais(token_file: str | None = None):
+    """Retorna credenciais OAuth 2.0 para envio de e-mails sem interação."""
+    token_file = token_file or os.getenv(TOKEN_FILE_ENV_VAR, TOKEN_FILE)
+
     creds = None
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    token_data = os.getenv(TOKEN_ENV_VAR)
+    if token_data:
+        try:
+            info = json.loads(token_data)
+            creds = Credentials.from_authorized_user_info(info, SCOPES)
+        except Exception as exc:  # pragma: no cover - log and continue
+            logger.error("Erro ao carregar token do env %s: %s", TOKEN_ENV_VAR, exc)
+
+    if not creds and token_file and os.path.exists(token_file):
+        try:
+            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        except Exception as exc:  # pragma: no cover - log and continue
+            logger.error("Erro ao ler token file %s: %s", token_file, exc)
+
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            if token_file:
+                with open(token_file, "w") as token:
+                    token.write(creds.to_json())
+        except Exception as exc:  # pragma: no cover - log and continue
+            logger.error("Erro ao atualizar credenciais OAuth: %s", exc)
+            return None
 
     if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-                logger.error("Variaveis GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nao estao definidas.")
-                return None
-
-            flow = InstalledAppFlow.from_client_config(
-                {
-                    "installed": {
-                        "client_id": GOOGLE_CLIENT_ID,
-                        "client_secret": GOOGLE_CLIENT_SECRET,
-                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                        "token_uri": "https://oauth2.googleapis.com/token",
-                        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs"
-                    }
-                },
-                SCOPES,
-                redirect_uri="https://appfiber.com.br/",
-            )
-
-            # Exibir o link de autenticacao manualmente
-            auth_url, _ = flow.authorization_url(prompt="consent")
-            print(f"\ud83d\udd17 Acesse este link para autenticacao manual:\n{auth_url}")
-
-            # Executar autenticacao manual (esperar codigo do usuario)
-            creds = flow.run_console()
-
-        with open(TOKEN_FILE, "w") as token:
-            token.write(creds.to_json())
+        logger.error(
+            "Nenhuma credencial OAuth valida encontrada. Gere um refresh token manualmente e defina em %s ou salve no arquivo %s.",
+            TOKEN_ENV_VAR,
+            token_file,
+        )
+        return None
 
     return creds
 

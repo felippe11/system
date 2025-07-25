@@ -2,13 +2,14 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_mail import Message
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 import pyotp
+import logging
 
 from models import Usuario, Ministrante, Cliente, PasswordResetToken
-from extensions import login_manager, db, mail
+from extensions import login_manager, db
+from utils import enviar_email
 from forms import PublicClienteForm
 from utils.security import password_is_strong
 
@@ -17,6 +18,8 @@ auth_routes = Blueprint(
     __name__,
     template_folder="../templates/auth"
 )
+
+logger = logging.getLogger(__name__)
 
 # =======================================
 # Função de carregamento de usuário
@@ -187,11 +190,17 @@ def esqueci_senha_cpf():
             return render_template("esqueci_senha_cpf.html")
         
         cpf = request.form.get('cpf')
-        current_app.logger.debug(f"CPF recebido: {cpf}")
+        logger.info("CPF recebido: ***%s", cpf[-4:])
         usuario = Usuario.query.filter_by(cpf=cpf).first()
-        
+
         if usuario:
-            current_app.logger.debug(f"Usuário encontrado: ID {usuario.id}, Email {usuario.email}")
+            masked_email_parts = usuario.email.split("@")
+            masked_email = masked_email_parts[0][:2] + "***@" + masked_email_parts[1]
+            logger.info(
+                "Usuário encontrado: ID %s, Email %s",
+                usuario.id,
+                masked_email,
+            )
             token = PasswordResetToken(
                 usuario_id=usuario.id,
                 expires_at=datetime.utcnow() + timedelta(hours=1)
@@ -199,19 +208,22 @@ def esqueci_senha_cpf():
             db.session.add(token)
             db.session.commit()
             link = url_for('auth_routes.reset_senha_cpf', token=token.token, _external=True)
-            msg = Message(
-                subject='Redefini\u00e7\u00e3o de Senha',
-                recipients=[usuario.email],
-                body=f'Acesse o link para redefinir sua senha: {link}'
-            )
+            assunto = 'Redefini\u00e7\u00e3o de Senha'
+            corpo_texto = f'Acesse o link para redefinir sua senha: {link}'
             try:
-                current_app.logger.debug("Tentando enviar email de redefinição de senha")
-                mail.send(msg)
-                current_app.logger.debug("Email enviado com sucesso")
+                logger.info("Tentando enviar email de redefinição de senha via OAuth")
+                enviar_email(
+                    destinatario=usuario.email,
+                    nome_participante=usuario.nome,
+                    nome_oficina='',
+                    assunto=assunto,
+                    corpo_texto=corpo_texto,
+                )
+                logger.info("Email enviado com sucesso")
             except Exception as e:
-                current_app.logger.exception("Erro ao enviar email")
+                logger.exception("Erro ao enviar email: %s", e)
         else:
-            current_app.logger.debug("Nenhum usuário encontrado com o CPF informado")
+            logger.warning("Nenhum usuário encontrado com o CPF informado")
         flash('Se o CPF estiver cadastrado, enviamos um link para o e-mail associado.', 'info')
         return redirect(url_for('auth_routes.login'))
     return render_template("esqueci_senha_cpf.html")
