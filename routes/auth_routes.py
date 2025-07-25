@@ -5,6 +5,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 import pyotp
+import logging
 
 from models import Usuario, Ministrante, Cliente, PasswordResetToken
 from extensions import login_manager, db
@@ -17,6 +18,8 @@ auth_routes = Blueprint(
     __name__,
     template_folder="../templates/auth"
 )
+
+logger = logging.getLogger(__name__)
 
 # =======================================
 # Função de carregamento de usuário
@@ -150,11 +153,17 @@ def mfa():
 def esqueci_senha_cpf():
     if request.method == 'POST':
         cpf = request.form.get('cpf')
-        print(f"CPF recebido: {cpf}")
+        logger.info("CPF recebido: ***%s", cpf[-4:])
         usuario = Usuario.query.filter_by(cpf=cpf).first()
 
         if usuario:
-            print(f"Usuário encontrado: ID {usuario.id}, Email {usuario.email}")
+            masked_email_parts = usuario.email.split("@")
+            masked_email = masked_email_parts[0][:2] + "***@" + masked_email_parts[1]
+            logger.info(
+                "Usuário encontrado: ID %s, Email %s",
+                usuario.id,
+                masked_email,
+            )
             token = PasswordResetToken(
                 usuario_id=usuario.id,
                 expires_at=datetime.utcnow() + timedelta(hours=1)
@@ -165,7 +174,7 @@ def esqueci_senha_cpf():
             assunto = 'Redefini\u00e7\u00e3o de Senha'
             corpo_texto = f'Acesse o link para redefinir sua senha: {link}'
             try:
-                print("Tentando enviar email de redefinição de senha via OAuth")
+                logger.info("Tentando enviar email de redefinição de senha via OAuth")
                 enviar_email(
                     destinatario=usuario.email,
                     nome_participante=usuario.nome,
@@ -173,11 +182,11 @@ def esqueci_senha_cpf():
                     assunto=assunto,
                     corpo_texto=corpo_texto,
                 )
-                print("Email enviado com sucesso")
+                logger.info("Email enviado com sucesso")
             except Exception as e:
-                print(f"Erro ao enviar email: {e}")
+                logger.exception("Erro ao enviar email: %s", e)
         else:
-            print("Nenhum usuário encontrado com o CPF informado")
+            logger.warning("Nenhum usuário encontrado com o CPF informado")
         flash('Se o CPF estiver cadastrado, enviamos um link para o e-mail associado.', 'info')
         return redirect(url_for('auth_routes.login'))
     return render_template("esqueci_senha_cpf.html")
