@@ -2,13 +2,13 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from flask_mail import Message
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
 import pyotp
 
 from models import Usuario, Ministrante, Cliente, PasswordResetToken
-from extensions import login_manager, db, mail
+from extensions import login_manager, db
+from utils import enviar_email
 from forms import PublicClienteForm
 from utils.security import password_is_strong
 
@@ -162,14 +162,17 @@ def esqueci_senha_cpf():
             db.session.add(token)
             db.session.commit()
             link = url_for('auth_routes.reset_senha_cpf', token=token.token, _external=True)
-            msg = Message(
-                subject='Redefini\u00e7\u00e3o de Senha',
-                recipients=[usuario.email],
-                body=f'Acesse o link para redefinir sua senha: {link}'
-            )
+            assunto = 'Redefini\u00e7\u00e3o de Senha'
+            corpo_texto = f'Acesse o link para redefinir sua senha: {link}'
             try:
-                print("Tentando enviar email de redefinição de senha")
-                mail.send(msg)
+                print("Tentando enviar email de redefinição de senha via OAuth")
+                enviar_email(
+                    destinatario=usuario.email,
+                    nome_participante=usuario.nome,
+                    nome_oficina='',
+                    assunto=assunto,
+                    corpo_texto=corpo_texto,
+                )
                 print("Email enviado com sucesso")
             except Exception as e:
                 print(f"Erro ao enviar email: {e}")
