@@ -20,3 +20,5 @@ app.db
 
 # Uploaded files
 uploads/
+token.json
+
