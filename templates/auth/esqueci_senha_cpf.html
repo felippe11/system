@@ -321,9 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (isValidCPF(cpfInput.value)) {
-      // Aqui você adicionaria a lógica para enviar o formulário
-      console.log('Formulário enviado com CPF válido.');
-      alert('Um link para redefinição de senha foi enviado para o seu e-mail.');
+      setValid('CPF válido.');
+      form.submit();
     } else {
       setInvalid('Por favor, insira um CPF válido para continuar.');
     }
