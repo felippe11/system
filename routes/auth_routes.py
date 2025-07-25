@@ -149,6 +149,43 @@ def mfa():
 @auth_routes.route('/esqueci_senha_cpf', methods=['GET', 'POST'])
 def esqueci_senha_cpf():
     if request.method == 'POST':
+        # Verificar reCAPTCHA v3
+        recaptcha_response = request.form.get('g-recaptcha-response', '')
+        if not recaptcha_response:
+            flash('Erro na verificação de segurança. Por favor, tente novamente.', 'danger')
+            return render_template("esqueci_senha_cpf.html")
+        
+        # Verificação manual do reCAPTCHA v3
+        import requests
+        recaptcha_secret = current_app.config.get('RECAPTCHA_PRIVATE_KEY', '')
+        verify_url = 'https://www.google.com/recaptcha/api/siteverify'
+        
+        try:
+            r = requests.post(verify_url, {
+                'secret': recaptcha_secret,
+                'response': recaptcha_response,
+                'remoteip': request.remote_addr
+            })
+            result = r.json()
+            
+            if result.get('success'):
+                score = result.get('score', 0.0)
+                action = result.get('action', '')
+                current_app.logger.info(f"reCAPTCHA v3 score: {score}, action: {action}")
+                
+                if score < 0.5:  # Valor típico para pontuação mínima
+                    flash('Verificação de segurança falhou. Por favor, tente novamente.', 'danger')
+                    current_app.logger.warning(f"reCAPTCHA v3 score baixo: {score} para IP {request.remote_addr}")
+                    return render_template("esqueci_senha_cpf.html")
+            else:
+                flash('Erro na verificação de segurança. Por favor, tente novamente.', 'danger')
+                current_app.logger.error(f"reCAPTCHA v3 falhou: {result.get('error-codes', [])}")
+                return render_template("esqueci_senha_cpf.html")
+        except Exception as e:
+            flash('Erro no servidor. Por favor, tente novamente.', 'danger')
+            current_app.logger.error(f"Erro ao verificar reCAPTCHA v3: {str(e)}")
+            return render_template("esqueci_senha_cpf.html")
+        
         cpf = request.form.get('cpf')
         current_app.logger.debug(f"CPF recebido: {cpf}")
         usuario = Usuario.query.filter_by(cpf=cpf).first()
@@ -226,16 +263,121 @@ def logout():
 def cadastrar_cliente_publico():
     form = PublicClienteForm()
     
+    # Registrar informações importantes no log para diagnóstico
+    current_app.logger.info("========== INÍCIO DIAGNÓSTICO RECAPTCHA ==========")
+    current_app.logger.info(f"Método da requisição: {request.method}")
+    current_app.logger.info(f"User-Agent: {request.headers.get('User-Agent')}")
+    current_app.logger.info(f"Referer: {request.headers.get('Referer')}")
+    current_app.logger.info(f"Configuração reCAPTCHA - Chave pública configurada: {bool(current_app.config.get('RECAPTCHA_PUBLIC_KEY'))}")
+    current_app.logger.info(f"Configuração reCAPTCHA - Chave privada configurada: {bool(current_app.config.get('RECAPTCHA_PRIVATE_KEY'))}")
+    current_app.logger.info("========== FIM DIAGNÓSTICO RECAPTCHA ==========")
+    
     if request.method == 'POST':
+        # Primeiro, registrar todos os campos do formulário para diagnóstico completo
+        current_app.logger.info("========== DIAGNÓSTICO DO FORMULÁRIO ==========")
+        form_data = {k: (v[:20] + '...' if k != 'g-recaptcha-response' and isinstance(v, str) and len(v) > 20 else v) 
+                     for k, v in request.form.items()}
+        current_app.logger.info(f"Campos presentes: {', '.join(form_data.keys())}")
+        current_app.logger.info(f"Content-Type: {request.content_type}")
+        current_app.logger.info(f"Tamanho do corpo da requisição: {request.content_length} bytes")
+        current_app.logger.info("========== FIM DIAGNÓSTICO DO FORMULÁRIO ==========")
+        
+        # Captura a resposta do reCAPTCHA v3
+        recaptcha_response = request.form.get('g-recaptcha-response', '')
+        recaptcha_valid = True
+        
+        # Log das informações recebidas para debug
+        current_app.logger.info("========== DIAGNÓSTICO TOKEN RECAPTCHA ==========")
+        if recaptcha_response:
+            current_app.logger.info(f"Token recaptcha recebido: {recaptcha_response[:20]}... (Tamanho: {len(recaptcha_response)})")
+        else:
+            current_app.logger.warning("ALERTA: Token recaptcha NÃO encontrado na requisição!")
+            # Imprimir headers para diagnóstico
+            current_app.logger.info(f"Headers: {dict(request.headers)}")
+        current_app.logger.info("========== FIM DIAGNÓSTICO TOKEN RECAPTCHA ==========")
+        
+        # MODO DIAGNÓSTICO: Se não encontrar o token reCAPTCHA, 
+        # prossegue mesmo assim, mas registra o problema
+        if not recaptcha_response:
+            current_app.logger.warning("MODO DIAGNÓSTICO: Permitindo cadastro sem reCAPTCHA para diagnóstico")
+            flash('Aviso: Verificação de segurança (reCAPTCHA) não foi enviada pelo seu navegador. O cadastro será permitido em modo de diagnóstico.', 'warning')
+            # Em produção, descomente estas linhas:
+            # recaptcha_valid = False
+            # flash('Verificação de segurança ausente. Por favor, tente novamente.', 'danger')
+            # return render_template('auth/cadastrar_cliente_publico.html', form=form)
+        else:
+            # Verificação manual do reCAPTCHA v3
+            import requests
+            recaptcha_secret = current_app.config.get('RECAPTCHA_PRIVATE_KEY', '')
+            
+            # Verificar se a chave privada está configurada
+            if not recaptcha_secret:
+                recaptcha_valid = False
+                flash('Erro de configuração do servidor. Por favor, contate o suporte.', 'danger')
+                current_app.logger.error("ERRO CRÍTICO: RECAPTCHA_PRIVATE_KEY não está configurada")
+                return render_template('auth/cadastrar_cliente_publico.html', form=form)
+                
+            current_app.logger.debug(f"Chave secreta configurada (tamanho: {len(recaptcha_secret)})")
+            verify_url = 'https://www.google.com/recaptcha/api/siteverify'
+            
+            try:
+                # Log dos dados que serão enviados
+                current_app.logger.debug(f"Enviando verificação para {verify_url}")
+                
+                # Realizar a solicitação
+                verify_data = {
+                    'secret': recaptcha_secret,
+                    'response': recaptcha_response,
+                    'remoteip': request.remote_addr
+                }
+                
+                r = requests.post(verify_url, data=verify_data)
+                
+                # Verificar resposta HTTP
+                if r.status_code != 200:
+                    recaptcha_valid = False
+                    flash(f'Erro na API do reCAPTCHA (HTTP {r.status_code})', 'danger')
+                    current_app.logger.error(f"Erro HTTP na verificação do reCAPTCHA: {r.status_code}, {r.text}")
+                    return render_template('auth/cadastrar_cliente_publico.html', form=form)
+                
+                # Analisar resultado
+                result = r.json()
+                current_app.logger.debug(f"Resposta da API do reCAPTCHA: {result}")
+                
+                # Para v3, precisamos verificar a pontuação
+                if result.get('success'):
+                    score = result.get('score', 0.0)
+                    action = result.get('action', '')
+                    
+                    # Registrar o score para fins de diagnóstico
+                    current_app.logger.info(f"reCAPTCHA v3 score: {score}, action: {action}")
+                    
+                    # Temporariamente, aceite qualquer pontuação para diagnóstico
+                    if score < 0.1:  # Valor muito baixo apenas para casos extremos
+                        recaptcha_valid = False
+                        flash(f'Pontuação de segurança muito baixa ({score}). Por favor, tente novamente.', 'danger')
+                        current_app.logger.warning(f"reCAPTCHA v3 score baixo: {score} para IP {request.remote_addr}")
+                    else:
+                        current_app.logger.info(f"reCAPTCHA v3 validado com sucesso, score: {score}")
+                else:
+                    recaptcha_valid = False
+                    error_codes = result.get('error-codes', [])
+                    error_msg = ', '.join(error_codes) if error_codes else 'Erro desconhecido'
+                    flash(f'Erro na verificação de segurança: {error_msg}', 'danger')
+                    current_app.logger.error(f"reCAPTCHA v3 falhou: {error_codes}")
+            except Exception as e:
+                recaptcha_valid = False
+                current_app.logger.exception(f"Exceção ao verificar reCAPTCHA v3: {str(e)}")
+                flash(f'Erro no servidor: {str(e)}', 'danger')
+        
+        if not recaptcha_valid:
+            return render_template('auth/cadastrar_cliente_publico.html', form=form)
+        
+        # Validar o resto do formulário
         if not form.validate():
-            # Verificar especificamente erros do reCAPTCHA
-            if form.recaptcha.errors:
-                erro_captcha = form.recaptcha.errors[0] if form.recaptcha.errors else "Falha na validação do CAPTCHA"
-                flash(f'Erro no CAPTCHA: {erro_captcha}', 'danger')
-            else:
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        flash(f'Erro no campo {field}: {error}', 'danger')
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f'Erro no campo {field}: {error}', 'danger')
         
         # Caso o formulário seja válido
         elif form.validate_on_submit():

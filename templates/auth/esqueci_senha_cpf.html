@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Esqueci Minha Senha{% endblock %}
 
+{% block styles %}
+  {{ super() }}
+  <script src="https://www.google.com/recaptcha/api.js?render={{ config.get('RECAPTCHA_PUBLIC_KEY', '') }}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="page-container">
   <div class="forgot-password-card">
@@ -23,6 +28,9 @@
           </div>
           <div class="feedback-message" id="cpfFeedback"></div>
         </div>
+        <!-- Campo oculto para o token do reCAPTCHA -->
+        <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+        
         <div class="d-grid">
           <button type="submit" class="btn-submit" id="btnSubmit">
             <span>Verificar CPF</span>
@@ -245,6 +253,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const cpfFeedback = document.getElementById('cpfFeedback');
   const cpfIcon = document.getElementById('cpfIcon');
   const form = document.getElementById('recuperarSenhaForm');
+  const submitBtn = document.getElementById('btnSubmit');
+  const loadingSpinner = submitBtn.querySelector('.spinner-border');
 
   cpfInput.addEventListener('input', (e) => {
     let value = e.target.value.replace(/\D/g, '');
@@ -319,14 +329,41 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   form.addEventListener('submit', (e) => {
+    // Evita o envio imediato do formulário
     e.preventDefault();
-    if (isValidCPF(cpfInput.value)) {
-      // Aqui você adicionaria a lógica para enviar o formulário
-      console.log('Formulário enviado com CPF válido.');
-      alert('Um link para redefinição de senha foi enviado para o seu e-mail.');
-    } else {
+    
+    if (!isValidCPF(cpfInput.value)) {
       setInvalid('Por favor, insira um CPF válido para continuar.');
+      return;
     }
+    
+    // Mostra o spinner de carregamento
+    submitBtn.setAttribute('disabled', 'disabled');
+    loadingSpinner.classList.remove('d-none');
+    
+    // Execute reCAPTCHA v3
+    grecaptcha.ready(function() {
+      grecaptcha.execute('{{ config.get("RECAPTCHA_PUBLIC_KEY", "") }}', {action: 'recuperar_senha'})
+        .then(function(token) {
+          // Adiciona o token ao formulário
+          document.getElementById('g-recaptcha-response').value = token;
+          
+          // Envia o formulário
+          form.submit();
+        })
+        .catch(function(error) {
+          console.error('Erro no reCAPTCHA:', error);
+          // Exibe mensagem de erro
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'alert alert-danger mt-3';
+          errorDiv.textContent = 'Erro na verificação de segurança. Por favor, tente novamente.';
+          form.insertBefore(errorDiv, submitBtn.parentNode);
+          
+          // Reativa o botão
+          submitBtn.removeAttribute('disabled');
+          loadingSpinner.classList.add('d-none');
+        });
+    });
   });
 });
 </script>

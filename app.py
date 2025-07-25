@@ -60,8 +60,15 @@ def create_app():
 
     # Registro de rotas
     from routes import register_routes
-
     register_routes(app)
+    
+    # Registro de rotas de diagnóstico (remova ou comente em produção se necessário)
+    try:
+        from routes.debug_recaptcha_routes import debug_recaptcha_routes
+        app.register_blueprint(debug_recaptcha_routes)
+        app.logger.info("Rotas de diagnóstico de reCAPTCHA registradas - REMOVER EM PRODUÇÃO")
+    except ImportError as e:
+        app.logger.warning(f"Não foi possível carregar rotas de diagnóstico: {e}")
 
     with app.app_context():
         db.create_all()
