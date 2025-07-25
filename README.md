@@ -18,6 +18,8 @@ export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
 export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
 export DB_ONLINE="<url_do_banco_online>"
 export DB_LOCAL="<url_do_banco_local>"
+export GMAIL_TOKEN="{\"token\":\"...\"}"  # opcional se nao usar token.json
+export GMAIL_TOKEN_FILE="/caminho/para/token.json"  # opcional, padrao token.json
 ```
 
 As variáveis `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` são **obrigatórias**
@@ -56,8 +58,17 @@ ser lidas por outra. Em produção, utilize um valor seguro e idêntico em todas
 réplicas do aplicativo.
 
 Essas variaveis substituem o antigo arquivo `credentials.json` utilizado para a
-autenticacao com a API do Gmail. O arquivo `token.json` sera gerado apos a
-primeira autenticacao.
+autenticacao com a API do Gmail.
+
+Para enviar e-mails sem interacao manual, gere um **refresh token** no
+[OAuth Playground](https://developers.google.com/oauthplayground). Clique no
+icone de engrenagem, marque "Use your own OAuth credentials" e informe seu
+`GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`. Selecione o escopo
+`https://www.googleapis.com/auth/gmail.send`, autorize e troque o codigo por um
+token. Salve o JSON de resposta em um arquivo `token.json` ou defina o conteudo
+na variavel `GMAIL_TOKEN`. A aplicacao carregara essas credenciais
+automaticamente, permitindo o envio de e-mails sem solicitar codigo de
+autorizacao.
 
 `APP_BASE_URL` define a URL base para gerar links externos, como o `notification_url` do Mercado Pago. Em desenvolvimento, aponte para um endereço público (ex.: URL do ngrok).
 
