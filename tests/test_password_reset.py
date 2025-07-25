@@ -4,11 +4,16 @@ Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
 from app import create_app
-from extensions import db, mail
+from extensions import db
+import os
+
+os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
+os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
+
+import utils
 from models import Usuario, PasswordResetToken
 from werkzeug.security import generate_password_hash
 import pytest
-import os
 
 @pytest.fixture
 def app():
@@ -33,16 +38,17 @@ def client(app):
 def test_password_reset_flow(client, app, monkeypatch):
     sent = {}
 
-    def fake_send(msg):
-        sent['msg'] = msg
+    def fake_send(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
+        sent['dest'] = destinatario
+        sent['assunto'] = assunto
+        sent['body'] = corpo_texto
 
-    monkeypatch.setattr(mail, 'send', fake_send)
+    monkeypatch.setattr('routes.auth_routes.enviar_email', fake_send)
 
     client.post('/esqueci_senha_cpf', data={'cpf': '123'}, follow_redirects=True)
-    assert 'msg' in sent
-    body = sent['msg'].body
-    assert 'token=' in body
-    token = body.split('token=')[1].strip()
+    assert 'body' in sent
+    assert 'token=' in sent['body']
+    token = sent['body'].split('token=')[1].strip()
 
     resp = client.post(f'/reset_senha_cpf?token={token}', data={
         'token': token,
