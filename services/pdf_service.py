@@ -3739,11 +3739,13 @@ def obter_credenciais():
 
             # Exibir o link de autenticacao manualmente
             auth_url, _ = flow.authorization_url(prompt="consent")
-            # replace the surrogate pair with the actual character
             print(f"🔗 Acesse este link para autenticacao manual:\n{auth_url}")
 
             # Executar autenticacao manual (esperar codigo do usuario)
-            creds = flow.run_console()
+            flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
+            code = input("Digite o codigo de autorizacao: ")
+            flow.fetch_token(code=code)
+            creds = flow.credentials
 
         with open(TOKEN_FILE, "w") as token:
             token.write(creds.to_json())
