@@ -430,71 +430,44 @@ def obter_credenciais(token_file: str | None = None):
 
 
 def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
-    """Envia um e-mail personalizado via API do Gmail usando OAuth 2.0"""
-    creds = obter_credenciais()
+    """Envia um e-mail utilizando o serviço Mailjet."""
+    from services.mailjet_service import send_via_mailjet
 
-    if not creds or not creds.valid:
-        logger.error("❌ Erro ao obter credenciais OAuth 2.0.")
-        return
+    corpo_html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+            <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
+            <p>Olá, <b>{nome_participante}</b>!</p>
+            <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
+            <p>Aguardamos você no evento!</p>
 
-    try:
-        # Criar o serviço Gmail API
-        service = build("gmail", "v1", credentials=creds)
-
-        remetente = "seuemail@gmail.com"  # Substitua pelo seu e-mail
-
-        # Criar corpo do e-mail em HTML
-        corpo_html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-                <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
-                <p>Olá, <b>{nome_participante}</b>!</p>
-                <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
-                <p>Aguardamos você no evento!</p>
-                
-                <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
-                    <p><b>Detalhes da Oficina:</b></p>
-                    <p><b>Nome:</b> {nome_oficina}</p>
-                </div>
-
-                <p>Caso tenha dúvidas, entre em contato conosco.</p>
-                <p style="text-align: center;">
-                    <b>Equipe Organizadora</b>
-                </p>
+            <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
+                <p><b>Detalhes da Oficina:</b></p>
+                <p><b>Nome:</b> {nome_oficina}</p>
             </div>
-        </body>
-        </html>
-        """
 
-        msg = MIMEMultipart()
-        msg["From"] = remetente
-        msg["To"] = destinatario
-        msg["Subject"] = assunto
+            <p>Caso tenha dúvidas, entre em contato conosco.</p>
+            <p style="text-align: center;">
+                <b>Equipe Organizadora</b>
+            </p>
+        </div>
+    </body>
+    </html>
+    """
 
-        # Adiciona corpo em texto puro e HTML
-        msg.attach(MIMEText(corpo_texto, "plain"))
-        msg.attach(MIMEText(corpo_html, "html"))
-
-        # Adiciona anexo se existir
-        if anexo_path:
-            with open(anexo_path, "rb") as anexo:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(anexo.read())
-                encoders.encode_base64(part)
-                part.add_header("Content-Disposition", f"attachment; filename={os.path.basename(anexo_path)}")
-                msg.attach(part)
-
-        # Converte a mensagem para base64
-        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
-        message = {"raw": raw_message}
-
-        # Enviar e-mail via Gmail API
-        enviado = service.users().messages().send(userId="me", body=message).execute()
-        logger.info(f"✅ E-mail enviado com sucesso para {destinatario}! ID: {enviado['id']}")
-
-    except HttpError as error:
-        logger.error(f"❌ ERRO ao enviar e-mail: {error}", exc_info=True)
+    attachments = [anexo_path] if anexo_path else None
+    try:
+        send_via_mailjet(
+            to_email=destinatario,
+            subject=assunto,
+            text=corpo_texto,
+            html=corpo_html,
+            attachments=attachments,
+        )
+        logger.info("✅ E-mail enviado com sucesso para %s", destinatario)
+    except Exception as error:  # pragma: no cover - log and continue
+        logger.error("❌ ERRO ao enviar e-mail: %s", error, exc_info=True)
         
 
 def gerar_certificado_personalizado(usuario, oficinas, total_horas, texto_personalizado, template_conteudo, cliente):

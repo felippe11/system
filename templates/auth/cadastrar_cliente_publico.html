@@ -2,6 +2,18 @@
 
 {% block title %}Cadastrar Cliente{% endblock %}
 
+{% block styles %}
+  {{ super() }}
+  <script>
+    // Verifica se há algum problema com as chaves antes de carregar o reCAPTCHA
+    console.log("Chave reCAPTCHA configurada:", {{ "true" if config.get('RECAPTCHA_PUBLIC_KEY') else "false" }});
+    console.log("Tamanho da chave:", {{ config.get('RECAPTCHA_PUBLIC_KEY')|length if config.get('RECAPTCHA_PUBLIC_KEY') else 0 }});
+  </script>
+  <script src="https://www.google.com/recaptcha/api.js?render={{ config.get('RECAPTCHA_PUBLIC_KEY', '') }}" 
+          onerror="console.error('Falha ao carregar script do reCAPTCHA');"
+          onload="console.log('Script reCAPTCHA carregado com sucesso');"></script>
+{% endblock %}
+
 {% block content %}
 <section class="bg-light py-5">
   <div class="container">
@@ -29,23 +41,196 @@
             <label for="senha"><i class="fas fa-lock me-2"></i>Senha</label>
           </div>
 
-          <div class="mb-4 text-center">
-            {{ form.recaptcha }}
-            {% if form.recaptcha.errors %}
-              <div class="alert alert-danger mt-2">
-                {% for error in form.recaptcha.errors %}
-                  {{ error }}
-                {% endfor %}
-              </div>
-            {% endif %}
-          </div>
+          <!-- reCAPTCHA v3 não tem interface visível -->
+          <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+          {% if form.errors.get('recaptcha', []) %}
+            <div class="alert alert-danger mt-2">
+              {% for error in form.errors.get('recaptcha', []) %}
+                {{ error }}
+              {% endfor %}
+            </div>
+          {% endif %}
 
-          <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm">
+          <button type="submit" id="submit-btn" class="btn btn-primary btn-lg w-100 shadow-sm">
             <i class="fas fa-user-plus me-2"></i>Cadastrar 
+            <span class="spinner-border spinner-border-sm d-none" id="loading-spinner" role="status"></span>
           </button>
         </form>
       </div>
     </div>
   </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Elementos do DOM
+  const form = document.querySelector('form');
+  const submitBtn = document.getElementById('submit-btn');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const recaptchaResponse = document.getElementById('g-recaptcha-response');
+
+  // Contador para diagnóstico
+  let tentativas = 0;
+  let tokenObtido = false;
+
+  // Chave do reCAPTCHA
+  const siteKey = '{{ config.get("RECAPTCHA_PUBLIC_KEY", "") }}';
+  if (!siteKey) {
+    console.error("ERRO: Chave do reCAPTCHA não está configurada");
+  } else {
+    console.log("Chave do reCAPTCHA configurada:", siteKey.substring(0, 5) + "...");
+  }
+
+  // Função para verificar se o objeto grecaptcha está disponível
+  function verificarRecaptcha() {
+    return new Promise((resolve) => {
+      const maxChecks = 20;
+      let checks = 0;
+      
+      function check() {
+        checks++;
+        console.log(`Verificação #${checks}: Verificando se o grecaptcha está disponível...`);
+        
+        if (window.grecaptcha && window.grecaptcha.ready) {
+          console.log("✓ grecaptcha.ready está disponível");
+          resolve(true);
+          return;
+        }
+        
+        if (checks >= maxChecks) {
+          console.error(`✗ grecaptcha.ready não disponível após ${maxChecks} tentativas`);
+          resolve(false);
+          return;
+        }
+        
+        setTimeout(check, 250);
+      }
+      
+      check();
+    });
+  }
+
+  // Função para obter o token do reCAPTCHA
+  function obterTokenRecaptcha(acao = "cadastro_cliente") {
+    tentativas++;
+    
+    return new Promise((resolve, reject) => {
+      if (!window.grecaptcha) {
+        console.error("ERRO: O objeto grecaptcha não está disponível");
+        reject(new Error("reCAPTCHA não carregado"));
+        return;
+      }
+      
+      if (!window.grecaptcha.ready) {
+        console.error("ERRO: O método grecaptcha.ready não está disponível");
+        reject(new Error("reCAPTCHA carregado incorretamente"));
+        return;
+      }
+      
+      try {
+        console.log(`Tentativa #${tentativas}: Iniciando grecaptcha.ready()`);
+        
+        window.grecaptcha.ready(function() {
+          try {
+            console.log(`Tentativa #${tentativas}: Executando grecaptcha.execute() para ação "${acao}"`);
+            
+            window.grecaptcha.execute(siteKey, {action: acao})
+              .then(function(token) {
+                tokenObtido = true;
+                console.log(`Tentativa #${tentativas}: Token obtido com sucesso! Tamanho: ${token.length}`);
+                console.log(`Tentativa #${tentativas}: Início do token: ${token.substring(0, 20)}...`);
+                
+                // Armazenar token no campo hidden
+                recaptchaResponse.value = token;
+                console.log(`Tentativa #${tentativas}: Token armazenado no campo do formulário`);
+                
+                resolve(token);
+              })
+              .catch(function(error) {
+                console.error(`Tentativa #${tentativas}: Erro no grecaptcha.execute():`, error);
+                reject(error);
+              });
+          } catch (error) {
+            console.error(`Tentativa #${tentativas}: Exceção no grecaptcha.execute():`, error);
+            reject(error);
+          }
+        });
+      } catch (error) {
+        console.error(`Tentativa #${tentativas}: Exceção no grecaptcha.ready():`, error);
+        reject(error);
+      }
+    });
+  }
+
+  // Iniciar token ao carregar a página
+  console.log("Aguardando carregamento do reCAPTCHA...");
+  verificarRecaptcha().then(disponivel => {
+    if (disponivel) {
+      console.log("reCAPTCHA disponível, tentando obter token inicial");
+      obterTokenRecaptcha("carregamento_pagina")
+        .then(token => {
+          console.log("Token inicial obtido com sucesso!");
+        })
+        .catch(error => {
+          console.error("Falha ao obter token inicial:", error);
+        });
+    } else {
+      console.error("reCAPTCHA não está disponível após espera");
+    }
+  });
+
+  // Manipulador de envio do formulário
+  form.addEventListener('submit', function(e) {
+    // Prevenir envio imediato
+    e.preventDefault();
+    
+    // Mostrar indicador de carregamento
+    submitBtn.disabled = true;
+    loadingSpinner.classList.remove('d-none');
+    
+    console.log("Formulário enviando, verificando reCAPTCHA...");
+    
+    // Verificar se já temos um token armazenado
+    if (recaptchaResponse.value && recaptchaResponse.value.length > 50) {
+      console.log("Já existe um token armazenado no formulário:", 
+                 recaptchaResponse.value.substring(0, 20) + "...");
+      console.log("Enviando formulário com token existente");
+      form.submit();
+      return;
+    }
+    
+    // Verificar se o reCAPTCHA está disponível
+    verificarRecaptcha().then(disponivel => {
+      if (!disponivel) {
+        console.error("reCAPTCHA não está disponível, tentando enviar sem token");
+        form.submit();
+        return;
+      }
+      
+      // Obter novo token
+      obterTokenRecaptcha("envio_formulario")
+        .then(token => {
+          console.log("Token obtido para envio do formulário");
+          // Garantir que o token esteja no formulário (redundante, mas por segurança)
+          recaptchaResponse.value = token;
+          
+          // Pequeno delay antes de enviar para garantir que o valor foi definido
+          setTimeout(() => {
+            console.log("Enviando formulário com novo token");
+            console.log("Valor atual do campo:", recaptchaResponse.value.substring(0, 20) + "...");
+            form.submit();
+          }, 50);
+        })
+        .catch(error => {
+          console.error("Erro ao obter token para envio:", error);
+          
+          // Mesmo com erro, tentar enviar o formulário
+          // O servidor irá lidar com a ausência do token
+          console.log("Tentando enviar formulário mesmo sem token válido");
+          form.submit();
+        });
+    });
+  });
+});
+</script>
 {% endblock %}

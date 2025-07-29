@@ -4,8 +4,8 @@ import secrets
 import bcrypt
 from datetime import datetime, timedelta
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
-from extensions import db, mail
-from flask_mail import Message
+from extensions import db
+from services.mailjet_service import send_via_mailjet
 
 submission_routes = Blueprint('submission_routes', __name__)
 
@@ -29,9 +29,11 @@ def create_submission():
     db.session.commit()
 
     try:
-        msg = Message('Submission Access Code', recipients=[email])
-        msg.body = f'Locator: {locator}\nAccess code: {raw_code}'
-        mail.send(msg)
+        send_via_mailjet(
+            to_email=email,
+            subject='Submission Access Code',
+            text=f'Locator: {locator}\nAccess code: {raw_code}'
+        )
     except Exception:
         pass
 
