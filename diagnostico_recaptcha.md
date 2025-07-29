@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # Diagnóstico e Solução de Problemas do reCAPTCHA v3
 
 ## Ferramentas de Diagnóstico Criadas
@@ -66,7 +66,7 @@ Os logs de diagnóstico foram aprimorados para mostrar:
 1. Use a página ultra simples para isolar o problema
 2. Compare os resultados entre o teste simples e o formulário real
 3. Aplique as correções apropriadas com base no diagnóstico
-=======
+
 # Diagnóstico e Solução de Problemas do reCAPTCHA v3
 
 ## Ferramentas de Diagnóstico Criadas
@@ -134,4 +134,3 @@ Os logs de diagnóstico foram aprimorados para mostrar:
 1. Use a página ultra simples para isolar o problema
 2. Compare os resultados entre o teste simples e o formulário real
 3. Aplique as correções apropriadas com base no diagnóstico
->>>>>>> 7ff42beefed1ef065eba6d1af64dba2811a119d5
