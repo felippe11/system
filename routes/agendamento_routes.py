@@ -4,11 +4,11 @@ import os
 import threading
 from datetime import datetime, timedelta, date
 from flask import current_app, send_file, Response, abort
-from flask_mail import Message
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
-from extensions import db, mail
+from extensions import db
+from services.mailjet_service import send_via_mailjet
 import logging
 from utils.arquivo_utils import arquivo_permitido
 
@@ -65,15 +65,11 @@ class NotificacaoAgendamento:
             evento=evento
         )
         
-        # Criar mensagem
-        msg = Message(
-            subject=assunto,
-            recipients=[professor.email],
-            html=corpo_html
-        )
-        
         # Enviar em um thread separado para não bloquear a resposta ao usuário
-        thread = threading.Thread(target=NotificacaoAgendamento._enviar_email_async, args=[msg])
+        thread = threading.Thread(
+            target=NotificacaoAgendamento._enviar_email_async,
+            args=[professor.email, assunto, corpo_html]
+        )
         thread.start()
     
     @staticmethod
@@ -99,15 +95,11 @@ class NotificacaoAgendamento:
             evento=evento
         )
         
-        # Criar mensagem
-        msg = Message(
-            subject=assunto,
-            recipients=[professor.email],
-            html=corpo_html
-        )
-        
         # Enviar em um thread separado
-        thread = threading.Thread(target=NotificacaoAgendamento._enviar_email_async, args=[msg])
+        thread = threading.Thread(
+            target=NotificacaoAgendamento._enviar_email_async,
+            args=[professor.email, assunto, corpo_html]
+        )
         thread.start()
     
     @staticmethod
@@ -133,15 +125,11 @@ class NotificacaoAgendamento:
             evento=evento
         )
         
-        # Criar mensagem
-        msg = Message(
-            subject=assunto,
-            recipients=[professor.email],
-            html=corpo_html
-        )
-        
         # Enviar em um thread separado
-        thread = threading.Thread(target=NotificacaoAgendamento._enviar_email_async, args=[msg])
+        thread = threading.Thread(
+            target=NotificacaoAgendamento._enviar_email_async,
+            args=[professor.email, assunto, corpo_html]
+        )
         thread.start()
     
     @staticmethod
@@ -167,24 +155,20 @@ class NotificacaoAgendamento:
             evento=evento
         )
         
-        # Criar mensagem
-        msg = Message(
-            subject=assunto,
-            recipients=[cliente.email],
-            html=corpo_html
-        )
-        
         # Enviar em um thread separado
-        thread = threading.Thread(target=NotificacaoAgendamento._enviar_email_async, args=[msg])
+        thread = threading.Thread(
+            target=NotificacaoAgendamento._enviar_email_async,
+            args=[cliente.email, assunto, corpo_html]
+        )
         thread.start()
     
     @staticmethod
-    def _enviar_email_async(msg):
-        """
-        Função interna para enviar email de forma assíncrona
-        """
-        with mail.connect() as conn:
-            conn.send(msg)
+    def _enviar_email_async(dest, subject, html):
+        """Função interna para enviar email de forma assíncrona."""
+        try:
+            send_via_mailjet(to_email=dest, subject=subject, html=html)
+        except Exception:
+            pass
     
     @staticmethod
     def processar_lembretes_diarios():
