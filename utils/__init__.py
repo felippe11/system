@@ -429,32 +429,40 @@ def obter_credenciais(token_file: str | None = None):
     return creds
 
 
-def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
-    """Envia um e-mail utilizando o serviço Mailjet."""
+def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
+                 anexo_path=None, corpo_html=None):
+    """Envia um e-mail utilizando o serviço Mailjet.
+
+    Se ``corpo_html`` não for fornecido, utiliza um modelo simples de confirmação
+    de inscrição. Esse parâmetro permite personalizar o conteúdo HTML de e-mails
+    como a recuperação de senha, garantindo que o texto exibido ao usuário seja
+    adequado ao contexto.
+    """
     from services.mailjet_service import send_via_mailjet
 
-    corpo_html = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-            <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
-            <p>Olá, <b>{nome_participante}</b>!</p>
-            <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
-            <p>Aguardamos você no evento!</p>
+    if corpo_html is None:
+        corpo_html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #2C3E50; text-align: center;">Confirmação de Inscrição</h2>
+                <p>Olá, <b>{nome_participante}</b>!</p>
+                <p>Você se inscreveu com sucesso na oficina <b>{nome_oficina}</b>.</p>
+                <p>Aguardamos você no evento!</p>
 
-            <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
-                <p><b>Detalhes da Oficina:</b></p>
-                <p><b>Nome:</b> {nome_oficina}</p>
+                <div style="padding: 15px; background-color: #f4f4f4; border-left: 5px solid #3498db;">
+                    <p><b>Detalhes da Oficina:</b></p>
+                    <p><b>Nome:</b> {nome_oficina}</p>
+                </div>
+
+                <p>Caso tenha dúvidas, entre em contato conosco.</p>
+                <p style="text-align: center;">
+                    <b>Equipe Organizadora</b>
+                </p>
             </div>
-
-            <p>Caso tenha dúvidas, entre em contato conosco.</p>
-            <p style="text-align: center;">
-                <b>Equipe Organizadora</b>
-            </p>
-        </div>
-    </body>
-    </html>
-    """
+        </body>
+        </html>
+        """
 
     attachments = [anexo_path] if anexo_path else None
     try:
