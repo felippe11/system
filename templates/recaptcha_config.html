@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 {% extends "base.html" %}
 
 {% block title %}Diagnóstico de Configuração do reCAPTCHA{% endblock %}
@@ -45,51 +45,4 @@
   </div>
 </div>
 {% endblock %}
-=======
-{% extends "base.html" %}
 
-{% block title %}Diagnóstico de Configuração do reCAPTCHA{% endblock %}
-
-{% block content %}
-<div class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card shadow">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Diagnóstico de Configuração do reCAPTCHA</h2>
-        </div>
-        <div class="card-body">
-          <div class="alert alert-info">
-            <h5>Configuração do reCAPTCHA</h5>
-            <p><strong>Chave Pública (Variável de Ambiente):</strong> {{ env_public_key }}</p>
-            <p><strong>Chave Privada (Variável de Ambiente):</strong> {{ env_private_key }}</p>
-            <p><strong>Chave Pública (Config da Aplicação):</strong> {{ config_public_key }}</p>
-            <p><strong>Chave Privada (Config da Aplicação):</strong> {{ config_private_key }}</p>
-            <p><strong>API do reCAPTCHA Acessível:</strong> {{ "Sim" if recaptcha_accessible else "Não" }}</p>
-          </div>
-
-          <div class="alert alert-secondary">
-            <h5>Informações do Sistema</h5>
-            <ul>
-              {% for key, value in system_info.items() %}
-              <li><strong>{{ key }}:</strong> {{ value }}</li>
-              {% endfor %}
-            </ul>
-          </div>
-          
-          <div class="alert alert-warning">
-            <h5>Solução de Problemas</h5>
-            <ul>
-              <li>Verifique se as chaves do reCAPTCHA estão configuradas corretamente</li>
-              <li>Confirme que o servidor tem acesso à API do Google reCAPTCHA</li>
-              <li>Verifique os arquivos de log para mensagens de erro</li>
-              <li>Teste com a <a href="{{ url_for('debug_recaptcha_routes.teste_recaptcha_ultra_simples') }}" class="alert-link">Página de Teste Ultra Simplificada</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-{% endblock %}
->>>>>>> 7ff42beefed1ef065eba6d1af64dba2811a119d5
