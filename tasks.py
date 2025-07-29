@@ -19,7 +19,7 @@ celery.Task = FlaskTask
 
 @celery.task
 def send_email_task(*args, **kwargs):
-    from services.pdf_service import enviar_email
+    from utils import enviar_email
 
     enviar_email(*args, **kwargs)
 
