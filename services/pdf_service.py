@@ -3753,7 +3753,8 @@ def obter_credenciais(token_file: str | None = None):
 
 
 @_profile
-def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
+def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
+                 anexo_path=None, corpo_html=None):
     """Wrapper para envio de e-mail utilizando o serviço definido em utils."""
     from utils import enviar_email as _send
 
@@ -3764,6 +3765,7 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
         assunto=assunto,
         corpo_texto=corpo_texto,
         anexo_path=anexo_path,
+        corpo_html=corpo_html,
     )
         
 
