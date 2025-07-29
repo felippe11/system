@@ -86,12 +86,16 @@ class Config:
     # ------------------------------------------------------------------ #
     #  E-mail                                                            #
     # ------------------------------------------------------------------ #
-    MAIL_SERVER = "smtp.gmail.com"
+    # Configurações do provedor de e-mail (Mailjet)
+    MAILJET_API_KEY = os.getenv("MAILJET_API_KEY") or os.getenv("MAIL_USERNAME", "")
+    MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+
+    MAIL_SERVER = "in-v3.mailjet.com"
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-    MAIL_DEFAULT_SENDER = MAIL_USERNAME
+    MAIL_USERNAME = MAILJET_API_KEY
+    MAIL_PASSWORD = MAILJET_SECRET_KEY
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", MAIL_USERNAME)
 
     # ------------------------------------------------------------------ #
     #  reCAPTCHA                                                         #
