@@ -16,4 +16,4 @@ class PublicClienteForm(FlaskForm):
     nome = StringField('Nome', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
     senha = PasswordField('Senha', validators=[DataRequired()])
-    recaptcha = RecaptchaField()
+    # Não utilizamos RecaptchaField para v3, a validação é feita manualmente
