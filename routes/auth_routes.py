@@ -210,6 +210,12 @@ def esqueci_senha_cpf():
             link = url_for('auth_routes.reset_senha_cpf', token=token.token, _external=True)
             assunto = 'Redefini\u00e7\u00e3o de Senha'
             corpo_texto = f'Acesse o link para redefinir sua senha: {link}'
+            corpo_html = f"""
+            <p>Olá, {usuario.nome}!</p>
+            <p>Recebemos uma solicitação para redefinir sua senha. Para prosseguir, acesse o link abaixo:</p>
+            <p><a href='{link}'>{link}</a></p>
+            <p>Se você não solicitou esta alteração, ignore este e-mail.</p>
+            """
             try:
                 logger.info("Tentando enviar email de redefinição de senha via OAuth")
                 enviar_email(
@@ -218,6 +224,7 @@ def esqueci_senha_cpf():
                     nome_oficina='',
                     assunto=assunto,
                     corpo_texto=corpo_texto,
+                    corpo_html=corpo_html,
                 )
                 logger.info("Email enviado com sucesso")
             except Exception as e:

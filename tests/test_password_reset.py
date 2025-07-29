@@ -38,14 +38,17 @@ def client(app):
 def test_password_reset_flow(client, app, monkeypatch):
     sent = {}
 
-    def fake_send(destinatario, nome_participante, nome_oficina, assunto, corpo_texto, anexo_path=None):
+    def fake_send(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
+                  anexo_path=None, corpo_html=None):
         sent['dest'] = destinatario
         sent['assunto'] = assunto
         sent['body'] = corpo_texto
 
     monkeypatch.setattr('routes.auth_routes.enviar_email', fake_send)
+    monkeypatch.setattr('requests.post',
+                       lambda *a, **k: type('obj', (), {'json': lambda: {'success': True, 'score': 1}}))
 
-    client.post('/esqueci_senha_cpf', data={'cpf': '123'}, follow_redirects=True)
+    client.post('/esqueci_senha_cpf', data={'cpf': '123', 'g-recaptcha-response': 'dummy'}, follow_redirects=True)
     assert 'body' in sent
     assert 'token=' in sent['body']
     token = sent['body'].split('token=')[1].strip()
