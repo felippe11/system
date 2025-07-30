@@ -765,7 +765,17 @@ def inscrever(oficina_id):
             pdf_path = gerar_comprovante_pdf(current_user, oficina, inscricao)
 
             assunto = f"Confirmação de Inscrição - {oficina.titulo}"
-            corpo_texto = f"Olá {current_user.nome},\n\nVocê se inscreveu na oficina '{oficina.titulo}'.\nSegue o comprovante de inscrição em anexo."
+            corpo_texto = (
+                f"Olá {current_user.nome},\n\n"
+                f"Você se inscreveu na oficina '{oficina.titulo}'.\n"
+                "Segue o comprovante de inscrição em anexo."
+            )
+
+            corpo_html = render_template(
+                'emails/confirmacao_inscricao_oficina.html',
+                participante_nome=current_user.nome,
+                oficina=oficina,
+            )
 
             enviar_email(
                 destinatario=current_user.email,
@@ -773,7 +783,8 @@ def inscrever(oficina_id):
                 nome_oficina=oficina.titulo,
                 assunto=assunto,
                 corpo_texto=corpo_texto,
-                anexo_path=pdf_path
+                anexo_path=pdf_path,
+                corpo_html=corpo_html,
             )
         except Exception as e:
             logger.error(f"❌ ERRO ao enviar e-mail: {e}", exc_info=True)
