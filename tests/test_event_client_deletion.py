@@ -11,7 +11,10 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, Evento, EventoInscricaoTipo, Pagamento, usuario_clientes
+from models import (
+    Usuario, Cliente, Evento, EventoInscricaoTipo, Pagamento,
+    usuario_clientes, ConfiguracaoEvento
+)
 
 
 @pytest.fixture
@@ -77,6 +80,18 @@ def _setup_event_with_payment(app, cliente):
         return evento.id
 
 
+def _setup_event_with_config(app, cliente):
+    with app.app_context():
+        evento = Evento(cliente_id=cliente.id, nome='EV_CFG')
+        db.session.add(evento)
+        db.session.commit()
+
+        cfg = ConfiguracaoEvento(evento_id=evento.id, cliente_id=cliente.id)
+        db.session.add(cfg)
+        db.session.commit()
+        return evento.id
+
+
 def test_excluir_evento_remove_pagamentos(client, app):
     with app.app_context():
         cliente = Cliente.query.first()
@@ -130,4 +145,32 @@ def test_excluir_cliente_cleans_association(client, app):
     with app.app_context():
         assert _assoc_count(app, cid) == 0
         assert Cliente.query.get(cid) is None
+
+
+def test_excluir_evento_remove_config(client, app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        evento_id = _setup_event_with_config(app, cliente)
+
+    login(client, 'admin@example.com', '123')
+    resp = client.post(f'/excluir_evento/{evento_id}', follow_redirects=True)
+    assert resp.status_code in (200, 302)
+
+    with app.app_context():
+        assert ConfiguracaoEvento.query.filter_by(evento_id=evento_id).count() == 0
+
+
+def test_excluir_cliente_removes_event_config(client, app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        evento_id = _setup_event_with_config(app, cliente)
+        cid = cliente.id
+
+    login(client, 'admin@example.com', '123')
+    resp = client.post(f'/excluir_cliente/{cid}', follow_redirects=True)
+    assert resp.status_code in (200, 302)
+
+    with app.app_context():
+        assert ConfiguracaoEvento.query.count() == 0
+        assert Evento.query.filter_by(cliente_id=cid).count() == 0
 
