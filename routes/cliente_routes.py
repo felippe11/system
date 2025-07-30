@@ -130,6 +130,7 @@ def excluir_cliente(cliente_id):
             Checkin,
             ConfiguracaoAgendamento,
             ConfiguracaoCliente,
+            ConfiguracaoEvento,
             Evento,
             EventoInscricaoTipo,
             Feedback,
@@ -156,6 +157,7 @@ def excluir_cliente(cliente_id):
             Sorteio,
             Pagamento,
             Usuario,
+            usuario_clientes,
             AgendamentoVisita,
             AlunoVisitante,
             ProfessorBloqueado,
@@ -198,7 +200,18 @@ def excluir_cliente(cliente_id):
 
                 RespostaFormulario.query.filter_by(usuario_id=usuario.id).delete()
 
-        Usuario.query.filter_by(cliente_id=cliente.id).delete()
+        # Remover associações entre usuários e clientes (tanto deste cliente
+        # quanto outras referencias destes usuários)
+        db.session.execute(
+            usuario_clientes.delete().where(
+                or_(
+                    usuario_clientes.c.usuario_id.in_(usuario_ids),
+                    usuario_clientes.c.cliente_id == cliente.id,
+                )
+            )
+        )
+
+        Usuario.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
 
         # ===============================
         # 2️⃣ OFICINAS
@@ -306,6 +319,8 @@ def excluir_cliente(cliente_id):
 
                 RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
                 EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+
+                ConfiguracaoEvento.query.filter_by(evento_id=evento.id).delete()
 
                 db.session.delete(evento)
 
