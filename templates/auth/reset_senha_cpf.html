@@ -6,15 +6,20 @@
       <h2>Redefinir Senha</h2>
       <p class="subtitle">Crie uma nova senha segura para sua conta</p>
     </div>
-    
-  <form method="POST" class="reset-password-form">
+
+    <form method="POST" class="reset-password-form">
       <input type="hidden" name="token" value="{{ token }}">
       <div class="form-group">
         <label for="nova_senha">Nova Senha</label>
         <div class="password-input">
           <input type="password" id="nova_senha" name="nova_senha" required placeholder="Digite sua nova senha">
           <span class="toggle-password" onclick="togglePassword('nova_senha')">
-            <i class="eye-icon">👁️</i>
+            <i class="eye-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.97 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />
+              </svg>
+            </i>
           </span>
         </div>
         <div class="password-strength">
@@ -23,7 +28,6 @@
           </div>
           <span class="strength-text" id="strength-text">Força da senha</span>
         </div>
-        <p class="password-tips">A senha deve ter pelo menos 8 caracteres e conter letras e números. Recomenda-se misturar maiúsculas, minúsculas e símbolos.</p>
       </div>
 
       <div class="form-group">
@@ -31,7 +35,12 @@
         <div class="password-input">
           <input type="password" id="confirmar_senha" name="confirmar_senha" required placeholder="Confirme sua nova senha">
           <span class="toggle-password" onclick="togglePassword('confirmar_senha')">
-            <i class="eye-icon">👁️</i>
+            <i class="eye-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.970 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />
+              </svg>
+            </i>
           </span>
         </div>
         <div id="password-match" class="match-feedback"></div>
@@ -43,23 +52,49 @@
 </div>
 
 <style>
+  :root {
+    --primary-color: #1a73e8;
+    --primary-dark: #1765cc;
+    --primary-darker: #185abc;
+    --text-color-dark: #202124;
+    --text-color-medium: #5f6368;
+    --text-color-light: #7f8185;
+    --border-color: #dadce0;
+    --background-color-light: #f7f9fc;
+    --background-color-white: #ffffff;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+    --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --border-radius-small: 8px;
+    --border-radius-medium: 12px;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Prioritize Inter for a modern feel */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   .reset-password-container {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #f7f9fc;
+    background-color: var(--background-color-light);
     padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   }
 
   .reset-password-card {
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    background-color: var(--background-color-white);
+    border-radius: var(--border-radius-medium);
+    box-shadow: var(--shadow-medium);
     width: 100%;
     max-width: 450px;
     padding: 32px;
+    box-sizing: border-box; /* Ensures padding is included in the width */
   }
 
   .card-header {
@@ -68,16 +103,18 @@
   }
 
   .card-header h2 {
-    color: #1a73e8;
+    color: var(--primary-color);
     margin: 0;
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 700; /* Bolder for emphasis */
+    letter-spacing: -0.5px; /* Slight letter spacing adjustment */
   }
 
   .subtitle {
-    color: #5f6368;
+    color: var(--text-color-medium);
     margin-top: 8px;
     font-size: 16px;
+    line-height: 1.5;
   }
 
   .reset-password-form {
@@ -94,8 +131,8 @@
 
   .form-group label {
     font-size: 14px;
-    font-weight: 500;
-    color: #202124;
+    font-weight: 600; /* Bolder label */
+    color: var(--text-color-dark);
   }
 
   .password-input {
@@ -104,103 +141,128 @@
     align-items: center;
   }
 
-  input[type="password"] {
+  input[type="password"],
+  input[type="text"] { /* Apply styles to text type as well for toggle */
     width: 100%;
     padding: 12px 16px;
-    border: 1px solid #dadce0;
-    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-small);
     font-size: 16px;
-    transition: border 0.2s;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     outline: none;
+    background-color: var(--background-color-white); /* Ensure white background */
+    color: var(--text-color-dark);
   }
 
-  input[type="password"]:focus {
-    border: 2px solid #1a73e8;
-    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.1);
+  input[type="password"]:focus,
+  input[type="text"]:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); /* Slightly softer shadow */
   }
 
   .toggle-password {
     position: absolute;
     right: 16px;
     cursor: pointer;
-    color: #5f6368;
+    color: var(--text-color-medium);
+    display: flex; /* For SVG icon alignment */
+    align-items: center;
+    justify-content: center;
+    width: 24px; /* Ensure click target is adequate */
+    height: 24px;
+  }
+
+  .toggle-password .eye-icon svg {
+    width: 20px; /* Adjust SVG icon size */
+    height: 20px;
+    transition: fill 0.2s ease-in-out;
+  }
+
+  .toggle-password:hover .eye-icon svg {
+    fill: var(--primary-color);
   }
 
   .password-strength {
-    margin-top: 8px;
+    margin-top: 4px; /* Reduced margin */
   }
 
   .strength-bar {
-    height: 4px;
-    background-color: #dadce0;
-    border-radius: 2px;
+    height: 6px; /* Slightly thicker bar */
+    background-color: var(--border-color);
+    border-radius: 3px; /* Match bar height */
     overflow: hidden;
+    margin-bottom: 4px; /* Space between bar and text */
   }
 
   .strength-indicator {
     height: 100%;
     width: 0%;
-    transition: width 0.3s, background-color 0.3s;
-    background-color: #dadce0;
+    transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
+    background-color: var(--border-color); /* Default color before evaluation */
   }
 
   .strength-text {
     font-size: 12px;
-    color: #5f6368;
+    color: var(--text-color-light);
     display: block;
-    margin-top: 4px;
-  }
-
-  .password-tips {
-    font-size: 12px;
-    color: #5f6368;
-    margin-top: 4px;
+    text-align: right; /* Align text to the right */
   }
 
   .match-feedback {
     font-size: 12px;
     height: 16px;
+    margin-top: -4px; /* Pull it closer to the input */
+    transition: color 0.2s ease-in-out;
   }
 
   .reset-btn {
-    background-color: #1a73e8;
+    background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--border-radius-small);
     padding: 14px 24px;
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600; /* Bolder text */
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
     margin-top: 16px;
+    width: 100%; /* Full width button */
   }
 
   .reset-btn:hover {
-    background-color: #1765cc;
+    background-color: var(--primary-dark);
+    transform: translateY(-1px); /* Slight lift on hover */
   }
 
   .reset-btn:active {
-    background-color: #185abc;
+    background-color: var(--primary-darker);
+    transform: translateY(0); /* Return to normal position */
   }
 
   /* Password strength colors */
-  .weak { background-color: #f44336; width: 25%; }
-  .medium { background-color: #ff9800; width: 50%; }
-  .strong { background-color: #4caf50; width: 100%; }
-  
+  .weak .strength-indicator { background-color: var(--error-color); width: 25%; }
+  .medium .strength-indicator { background-color: var(--warning-color); width: 50%; }
+  .strong .strength-indicator { background-color: var(--success-color); width: 100%; }
+
   /* Match feedback colors */
-  .match { color: #4caf50; }
-  .no-match { color: #f44336; }
+  .match { color: var(--success-color); }
+  .no-match { color: var(--error-color); }
 </style>
 
 <script>
   // Toggle password visibility
   function togglePassword(inputId) {
     const input = document.getElementById(inputId);
+    const icon = input.nextElementSibling.querySelector('svg'); // Select the SVG icon directly
+
     if (input.type === "password") {
       input.type = "text";
+      // Change eye icon to "eye-slash" or similar for hidden state if desired
+      icon.innerHTML = '<path fill-rule="evenodd" d="M3.98 8.223A10.477 10.477 0 001.323 11.447C2.811 15.918 7.029 19.143 12.001 19.143c.806 0 1.598-.087 2.374-.255a.75.75 0 01.279.113l2.254 2.254a.75.75 0 01-1.06 1.06l-2.254-2.254a.75.75 0 01-.113-.279 9.796 9.796 0 00-2.184.41c-4.972 0-9.188-3.226-10.677-7.697a1.75 1.75 0 010-1.838zM14.249 5.563v-.002c-.42-.064-.847-.095-1.278-.095H12c-4.972 0-9.188 3.226-10.677 7.697a1.75 1.75 0 000 1.838l.38.38a.75.75 0 010 1.06L2.4 16.494a.75.75 0 01-1.06-1.06l.38-.38a.75.75 0 010-1.06l-.38-.38a.75.75 0 010-1.06l.38-.38a.75.75 0 010-1.06L1.323 11.447C2.811 6.976 7.029 3.75 12.001 3.75c1.196 0 2.35.155 3.447.452a.75.75 0 01.765-.452h.001c.42 0 .847.032 1.278.095V5.563zm-4.739 2.19a3 3 0 100 6 3 3 0 000-6z" clip-rule="evenodd" /><path d="M18.735 9.176l-.51-.51a.75.75 0 011.06-1.06l.51.51c1.547 1.547 2.622 3.518 3.012 5.623a.75.75 0 01-.482.868l-.482.161a.75.75 0 01-.868-.482c-.3-.896-.79-1.745-1.46-2.415z" />'
     } else {
       input.type = "password";
+      // Change eye icon back to "eye" for visible state
+      icon.innerHTML = '<path d="M12 15a3 3 0 100-6 3 3 0 000 6z" /><path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.970 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />'
     }
   }
 
@@ -209,54 +271,71 @@
     const password = this.value;
     const strengthMeter = document.getElementById('strength-meter');
     const strengthText = document.getElementById('strength-text');
-    
-    // Simple password strength check
+
+    // More robust password strength check
     let strength = 0;
-    
-    if (password.length > 6) strength += 1;
-    if (password.length > 10) strength += 1;
-    if (/[A-Z]/.test(password)) strength += 1;
-    if (/[0-9]/.test(password)) strength += 1;
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1;
-    
+    const requirements = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      numbers: /[0-9]/.test(password),
+      specialChars: /[^A-Za-z0-9]/.test(password)
+    };
+
+    if (requirements.length) strength += 1;
+    if (requirements.uppercase && requirements.lowercase) strength += 1;
+    if (requirements.numbers) strength += 1;
+    if (requirements.specialChars) strength += 1;
+    if (password.length >= 12 && requirements.uppercase && requirements.lowercase && requirements.numbers && requirements.specialChars) strength += 1; // Bonus for very strong passwords
+
     // Update UI based on strength
     if (password.length === 0) {
       strengthMeter.className = '';
       strengthMeter.style.width = '0%';
       strengthText.textContent = 'Força da senha';
-    } else if (strength < 2) {
+      strengthText.style.color = 'var(--text-color-light)';
+    } else if (strength <= 2) {
       strengthMeter.className = 'weak';
       strengthText.textContent = 'Fraca';
-    } else if (strength < 4) {
+      strengthText.style.color = 'var(--error-color)';
+    } else if (strength <= 4) {
       strengthMeter.className = 'medium';
       strengthText.textContent = 'Média';
+      strengthText.style.color = 'var(--warning-color)';
     } else {
       strengthMeter.className = 'strong';
       strengthText.textContent = 'Forte';
+      strengthText.style.color = 'var(--success-color)';
     }
-    
+
     // Check if passwords match
     checkPasswordsMatch();
   });
-  
+
   // Check if passwords match
   function checkPasswordsMatch() {
     const password = document.getElementById('nova_senha').value;
     const confirmPassword = document.getElementById('confirmar_senha').value;
     const matchFeedback = document.getElementById('password-match');
-    
+
     if (confirmPassword.length === 0) {
       matchFeedback.textContent = '';
       matchFeedback.className = '';
     } else if (password === confirmPassword) {
-      matchFeedback.textContent = 'Senhas coincidem';
+      matchFeedback.textContent = 'Senhas coincidem!';
       matchFeedback.className = 'match';
     } else {
-      matchFeedback.textContent = 'Senhas não coincidem';
+      matchFeedback.textContent = 'Senhas não coincidem!';
       matchFeedback.className = 'no-match';
     }
   }
-  
+
   document.getElementById('confirmar_senha').addEventListener('input', checkPasswordsMatch);
+
+  // Initial check for password strength and match in case of pre-filled fields (though unlikely for reset)
+  document.addEventListener('DOMContentLoaded', () => {
+    checkPasswordsMatch();
+    document.getElementById('nova_senha').dispatchEvent(new Event('input')); // Trigger strength check on load
+  });
 </script>
 {% endblock %}
