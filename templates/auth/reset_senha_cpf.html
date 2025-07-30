@@ -17,7 +17,7 @@
             <i class="eye-icon">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
                 <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
-                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.97 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />
+                <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.970 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />
               </svg>
             </i>
           </span>
@@ -27,6 +27,15 @@
             <div class="strength-indicator" id="strength-meter"></div>
           </div>
           <span class="strength-text" id="strength-text">Força da senha</span>
+        </div>
+        <div class="password-checklist">
+            <p>Sua senha deve conter:</p>
+            <ul>
+                <li id="check-length" class="requirement">8 caracteres</li>
+                <li id="check-uppercase" class="requirement">Letra maiúscula e minúscula</li>
+                <li id="check-number" class="requirement">Número</li>
+                <li id="check-special" class="requirement">Caractere especial</li>
+            </ul>
         </div>
       </div>
 
@@ -73,7 +82,7 @@
 
   body {
     margin: 0;
-    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Prioritize Inter for a modern feel */
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -94,7 +103,7 @@
     width: 100%;
     max-width: 450px;
     padding: 32px;
-    box-sizing: border-box; /* Ensures padding is included in the width */
+    box-sizing: border-box;
   }
 
   .card-header {
@@ -106,8 +115,8 @@
     color: var(--primary-color);
     margin: 0;
     font-size: 28px;
-    font-weight: 700; /* Bolder for emphasis */
-    letter-spacing: -0.5px; /* Slight letter spacing adjustment */
+    font-weight: 700;
+    letter-spacing: -0.5px;
   }
 
   .subtitle {
@@ -131,7 +140,7 @@
 
   .form-group label {
     font-size: 14px;
-    font-weight: 600; /* Bolder label */
+    font-weight: 600;
     color: var(--text-color-dark);
   }
 
@@ -142,7 +151,7 @@
   }
 
   input[type="password"],
-  input[type="text"] { /* Apply styles to text type as well for toggle */
+  input[type="text"] {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid var(--border-color);
@@ -150,14 +159,14 @@
     font-size: 16px;
     transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
     outline: none;
-    background-color: var(--background-color-white); /* Ensure white background */
+    background-color: var(--background-color-white);
     color: var(--text-color-dark);
   }
 
   input[type="password"]:focus,
   input[type="text"]:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); /* Slightly softer shadow */
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
   }
 
   .toggle-password {
@@ -165,15 +174,15 @@
     right: 16px;
     cursor: pointer;
     color: var(--text-color-medium);
-    display: flex; /* For SVG icon alignment */
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px; /* Ensure click target is adequate */
+    width: 24px;
     height: 24px;
   }
 
   .toggle-password .eye-icon svg {
-    width: 20px; /* Adjust SVG icon size */
+    width: 20px;
     height: 20px;
     transition: fill 0.2s ease-in-out;
   }
@@ -183,35 +192,82 @@
   }
 
   .password-strength {
-    margin-top: 4px; /* Reduced margin */
+    margin-top: 4px;
   }
 
   .strength-bar {
-    height: 6px; /* Slightly thicker bar */
+    height: 6px;
     background-color: var(--border-color);
-    border-radius: 3px; /* Match bar height */
+    border-radius: 3px;
     overflow: hidden;
-    margin-bottom: 4px; /* Space between bar and text */
+    margin-bottom: 4px;
   }
 
   .strength-indicator {
     height: 100%;
     width: 0%;
     transition: width 0.3s ease-in-out, background-color 0.3s ease-in-out;
-    background-color: var(--border-color); /* Default color before evaluation */
+    background-color: var(--border-color);
   }
 
   .strength-text {
     font-size: 12px;
     color: var(--text-color-light);
     display: block;
-    text-align: right; /* Align text to the right */
+    text-align: right;
+  }
+
+  .password-checklist {
+      margin-top: 10px; /* Space between strength bar and checklist */
+      background-color: #f0f4f8; /* Light background for the checklist */
+      border-radius: var(--border-radius-small);
+      padding: 15px;
+      font-size: 14px;
+      color: var(--text-color-dark);
+  }
+
+  .password-checklist p {
+      margin: 0 0 10px 0;
+      font-weight: 600;
+  }
+
+  .password-checklist ul {
+      list-style: none; /* Remove default bullet points */
+      padding: 0;
+      margin: 0;
+  }
+
+  .password-checklist li {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      color: var(--text-color-medium); /* Default color for requirements */
+      transition: color 0.2s ease-in-out;
+  }
+
+  .password-checklist li::before {
+      content: '•'; /* Custom bullet point */
+      font-size: 20px;
+      line-height: 1;
+      margin-right: 8px;
+      color: var(--text-color-light);
+      transition: color 0.2s ease-in-out;
+  }
+
+  .password-checklist li.fulfilled {
+      color: var(--success-color); /* Green for fulfilled requirements */
+  }
+
+  .password-checklist li.fulfilled::before {
+      content: '✓'; /* Checkmark for fulfilled */
+      color: var(--success-color);
+      font-weight: bold;
   }
 
   .match-feedback {
     font-size: 12px;
     height: 16px;
-    margin-top: -4px; /* Pull it closer to the input */
+    margin-top: -4px;
     transition: color 0.2s ease-in-out;
   }
 
@@ -222,21 +278,21 @@
     border-radius: var(--border-radius-small);
     padding: 14px 24px;
     font-size: 16px;
-    font-weight: 600; /* Bolder text */
+    font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
     margin-top: 16px;
-    width: 100%; /* Full width button */
+    width: 100%;
   }
 
   .reset-btn:hover {
     background-color: var(--primary-dark);
-    transform: translateY(-1px); /* Slight lift on hover */
+    transform: translateY(-1px);
   }
 
   .reset-btn:active {
     background-color: var(--primary-darker);
-    transform: translateY(0); /* Return to normal position */
+    transform: translateY(0);
   }
 
   /* Password strength colors */
@@ -253,24 +309,27 @@
   // Toggle password visibility
   function togglePassword(inputId) {
     const input = document.getElementById(inputId);
-    const icon = input.nextElementSibling.querySelector('svg'); // Select the SVG icon directly
+    const icon = input.nextElementSibling.querySelector('svg');
 
     if (input.type === "password") {
       input.type = "text";
-      // Change eye icon to "eye-slash" or similar for hidden state if desired
-      icon.innerHTML = '<path fill-rule="evenodd" d="M3.98 8.223A10.477 10.477 0 001.323 11.447C2.811 15.918 7.029 19.143 12.001 19.143c.806 0 1.598-.087 2.374-.255a.75.75 0 01.279.113l2.254 2.254a.75.75 0 01-1.06 1.06l-2.254-2.254a.75.75 0 01-.113-.279 9.796 9.796 0 00-2.184.41c-4.972 0-9.188-3.226-10.677-7.697a1.75 1.75 0 010-1.838zM14.249 5.563v-.002c-.42-.064-.847-.095-1.278-.095H12c-4.972 0-9.188 3.226-10.677 7.697a1.75 1.75 0 000 1.838l.38.38a.75.75 0 010 1.06L2.4 16.494a.75.75 0 01-1.06-1.06l.38-.38a.75.75 0 010-1.06l-.38-.38a.75.75 0 010-1.06l.38-.38a.75.75 0 010-1.06L1.323 11.447C2.811 6.976 7.029 3.75 12.001 3.75c1.196 0 2.35.155 3.447.452a.75.75 0 01.765-.452h.001c.42 0 .847.032 1.278.095V5.563zm-4.739 2.19a3 3 0 100 6 3 3 0 000-6z" clip-rule="evenodd" /><path d="M18.735 9.176l-.51-.51a.75.75 0 011.06-1.06l.51.51c1.547 1.547 2.622 3.518 3.012 5.623a.75.75 0 01-.482.868l-.482.161a.75.75 0 01-.868-.482c-.3-.896-.79-1.745-1.46-2.415z" />'
+      icon.innerHTML = '<path fill-rule="evenodd" d="M3.98 8.223A10.477 10.477 0 001.323 11.447C2.811 15.918 7.029 19.143 12.001 19.143c.806 0 1.598-.087 2.374-.255a.75.75 0 01.279.113l2.254 2.254a.75.75 0 01-1.06 1.06l-2.254-2.254a.75.75 0 01-.113-.279 9.796 9.796 0 00-2.184.41c-4.972 0-9.188-3.226-10.677-7.697a1.75 1.75 0 010-1.838zM14.249 5.563v-.002c-.42-.064-.847-.095-1.278-.095H12c-4.972 0-9.188 3.226-10.677 7.697a1.75 1.75 0 000 1.838l.38.38a.75.75 0 010 1.06L2.4 16.494a.75.75 0 01-1.06-1.06l.38-.38a.75.75 0 010-1.06l-.38-.38a.75.75 0 010-1.06l.38-.38a.75.75 0 010-1.06L1.323 11.447C2.811 6.976 7.029 3.75 12.001 3.75c1.196 0 2.35.155 3.447.452a.75.75 0 01.765-.452h.001c.42 0 .847.032 1.278.095V5.563zm-4.739 2.19a3 3 0 100 6 3 3 0 000-6z" clip-rule="evenodd" /><path d="M18.735 9.176l-.51-.51a.75.75 0 011.06-1.06l.51.51c1.547 1.547 2.622 3.518 3.012 5.623a.75.75 0 01-.482.868l-.482.161a.75.75 0 01-.868-.482c-.3-.896-.79-1.745-1.46-2.415z" />';
     } else {
       input.type = "password";
-      // Change eye icon back to "eye" for visible state
-      icon.innerHTML = '<path d="M12 15a3 3 0 100-6 3 3 0 000 6z" /><path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.970 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />'
+      icon.innerHTML = '<path d="M12 15a3 3 0 100-6 3 3 0 000 6z" /><path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.972 0 9.188 3.226 10.677 7.697.49.508.49 1.33 0 1.838A10.712 10.712 0 0112 20.25c-4.970 0-9.185-3.223-10.677-7.697a1.75 1.75 0 010-1.838zM12 18a6 6 0 100-12 6 6 0 000 12z" clip-rule="evenodd" />';
     }
   }
 
-  // Check password strength
+  // Check password strength and update checklist
   document.getElementById('nova_senha').addEventListener('input', function() {
     const password = this.value;
     const strengthMeter = document.getElementById('strength-meter');
     const strengthText = document.getElementById('strength-text');
+
+    const checkLength = document.getElementById('check-length');
+    const checkUppercase = document.getElementById('check-uppercase');
+    const checkNumber = document.getElementById('check-number');
+    const checkSpecial = document.getElementById('check-special');
 
     // More robust password strength check
     let strength = 0;
@@ -282,11 +341,39 @@
       specialChars: /[^A-Za-z0-9]/.test(password)
     };
 
-    if (requirements.length) strength += 1;
-    if (requirements.uppercase && requirements.lowercase) strength += 1;
-    if (requirements.numbers) strength += 1;
-    if (requirements.specialChars) strength += 1;
-    if (password.length >= 12 && requirements.uppercase && requirements.lowercase && requirements.numbers && requirements.specialChars) strength += 1; // Bonus for very strong passwords
+    // Update checklist items
+    if (requirements.length) {
+      checkLength.classList.add('fulfilled');
+      strength += 1;
+    } else {
+      checkLength.classList.remove('fulfilled');
+    }
+
+    if (requirements.uppercase && requirements.lowercase) {
+      checkUppercase.classList.add('fulfilled');
+      strength += 1;
+    } else {
+      checkUppercase.classList.remove('fulfilled');
+    }
+
+    if (requirements.numbers) {
+      checkNumber.classList.add('fulfilled');
+      strength += 1;
+    } else {
+      checkNumber.classList.remove('fulfilled');
+    }
+
+    if (requirements.specialChars) {
+      checkSpecial.classList.add('fulfilled');
+      strength += 1;
+    } else {
+      checkSpecial.classList.remove('fulfilled');
+    }
+
+    // Bonus for very strong passwords (already in your script, kept for consistency)
+    if (password.length >= 12 && requirements.uppercase && requirements.lowercase && requirements.numbers && requirements.specialChars) {
+        strength += 1;
+    }
 
     // Update UI based on strength
     if (password.length === 0) {
