@@ -19,7 +19,7 @@ from models import (
     RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
     ProfessorBloqueado, Patrocinador, Sorteio, TrabalhoCientifico,
-    Feedback, Pagamento, ConfiguracaoCliente
+    Feedback, Pagamento, ConfiguracaoCliente, ConfiguracaoEvento
 )
 from utils import preco_com_taxa
 
@@ -675,6 +675,8 @@ def excluir_evento(evento_id):
         Patrocinador.query.filter_by(evento_id=evento.id).delete()
         Sorteio.query.filter_by(evento_id=evento.id).delete()
         TrabalhoCientifico.query.filter_by(evento_id=evento.id).delete()
+
+        ConfiguracaoEvento.query.filter_by(evento_id=evento.id).delete()
 
         db.session.delete(evento)
         db.session.commit()
