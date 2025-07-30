@@ -1,13 +1,17 @@
+import os
 import pytest
 from werkzeug.security import generate_password_hash
 from config import Config
+
+os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, Evento, EventoInscricaoTipo, Pagamento
+from models import Usuario, Cliente, Evento, EventoInscricaoTipo, Pagamento, usuario_clientes
 
 
 @pytest.fixture
@@ -40,6 +44,15 @@ def client(app):
 
 def login(client, email, senha):
     return client.post('/login', data={'email': email, 'senha': senha}, follow_redirects=True)
+
+
+def _assoc_count(app, cliente_id):
+    with app.app_context():
+        return db.session.execute(
+            db.select(db.func.count()).select_from(usuario_clientes).where(
+                usuario_clientes.c.cliente_id == cliente_id
+            )
+        ).scalar()
 
 
 def _setup_event_with_payment(app, cliente):
@@ -92,4 +105,29 @@ def test_excluir_cliente_remove_pagamentos(client, app):
         assert Cliente.query.get(cid) is None
         assert Evento.query.filter_by(cliente_id=cid).count() == 0
         assert Pagamento.query.count() == 0
+
+
+def test_excluir_cliente_cleans_association(client, app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        user = Usuario(
+            nome='User', cpf='99', email='u@example.com',
+            senha=generate_password_hash('123'), formacao='x', tipo='participante'
+        )
+        db.session.add(user)
+        db.session.commit()
+        db.session.execute(
+            usuario_clientes.insert().values(usuario_id=user.id, cliente_id=cliente.id)
+        )
+        db.session.commit()
+        cid = cliente.id
+        assert _assoc_count(app, cid) == 1
+
+    login(client, 'admin@example.com', '123')
+    resp = client.post(f'/excluir_cliente/{cid}', follow_redirects=True)
+    assert resp.status_code in (200, 302)
+
+    with app.app_context():
+        assert _assoc_count(app, cid) == 0
+        assert Cliente.query.get(cid) is None
 
