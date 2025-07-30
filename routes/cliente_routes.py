@@ -130,6 +130,7 @@ def excluir_cliente(cliente_id):
             Checkin,
             ConfiguracaoAgendamento,
             ConfiguracaoCliente,
+            ConfiguracaoEvento,
             Evento,
             EventoInscricaoTipo,
             Feedback,
@@ -318,6 +319,8 @@ def excluir_cliente(cliente_id):
 
                 RegraInscricaoEvento.query.filter_by(evento_id=evento.id).delete()
                 EventoInscricaoTipo.query.filter_by(evento_id=evento.id).delete()
+
+                ConfiguracaoEvento.query.filter_by(evento_id=evento.id).delete()
 
                 db.session.delete(evento)
 
