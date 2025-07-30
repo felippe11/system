@@ -430,7 +430,8 @@ def obter_credenciais(token_file: str | None = None):
 
 
 def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_texto,
-                 anexo_path=None, corpo_html=None):
+                 anexo_path=None, corpo_html=None, template_path=None,
+                 template_context=None):
     """Envia um e-mail utilizando o serviço Mailjet.
 
     Se ``corpo_html`` não for fornecido, utiliza um modelo simples de confirmação
@@ -439,9 +440,13 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
     adequado ao contexto.
     """
     from services.mailjet_service import send_via_mailjet
+    from flask import render_template
 
     if corpo_html is None:
-        corpo_html = f"""
+        if template_path:
+            corpo_html = render_template(template_path, **(template_context or {}))
+        else:
+            corpo_html = f"""
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
@@ -462,7 +467,7 @@ def enviar_email(destinatario, nome_participante, nome_oficina, assunto, corpo_t
             </div>
         </body>
         </html>
-        """
+            """
 
     attachments = [anexo_path] if anexo_path else None
     try:
