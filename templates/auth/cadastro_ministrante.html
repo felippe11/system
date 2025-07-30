@@ -42,25 +42,6 @@
         </div>
         
         <div class="card-body p-4">
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-              {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
-                  <div class="d-flex align-items-center">
-                    {% if category == 'success' %}
-                      <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-                    {% elif category == 'danger' %}
-                      <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-                    {% else %}
-                      <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                    {% endif %}
-                    <div>{{ message }}</div>
-                  </div>
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
 
           <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="form-ministrante">
             <!-- Etapa 1: Informações Pessoais -->

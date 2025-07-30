@@ -154,22 +154,6 @@
       .login-form-header h2 { font-size: 1.75rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
       .login-form-header p { color: var(--text-light); font-size: 1rem; }
 
-      #alert-container { margin-bottom: 24px; }
-      .alert {
-        display: flex; align-items: flex-start; padding: 12px 16px;
-        border-radius: 12px; border: 1px solid transparent; margin-bottom: 16px; font-size: 0.9rem;
-      }
-      .alert-icon { font-size: 1.25rem; margin-right: 12px; line-height: 1.4; }
-      .alert-content { flex: 1; }
-      .alert-title { font-weight: 600; margin-bottom: 2px; }
-      .alert-close {
-        background: none; border: none; cursor: pointer; color: inherit;
-        opacity: 0.7; transition: opacity 0.2s; margin-left: 16px;
-      }
-      .alert-close:hover { opacity: 1; }
-      .alert.alert-error { background-color: var(--alert-error-bg); border-color: var(--alert-error-border); color: var(--alert-error-text); }
-      .alert.alert-success { background-color: var(--alert-success-bg); border-color: var(--alert-success-border); color: var(--alert-success-text); }
-      .alert.alert-info { background-color: var(--alert-info-bg); border-color: var(--alert-info-border); color: var(--alert-info-text); }
 
       .login-form { display: flex; flex-direction: column; gap: 24px; flex: 1; }
       .form-group { text-align: left; }
@@ -269,28 +253,7 @@
                     <p>Faça login para continuar</p>
                 </div>
                 
-                <div id="alert-container">
-                    {% if error %}
-                    <div class="alert alert-error">
-                        <div class="alert-icon"><i class="bi bi-exclamation-circle-fill"></i></div>
-                        <div class="alert-content">
-                            <div class="alert-title">Erro</div>
-                            <div class="alert-message">{{ error }}</div>
-                        </div>
-                        <button class="alert-close"><i class="bi bi-x-lg"></i></button>
-                    </div>
-                    {% endif %}
-                    {% if success %}
-                    <div class="alert alert-success">
-                        <div class="alert-icon"><i class="bi bi-check-circle-fill"></i></div>
-                        <div class="alert-content">
-                            <div class="alert-title">Sucesso</div>
-                            <div class="alert-message">{{ success }}</div>
-                        </div>
-                        <button class="alert-close"><i class="bi bi-x-lg"></i></button>
-                    </div>
-                    {% endif %}
-                </div>
+                {% include 'partials/flash_messages.html' %}
                 
                 <form action="{{ url_for('auth_routes.login') }}" method="POST" class="login-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -345,12 +308,6 @@
         icon.classList.toggle('bi-eye', isPassword);
       });
 
-      // Script para fechar alertas
-      document.querySelectorAll('.alert-close').forEach(button => {
-        button.addEventListener('click', function() {
-          this.closest('.alert').style.display = 'none';
-        });
-      });
     </script>
 </body>
 </html>

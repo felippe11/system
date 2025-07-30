@@ -224,21 +224,6 @@
             </div>
             
             <div class="modal-body">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                        <div class="alert-message {{ category }}">
-                            <i class="fas 
-                                {% if category == 'success' %}fa-check-circle
-                                {% elif category == 'danger' %}fa-exclamation-circle
-                                {% elif category == 'warning' %}fa-exclamation-triangle
-                                {% else %}fa-info-circle{% endif %}">
-                            </i>
-                            <span>{{ message }}</span>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
                 
                 {% if evento and evento.habilitar_lotes and not lote_vigente %}
                 <div class="alert-message warning">

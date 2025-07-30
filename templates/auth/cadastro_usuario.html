@@ -80,16 +80,6 @@
     </div>
     
     <div class="card-body">
-      {% with msgs = get_flashed_messages(with_categories=True, category_filter=['participante']) %}
-        {% if msgs %}
-          {% for category, message in msgs %}
-            <div class="alert alert-info alert-custom alert-dismissible fade show">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
 
       <form method="POST" action="{{ url_for('inscricao_routes.cadastro_participante', identifier=token) if token else url_for('inscricao_routes.cadastro_participante') }}">
         <div class="form-grid">

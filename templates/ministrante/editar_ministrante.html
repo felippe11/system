@@ -8,16 +8,7 @@
       <h2 class="mb-0 text-center">Editar Ministrante</h2>
     </div>
     <div class="card-body">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
+
 
       <form method="POST" enctype="multipart/form-data" action="{{ url_for('ministrante_routes.editar_ministrante', ministrante_id=ministrante.id) }}">
         {% if current_user.tipo == 'admin' %}
