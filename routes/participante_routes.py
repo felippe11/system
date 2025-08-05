@@ -3,7 +3,7 @@ participante_routes = Blueprint("participante_routes", __name__)
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from models import Usuario
+from models import Usuario, PasswordResetToken
 from extensions import db
 
 
@@ -33,7 +33,8 @@ def excluir_participante(participante_id):
     if participante.tipo != 'participante':
         flash('Esse usuário não é um participante.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
+    PasswordResetToken.query.filter_by(usuario_id=participante.id).delete()
     db.session.delete(participante)
     db.session.commit()
     flash('Participante excluído com sucesso!', 'success')
