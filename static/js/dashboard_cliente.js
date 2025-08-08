@@ -111,21 +111,32 @@ const fieldButtonMap = {
   "obrigatorio_formacao": document.getElementById("btnToggleObrigatorioFormacao")
 };
 
+const configButtons = Object.values(fieldButtonMap).filter(btn => btn);
 const eventoSelect = document.getElementById("selectConfigEvento");
 const previewEventoBtn = document.getElementById("previewEventoBtn");
+function setConfigButtonsState(enabled) {
+  configButtons.forEach(btn => {
+    btn.disabled = !enabled;
+  });
+}
+
 if (eventoSelect) {
   EVENTO_ATUAL = eventoSelect.value;
+  setConfigButtonsState(Boolean(EVENTO_ATUAL));
   const updatePreview = () => {
     if (previewEventoBtn) {
       const base = previewEventoBtn.dataset.baseUrl || previewEventoBtn.href;
       previewEventoBtn.href = `${base}${encodeURIComponent(eventoSelect.value)}`;
     }
   };
-  updatePreview();
-  carregarConfiguracao(EVENTO_ATUAL);
+  if (EVENTO_ATUAL) {
+    updatePreview();
+    carregarConfiguracao(EVENTO_ATUAL);
+  }
   eventoSelect.addEventListener("change", function () {
-    if (!this.value) return;
     EVENTO_ATUAL = this.value;
+    setConfigButtonsState(Boolean(EVENTO_ATUAL));
+    if (!EVENTO_ATUAL) return;
     updatePreview();
     carregarConfiguracao(EVENTO_ATUAL);
   });
