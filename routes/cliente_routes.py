@@ -157,6 +157,7 @@ def excluir_cliente(cliente_id):
             Sorteio,
             Pagamento,
             Usuario,
+            PasswordResetToken,
             usuario_clientes,
             AgendamentoVisita,
             AlunoVisitante,
@@ -174,6 +175,7 @@ def excluir_cliente(cliente_id):
                 Checkin.query.filter_by(usuario_id=usuario.id).delete()
                 Inscricao.query.filter_by(usuario_id=usuario.id).delete()
                 Feedback.query.filter_by(usuario_id=usuario.id).delete()
+                PasswordResetToken.query.filter_by(usuario_id=usuario.id).delete()
                 resposta_ids = db.session.query(RespostaFormulario.id).filter_by(
                     usuario_id=usuario.id
                 )
@@ -212,6 +214,7 @@ def excluir_cliente(cliente_id):
         )
 
         Usuario.query.filter_by(cliente_id=cliente.id).delete(synchronize_session=False)
+        db.session.commit()
 
         # ===============================
         # 2️⃣ OFICINAS
