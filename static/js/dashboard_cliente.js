@@ -114,15 +114,26 @@ const fieldButtonMap = {
 const eventoSelect = document.getElementById("selectConfigEvento");
 const previewEventoBtn = document.getElementById("previewEventoBtn");
 if (eventoSelect) {
-  EVENTO_ATUAL = eventoSelect.value;
   const updatePreview = () => {
     if (previewEventoBtn) {
       const base = previewEventoBtn.dataset.baseUrl || previewEventoBtn.href;
       previewEventoBtn.href = `${base}${encodeURIComponent(eventoSelect.value)}`;
     }
   };
-  updatePreview();
-  carregarConfiguracao(EVENTO_ATUAL);
+
+  if (!eventoSelect.value) {
+    const primeiraOpcao = Array.from(eventoSelect.options).find(opt => opt.value);
+    if (primeiraOpcao) {
+      eventoSelect.value = primeiraOpcao.value;
+    }
+  }
+
+  EVENTO_ATUAL = eventoSelect.value;
+  if (EVENTO_ATUAL) {
+    updatePreview();
+    carregarConfiguracao(EVENTO_ATUAL);
+  }
+
   eventoSelect.addEventListener("change", function () {
     if (!this.value) return;
     EVENTO_ATUAL = this.value;
