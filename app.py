@@ -71,9 +71,6 @@ def create_app():
     except ImportError as e:
         app.logger.warning(f"Não foi possível carregar rotas de diagnóstico: {e}")
 
-    with app.app_context():
-        db.create_all()
-
     # Agendamento do reconciliador e rotas utilitárias são registrados aqui
     scheduler = BackgroundScheduler()
     scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)

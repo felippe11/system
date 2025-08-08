@@ -43,11 +43,15 @@ pacotes opcionais descritos em `requirements-dev.txt`:
 pip install -r requirements-dev.txt
 ```
 
-Com o ambiente configurado você pode aplicar as migrações executando:
+Com o ambiente configurado, gere e aplique as migrações com os comandos abaixo:
 
 ```bash
+flask db migrate
 flask db upgrade
 ```
+
+Todas as alterações no esquema do banco devem passar por esse fluxo de migrações;
+`db.create_all` não é utilizado.
 
 Uma nova revisão `671cbede4123` adiciona os campos `numero_revisores`, `prazo_revisao` e
 `modelo_blind` à tabela `reviewer_application`.
