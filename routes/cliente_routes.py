@@ -161,6 +161,7 @@ def excluir_cliente(cliente_id):
             AgendamentoVisita,
             AlunoVisitante,
             ProfessorBloqueado,
+            PasswordResetToken,
         )
 
         # ===============================
@@ -199,6 +200,10 @@ def excluir_cliente(cliente_id):
                 ).delete(synchronize_session=False)
 
                 RespostaFormulario.query.filter_by(usuario_id=usuario.id).delete()
+
+        PasswordResetToken.query.filter(
+            PasswordResetToken.usuario_id.in_(usuario_ids)
+        ).delete(synchronize_session=False)
 
         # Remover associações entre usuários e clientes (tanto deste cliente
         # quanto outras referencias destes usuários)
