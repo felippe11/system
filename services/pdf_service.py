@@ -1438,11 +1438,16 @@ def gerar_pdf_checkins_qr():
             dt = dt.replace(tzinfo=pytz.utc)
         return dt.astimezone(brasilia_tz)
 
-    # 7. Agrupamento dos check-ins por oficina
-    oficinas_grupos = defaultdict(list)
+    # 7. Agrupamento dos check-ins por oficina ou evento
+    grupos_checkins = defaultdict(list)
     for checkin in checkins_qr:
-        oficina_titulo = checkin.oficina.titulo if checkin.oficina else "Oficina não especificada"
-        oficinas_grupos[oficina_titulo].append(checkin)
+        if checkin.oficina:
+            grupo_titulo = checkin.oficina.titulo
+        elif checkin.evento:
+            grupo_titulo = checkin.evento.nome
+        else:
+            grupo_titulo = "Atividade não especificada"
+        grupos_checkins[grupo_titulo].append(checkin)
 
     # 8. Definição do estilo de tabela
     table_style = TableStyle([
@@ -1476,15 +1481,15 @@ def gerar_pdf_checkins_qr():
         ('WORDWRAP', (0, 0), (-1, -1), True),
     ])
 
-    # 9. Gerar tabelas para cada oficina
+    # 9. Gerar tabelas para cada grupo
     total_checkins = 0
-    
-    for oficina_titulo, checkins in oficinas_grupos.items():
-        total_oficina = len(checkins)
-        total_checkins += total_oficina
-        
-        # Adicionar subtítulo da oficina
-        elements.append(Paragraph(f"Oficina: {oficina_titulo} ({total_oficina} check-ins)", subtitle_style))
+
+    for grupo_titulo, checkins in grupos_checkins.items():
+        total_grupo = len(checkins)
+        total_checkins += total_grupo
+
+        # Adicionar subtítulo do grupo
+        elements.append(Paragraph(f"Atividade: {grupo_titulo} ({total_grupo} check-ins)", subtitle_style))
         
         # Preparar dados da tabela
         # Usamos Paragraph para cada célula, o que permite o WORDWRAP aplicado acima.
