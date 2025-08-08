@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, abort
 import uuid
 import secrets
-import bcrypt
 from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db
 from services.mailjet_service import send_via_mailjet
@@ -21,7 +21,7 @@ def create_submission():
 
     locator = str(uuid.uuid4())
     raw_code = secrets.token_urlsafe(8)[:8]
-    code_hash = bcrypt.hashpw(raw_code.encode(), bcrypt.gensalt()).decode()
+    code_hash = generate_password_hash(raw_code)
 
     submission = Submission(title=title, content=content,
                             locator=locator, code_hash=code_hash)
