@@ -1,6 +1,9 @@
-from app import app, db
+from app import create_app, db
 from models import Usuario
 from werkzeug.security import generate_password_hash
+
+# Cria a aplicação
+app = create_app()
 
 with app.app_context():  # ✅ Criando um contexto da aplicação Flask
     # Verifica se o administrador já existe
@@ -20,5 +23,3 @@ with app.app_context():  # ✅ Criando um contexto da aplicação Flask
         print("✅ Administrador criado com sucesso!")
     else:
         print("⚠️ O administrador já existe no banco de dados.")
-
-

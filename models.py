@@ -46,6 +46,7 @@ class Usuario(db.Model, UserMixin):
         cascade='all, delete-orphan',
         passive_deletes=True,
         back_populates='usuario'
+
     )
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
@@ -555,13 +556,16 @@ class PasswordResetToken(db.Model):
     usuario_id = db.Column(
         db.Integer,
         db.ForeignKey('usuario.id', ondelete='CASCADE'),
-        nullable=False
+        nullable=False,
+
     )
     token = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
 
+
     usuario = db.relationship('Usuario', back_populates='password_reset_tokens')
+
 
     def __repr__(self):
         return f"<PasswordResetToken usuario_id={self.usuario_id} token={self.token}>"
