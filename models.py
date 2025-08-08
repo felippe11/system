@@ -41,6 +41,12 @@ class Usuario(db.Model, UserMixin):
     cliente = db.relationship('Cliente', backref=db.backref('usuarios_legacy', lazy=True))
     clientes = db.relationship('Cliente', secondary='usuario_clientes', back_populates='usuarios')
     evento = db.relationship('Evento', backref=db.backref('usuarios', lazy=True))
+    password_reset_tokens = db.relationship(
+        'PasswordResetToken',
+        backref='usuario',
+        cascade='all, delete-orphan',
+        passive_deletes=True,
+    )
     # NOVOS CAMPOS PARA LOCAIS DE ATUAÇÃO:
     estados = db.Column(db.String(255), nullable=True)   # Ex.: "SP,RJ,MG"
     cidades = db.Column(db.String(255), nullable=True)   # Ex.: "São Paulo,Rio de Janeiro,Belo Horizonte"
@@ -546,12 +552,14 @@ class PasswordResetToken(db.Model):
     __tablename__ = 'password_reset_token'
 
     id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('usuario.id', ondelete='CASCADE'),
+        nullable=False,
+    )
     token = db.Column(db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
-
-    usuario = db.relationship('Usuario')
 
     def __repr__(self):
         return f"<PasswordResetToken usuario_id={self.usuario_id} token={self.token}>"
