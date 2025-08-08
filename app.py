@@ -103,11 +103,20 @@ def reconciliar_pendentes():
         Inscricao.status_pagamento == "pending", Inscricao.created_at < ontem
     ).all()
 
+    reconciled = []
     for ins in pendentes:
         resp = sdk.payment().get(ins.payment_id)
         if resp["response"]["status"] == "approved":
             ins.status_pagamento = "approved"
+            reconciled.append(ins)
+
+    if reconciled:
+        try:
             db.session.commit()
+            logging.info("Reconciled %d pending payments", len(reconciled))
+        except Exception:
+            db.session.rollback()
+            logging.exception("Failed to commit reconciled payments")
 
 
 # Execução da aplicação
