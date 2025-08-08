@@ -1,5 +1,6 @@
 import os
 import pytest
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 from config import Config
 
@@ -12,8 +13,14 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 from app import create_app
 from extensions import db
 from models import (
-    Usuario, Cliente, Evento, EventoInscricaoTipo, Pagamento,
-    usuario_clientes, ConfiguracaoEvento
+    Usuario,
+    Cliente,
+    Evento,
+    EventoInscricaoTipo,
+    Pagamento,
+    PasswordResetToken,
+    usuario_clientes,
+    ConfiguracaoEvento,
 )
 
 
@@ -173,4 +180,37 @@ def test_excluir_cliente_removes_event_config(client, app):
     with app.app_context():
         assert ConfiguracaoEvento.query.count() == 0
         assert Evento.query.filter_by(cliente_id=cid).count() == 0
+
+
+def test_excluir_cliente_remove_reset_tokens(client, app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        user = Usuario(
+            nome="ResetUser",
+            cpf="3",
+            email="reset@example.com",
+            senha=generate_password_hash("123"),
+            formacao="x",
+            tipo="participante",
+            cliente_id=cliente.id,
+        )
+        db.session.add(user)
+        db.session.commit()
+        token = PasswordResetToken(
+            usuario_id=user.id,
+            token="tok",
+            expires_at=datetime.utcnow() + timedelta(hours=1),
+        )
+        db.session.add(token)
+        db.session.commit()
+        cid = cliente.id
+        assert PasswordResetToken.query.count() == 1
+
+    login(client, "admin@example.com", "123")
+    resp = client.post(f"/excluir_cliente/{cid}", follow_redirects=True)
+    assert resp.status_code in (200, 302)
+
+    with app.app_context():
+        assert PasswordResetToken.query.count() == 0
+        assert Usuario.query.filter_by(cliente_id=cid).count() == 0
 
