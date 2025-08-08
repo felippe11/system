@@ -164,8 +164,15 @@ toggleButtons.forEach(button => {
       },
       credentials: 'include'
     })
-      .then(res => res.json())
-  .then(data => {
+      .then(res => {
+        if (res.status === 403) {
+          alert('Você não tem permissão para alterar este evento.');
+          return;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
         if (data.success) {
           atualizarBotao(button, data.value);
         } else {
