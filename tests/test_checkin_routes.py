@@ -28,6 +28,7 @@ sys.modules.setdefault('utils', utils_stub)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
+utils_security.password_is_strong = lambda x: True
 sys.modules.setdefault('utils.security', utils_security)
 utils_mfa = types.ModuleType('utils.mfa')
 utils_mfa.mfa_required = lambda f: f
@@ -192,6 +193,35 @@ def test_leitor_checkin_json_invalid(client, app):
     resp = client.post('/leitor_checkin_json', json={'token': 'invalid'})
     assert resp.status_code == 404
     assert resp.get_json()['status'] == 'error'
+
+
+def test_leitor_checkin_json_prefers_oficina(client, app):
+    with app.app_context():
+        participante = Usuario.query.filter_by(email='part@test').first()
+        evento = Evento.query.first()
+        oficina = Oficina.query.first()
+        insc = Inscricao(usuario_id=participante.id,
+                          cliente_id=oficina.cliente_id,
+                          oficina_id=oficina.id,
+                          evento_id=evento.id,
+                          status_pagamento='approved')
+        db.session.add(insc)
+        db.session.commit()
+        token = insc.qr_code_token
+    login(client, 'cli@test', '123')
+    resp = client.post('/leitor_checkin_json', json={'token': token})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['status'] == 'success'
+    with app.app_context():
+        chk = Checkin.query.filter_by(usuario_id=participante.id, oficina_id=oficina.id).first()
+        assert chk is not None
+        assert chk.evento_id == evento.id
+        assert chk.cliente_id == oficina.cliente_id
+    resp = client.get('/lista_checkins_json')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert any(c.get('oficina') == oficina.titulo for c in data['checkins'])
 
 
 def test_checkin_correct_password(client, app):

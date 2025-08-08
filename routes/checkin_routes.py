@@ -43,34 +43,8 @@ def leitor_checkin():
         flash(mensagem, "danger")
         return redirect(url_for('dashboard_routes.dashboard'))
 
-    # Verifica se é check-in de evento ou oficina
-    if inscricao.evento_id:
-        logger.debug("Inscrição pertence a EVENTO (ID=%s)", inscricao.evento_id)
-        checkin_existente = Checkin.query.filter_by(
-            usuario_id=inscricao.usuario_id,
-            evento_id=inscricao.evento_id
-        ).first()
-        if checkin_existente:
-            mensagem = "Check-in de evento já foi realizado!"
-            logger.warning(mensagem)
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
-            flash(mensagem, "warning")
-            return redirect(url_for('dashboard_routes.dashboard'))
-
-        novo_checkin = Checkin(
-            usuario_id=inscricao.usuario_id,
-            evento_id=inscricao.evento_id,
-            palavra_chave="QR-EVENTO"
-        )
-        dados_checkin = {
-            'participante': inscricao.usuario.nome,
-            'evento': inscricao.evento.nome,
-            'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
-        }
-        logger.info("Check-in de EVENTO criado. Usuario=%s, Evento=%s", inscricao.usuario_id, inscricao.evento_id)
-
-    elif inscricao.oficina_id:
+    # Verifica se é check-in de oficina ou evento (prioriza oficina)
+    if inscricao.oficina_id:
         logger.debug("Inscrição pertence a OFICINA (ID=%s)", inscricao.oficina_id)
         checkin_existente = Checkin.query.filter_by(
             usuario_id=inscricao.usuario_id,
@@ -87,7 +61,9 @@ def leitor_checkin():
         novo_checkin = Checkin(
             usuario_id=inscricao.usuario_id,
             oficina_id=inscricao.oficina_id,
-            palavra_chave="QR-OFICINA"
+            evento_id=inscricao.oficina.evento_id,
+            cliente_id=inscricao.oficina.cliente_id,
+            palavra_chave="QR-OFICINA",
         )
         dados_checkin = {
             'participante': inscricao.usuario.nome,
@@ -96,6 +72,31 @@ def leitor_checkin():
         }
         logger.info("Check-in de OFICINA criado. Usuario=%s, Oficina=%s", inscricao.usuario_id, inscricao.oficina_id)
 
+    elif inscricao.evento_id:
+        logger.debug("Inscrição pertence a EVENTO (ID=%s)", inscricao.evento_id)
+        checkin_existente = Checkin.query.filter_by(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id
+        ).first()
+        if checkin_existente:
+            mensagem = "Check-in de evento já foi realizado!"
+            logger.warning(mensagem)
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
+            flash(mensagem, "warning")
+            return redirect(url_for('dashboard_routes.dashboard'))
+
+        novo_checkin = Checkin(
+            usuario_id=inscricao.usuario_id,
+            evento_id=inscricao.evento_id,
+            palavra_chave="QR-EVENTO",
+        )
+        dados_checkin = {
+            'participante': inscricao.usuario.nome,
+            'evento': inscricao.evento.nome,
+            'data_hora': novo_checkin.data_hora.strftime('%d/%m/%Y %H:%M:%S')
+        }
+        logger.info("Check-in de EVENTO criado. Usuario=%s, Evento=%s", inscricao.usuario_id, inscricao.evento_id)
     else:
         mensagem = "Inscrição sem evento ou oficina vinculada."
         logger.error(mensagem)
@@ -306,11 +307,23 @@ def leitor_checkin_json():
         return jsonify(status='error',
                        message='Esta inscrição não pertence a um evento ou atividade sua!'), 403
 
-    cliente_id   = inscricao.cliente_id
+    cliente_id = inscricao.oficina.cliente_id if inscricao.oficina_id else inscricao.cliente_id
     sala_cliente = f"cliente_{cliente_id}"     # sala usada no Socket.IO
 
+    # ---------- OFICINA ----------
+    if inscricao.oficina_id:
+        if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
+                                   oficina_id=inscricao.oficina_id).first():
+            return jsonify(status='warning',
+                           message='Check‑in da oficina já foi realizado!')
+
+        novo = Checkin(usuario_id = inscricao.usuario_id,
+                       oficina_id = inscricao.oficina_id,
+                       evento_id  = inscricao.oficina.evento_id,
+                       cliente_id = cliente_id,          # ★ grava aqui
+                       palavra_chave = "QR-OFICINA")
     # ---------- EVENTO ----------
-    if inscricao.evento_id:
+    elif inscricao.evento_id:
         # evita duplicidade
         if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
                                    evento_id=inscricao.evento_id).first():
@@ -321,17 +334,6 @@ def leitor_checkin_json():
                        evento_id  = inscricao.evento_id,
                        cliente_id = cliente_id,          # ★ grava aqui
                        palavra_chave = "QR-EVENTO")
-    # ---------- OFICINA ----------
-    elif inscricao.oficina_id:
-        if Checkin.query.filter_by(usuario_id=inscricao.usuario_id,
-                                   oficina_id=inscricao.oficina_id).first():
-            return jsonify(status='warning',
-                           message='Check‑in da oficina já foi realizado!')
-
-        novo = Checkin(usuario_id = inscricao.usuario_id,
-                       oficina_id = inscricao.oficina_id,
-                       cliente_id = cliente_id,          # ★ grava aqui
-                       palavra_chave = "QR-OFICINA")
     else:
         return jsonify(status='error',
                        message='Inscrição sem evento ou oficina.'), 400
@@ -437,21 +439,21 @@ def lista_checkins_json():
         data_formatada = formatar_brasilia(c.data_hora)
         turno = determinar_turno(c.data_hora)
 
-        if c.evento_id:
-            resultado.append({
-                'participante': c.usuario.nome,
-                'evento'      : c.evento.nome if c.evento else "Evento Desconhecido",
-                'data_hora'   : data_formatada,
-                'turno'       : turno,
-                'tipo_checkin': 'evento'
-            })
-        elif c.oficina_id:
+        if c.oficina_id:
             resultado.append({
                 'participante': c.usuario.nome,
                 'oficina'     : c.oficina.titulo if c.oficina else "Oficina Desconhecida",
                 'data_hora'   : data_formatada,
                 'turno'       : turno,
                 'tipo_checkin': 'oficina'
+            })
+        elif c.evento_id:
+            resultado.append({
+                'participante': c.usuario.nome,
+                'evento'      : c.evento.nome if c.evento else "Evento Desconhecido",
+                'data_hora'   : data_formatada,
+                'turno'       : turno,
+                'tipo_checkin': 'evento'
             })
         else:
             resultado.append({
