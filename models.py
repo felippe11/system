@@ -2,24 +2,12 @@
 import os
 import uuid
 from datetime import datetime, date
-import bcrypt
 from flask_login import UserMixin
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
 from sqlalchemy.orm import relationship  # Adicione esta linha!
-from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Email
 
 
-# =================================
-#             CLIENTE
-# =================================
-class EditarClienteForm(FlaskForm):
-    nome = StringField('Nome', validators=[DataRequired()])
-    email = StringField('E-mail', validators=[DataRequired(), Email()])
-    senha = PasswordField('Nova Senha')
-    submit = SubmitField('Salvar Alterações')
 # =================================
 #             USUÁRIO
 # =================================
@@ -1428,7 +1416,7 @@ class Submission(db.Model):
         """Valida o código de acesso enviado pelo usuário."""
         if not code:
             return False
-        return bcrypt.checkpw(code.encode(), self.code_hash.encode())
+        return check_password_hash(self.code_hash, code)
 
 
 # -----------------------------------------------------------------------------
