@@ -119,20 +119,30 @@ function setConfigButtonsState(enabled) {
     btn.disabled = !enabled;
   });
 }
-
 if (eventoSelect) {
-  EVENTO_ATUAL = eventoSelect.value;
-  setConfigButtonsState(Boolean(EVENTO_ATUAL));
   const updatePreview = () => {
     if (previewEventoBtn) {
       const base = previewEventoBtn.dataset.baseUrl || previewEventoBtn.href;
       previewEventoBtn.href = `${base}${encodeURIComponent(eventoSelect.value)}`;
     }
   };
+
+  // Se não houver valor inicial, pega a primeira opção disponível
+  if (!eventoSelect.value) {
+    const primeiraOpcao = Array.from(eventoSelect.options).find(opt => opt.value);
+    if (primeiraOpcao) {
+      eventoSelect.value = primeiraOpcao.value;
+    }
+  }
+
+  EVENTO_ATUAL = eventoSelect.value;
+  setConfigButtonsState(Boolean(EVENTO_ATUAL));
+
   if (EVENTO_ATUAL) {
     updatePreview();
     carregarConfiguracao(EVENTO_ATUAL);
   }
+
   eventoSelect.addEventListener("change", function () {
     EVENTO_ATUAL = this.value;
     setConfigButtonsState(Boolean(EVENTO_ATUAL));
@@ -175,8 +185,15 @@ toggleButtons.forEach(button => {
       },
       credentials: 'include'
     })
-      .then(res => res.json())
-  .then(data => {
+      .then(res => {
+        if (res.status === 403) {
+          alert('Você não tem permissão para alterar este evento.');
+          return;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
         if (data.success) {
           atualizarBotao(button, data.value);
         } else {

@@ -1,5 +1,5 @@
-import bcrypt
 import pytest
+from werkzeug.security import generate_password_hash
 from config import Config
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
@@ -16,7 +16,7 @@ def app():
     with app.app_context():
         db.create_all()
         raw_code = 'secret'
-        sub = Submission(title='T', locator='loc1', code_hash=bcrypt.hashpw(raw_code.encode(), bcrypt.gensalt()).decode())
+        sub = Submission(title='T', locator='loc1', code_hash=generate_password_hash(raw_code))
         db.session.add(sub)
         db.session.commit()
         rev = Review(submission_id=sub.id, locator='revloc', access_code='revcode')
