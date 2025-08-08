@@ -111,8 +111,14 @@ const fieldButtonMap = {
   "obrigatorio_formacao": document.getElementById("btnToggleObrigatorioFormacao")
 };
 
+const configButtons = Object.values(fieldButtonMap).filter(btn => btn);
 const eventoSelect = document.getElementById("selectConfigEvento");
 const previewEventoBtn = document.getElementById("previewEventoBtn");
+function setConfigButtonsState(enabled) {
+  configButtons.forEach(btn => {
+    btn.disabled = !enabled;
+  });
+}
 if (eventoSelect) {
   const updatePreview = () => {
     if (previewEventoBtn) {
@@ -121,6 +127,7 @@ if (eventoSelect) {
     }
   };
 
+  // Se não houver valor inicial, pega a primeira opção disponível
   if (!eventoSelect.value) {
     const primeiraOpcao = Array.from(eventoSelect.options).find(opt => opt.value);
     if (primeiraOpcao) {
@@ -129,14 +136,17 @@ if (eventoSelect) {
   }
 
   EVENTO_ATUAL = eventoSelect.value;
+  setConfigButtonsState(Boolean(EVENTO_ATUAL));
+
   if (EVENTO_ATUAL) {
     updatePreview();
     carregarConfiguracao(EVENTO_ATUAL);
   }
 
   eventoSelect.addEventListener("change", function () {
-    if (!this.value) return;
     EVENTO_ATUAL = this.value;
+    setConfigButtonsState(Boolean(EVENTO_ATUAL));
+    if (!EVENTO_ATUAL) return;
     updatePreview();
     carregarConfiguracao(EVENTO_ATUAL);
   });
