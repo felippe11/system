@@ -47,7 +47,6 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 from faker import Faker
 import uuid
-import bcrypt
 from slugify import slugify  # You may need to pip install python-slugify
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
@@ -1086,7 +1085,7 @@ def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
         for _ in range(quantidade_por_evento):
             autor = random.choice(participantes)
             raw_code = fake.lexify(text="??????")
-            code_hash = bcrypt.hashpw(raw_code.encode(), bcrypt.gensalt()).decode()
+            code_hash = generate_password_hash(raw_code)
             sub = Submission(
                 title=fake.sentence(nb_words=6),
                 abstract=fake.paragraph(),
