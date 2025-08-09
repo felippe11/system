@@ -134,16 +134,16 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
                 tipo_inscricao_texto = "Inscrição sem limite de vagas"
             elif oficina.tipo_inscricao == "com_inscricao_com_limite":
                 tipo_inscricao_texto = "Inscrição com vagas limitadas"
-        
-        mensagem += (
-            f"\n🎓 *Oficina:* {oficina.titulo}\n"
+
+            mensagem += (
+                f"\n🎓 *Oficina:* {oficina.titulo}\n"
                 f"🔹 *Tipo de Inscrição:* {tipo_inscricao_texto}\n"
                 f"🔹 *Vagas:* {vagas_texto}\n"
-            f"🔹 *Inscritos:* {num_inscritos}\n"
-            f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
-        )
-        
-        mensagem += "----------------------------------------\n"
+                f"🔹 *Inscritos:* {num_inscritos}\n"
+                f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+            )
+
+            mensagem += "----------------------------------------\n"
 
     return mensagem
 
