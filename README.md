@@ -156,6 +156,10 @@ No dashboard do cliente é possível exportar a lista de inscritos de um evento 
 
 Para sinalizar as atividades de um evento, utilize a rota `/gerar_placas/<evento_id>` ou o botão **Baixar Placas** no dashboard do cliente. Um PDF é gerado com uma página por oficina, contendo título e ministrante.
 
+### Conversão de DOCX para PDF
+
+Relatórios em PDF são gerados a partir de documentos Word usando `docx2pdf`. Caso a conversão falhe, o sistema tenta utilizar `pypandoc` se estiver disponível; do contrário, retorna o arquivo DOCX original. Instale `pypandoc` para habilitar o fallback.
+
 ### Impersonação de clientes
 
 Administradores podem acessar o painel de qualquer cliente clicando em **Acessar** na seção de Gestão de Clientes do dashboard. A navegação mostrará um link "Sair do modo cliente" para retornar à conta de administrador.
