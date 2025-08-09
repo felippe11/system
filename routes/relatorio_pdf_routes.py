@@ -7,6 +7,11 @@ from services.pdf_service import (
     gerar_certificados_pdf,
     gerar_pdf_feedback
 )
+from services.relatorio_service import (
+    gerar_texto_relatorio,
+    criar_documento_word,
+    converter_para_pdf,
+)
 from io import BytesIO
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
@@ -156,3 +161,42 @@ def exportar_financeiro():
     wb.save(output)
     output.seek(0)
     return send_file(output, as_attachment=True, download_name='financeiro.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@relatorio_pdf_routes.route('/gerar_relatorio_evento/<int:evento_id>', methods=['POST'])
+@login_required
+def gerar_relatorio_evento(evento_id):
+    """Gera relatório detalhado do evento com prévia, Word e PDF."""
+    evento = Evento.query.get_or_404(evento_id)
+    if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
+        flash('Acesso negado ao evento.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    payload = request.get_json() or {}
+    dados_selecionados = payload.get('dados', [])
+    cabecalho = payload.get('cabecalho', '')
+    rodape = payload.get('rodape', '')
+    dados_extra = payload.get('dados_extra', {})
+
+    texto = gerar_texto_relatorio(evento, dados_selecionados)
+    docx_buffer = criar_documento_word(texto, cabecalho, rodape, dados_extra)
+    pdf_buffer = converter_para_pdf(docx_buffer)
+
+    if request.args.get('preview') == '1':
+        pdf_buffer.seek(0)
+        return send_file(pdf_buffer, mimetype='application/pdf')
+
+    formato = request.args.get('formato', 'pdf')
+    if formato == 'docx':
+        docx_buffer.seek(0)
+        nome = f'relatorio_evento_{evento.id}.docx'
+        return send_file(
+            docx_buffer,
+            as_attachment=True,
+            download_name=nome,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
+    pdf_buffer.seek(0)
+    nome = f'relatorio_evento_{evento.id}.pdf'
+    return send_file(pdf_buffer, as_attachment=True, download_name=nome, mimetype='application/pdf')
