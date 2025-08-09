@@ -86,3 +86,7 @@ wsproto==1.2.0
 WTForms==3.2.1
 XlsxWriter==3.2.2
 mailjet-rest==1.5.1
+docx2pdf==0.1.8
+python-docx==1.1.2
+transformers==4.46.1
+huggingface-hub==0.26.2
