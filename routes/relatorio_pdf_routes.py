@@ -8,7 +8,6 @@ from services.pdf_service import (
     gerar_pdf_feedback
 )
 from services.relatorio_service import (
-    gerar_texto_relatorio,
     criar_documento_word,
     converter_para_pdf,
 )
@@ -177,6 +176,7 @@ def gerar_relatorio_evento(evento_id):
     cabecalho = payload.get('cabecalho', '')
     rodape = payload.get('rodape', '')
     dados_extra = payload.get('dados_extra', {})
+    from services.relatorio_service import gerar_texto_relatorio
 
     texto = gerar_texto_relatorio(evento, dados_selecionados)
     docx_buffer = criar_documento_word(texto, cabecalho, rodape, dados_extra)

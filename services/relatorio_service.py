@@ -5,12 +5,26 @@ import os
 
 from docx import Document
 from docx2pdf import convert as docx2pdf_convert
-from transformers import pipeline
+import logging
 
 
-# Initialize a lightweight text generation pipeline
-# Using t5-small for free summarization/text generation
-_model = pipeline("text2text-generation", model="t5-small")
+# Modelo de geração de texto carregado sob demanda
+_model = None
+
+
+def _get_model():
+    """Carrega a pipeline de geração de texto somente quando necessário."""
+    global _model
+    if _model is None:
+        try:
+            from transformers import pipeline
+
+            # Usando t5-small para sumarização/geração de texto gratuita
+            _model = pipeline("text2text-generation", model="t5-small")
+        except Exception as exc:  # pragma: no cover - falha apenas em ambiente sem modelo
+            logging.getLogger(__name__).error("Falha ao carregar modelo T5: %s", exc)
+            _model = None
+    return _model
 
 
 def gerar_texto_relatorio(evento, dados_selecionados: List[str]) -> str:
@@ -29,7 +43,10 @@ def gerar_texto_relatorio(evento, dados_selecionados: List[str]) -> str:
         Texto gerado pelo modelo com base nos dados fornecidos.
     """
     entrada = f"Evento: {getattr(evento, 'nome', '')}. " + " ".join(dados_selecionados)
-    resultado = _model(entrada, max_length=200, do_sample=False)
+    model = _get_model()
+    if not model:
+        return "Modelo de geração de texto indisponível."
+    resultado = model(entrada, max_length=200, do_sample=False)
     return resultado[0]["generated_text"].strip()
 
 
