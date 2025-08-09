@@ -7,8 +7,18 @@ from flask_login import login_required, current_user
 from io import BytesIO
 from openpyxl import Workbook
 from extensions import db
-from models import Evento, Oficina, Inscricao, LoteTipoInscricao, EventoInscricaoTipo
+from models import (
+    Evento,
+    Oficina,
+    Inscricao,
+    LoteTipoInscricao,
+    EventoInscricaoTipo,
+    Ministrante,
+    Checkin,
+    Sorteio,
+)
 from datetime import datetime
+import os
 
 
 def montar_relatorio_mensagem(incluir_financeiro=False):
@@ -147,6 +157,117 @@ def relatorio_mensagem():
         'relatorio/relatorio_mensagem.html',
         texto_relatorio=texto,
         incluir_financeiro=incluir
+    )
+
+
+@relatorio_routes.route('/gerar_relatorio_evento', methods=['GET', 'POST'])
+@login_required
+def gerar_relatorio_evento():
+    """Gera relatório de um evento com opção de download em Word/PDF."""
+    # Carrega eventos do usuário atual
+    is_admin = current_user.tipo == 'admin'
+    if is_admin:
+        eventos = Evento.query.all()
+    else:
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+
+    preview = None
+    contexto_export = None
+    selected_event = None
+
+    if request.method == 'POST':
+        evento_id = request.form.get('evento_id', type=int)
+        selected_event = Evento.query.get(evento_id) if evento_id else None
+        cabecalho = request.form.get('cabecalho', '')
+        rodape = request.form.get('rodape', '')
+
+        incluir_atividades = 'atividades' in request.form
+        incluir_ministrantes = 'ministrantes' in request.form
+        incluir_datas = 'datas' in request.form
+        incluir_sorteio = 'sorteio' in request.form
+        incluir_num_inscritos = 'num_inscritos' in request.form
+        incluir_lista_nominal = 'lista_nominal' in request.form
+        incluir_checkins = 'checkins' in request.form
+
+        dados = {}
+        if selected_event:
+            dados['evento'] = selected_event
+
+            if incluir_atividades or incluir_ministrantes or incluir_datas:
+                oficinas = Oficina.query.filter_by(evento_id=selected_event.id).all()
+                if incluir_atividades:
+                    dados['atividades'] = oficinas
+                if incluir_ministrantes:
+                    ministrantes = [
+                        of.ministrante_obj for of in oficinas if of.ministrante_obj
+                    ]
+                    dados['ministrantes'] = ministrantes
+                if incluir_datas:
+                    datas = []
+                    for of in oficinas:
+                        for dia in of.dias:
+                            datas.append(
+                                {
+                                    'oficina': of.titulo,
+                                    'data': dia.data,
+                                    'inicio': dia.horario_inicio,
+                                    'fim': dia.horario_fim,
+                                }
+                            )
+                    dados['datas'] = datas
+
+            if incluir_sorteio:
+                dados['sorteios'] = Sorteio.query.filter_by(evento_id=selected_event.id).all()
+
+            if incluir_num_inscritos or incluir_lista_nominal or incluir_checkins:
+                inscricoes = Inscricao.query.filter_by(evento_id=selected_event.id).all()
+                if incluir_num_inscritos:
+                    dados['num_inscritos'] = len(inscricoes)
+                if incluir_lista_nominal:
+                    dados['lista_nominal'] = [ins.usuario.nome for ins in inscricoes]
+                if incluir_checkins:
+                    dados['checkins'] = Checkin.query.filter_by(evento_id=selected_event.id).all()
+
+        from services.ia_service import gerar_texto_relatorio
+        texto_base = gerar_texto_relatorio(dados)
+
+        preview = f"{cabecalho}\n{texto_base}\n{rodape}".strip()
+        contexto_export = {
+            'cabecalho': cabecalho,
+            'rodape': rodape,
+            'texto': texto_base,
+            'dados': dados,
+        }
+
+        download = request.form.get('download')
+        if download in {'pdf', 'word'} and selected_event:
+            conteudo = f"{cabecalho}\n\n{texto_base}\n\n{rodape}".strip()
+            buffer = BytesIO()
+            if download == 'pdf':
+                from reportlab.pdfgen import canvas
+
+                c = canvas.Canvas(buffer)
+                y = 800
+                for linha in conteudo.split('\n'):
+                    c.drawString(40, y, linha)
+                    y -= 15
+                c.save()
+                buffer.seek(0)
+                nome = 'relatorio_evento.pdf'
+                return send_file(buffer, as_attachment=True, download_name=nome, mimetype='application/pdf')
+            else:  # word via RTF simples
+                conteudo_rtf = '{\\rtf1\n' + conteudo.replace('\n', '\\par\n') + '\n}'
+                buffer.write(conteudo_rtf.encode('utf-8'))
+                buffer.seek(0)
+                nome = 'relatorio_evento.rtf'
+                return send_file(buffer, as_attachment=True, download_name=nome, mimetype='application/rtf')
+
+    return render_template(
+        'relatorio/gerar_relatorio.html',
+        eventos=eventos,
+        preview=preview,
+        contexto_export=contexto_export,
+        selected_event=selected_event,
     )
 
 
