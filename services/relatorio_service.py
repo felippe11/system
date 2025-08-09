@@ -2,6 +2,7 @@ from io import BytesIO
 from typing import List, Dict, Any
 import tempfile
 import os
+import logging
 
 from docx import Document
 from docx2pdf import convert as docx2pdf_convert
@@ -90,7 +91,19 @@ def converter_para_pdf(docx_bytes: BytesIO) -> BytesIO:
         tmp_docx.flush()
         tmp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         tmp_pdf.close()
-        docx2pdf_convert(tmp_docx.name, tmp_pdf.name)
+        try:
+            docx2pdf_convert(tmp_docx.name, tmp_pdf.name)
+        except Exception as e:
+            logging.error("Falha na conversão com docx2pdf: %s", e)
+            try:
+                import pypandoc
+                pypandoc.convert_file(tmp_docx.name, 'pdf', outputfile=tmp_pdf.name)
+            except Exception as e2:
+                logging.error("Fallback pypandoc também falhou: %s", e2)
+                os.unlink(tmp_docx.name)
+                os.unlink(tmp_pdf.name)
+                docx_bytes.seek(0)
+                return docx_bytes
         with open(tmp_pdf.name, "rb") as f:
             pdf_data = f.read()
     os.unlink(tmp_docx.name)
