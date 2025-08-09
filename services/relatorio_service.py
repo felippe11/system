@@ -1,36 +1,10 @@
 from io import BytesIO
-from typing import List, Dict, Any
+from typing import Dict, Any
 import tempfile
 import os
 
 from docx import Document
 from docx2pdf import convert as docx2pdf_convert
-from transformers import pipeline
-
-
-# Initialize a lightweight text generation pipeline
-# Using t5-small for free summarization/text generation
-_model = pipeline("text2text-generation", model="t5-small")
-
-
-def gerar_texto_relatorio(evento, dados_selecionados: List[str]) -> str:
-    """Gera texto de relatório para um evento usando modelo T5.
-
-    Parameters
-    ----------
-    evento: models.Evento
-        Instância do evento.
-    dados_selecionados: List[str]
-        Lista de campos ou informações selecionadas para compor o relatório.
-
-    Returns
-    -------
-    str
-        Texto gerado pelo modelo com base nos dados fornecidos.
-    """
-    entrada = f"Evento: {getattr(evento, 'nome', '')}. " + " ".join(dados_selecionados)
-    resultado = _model(entrada, max_length=200, do_sample=False)
-    return resultado[0]["generated_text"].strip()
 
 
 def criar_documento_word(texto: str, cabecalho: str = "", rodape: str = "", dados: Dict[str, Any] | None = None) -> BytesIO:
