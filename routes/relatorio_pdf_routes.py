@@ -1,6 +1,16 @@
 from flask import Blueprint, send_file, flash, redirect, url_for, request
 from flask_login import login_required, current_user
-from models import Oficina, Feedback, Evento, Inscricao, Usuario, CampoPersonalizadoCadastro, RespostaCampo
+from models import (
+    Oficina,
+    Feedback,
+    Evento,
+    Inscricao,
+    Usuario,
+    CampoPersonalizadoCadastro,
+    RespostaCampo,
+    Checkin,
+    Sorteio,
+)
 from services.pdf_service import (
     gerar_pdf_inscritos_pdf,
     gerar_lista_frequencia_pdf,
@@ -8,10 +18,10 @@ from services.pdf_service import (
     gerar_pdf_feedback
 )
 from services.relatorio_service import (
-    gerar_texto_relatorio,
     criar_documento_word,
     converter_para_pdf,
 )
+from services.ia_service import gerar_texto_relatorio
 from io import BytesIO
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
@@ -178,7 +188,36 @@ def gerar_relatorio_evento(evento_id):
     rodape = payload.get('rodape', '')
     dados_extra = payload.get('dados_extra', {})
 
-    texto = gerar_texto_relatorio(evento, dados_selecionados)
+    dados = {'evento': evento}
+    if any(opt in dados_selecionados for opt in ('atividades', 'ministrantes', 'datas')):
+        oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
+        if 'atividades' in dados_selecionados:
+            dados['atividades'] = oficinas
+        if 'ministrantes' in dados_selecionados:
+            dados['ministrantes'] = [of.ministrante_obj for of in oficinas if of.ministrante_obj]
+        if 'datas' in dados_selecionados:
+            datas = []
+            for of in oficinas:
+                for dia in of.dias:
+                    datas.append({
+                        'oficina': of.titulo,
+                        'data': dia.data,
+                        'inicio': dia.horario_inicio,
+                        'fim': dia.horario_fim,
+                    })
+            dados['datas'] = datas
+    if 'sorteio' in dados_selecionados:
+        dados['sorteios'] = Sorteio.query.filter_by(evento_id=evento.id).all()
+    if any(opt in dados_selecionados for opt in ('num_inscritos', 'lista_nominal', 'checkins')):
+        inscricoes = Inscricao.query.filter_by(evento_id=evento.id).all()
+        if 'num_inscritos' in dados_selecionados:
+            dados['num_inscritos'] = len(inscricoes)
+        if 'lista_nominal' in dados_selecionados:
+            dados['lista_nominal'] = [ins.usuario.nome for ins in inscricoes]
+        if 'checkins' in dados_selecionados:
+            dados['checkins'] = Checkin.query.filter_by(evento_id=evento.id).all()
+
+    texto = gerar_texto_relatorio(dados)
     docx_buffer = criar_documento_word(texto, cabecalho, rodape, dados_extra)
     pdf_buffer = converter_para_pdf(docx_buffer)
 
