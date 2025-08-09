@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Gerar Relatório{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+  <h3 class="mb-4">Gerar Relatório do Evento</h3>
+  <form method="post">
+    <div class="mb-3">
+      <label for="evento_id" class="form-label">Evento</label>
+      <select name="evento_id" id="evento_id" class="form-select">
+        {% for e in eventos %}
+        <option value="{{ e.id }}" {% if selected_event and selected_event.id == e.id %}selected{% endif %}>{{ e.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="atividades" name="atividades" {% if request.form.get('atividades') %}checked{% endif %}>
+      <label class="form-check-label" for="atividades">Atividades</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="ministrantes" name="ministrantes" {% if request.form.get('ministrantes') %}checked{% endif %}>
+      <label class="form-check-label" for="ministrantes">Ministrantes</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="datas" name="datas" {% if request.form.get('datas') %}checked{% endif %}>
+      <label class="form-check-label" for="datas">Datas/Horários</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="sorteio" name="sorteio" {% if request.form.get('sorteio') %}checked{% endif %}>
+      <label class="form-check-label" for="sorteio">Sorteio + vencedor</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="num_inscritos" name="num_inscritos" {% if request.form.get('num_inscritos') %}checked{% endif %}>
+      <label class="form-check-label" for="num_inscritos">Nº de inscritos</label>
+    </div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="lista_nominal" name="lista_nominal" {% if request.form.get('lista_nominal') %}checked{% endif %}>
+      <label class="form-check-label" for="lista_nominal">Lista nominal</label>
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="checkins" name="checkins" {% if request.form.get('checkins') %}checked{% endif %}>
+      <label class="form-check-label" for="checkins">Check-ins</label>
+    </div>
+
+    <div class="mb-3">
+      <label for="cabecalho" class="form-label">Cabeçalho</label>
+      <input type="text" class="form-control" name="cabecalho" id="cabecalho" value="{{ request.form.get('cabecalho','') }}">
+    </div>
+    <div class="mb-3">
+      <label for="rodape" class="form-label">Rodapé</label>
+      <input type="text" class="form-control" name="rodape" id="rodape" value="{{ request.form.get('rodape','') }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+  </form>
+
+  {% if preview %}
+  <hr>
+  <h5>Prévia</h5>
+  <div class="border p-3 mb-3" style="white-space: pre-line;">{{ preview }}</div>
+  <form method="post" class="d-inline">
+    {% for k, v in request.form.items() %}
+    <input type="hidden" name="{{ k }}" value="{{ v }}">
+    {% endfor %}
+    <input type="hidden" name="download" value="word">
+    <button class="btn btn-secondary">Baixar Word</button>
+  </form>
+  <form method="post" class="d-inline ms-2">
+    {% for k, v in request.form.items() %}
+    <input type="hidden" name="{{ k }}" value="{{ v }}">
+    {% endfor %}
+    <input type="hidden" name="download" value="pdf">
+    <button class="btn btn-secondary">Baixar PDF</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

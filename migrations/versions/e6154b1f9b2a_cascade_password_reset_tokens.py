@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Cascade delete password reset tokens
 
 Revision ID: e6154b1f9b2a
@@ -46,3 +47,53 @@ def downgrade() -> None:
         ["id"],
     )
 
+=======
+"""Cascade delete password reset tokens
+
+Revision ID: e6154b1f9b2a
+Revises: 9bac7f9f0073
+Create Date: 2025-08-05 00:00:00.000000
+"""
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision = "e6154b1f9b2a"
+down_revision = "9bac7f9f0073"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.drop_constraint(
+        "fk_password_reset_token_usuario_id_usuario",
+        "password_reset_token",
+        type_="foreignkey",
+    )
+    op.create_foreign_key(
+        "fk_password_reset_token_usuario_id_usuario",
+        "password_reset_token",
+        "usuario",
+        ["usuario_id"],
+        ["id"],
+        ondelete="CASCADE",
+    )
+
+
+def downgrade() -> None:
+    op.drop_constraint(
+        "fk_password_reset_token_usuario_id_usuario",
+        "password_reset_token",
+        type_="foreignkey",
+    )
+    op.create_foreign_key(
+        "fk_password_reset_token_usuario_id_usuario",
+        "password_reset_token",
+        "usuario",
+        ["usuario_id"],
+        ["id"],
+    )
+
+>>>>>>> 07979485b857ef79a9f5dd05cefd3afbcca8692a
