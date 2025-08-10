@@ -327,7 +327,7 @@ def visualizar_resposta(resposta_id):
         flash("Você não tem permissão para ver esta resposta.", "danger")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
-    return render_template('visualizar_resposta.html', resposta=resposta)
+    return render_template('trabalho/visualizar_resposta.html', resposta=resposta)
 
 
     
