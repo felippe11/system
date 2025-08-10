@@ -10,17 +10,16 @@ from flask import (
     abort,
 )
 import logging
-
-logger = logging.getLogger(__name__)
-from flask_login import login_required, current_user
-from utils.mfa import mfa_required
-from werkzeug.utils import secure_filename
-from sqlalchemy.orm import joinedload
 import os
 import uuid
 from datetime import datetime
 
+from flask_login import login_required, current_user
+from utils.mfa import mfa_required
+from werkzeug.utils import secure_filename
+from sqlalchemy.orm import joinedload
 from sqlalchemy import text
+
 from extensions import db
 from models import (
     Formulario,
@@ -40,7 +39,10 @@ from models import (
 )
 from services.pdf_service import gerar_pdf_respostas
 
-ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
+logger = logging.getLogger(__name__)
+
+# Extensões permitidas (use com os.path.splitext, que retorna com ponto na extensão)
+ALLOWED_UPLOAD_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.gif'}
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -57,33 +59,22 @@ def listar_formularios():
     Cada formulário vem com TODAS as respostas + usuário de cada resposta
     para evitar consultas N+1.
     """
-    # Base query com eager-load das relações necessárias
-    q = (Formulario.query
-            .options(
-                joinedload(Formulario.respostas)
-                    .joinedload(RespostaFormulario.usuario)   # carrega o autor da resposta
-            )
-            .order_by(Formulario.nome)
+    q = (
+        Formulario.query
+        .options(
+            joinedload(Formulario.respostas)
+            .joinedload(RespostaFormulario.usuario)
         )
+        .order_by(Formulario.nome)
+    )
 
-    # 1. Se o usuário for superadmin, não filtra nada
     if getattr(current_user, "tipo", None) == "superadmin":
         formularios = q.all()
-
-    # 2. Caso contrário, mostra apenas o que pertence ao cliente dele
     else:
-        cliente_id = getattr(current_user, "cliente_id", None)
-
-        # fallback: se o modelo antigo gravou cliente_id = current_user.id
-        # usa o id do usuário como último recurso
-        if not cliente_id:
-            cliente_id = current_user.id
-
+        cliente_id = getattr(current_user, "cliente_id", None) or current_user.id
         formularios = q.filter(Formulario.cliente_id == cliente_id).all()
 
-    # Envia tudo para o novo template que lista formulários + respostas
-    return render_template('formularios.html',
-                           formularios=formularios)
+    return render_template('formularios.html', formularios=formularios)
 
 
 @formularios_routes.route('/formularios/novo', methods=['GET', 'POST'])
@@ -102,6 +93,7 @@ def criar_formulario():
         if config_cli and config_cli.limite_formularios is not None and count_forms >= config_cli.limite_formularios:
             flash('Limite de formulários atingido.', 'danger')
             return redirect(url_for('formularios_routes.listar_formularios'))
+
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
         evento_ids = request.form.getlist('eventos')
@@ -109,7 +101,7 @@ def criar_formulario():
         novo_formulario = Formulario(
             nome=nome,
             descricao=descricao,
-            cliente_id=current_user.id  # Relaciona com o cliente logado
+            cliente_id=current_user.id
         )
 
         if evento_ids:
@@ -122,6 +114,7 @@ def criar_formulario():
         return redirect(url_for('formularios_routes.listar_formularios'))
 
     return render_template("criar_formulario.html", eventos=eventos_disponiveis)
+
 
 @formularios_routes.route('/formularios/<int:formulario_id>/editar', methods=['GET', 'POST'])
 @login_required
@@ -136,6 +129,7 @@ def editar_formulario(formulario_id):
         return redirect(url_for('formularios_routes.listar_formularios'))
 
     return render_template('editar_formulario.html', formulario=formulario)
+
 
 @formularios_routes.route('/formularios/<int:formulario_id>/deletar', methods=['POST'])
 @login_required
@@ -153,7 +147,6 @@ def editar_eventos_formulario(formulario_id):
     """Permite atribuir eventos a um formulário."""
     formulario = Formulario.query.get_or_404(formulario_id)
 
-    # Admins podem ver todos eventos, clientes apenas os seus
     if getattr(current_user, 'tipo', None) in ('admin', 'superadmin'):
         eventos = Evento.query.order_by(Evento.nome).all()
     else:
@@ -167,6 +160,7 @@ def editar_eventos_formulario(formulario_id):
         return redirect(url_for('formularios_routes.editar_eventos_formulario', formulario_id=formulario_id))
 
     return render_template('atribuir_eventos.html', formulario=formulario, eventos=eventos)
+
 
 @formularios_routes.route('/formularios/<int:formulario_id>/campos', methods=['GET', 'POST'])
 @login_required
@@ -199,6 +193,7 @@ def gerenciar_campos(formulario_id):
 
     return render_template('gerenciar_campos.html', formulario=formulario)
 
+
 @formularios_routes.route('/campos/<int:campo_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar_campo(campo_id):
@@ -219,6 +214,7 @@ def editar_campo(campo_id):
 
     return render_template('editar_campo.html', campo=campo)
 
+
 @formularios_routes.route('/campos/<int:campo_id>/deletar', methods=['POST'])
 @login_required
 def deletar_campo(campo_id):
@@ -229,6 +225,7 @@ def deletar_campo(campo_id):
     flash('Campo removido com sucesso!', 'success')
 
     return redirect(url_for('formularios_routes.gerenciar_campos', formulario_id=formulario_id))
+
 
 @formularios_routes.route('/formularios/<int:formulario_id>/preencher', methods=['GET', 'POST'])
 @login_required
@@ -241,25 +238,34 @@ def preencher_formulario(formulario_id):
             usuario_id=current_user.id
         )
         db.session.add(resposta_formulario)
+        # Garante que tenhamos o ID para criar pasta por resposta
         db.session.flush()
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
+
+            # Upload de arquivo: espera o campo como file_<id>
             if campo.tipo == 'file' and f'file_{campo.id}' in request.files:
                 arquivo = request.files[f'file_{campo.id}']
-                if arquivo.filename:
+                if arquivo and arquivo.filename:
                     filename = secure_filename(arquivo.filename)
                     ext = os.path.splitext(filename)[1].lower()
-                    if ext not in ALLOWED_EXTENSIONS:
+                    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
                         db.session.rollback()
                         flash('Extensão de arquivo não permitida.', 'danger')
                         return redirect(request.url)
+
                     unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
                     dir_path = os.path.join('uploads', 'respostas', str(resposta_formulario.id))
                     os.makedirs(dir_path, exist_ok=True)
                     caminho_arquivo = os.path.join(dir_path, unique_name)
                     arquivo.save(caminho_arquivo)
-                    valor = caminho_arquivo  # Salva o caminho do arquivo
+                    valor = caminho_arquivo  # salva caminho do arquivo
+
+            if campo.obrigatorio and not valor:
+                db.session.rollback()
+                flash(f"O campo '{campo.nome}' é obrigatório.", 'danger')
+                return redirect(request.url)
 
             resposta_campo = RespostaCampo(
                 resposta_formulario_id=resposta_formulario.id,
@@ -273,6 +279,7 @@ def preencher_formulario(formulario_id):
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
     return render_template('inscricao/preencher_formulario.html', formulario=formulario)
+
 
 
 @formularios_routes.route('/formularios_participante', methods=['GET'])
