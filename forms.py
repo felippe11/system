@@ -18,6 +18,17 @@ class RegraInscricaoEventoForm(FlaskForm):
     limite_oficinas = IntegerField('Limite de Oficinas', validators=[Optional()])
     oficinas_permitidas = SelectMultipleField('Oficinas Permitidas', coerce=int)
 
+    def __init__(self, oficinas_choices=None, *args, **kwargs):
+        """Permite injetar escolhas para as oficinas permitidas.
+
+        Parameters
+        ----------
+        oficinas_choices: list[tuple[int, str]] | None
+            Lista de pares ``(id, nome)`` das oficinas disponíveis.
+        """
+        super().__init__(*args, **kwargs)
+        self.oficinas_permitidas.choices = oficinas_choices or []
+
 
 class EditarClienteForm(FlaskForm):
     nome = StringField('Nome', validators=[DataRequired()])
