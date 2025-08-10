@@ -389,7 +389,7 @@
   <!-- Container unificado para as ações -->
   <div class="container-fluid px-4 mt-5">
     <div class="d-flex flex-wrap justify-content-center gap-3">
-      {% if config_cliente and config_cliente.habilitar_submissao_trabalhos %}
+      {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_submissao_trabalhos %}
         <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
           <i class="bi bi-upload me-2"></i> Submeter Trabalho
         </a>
@@ -418,12 +418,12 @@
 {% endif %}
   
 
-  {% if config_cliente and config_cliente.habilitar_qrcode_evento_credenciamento %}
+  {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_qrcode_evento_credenciamento %}
     <a href="{{ url_for('routes.gerar_evento_qrcode_pdf_route', evento_id=evento.id) }}" class="btn btn-primary">
       <i class="fas fa-qrcode"></i> Baixar QR Code do Evento
     </a>
   {% else %}
-    <p class="text-muted">QR Code do evento desativado pelo cliente.</p>
+    <p class="text-muted">QR Code do evento desativado.</p>
   {% endif %}
 
 
@@ -524,7 +524,7 @@
                     {% if oficina.id in inscricoes_ids %}
                         <div class="d-flex flex-column gap-2">
                             <!-- Check-in (só aparece se permitir_checkin_global == True) -->
-                            {% if permitir_checkin_global %}
+                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.permitir_checkin_global %}
                             <a href="{{ url_for('checkin_routes.checkin', oficina_id=oficina.id) }}" class="btn btn-warning w-100">
                               <i class="fas fa-clipboard-check"></i> Realizar Check-in
                             </a>
@@ -543,7 +543,7 @@
                             </a>
 
                             <!-- Certificado Individual (só aparece se habilitar_certificado_individual == True) -->
-                            {% if habilitar_certificado_individual %}
+                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_certificado_individual %}
                             <a href="{{ url_for('comprovante_routes.gerar_certificado_individual', oficina_id=oficina.id) }}"
                               class="btn btn-success w-100">
                               <i class="fas fa-graduation-cap"></i> Baixar Certificado
@@ -551,7 +551,7 @@
                             {% endif %}
                           
                             <!-- Feedback (só aparece se habilitar_feedback == True) -->
-                            {% if habilitar_feedback %}
+                            {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_feedback %}
                             <a href="{{ url_for('feedback_routes.feedback', oficina_id=oficina.id) }}" class="btn btn-info w-100">
                                 <i class="fas fa-comment-dots"></i> Enviar Feedback
                             </a>
@@ -667,7 +667,7 @@ function inscrever(oficinaId) {
                 `;
                 buttonContainer.appendChild(cancelForm);
 
-                if ('{{ permitir_checkin_global }}' === 'True') {
+                if ('{{ evento.configuracao_evento.permitir_checkin_global if evento and evento.configuracao_evento else False }}' === 'True') {
                     const checkinBtn = document.createElement('a');
                     checkinBtn.setAttribute('href', `/checkin/${oficinaId}`);
                     checkinBtn.className = 'btn btn-warning w-100';
