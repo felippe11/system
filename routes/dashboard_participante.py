@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 from extensions import db
 from models import (
-    Evento, Oficina, OficinaDia, ConfiguracaoCliente, HorarioVisitacao,
+    Evento, Oficina, OficinaDia, ConfiguracaoCliente, ConfiguracaoEvento, HorarioVisitacao,
     Usuario, Formulario, RegraInscricaoEvento
 )
 
@@ -47,6 +47,8 @@ def dashboard_participante():
     logger.debug(f"DEBUG [5] -> Evento IDs coletados: {evento_ids}")
 
     eventos = Evento.query.filter(Evento.id.in_(evento_ids)).all() if evento_ids else []
+    for ev in eventos:
+        ev.configuracao_evento = ConfiguracaoEvento.query.filter_by(evento_id=ev.id).first()
 
     logger.debug(f"DEBUG [6] -> Total de eventos do participante: {len(eventos)}")
 
@@ -74,13 +76,6 @@ def dashboard_participante():
         else:
             logger.debug(f"DEBUG [14] -> Configuração encontrada para cliente_id = {current_user.cliente_id}")
     
-    # Agora definimos as variáveis que o template utiliza
-    permitir_checkin = config_cliente.permitir_checkin_global if config_cliente else False
-    habilitar_feedback = config_cliente.habilitar_feedback if config_cliente else False
-    habilitar_certificado = config_cliente.habilitar_certificado_individual if config_cliente else False
-    
-    logger.debug(f"DEBUG [15] -> Configurações: checkin={permitir_checkin}, feedback={habilitar_feedback}, certificado={habilitar_certificado}")
-
     # CORREÇÃO: Limpar inscrições inválidas (oficina_id = None)
     # Incluir inscrições que possuam somente evento_id
     inscricoes_validas = [
@@ -143,6 +138,29 @@ def dashboard_participante():
         evento = eventos_sorted[0]
         session['evento_id'] = evento.id
     logger.debug(f"DEBUG [8] -> Evento selecionado: {evento.id if evento else None}")
+
+    config_evento = evento.configuracao_evento if evento else None
+    permitir_checkin = (
+        config_evento.permitir_checkin_global
+        if config_evento and config_evento.permitir_checkin_global is not None
+        else (config_cliente.permitir_checkin_global if config_cliente else False)
+    )
+    habilitar_feedback = (
+        config_evento.habilitar_feedback
+        if config_evento and config_evento.habilitar_feedback is not None
+        else (config_cliente.habilitar_feedback if config_cliente else False)
+    )
+    habilitar_certificado = (
+        config_evento.habilitar_certificado_individual
+        if config_evento and config_evento.habilitar_certificado_individual is not None
+        else (
+            config_cliente.habilitar_certificado_individual if config_cliente else False
+        )
+    )
+
+    logger.debug(
+        f"DEBUG [15] -> Configurações evento: checkin={permitir_checkin}, feedback={habilitar_feedback}, certificado={habilitar_certificado}"
+    )
 
     # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
     if current_user.cliente_id:

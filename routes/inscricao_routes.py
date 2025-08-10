@@ -9,7 +9,7 @@ from models import (
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
     CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, Formulario, RegraInscricaoEvento,
-    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente, Cliente
+    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente, ConfiguracaoEvento, Cliente
 )
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
@@ -514,12 +514,23 @@ def _render_form(*, link, evento, lote_vigente, lotes_ativos, cliente_id):
         tipos_inscricao = []
 
     config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
-    mostrar_taxa = config_cli.mostrar_taxa if config_cli else True
-    obrigatorio_nome = config_cli.obrigatorio_nome if config_cli else True
-    obrigatorio_cpf = config_cli.obrigatorio_cpf if config_cli else True
-    obrigatorio_email = config_cli.obrigatorio_email if config_cli else True
-    obrigatorio_senha = config_cli.obrigatorio_senha if config_cli else True
-    obrigatorio_formacao = config_cli.obrigatorio_formacao if config_cli else True
+    config_evento = (
+        ConfiguracaoEvento.query.filter_by(evento_id=evento.id).first() if evento else None
+    )
+
+    def _cfg(field: str, default: bool = True) -> bool:
+        if config_evento and getattr(config_evento, field) is not None:
+            return getattr(config_evento, field)
+        if config_cli and getattr(config_cli, field) is not None:
+            return getattr(config_cli, field)
+        return default
+
+    mostrar_taxa = _cfg("mostrar_taxa", True)
+    obrigatorio_nome = _cfg("obrigatorio_nome", True)
+    obrigatorio_cpf = _cfg("obrigatorio_cpf", True)
+    obrigatorio_email = _cfg("obrigatorio_email", True)
+    obrigatorio_senha = _cfg("obrigatorio_senha", True)
+    obrigatorio_formacao = _cfg("obrigatorio_formacao", True)
 
     # Estatísticas do lote vigente
     lote_stats = None
