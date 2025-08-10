@@ -118,6 +118,11 @@ def avaliar_trabalhos():
 @mfa_required
 def avaliar_trabalho(trabalho_id):
     """Tela de avaliação individual de um trabalho."""
+
+    if current_user.tipo != "cliente" and not current_user.is_superuser():
+        flash("Apenas administradores ou avaliadores têm acesso.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
     trabalho = TrabalhoCientifico.query.get_or_404(trabalho_id)
 
     if request.method == "POST":
@@ -126,11 +131,30 @@ def avaliar_trabalho(trabalho_id):
         conceito = request.form.get("conceito")
         comentario = request.form.get("comentario")
 
+        # Validações
+        try:
+            estrelas_val = int(estrelas)
+        except (TypeError, ValueError):
+            flash("Número de estrelas inválido.", "danger")
+            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
+        if not 1 <= estrelas_val <= 5:
+            flash("Número de estrelas deve estar entre 1 e 5.", "danger")
+            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
+
+        try:
+            nota_val = float(nota)
+        except (TypeError, ValueError):
+            flash("Nota inválida.", "danger")
+            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
+        if not 0 <= nota_val <= 10:
+            flash("Nota deve estar entre 0 e 10.", "danger")
+            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
+
         avaliacao = AvaliacaoTrabalho(
             trabalho_id=trabalho.id,
             avaliador_id=current_user.id,
-            estrelas=int(estrelas) if estrelas else None,
-            nota=float(nota) if nota else None,
+            estrelas=estrelas_val,
+            nota=nota_val,
             conceito=conceito,
             comentario=comentario,
         )

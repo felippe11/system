@@ -2,15 +2,29 @@ from io import BytesIO
 from typing import List, Dict, Any
 import tempfile
 import os
+import logging
 
 from docx import Document
 from docx2pdf import convert as docx2pdf_convert
-from transformers import pipeline
 
+# -----------------------------------------------------------------------------
+# Geração de texto (carregamento preguiçoso do modelo)
+# -----------------------------------------------------------------------------
 
-# Initialize a lightweight text generation pipeline
-# Using t5-small for free summarization/text generation
-_model = pipeline("text2text-generation", model="t5-small")
+_model = None
+
+def _get_model():
+    """Carrega a pipeline de geração de texto somente quando necessário."""
+    global _model
+    if _model is None:
+        try:
+            from transformers import pipeline
+            # Modelo leve para sumarização/geração
+            _model = pipeline("text2text-generation", model="t5-small")
+        except Exception as exc:  # pragma: no cover
+            logging.getLogger(__name__).error("Falha ao carregar modelo T5: %s", exc)
+            _model = None
+    return _model
 
 
 def gerar_texto_relatorio(evento, dados_selecionados: List[str]) -> str:
@@ -21,37 +35,32 @@ def gerar_texto_relatorio(evento, dados_selecionados: List[str]) -> str:
     evento: models.Evento
         Instância do evento.
     dados_selecionados: List[str]
-        Lista de campos ou informações selecionadas para compor o relatório.
+        Lista de campos/informações selecionadas para compor o relatório.
 
     Returns
     -------
     str
-        Texto gerado pelo modelo com base nos dados fornecidos.
+        Texto gerado com base nos dados fornecidos.
     """
     entrada = f"Evento: {getattr(evento, 'nome', '')}. " + " ".join(dados_selecionados)
-    resultado = _model(entrada, max_length=200, do_sample=False)
+    model = _get_model()
+    if not model:
+        return "Modelo de geração de texto indisponível."
+    resultado = model(entrada, max_length=200, do_sample=False)
     return resultado[0]["generated_text"].strip()
 
 
-def criar_documento_word(texto: str, cabecalho: str = "", rodape: str = "", dados: Dict[str, Any] | None = None) -> BytesIO:
-    """Cria um documento Word com cabeçalho, rodapé e corpo de texto.
+# -----------------------------------------------------------------------------
+# Criação de DOCX e conversão para PDF
+# -----------------------------------------------------------------------------
 
-    Parameters
-    ----------
-    texto: str
-        Corpo principal do relatório.
-    cabecalho: str
-        Conteúdo do cabeçalho.
-    rodape: str
-        Conteúdo do rodapé.
-    dados: Dict[str, Any] | None
-        Dados adicionais para inclusão no documento.
-
-    Returns
-    -------
-    BytesIO
-        Documento Word em memória.
-    """
+def criar_documento_word(
+    texto: str,
+    cabecalho: str = "",
+    rodape: str = "",
+    dados: Dict[str, Any] | None = None
+) -> BytesIO:
+    """Cria um documento Word com cabeçalho, rodapé e corpo de texto."""
     doc = Document()
     section = doc.sections[0]
     if cabecalho:
@@ -73,26 +82,32 @@ def criar_documento_word(texto: str, cabecalho: str = "", rodape: str = "", dado
 
 
 def converter_para_pdf(docx_bytes: BytesIO) -> BytesIO:
-    """Converte bytes de um documento Word para PDF.
-
-    Parameters
-    ----------
-    docx_bytes: BytesIO
-        Documento Word em memória.
-
-    Returns
-    -------
-    BytesIO
-        PDF gerado a partir do documento Word.
-    """
+    """Converte bytes de um documento Word (DOCX) para PDF."""
     with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as tmp_docx:
         tmp_docx.write(docx_bytes.getvalue())
         tmp_docx.flush()
         tmp_pdf = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
         tmp_pdf.close()
-        docx2pdf_convert(tmp_docx.name, tmp_pdf.name)
+        try:
+            # Em Windows/Mac, docx2pdf usa Word. Em Linux headless pode falhar.
+            docx2pdf_convert(tmp_docx.name, tmp_pdf.name)
+        except Exception as e:
+            logging.error("Falha na conversão com docx2pdf: %s", e)
+            # Fallback: pypandoc + LaTeX instalado (ex.: xelatex)
+            try:
+                import pypandoc
+                pypandoc.convert_file(tmp_docx.name, 'pdf', outputfile=tmp_pdf.name)
+            except Exception as e2:
+                logging.error("Fallback pypandoc também falhou: %s", e2)
+                os.unlink(tmp_docx.name)
+                os.unlink(tmp_pdf.name)
+                # Devolve o DOCX se não conseguir converter
+                docx_bytes.seek(0)
+                return docx_bytes
+
         with open(tmp_pdf.name, "rb") as f:
             pdf_data = f.read()
+
     os.unlink(tmp_docx.name)
     os.unlink(tmp_pdf.name)
     return BytesIO(pdf_data)

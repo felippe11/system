@@ -20,6 +20,8 @@ from models import (
 from datetime import datetime
 import os
 
+from services.ia_service import gerar_texto_relatorio
+
 
 def montar_relatorio_mensagem(incluir_financeiro=False):
     from sqlalchemy import func
@@ -134,16 +136,16 @@ def montar_relatorio_mensagem(incluir_financeiro=False):
                 tipo_inscricao_texto = "Inscrição sem limite de vagas"
             elif oficina.tipo_inscricao == "com_inscricao_com_limite":
                 tipo_inscricao_texto = "Inscrição com vagas limitadas"
-        
-        mensagem += (
-            f"\n🎓 *Oficina:* {oficina.titulo}\n"
+
+            mensagem += (
+                f"\n🎓 *Oficina:* {oficina.titulo}\n"
                 f"🔹 *Tipo de Inscrição:* {tipo_inscricao_texto}\n"
                 f"🔹 *Vagas:* {vagas_texto}\n"
-            f"🔹 *Inscritos:* {num_inscritos}\n"
-            f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
-        )
-        
-        mensagem += "----------------------------------------\n"
+                f"🔹 *Inscritos:* {num_inscritos}\n"
+                f"🔹 *Ocupação:* {ocupacao:.2f}%\n"
+            )
+
+            mensagem += "----------------------------------------\n"
 
     return mensagem
 
@@ -228,7 +230,6 @@ def gerar_relatorio_evento():
                 if incluir_checkins:
                     dados['checkins'] = Checkin.query.filter_by(evento_id=selected_event.id).all()
 
-        from services.ia_service import gerar_texto_relatorio
         texto_base = gerar_texto_relatorio(dados)
 
         preview = f"{cabecalho}\n{texto_base}\n{rodape}".strip()
