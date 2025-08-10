@@ -7,6 +7,7 @@ from flask import (
     flash,
     send_from_directory,
     send_file,
+    abort,
 )
 import logging
 
@@ -16,6 +17,8 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 import os
+import uuid
+from datetime import datetime
 
 from sqlalchemy import text
 from extensions import db
@@ -36,6 +39,8 @@ from models import (
     ConfiguracaoCliente,
 )
 from services.pdf_service import gerar_pdf_respostas
+
+ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -236,16 +241,23 @@ def preencher_formulario(formulario_id):
             usuario_id=current_user.id
         )
         db.session.add(resposta_formulario)
-        db.session.commit()
+        db.session.flush()
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
-            if campo.tipo == 'file' and 'file_' + str(campo.id) in request.files:
-                arquivo = request.files['file_' + str(campo.id)]
+            if campo.tipo == 'file' and f'file_{campo.id}' in request.files:
+                arquivo = request.files[f'file_{campo.id}']
                 if arquivo.filename:
                     filename = secure_filename(arquivo.filename)
-                    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
-                    os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext not in ALLOWED_EXTENSIONS:
+                        db.session.rollback()
+                        flash('Extensão de arquivo não permitida.', 'danger')
+                        return redirect(request.url)
+                    unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
+                    dir_path = os.path.join('uploads', 'respostas', str(resposta_formulario.id))
+                    os.makedirs(dir_path, exist_ok=True)
+                    caminho_arquivo = os.path.join(dir_path, unique_name)
                     arquivo.save(caminho_arquivo)
                     valor = caminho_arquivo  # Salva o caminho do arquivo
 
@@ -420,8 +432,55 @@ def get_resposta_file(filename):
     logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     uid = current_user.id if hasattr(current_user, 'id') else None
-    log = AuditLog(user_id=uid, submission_id=None, event_type='download')
-    db.session.add(log)
+
+    # Caminho completo armazenado em RespostaCampo.valor
+    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
+
+    # Localiza registro de RespostaCampo correspondente
+    resposta_campo = (
+        RespostaCampo.query
+        .join(RespostaFormulario)
+        .filter(RespostaCampo.valor == caminho_arquivo)
+        .first()
+    )
+
+    if not resposta_campo:
+        logger.warning("Arquivo não encontrado para download: %s", filename)
+        db.session.add(AuditLog(user_id=uid, submission_id=None, event_type='download_not_found'))
+        db.session.commit()
+        abort(404)
+
+    usuario_resposta = resposta_campo.resposta_formulario.usuario_id
+
+    # Verifica se o usuário é dono da resposta ou possui privilégio
+    has_privilege = getattr(current_user, 'tipo', '') in (
+        'admin', 'superadmin', 'cliente', 'ministrante'
+    )
+
+    if usuario_resposta != current_user.id and not has_privilege:
+        logger.warning(
+            "Tentativa de acesso não autorizado ao arquivo %s pelo usuário %s",
+            filename,
+            uid,
+        )
+        db.session.add(
+            AuditLog(
+                user_id=uid,
+                submission_id=resposta_campo.resposta_formulario_id,
+                event_type='unauthorized_download'
+            )
+        )
+        db.session.commit()
+        abort(403)
+
+    # Registro da tentativa autorizada
+    db.session.add(
+        AuditLog(
+            user_id=uid,
+            submission_id=resposta_campo.resposta_formulario_id,
+            event_type='download'
+        )
+    )
     db.session.commit()
     return send_from_directory(uploads_folder, filename)
 
@@ -498,6 +557,31 @@ def dar_feedback_resposta(resposta_id):
         return redirect(url_for('dashboard_routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Clientes só podem acessar respostas de seus próprios formulários
+    if current_user.tipo == 'cliente':
+        if resposta.formulario.cliente_id != current_user.id:
+            flash('Acesso negado', 'danger')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    # Ministrantes só podem avaliar respostas de eventos/oficinas que ministram
+    elif isinstance(current_user, Ministrante):
+        eventos_formulario = resposta.formulario.eventos
+        autorizado = False
+        for evento in eventos_formulario:
+            for oficina in evento.oficinas:
+                if (
+                    oficina.ministrante_id == current_user.id
+                    or current_user in oficina.ministrantes_associados
+                ):
+                    autorizado = True
+                    break
+            if autorizado:
+                break
+        if not autorizado:
+            flash('Acesso negado', 'danger')
+            return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
+
     lista_campos = resposta.formulario.campos
     resposta_campos = resposta.respostas_campos
 
@@ -702,6 +786,11 @@ def listar_respostas():
 @login_required
 @mfa_required
 def definir_status_inline():
+    # 0) Verifica se o usuário possui permissão
+    if getattr(current_user, 'tipo', None) not in ('cliente', 'ministrante'):
+        flash("Acesso negado!", "danger")
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+
     # 1) Pega valores do form
     resposta_id = request.form.get('resposta_id')
     novo_status = request.form.get('status_avaliacao')
@@ -717,9 +806,8 @@ def definir_status_inline():
         flash("Resposta não encontrada!", "warning")
         return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
-    # 4) Atualiza
+    # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status
-    db.session.commit()
     uid = current_user.id if hasattr(current_user, 'id') else None
     log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
     db.session.add(log)

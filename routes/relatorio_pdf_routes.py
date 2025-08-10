@@ -1,18 +1,7 @@
 from flask import Blueprint, send_file, flash, redirect, url_for, request
 from flask_login import login_required, current_user
-from models import Oficina, Feedback, Evento, Inscricao, Usuario, CampoPersonalizadoCadastro, RespostaCampo
-from services.pdf_service import (
-    gerar_pdf_inscritos_pdf,
-    gerar_lista_frequencia_pdf,
-    gerar_certificados_pdf,
-    gerar_pdf_feedback
-)
-from services.relatorio_service import (
-    gerar_texto_relatorio,
-    criar_documento_word,
-    converter_para_pdf,
-)
 from io import BytesIO
+
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -20,7 +9,34 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 from sqlalchemy import func
 from decimal import Decimal
-from models import EventoInscricaoTipo, Configuracao
+
+from models import (
+    db,
+    Oficina,
+    Feedback,
+    Evento,
+    Inscricao,
+    Usuario,
+    CampoPersonalizadoCadastro,
+    RespostaCampo,
+    Checkin,   # mantidos para futuras rotas/uso
+    Sorteio,   # mantidos para futuras rotas/uso
+    EventoInscricaoTipo,
+    Configuracao,
+)
+
+from services.pdf_service import (
+    gerar_pdf_inscritos_pdf,
+    gerar_lista_frequencia_pdf,
+    gerar_certificados_pdf,
+    gerar_pdf_feedback,
+)
+
+from services.relatorio_service import (
+    criar_documento_word,
+    converter_para_pdf,
+    gerar_texto_relatorio,  # usar a versão do relatorio_service
+)
 
 relatorio_pdf_routes = Blueprint("relatorio_pdf_routes", __name__)
 
@@ -178,7 +194,9 @@ def gerar_relatorio_evento(evento_id):
     rodape = payload.get('rodape', '')
     dados_extra = payload.get('dados_extra', {})
 
+    # utiliza a função unificada do relatorio_service
     texto = gerar_texto_relatorio(evento, dados_selecionados)
+
     docx_buffer = criar_documento_word(texto, cabecalho, rodape, dados_extra)
     pdf_buffer = converter_para_pdf(docx_buffer)
 
