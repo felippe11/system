@@ -209,7 +209,14 @@ def review_form(locator):
             flash("Código incorreto!", "danger")
             return render_template("peer_review/review_form.html", review=review)
 
-        review.note = request.form.get("nota")
+        try:
+            nota = int(request.form.get("nota"))
+            if nota not in range(1, 6):
+                raise ValueError
+        except (TypeError, ValueError):
+            flash("Nota inválida (use 1–5).", "danger")
+            return render_template("peer_review/review_form.html", review=review)
+        review.note = nota
         review.comments = request.form.get("comentarios")
         review.blind_type = "nome" if request.form.get("mostrar_nome") == "on" else "anonimo"
         review.finished_at = datetime.utcnow()
