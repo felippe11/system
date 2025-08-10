@@ -702,6 +702,11 @@ def listar_respostas():
 @login_required
 @mfa_required
 def definir_status_inline():
+    # 0) Verifica se o usuário possui permissão
+    if getattr(current_user, 'tipo', None) not in ('cliente', 'ministrante'):
+        flash("Acesso negado!", "danger")
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+
     # 1) Pega valores do form
     resposta_id = request.form.get('resposta_id')
     novo_status = request.form.get('status_avaliacao')
@@ -717,9 +722,8 @@ def definir_status_inline():
         flash("Resposta não encontrada!", "warning")
         return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
-    # 4) Atualiza
+    # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status
-    db.session.commit()
     uid = current_user.id if hasattr(current_user, 'id') else None
     log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
     db.session.add(log)
