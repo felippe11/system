@@ -7,6 +7,7 @@ from flask import (
     flash,
     send_from_directory,
     send_file,
+    abort,
 )
 import logging
 
@@ -420,8 +421,55 @@ def get_resposta_file(filename):
     logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     uid = current_user.id if hasattr(current_user, 'id') else None
-    log = AuditLog(user_id=uid, submission_id=None, event_type='download')
-    db.session.add(log)
+
+    # Caminho completo armazenado em RespostaCampo.valor
+    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
+
+    # Localiza registro de RespostaCampo correspondente
+    resposta_campo = (
+        RespostaCampo.query
+        .join(RespostaFormulario)
+        .filter(RespostaCampo.valor == caminho_arquivo)
+        .first()
+    )
+
+    if not resposta_campo:
+        logger.warning("Arquivo não encontrado para download: %s", filename)
+        db.session.add(AuditLog(user_id=uid, submission_id=None, event_type='download_not_found'))
+        db.session.commit()
+        abort(404)
+
+    usuario_resposta = resposta_campo.resposta_formulario.usuario_id
+
+    # Verifica se o usuário é dono da resposta ou possui privilégio
+    has_privilege = getattr(current_user, 'tipo', '') in (
+        'admin', 'superadmin', 'cliente', 'ministrante'
+    )
+
+    if usuario_resposta != current_user.id and not has_privilege:
+        logger.warning(
+            "Tentativa de acesso não autorizado ao arquivo %s pelo usuário %s",
+            filename,
+            uid,
+        )
+        db.session.add(
+            AuditLog(
+                user_id=uid,
+                submission_id=resposta_campo.resposta_formulario_id,
+                event_type='unauthorized_download'
+            )
+        )
+        db.session.commit()
+        abort(403)
+
+    # Registro da tentativa autorizada
+    db.session.add(
+        AuditLog(
+            user_id=uid,
+            submission_id=resposta_campo.resposta_formulario_id,
+            event_type='download'
+        )
+    )
     db.session.commit()
     return send_from_directory(uploads_folder, filename)
 
