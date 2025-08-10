@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 from sqlalchemy import func, or_, and_
 from services.lote_service import lote_disponivel
 from utils import external_url, preco_com_taxa, gerar_comprovante_pdf, enviar_email
+from forms import RegraInscricaoEventoForm
 
 
 class LoteEsgotadoError(RuntimeError):
@@ -878,13 +879,17 @@ def configurar_regras_inscricao():
     evento = None
     oficinas = []
     regras = {}
+    form = RegraInscricaoEventoForm()
     
     if evento_id:
         evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
         if evento:
             # Carrega oficinas do evento
             oficinas = Oficina.query.filter_by(evento_id=evento.id).all()
-            
+            form = RegraInscricaoEventoForm(
+                oficinas_choices=[(o.id, o.titulo) for o in oficinas]
+            )
+
             # Carrega regras existentes
             regras_db = RegraInscricaoEvento.query.filter_by(evento_id=evento.id).all()
             for regra in regras_db:
@@ -923,11 +928,13 @@ def configurar_regras_inscricao():
             db.session.rollback()
             flash(f'Erro ao configurar regras: {str(e)}', 'danger')
     
-    return render_template("agendamento/configurar_regras_inscricao.html",
+    return render_template(
+        "agendamento/configurar_regras_inscricao.html",
         eventos=eventos,
         evento=evento,
         oficinas=oficinas,
-        regras=regras
+        regras=regras,
+        form=form,
     )
 
 @inscricao_routes.route('/inscrever_participantes_lote', methods=['POST'])
