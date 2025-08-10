@@ -168,8 +168,9 @@ def create_review():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    trabalho_id = request.form.get("trabalho_id") or request.json.get("trabalho_id")
-    reviewer_id = request.form.get("reviewer_id") or request.json.get("reviewer_id")
+    data = request.get_json(silent=True) or {}
+    trabalho_id = request.form.get("trabalho_id") or data.get("trabalho_id")
+    reviewer_id = request.form.get("reviewer_id") or data.get("reviewer_id")
 
     if not trabalho_id or not reviewer_id:
         return {"success": False, "message": "dados insuficientes"}, 400
