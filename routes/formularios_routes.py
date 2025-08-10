@@ -557,6 +557,31 @@ def dar_feedback_resposta(resposta_id):
         return redirect(url_for('dashboard_routes.dashboard'))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Clientes só podem acessar respostas de seus próprios formulários
+    if current_user.tipo == 'cliente':
+        if resposta.formulario.cliente_id != current_user.id:
+            flash('Acesso negado', 'danger')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    # Ministrantes só podem avaliar respostas de eventos/oficinas que ministram
+    elif isinstance(current_user, Ministrante):
+        eventos_formulario = resposta.formulario.eventos
+        autorizado = False
+        for evento in eventos_formulario:
+            for oficina in evento.oficinas:
+                if (
+                    oficina.ministrante_id == current_user.id
+                    or current_user in oficina.ministrantes_associados
+                ):
+                    autorizado = True
+                    break
+            if autorizado:
+                break
+        if not autorizado:
+            flash('Acesso negado', 'danger')
+            return redirect(url_for('dashboard_ministrante_routes.dashboard_ministrante'))
+
     lista_campos = resposta.formulario.campos
     resposta_campos = resposta.respostas_campos
 
