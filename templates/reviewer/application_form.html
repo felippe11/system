@@ -3,6 +3,7 @@
 <div class="container py-5">
   <h1 class="mb-4">Candidatar-se a Revisor</h1>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <p>Confirme para enviar sua candidatura.</p>
     <button type="submit" class="btn btn-primary">Enviar</button>
   </form>
