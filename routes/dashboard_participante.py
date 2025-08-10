@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, jsonify, session
+from flask import Blueprint, render_template, redirect, url_for, flash, jsonify, session, request
 from flask_login import login_required, current_user
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import and_
@@ -49,22 +49,10 @@ def dashboard_participante():
     eventos = Evento.query.filter(Evento.id.in_(evento_ids)).all() if evento_ids else []
 
     logger.debug(f"DEBUG [6] -> Total de eventos do participante: {len(eventos)}")
-    
-    # Se não houver eventos específicos, usamos o primeiro como fallback (comportamento anterior)
-    evento = eventos[0] if eventos else None
-    logger.debug(f"DEBUG [8] -> Evento padrão selecionado: {evento.id if evento else None}")
-    
-    # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
+
+    # A seleção de evento será realizada após ordenar e considerar o parâmetro
+    evento = None
     formularios_disponiveis = False
-    if current_user.cliente_id:
-        logger.debug(f"DEBUG [9] -> Verificando formulários disponíveis para cliente_id = {current_user.cliente_id}")
-        form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
-        evento_ref = evento.id if evento else current_user.evento_id
-        if evento_ref:
-            form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
-        form_count = form_query.count()
-        formularios_disponiveis = form_count > 0
-        logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
     
     if current_user.cliente_id:
         logger.debug(f"DEBUG [11] -> Buscando configuração do cliente_id = {current_user.cliente_id}")
@@ -137,15 +125,35 @@ def dashboard_participante():
         eventos_disponiveis_ids = [e.id for e in eventos]
         logger.debug(f"DEBUG [23] -> Total de eventos após adicionar ausentes: {len(eventos)}")
 
-    # Ordenar eventos por data_inicio e nome do cliente
+    # Ordenar eventos por data_inicio de forma decrescente
     eventos_sorted = sorted(
         eventos,
-        key=lambda e: (
-            (e.data_inicio or datetime.min),
-            (e.cliente.nome if getattr(e, "cliente", None) else "")
-        )
+        key=lambda e: (e.data_inicio or datetime.min),
+        reverse=True
     )
     logger.debug(f"DEBUG [23b] -> Ordem final dos eventos: {[e.id for e in eventos_sorted]}")
+
+    # Selecionar evento via parâmetro ou usar o mais recente
+    evento_id_param = request.args.get('evento_id', type=int)
+    if evento_id_param:
+        session['evento_id'] = evento_id_param
+    selected_event_id = evento_id_param or session.get('evento_id')
+    evento = next((e for e in eventos_sorted if e.id == selected_event_id), None)
+    if not evento and eventos_sorted:
+        evento = eventos_sorted[0]
+        session['evento_id'] = evento.id
+    logger.debug(f"DEBUG [8] -> Evento selecionado: {evento.id if evento else None}")
+
+    # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
+    if current_user.cliente_id:
+        logger.debug(f"DEBUG [9] -> Verificando formulários disponíveis para cliente_id = {current_user.cliente_id}")
+        form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
+        evento_ref = evento.id if evento else current_user.evento_id
+        if evento_ref:
+            form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
+        form_count = form_query.count()
+        formularios_disponiveis = form_count > 0
+        logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
 
     # Combinar todos os IDs de eventos (disponíveis + inscritos) e remover duplicatas
     todos_eventos_ids = list(set(eventos_disponiveis_ids + eventos_inscritos))
