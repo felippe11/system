@@ -167,8 +167,10 @@ def cadastro_participante(identifier: str | None = None):
                 db.session.add(usuario)
                 db.session.flush()
             else:
-                if usuario.evento_id is None:
+                if usuario.evento_id != evento.id:
                     usuario.evento_id = evento.id
+                    if current_user.is_authenticated and current_user.id == usuario.id:
+                        current_user.evento_id = evento.id
 
             cliente_obj = Cliente.query.get(cliente_id)
             if cliente_obj and cliente_obj not in usuario.clientes:
