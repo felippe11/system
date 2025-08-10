@@ -35,7 +35,7 @@
               <h4>Resposta do Participante</h4>
               <div class="response-content">
                 {% if rcampo.campo.tipo == 'file' and rcampo.valor %}
-                  <a href="#" class="file-link">
+                  <a href="{{ url_for('formularios_routes.get_resposta_file', filename=rcampo.valor|replace('uploads/respostas/', '')) }}" class="file-link">
                     <i class="file-icon"></i>
                     Visualizar Anexo
                   </a>
