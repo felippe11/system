@@ -7,7 +7,7 @@ from wtforms import (
     PasswordField,
     SubmitField,
 )
-from wtforms.validators import DataRequired, Optional, Email
+from wtforms.validators import DataRequired, Optional, Email, Length, EqualTo
 
 class TipoInscricaoEventoForm(FlaskForm):
     nome = StringField('Nome do Tipo de Inscrição', validators=[DataRequired()])
@@ -29,5 +29,6 @@ class EditarClienteForm(FlaskForm):
 class PublicClienteForm(FlaskForm):
     nome = StringField('Nome', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    senha = PasswordField('Senha', validators=[DataRequired()])
+    senha = PasswordField('Senha', validators=[DataRequired(), Length(min=8)])
+    confirmacao_senha = PasswordField('Confirmar Senha', validators=[DataRequired(), EqualTo('senha')])
     # Não utilizamos RecaptchaField para v3, a validação é feita manualmente
