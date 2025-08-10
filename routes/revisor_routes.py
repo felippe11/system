@@ -44,6 +44,9 @@ from models import (
 )
 from services.pdf_service import gerar_revisor_details_pdf
 
+# Extensões permitidas para upload de arquivos
+ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
+
 # -----------------------------------------------------------------------------
 # Blueprint
 # -----------------------------------------------------------------------------
@@ -148,8 +151,14 @@ def submit_application(process_id: int):
                 arquivo = request.files[f"file_{campo.id}"]
                 if arquivo.filename:
                     filename = secure_filename(arquivo.filename)
-                    path = os.path.join("uploads", "candidaturas", filename)
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext not in ALLOWED_EXTENSIONS:
+                        flash("Extensão de arquivo não permitida.", "danger")
+                        return redirect(request.url)
+                    unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
+                    dir_path = os.path.join("uploads", "candidaturas", str(process_id))
+                    os.makedirs(dir_path, exist_ok=True)
+                    path = os.path.join(dir_path, unique_name)
                     arquivo.save(path)
                     valor = path
             respostas[campo.nome] = valor

@@ -16,6 +16,8 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 import os
+import uuid
+from datetime import datetime
 
 from sqlalchemy import text
 from extensions import db
@@ -36,6 +38,8 @@ from models import (
     ConfiguracaoCliente,
 )
 from services.pdf_service import gerar_pdf_respostas
+
+ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -236,16 +240,23 @@ def preencher_formulario(formulario_id):
             usuario_id=current_user.id
         )
         db.session.add(resposta_formulario)
-        db.session.commit()
+        db.session.flush()
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
-            if campo.tipo == 'file' and 'file_' + str(campo.id) in request.files:
-                arquivo = request.files['file_' + str(campo.id)]
+            if campo.tipo == 'file' and f'file_{campo.id}' in request.files:
+                arquivo = request.files[f'file_{campo.id}']
                 if arquivo.filename:
                     filename = secure_filename(arquivo.filename)
-                    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
-                    os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext not in ALLOWED_EXTENSIONS:
+                        db.session.rollback()
+                        flash('Extensão de arquivo não permitida.', 'danger')
+                        return redirect(request.url)
+                    unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
+                    dir_path = os.path.join('uploads', 'respostas', str(resposta_formulario.id))
+                    os.makedirs(dir_path, exist_ok=True)
+                    caminho_arquivo = os.path.join(dir_path, unique_name)
                     arquivo.save(caminho_arquivo)
                     valor = caminho_arquivo  # Salva o caminho do arquivo
 
