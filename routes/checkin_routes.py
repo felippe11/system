@@ -7,7 +7,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 from models import (
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente,
+    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
     AgendamentoVisita, Evento, Usuario
 )
 from utils import formatar_brasilia, determinar_turno
@@ -151,7 +151,13 @@ def checkin(oficina_id):
     cliente_id_oficina = oficina.cliente_id
 
     config_cliente = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id_oficina).first()
-    if not config_cliente or not config_cliente.permitir_checkin_global:
+    config_evento = ConfiguracaoEvento.query.filter_by(evento_id=oficina.evento_id).first()
+    permitido = False
+    if config_evento and config_evento.permitir_checkin_global:
+        permitido = True
+    elif config_cliente and config_cliente.permitir_checkin_global:
+        permitido = True
+    if not permitido:
         flash("Check-in indisponível para esta oficina!", "danger")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
