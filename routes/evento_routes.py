@@ -2,10 +2,9 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from sqlalchemy import or_, cast, Date, func, text
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, date, time
 from collections import defaultdict
 import os
-from datetime import date
 
 
 from extensions import db
@@ -218,6 +217,16 @@ def configurar_evento():
         nomes_tipos = request.form.getlist('nome_tipo[]')  # Lista de nomes dos tipos
         precos_tipos = request.form.getlist('preco_tipo[]')  # Lista de preços dos tipos
         submission_flags = request.form.getlist('submission_only[]')
+
+        data_inicio_str = request.form.get('data_inicio')
+        data_fim_str = request.form.get('data_fim')
+        hora_inicio_str = request.form.get('hora_inicio')
+        hora_fim_str = request.form.get('hora_fim')
+
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d') if data_inicio_str else None
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d') if data_fim_str else None
+        hora_inicio = time.fromisoformat(hora_inicio_str) if hora_inicio_str else None
+        hora_fim = time.fromisoformat(hora_fim_str) if hora_fim_str else None
         
         banner = request.files.get('banner')
         banner_url = evento.banner_url if evento else None
@@ -238,6 +247,10 @@ def configurar_evento():
                 evento.link_mapa = link_mapa
                 evento.inscricao_gratuita = inscricao_gratuita
                 evento.habilitar_lotes = habilitar_lotes  # Novo campo
+                evento.data_inicio = data_inicio
+                evento.data_fim = data_fim
+                evento.hora_inicio = hora_inicio
+                evento.hora_fim = hora_fim
                 if banner_url:
                     evento.banner_url = banner_url
 
@@ -460,7 +473,11 @@ def configurar_evento():
                     link_mapa=link_mapa,
                     banner_url=banner_url,
                     inscricao_gratuita=inscricao_gratuita,
-                    habilitar_lotes=habilitar_lotes  # Novo campo
+                    habilitar_lotes=habilitar_lotes,  # Novo campo
+                    data_inicio=data_inicio,
+                    data_fim=data_fim,
+                    hora_inicio=hora_inicio,
+                    hora_fim=hora_fim,
                 )
                 db.session.add(evento)
                 db.session.flush()  # Gera o ID do evento antes de adicionar os tipos
