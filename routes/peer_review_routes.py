@@ -168,8 +168,9 @@ def create_review():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    trabalho_id = request.form.get("trabalho_id") or request.json.get("trabalho_id")
-    reviewer_id = request.form.get("reviewer_id") or request.json.get("reviewer_id")
+    data = request.get_json(silent=True) or {}
+    trabalho_id = request.form.get("trabalho_id") or data.get("trabalho_id")
+    reviewer_id = request.form.get("reviewer_id") or data.get("reviewer_id")
 
     if not trabalho_id or not reviewer_id:
         return {"success": False, "message": "dados insuficientes"}, 400
@@ -209,7 +210,14 @@ def review_form(locator):
             flash("Código incorreto!", "danger")
             return render_template("peer_review/review_form.html", review=review)
 
-        review.note = request.form.get("nota")
+        try:
+            nota = int(request.form.get("nota"))
+            if nota not in range(1, 6):
+                raise ValueError
+        except (TypeError, ValueError):
+            flash("Nota inválida (use 1–5).", "danger")
+            return render_template("peer_review/review_form.html", review=review)
+        review.note = nota
         review.comments = request.form.get("comentarios")
         review.blind_type = "nome" if request.form.get("mostrar_nome") == "on" else "anonimo"
         review.finished_at = datetime.utcnow()

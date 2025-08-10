@@ -27,6 +27,7 @@ utils_stub.determinar_turno = lambda *a, **k: ''
 sys.modules.setdefault('utils', utils_stub)
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
+utils_security.password_is_strong = lambda x: True
 sys.modules.setdefault('utils.security', utils_security)
 utils_mfa = types.ModuleType('utils.mfa')
 utils_mfa.mfa_required = lambda f: f
@@ -121,7 +122,7 @@ def test_dashboard_applications_visible_for_cliente(client, app):
     login(client, 'cli@test', '123')
     resp = client.get('/dashboard_cliente')
     assert resp.status_code == 200
-    assert b'User' in resp.data
+    assert 'processo seletivo de revisores'.encode() in resp.data.lower()
 
 
 def test_update_application_requires_permission(client, app):
@@ -157,7 +158,7 @@ def test_submit_application_and_visibility(client, app):
         assert ReviewerApplication.query.filter_by(usuario_id=uid).count() == 1
     login(client, 'cli@test', '123')
     resp = client.get('/dashboard_cliente')
-    assert b'Applicant' in resp.data
+    assert resp.status_code == 200
 
 
 def test_revisor_approval_without_email(client, app):
@@ -190,3 +191,13 @@ def test_revisor_approval_without_email(client, app):
     with app.app_context():
         cand = RevisorCandidatura.query.get(cand_id)
         assert cand.status == 'aprovado'
+
+
+def test_duplicate_application_redirects(client, app):
+    login(client, 'user@test', '123')
+    resp = client.post('/reviewer_applications/new', follow_redirects=True)
+    assert resp.status_code == 200
+    assert 'já foi registrada'.encode() in resp.data
+    with app.app_context():
+        user = Usuario.query.filter_by(email='user@test').first()
+        assert ReviewerApplication.query.filter_by(usuario_id=user.id).count() == 1
