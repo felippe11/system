@@ -41,6 +41,11 @@
             <label for="senha"><i class="fas fa-lock me-2"></i>Senha</label>
           </div>
 
+          <div class="form-floating mb-4">
+            <input type="password" class="form-control form-control-lg" id="confirmacao_senha" name="confirmacao_senha" placeholder="Confirmar Senha" required>
+            <label for="confirmacao_senha"><i class="fas fa-lock me-2"></i>Confirmar Senha</label>
+          </div>
+
           <!-- reCAPTCHA v3 não tem interface visível -->
           <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
           {% if form.errors.get('recaptcha', []) %}
