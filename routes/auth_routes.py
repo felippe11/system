@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import pyotp
 import logging
 
-from models import Usuario, Ministrante, Cliente, PasswordResetToken
+from models import Usuario, Ministrante, Cliente, PasswordResetToken, Inscricao
 from extensions import login_manager, db
 from utils import enviar_email
 from forms import PublicClienteForm
@@ -72,6 +72,12 @@ def login():
         if not check_password_hash(usuario.senha, senha):
             flash('E-mail ou senha incorretos!', 'danger')
             return render_template("login.html", next=next_page)
+
+        if isinstance(usuario, Usuario):
+            ultima = Inscricao.query.filter_by(usuario_id=usuario.id).order_by(Inscricao.id.desc()).first()
+            if ultima and usuario.evento_id != ultima.evento_id:
+                usuario.evento_id = ultima.evento_id
+                db.session.commit()
 
         if getattr(usuario, 'mfa_enabled', False):
             session['pre_mfa_user_id'] = usuario.id
