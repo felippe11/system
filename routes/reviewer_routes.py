@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
 from models import ReviewerApplication
@@ -11,6 +11,10 @@ reviewer_routes = Blueprint(
 @reviewer_routes.route('/reviewer_applications/new', methods=['GET', 'POST'])
 @login_required
 def new_reviewer_application():
+    existing_app = ReviewerApplication.query.filter_by(usuario_id=current_user.id).first()
+    if existing_app:
+        flash('Sua candidatura já foi registrada.', 'info')
+        return redirect(url_for('reviewer_routes.application_confirmation'))
     if request.method == 'POST':
         app_obj = ReviewerApplication(usuario_id=current_user.id)
         db.session.add(app_obj)
