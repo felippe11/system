@@ -16,6 +16,7 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 import os
+from uuid import uuid4
 
 from sqlalchemy import text
 from extensions import db
@@ -36,6 +37,9 @@ from models import (
     ConfiguracaoCliente,
 )
 from services.pdf_service import gerar_pdf_respostas
+
+
+ALLOWED_UPLOAD_EXTENSIONS = {"pdf", "png", "jpg", "jpeg", "gif"}
 
 formularios_routes = Blueprint(
     'formularios_routes',
@@ -236,18 +240,29 @@ def preencher_formulario(formulario_id):
             usuario_id=current_user.id
         )
         db.session.add(resposta_formulario)
-        db.session.commit()
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
-            if campo.tipo == 'file' and 'file_' + str(campo.id) in request.files:
-                arquivo = request.files['file_' + str(campo.id)]
-                if arquivo.filename:
+            if campo.tipo == 'file':
+                arquivo = request.files.get('file_' + str(campo.id))
+                if arquivo and arquivo.filename:
                     filename = secure_filename(arquivo.filename)
-                    caminho_arquivo = os.path.join('uploads', 'respostas', filename)
-                    os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+                    ext = filename.rsplit('.', 1)[-1].lower()
+                    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+                        flash('Extensão de arquivo inválida.', 'danger')
+                        db.session.rollback()
+                        return redirect(request.url)
+                    unique_filename = f"{uuid4().hex}_{filename}"
+                    upload_dir = os.path.join('uploads', 'respostas')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    caminho_arquivo = os.path.join(upload_dir, unique_filename)
                     arquivo.save(caminho_arquivo)
                     valor = caminho_arquivo  # Salva o caminho do arquivo
+
+            if campo.obrigatorio and not valor:
+                flash(f"O campo '{campo.nome}' é obrigatório.", 'danger')
+                db.session.rollback()
+                return redirect(request.url)
 
             resposta_campo = RespostaCampo(
                 resposta_formulario_id=resposta_formulario.id,
