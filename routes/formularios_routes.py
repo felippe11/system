@@ -8,6 +8,7 @@ from flask import (
     send_from_directory,
     send_file,
     abort,
+    jsonify,
 )
 import logging
 import os
@@ -19,7 +20,11 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 from sqlalchemy import text
+
 from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy.exc import SQLAlchemyError
+
 
 from extensions import db
 from models import (
@@ -828,14 +833,24 @@ def definir_status_inline():
     # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status
     uid = current_user.id if hasattr(current_user, 'id') else None
-    log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
-    db.session.add(log)
-    db.session.commit()
+    redirect_url = request.referrer or url_for(
+        'formularios_routes.listar_respostas',
+        formulario_id=resposta.formulario_id,
+    )
 
-    flash("Status atualizado com sucesso!", "success")
+    try:
+        log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
+        db.session.add(log)
+        db.session.commit()
+        flash("Status atualizado com sucesso!", "success")
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Erro ao salvar atualização de status")
+        flash("Não foi possível salvar a atualização de status.", "danger")
+        if request.accept_mimetypes.accept_json:
+            return jsonify({"message": "Status update could not be saved"}), 400
+        return redirect(redirect_url)
 
     # Redireciona para a mesma página (listar_respostas) ou usa request.referrer
-    # Se estiver em /formularios/<id>/respostas_ministrante, podemos redirecionar
-    return redirect(request.referrer or url_for('formularios_routes.listar_respostas',
-                                                formulario_id=resposta.formulario_id))
+    return redirect(redirect_url)
 

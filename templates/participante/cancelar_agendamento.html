@@ -21,6 +21,7 @@
         <div class="card-body">
             <p>Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.</p>
             <form method="POST" action="{{ url_for('agendamento_routes.cancelar_agendamento_participante', agendamento_id=agendamento.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mt-4 d-flex gap-2">
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-times"></i> Confirmar Cancelamento
