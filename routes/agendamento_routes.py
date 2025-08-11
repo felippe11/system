@@ -3124,10 +3124,27 @@ def adicionar_alunos():
 
         # Processamento de upload de arquivo
         if arquivo and arquivo.filename:
+            if not (arquivo and arquivo.filename and arquivo_permitido(arquivo.filename)):
+                flash('Arquivo inválido. Utilize um Excel (.xlsx).', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+
+            # Limite opcional de tamanho do arquivo (5 MB)
+            MAX_FILE_SIZE = 5 * 1024 * 1024
+            arquivo.seek(0, os.SEEK_END)
+            if arquivo.tell() > MAX_FILE_SIZE:
+                flash('Arquivo muito grande. Limite de 5MB.', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+            arquivo.seek(0)
+
             try:
                 # Usa Pandas para ler o arquivo de upload
                 df = pd.read_excel(arquivo, dtype={'cpf': str})
-                
+            except Exception as e:
+                flash(f'Erro ao ler o arquivo: {str(e)}', 'danger')
+                logger.error('Erro ao ler planilha de alunos: %s', e)
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+
+            try:
                 # Verificar colunas obrigatórias
                 colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
                 if not all(col in df.columns for col in colunas_obrigatorias):
@@ -3138,7 +3155,7 @@ def adicionar_alunos():
                 alunos_adicionados = 0
                 for _, row in df.iterrows():
                     cpf_str = str(row['cpf']).strip()
-                    
+
                     # Verifica se o usuário já existe
                     usuario_existente = Usuario.query.filter(
                         (Usuario.cpf == cpf_str) | (Usuario.email == row['email'])
@@ -3157,7 +3174,7 @@ def adicionar_alunos():
                         tipo='participante',
                         cliente_id=current_user.id  # Vincula ao cliente logado
                     )
-                    
+
                     # Tratamento de estados e cidades do arquivo, se existirem
                     if 'estados' in df.columns and 'cidades' in df.columns:
                         novo_usuario.estados = str(row.get('estados', ''))
