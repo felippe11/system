@@ -21,6 +21,7 @@
       {% endif %}
 
       <form method="POST" action="{{ url_for('agendamento_routes.criar_agendamento') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
           <!-- Coluna 1: Informações do Evento -->
           <div class="col-md-6">

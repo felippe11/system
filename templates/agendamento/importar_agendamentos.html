@@ -26,6 +26,7 @@
           {% endif %}
 
           <form method="POST" action="{{ url_for('agendamento_routes.importar_agendamentos') }}" enctype="multipart/form-data">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Evento -->
             <div class="mb-3">
               <label for="evento_id" class="form-label">Evento <span class="text-danger">*</span></label>

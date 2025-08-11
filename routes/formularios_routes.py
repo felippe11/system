@@ -8,6 +8,7 @@ from flask import (
     send_from_directory,
     send_file,
     abort,
+    jsonify,
 )
 import logging
 import os
@@ -19,6 +20,11 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 from sqlalchemy import text
+
+from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy.exc import SQLAlchemyError
+
 
 from extensions import db
 from models import (
@@ -439,6 +445,8 @@ def get_resposta_file(filename):
     logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     uid = current_user.id if hasattr(current_user, 'id') else None
+    if uid is not None and not Usuario.query.get(uid):
+        uid = None
 
     # Caminho completo armazenado em RespostaCampo.valor
     caminho_arquivo = os.path.join('uploads', 'respostas', filename)
@@ -454,7 +462,10 @@ def get_resposta_file(filename):
     if not resposta_campo:
         logger.warning("Arquivo não encontrado para download: %s", filename)
         db.session.add(AuditLog(user_id=uid, submission_id=None, event_type='download_not_found'))
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
         abort(404)
 
     usuario_resposta = resposta_campo.resposta_formulario.usuario_id
@@ -477,7 +488,10 @@ def get_resposta_file(filename):
                 event_type='unauthorized_download'
             )
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
         abort(403)
 
     # Registro da tentativa autorizada
@@ -488,7 +502,10 @@ def get_resposta_file(filename):
             event_type='download'
         )
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
     return send_from_directory(uploads_folder, filename)
 
 
@@ -808,23 +825,37 @@ def definir_status_inline():
         return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
     # 3) Busca a resposta no banco
-    resposta = RespostaFormulario.query.get(resposta_id)
-    if not resposta:
-        flash("Resposta não encontrada!", "warning")
-        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+   resposta = RespostaFormulario.query.get(resposta_id)
+if not resposta:
+    flash("Resposta não encontrada!", "warning")
+    return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
 
-    # 4) Atualiza e registra log
-    resposta.status_avaliacao = novo_status
-    usuario = Usuario.query.get(current_user.id) if hasattr(current_user, "id") else None
-    uid = usuario.id if usuario else None
+# 4) Atualiza e registra log
+resposta.status_avaliacao = novo_status
+
+# Obtém o ID do usuário autenticado de forma segura
+uid = current_user.id if hasattr(current_user, "id") else None
+
+# Determina a URL de retorno (prioriza a página anterior)
+redirect_url = request.referrer or url_for(
+    'formularios_routes.listar_respostas',
+    formulario_id=resposta.formulario_id,
+)
+
+try:
     log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
     db.session.add(log)
     db.session.commit()
-
     flash("Status atualizado com sucesso!", "success")
+except SQLAlchemyError:
+    db.session.rollback()
+    logger.exception("Erro ao salvar atualização de status")
+    flash("Não foi possível salvar a atualização de status.", "danger")
+    if request.accept_mimetypes.accept_json:
+        return jsonify({"message": "Status update could not be saved"}), 400
+    return redirect(redirect_url)
 
-    # Redireciona para a mesma página (listar_respostas) ou usa request.referrer
-    # Se estiver em /formularios/<id>/respostas_ministrante, podemos redirecionar
-    return redirect(request.referrer or url_for('formularios_routes.listar_respostas',
-                                                formulario_id=resposta.formulario_id))
+# Redireciona para a mesma página (listar_respostas) ou usa request.referrer
+return redirect(redirect_url)
+
 
