@@ -4,21 +4,41 @@
     <h2>Editar Formulário</h2>
 
     <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Formulário</label>
-            <input type="text" id="nome" name="nome" class="form-control" value="{{ formulario.nome }}" required>
-        </div>
-        <div class="mb-3">
-            <label for="descricao" class="form-label">Descrição</label>
-            <textarea id="descricao" name="descricao" class="form-control">{{ formulario.descricao }}</textarea>
-        </div>
-        <div class="form-check mb-3">
-            <input type="checkbox" class="form-check-input" id="permitir_multiplas_respostas" name="permitir_multiplas_respostas" {% if not formulario.permitir_multiplas_respostas %}checked{% endif %}>
-            <label class="form-check-label" for="permitir_multiplas_respostas">Permitir apenas uma resposta por usuário</label>
-        </div>
-        <button type="submit" class="btn btn-success">Salvar Alterações</button>
-    </form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label for="nome" class="form-label">Nome do Formulário</label>
+    <input type="text" id="nome" name="nome" class="form-control" value="{{ formulario.nome }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="descricao" class="form-label">Descrição</label>
+    <textarea id="descricao" name="descricao" class="form-control">{{ formulario.descricao }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label for="data_inicio" class="form-label">Início</label>
+    <input type="datetime-local" id="data_inicio" name="data_inicio" class="form-control"
+           value="{{ formulario.data_inicio.strftime('%Y-%m-%dT%H:%M') if formulario.data_inicio else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="data_fim" class="form-label">Fim</label>
+    <input type="datetime-local" id="data_fim" name="data_fim" class="form-control"
+           value="{{ formulario.data_fim.strftime('%Y-%m-%dT%H:%M') if formulario.data_fim else '' }}">
+  </div>
+
+  <div class="form-check mb-3">
+    <input type="checkbox" class="form-check-input" id="permitir_multiplas_respostas" name="permitir_multiplas_respostas"
+           {% if formulario.permitir_multiplas_respostas %}checked{% endif %}>
+    <label class="form-check-label" for="permitir_multiplas_respostas">
+      Permitir múltiplas respostas por usuário
+    </label>
+  </div>
+
+  <button type="submit" class="btn btn-success">Salvar Alterações</button>
+</form>
+
 
     <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-secondary mt-3">Voltar</a>
 </div>
