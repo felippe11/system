@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from models import (
     AgendamentoVisita, HorarioVisitacao, Evento,
     EventoInscricaoTipo, ConfiguracaoAgendamento,
-    Usuario, Cliente, Oficina
+    Usuario, Cliente, Oficina, ProfessorBloqueado
 )
 from utils import obter_estados
 from fpdf import FPDF
@@ -3669,8 +3669,25 @@ def qrcode_agendamento(agendamento_id):
 def horarios_disponiveis_api():
     if current_user.tipo != 'professor':
         return jsonify({"error": "Acesso não permitido"}), 403
+    evento_id = request.args.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"error": "Parâmetro evento_id é obrigatório"}), 400
 
-    horarios = HorarioVisitacao.query.filter(HorarioVisitacao.vagas_disponiveis > 0).all()
+    evento = Evento.query.get_or_404(evento_id)
+
+    bloqueio = ProfessorBloqueado.query.filter_by(
+        professor_id=current_user.id,
+        evento_id=evento_id
+    ).filter(ProfessorBloqueado.data_final >= datetime.utcnow()).first()
+
+    if bloqueio:
+        return jsonify({"error": "Você não tem permissão para visualizar este evento"}), 403
+
+    horarios = HorarioVisitacao.query.filter(
+        HorarioVisitacao.evento_id == evento_id,
+        HorarioVisitacao.vagas_disponiveis > 0
+    ).all()
+
     eventos = []
 
     for horario in horarios:
