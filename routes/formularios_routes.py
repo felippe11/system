@@ -87,51 +87,50 @@ def criar_formulario():
     )
 
     config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
-
-    if request.method == "POST":
-        count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
-        if (
-            config_cli
-            and config_cli.limite_formularios is not None
-            and count_forms >= config_cli.limite_formularios
-        ):
-            flash("Limite de formulários atingido.", "danger")
-            return redirect(url_for("formularios_routes.listar_formularios"))
-
-        nome = request.form.get("nome")
-        descricao = request.form.get("descricao")
-        data_inicio_str = request.form.get("data_inicio")
-        data_fim_str = request.form.get("data_fim")
-        evento_ids = request.form.getlist("eventos")
-        # Checkbox marcado => True; ausente => False
-        permitir_multiplas = "permitir_multiplas_respostas" in request.form
-
-        data_inicio = (
-            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
-        )
-        data_fim = (
-            datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
-        )
-
-        novo_formulario = Formulario(
-            nome=nome,
-            descricao=descricao,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-            permitir_multiplas_respostas=permitir_multiplas,
-            cliente_id=current_user.id,
-        )
-
-        if evento_ids:
-            eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
-            novo_formulario.eventos = eventos_sel
-
-        db.session.add(novo_formulario)
-        db.session.commit()
-        flash("Formulário criado com sucesso!", "success")
+if request.method == "POST":
+    count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
+    if (
+        config_cli
+        and config_cli.limite_formularios is not None
+        and count_forms >= config_cli.limite_formularios
+    ):
+        flash("Limite de formulários atingido.", "danger")
         return redirect(url_for("formularios_routes.listar_formularios"))
 
-    return render_template("criar_formulario.html", eventos=eventos_disponiveis)
+    nome = request.form.get("nome")
+    descricao = request.form.get("descricao")
+    data_inicio_str = request.form.get("data_inicio")
+    data_fim_str = request.form.get("data_fim")
+    evento_ids = request.form.getlist("eventos")
+    # Checkbox marcado => True; ausente => False
+    permitir_multiplas = "permitir_multiplas_respostas" in request.form
+
+    data_inicio = (
+        datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
+    )
+    data_fim = (
+        datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
+    )
+
+    novo_formulario = Formulario(
+        nome=nome,
+        descricao=descricao,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        permitir_multiplas_respostas=permitir_multiplas,
+        cliente_id=current_user.id,
+    )
+
+    if evento_ids:
+        eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
+        novo_formulario.eventos = eventos_sel
+
+    db.session.add(novo_formulario)
+    db.session.commit()
+    flash("Formulário criado com sucesso!", "success")
+    return redirect(url_for("formularios_routes.listar_formularios"))
+
+return render_template("criar_formulario.html", eventos=eventos_disponiveis)
 
 
 @formularios_routes.route("/formularios/<int:formulario_id>/editar", methods=["GET", "POST"])
@@ -144,12 +143,14 @@ def editar_formulario(formulario_id):
         formulario.descricao = request.form.get("descricao")
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
+
         formulario.data_inicio = (
             datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
         )
         formulario.data_fim = (
             datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
         )
+        # Checkbox marcado => True; ausente => False
         formulario.permitir_multiplas_respostas = "permitir_multiplas_respostas" in request.form
 
         db.session.commit()
@@ -314,6 +315,7 @@ def preencher_formulario(formulario_id):
         )
         db.session.add(resposta_formulario)
         db.session.flush()  # garante o ID para salvar uploads por resposta
+
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))

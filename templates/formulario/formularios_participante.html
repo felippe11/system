@@ -16,7 +16,7 @@
                             <th class="text-end pe-3">Ações</th>
                         </tr>
                     </thead>
-                   <tbody>
+<tbody>
   {% for formulario in formularios %}
   <tr>
     <td class="ps-3 fw-medium">{{ formulario.nome }}</td>
@@ -28,14 +28,14 @@
           | first
       %}
 
-      {# janela de disponibilidade #}
+      {# Dentro do período de resposta? #}
       {% set dentro_prazo = (
-          (formulario.data_inicio is none or formulario.data_inicio <= now)
-          and
-          (formulario.data_fim is none or formulario.data_fim >= now)
+        (formulario.data_inicio is none or formulario.data_inicio <= now)
+        and
+        (formulario.data_fim is none or formulario.data_fim >= now)
       ) %}
 
-      {# regra de múltiplas respostas #}
+      {# Pode múltiplas? Pode preencher? #}
       {% set pode_multi = formulario.permitir_multiplas_respostas %}
       {% set pode_preencher = dentro_prazo and (pode_multi or not user_resposta) %}
 
