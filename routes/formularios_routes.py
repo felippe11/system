@@ -242,7 +242,15 @@ def gerenciar_campos(formulario_id):
         tipo = request.form.get("tipo")
         opcoes = request.form.get("opcoes", "").strip()
         obrigatorio = request.form.get("obrigatorio") == "on"
-        tamanho_max = request.form.get("tamanho_max") or None
+        tamanho_max_raw = request.form.get("tamanho_max", "").strip()
+        if tamanho_max_raw:
+            try:
+                tamanho_max = int(tamanho_max_raw)
+            except ValueError:
+                flash("Tamanho máximo deve ser um número.", "danger")
+                return render_template("gerenciar_campos.html", formulario=formulario)
+        else:
+            tamanho_max = None
         regex_validacao = request.form.get("regex_validacao") or None
 
         novo_campo = CampoFormulario(
@@ -251,7 +259,7 @@ def gerenciar_campos(formulario_id):
             tipo=tipo,
             opcoes=opcoes if tipo in ["dropdown", "checkbox", "radio"] else None,
             obrigatorio=obrigatorio,
-            tamanho_max=int(tamanho_max) if tamanho_max else None,
+            tamanho_max=tamanho_max,
             regex_validacao=regex_validacao,
         )
 
@@ -280,7 +288,15 @@ def editar_campo(campo_id):
             else None
         )
         campo.obrigatorio = request.form.get("obrigatorio") == "on"
-        campo.tamanho_max = request.form.get("tamanho_max") or None
+        tamanho_max_raw = request.form.get("tamanho_max", "").strip()
+        if tamanho_max_raw:
+            try:
+                campo.tamanho_max = int(tamanho_max_raw)
+            except ValueError:
+                flash("Tamanho máximo deve ser um número.", "danger")
+                return render_template("editar_campo.html", campo=campo)
+        else:
+            campo.tamanho_max = None
         campo.regex_validacao = request.form.get("regex_validacao") or None
 
         db.session.commit()
