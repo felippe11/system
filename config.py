@@ -34,6 +34,11 @@ class Config:
     DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
 
     # ------------------------------------------------------------------ #
+    #  Logging                                                           #
+    # ------------------------------------------------------------------ #
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+    # ------------------------------------------------------------------ #
     #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
     # ------------------------------------------------------------------ #
     DB_USER = os.getenv("DB_USER", "postgres")

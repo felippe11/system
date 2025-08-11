@@ -16,6 +16,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
+
 from services.mp_service import get_sdk
 from utils.dia_semana import dia_semana
 
