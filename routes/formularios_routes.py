@@ -815,7 +815,8 @@ def definir_status_inline():
 
     # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status
-    uid = current_user.id if hasattr(current_user, 'id') else None
+    usuario = Usuario.query.get(current_user.id) if hasattr(current_user, "id") else None
+    uid = usuario.id if usuario else None
     log = AuditLog(user_id=uid, submission_id=resposta_id, event_type='decision')
     db.session.add(log)
     db.session.commit()
