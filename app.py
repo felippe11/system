@@ -11,7 +11,7 @@ import logging
 
 # Configuração centralizada de logging
 logging.basicConfig(
-    level=logging.DEBUG if Config.DEBUG else logging.INFO,
+    level=getattr(logging, Config.LOG_LEVEL, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
