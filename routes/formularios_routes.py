@@ -19,7 +19,7 @@ from flask_login import login_required, current_user
 from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
-from sqlalchemy import text
+from sqlalchemy import text, or_
 
 from sqlalchemy.exc import IntegrityError
 
@@ -102,11 +102,18 @@ def criar_formulario():
 
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
+        data_inicio_str = request.form.get('data_inicio')
+        data_fim_str = request.form.get('data_fim')
         evento_ids = request.form.getlist('eventos')
+
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%dT%H:%M') if data_inicio_str else None
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%dT%H:%M') if data_fim_str else None
 
         novo_formulario = Formulario(
             nome=nome,
             descricao=descricao,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
             cliente_id=current_user.id
         )
 
@@ -130,6 +137,10 @@ def editar_formulario(formulario_id):
     if request.method == 'POST':
         formulario.nome = request.form.get('nome')
         formulario.descricao = request.form.get('descricao')
+        data_inicio_str = request.form.get('data_inicio')
+        data_fim_str = request.form.get('data_fim')
+        formulario.data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%dT%H:%M') if data_inicio_str else None
+        formulario.data_fim = datetime.strptime(data_fim_str, '%Y-%m-%dT%H:%M') if data_fim_str else None
         db.session.commit()
         flash('Formulário atualizado!', 'success')
         return redirect(url_for('formularios_routes.listar_formularios'))
@@ -238,6 +249,12 @@ def deletar_campo(campo_id):
 def preencher_formulario(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
 
+    agora = datetime.utcnow()
+    if (formulario.data_inicio and formulario.data_inicio > agora) or \
+       (formulario.data_fim and formulario.data_fim < agora):
+        flash('O tempo de preenchimento do formulário acabou')
+        return redirect(url_for('formularios_routes.listar_formularios_participante'))
+
     if request.method == 'POST':
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id,
@@ -312,6 +329,12 @@ def listar_formularios_participante():
     else:
         # Mantém o comportamento atual quando nenhum evento é fornecido
         query = Formulario.query.filter_by(cliente_id=cliente_id)
+
+    agora = datetime.utcnow()
+    query = query.filter(
+        or_(Formulario.data_inicio == None, Formulario.data_inicio <= agora),
+        or_(Formulario.data_fim == None, Formulario.data_fim >= agora)
+    )
     formularios = query.all()
     
     # Não há relação direta entre formulários e ministrantes no modelo atual,
@@ -321,7 +344,7 @@ def listar_formularios_participante():
         flash("Nenhum formulário disponível no momento.", "warning")
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
-    return render_template('formularios_participante.html', formularios=formularios)
+    return render_template('formularios_participante.html', formularios=formularios, now=agora)
 
 @formularios_routes.route('/respostas/<int:resposta_id>', methods=['GET'])
 @login_required
