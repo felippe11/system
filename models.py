@@ -668,18 +668,10 @@ class Formulario(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     data_inicio = db.Column(db.DateTime, nullable=True)
     data_fim = db.Column(db.DateTime, nullable=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
-
-    
-
-
-    # Novo + preservado do outro branch
-    data_inicio = db.Column(db.DateTime, nullable=True)
-    data_fim = db.Column(db.DateTime, nullable=True)
     permitir_multiplas_respostas = db.Column(db.Boolean, default=True)
 
     # Relação com Cliente (opcional por cliente)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
     cliente = db.relationship("Cliente", backref=db.backref("formularios", lazy=True))
 
     # Campos do formulário
