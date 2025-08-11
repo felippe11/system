@@ -2,6 +2,11 @@
 
 A Flask-based management system.
 
+## Contribuição
+
+Consulte [AGENTS.md](AGENTS.md) para convenções de código, práticas de commit e requisitos de testes. Siga essas orientações ao colaborar.
+
+
 ## Configuracao
 
 Defina as variaveis de ambiente abaixo antes de iniciar a aplicacao (veja
