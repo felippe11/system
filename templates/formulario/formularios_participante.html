@@ -23,11 +23,16 @@
                             <td class="text-secondary">{{ formulario.descricao or "Sem descrição" }}</td>
                             <td class="text-end pe-3">
                                 <div class="btn-group" role="group">
+                                    {% set dentro_prazo = ( (formulario.data_inicio is none or formulario.data_inicio <= now) and (formulario.data_fim is none or formulario.data_fim >= now) ) %}
+                                    {% if dentro_prazo %}
                                     <!-- Botão de preencher -->
                                     <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
                                        class="btn btn-outline-primary btn-sm">
                                         <i class="bi bi-pencil-fill me-1"></i> Preencher
                                     </a>
+                                    {% else %}
+                                    <span class="text-muted">Formulário indisponível</span>
+                                    {% endif %}
 
                                     <!-- Verificar se o usuário já respondeu -->
                                     {% set user_resposta = formulario.respostas
