@@ -2547,7 +2547,13 @@ def visualizar_agendamento(agendamento_id):
     :return: Template renderizado com os detalhes do agendamento ou resposta JSON
     """
     # Buscar o agendamento pelo ID
-    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+    agendamento = AgendamentoVisita.query.get(agendamento_id)
+
+    # Retornar 404 apropriado se não encontrado
+    if not agendamento:
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({'erro': 'Agendamento não encontrado'}), 404
+        abort(404)
     
     # Verificar permissões (somente o professor que criou ou um administrador pode ver)
     if current_user.id != agendamento.professor_id and not current_user.is_admin:
