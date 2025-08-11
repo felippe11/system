@@ -221,6 +221,15 @@ celery -A tasks.celery worker --loglevel=info
 Set `REDIS_URL` to your broker URI and run the worker alongside Gunicorn.
 
 
+## API
+
+### `GET /visualizar/<agendamento_id>`
+
+Retorna os detalhes de um agendamento existente. Quando o cabeçalho
+`Accept` é `application/json` e o agendamento não é localizado, a rota
+responde com `404` e um corpo JSON no formato
+`{"erro": "Agendamento não encontrado"}`.
+
 ### Render deploy hook
 
 To trigger redeploys automatically when new commits are pushed, open your web service settings on Render. Under **Deploy Hooks**, click **Enable deploy hook** to generate the URL. Call this endpoint from your CI workflow or repository settings whenever you want Render to rebuild the service.
