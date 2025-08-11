@@ -415,7 +415,7 @@ def listar_formularios_participante():
     query = query.filter(
         or_(Formulario.data_inicio == None, Formulario.data_inicio <= agora),
         or_(Formulario.data_fim == None, Formulario.data_fim >= agora)
-
+    )
     formularios = query.all()
 
     # Não há relação direta entre formulários e ministrantes no modelo atual,
