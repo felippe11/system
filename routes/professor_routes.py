@@ -247,10 +247,13 @@ def adicionar_alunos_agendamento(agendamento_id):
                     cpf=cpf
                 )
                 db.session.add(aluno)
-                
+
                 try:
                     db.session.commit()
                     flash('Aluno adicionado com sucesso!', 'success')
+                    total = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+                    if total >= agendamento.quantidade_alunos:
+                        return redirect(url_for('routes.confirmacao_agendamento_professor', agendamento_id=agendamento.id))
                     # Recarregar a página para mostrar o aluno adicionado
                     return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
                 except Exception as e:
@@ -353,9 +356,12 @@ def importar_alunos_agendamento(agendamento_id):
                 if alunos_adicionados > 0:
                     db.session.commit()
                     flash(f'{alunos_adicionados} alunos importados com sucesso!', 'success')
+                    total = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+                    if total >= agendamento.quantidade_alunos:
+                        return redirect(url_for('routes.confirmacao_agendamento_professor', agendamento_id=agendamento.id))
                 else:
                     flash('Nenhum aluno encontrado no arquivo!', 'warning')
-                
+
                 return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
             except Exception as e:
                 db.session.rollback()
@@ -366,6 +372,31 @@ def importar_alunos_agendamento(agendamento_id):
     return render_template(
         'professor/importar_alunos.html',
         agendamento=agendamento
+    )
+
+
+@routes.route('/professor/confirmacao_agendamento/<int:agendamento_id>')
+@login_required
+def confirmacao_agendamento_professor(agendamento_id):
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
+    alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+    if not alunos:
+        flash('Nenhum aluno cadastrado neste agendamento.', 'warning')
+        return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+
+    return render_template(
+        'professor/confirmacao_agendamento.html',
+        agendamento=agendamento,
+        alunos=alunos
     )
 
 @routes.route('/professor/imprimir_agendamento/<int:agendamento_id>')
@@ -389,10 +420,14 @@ def imprimir_agendamento_professor(agendamento_id):
     # Buscar salas selecionadas para visitação
     salas_ids = agendamento.salas_selecionadas.split(',') if agendamento.salas_selecionadas else []
     salas = SalaVisitacao.query.filter(SalaVisitacao.id.in_(salas_ids)).all() if salas_ids else []
-    
+
     # Buscar alunos participantes
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
-    
+
+    if not alunos:
+        flash('Adicione alunos antes de imprimir o comprovante.', 'warning')
+        return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+
     # Gerar PDF para impressão
     pdf_filename = f"agendamento_{agendamento_id}.pdf"
     pdf_path = os.path.join("static", "agendamentos", pdf_filename)
