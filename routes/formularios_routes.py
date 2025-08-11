@@ -103,10 +103,12 @@ def criar_formulario():
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
         evento_ids = request.form.getlist('eventos')
+        permitir_multiplas = 'permitir_multiplas_respostas' not in request.form
 
         novo_formulario = Formulario(
             nome=nome,
             descricao=descricao,
+            permitir_multiplas_respostas=permitir_multiplas,
             cliente_id=current_user.id
         )
 
@@ -130,6 +132,7 @@ def editar_formulario(formulario_id):
     if request.method == 'POST':
         formulario.nome = request.form.get('nome')
         formulario.descricao = request.form.get('descricao')
+        formulario.permitir_multiplas_respostas = 'permitir_multiplas_respostas' not in request.form
         db.session.commit()
         flash('Formulário atualizado!', 'success')
         return redirect(url_for('formularios_routes.listar_formularios'))
@@ -239,6 +242,15 @@ def preencher_formulario(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
 
     if request.method == 'POST':
+        if not formulario.permitir_multiplas_respostas:
+            ja_respondeu = RespostaFormulario.query.filter_by(
+                formulario_id=formulario.id,
+                usuario_id=current_user.id
+            ).first()
+            if ja_respondeu:
+                flash('Apenas uma resposta é permitida para este formulário.', 'warning')
+                return redirect(url_for('formularios_routes.listar_formularios_participante'))
+
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id,
             usuario_id=current_user.id
