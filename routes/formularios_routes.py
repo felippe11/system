@@ -143,6 +143,14 @@ def criar_formulario():
 @login_required
 def deletar_formulario(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
+
+    if (
+        getattr(current_user, "tipo", None) not in ("admin", "superadmin")
+        and formulario.cliente_id != current_user.id
+    ):
+        flash("Você não tem permissão para deletar este formulário.", "danger")
+        return redirect(url_for("formularios_routes.listar_formularios"))
+
     db.session.delete(formulario)
     db.session.commit()
     flash("Formulário deletado com sucesso!", "success")
