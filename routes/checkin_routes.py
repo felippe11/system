@@ -579,6 +579,7 @@ def processar_qrcode():
 @login_required
 def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
-        flash("Acesso Autorizado!", "danger")
-        
-    return render_template("checkin/scan_qr.html")
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    return render_template('checkin/scan_qr.html')
