@@ -58,7 +58,7 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 class="card-subtitle mb-2">Total de Eventos</h5>
-                      <h2 class="card-title mb-0">{{ eventos_ativos|length }}</h2>
+                      <h2 class="card-title mb-0">{{ eventos_ativos|length if eventos_ativos else 0 }}</h2>
                     </div>
                     <i class="bi bi-calendar-event fs-1 opacity-25"></i>
                   </div>
@@ -71,7 +71,7 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 class="card-subtitle mb-2">Agendamentos</h5>
-                      <h2 class="card-title mb-0">{{ agendamentos_totais }}</h2>
+                      <h2 class="card-title mb-0">{{ agendamentos_totais or 0 }}</h2>
                     </div>
                     <i class="bi bi-calendar-check fs-1 opacity-25"></i>
                   </div>
@@ -84,7 +84,7 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 class="card-subtitle mb-2">Visitantes</h5>
-                      <h2 class="card-title mb-0">{{ total_visitantes }}</h2>
+                      <h2 class="card-title mb-0">{{ total_visitantes or 0 }}</h2>
                     </div>
                     <i class="bi bi-people fs-1 opacity-25"></i>
                   </div>
@@ -97,7 +97,7 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 class="card-subtitle mb-2">Ocupação Média</h5>
-                      <h2 class="card-title mb-0">{{ ocupacao_media|round(1) if ocupacao_media is defined else 0 }}%</h2>
+                      <h2 class="card-title mb-0">{{ (ocupacao_media or 0)|round(1) }}%</h2>
                     </div>
                     <i class="bi bi-graph-up fs-1 opacity-25"></i>
                   </div>
@@ -250,7 +250,7 @@
                   <div class="mb-3">
                     <h6>Agendamentos por Status</h6>
                     <div class="progress" style="height: 25px;">
-                      {% if agendamentos_totais > 0 %}
+                      {% if agendamentos_totais and agendamentos_totais > 0 %}
                         {% set porcentagem_confirmados = (agendamentos_confirmados / agendamentos_totais) * 100 %}
                         {% set porcentagem_realizados = (agendamentos_realizados / agendamentos_totais) * 100 %}
                         {% set porcentagem_cancelados = (agendamentos_cancelados / agendamentos_totais) * 100 %}
