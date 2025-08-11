@@ -13,6 +13,20 @@ from models import (
     RevisorCandidatura, RevisorProcess
 )
 
+# Modelos opcionais usados no dashboard de agendamentos. Em alguns ambientes
+# eles podem não estar disponíveis (por exemplo, em testes ou em instalações
+# parciais). O uso de try/except garante que o módulo funcione mesmo na
+# ausência desses modelos.
+try:  # pragma: no cover - importação opcional
+    from models import ConfigAgendamento  # type: ignore
+except Exception:  # pragma: no cover - silenciosamente ignora ausência
+    ConfigAgendamento = None  # type: ignore
+
+try:  # pragma: no cover - importação opcional
+    from models import PeriodoAgendamento  # type: ignore
+except Exception:  # pragma: no cover
+    PeriodoAgendamento = None  # type: ignore
+
 # Importa o blueprint central para registrar as rotas deste módulo
 from .dashboard_routes import dashboard_routes
 
@@ -619,7 +633,34 @@ def set_dashboard_agendamentos_data():
     ocupacao_media = 0
     if ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0:
         ocupacao_media = (ocupacao_query.ocupadas / ocupacao_query.total) * 100
-    
+
+    # Todos os agendamentos do cliente (usados na tabela da aba Agendamentos)
+    todos_agendamentos = AgendamentoVisita.query.join(
+        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+    ).join(
+        Evento, HorarioVisitacao.evento_id == Evento.id
+    ).filter(
+        Evento.cliente_id == current_user.id
+    ).order_by(
+        HorarioVisitacao.data,
+        HorarioVisitacao.horario_inicio
+    ).all()
+
+    # Períodos de agendamento e configuração opcional
+    periodos_agendamento = []
+    if PeriodoAgendamento:  # pragma: no branch - depende da existência do modelo
+        periodos_agendamento = PeriodoAgendamento.query.join(
+            Evento, PeriodoAgendamento.evento_id == Evento.id
+        ).filter(
+            Evento.cliente_id == current_user.id
+        ).all()
+
+    config_agendamento = None
+    if ConfigAgendamento:  # pragma: no branch
+        config_agendamento = ConfigAgendamento.query.filter_by(
+            cliente_id=current_user.id
+        ).first()
+
     # Armazenar valores na sessão para uso no template principal
     session['dashboard_agendamentos'] = {
         'eventos_ativos': len(eventos_ativos),
@@ -629,11 +670,11 @@ def set_dashboard_agendamentos_data():
         'agendamentos_cancelados': agendamentos_cancelados,
         'total_visitantes': total_visitantes,
         'ocupacao_media': round(ocupacao_media, 1) if ocupacao_media else 0,
-        'tem_agendamentos_hoje': len(agendamentos_hoje) > 0,
-        'tem_proximos_agendamentos': len(proximos_agendamentos) > 0,
+        'agendamentos_hoje': len(agendamentos_hoje),
+        'proximos_agendamentos': len(proximos_agendamentos),
         'timestamp': datetime.utcnow().timestamp()
     }
-    
+
     # Passar os objetos para o contexto global
     return {
         'eventos_ativos': eventos_ativos,
@@ -644,46 +685,40 @@ def set_dashboard_agendamentos_data():
         'total_visitantes': total_visitantes,
         'agendamentos_hoje': agendamentos_hoje,
         'proximos_agendamentos': proximos_agendamentos,
-        'ocupacao_media': ocupacao_media
+        'ocupacao_media': ocupacao_media,
+        'todos_agendamentos': todos_agendamentos,
+        'periodos_agendamento': periodos_agendamento,
+        'config_agendamento': config_agendamento
     }
 
 @dashboard_routes.route('/dashboard-agendamentos')
 @login_required
 def dashboard_agendamentos():
-    # Inicializar variáveis vazias/padrão para o template
-    eventos_ativos = []
-    agendamentos_totais = 0
-    total_visitantes = 0
-    ocupacao_media = 0
-    agendamentos_confirmados = 0
-    agendamentos_realizados = 0
-    agendamentos_cancelados = 0
-    agendamentos_hoje = []
-    proximos_agendamentos = []
-    todos_agendamentos = []
-    periodos_agendamento = []
-    config_agendamento = None
-    
-    # Buscar eventos do cliente atual
+    """Dashboard específico do módulo de agendamentos."""
+    # Valores padrão para evitar erros de renderização
+    context = {
+        'eventos_ativos': [],
+        'agendamentos_totais': 0,
+        'total_visitantes': 0,
+        'ocupacao_media': 0,
+        'agendamentos_confirmados': 0,
+        'agendamentos_realizados': 0,
+        'agendamentos_cancelados': 0,
+        'agendamentos_hoje': [],
+        'proximos_agendamentos': [],
+        'todos_agendamentos': [],
+        'periodos_agendamento': [],
+        'config_agendamento': None,
+    }
+
     try:
-        eventos_ativos = Evento.query.filter_by(cliente_id=current_user.id).all()
-    except Exception as e:
-        flash(f"Erro ao buscar eventos: {str(e)}", "danger")
-    
-    # Verificar se temos dados suficientes para mostrar a página básica
-    return render_template('agendamento/dashboard_agendamentos.html',
-                          eventos_ativos=eventos_ativos,
-                          agendamentos_totais=agendamentos_totais,
-                          total_visitantes=total_visitantes,
-                          ocupacao_media=ocupacao_media,
-                          agendamentos_confirmados=agendamentos_confirmados,
-                          agendamentos_realizados=agendamentos_realizados,
-                          agendamentos_cancelados=agendamentos_cancelados,
-                          agendamentos_hoje=agendamentos_hoje,
-                          proximos_agendamentos=proximos_agendamentos,
-                          todos_agendamentos=todos_agendamentos,
-                          periodos_agendamento=periodos_agendamento,
-                          config_agendamento=config_agendamento)
+        data = set_dashboard_agendamentos_data()
+        if data:
+            context.update(data)
+    except Exception as e:  # pragma: no cover - apenas loga erros inesperados
+        flash(f"Erro ao carregar dados do dashboard de agendamentos: {str(e)}", "danger")
+
+    return render_template('agendamento/dashboard_agendamentos.html', **context)
 
 @dashboard_routes.route('/reviewer_applications/<int:app_id>', methods=['POST'])
 @login_required
