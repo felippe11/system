@@ -14,6 +14,7 @@ export MAIL_DEFAULT_SENDER="seu_email@exemplo.com"
 export GOOGLE_CLIENT_ID="<cliente_id_do_google>"
 export GOOGLE_CLIENT_SECRET="<cliente_secret_do_google>"
 export SECRET_KEY="<sua_chave_secreta>"
+export LOG_LEVEL="DEBUG"
 export APP_BASE_URL="https://seu-dominio.com"
 export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
 export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
@@ -24,7 +25,10 @@ export DB_LOCAL="<url_do_banco_local>"
 As variáveis `SECRET_KEY`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` são **obrigatórias**.
 A `SECRET_KEY` deve ser um valor forte e aleatório; a aplicação encerrará a
 inicialização caso qualquer uma delas não esteja definida no ambiente. As
-chaves do Google são necessárias para a autenticação via Gmail.
+chaves do Google são necessárias para a autenticação via Gmail. A variável
+`LOG_LEVEL` controla a verbosidade do log e, se não definida, assume `INFO`,
+reduzindo o volume de mensagens em produção. Ajuste para `DEBUG` durante o
+desenvolvimento para obter logs mais detalhados.
 
 ## Banco de Dados
 
