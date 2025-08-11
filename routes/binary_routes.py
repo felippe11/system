@@ -9,6 +9,9 @@ from models import ArquivoBinario, AuditLog
 
 binary_routes = Blueprint('binary_routes', __name__)
 
+# Tamanho máximo de arquivo (5 MB)
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
 
 @binary_routes.route('/api/binarios', methods=['POST'])
 @login_required
@@ -18,6 +21,15 @@ def upload_binario():
     file = request.files.get('file')
     if not file:
         return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+
+    content_length = file.content_length or request.content_length
+    if content_length and content_length > MAX_FILE_SIZE:
+        uid = current_user.id if hasattr(current_user, 'id') else None
+        log = AuditLog(user_id=uid, submission_id=None, event_type='upload_too_large')
+        db.session.add(log)
+        db.session.commit()
+        return jsonify({'error': 'Arquivo excede o tamanho máximo de 5MB'}), 400
+
     novo = ArquivoBinario(
         nome=secure_filename(file.filename),
         conteudo=file.read(),
