@@ -1128,15 +1128,36 @@ def criar_agendamento():
                 form_erro = "Preencha todos os campos obrigatórios."
                 flash(form_erro, "danger")
             else:
-                # Aqui você adicionaria o código para criar um novo agendamento
-                # baseado nos modelos que você tem disponíveis
-                
-                # Como não sabemos a estrutura exata do seu modelo de Agendamento,
-                # vamos apenas exibir uma mensagem de sucesso
-                flash("Agendamento criado com sucesso! Implementação completa pendente.", "success")
-                
-                # Redirecionar para o dashboard de agendamentos
-                return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+                horario = HorarioVisitacao.query.get(horario_id)
+                if not horario:
+                    form_erro = "Horário inválido."
+                    flash(form_erro, "danger")
+                else:
+                    quantidade = int(quantidade_alunos)
+                    if quantidade > horario.vagas_disponiveis:
+                        form_erro = f"Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}"
+                        flash(form_erro, "danger")
+                    else:
+                        agendamento = AgendamentoVisita(
+                            horario_id=horario.id,
+                            professor_id=current_user.id,
+                            escola_nome=escola_nome,
+                            turma=turma,
+                            nivel_ensino=faixa_etaria,
+                            quantidade_alunos=quantidade
+                        )
+
+                        horario.vagas_disponiveis -= quantidade
+                        db.session.add(agendamento)
+
+                        try:
+                            db.session.commit()
+                            flash("Agendamento criado com sucesso!", "success")
+                            return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                        except Exception as e:
+                            db.session.rollback()
+                            form_erro = f"Erro ao salvar agendamento: {str(e)}"
+                            flash(form_erro, "danger")
                 
         except Exception as e:
             form_erro = f"Erro ao processar o formulário: {str(e)}"
