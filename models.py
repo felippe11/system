@@ -664,9 +664,11 @@ class Formulario(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
+
     descricao = db.Column(db.Text, nullable=True)
     permitir_multiplas_respostas = db.Column(db.Boolean, default=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
+
     
 
 
