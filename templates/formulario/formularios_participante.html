@@ -16,56 +16,45 @@
                             <th class="text-end pe-3">Ações</th>
                         </tr>
                     </thead>
-<tbody>
-  {% for formulario in formularios %}
-  <tr>
-    <td class="ps-3 fw-medium">{{ formulario.nome }}</td>
-    <td class="text-secondary">{{ formulario.descricao or "Sem descrição" }}</td>
-    <td class="text-end pe-3">
-      {% set user_resposta = formulario.respostas
-          | selectattr("usuario_id", "equalto", current_user.id)
-          | list
-          | first
-      %}
 
-      {# Dentro do período de resposta? #}
-      {% set dentro_prazo = (
-        (formulario.data_inicio is none or formulario.data_inicio <= now)
-        and
-        (formulario.data_fim is none or formulario.data_fim >= now)
-      ) %}
-
-      {# Pode múltiplas? Pode preencher? #}
-      {% set pode_multi = formulario.permitir_multiplas_respostas %}
-      {% set pode_preencher = dentro_prazo and (pode_multi or not user_resposta) %}
-
-      <div class="btn-group" role="group">
-        {% if pode_preencher %}
-          <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
-             class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-pencil-fill me-1"></i> Preencher
-          </a>
-        {% else %}
-          {% if not dentro_prazo %}
-            <span class="btn btn-outline-secondary btn-sm disabled">Fora do período</span>
-          {% elif not pode_multi and user_resposta %}
-            <span class="btn btn-outline-secondary btn-sm disabled">Já respondido</span>
-          {% else %}
-            <span class="btn btn-outline-secondary btn-sm disabled">Formulário indisponível</span>
-          {% endif %}
-        {% endif %}
-
-        {% if user_resposta %}
-          <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
-             class="btn btn-outline-info btn-sm ms-1">
-            <i class="bi bi-eye-fill me-1"></i> Ver Feedback
-          </a>
-        {% endif %}
-      </div>
-    </td>
-  </tr>
-  {% endfor %}
-</tbody>
+                    <tbody>
+                        {% for formulario in formularios %}
+                        <tr>
+                            <td class="ps-3 fw-medium">{{ formulario.nome }}</td>
+                            <td class="text-secondary">{{ formulario.descricao or "Sem descrição" }}</td>
+                            <td class="text-end pe-3">
+                                {% set user_resposta = formulario.respostas
+                                    | selectattr("usuario_id", "equalto", current_user.id)
+                                    | list
+                                    | first
+                                %}
+                                {% set disponivel = (not formulario.data_inicio or formulario.data_inicio <= now) and (not formulario.data_fim or formulario.data_fim >= now) %}
+                                {% if disponivel %}
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-pencil-fill me-1"></i> Preencher
+                                    </a>
+                                    {% if user_resposta %}
+                                    <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
+                                       class="btn btn-outline-info btn-sm ms-1">
+                                       <i class="bi bi-eye-fill me-1"></i> Ver Feedback
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted">Formulário indisponível</span>
+                                {% if user_resposta %}
+                                <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
+                                   class="btn btn-outline-info btn-sm ms-1">
+                                   <i class="bi bi-eye-fill me-1"></i> Ver Feedback
+                                </a>
+                                {% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
 
                 </table>
             </div>

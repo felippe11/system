@@ -137,6 +137,32 @@ if request.method == "POST":
         datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
     )
 
+if request.method == "POST":
+    count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
+    if (
+        config_cli
+        and config_cli.limite_formularios is not None
+        and count_forms >= config_cli.limite_formularios
+    ):
+        flash("Limite de formulários atingido.", "danger")
+        return redirect(url_for("formularios_routes.listar_formularios"))
+
+    nome = request.form.get("nome")
+    descricao = request.form.get("descricao")
+    data_inicio_str = request.form.get("data_inicio")
+    data_fim_str = request.form.get("data_fim")
+    evento_ids = request.form.getlist("eventos")
+
+    # Checkbox marcado => True; ausente => False
+    permitir_multiplas = "permitir_multiplas_respostas" in request.form
+
+    data_inicio = (
+        datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
+    )
+    data_fim = (
+        datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
+    )
+
     novo_formulario = Formulario(
         nome=nome,
         descricao=descricao,
@@ -157,32 +183,6 @@ if request.method == "POST":
 
 return render_template("criar_formulario.html", eventos=eventos_disponiveis)
 
-
-@formularios_routes.route("/formularios/<int:formulario_id>/editar", methods=["GET", "POST"])
-@login_required
-def editar_formulario(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
-
-    if request.method == "POST":
-        formulario.nome = request.form.get("nome")
-        formulario.descricao = request.form.get("descricao")
-        data_inicio_str = request.form.get("data_inicio")
-        data_fim_str = request.form.get("data_fim")
-
-        formulario.data_inicio = (
-            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
-        )
-        formulario.data_fim = (
-            datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
-        )
-        # Checkbox marcado => True; ausente => False
-        formulario.permitir_multiplas_respostas = "permitir_multiplas_respostas" in request.form
-
-        db.session.commit()
-        flash("Formulário atualizado!", "success")
-        return redirect(url_for("formularios_routes.listar_formularios"))
-
-    return render_template("editar_formulario.html", formulario=formulario)
 
 
 
@@ -335,6 +335,7 @@ def preencher_formulario(formulario_id):
                 flash("Apenas uma resposta é permitida para este formulário.", "warning")
                 return redirect(url_for("formularios_routes.listar_formularios_participante"))
 
+        # ... restante do processamento do envio (criar RespostaFormulario, salvar campos, commit) ...
 
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id, usuario_id=current_user.id
@@ -409,11 +410,12 @@ def listar_formularios_participante():
         # Mantém o comportamento atual quando nenhum evento é fornecido
         query = Formulario.query.filter_by(cliente_id=cliente_id)
 
-    now = datetime.utcnow()
+
+    agora = datetime.utcnow()
     query = query.filter(
-        or_(Formulario.data_inicio == None, Formulario.data_inicio <= now),
-        or_(Formulario.data_fim == None, Formulario.data_fim >= now),
-    )
+        or_(Formulario.data_inicio == None, Formulario.data_inicio <= agora),
+        or_(Formulario.data_fim == None, Formulario.data_fim >= agora)
+
     formularios = query.all()
 
     # Não há relação direta entre formulários e ministrantes no modelo atual,
@@ -423,9 +425,9 @@ def listar_formularios_participante():
         flash("Nenhum formulário disponível no momento.", "warning")
         return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
 
-    return render_template(
-        "formularios_participante.html", formularios=formularios, now=now
-    )
+
+    return render_template('formularios_participante.html', formularios=formularios, now=agora)
+
 
 
 @formularios_routes.route("/respostas/<int:resposta_id>", methods=["GET"])
