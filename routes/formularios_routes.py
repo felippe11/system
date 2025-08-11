@@ -895,8 +895,56 @@ def usar_template(template_id):
 
     return render_template("usar_template.html", template=template)
 
+@formularios_routes.route('/respostas/<int:resposta_id>/deletar', methods=['POST'])
+@login_required
+def deletar_resposta(resposta_id):
+    """Permite ao cliente excluir uma resposta de seu formulário."""
+    # Apenas clientes podem excluir respostas
+    if getattr(current_user, 'tipo', None) != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('formularios_routes.listar_respostas'))
+
+    resposta = RespostaFormulario.query.get_or_404(resposta_id)
+
+    # Verifica se a resposta pertence a um formulário do cliente atual
+    if resposta.formulario.cliente_id != current_user.id:
+        flash('Você não tem permissão para excluir esta resposta.', 'danger')
+        return redirect(url_for('formularios_routes.listar_respostas'))
+
+    # Remove arquivos associados e registros de RespostaCampo
+    for resp_campo in list(resposta.respostas_campos):
+        if resp_campo.campo.tipo == 'file' and resp_campo.valor:
+            try:
+                if os.path.exists(resp_campo.valor):
+                    os.remove(resp_campo.valor)
+            except OSError:
+                logger.exception('Erro ao remover arquivo %s', resp_campo.valor)
+        db.session.delete(resp_campo)
+
+    # Remove diretório da resposta (se existir)
+    dir_path = os.path.join('uploads', 'respostas', str(resposta.id))
+    try:
+        if os.path.isdir(dir_path):
+            # Caso não esteja vazio, tenta remover mesmo assim
+            import shutil
+            shutil.rmtree(dir_path, ignore_errors=True)
+    except OSError:
+        pass
+
+    # Auditoria
+    usuario = Usuario.query.get(getattr(current_user, 'id', None))
+    uid = usuario.id if usuario else None
+    db.session.add(AuditLog(user_id=uid, submission_id=resposta.id, event_type='delete_resposta'))
+
+    db.session.delete(resposta)
+    db.session.commit()
+
+    flash('Resposta excluída com sucesso!', 'success')
+    return redirect(url_for('formularios_routes.listar_respostas'))
+
 
 @formularios_routes.route("/respostas", methods=["GET"])
+
 @login_required
 def listar_respostas():
     # Verifica se o usuário é cliente ou ministrante
