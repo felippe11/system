@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, url_for as flask_url_for
 from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -8,6 +8,7 @@ from extensions import db, login_manager, migrate, mail, socketio, csrf
 from models import Inscricao
 import pytz
 import logging
+import os
 
 # Configuração centralizada de logging
 logging.basicConfig(
@@ -44,6 +45,20 @@ def create_app():
 
     login_manager.login_view = "auth_routes.login"
     login_manager.session_protection = "strong"
+
+    # Cache busting para arquivos estáticos
+    def versioned_url_for(endpoint: str, **values):
+        if endpoint == "static":
+            filename = values.get("filename")
+            if filename:
+                file_path = os.path.join(app.static_folder, filename)
+                if os.path.exists(file_path):
+                    values["v"] = int(os.stat(file_path).st_mtime)
+        return flask_url_for(endpoint, **values)
+
+    @app.context_processor
+    def override_url_for():
+        return dict(url_for=versioned_url_for)
 
     # Filtros Jinja2
     @app.template_filter("string_to_date")
