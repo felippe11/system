@@ -13,6 +13,14 @@
             <label for="descricao" class="form-label">Descrição</label>
             <textarea id="descricao" name="descricao" class="form-control">{{ formulario.descricao }}</textarea>
         </div>
+        <div class="mb-3">
+            <label for="data_inicio" class="form-label">Data de Início</label>
+            <input type="datetime-local" id="data_inicio" name="data_inicio" class="form-control" value="{{ formulario.data_inicio.strftime('%Y-%m-%dT%H:%M') if formulario.data_inicio else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="data_fim" class="form-label">Data de Fim</label>
+            <input type="datetime-local" id="data_fim" name="data_fim" class="form-control" value="{{ formulario.data_fim.strftime('%Y-%m-%dT%H:%M') if formulario.data_fim else '' }}">
+        </div>
         <button type="submit" class="btn btn-success">Salvar Alterações</button>
     </form>
 
