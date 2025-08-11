@@ -211,7 +211,9 @@ def integrar_notificacoes():
         # Verificar se o agendamento foi criado com sucesso
         # Isso é um hack - na prática seria melhor refatorar a função original
         # para retornar o agendamento criado ou um status
-        if request.method == 'POST' and 'success' in session.get('_flashes', []):
+        flashes = session.get('_flashes', [])
+        sucesso = any(cat == 'success' for cat, _ in flashes)
+        if request.method == 'POST' and sucesso:
             # Buscar o último agendamento criado pelo professor
             agendamento = AgendamentoVisita.query.filter_by(
                 professor_id=current_user.id
@@ -239,7 +241,9 @@ def integrar_notificacoes():
         response = original_cancelar_agendamento(agendamento_id)
         
         # Verificar se o cancelamento foi bem-sucedido
-        if request.method == 'POST' and 'success' in session.get('_flashes', []):
+        flashes = session.get('_flashes', [])
+        sucesso = any(cat == 'success' for cat, _ in flashes)
+        if request.method == 'POST' and sucesso:
             # Enviar notificação de cancelamento
             NotificacaoAgendamento.enviar_email_cancelamento(agendamento)
         
