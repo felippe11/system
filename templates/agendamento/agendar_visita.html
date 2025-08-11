@@ -8,6 +8,7 @@
     <p><strong>Vagas Disponíveis:</strong> {{ horario.vagas_disponiveis }}</p>
 
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="mb-3">
             <label class="form-label">Nome da Escola</label>
             <input type="text" name="escola_nome" class="form-control" required>

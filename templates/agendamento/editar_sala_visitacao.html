@@ -14,6 +14,7 @@
         </div>
         <div class="card-body">
           <form method="POST" action="{{ url_for('agendamento_routes.editar_sala_visitacao', sala_id=sala.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row mb-3">
               <div class="col-md-6">
                 <label for="nome" class="form-label">Nome da Sala *</label>

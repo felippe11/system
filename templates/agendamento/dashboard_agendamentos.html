@@ -507,6 +507,7 @@
                     <div class="card-body">
                       <h6 class="mb-3">Configurações Adicionais</h6>
                       <form action="{{ url_for('agendamento_routes.salvar_config_agendamento') }}" method="POST">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                           <label for="capacidadeMaxima" class="form-label">Capacidade Máxima por Horário</label>
                           <input type="number" class="form-control" id="capacidadeMaxima" name="capacidade_maxima" value="{{ config_agendamento.capacidade_maxima if config_agendamento else 30 }}" min="1">
@@ -604,6 +605,7 @@
                   <div class="d-grid gap-3 mt-3">
                     <form action="{{ url_for('agendamento_routes.excluir_todos_agendamentos') }}" method="post"
                           onsubmit="return confirm('ATENÇÃO: Esta ação excluirá TODOS os agendamentos e não pode ser desfeita! Tem certeza que deseja continuar?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-danger w-100">
                         <i class="bi bi-trash-fill me-2"></i> Excluir Todos os Agendamentos
                       </button>
@@ -611,6 +613,7 @@
                     
                     <form action="{{ url_for('agendamento_routes.resetar_configuracoes_agendamento') }}" method="post"
                           onsubmit="return confirm('Tem certeza que deseja restaurar as configurações padrão?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                       <button type="submit" class="btn btn-warning w-100">
                         <i class="bi bi-arrow-repeat me-2"></i> Restaurar Configurações Padrão
                       </button>
