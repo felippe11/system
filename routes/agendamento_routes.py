@@ -3648,6 +3648,9 @@ def marcar_presenca_aluno(aluno_id):
 def qrcode_agendamento(agendamento_id):
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
+    if current_user.id not in (agendamento.professor_id, agendamento.horario.evento.cliente_id):
+        abort(403)
+
     # Dados que estarão no QR Code
     qr_data = f"Agendamento ID: {agendamento.id}, Evento: {agendamento.horario.evento.nome}, Data: {agendamento.horario.data.strftime('%d/%m/%Y')}"
 
