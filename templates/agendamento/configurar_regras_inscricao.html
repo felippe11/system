@@ -28,6 +28,7 @@
 
       <div id="regras-container" {% if not evento %}class="d-none"{% endif %}>
         <form method="POST" id="regras-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="evento_id" id="form-evento-id" value="{{ evento.id if evento else '' }}">
           
           <!-- Tipos de Inscrição -->
