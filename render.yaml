@@ -10,7 +10,7 @@ services:
           name: system-db
           property: connectionString
       - key: SECRET_KEY
-        value: "REPLACE_ME"
+        value: "REPLACE_ME"  # replace with a strong, random value
 
 # Provision a PostgreSQL database if needed
 # Comment out the database block if you already have one
