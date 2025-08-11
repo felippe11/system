@@ -19,6 +19,7 @@ from utils.mfa import mfa_required
 from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models import (
@@ -439,6 +440,8 @@ def get_resposta_file(filename):
     logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
     uid = current_user.id if hasattr(current_user, 'id') else None
+    if uid is not None and not Usuario.query.get(uid):
+        uid = None
 
     # Caminho completo armazenado em RespostaCampo.valor
     caminho_arquivo = os.path.join('uploads', 'respostas', filename)
@@ -454,7 +457,10 @@ def get_resposta_file(filename):
     if not resposta_campo:
         logger.warning("Arquivo não encontrado para download: %s", filename)
         db.session.add(AuditLog(user_id=uid, submission_id=None, event_type='download_not_found'))
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
         abort(404)
 
     usuario_resposta = resposta_campo.resposta_formulario.usuario_id
@@ -477,7 +483,10 @@ def get_resposta_file(filename):
                 event_type='unauthorized_download'
             )
         )
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
         abort(403)
 
     # Registro da tentativa autorizada
@@ -488,7 +497,10 @@ def get_resposta_file(filename):
             event_type='download'
         )
     )
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
     return send_from_directory(uploads_folder, filename)
 
 
