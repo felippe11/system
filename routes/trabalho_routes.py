@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from utils.mfa import mfa_required
 from extensions import db
-from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento
+from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento, Usuario
 import uuid
 import os
 
@@ -79,9 +79,11 @@ def submeter_trabalho():
         locator = trabalho.locator
 
         # Audit log
+        usuario = Usuario.query.get(getattr(current_user, "id", None))
+        uid = usuario.id if usuario else None  # salva log mesmo sem usuário
         db.session.add(
             AuditLog(
-                user_id=current_user.id,
+                user_id=uid,
                 submission_id=trabalho.id,
                 event_type="submission",
             )
@@ -164,9 +166,11 @@ def avaliar_trabalho(trabalho_id):
         db.session.commit()
 
         # Audit log
+        usuario = Usuario.query.get(getattr(current_user, "id", None))
+        uid = usuario.id if usuario else None  # salva log mesmo sem usuário
         db.session.add(
             AuditLog(
-                user_id=current_user.id,
+                user_id=uid,
                 submission_id=trabalho.id,
                 event_type="decision",
             )
