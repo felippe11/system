@@ -56,6 +56,9 @@ def assign_reviews():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None  # salva log mesmo sem usuário
+
     data = request.get_json()
     if not data:
         return {"success": False}, 400
@@ -89,7 +92,7 @@ def assign_reviews():
             # Log -----------------------------------------------------------
             db.session.add(
                 AuditLog(
-                    user_id=current_user.id,
+                    user_id=uid,
                     submission_id=trabalho.id,
                     event_type="assignment",
                 )
@@ -108,6 +111,9 @@ def auto_assign(evento_id):
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
+
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None  # salva log mesmo sem usuário
 
     config = RevisaoConfig.query.filter_by(evento_id=evento_id).first()
     if not config:
@@ -147,7 +153,7 @@ def auto_assign(evento_id):
 
             db.session.add(
                 AuditLog(
-                    user_id=current_user.id,
+                    user_id=uid,
                     submission_id=t.id,
                     event_type="assignment",
                 )

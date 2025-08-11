@@ -444,9 +444,8 @@ def gerar_pdf_respostas_route(formulario_id):
 def get_resposta_file(filename):
     logger.debug("get_resposta_file foi chamado com: %s", filename)
     uploads_folder = os.path.join('uploads', 'respostas')
-    uid = current_user.id if hasattr(current_user, 'id') else None
-    if uid is not None and not Usuario.query.get(uid):
-        uid = None
+    usuario = Usuario.query.get(getattr(current_user, 'id', None))
+    uid = usuario.id if usuario else None  # permite salvar o log mesmo sem usuário
 
     # Caminho completo armazenado em RespostaCampo.valor
     caminho_arquivo = os.path.join('uploads', 'respostas', filename)
@@ -833,8 +832,9 @@ def definir_status_inline():
     # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status
 
-    # Obtém o ID do usuário autenticado de forma segura
-    uid = current_user.id if hasattr(current_user, "id") else None
+    # Obtém o registro de usuário; fallback a None se o usuário não existir
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None  # permite salvar o log mesmo sem usuário
 
     # Determina a URL de retorno (prioriza a página anterior)
     redirect_url = request.referrer or url_for(
