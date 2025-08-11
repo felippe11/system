@@ -658,30 +658,38 @@ class PasswordResetToken(db.Model):
 
 from extensions import db
 
-
 class Formulario(db.Model):
-    __tablename__ = "formularios"
+    __tablename__ = 'formularios'
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
+
+    # Novo + preservado do outro branch
     data_inicio = db.Column(db.DateTime, nullable=True)
     data_fim = db.Column(db.DateTime, nullable=True)
-    cliente_id = db.Column(
-        db.Integer, db.ForeignKey("cliente.id"), nullable=True
-    )  # Se cada cliente puder ter seus próprios formulários
+    permitir_multiplas_respostas = db.Column(db.Boolean, default=True)
 
+    # Relação com Cliente (opcional por cliente)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
     cliente = db.relationship("Cliente", backref=db.backref("formularios", lazy=True))
 
+    # Campos do formulário
     campos = db.relationship(
-        "CampoFormulario", backref="formulario", lazy=True, cascade="all, delete-orphan"
+        "CampoFormulario",
+        backref="formulario",
+        lazy=True,
+        cascade="all, delete-orphan",
     )
-    # Relacionamento com respostas do formulário.
-    respostas = db.relationship(
-        "RespostaFormulario", back_populates="formulario", cascade="all, delete-orphan"
-    )
-    # Eventos associados a este formulário
 
+    # Respostas do formulário
+    respostas = db.relationship(
+        "RespostaFormulario",
+        back_populates="formulario",
+        cascade="all, delete-orphan",
+    )
+
+    # Eventos associados a este formulário
     eventos = db.relationship(
         "Evento",
         secondary="evento_formulario_association",
@@ -690,7 +698,6 @@ class Formulario(db.Model):
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
-
 
 class CampoFormulario(db.Model):
     __tablename__ = "campos_formulario"

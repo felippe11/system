@@ -103,11 +103,11 @@ def criar_formulario():
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
         evento_ids = request.form.getlist("eventos")
+        # Checkbox marcado => True; ausente => False
+        permitir_multiplas = "permitir_multiplas_respostas" in request.form
 
         data_inicio = (
-            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
-            if data_inicio_str
-            else None
+            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
         )
         data_fim = (
             datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
@@ -118,6 +118,7 @@ def criar_formulario():
             descricao=descricao,
             data_inicio=data_inicio,
             data_fim=data_fim,
+            permitir_multiplas_respostas=permitir_multiplas,
             cliente_id=current_user.id,
         )
 
@@ -133,9 +134,7 @@ def criar_formulario():
     return render_template("criar_formulario.html", eventos=eventos_disponiveis)
 
 
-@formularios_routes.route(
-    "/formularios/<int:formulario_id>/editar", methods=["GET", "POST"]
-)
+@formularios_routes.route("/formularios/<int:formulario_id>/editar", methods=["GET", "POST"])
 @login_required
 def editar_formulario(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
@@ -146,18 +145,19 @@ def editar_formulario(formulario_id):
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
         formulario.data_inicio = (
-            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
-            if data_inicio_str
-            else None
+            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
         )
         formulario.data_fim = (
             datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
         )
+        formulario.permitir_multiplas_respostas = "permitir_multiplas_respostas" in request.form
+
         db.session.commit()
         flash("Formulário atualizado!", "success")
         return redirect(url_for("formularios_routes.listar_formularios"))
 
     return render_template("editar_formulario.html", formulario=formulario)
+
 
 
 @formularios_routes.route("/formularios/<int:formulario_id>/deletar", methods=["POST"])
@@ -290,6 +290,7 @@ def deletar_campo(campo_id):
 def preencher_formulario(formulario_id):
     formulario = Formulario.query.get_or_404(formulario_id)
 
+    # Bloqueio por janela de disponibilidade
     now = datetime.utcnow()
     if (formulario.data_inicio and now < formulario.data_inicio) or (
         formulario.data_fim and now > formulario.data_fim
@@ -298,17 +299,26 @@ def preencher_formulario(formulario_id):
         return redirect(url_for("formularios_routes.listar_formularios_participante"))
 
     if request.method == "POST":
+        # Restringe múltiplas respostas, se configurado
+        if not getattr(formulario, "permitir_multiplas_respostas", True):
+            ja_respondeu = RespostaFormulario.query.filter_by(
+                formulario_id=formulario.id,
+                usuario_id=current_user.id
+            ).first()
+            if ja_respondeu:
+                flash("Apenas uma resposta é permitida para este formulário.", "warning")
+                return redirect(url_for("formularios_routes.listar_formularios_participante"))
+
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id, usuario_id=current_user.id
         )
         db.session.add(resposta_formulario)
-        # Garante que tenhamos o ID para criar pasta por resposta
-        db.session.flush()
+        db.session.flush()  # garante o ID para salvar uploads por resposta
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
 
-            # Upload de arquivo: espera o campo como file_<id>
+            # Upload de arquivo: campo esperado como file_<id>
             if campo.tipo == "file" and f"file_{campo.id}" in request.files:
                 arquivo = request.files[f"file_{campo.id}"]
                 if arquivo and arquivo.filename:
@@ -320,9 +330,7 @@ def preencher_formulario(formulario_id):
                         return redirect(request.url)
 
                     unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
-                    dir_path = os.path.join(
-                        "uploads", "respostas", str(resposta_formulario.id)
-                    )
+                    dir_path = os.path.join("uploads", "respostas", str(resposta_formulario.id))
                     os.makedirs(dir_path, exist_ok=True)
                     caminho_arquivo = os.path.join(dir_path, unique_name)
                     arquivo.save(caminho_arquivo)
@@ -345,6 +353,7 @@ def preencher_formulario(formulario_id):
         return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
 
     return render_template("inscricao/preencher_formulario.html", formulario=formulario)
+
 
 
 @formularios_routes.route("/formularios_participante", methods=["GET"])
