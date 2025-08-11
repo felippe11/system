@@ -1,5 +1,6 @@
 from flask_login import login_required
 from utils import external_url, determinar_turno
+from utils.dia_semana import dia_semana
 import logging
 import psutil
 import os
@@ -2980,8 +2981,9 @@ def gerar_programacao_evento_pdf(evento_id):
     # Programação por data
     for i, data in enumerate(sorted_dates):
         # Cabeçalho da data
-        data_formatada = datetime.strptime(data, '%d/%m/%Y').strftime('%A, %d de %B de %Y')
-        story.append(Paragraph(data_formatada.title(), styles['DateHeader']))
+        data_dt = datetime.strptime(data, '%d/%m/%Y')
+        data_formatada = f"{dia_semana(data_dt)}, {data_dt.strftime('%d de %B de %Y')}"
+        story.append(Paragraph(data_formatada, styles['DateHeader']))
         
         # Criar tabela para as oficinas do dia
         oficinas_do_dia = sorted(grouped_oficinas[data], key=lambda x: x['inicio'])

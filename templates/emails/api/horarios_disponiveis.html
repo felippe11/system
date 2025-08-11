@@ -34,7 +34,7 @@
             {% set data = horarios[0].data %}
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
-                    <i class="fas fa-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data.strftime('%A')|capitalize }})
+                    <i class="fas fa-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data|dia_semana|capitalize }})
                 </div>
                 <div class="card-body">
                     <table class="table table-striped table-hover">

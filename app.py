@@ -16,6 +16,7 @@ logging.basicConfig(
 )
 
 from services.mp_service import get_sdk
+from utils.dia_semana import dia_semana
 
 
 def create_app():
@@ -58,6 +59,10 @@ def create_app():
             dt = dt.replace(tzinfo=pytz.utc)
         dt_brasilia = dt.astimezone(pytz.timezone("America/Sao_Paulo"))
         return dt_brasilia.strftime("%d/%m/%Y %H:%M:%S")
+
+    @app.template_filter("dia_semana")
+    def dia_semana_filter(value):
+        return dia_semana(value)
 
     # Registro de rotas
     from routes import register_routes
