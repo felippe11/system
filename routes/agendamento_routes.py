@@ -3068,7 +3068,13 @@ def agendar_visita(horario_id):
         escola_nome = request.form.get('escola_nome')
         turma = request.form.get('turma')
         nivel_ensino = request.form.get('nivel_ensino')
-        quantidade_alunos = int(request.form.get('quantidade_alunos'))
+        try:
+            quantidade_alunos = int(request.form.get('quantidade_alunos', 0))
+            if quantidade_alunos <= 0:
+                raise ValueError
+        except ValueError:
+            flash('Quantidade de alunos inválida.', 'danger')
+            return redirect(url_for('agendamento_routes.agendar_visita', horario_id=horario_id))
 
         # Validar vagas disponíveis
         if quantidade_alunos > horario.vagas_disponiveis:
