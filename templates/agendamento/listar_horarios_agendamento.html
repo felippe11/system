@@ -42,7 +42,7 @@
               {% set data = horarios[0].data %}
               <div class="mb-4">
                 <h4>
-                  <i class="bi bi-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data.strftime('%A')|capitalize }})
+                  <i class="bi bi-calendar-day"></i> {{ data.strftime('%d/%m/%Y') }} ({{ data|dia_semana|capitalize }})
                 </h4>
                 
                 <div class="table-responsive">
