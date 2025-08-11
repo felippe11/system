@@ -13,6 +13,14 @@
             <label for="descricao" class="form-label">Descrição</label>
             <textarea id="descricao" name="descricao" class="form-control">{{ formulario.descricao }}</textarea>
         </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="permitir_multiplas_respostas" name="permitir_multiplas_respostas" {% if not formulario.permitir_multiplas_respostas %}checked{% endif %}>
+            <label class="form-check-label" for="permitir_multiplas_respostas">
+                Permitir apenas uma resposta por usuário
+            </label>
+        </div>
+
         <button type="submit" class="btn btn-success">Salvar Alterações</button>
     </form>
 

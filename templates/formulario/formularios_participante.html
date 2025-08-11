@@ -18,35 +18,35 @@
                     </thead>
                     <tbody>
                         {% for formulario in formularios %}
-                        <tr>
-                            <td class="ps-3 fw-medium">{{ formulario.nome }}</td>
-                            <td class="text-secondary">{{ formulario.descricao or "Sem descrição" }}</td>
-                            <td class="text-end pe-3">
-                                <div class="btn-group" role="group">
-                                    <!-- Botão de preencher -->
-                                    <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
-                                       class="btn btn-outline-primary btn-sm">
-                                        <i class="bi bi-pencil-fill me-1"></i> Preencher
-                                    </a>
+                            <tr>
+                                <td class="ps-3 fw-medium">{{ formulario.nome }}</td>
+                                <td class="text-secondary">{{ formulario.descricao or "Sem descrição" }}</td>
+                                {% set user_resposta = formulario.respostas
+                                    | selectattr("usuario_id", "equalto", current_user.id)
+                                    | list
+                                    | first
+                                %}
+                                <td class="text-end pe-3">
+                                    <div class="btn-group" role="group">
+                                        {% if not formulario.permitir_multiplas_respostas and user_resposta %}
+                                            <span class="btn btn-outline-secondary btn-sm disabled">Já respondido</span>
+                                        {% else %}
+                                            <a href="{{ url_for('formularios_routes.preencher_formulario', formulario_id=formulario.id) }}"
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-pencil-fill me-1"></i> Preencher
+                                            </a>
+                                        {% endif %}
 
-                                    <!-- Verificar se o usuário já respondeu -->
-                                    {% set user_resposta = formulario.respostas
-                                        | selectattr("usuario_id", "equalto", current_user.id)
-                                        | list
-                                        | first 
-                                    %}
-
-                                    <!-- Se user_resposta existir, exibir botão de "Ver Feedback" -->
-                                    {% if user_resposta %}
-                                    <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
-                                       class="btn btn-outline-info btn-sm ms-1">
-                                       <i class="bi bi-eye-fill me-1"></i> Ver Feedback
-                                    </a>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                                        {% if user_resposta %}
+                                        <a href="{{ url_for('formularios_routes.visualizar_resposta', resposta_id=user_resposta.id) }}"
+                                           class="btn btn-outline-info btn-sm ms-1">
+                                           <i class="bi bi-eye-fill me-1"></i> Ver Feedback
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
                     </tbody>
                 </table>
             </div>
