@@ -21,9 +21,7 @@ from werkzeug.utils import secure_filename
 from sqlalchemy.orm import joinedload
 from sqlalchemy import text, or_
 
-from sqlalchemy.exc import IntegrityError
-
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, ProgrammingError, SQLAlchemyError
 
 
 from extensions import db
@@ -55,6 +53,16 @@ formularios_routes = Blueprint(
 )
 
 
+def safe_get_formulario(formulario_id):
+    try:
+        return Formulario.query.get_or_404(formulario_id)
+    except ProgrammingError as e:
+        logger.error(f"Erro ao acessar formulário: {e}")
+        flash("Erro ao acessar formulário.", "danger")
+        return None
+
+
+
 @formularios_routes.route("/formularios", methods=["GET"])
 @login_required
 def listar_formularios():
@@ -64,16 +72,20 @@ def listar_formularios():
     Cada formulário vem com TODAS as respostas + usuário de cada resposta
     para evitar consultas N+1.
     """
-    q = Formulario.query.options(
-        joinedload(Formulario.respostas).joinedload(RespostaFormulario.usuario)
-    ).order_by(Formulario.nome)
+    try:
+        q = Formulario.query.options(
+            joinedload(Formulario.respostas).joinedload(RespostaFormulario.usuario)
+        ).order_by(Formulario.nome)
 
-    if getattr(current_user, "tipo", None) == "superadmin":
-        formularios = q.all()
-    else:
-        cliente_id = getattr(current_user, "cliente_id", None) or current_user.id
-        formularios = q.filter(Formulario.cliente_id == cliente_id).all()
-
+        if getattr(current_user, "tipo", None) == "superadmin":
+            formularios = q.all()
+        else:
+            cliente_id = getattr(current_user, "cliente_id", None) or current_user.id
+            formularios = q.filter(Formulario.cliente_id == cliente_id).all()
+    except ProgrammingError as e:
+        logger.error(f"Erro ao listar formulários: {e}")
+        flash("Erro ao carregar formulários.", "danger")
+        formularios = []
     return render_template("formularios.html", formularios=formularios)
 
 
@@ -91,7 +103,12 @@ def criar_formulario():
     ).first()
 
     if request.method == "POST":
-        count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
+        try:
+            count_forms = Formulario.query.filter_by(cliente_id=current_user.id).count()
+        except ProgrammingError as e:
+            logger.error(f"Erro ao contar formulários: {e}")
+            flash("Erro ao carregar formulários.", "danger")
+            return redirect(url_for("formularios_routes.listar_formularios"))
         if (
             config_cli
             and config_cli.limite_formularios is not None
@@ -142,7 +159,9 @@ def criar_formulario():
 @formularios_routes.route("/formularios/<int:formulario_id>/deletar", methods=["POST"])
 @login_required
 def deletar_formulario(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
 
     if (
         getattr(current_user, "tipo", None) not in ("admin", "superadmin")
@@ -163,7 +182,9 @@ def deletar_formulario(formulario_id):
 @login_required
 def editar_eventos_formulario(formulario_id):
     """Permite atribuir eventos a um formulário."""
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
 
     if getattr(current_user, "tipo", None) in ("admin", "superadmin"):
         eventos = Evento.query.order_by(Evento.nome).all()
@@ -196,7 +217,9 @@ def editar_eventos_formulario(formulario_id):
 )
 @login_required
 def gerenciar_campos(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
 
     if request.method == "POST":
         nome = request.form.get("nome")
@@ -291,7 +314,9 @@ def deletar_campo(campo_id):
 )
 @login_required
 def preencher_formulario(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
 
     # Bloqueio por janela de disponibilidade
     now = datetime.utcnow()
@@ -428,7 +453,9 @@ def exportar_csv(formulario_id):
     import pytz
     from flask import Response, stream_with_context
 
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
 
     csv_filename = f"respostas_{formulario.id}.csv"
@@ -486,7 +513,9 @@ def exportar_csv(formulario_id):
 @formularios_routes.route("/formularios/<int:formulario_id>/exportar_xlsx")
 @login_required
 def exportar_xlsx(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
 
     try:
@@ -620,7 +649,9 @@ def get_resposta_file(filename):
 @formularios_routes.route("/formularios/<int:formulario_id>/excluir", methods=["POST"])
 @login_required
 def excluir_formulario(formulario_id):
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
 
     try:
         # 1️⃣ Exclui FeedbackCampo associados às respostas do formulário (SQL textual corrigido)
@@ -653,7 +684,10 @@ def excluir_formulario(formulario_id):
         RespostaFormulario.query.filter_by(formulario_id=formulario_id).delete()
 
         # 4️⃣ Exclui o Formulário
-        formulario = Formulario.query.get_or_404(formulario_id)
+        formulario = safe_get_formulario(formulario_id)
+        if not formulario:
+            db.session.rollback()
+            return redirect(url_for("formularios_routes.listar_formularios"))
         db.session.delete(formulario)
 
         db.session.commit()
@@ -678,7 +712,9 @@ def listar_respostas_ministrante(formulario_id):
         flash("Apenas ministrantes têm acesso a esta tela.", "danger")
         return redirect(url_for("dashboard_ministrante_routes.dashboard_ministrante"))
 
-    formulario = Formulario.query.get_or_404(formulario_id)
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
     # 2) Carrega as respostas
     respostas = RespostaFormulario.query.filter_by(formulario_id=formulario.id).all()
 
