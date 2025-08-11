@@ -21,6 +21,7 @@
       {% endif %}
 
       <form method="POST" action="{{ url_for('evento_routes.configurar_evento') }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
           <!-- Coluna 1: Informações Básicas -->
           <div class="col-md-6">

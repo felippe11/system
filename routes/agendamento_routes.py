@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 from models import (
     AgendamentoVisita, HorarioVisitacao, Evento,
     EventoInscricaoTipo, ConfiguracaoAgendamento,
-    Usuario, Cliente, Oficina
+    Usuario, Cliente, Oficina, ProfessorBloqueado
 )
 from utils import obter_estados
 from fpdf import FPDF
@@ -211,7 +211,9 @@ def integrar_notificacoes():
         # Verificar se o agendamento foi criado com sucesso
         # Isso é um hack - na prática seria melhor refatorar a função original
         # para retornar o agendamento criado ou um status
-        if request.method == 'POST' and 'success' in session.get('_flashes', []):
+        flashes = session.get('_flashes', [])
+        sucesso = any(cat == 'success' for cat, _ in flashes)
+        if request.method == 'POST' and sucesso:
             # Buscar o último agendamento criado pelo professor
             agendamento = AgendamentoVisita.query.filter_by(
                 professor_id=current_user.id
@@ -239,7 +241,9 @@ def integrar_notificacoes():
         response = original_cancelar_agendamento(agendamento_id)
         
         # Verificar se o cancelamento foi bem-sucedido
-        if request.method == 'POST' and 'success' in session.get('_flashes', []):
+        flashes = session.get('_flashes', [])
+        sucesso = any(cat == 'success' for cat, _ in flashes)
+        if request.method == 'POST' and sucesso:
             # Enviar notificação de cancelamento
             NotificacaoAgendamento.enviar_email_cancelamento(agendamento)
         
@@ -3068,7 +3072,13 @@ def agendar_visita(horario_id):
         escola_nome = request.form.get('escola_nome')
         turma = request.form.get('turma')
         nivel_ensino = request.form.get('nivel_ensino')
-        quantidade_alunos = int(request.form.get('quantidade_alunos'))
+        try:
+            quantidade_alunos = int(request.form.get('quantidade_alunos', 0))
+            if quantidade_alunos <= 0:
+                raise ValueError
+        except ValueError:
+            flash('Quantidade de alunos inválida.', 'danger')
+            return redirect(url_for('agendamento_routes.agendar_visita', horario_id=horario_id))
 
         # Validar vagas disponíveis
         if quantidade_alunos > horario.vagas_disponiveis:
@@ -3124,10 +3134,27 @@ def adicionar_alunos():
 
         # Processamento de upload de arquivo
         if arquivo and arquivo.filename:
+            if not (arquivo and arquivo.filename and arquivo_permitido(arquivo.filename)):
+                flash('Arquivo inválido. Utilize um Excel (.xlsx).', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+
+            # Limite opcional de tamanho do arquivo (5 MB)
+            MAX_FILE_SIZE = 5 * 1024 * 1024
+            arquivo.seek(0, os.SEEK_END)
+            if arquivo.tell() > MAX_FILE_SIZE:
+                flash('Arquivo muito grande. Limite de 5MB.', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+            arquivo.seek(0)
+
             try:
                 # Usa Pandas para ler o arquivo de upload
                 df = pd.read_excel(arquivo, dtype={'cpf': str})
-                
+            except Exception as e:
+                flash(f'Erro ao ler o arquivo: {str(e)}', 'danger')
+                logger.error('Erro ao ler planilha de alunos: %s', e)
+                return redirect(url_for('agendamento_routes.adicionar_alunos'))
+
+            try:
                 # Verificar colunas obrigatórias
                 colunas_obrigatorias = ['nome', 'cpf', 'email', 'formacao']
                 if not all(col in df.columns for col in colunas_obrigatorias):
@@ -3138,7 +3165,7 @@ def adicionar_alunos():
                 alunos_adicionados = 0
                 for _, row in df.iterrows():
                     cpf_str = str(row['cpf']).strip()
-                    
+
                     # Verifica se o usuário já existe
                     usuario_existente = Usuario.query.filter(
                         (Usuario.cpf == cpf_str) | (Usuario.email == row['email'])
@@ -3157,7 +3184,7 @@ def adicionar_alunos():
                         tipo='participante',
                         cliente_id=current_user.id  # Vincula ao cliente logado
                     )
-                    
+
                     # Tratamento de estados e cidades do arquivo, se existirem
                     if 'estados' in df.columns and 'cidades' in df.columns:
                         novo_usuario.estados = str(row.get('estados', ''))
@@ -3648,6 +3675,9 @@ def marcar_presenca_aluno(aluno_id):
 def qrcode_agendamento(agendamento_id):
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
+    if current_user.id not in (agendamento.professor_id, agendamento.horario.evento.cliente_id):
+        abort(403)
+
     # Dados que estarão no QR Code
     qr_data = f"Agendamento ID: {agendamento.id}, Evento: {agendamento.horario.evento.nome}, Data: {agendamento.horario.data.strftime('%d/%m/%Y')}"
 
@@ -3669,8 +3699,25 @@ def qrcode_agendamento(agendamento_id):
 def horarios_disponiveis_api():
     if current_user.tipo != 'professor':
         return jsonify({"error": "Acesso não permitido"}), 403
+    evento_id = request.args.get('evento_id', type=int)
+    if not evento_id:
+        return jsonify({"error": "Parâmetro evento_id é obrigatório"}), 400
 
-    horarios = HorarioVisitacao.query.filter(HorarioVisitacao.vagas_disponiveis > 0).all()
+    evento = Evento.query.get_or_404(evento_id)
+
+    bloqueio = ProfessorBloqueado.query.filter_by(
+        professor_id=current_user.id,
+        evento_id=evento_id
+    ).filter(ProfessorBloqueado.data_final >= datetime.utcnow()).first()
+
+    if bloqueio:
+        return jsonify({"error": "Você não tem permissão para visualizar este evento"}), 403
+
+    horarios = HorarioVisitacao.query.filter(
+        HorarioVisitacao.evento_id == evento_id,
+        HorarioVisitacao.vagas_disponiveis > 0
+    ).all()
+
     eventos = []
 
     for horario in horarios:

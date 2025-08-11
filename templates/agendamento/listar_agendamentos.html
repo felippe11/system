@@ -190,6 +190,7 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="cancelado">
                               <p>Tem certeza que deseja cancelar este agendamento?</p>
@@ -216,6 +217,7 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="confirmado">
                               <p>Deseja confirmar este agendamento?</p>
@@ -242,6 +244,7 @@
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="modal-body">
                               <input type="hidden" name="status" value="realizado">
                               <p>Confirma que este agendamento foi realizado?</p>
