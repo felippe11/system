@@ -108,9 +108,17 @@ body {
                                 <i class="bi bi-pencil-square"></i> Alterar Status
                             </button>
                         </div>
-                        <a href="{{ url_for('formularios_routes.dar_feedback_resposta_formulario', resposta_id=resposta.id) }}" class="btn btn-sm btn-primary">
-                            <i class="bi bi-eye"></i> Ver / Feedback
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('formularios_routes.dar_feedback_resposta_formulario', resposta_id=resposta.id) }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye"></i> Ver / Feedback
+                            </a>
+                            <form method="POST" action="{{ url_for('formularios_routes.deletar_resposta', resposta_id=resposta.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir esta resposta?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i> Excluir
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     
                     <!-- Hidden status form (revealed by button click) -->
