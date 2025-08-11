@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 from io import BytesIO
 
 from extensions import db
-from models import ArquivoBinario, AuditLog
+from models import ArquivoBinario, AuditLog, Usuario
 
 binary_routes = Blueprint('binary_routes', __name__)
 
@@ -22,9 +22,11 @@ def upload_binario():
     if not file:
         return jsonify({'error': 'Nenhum arquivo enviado'}), 400
 
+    usuario = Usuario.query.get(getattr(current_user, 'id', None))
+    uid = usuario.id if usuario else None  # salva log mesmo se usuário não existir
+
     content_length = file.content_length or request.content_length
     if content_length and content_length > MAX_FILE_SIZE:
-        uid = current_user.id if hasattr(current_user, 'id') else None
         log = AuditLog(user_id=uid, submission_id=None, event_type='upload_too_large')
         db.session.add(log)
         db.session.commit()
@@ -37,7 +39,6 @@ def upload_binario():
     )
     db.session.add(novo)
     db.session.commit()
-    uid = current_user.id if hasattr(current_user, 'id') else None
     log = AuditLog(user_id=uid, submission_id=novo.id, event_type='upload')
     db.session.add(log)
     db.session.commit()
@@ -50,7 +51,8 @@ def upload_binario():
 def download_binario(arquivo_id):
     """Baixa um arquivo binário armazenado no banco."""
     arq = ArquivoBinario.query.get_or_404(arquivo_id)
-    uid = current_user.id if hasattr(current_user, 'id') else None
+    usuario = Usuario.query.get(getattr(current_user, 'id', None))
+    uid = usuario.id if usuario else None  # salva log mesmo sem usuário
     log = AuditLog(user_id=uid, submission_id=arquivo_id, event_type='download')
     db.session.add(log)
     db.session.commit()
