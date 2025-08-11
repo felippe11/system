@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "c5b96d8436a6"
-down_revision = "e4cb3d4630b1"
+down_revision = "e6154b1f9b2a"
 branch_labels = None
 depends_on = None
 
@@ -44,4 +44,3 @@ def downgrade():
         ["usuario_id"],
         ["id"],
     )
-
