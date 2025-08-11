@@ -78,6 +78,12 @@ def preco_com_taxa(base, cliente_id=None):
     Returns:
         Decimal: Valor com taxa aplicada
     """
+    if not base:
+        try:
+            return Decimal(str(base)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        except Exception:
+            return Decimal("0").quantize(Decimal("0.01"), ROUND_HALF_UP)
+
     logger = logging.getLogger("preco_com_taxa")
     logger.debug(f"Calculando preço com taxa - base: {base}, cliente_id: {cliente_id}")
     

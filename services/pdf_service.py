@@ -3408,6 +3408,12 @@ def preco_com_taxa(base):
     Recebe o preço digitado pelo cliente (Decimal, str ou float)
     e devolve o valor acrescido do percentual configurado.
     """
+    if not base:
+        try:
+            return Decimal(str(base)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        except Exception:
+            return Decimal("0").quantize(Decimal("0.01"), ROUND_HALF_UP)
+
     base = Decimal(str(base))
     cfg  = Configuracao.query.first()
     perc = Decimal(str(cfg.taxa_percentual_inscricao or 0))
