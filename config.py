@@ -112,3 +112,8 @@ class Config:
     RECAPTCHA_DATA_ATTRS = {"theme": "light", "size": "normal"}
     # Para Flask-WTF 1.2+
     WTF_CSRF_TIME_LIMIT = 3600  # Tempo em segundos (1 hora)
+
+    # ------------------------------------------------------------------ #
+    #  Cache de arquivos estáticos                                       #
+    # ------------------------------------------------------------------ #
+    SEND_FILE_MAX_AGE_DEFAULT = 31536000  # 1 ano
