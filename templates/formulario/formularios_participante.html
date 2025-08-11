@@ -47,11 +47,11 @@
           </a>
         {% else %}
           {% if not dentro_prazo %}
-            <span class="text-muted">Fora do período</span>
-          {% elif (not pode_multi and user_resposta) %}
-            <span class="text-muted">Já respondido</span>
+            <span class="btn btn-outline-secondary btn-sm disabled">Fora do período</span>
+          {% elif not pode_multi and user_resposta %}
+            <span class="btn btn-outline-secondary btn-sm disabled">Já respondido</span>
           {% else %}
-            <span class="text-muted">Formulário indisponível</span>
+            <span class="btn btn-outline-secondary btn-sm disabled">Formulário indisponível</span>
           {% endif %}
         {% endif %}
 
