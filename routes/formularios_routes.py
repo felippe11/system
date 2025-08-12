@@ -1026,8 +1026,13 @@ def deletar_resposta(resposta_id):
     # Auditoria
     usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None
+
+    # Remove logs anteriores desta submissão (evita FK/duplicidade)
+    AuditLog.query.filter_by(submission_id=resposta.id).delete(synchronize_session=False)
+
+    # Registra o evento de deleção sem referenciar a submissão que será removida
     db.session.add(
-        AuditLog(user_id=uid, submission_id=resposta.id, event_type="delete_resposta")
+        AuditLog(user_id=uid, submission_id=None, event_type="delete_resposta")
     )
 
     db.session.delete(resposta)
@@ -1035,6 +1040,7 @@ def deletar_resposta(resposta_id):
 
     flash("Resposta excluída com sucesso!", "success")
     return redirect(url_for("formularios_routes.listar_respostas"))
+
 
 
 @formularios_routes.route("/respostas", methods=["GET"])
