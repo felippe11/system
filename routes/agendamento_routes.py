@@ -2624,8 +2624,8 @@ def editar_agendamento(agendamento_id):
         horarios_disponiveis.append(agendamento.horario)
     
     # Carrega as possíveis salas para visitação
-    from models import Sala  # Importa o modelo Sala (assumindo que existe)
-    salas = Sala.query.all()
+    from models import SalaVisitacao
+    salas = SalaVisitacao.query.all()
     
     # Pega as salas já selecionadas
     salas_selecionadas = []
