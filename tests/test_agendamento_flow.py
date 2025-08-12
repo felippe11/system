@@ -244,10 +244,6 @@ def test_editar_agendamento_shows_current_when_full(app):
         db.session.commit()
         agendamento_id = agendamento.id
         h1_id, h2_id = horario1.id, horario2.id
-        import models as models_module
-        models_module.Sala = types.SimpleNamespace(
-            query=types.SimpleNamespace(all=lambda: [])
-        )
 
     resp = client.get(f'/editar_agendamento/{agendamento_id}')
     assert resp.status_code == 200
@@ -280,10 +276,6 @@ def test_editar_agendamento_can_change_to_available_slot(app):
         db.session.commit()
         agendamento_id = agendamento.id
         h1_id, h2_id = horario1.id, horario2.id
-        import models as models_module
-        models_module.Sala = types.SimpleNamespace(
-            query=types.SimpleNamespace(all=lambda: [])
-        )
 
     resp = client.get(f'/editar_agendamento/{agendamento_id}')
     assert resp.status_code == 200
@@ -308,3 +300,28 @@ def test_editar_agendamento_can_change_to_available_slot(app):
     with app.app_context():
         agendamento_atualizado = AgendamentoVisita.query.get(agendamento_id)
         assert agendamento_atualizado.horario_id == h2_id
+
+
+def test_editar_agendamento_page_renders(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola Y',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.get(f'/editar_agendamento/{agendamento_id}')
+    assert resp.status_code == 200
+
