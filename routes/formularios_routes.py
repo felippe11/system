@@ -62,7 +62,6 @@ def safe_get_formulario(formulario_id):
         return None
 
 
-
 @formularios_routes.route("/formularios", methods=["GET"])
 @login_required
 def listar_formularios():
@@ -98,9 +97,7 @@ def criar_formulario():
         else Evento.query.all()
     )
 
-    config_cli = ConfiguracaoCliente.query.filter_by(
-        cliente_id=current_user.id
-    ).first()
+    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
 
     if request.method == "POST":
         try:
@@ -127,7 +124,9 @@ def criar_formulario():
         permitir_multiplas = "permitir_multiplas_respostas" in request.form
 
         data_inicio = (
-            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M") if data_inicio_str else None
+            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
+            if data_inicio_str
+            else None
         )
         data_fim = (
             datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
@@ -152,8 +151,6 @@ def criar_formulario():
         return redirect(url_for("formularios_routes.listar_formularios"))
 
     return render_template("criar_formulario.html", eventos=eventos_disponiveis)
-
-
 
 
 @formularios_routes.route(
@@ -187,9 +184,7 @@ def editar_formulario(formulario_id):
             else None
         )
         formulario.data_fim = (
-            datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M")
-            if data_fim_str
-            else None
+            datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
         )
 
         db.session.commit()
@@ -373,12 +368,15 @@ def preencher_formulario(formulario_id):
         # Restringe múltiplas respostas, se configurado
         if not getattr(formulario, "permitir_multiplas_respostas", True):
             ja_respondeu = RespostaFormulario.query.filter_by(
-                formulario_id=formulario.id,
-                usuario_id=current_user.id
+                formulario_id=formulario.id, usuario_id=current_user.id
             ).first()
             if ja_respondeu:
-                flash("Apenas uma resposta é permitida para este formulário.", "warning")
-                return redirect(url_for("formularios_routes.listar_formularios_participante"))
+                flash(
+                    "Apenas uma resposta é permitida para este formulário.", "warning"
+                )
+                return redirect(
+                    url_for("formularios_routes.listar_formularios_participante")
+                )
 
         # ... restante do processamento do envio (criar RespostaFormulario, salvar campos, commit) ...
 
@@ -387,7 +385,6 @@ def preencher_formulario(formulario_id):
         )
         db.session.add(resposta_formulario)
         db.session.flush()  # garante o ID para salvar uploads por resposta
-
 
         for campo in formulario.campos:
             valor = request.form.get(str(campo.id))
@@ -404,7 +401,9 @@ def preencher_formulario(formulario_id):
                         return redirect(request.url)
 
                     unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
-                    dir_path = os.path.join("uploads", "respostas", str(resposta_formulario.id))
+                    dir_path = os.path.join(
+                        "uploads", "respostas", str(resposta_formulario.id)
+                    )
                     os.makedirs(dir_path, exist_ok=True)
                     caminho_arquivo = os.path.join(dir_path, unique_name)
                     arquivo.save(caminho_arquivo)
@@ -427,7 +426,6 @@ def preencher_formulario(formulario_id):
         return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
 
     return render_template("inscricao/preencher_formulario.html", formulario=formulario)
-
 
 
 @formularios_routes.route("/formularios_participante", methods=["GET"])
@@ -455,11 +453,10 @@ def listar_formularios_participante():
         # Mantém o comportamento atual quando nenhum evento é fornecido
         query = Formulario.query.filter_by(cliente_id=cliente_id)
 
-
     agora = datetime.utcnow()
     query = query.filter(
         or_(Formulario.data_inicio == None, Formulario.data_inicio <= agora),
-        or_(Formulario.data_fim == None, Formulario.data_fim >= agora)
+        or_(Formulario.data_fim == None, Formulario.data_fim >= agora),
     )
     formularios = query.all()
 
@@ -470,9 +467,9 @@ def listar_formularios_participante():
         flash("Nenhum formulário disponível no momento.", "warning")
         return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
 
-
-    return render_template('formularios_participante.html', formularios=formularios, now=agora)
-
+    return render_template(
+        "formularios_participante.html", formularios=formularios, now=agora
+    )
 
 
 @formularios_routes.route("/respostas/<int:resposta_id>", methods=["GET"])
@@ -721,7 +718,9 @@ def excluir_formulario(formulario_id):
                     formulario_id=formulario_id
                 )
             )
-        ).delete(synchronize_session=False)
+        ).execution_options(confirm_deleted_rows=False).delete(
+            synchronize_session=False
+        )
 
         # 3️⃣ Exclui RespostaFormulario
         RespostaFormulario.query.filter_by(formulario_id=formulario_id).delete()
@@ -981,21 +980,22 @@ def usar_template(template_id):
 
     return render_template("usar_template.html", template=template)
 
-@formularios_routes.route('/respostas/<int:resposta_id>/deletar', methods=['POST'])
+
+@formularios_routes.route("/respostas/<int:resposta_id>/deletar", methods=["POST"])
 @login_required
 def deletar_resposta(resposta_id):
     """Permite ao cliente excluir uma resposta de seu formulário."""
     # Apenas clientes podem excluir respostas
-    if getattr(current_user, 'tipo', None) != 'cliente':
-        flash('Acesso negado!', 'danger')
-        return redirect(url_for('formularios_routes.listar_respostas'))
+    if getattr(current_user, "tipo", None) != "cliente":
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("formularios_routes.listar_respostas"))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
 
     # Verifica se a resposta pertence a um formulário do cliente atual
     if resposta.formulario.cliente_id != current_user.id:
-        flash('Você não tem permissão para excluir esta resposta.', 'danger')
-        return redirect(url_for('formularios_routes.listar_respostas'))
+        flash("Você não tem permissão para excluir esta resposta.", "danger")
+        return redirect(url_for("formularios_routes.listar_respostas"))
 
     # Remove arquivos associados e registros de RespostaCampo
     for resp_campo in list(resposta.respostas_campos):
@@ -1003,42 +1003,47 @@ def deletar_resposta(resposta_id):
         for feedback in list(resp_campo.feedbacks_campo):
             db.session.delete(feedback)
 
-        if resp_campo.campo.tipo == 'file' and resp_campo.valor:
+        if resp_campo.campo.tipo == "file" and resp_campo.valor:
             try:
                 if os.path.exists(resp_campo.valor):
                     os.remove(resp_campo.valor)
             except OSError:
-                logger.exception('Erro ao remover arquivo %s', resp_campo.valor)
+                logger.exception("Erro ao remover arquivo %s", resp_campo.valor)
 
         db.session.delete(resp_campo)
 
     # Remove diretório da resposta (se existir)
-    dir_path = os.path.join('uploads', 'respostas', str(resposta.id))
+    dir_path = os.path.join("uploads", "respostas", str(resposta.id))
     try:
         if os.path.isdir(dir_path):
             # Caso não esteja vazio, tenta remover mesmo assim
             import shutil
+
             shutil.rmtree(dir_path, ignore_errors=True)
     except OSError:
         pass
 
     # Auditoria
-    usuario = Usuario.query.get(getattr(current_user, 'id', None))
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None
-    AuditLog.query.filter_by(submission_id=resposta.id).delete()
+
+    # Remove logs anteriores desta submissão (evita FK/duplicidade)
+    AuditLog.query.filter_by(submission_id=resposta.id).delete(synchronize_session=False)
+
+    # Registra o evento de deleção sem referenciar a submissão que será removida
     db.session.add(
-        AuditLog(user_id=uid, submission_id=None, event_type='delete_resposta')
+        AuditLog(user_id=uid, submission_id=None, event_type="delete_resposta")
     )
 
     db.session.delete(resposta)
     db.session.commit()
 
-    flash('Resposta excluída com sucesso!', 'success')
-    return redirect(url_for('formularios_routes.listar_respostas'))
+    flash("Resposta excluída com sucesso!", "success")
+    return redirect(url_for("formularios_routes.listar_respostas"))
+
 
 
 @formularios_routes.route("/respostas", methods=["GET"])
-
 @login_required
 def listar_respostas():
     # Verifica se o usuário é cliente ou ministrante
