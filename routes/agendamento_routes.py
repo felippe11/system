@@ -2686,26 +2686,29 @@ def editar_agendamento(agendamento_id):
         salas_selecionadas=salas_selecionadas
     )
     
-@agendamento_routes.route('/atualizar_status/<int:agendamento_id>', methods=['PUT'])
+@agendamento_routes.route(
+    '/atualizar_status/<int:agendamento_id>', methods=['PUT', 'POST']
+)
 @login_required
 def atualizar_status_agendamento(agendamento_id):
-    """
-    Atualiza o status de um agendamento de visita.
-    
+    """Atualiza o status de um agendamento de visita.
+
     Parâmetros:
-    - agendamento_id: ID do agendamento a ser atualizado
-    
+        agendamento_id: ID do agendamento a ser atualizado
+
     Corpo da requisição:
-    {
-        "status": "confirmado|cancelado|realizado",
-        "checkin_realizado": true|false  (opcional)
-    }
-    
+        {
+            "status": "confirmado|cancelado|realizado",
+            "checkin_realizado": true|false  (opcional)
+        }
+
+    Também aceita envio via POST com dados de formulário.
+
     Retorna:
-    - 200: Agendamento atualizado com sucesso
-    - 400: Dados inválidos
-    - 403: Usuário não tem permissão
-    - 404: Agendamento não encontrado
+        200: Agendamento atualizado com sucesso
+        400: Dados inválidos
+        403: Usuário não tem permissão
+        404: Agendamento não encontrado
     """
     # Buscar o agendamento pelo ID
     agendamento = AgendamentoVisita.query.get(agendamento_id)
@@ -2719,9 +2722,14 @@ def atualizar_status_agendamento(agendamento_id):
         return jsonify({"erro": "Você não tem permissão para alterar este agendamento"}), 403
     
     # Obter os dados do request
-    dados = request.get_json()
-    
+    dados = request.get_json(silent=True)
     if not dados:
+        dados = request.form.to_dict()
+
+    if not dados:
+        if request.method == 'POST':
+            flash('Nenhum dado fornecido', 'danger')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
         return jsonify({"erro": "Nenhum dado fornecido"}), 400
     
     # Validar o status
@@ -2740,6 +2748,8 @@ def atualizar_status_agendamento(agendamento_id):
     # Verificar se houve alteração no check-in
     if 'checkin_realizado' in dados:
         checkin = dados.get('checkin_realizado')
+        if isinstance(checkin, str):
+            checkin = checkin.lower() in ['true', '1', 'on']
         
         # Se check-in está sendo realizado agora
         if checkin and not agendamento.checkin_realizado:
@@ -2756,24 +2766,39 @@ def atualizar_status_agendamento(agendamento_id):
     try:
         # Salvar as alterações no banco de dados
         db.session.commit()
-        
-        # Formatar resposta
-        resposta = {
-            "mensagem": "Agendamento atualizado com sucesso",
-            "agendamento": {
-                "id": agendamento.id,
-                "status": agendamento.status,
-                "checkin_realizado": agendamento.checkin_realizado,
-                "data_checkin": agendamento.data_checkin.isoformat() if agendamento.data_checkin else None,
-                "data_cancelamento": agendamento.data_cancelamento.isoformat() if agendamento.data_cancelamento else None
+
+        if request.is_json or request.method == 'PUT':
+            resposta = {
+                "mensagem": "Agendamento atualizado com sucesso",
+                "agendamento": {
+                    "id": agendamento.id,
+                    "status": agendamento.status,
+                    "checkin_realizado": agendamento.checkin_realizado,
+                    "data_checkin": (
+                        agendamento.data_checkin.isoformat()
+                        if agendamento.data_checkin
+                        else None
+                    ),
+                    "data_cancelamento": (
+                        agendamento.data_cancelamento.isoformat()
+                        if agendamento.data_cancelamento
+                        else None
+                    ),
+                },
             }
-        }
-        
-        return jsonify(resposta), 200
-        
+            return jsonify(resposta), 200
+
+        flash('Agendamento atualizado com sucesso', 'success')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({"erro": f"Erro ao atualizar agendamento: {str(e)}"}), 500
+        if request.is_json or request.method == 'PUT':
+            return jsonify(
+                {"erro": f"Erro ao atualizar agendamento: {str(e)}"}
+            ), 500
+        flash('Erro ao atualizar agendamento', 'danger')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
 # Rota para realizar check-in via QR Code
 @agendamento_routes.route('/checkin/<string:qr_code_token>', methods=['POST'])
