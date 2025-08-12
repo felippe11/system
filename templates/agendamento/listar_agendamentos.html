@@ -149,7 +149,7 @@
                         </a>
                       {% endif %}
                       
-                      {% if current_user.tipo in ['admin', 'cliente'] or current_user.id == agendamento.professor_id %}
+                      {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
                         <button type="button"
                                 class="btn btn-outline-danger"
                                 data-bs-toggle="modal"
@@ -159,8 +159,8 @@
                           <i class="bi bi-x-circle"></i>
                         </button>
                       {% endif %}
-                      
-                      {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
+
+                      {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
                         <button type="button"
                                 class="btn btn-outline-success"
                                 data-bs-toggle="modal"
@@ -169,7 +169,7 @@
                                 title="Confirmar">
                           <i class="bi bi-check-circle"></i>
                         </button>
-                        
+
                         <button type="button"
                                 class="btn btn-outline-primary"
                                 data-bs-toggle="modal"
