@@ -956,12 +956,17 @@ def deletar_resposta(resposta_id):
 
     # Remove arquivos associados e registros de RespostaCampo
     for resp_campo in list(resposta.respostas_campos):
+        # Remove feedbacks vinculados ao campo antes da exclusão
+        for feedback in list(resp_campo.feedbacks_campo):
+            db.session.delete(feedback)
+
         if resp_campo.campo.tipo == 'file' and resp_campo.valor:
             try:
                 if os.path.exists(resp_campo.valor):
                     os.remove(resp_campo.valor)
             except OSError:
                 logger.exception('Erro ao remover arquivo %s', resp_campo.valor)
+
         db.session.delete(resp_campo)
 
     # Remove diretório da resposta (se existir)

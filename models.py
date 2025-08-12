@@ -901,7 +901,10 @@ class FeedbackCampo(db.Model):
 
     # Relacionamentos
     resposta_campo = db.relationship(
-        "RespostaCampo", backref=db.backref("feedbacks_campo", lazy=True)
+        "RespostaCampo",
+        backref=db.backref(
+            "feedbacks_campo", lazy=True, cascade="all, delete-orphan"
+        ),
     )
     ministrante = db.relationship(
         "Ministrante", backref=db.backref("feedbacks_campo", lazy=True)
