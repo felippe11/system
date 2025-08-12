@@ -1476,13 +1476,17 @@ class AuditLog(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     submission_id = db.Column(
         db.Integer,
-        db.ForeignKey("respostas_formulario.id"),
+        db.ForeignKey("respostas_formulario.id", ondelete="CASCADE"),
         nullable=True,
     )
     event_type = db.Column(db.String(50), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     usuario = db.relationship("Usuario")
+    submission = db.relationship(
+        "RespostaFormulario",
+        backref=db.backref("audit_logs", passive_deletes=True),
+    )
 
     def __repr__(self):
         return f"<AuditLog {self.user_id} {self.event_type} {self.submission_id}>"

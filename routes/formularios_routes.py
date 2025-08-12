@@ -1025,7 +1025,10 @@ def deletar_resposta(resposta_id):
     # Auditoria
     usuario = Usuario.query.get(getattr(current_user, 'id', None))
     uid = usuario.id if usuario else None
-    db.session.add(AuditLog(user_id=uid, submission_id=resposta.id, event_type='delete_resposta'))
+    AuditLog.query.filter_by(submission_id=resposta.id).delete()
+    db.session.add(
+        AuditLog(user_id=uid, submission_id=None, event_type='delete_resposta')
+    )
 
     db.session.delete(resposta)
     db.session.commit()
