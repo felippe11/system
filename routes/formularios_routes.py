@@ -156,6 +156,49 @@ def criar_formulario():
 
 
 
+@formularios_routes.route(
+    "/formularios/<int:formulario_id>/editar",
+    methods=["GET", "POST"],
+    endpoint="editar_formulario",
+)
+@login_required
+def editar_formulario(formulario_id):
+    """Atualiza um formulário existente."""
+    formulario = safe_get_formulario(formulario_id)
+    if not formulario:
+        return redirect(url_for("formularios_routes.listar_formularios"))
+
+    if (
+        getattr(current_user, "tipo", None) not in ("admin", "superadmin")
+        and formulario.cliente_id != current_user.id
+    ):
+        flash("Você não tem permissão para editar este formulário.", "danger")
+        return redirect(url_for("formularios_routes.listar_formularios"))
+
+    if request.method == "POST":
+        formulario.nome = request.form.get("nome")
+        formulario.descricao = request.form.get("descricao")
+
+        data_inicio_str = request.form.get("data_inicio")
+        data_fim_str = request.form.get("data_fim")
+        formulario.data_inicio = (
+            datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
+            if data_inicio_str
+            else None
+        )
+        formulario.data_fim = (
+            datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M")
+            if data_fim_str
+            else None
+        )
+
+        db.session.commit()
+        flash("Formulário atualizado com sucesso!", "success")
+        return redirect(url_for("formularios_routes.listar_formularios"))
+
+    return render_template("editar_formulario.html", formulario=formulario)
+
+
 @formularios_routes.route("/formularios/<int:formulario_id>/deletar", methods=["POST"])
 @login_required
 def deletar_formulario(formulario_id):
