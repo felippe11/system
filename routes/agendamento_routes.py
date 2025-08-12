@@ -2607,6 +2607,8 @@ def visualizar_agendamento(agendamento_id):
 @agendamento_routes.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def editar_agendamento(agendamento_id):
+    """Editar um agendamento de visita existente."""
+
     # Busca o agendamento no banco de dados
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     
@@ -2615,10 +2617,12 @@ def editar_agendamento(agendamento_id):
         flash('Você não tem permissão para editar este agendamento.', 'danger')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
     
-    # Busca horários disponíveis para edição
-    horarios_disponiveis = HorarioVisitacao.query.filter(
-        HorarioVisitacao.vagas_disponiveis > 0
-    ).all()
+    # Busca horários disponíveis para edição utilizando vagas restantes
+    horarios_disponiveis = (
+        HorarioVisitacao.query
+        .filter(HorarioVisitacao.vagas_disponiveis > 0)
+        .all()
+    )
     # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
     if agendamento.horario not in horarios_disponiveis:
         horarios_disponiveis.append(agendamento.horario)
