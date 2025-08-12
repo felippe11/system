@@ -31,6 +31,11 @@ utils_stub.determinar_turno = lambda *a, **k: ''
 sys.modules.setdefault('utils', utils_stub)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
 
+dia_semana_mod = types.ModuleType('utils.dia_semana')
+dia_semana_mod.dia_semana = lambda *a, **k: ''
+sys.modules.setdefault('utils.dia_semana', dia_semana_mod)
+utils_stub.dia_semana = dia_semana_mod
+
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
 utils_security.password_is_strong = lambda x: True
@@ -139,13 +144,32 @@ def app():
         db.session.add(ConfiguracaoCliente(cliente_id=cliente.id, permitir_checkin_global=True))
         db.session.commit()
 
-        evento = Evento(cliente_id=cliente.id, nome='Evento', habilitar_lotes=False, inscricao_gratuita=True)
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome='Evento',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
         db.session.add(evento)
         db.session.commit()
 
-        horario = HorarioVisitacao(evento_id=evento.id, data=date.today(), horario_inicio=time(9, 0),
-                                   horario_fim=time(10, 0), capacidade_total=30, vagas_disponiveis=30)
-        db.session.add(horario)
+        horario1 = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today(),
+            horario_inicio=time(9, 0),
+            horario_fim=time(10, 0),
+            capacidade_total=30,
+            vagas_disponiveis=30,
+        )
+        horario2 = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today(),
+            horario_inicio=time(10, 0),
+            horario_fim=time(11, 0),
+            capacidade_total=30,
+            vagas_disponiveis=30,
+        )
+        db.session.add_all([horario1, horario2])
 
         professor = Usuario(nome='Prof', cpf='222', email='prof@test',
                             senha=generate_password_hash('p123'), formacao='F', tipo='professor')
@@ -194,3 +218,93 @@ def test_fluxo_agendamento(app):
     resp = client.get(f'/professor/imprimir_agendamento/{agendamento_id}')
     assert resp.status_code == 200
     assert resp.data.startswith(b'PDF')
+
+
+def test_editar_agendamento_shows_current_when_full(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario1, horario2 = HorarioVisitacao.query.order_by(
+            HorarioVisitacao.id
+        ).all()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario1.id,
+            escola_nome='Escola Y',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+        )
+        db.session.add(agendamento)
+        horario1.vagas_disponiveis = 0
+        horario2.vagas_disponiveis = 0
+        db.session.commit()
+        agendamento_id = agendamento.id
+        h1_id, h2_id = horario1.id, horario2.id
+        import models as models_module
+        models_module.Sala = types.SimpleNamespace(
+            query=types.SimpleNamespace(all=lambda: [])
+        )
+
+    resp = client.get(f'/editar_agendamento/{agendamento_id}')
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert f'value="{h1_id}"' in html
+    assert f'value="{h2_id}"' not in html
+
+
+def test_editar_agendamento_can_change_to_available_slot(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario1, horario2 = HorarioVisitacao.query.order_by(
+            HorarioVisitacao.id
+        ).all()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario1.id,
+            escola_nome='Escola Z',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+        )
+        db.session.add(agendamento)
+        horario1.vagas_disponiveis = 0
+        horario2.vagas_disponiveis = 5
+        db.session.commit()
+        agendamento_id = agendamento.id
+        h1_id, h2_id = horario1.id, horario2.id
+        import models as models_module
+        models_module.Sala = types.SimpleNamespace(
+            query=types.SimpleNamespace(all=lambda: [])
+        )
+
+    resp = client.get(f'/editar_agendamento/{agendamento_id}')
+    assert resp.status_code == 200
+    html = resp.data.decode()
+    assert f'value="{h1_id}"' in html
+    assert f'value="{h2_id}"' in html
+
+    resp = client.post(
+        f'/editar_agendamento/{agendamento_id}',
+        data={
+            'horario_id': h2_id,
+            'escola_nome': 'Escola Z',
+            'escola_codigo_inep': '',
+            'turma': 'T1',
+            'nivel_ensino': 'Fundamental',
+            'quantidade_alunos': '5',
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        agendamento_atualizado = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento_atualizado.horario_id == h2_id

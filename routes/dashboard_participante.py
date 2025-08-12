@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import and_
 from typing import Optional
 import logging
+from sqlalchemy.exc import ProgrammingError
 
 logger = logging.getLogger(__name__)
 
@@ -165,13 +166,17 @@ def dashboard_participante():
     # Verifica se há formulários disponíveis para preenchimento associados ao cliente do participante
     if current_user.cliente_id:
         logger.debug(f"DEBUG [9] -> Verificando formulários disponíveis para cliente_id = {current_user.cliente_id}")
-        form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
-        evento_ref = evento.id if evento else current_user.evento_id
-        if evento_ref:
-            form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
-        form_count = form_query.count()
-        formularios_disponiveis = form_count > 0
-        logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
+        try:
+            form_query = Formulario.query.filter_by(cliente_id=current_user.cliente_id)
+            evento_ref = evento.id if evento else current_user.evento_id
+            if evento_ref:
+                form_query = form_query.join(Formulario.eventos).filter(Evento.id == evento_ref)
+            form_count = form_query.count()
+            formularios_disponiveis = form_count > 0
+            logger.debug(f"DEBUG [10] -> Formulários disponíveis: {formularios_disponiveis} (total: {form_count})")
+        except ProgrammingError as e:
+            logger.error(f"Erro ao verificar formulários disponíveis: {e}")
+            flash("Erro ao carregar formulários disponíveis.", "danger")
 
     # Combinar todos os IDs de eventos (disponíveis + inscritos) e remover duplicatas
     todos_eventos_ids = list(set(eventos_disponiveis_ids + eventos_inscritos))
