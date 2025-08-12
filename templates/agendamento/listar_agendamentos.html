@@ -142,8 +142,9 @@
                         <i class="bi bi-eye"></i>
                       </a>
                       
-                      {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] or current_user.id == agendamento.professor_id %}
-                        <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}" 
+                      {% if current_user.tipo in ['admin', 'cliente'] or
+                            current_user.id == agendamento.professor_id %}
+                        <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}"
                            class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar">
                           <i class="bi bi-pencil"></i>
                         </a>
