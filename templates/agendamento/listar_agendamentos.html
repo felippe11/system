@@ -136,11 +136,13 @@
                     <span class="badge bg-{{ status_badge }}">{{ agendamento.status }}</span>
                   </td>
                   <td class="text-center">
-                    <div class="btn-group btn-group-sm">
-                      <a href="{{ url_for('agendamento_routes.visualizar_agendamento', agendamento_id=agendamento.id) }}" 
-                         class="btn btn-outline-info" data-bs-toggle="tooltip" title="Visualizar">
-                        <i class="bi bi-eye"></i>
-                      </a>
+                      <div class="btn-group btn-group-sm">
+                        {% if current_user.tipo == 'admin' or current_user.id == agendamento.professor_id %}
+                          <a href="{{ url_for('agendamento_routes.visualizar_agendamento', agendamento_id=agendamento.id) }}"
+                             class="btn btn-outline-info" data-bs-toggle="tooltip" title="Visualizar">
+                            <i class="bi bi-eye"></i>
+                          </a>
+                        {% endif %}
                       
                       {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] or current_user.id == agendamento.professor_id %}
                         <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}" 
