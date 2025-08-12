@@ -2616,7 +2616,9 @@ def editar_agendamento(agendamento_id):
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
     
     # Busca horários disponíveis para edição
-    horarios_disponiveis = HorarioVisitacao.query.filter_by(disponivel=True).all()
+    horarios_disponiveis = HorarioVisitacao.query.filter(
+        HorarioVisitacao.vagas_disponiveis > 0
+    ).all()
     # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
     if agendamento.horario not in horarios_disponiveis:
         horarios_disponiveis.append(agendamento.horario)
