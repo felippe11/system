@@ -163,7 +163,8 @@
                         </button>
                       {% endif %}
 
-                      {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
+                      {% if current_user.is_admin or current_user.id == agendamento.professor_id or
+                            (current_user.tipo == 'cliente' and current_user.id == agendamento.horario.evento.cliente_id) %}
                         <button type="button"
                                 class="btn btn-outline-success"
                                 data-bs-toggle="modal"
@@ -172,7 +173,9 @@
                                 title="Confirmar">
                           <i class="bi bi-check-circle"></i>
                         </button>
+                      {% endif %}
 
+                      {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
                         <button type="button"
                                 class="btn btn-outline-primary"
                                 data-bs-toggle="modal"

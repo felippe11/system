@@ -2761,9 +2761,18 @@ def atualizar_status_agendamento(agendamento_id):
     if not agendamento:
         return jsonify({"erro": "Agendamento não encontrado"}), 404
     
-    # Verificar permissões: apenas o professor que criou ou um administrador pode alterar
-    if current_user.id != agendamento.professor_id and not current_user.is_admin:
-        return jsonify({"erro": "Você não tem permissão para alterar este agendamento"}), 403
+    # Verificar permissões: professor responsável, cliente do evento ou administrador
+    is_admin = getattr(current_user, "is_admin", False)
+    is_professor = agendamento.professor_id == getattr(current_user, "id", None)
+    is_cliente = (
+        getattr(current_user, "tipo", "") == "cliente"
+        and agendamento.horario.evento.cliente_id == getattr(current_user, "id", None)
+    )
+    if not (is_admin or is_professor or is_cliente):
+        return (
+            jsonify({"erro": "Você não tem permissão para alterar este agendamento"}),
+            403,
+        )
     
     # Obter os dados do request
     dados = request.get_json(silent=True)

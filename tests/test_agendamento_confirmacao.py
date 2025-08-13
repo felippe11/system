@@ -1,0 +1,143 @@
+import os
+from datetime import date, time
+
+import pytest
+from werkzeug.security import generate_password_hash
+
+os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
+os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
+os.environ.setdefault('SECRET_KEY', 'test')
+
+from config import Config
+
+Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
+Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
+    Config.SQLALCHEMY_DATABASE_URI
+)
+
+from app import create_app
+from extensions import db
+from models import (
+    Cliente,
+    Usuario,
+    Evento,
+    HorarioVisitacao,
+    AgendamentoVisita,
+)
+
+
+@pytest.fixture
+def app():
+    os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
+    os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
+    os.environ.setdefault('SECRET_KEY', 'test')
+
+    app = create_app()
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        cliente = Cliente(
+            nome='Cli', email='cli@test', senha=generate_password_hash('123')
+        )
+        db.session.add(cliente)
+        db.session.flush()
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome='Evento',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
+        db.session.add(evento)
+        db.session.commit()
+
+        horario = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today(),
+            horario_inicio=time(9, 0),
+            horario_fim=time(10, 0),
+            capacidade_total=30,
+            vagas_disponiveis=30,
+        )
+        db.session.add(horario)
+
+        professor = Usuario(
+            nome='Prof',
+            cpf='111',
+            email='prof@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='professor',
+        )
+        outro_prof = Usuario(
+            nome='Prof2',
+            cpf='222',
+            email='prof2@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='professor',
+        )
+        db.session.add_all([professor, outro_prof])
+        db.session.commit()
+
+        agendamento = AgendamentoVisita(
+            horario_id=horario.id,
+            professor_id=professor.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=10,
+            status='pendente',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+    yield app
+    with app.app_context():
+        db.drop_all()
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+def login(client, email, senha):
+    return client.post('/login', data={'email': email, 'senha': senha})
+
+
+def get_agendamento(app):
+    with app.app_context():
+        return AgendamentoVisita.query.first()
+
+
+def test_professor_pode_confirmar_agendamento(client, app):
+    login(client, 'prof@test', 'p123')
+    agendamento = get_agendamento(app)
+    resp = client.put(
+        f'/atualizar_status/{agendamento.id}', json={'status': 'confirmado'}
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        assert AgendamentoVisita.query.get(agendamento.id).status == 'confirmado'
+
+
+def test_cliente_pode_confirmar_agendamento(client, app):
+    login(client, 'cli@test', '123')
+    agendamento = get_agendamento(app)
+    resp = client.put(
+        f'/atualizar_status/{agendamento.id}', json={'status': 'confirmado'}
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        assert AgendamentoVisita.query.get(agendamento.id).status == 'confirmado'
+
+
+def test_outro_professor_nao_pode_confirmar(client, app):
+    login(client, 'prof2@test', 'p123')
+    agendamento = get_agendamento(app)
+    resp = client.put(
+        f'/atualizar_status/{agendamento.id}', json={'status': 'confirmado'}
+    )
+    assert resp.status_code == 403
