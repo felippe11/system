@@ -130,9 +130,11 @@ def horarios_disponiveis_professor(evento_id):
 @routes.route('/professor/criar_agendamento/<int:horario_id>', methods=['GET', 'POST'])
 @login_required
 def criar_agendamento_professor(horario_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Permite que professores ou participantes criem um agendamento."""
+    # Apenas professores ou participantes podem acessar
+    if current_user.tipo not in ('professor', 'participante'):
+        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
+        flash(msg, 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
     
     horario = HorarioVisitacao.query.get_or_404(horario_id)
