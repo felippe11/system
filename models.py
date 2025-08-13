@@ -1148,7 +1148,9 @@ class AgendamentoVisita(db.Model):
         db.Integer, db.ForeignKey("horario_visitacao.id"), nullable=False
     )
 
-    professor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    professor_id = db.Column(
+        db.Integer, db.ForeignKey("usuario.id"), nullable=True
+    )
 
     cliente_id = db.Column(
         db.Integer, db.ForeignKey("cliente.id"), nullable=True
@@ -1202,8 +1204,11 @@ class AgendamentoVisita(db.Model):
     def __repr__(self):
 
         cliente_nome = self.cliente.nome if self.cliente else "sem cliente"
+        professor_nome = (
+            self.professor.nome if self.professor else "sem professor"
+        )
         return (
-            f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - "
+            f"<AgendamentoVisita {self.id} - Prof. {professor_nome} - "
             f"{self.escola_nome} ({cliente_nome})>"
         )
 
