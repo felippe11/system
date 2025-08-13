@@ -1138,6 +1138,7 @@ class HorarioVisitacao(db.Model):
 
 
 class AgendamentoVisita(db.Model):
+
     """Agendamento de visita feito por um professor, opcionalmente vinculado a um cliente."""
 
     __tablename__ = "agendamento_visita"
@@ -1146,7 +1147,9 @@ class AgendamentoVisita(db.Model):
     horario_id = db.Column(
         db.Integer, db.ForeignKey("horario_visitacao.id"), nullable=False
     )
+
     professor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+
     cliente_id = db.Column(
         db.Integer, db.ForeignKey("cliente.id"), nullable=True
     )
@@ -1178,11 +1181,13 @@ class AgendamentoVisita(db.Model):
     )  # IDs separados por vírgula
 
     # Relações
+
     horario = db.relationship(
         "HorarioVisitacao", backref=db.backref("agendamentos", lazy=True)
     )
     professor = db.relationship(
         "Usuario", backref=db.backref("agendamentos_visitas", lazy=True)
+
     )
     cliente = db.relationship(
         "Cliente", backref=db.backref("agendamentos_visitas", lazy=True)
@@ -1195,11 +1200,13 @@ class AgendamentoVisita(db.Model):
         self.qr_code_token = str(uuid.uuid4())
 
     def __repr__(self):
+
         cliente_nome = self.cliente.nome if self.cliente else "sem cliente"
         return (
             f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - "
             f"{self.escola_nome} ({cliente_nome})>"
         )
+
 
 
 class AlunoVisitante(db.Model):

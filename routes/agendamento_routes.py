@@ -1101,9 +1101,12 @@ def criar_agendamento():
     form_erro = None
     eventos = []
     
-    # Buscar eventos disponíveis do cliente atual
+    # Buscar eventos disponíveis conforme o tipo de usuário
     try:
-        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+        if getattr(current_user, 'is_cliente', lambda: False)():
+            eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+        else:
+            eventos = Evento.query.all()
     except Exception as e:
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
@@ -1138,14 +1141,35 @@ def criar_agendamento():
                         form_erro = f"Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}"
                         flash(form_erro, "danger")
                     else:
+                        professor_id = None
+                        cliente_id = None
+                        usuario_id = None
+                        if getattr(current_user, 'is_cliente', lambda: False)():
+                            cliente = Cliente.query.get(current_user.id)
+                            if not cliente:
+                                form_erro = 'Cliente inválido.'
+                                flash(form_erro, 'danger')
+                                return redirect(url_for('agendamento_routes.criar_agendamento'))
+                            cliente_id = cliente.id
+                        else:
+                            usuario = Usuario.query.get(current_user.id)
+                            if not usuario:
+                                form_erro = 'Usuário inválido.'
+                                flash(form_erro, 'danger')
+                                return redirect(url_for('agendamento_routes.criar_agendamento'))
+                            usuario_id = usuario.id
+                            if getattr(usuario, 'is_professor', lambda: False)():
+                                professor_id = usuario.id
+
                         agendamento = AgendamentoVisita(
-                            horario_id=horario.id,
+
                             professor_id=current_user.id,
                             cliente_id=current_user.cliente_id,
+
                             escola_nome=escola_nome,
                             turma=turma,
                             nivel_ensino=faixa_etaria,
-                            quantidade_alunos=quantidade
+                            quantidade_alunos=quantidade,
                         )
 
                         horario.vagas_disponiveis -= quantidade
@@ -1154,7 +1178,12 @@ def criar_agendamento():
                         try:
                             db.session.commit()
                             flash("Agendamento criado com sucesso!", "success")
-                            return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                            return redirect(
+                                url_for(
+                                    'routes.adicionar_alunos_agendamento',
+                                    agendamento_id=agendamento.id,
+                                )
+                            )
                         except Exception as e:
                             db.session.rollback()
                             form_erro = f"Erro ao salvar agendamento: {str(e)}"
@@ -3124,9 +3153,15 @@ def cadastro_professor():
 @agendamento_routes.route('/agendar_visita/<int:horario_id>', methods=['GET', 'POST'])
 @login_required
 def agendar_visita(horario_id):
-    if not current_user.is_professor():
-        flash('Apenas professores podem fazer agendamentos.', 'danger')
-        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
+    """Permite que professores ou clientes agendem visitas."""
+    is_professor = getattr(current_user, 'is_professor', lambda: False)()
+    is_cliente = getattr(current_user, 'is_cliente', lambda: False)()
+    if not (is_professor or is_cliente):
+        msg = 'Apenas professores ou clientes podem fazer agendamentos.'
+        flash(msg, 'danger')
+        return redirect(
+            url_for('dashboard_participante_routes.dashboard_participante')
+        )
 
     horario = HorarioVisitacao.query.get_or_404(horario_id)
 
@@ -3148,15 +3183,39 @@ def agendar_visita(horario_id):
             flash('Quantidade de alunos excede vagas disponíveis.', 'danger')
             return redirect(url_for('agendamento_routes.agendar_visita', horario_id=horario_id))
 
+        # Validar usuário/cliente
+        professor_id = None
+        cliente_id = None
+        usuario_id = None
+        if is_professor:
+            professor = Usuario.query.get(current_user.id)
+            if not professor:
+                flash('Professor não encontrado.', 'danger')
+                return redirect(
+                    url_for('agendamento_routes.agendar_visita', horario_id=horario_id)
+                )
+            professor_id = professor.id
+            usuario_id = professor.id
+        else:
+            cliente = Cliente.query.get(current_user.id)
+            if not cliente:
+                flash('Cliente não encontrado.', 'danger')
+                return redirect(
+                    url_for('agendamento_routes.agendar_visita', horario_id=horario_id)
+                )
+            cliente_id = cliente.id
+
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
             horario_id=horario.id,
+
             professor_id=current_user.id,
             cliente_id=current_user.cliente_id,
+
             escola_nome=escola_nome,
             turma=turma,
             nivel_ensino=nivel_ensino,
-            quantidade_alunos=quantidade_alunos
+            quantidade_alunos=quantidade_alunos,
         )
 
         # Reduzir vagas disponíveis
