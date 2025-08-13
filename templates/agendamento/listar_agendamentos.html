@@ -124,7 +124,7 @@
                   <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
                   <td>{{ agendamento.horario.horario_inicio }} - {{ agendamento.horario.horario_fim }}</td>
                   <td>{{ agendamento.horario.evento.titulo }}</td>
-                  <td>{{ agendamento.professor.nome }}</td>
+                  <td>{{ agendamento.professor.nome if agendamento.professor else '-' }}</td>
                   <td>
                     {% set status_badges = {
                       'pendente': 'warning',

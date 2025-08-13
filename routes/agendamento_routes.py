@@ -51,6 +51,8 @@ class NotificacaoAgendamento:
             agendamento: Objeto AgendamentoVisita
         """
         professor = agendamento.professor
+        if professor is None:
+            return
         horario = agendamento.horario
         evento = horario.evento
         
@@ -81,6 +83,8 @@ class NotificacaoAgendamento:
             agendamento: Objeto AgendamentoVisita
         """
         professor = agendamento.professor
+        if professor is None:
+            return
         horario = agendamento.horario
         evento = horario.evento
         
@@ -111,6 +115,8 @@ class NotificacaoAgendamento:
             agendamento: Objeto AgendamentoVisita
         """
         professor = agendamento.professor
+        if professor is None:
+            return
         horario = agendamento.horario
         evento = horario.evento
         
@@ -736,7 +742,9 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         if len(escola_nome) > 25:
             escola_nome = escola_nome[:22] + '...'
         
-        professor_nome = agendamento.professor.nome
+        professor_nome = (
+            agendamento.professor.nome if agendamento.professor else "-"
+        )
         if len(professor_nome) > 18:
             professor_nome = professor_nome[:15] + '...'
         
@@ -1164,10 +1172,8 @@ def criar_agendamento():
                                 professor_id = usuario.id
 
                         agendamento = AgendamentoVisita(
-
-                            professor_id=current_user.id,
-                            cliente_id=current_user.cliente_id,
-
+                            professor_id=professor_id,
+                            cliente_id=cliente_id,
                             escola_nome=escola_nome,
                             turma=turma,
                             nivel_ensino=faixa_etaria,
@@ -2498,11 +2504,11 @@ def exportar_agendamentos_pdf():
         data.append([
             str(agendamento.id),
             agendamento.escola_nome,
-            agendamento.professor.nome,
+            agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
             f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
             agendamento.turma,
-            agendamento.status.capitalize()
+            agendamento.status.capitalize(),
         ])
     
     # Criar tabela
@@ -2563,7 +2569,7 @@ def exportar_agendamentos_csv():
         writer.writerow([
             agendamento.id,
             agendamento.escola_nome,
-            agendamento.professor.nome,
+            agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
             f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
             agendamento.turma,
@@ -2600,7 +2606,11 @@ def visualizar_agendamento(agendamento_id):
         abort(404)
     
     # Verificar permissões (somente o professor que criou ou um administrador pode ver)
-    if current_user.id != agendamento.professor_id and not current_user.is_admin:
+    if (
+        agendamento.professor_id
+        and current_user.id != agendamento.professor_id
+        and not current_user.is_admin
+    ):
         abort(403, "Você não tem permissão para visualizar este agendamento")
     
     # Buscar informações adicionais
@@ -2620,11 +2630,15 @@ def visualizar_agendamento(agendamento_id):
                 'hora_inicio': agendamento.horario.hora_inicio.strftime('%H:%M'),
                 'hora_fim': agendamento.horario.hora_fim.strftime('%H:%M')
             },
-            'professor': {
-                'id': agendamento.professor.id,
-                'nome': agendamento.professor.nome,
-                'email': agendamento.professor.email
-            },
+            'professor': (
+                {
+                    'id': agendamento.professor.id,
+                    'nome': agendamento.professor.nome,
+                    'email': agendamento.professor.email,
+                }
+                if agendamento.professor
+                else None
+            ),
             'escola': {
                 'nome': agendamento.escola_nome,
                 'codigo_inep': agendamento.escola_codigo_inep
@@ -2657,7 +2671,11 @@ def editar_agendamento(agendamento_id):
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     
     # Verifica permissões (apenas o próprio professor, administradores ou clientes podem editar)
-    if current_user.tipo not in ['admin', 'cliente'] and current_user.id != agendamento.professor_id:
+    if (
+        current_user.tipo not in ['admin', 'cliente']
+        and agendamento.professor_id
+        and current_user.id != agendamento.professor_id
+    ):
         flash('Você não tem permissão para editar este agendamento.', 'danger')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
     
@@ -2881,7 +2899,11 @@ def checkin_agendamento(qr_code_token):
         return jsonify({"erro": "Check-in já foi realizado para este agendamento"}), 409
     
     # Verificar permissões: apenas o professor que criou ou um administrador pode realizar check-in
-    if current_user.id != agendamento.professor_id and not current_user.is_admin:
+    if (
+        agendamento.professor_id
+        and current_user.id != agendamento.professor_id
+        and not current_user.is_admin
+    ):
         return jsonify({"erro": "Você não tem permissão para realizar check-in neste agendamento"}), 403
     
     # Realizar o check-in
@@ -3219,10 +3241,8 @@ def agendar_visita(horario_id):
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
             horario_id=horario.id,
-
-            professor_id=current_user.id,
-            cliente_id=current_user.cliente_id,
-
+            professor_id=professor_id,
+            cliente_id=cliente_id,
             escola_nome=escola_nome,
             turma=turma,
             nivel_ensino=nivel_ensino,
@@ -3517,7 +3537,11 @@ def cancelar_agendamento(agendamento_id):
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
     # Verifica se o usuário é o professor que fez o agendamento ou admin
-    if current_user.tipo != 'admin' and current_user.id != agendamento.professor_id:
+    if (
+        current_user.tipo != 'admin'
+        and agendamento.professor_id
+        and current_user.id != agendamento.professor_id
+    ):
         flash("Você não tem permissão para cancelar este agendamento!", "danger")
         return redirect(url_for('dashboard_routes.dashboard'))
 
