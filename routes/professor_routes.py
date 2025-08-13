@@ -183,6 +183,7 @@ def criar_agendamento_professor(horario_id):
             agendamento = AgendamentoVisita(
                 horario_id=horario.id,
                 professor_id=current_user.id,
+                cliente_id=current_user.cliente_id,
                 escola_nome=escola_nome,
                 escola_codigo_inep=escola_codigo_inep,
                 turma=turma,
@@ -561,6 +562,7 @@ def criar_agendamento_participante(horario_id):
             agendamento = AgendamentoVisita(
                 horario_id=horario.id,
                 professor_id=current_user.id,
+                cliente_id=current_user.cliente_id,
                 escola_nome=escola_nome,
                 escola_codigo_inep=escola_codigo_inep,
                 turma=turma,
