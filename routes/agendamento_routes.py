@@ -1162,10 +1162,10 @@ def criar_agendamento():
                                 professor_id = usuario.id
 
                         agendamento = AgendamentoVisita(
-                            horario_id=horario.id,
-                            professor_id=professor_id,
-                            usuario_id=usuario_id,
-                            cliente_id=cliente_id,
+
+                            professor_id=current_user.id,
+                            cliente_id=current_user.cliente_id,
+
                             escola_nome=escola_nome,
                             turma=turma,
                             nivel_ensino=faixa_etaria,
@@ -2480,8 +2480,14 @@ def exportar_agendamentos_pdf():
     # Adaptar conforme necessário
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
+    elif current_user.tipo == 'cliente':
+        agendamentos = AgendamentoVisita.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
     else:
-        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+        agendamentos = AgendamentoVisita.query.filter_by(
+            professor_id=current_user.id
+        ).all()
     
     # Dados da tabela
     data = [['ID', 'Escola', 'Professor', 'Data', 'Horário', 'Turma', 'Status']]
@@ -2533,8 +2539,14 @@ def exportar_agendamentos_csv():
     # Filtrar agendamentos (usar mesma lógica de filtragem da view)
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
+    elif current_user.tipo == 'cliente':
+        agendamentos = AgendamentoVisita.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
     else:
-        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+        agendamentos = AgendamentoVisita.query.filter_by(
+            professor_id=current_user.id
+        ).all()
     
     # Criar o buffer de memória para o CSV
     output = StringIO()
@@ -2907,16 +2919,10 @@ def listar_agendamentos():
     query = AgendamentoVisita.query
 
     # Filtrar por tipo de usuário
-    if current_user.tipo == 'participante' or current_user.tipo == 'professor':
-        # Professores/participantes só veem seus próprios agendamentos
+    if current_user.tipo in ['participante', 'professor']:
         query = query.filter(AgendamentoVisita.professor_id == current_user.id)
     elif current_user.tipo == 'cliente':
-        # Clientes veem agendamentos relacionados a eles
-        # Aqui precisaria de uma lógica para filtrar por cliente, se aplicável
-        if current_user.id:
-            # Filtrar agendamentos relacionados ao cliente
-            # Esta lógica depende da sua estrutura de dados
-            pass
+        query = query.filter(AgendamentoVisita.cliente_id == current_user.id)
     
     # Filtros dos parâmetros da URL
     if data_inicio:
@@ -2939,9 +2945,7 @@ def listar_agendamentos():
         pass
     
     if cliente_id and current_user.tipo == 'admin':
-        # Se você relacionar agendamentos com clientes
-        # query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
-        pass
+        query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
     
     # Ordenação
     query = query.order_by(AgendamentoVisita.data_agendamento.desc())
@@ -3204,9 +3208,10 @@ def agendar_visita(horario_id):
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
             horario_id=horario.id,
-            professor_id=professor_id,
-            usuario_id=usuario_id,
-            cliente_id=cliente_id,
+
+            professor_id=current_user.id,
+            cliente_id=current_user.cliente_id,
+
             escola_nome=escola_nome,
             turma=turma,
             nivel_ensino=nivel_ensino,
