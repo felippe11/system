@@ -365,7 +365,7 @@
             <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
             <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
             <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
-            <p><strong>Professor:</strong> {{ agendamento.professor.nome }}</p>
+            <p><strong>Professor:</strong> {{ agendamento.professor.nome if agendamento.professor else '-' }}</p>
             <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
             <p><strong>Nível de Ensino:</strong> {{ agendamento.nivel_ensino }}</p>
             <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
@@ -751,7 +751,7 @@
             <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
             <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</p>
             <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
-            <p><strong>Professor:</strong> {{ agendamento.professor.nome }}</p>
+            <p><strong>Professor:</strong> {{ agendamento.professor.nome if agendamento.professor else '-' }}</p>
             <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
             <p><strong>Nível de Ensino:</strong> {{ agendamento.nivel_ensino }}</p>
             <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
