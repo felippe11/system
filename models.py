@@ -1138,7 +1138,7 @@ class HorarioVisitacao(db.Model):
 
 
 class AgendamentoVisita(db.Model):
-    """Agendamento realizado por um professor para uma turma."""
+    """Agendamento de visitação por professores ou clientes."""
 
     __tablename__ = "agendamento_visita"
 
@@ -1146,7 +1146,15 @@ class AgendamentoVisita(db.Model):
     horario_id = db.Column(
         db.Integer, db.ForeignKey("horario_visitacao.id"), nullable=False
     )
-    professor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    professor_id = db.Column(
+        db.Integer, db.ForeignKey("usuario.id"), nullable=True
+    )
+    usuario_id = db.Column(
+        db.Integer, db.ForeignKey("usuario.id"), nullable=True
+    )
+    cliente_id = db.Column(
+        db.Integer, db.ForeignKey("cliente.id"), nullable=True
+    )
 
     # Informações da escola e turma
     escola_nome = db.Column(db.String(200), nullable=False)
@@ -1179,7 +1187,17 @@ class AgendamentoVisita(db.Model):
         "HorarioVisitacao", backref=db.backref("agendamentos", lazy=True)
     )
     professor = db.relationship(
-        "Usuario", backref=db.backref("agendamentos_visitas", lazy=True)
+        "Usuario",
+        foreign_keys=[professor_id],
+        backref=db.backref("agendamentos_visitas", lazy=True),
+    )
+    usuario = db.relationship(
+        "Usuario",
+        foreign_keys=[usuario_id],
+        backref=db.backref("agendamentos_criados", lazy=True),
+    )
+    cliente = db.relationship(
+        "Cliente", backref=db.backref("agendamentos_visitas", lazy=True)
     )
 
     def __init__(self, **kwargs):
@@ -1189,7 +1207,8 @@ class AgendamentoVisita(db.Model):
         self.qr_code_token = str(uuid.uuid4())
 
     def __repr__(self):
-        return f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - {self.escola_nome}>"
+        nome = self.professor.nome if self.professor else "Cliente"
+        return f"<AgendamentoVisita {self.id} - {nome} - {self.escola_nome}>"
 
 
 class AlunoVisitante(db.Model):

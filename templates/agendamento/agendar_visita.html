@@ -3,12 +3,21 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Agendar Visita</h2>
+    <p class="text-muted">
+        Você está agendando como
+        {{ 'Professor' if current_user.is_professor() else 'Cliente' }}.
+    </p>
     <p><strong>Data:</strong> {{ horario.data }}</p>
     <p><strong>Horário:</strong> {{ horario.horario_inicio }} - {{ horario.horario_fim }}</p>
     <p><strong>Vagas Disponíveis:</strong> {{ horario.vagas_disponiveis }}</p>
 
     <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if current_user.is_professor() %}
+        <input type="hidden" name="professor_id" value="{{ current_user.id }}">
+        {% elif current_user.is_cliente() %}
+        <input type="hidden" name="cliente_id" value="{{ current_user.id }}">
+        {% endif %}
         <div class="mb-3">
             <label class="form-label">Nome da Escola</label>
             <input type="text" name="escola_nome" class="form-control" required>

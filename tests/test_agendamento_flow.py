@@ -219,6 +219,38 @@ def test_fluxo_agendamento(app):
     assert resp.status_code == 200
     assert resp.data.startswith(b'PDF')
 
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento.professor_id is not None
+        assert agendamento.cliente_id is None
+
+
+def test_cliente_cria_agendamento(app):
+    client = app.test_client()
+
+    login(client, 'cli@test', '123')
+
+    with app.app_context():
+        horario = HorarioVisitacao.query.first()
+
+    resp = client.post(
+        f'/agendar_visita/{horario.id}',
+        data={
+            'escola_nome': 'Escola C',
+            'turma': 'T1',
+            'nivel_ensino': 'Fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 302
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.first()
+        assert agendamento.cliente_id is not None
+        assert agendamento.professor_id is None
+
 
 def test_editar_agendamento_shows_current_when_full(app):
     client = app.test_client()
