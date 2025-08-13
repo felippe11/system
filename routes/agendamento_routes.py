@@ -179,12 +179,12 @@ class NotificacaoAgendamento:
         # Data de amanhã
         amanha = datetime.utcnow().date() + timedelta(days=1)
         
-        # Buscar todos os agendamentos confirmados para amanhã
+        # Buscar agendamentos pendentes ou confirmados para amanhã
         query = AgendamentoVisita.query.join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).filter(
             HorarioVisitacao.data == amanha,
-            AgendamentoVisita.status == 'confirmado'
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         )
         
         agendamentos = query.all()
@@ -440,14 +440,16 @@ def editar_horario_agendamento():
         horario.horario_fim = datetime.strptime(horario_fim, '%H:%M').time()
         
         # Verificar se a capacidade é menor que o número de agendamentos existentes
-        agendamentos_count = db.session.query(func.count(AgendamentoVisita.id)).filter_by(
-            horario_id=horario.id,
-            status='confirmado'
+        agendamentos_count = db.session.query(func.count(AgendamentoVisita.id)).filter(
+            AgendamentoVisita.horario_id == horario.id,
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         ).scalar() or 0
-        
-        agendamentos_alunos = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).filter_by(
-            horario_id=horario.id,
-            status='confirmado'
+
+        agendamentos_alunos = db.session.query(
+            func.sum(AgendamentoVisita.quantidade_alunos)
+        ).filter(
+            AgendamentoVisita.horario_id == horario.id,
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         ).scalar() or 0
         
         if capacidade_total < agendamentos_alunos:
@@ -493,9 +495,9 @@ def excluir_horario_agendamento():
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Verificar se existem agendamentos para este horário
-    agendamentos = AgendamentoVisita.query.filter_by(
-        horario_id=horario.id,
-        status='confirmado'
+    agendamentos = AgendamentoVisita.query.filter(
+        AgendamentoVisita.horario_id == horario.id,
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).all()
     
     if agendamentos:

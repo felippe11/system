@@ -1169,8 +1169,8 @@ class AgendamentoVisita(db.Model):
     data_agendamento = db.Column(db.DateTime, default=datetime.utcnow)
     data_cancelamento = db.Column(db.DateTime, nullable=True)
     status = db.Column(
-        db.String(20), default="confirmado"
-    )  # confirmado, cancelado, realizado
+        db.String(20), default="pendente"
+    )  # pendente, confirmado, cancelado, realizado
     checkin_realizado = db.Column(db.Boolean, default=False)
     data_checkin = db.Column(db.DateTime, nullable=True)
 
