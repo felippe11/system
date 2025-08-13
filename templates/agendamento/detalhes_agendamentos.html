@@ -13,7 +13,9 @@
             <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
             <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
             <p><strong>Status:</strong> 
-                {% if agendamento.status == 'confirmado' %}
+                {% if agendamento.status == 'pendente' %}
+                    <span class="badge bg-warning text-dark">Pendente</span>
+                {% elif agendamento.status == 'confirmado' %}
                     <span class="badge bg-success">Confirmado</span>
                 {% elif agendamento.status == 'realizado' %}
                     <span class="badge bg-info">Realizado</span>
