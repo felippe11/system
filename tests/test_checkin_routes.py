@@ -154,9 +154,15 @@ def app():
         db.session.add(horario)
         db.session.commit()
 
-        agendamento = AgendamentoVisita(horario_id=horario.id, professor_id=professor.id,
-                                        escola_nome='Escola', turma='T1',
-                                        nivel_ensino='fundamental', quantidade_alunos=10)
+        agendamento = AgendamentoVisita(
+            horario_id=horario.id,
+            professor_id=professor.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='fundamental',
+            quantidade_alunos=10,
+            status='confirmado'
+        )
         db.session.add(agendamento)
         db.session.commit()
 

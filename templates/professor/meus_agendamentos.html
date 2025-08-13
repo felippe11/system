@@ -20,6 +20,7 @@
                         <div class="col-md-4">
                             <select name="status" class="form-select">
                                 <option value="">Todos os status</option>
+                                <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Pendentes</option>
                                 <option value="confirmado" {% if status_filtro == 'confirmado' %}selected{% endif %}>Confirmados</option>
                                 <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelados</option>
                                 <option value="realizado" {% if status_filtro == 'realizado' %}selected{% endif %}>Realizados</option>
@@ -74,7 +75,9 @@
                                             <td>{{ agendamento.turma }}</td>
                                             <td>{{ agendamento.quantidade_alunos }}</td>
                                             <td>
-                                                {% if agendamento.status == 'confirmado' %}
+                                                {% if agendamento.status == 'pendente' %}
+                                                    <span class="badge rounded-pill bg-warning text-dark">Pendente</span>
+                                                {% elif agendamento.status == 'confirmado' %}
                                                     <span class="badge rounded-pill bg-primary">Confirmado</span>
                                                 {% elif agendamento.status == 'cancelado' %}
                                                     <span class="badge rounded-pill bg-danger">Cancelado</span>
