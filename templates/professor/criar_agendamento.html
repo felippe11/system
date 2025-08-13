@@ -6,6 +6,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Criar Agendamento</h2>
+    <p class="text-muted">Você está agendando como Professor.</p>
     
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
@@ -32,6 +33,8 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('routes.criar_agendamento_professor', horario_id=horario.id) }}">
+                <input type="hidden" name="professor_id" value="{{ current_user.id }}">
+                <input type="hidden" name="usuario_id" value="{{ current_user.id }}">
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="escola_nome" class="form-label">Nome da Escola *</label>
