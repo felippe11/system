@@ -3219,10 +3219,8 @@ def agendar_visita(horario_id):
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
             horario_id=horario.id,
-
-            professor_id=current_user.id,
-            cliente_id=current_user.cliente_id,
-
+            professor_id=professor_id,  # None para clientes
+            cliente_id=cliente_id,
             escola_nome=escola_nome,
             turma=turma,
             nivel_ensino=nivel_ensino,
@@ -3234,6 +3232,7 @@ def agendar_visita(horario_id):
 
         try:
             db.session.add(novo_agendamento)
+            db.session.add(horario)
             db.session.commit()
             flash('Agendamento realizado com sucesso!', 'success')
             return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
