@@ -2483,9 +2483,17 @@ def exportar_agendamentos_pdf():
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
     elif current_user.tipo == 'cliente':
-        agendamentos = AgendamentoVisita.query.filter_by(
-            cliente_id=current_user.id
-        ).all()
+        agendamentos = (
+            AgendamentoVisita.query.join(
+                HorarioVisitacao,
+                AgendamentoVisita.horario_id == HorarioVisitacao.id,
+            ).join(
+                Evento,
+                HorarioVisitacao.evento_id == Evento.id,
+            )
+            .filter(Evento.cliente_id == current_user.id)
+            .all()
+        )
     else:
         agendamentos = AgendamentoVisita.query.filter_by(
             professor_id=current_user.id
@@ -2542,9 +2550,17 @@ def exportar_agendamentos_csv():
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
     elif current_user.tipo == 'cliente':
-        agendamentos = AgendamentoVisita.query.filter_by(
-            cliente_id=current_user.id
-        ).all()
+        agendamentos = (
+            AgendamentoVisita.query.join(
+                HorarioVisitacao,
+                AgendamentoVisita.horario_id == HorarioVisitacao.id,
+            ).join(
+                Evento,
+                HorarioVisitacao.evento_id == Evento.id,
+            )
+            .filter(Evento.cliente_id == current_user.id)
+            .all()
+        )
     else:
         agendamentos = AgendamentoVisita.query.filter_by(
             professor_id=current_user.id
@@ -2926,23 +2942,29 @@ def listar_agendamentos():
     oficina_id = request.args.get('oficina_id')
     cliente_id = request.args.get('cliente_id')
 
-    # Base da query
-    query = AgendamentoVisita.query
+    # Base da query com joins para acesso aos dados do evento
+    query = (
+        AgendamentoVisita.query.join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).join(
+            Evento, HorarioVisitacao.evento_id == Evento.id
+        )
+    )
 
     # Filtrar por tipo de usuário
     if current_user.tipo in ['participante', 'professor']:
         query = query.filter(AgendamentoVisita.professor_id == current_user.id)
     elif current_user.tipo == 'cliente':
-        query = query.filter(AgendamentoVisita.cliente_id == current_user.id)
+        query = query.filter(Evento.cliente_id == current_user.id)
     
     # Filtros dos parâmetros da URL
     if data_inicio:
         data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
-        query = query.filter(AgendamentoVisita.horario.has(data_agendamento >= data_inicio_dt))
+        query = query.filter(HorarioVisitacao.data >= data_inicio_dt)
     
     if data_fim:
         data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
-        query = query.filter(AgendamentoVisita.horario.has(data_agendamento <= data_fim_dt))
+        query = query.filter(HorarioVisitacao.data <= data_fim_dt)
     
     if status:
         query = query.filter(AgendamentoVisita.status == status)
@@ -2956,7 +2978,7 @@ def listar_agendamentos():
         pass
     
     if cliente_id and current_user.tipo == 'admin':
-        query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
+        query = query.filter(Evento.cliente_id == cliente_id)
     
     # Ordenação
     query = query.order_by(AgendamentoVisita.data_agendamento.desc())
