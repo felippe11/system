@@ -179,12 +179,12 @@ class NotificacaoAgendamento:
         # Data de amanhã
         amanha = datetime.utcnow().date() + timedelta(days=1)
         
-        # Buscar todos os agendamentos confirmados para amanhã
+        # Buscar agendamentos pendentes ou confirmados para amanhã
         query = AgendamentoVisita.query.join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).filter(
             HorarioVisitacao.data == amanha,
-            AgendamentoVisita.status == 'confirmado'
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         )
         
         agendamentos = query.all()
@@ -440,14 +440,16 @@ def editar_horario_agendamento():
         horario.horario_fim = datetime.strptime(horario_fim, '%H:%M').time()
         
         # Verificar se a capacidade é menor que o número de agendamentos existentes
-        agendamentos_count = db.session.query(func.count(AgendamentoVisita.id)).filter_by(
-            horario_id=horario.id,
-            status='confirmado'
+        agendamentos_count = db.session.query(func.count(AgendamentoVisita.id)).filter(
+            AgendamentoVisita.horario_id == horario.id,
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         ).scalar() or 0
-        
-        agendamentos_alunos = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).filter_by(
-            horario_id=horario.id,
-            status='confirmado'
+
+        agendamentos_alunos = db.session.query(
+            func.sum(AgendamentoVisita.quantidade_alunos)
+        ).filter(
+            AgendamentoVisita.horario_id == horario.id,
+            AgendamentoVisita.status.in_(['pendente', 'confirmado'])
         ).scalar() or 0
         
         if capacidade_total < agendamentos_alunos:
@@ -493,9 +495,9 @@ def excluir_horario_agendamento():
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
     
     # Verificar se existem agendamentos para este horário
-    agendamentos = AgendamentoVisita.query.filter_by(
-        horario_id=horario.id,
-        status='confirmado'
+    agendamentos = AgendamentoVisita.query.filter(
+        AgendamentoVisita.horario_id == horario.id,
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).all()
     
     if agendamentos:
@@ -1101,9 +1103,12 @@ def criar_agendamento():
     form_erro = None
     eventos = []
     
-    # Buscar eventos disponíveis do cliente atual
+    # Buscar eventos disponíveis conforme o tipo de usuário
     try:
-        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+        if getattr(current_user, 'is_cliente', lambda: False)():
+            eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+        else:
+            eventos = Evento.query.all()
     except Exception as e:
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
@@ -1138,13 +1143,35 @@ def criar_agendamento():
                         form_erro = f"Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}"
                         flash(form_erro, "danger")
                     else:
+                        professor_id = None
+                        cliente_id = None
+                        usuario_id = None
+                        if getattr(current_user, 'is_cliente', lambda: False)():
+                            cliente = Cliente.query.get(current_user.id)
+                            if not cliente:
+                                form_erro = 'Cliente inválido.'
+                                flash(form_erro, 'danger')
+                                return redirect(url_for('agendamento_routes.criar_agendamento'))
+                            cliente_id = cliente.id
+                        else:
+                            usuario = Usuario.query.get(current_user.id)
+                            if not usuario:
+                                form_erro = 'Usuário inválido.'
+                                flash(form_erro, 'danger')
+                                return redirect(url_for('agendamento_routes.criar_agendamento'))
+                            usuario_id = usuario.id
+                            if getattr(usuario, 'is_professor', lambda: False)():
+                                professor_id = usuario.id
+
                         agendamento = AgendamentoVisita(
-                            horario_id=horario.id,
+
                             professor_id=current_user.id,
+                            cliente_id=current_user.cliente_id,
+
                             escola_nome=escola_nome,
                             turma=turma,
                             nivel_ensino=faixa_etaria,
-                            quantidade_alunos=quantidade
+                            quantidade_alunos=quantidade,
                         )
 
                         horario.vagas_disponiveis -= quantidade
@@ -1153,7 +1180,12 @@ def criar_agendamento():
                         try:
                             db.session.commit()
                             flash("Agendamento criado com sucesso!", "success")
-                            return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                            return redirect(
+                                url_for(
+                                    'routes.adicionar_alunos_agendamento',
+                                    agendamento_id=agendamento.id,
+                                )
+                            )
                         except Exception as e:
                             db.session.rollback()
                             form_erro = f"Erro ao salvar agendamento: {str(e)}"
@@ -2450,8 +2482,14 @@ def exportar_agendamentos_pdf():
     # Adaptar conforme necessário
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
+    elif current_user.tipo == 'cliente':
+        agendamentos = AgendamentoVisita.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
     else:
-        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+        agendamentos = AgendamentoVisita.query.filter_by(
+            professor_id=current_user.id
+        ).all()
     
     # Dados da tabela
     data = [['ID', 'Escola', 'Professor', 'Data', 'Horário', 'Turma', 'Status']]
@@ -2503,8 +2541,14 @@ def exportar_agendamentos_csv():
     # Filtrar agendamentos (usar mesma lógica de filtragem da view)
     if current_user.tipo == 'admin':
         agendamentos = AgendamentoVisita.query.all()
+    elif current_user.tipo == 'cliente':
+        agendamentos = AgendamentoVisita.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
     else:
-        agendamentos = AgendamentoVisita.query.filter_by(professor_id=current_user.id).all()
+        agendamentos = AgendamentoVisita.query.filter_by(
+            professor_id=current_user.id
+        ).all()
     
     # Criar o buffer de memória para o CSV
     output = StringIO()
@@ -2607,6 +2651,8 @@ def visualizar_agendamento(agendamento_id):
 @agendamento_routes.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def editar_agendamento(agendamento_id):
+    """Editar um agendamento de visita existente."""
+
     # Busca o agendamento no banco de dados
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     
@@ -2615,10 +2661,12 @@ def editar_agendamento(agendamento_id):
         flash('Você não tem permissão para editar este agendamento.', 'danger')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
     
-    # Busca horários disponíveis para edição
-    horarios_disponiveis = HorarioVisitacao.query.filter(
-        HorarioVisitacao.vagas_disponiveis > 0
-    ).all()
+    # Busca horários disponíveis para edição utilizando vagas restantes
+    horarios_disponiveis = (
+        HorarioVisitacao.query
+        .filter(HorarioVisitacao.vagas_disponiveis > 0)
+        .all()
+    )
     # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
     if agendamento.horario not in horarios_disponiveis:
         horarios_disponiveis.append(agendamento.horario)
@@ -2682,26 +2730,29 @@ def editar_agendamento(agendamento_id):
         salas_selecionadas=salas_selecionadas
     )
     
-@agendamento_routes.route('/atualizar_status/<int:agendamento_id>', methods=['PUT'])
+@agendamento_routes.route(
+    '/atualizar_status/<int:agendamento_id>', methods=['PUT', 'POST']
+)
 @login_required
 def atualizar_status_agendamento(agendamento_id):
-    """
-    Atualiza o status de um agendamento de visita.
-    
+    """Atualiza o status de um agendamento de visita.
+
     Parâmetros:
-    - agendamento_id: ID do agendamento a ser atualizado
-    
+        agendamento_id: ID do agendamento a ser atualizado
+
     Corpo da requisição:
-    {
-        "status": "confirmado|cancelado|realizado",
-        "checkin_realizado": true|false  (opcional)
-    }
-    
+        {
+            "status": "confirmado|cancelado|realizado",
+            "checkin_realizado": true|false  (opcional)
+        }
+
+    Também aceita envio via POST com dados de formulário.
+
     Retorna:
-    - 200: Agendamento atualizado com sucesso
-    - 400: Dados inválidos
-    - 403: Usuário não tem permissão
-    - 404: Agendamento não encontrado
+        200: Agendamento atualizado com sucesso
+        400: Dados inválidos
+        403: Usuário não tem permissão
+        404: Agendamento não encontrado
     """
     # Buscar o agendamento pelo ID
     agendamento = AgendamentoVisita.query.get(agendamento_id)
@@ -2710,14 +2761,28 @@ def atualizar_status_agendamento(agendamento_id):
     if not agendamento:
         return jsonify({"erro": "Agendamento não encontrado"}), 404
     
-    # Verificar permissões: apenas o professor que criou ou um administrador pode alterar
-    if current_user.id != agendamento.professor_id and not current_user.is_admin:
-        return jsonify({"erro": "Você não tem permissão para alterar este agendamento"}), 403
+    # Verificar permissões: professor responsável, cliente do evento ou administrador
+    is_admin = getattr(current_user, "is_admin", False)
+    is_professor = agendamento.professor_id == getattr(current_user, "id", None)
+    is_cliente = (
+        getattr(current_user, "tipo", "") == "cliente"
+        and agendamento.horario.evento.cliente_id == getattr(current_user, "id", None)
+    )
+    if not (is_admin or is_professor or is_cliente):
+        return (
+            jsonify({"erro": "Você não tem permissão para alterar este agendamento"}),
+            403,
+        )
     
     # Obter os dados do request
-    dados = request.get_json()
-    
+    dados = request.get_json(silent=True)
     if not dados:
+        dados = request.form.to_dict()
+
+    if not dados:
+        if request.method == 'POST':
+            flash('Nenhum dado fornecido', 'danger')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
         return jsonify({"erro": "Nenhum dado fornecido"}), 400
     
     # Validar o status
@@ -2736,6 +2801,8 @@ def atualizar_status_agendamento(agendamento_id):
     # Verificar se houve alteração no check-in
     if 'checkin_realizado' in dados:
         checkin = dados.get('checkin_realizado')
+        if isinstance(checkin, str):
+            checkin = checkin.lower() in ['true', '1', 'on']
         
         # Se check-in está sendo realizado agora
         if checkin and not agendamento.checkin_realizado:
@@ -2752,24 +2819,39 @@ def atualizar_status_agendamento(agendamento_id):
     try:
         # Salvar as alterações no banco de dados
         db.session.commit()
-        
-        # Formatar resposta
-        resposta = {
-            "mensagem": "Agendamento atualizado com sucesso",
-            "agendamento": {
-                "id": agendamento.id,
-                "status": agendamento.status,
-                "checkin_realizado": agendamento.checkin_realizado,
-                "data_checkin": agendamento.data_checkin.isoformat() if agendamento.data_checkin else None,
-                "data_cancelamento": agendamento.data_cancelamento.isoformat() if agendamento.data_cancelamento else None
+
+        if request.is_json or request.method == 'PUT':
+            resposta = {
+                "mensagem": "Agendamento atualizado com sucesso",
+                "agendamento": {
+                    "id": agendamento.id,
+                    "status": agendamento.status,
+                    "checkin_realizado": agendamento.checkin_realizado,
+                    "data_checkin": (
+                        agendamento.data_checkin.isoformat()
+                        if agendamento.data_checkin
+                        else None
+                    ),
+                    "data_cancelamento": (
+                        agendamento.data_cancelamento.isoformat()
+                        if agendamento.data_cancelamento
+                        else None
+                    ),
+                },
             }
-        }
-        
-        return jsonify(resposta), 200
-        
+            return jsonify(resposta), 200
+
+        flash('Agendamento atualizado com sucesso', 'success')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({"erro": f"Erro ao atualizar agendamento: {str(e)}"}), 500
+        if request.is_json or request.method == 'PUT':
+            return jsonify(
+                {"erro": f"Erro ao atualizar agendamento: {str(e)}"}
+            ), 500
+        flash('Erro ao atualizar agendamento', 'danger')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
 # Rota para realizar check-in via QR Code
 @agendamento_routes.route('/checkin/<string:qr_code_token>', methods=['POST'])
@@ -2848,16 +2930,10 @@ def listar_agendamentos():
     query = AgendamentoVisita.query
 
     # Filtrar por tipo de usuário
-    if current_user.tipo == 'participante' or current_user.tipo == 'professor':
-        # Professores/participantes só veem seus próprios agendamentos
+    if current_user.tipo in ['participante', 'professor']:
         query = query.filter(AgendamentoVisita.professor_id == current_user.id)
     elif current_user.tipo == 'cliente':
-        # Clientes veem agendamentos relacionados a eles
-        # Aqui precisaria de uma lógica para filtrar por cliente, se aplicável
-        if current_user.id:
-            # Filtrar agendamentos relacionados ao cliente
-            # Esta lógica depende da sua estrutura de dados
-            pass
+        query = query.filter(AgendamentoVisita.cliente_id == current_user.id)
     
     # Filtros dos parâmetros da URL
     if data_inicio:
@@ -2880,9 +2956,7 @@ def listar_agendamentos():
         pass
     
     if cliente_id and current_user.tipo == 'admin':
-        # Se você relacionar agendamentos com clientes
-        # query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
-        pass
+        query = query.filter(AgendamentoVisita.cliente_id == cliente_id)
     
     # Ordenação
     query = query.order_by(AgendamentoVisita.data_agendamento.desc())
@@ -3090,9 +3164,15 @@ def cadastro_professor():
 @agendamento_routes.route('/agendar_visita/<int:horario_id>', methods=['GET', 'POST'])
 @login_required
 def agendar_visita(horario_id):
-    if not current_user.is_professor():
-        flash('Apenas professores podem fazer agendamentos.', 'danger')
-        return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
+    """Permite que professores ou clientes agendem visitas."""
+    is_professor = getattr(current_user, 'is_professor', lambda: False)()
+    is_cliente = getattr(current_user, 'is_cliente', lambda: False)()
+    if not (is_professor or is_cliente):
+        msg = 'Apenas professores ou clientes podem fazer agendamentos.'
+        flash(msg, 'danger')
+        return redirect(
+            url_for('dashboard_participante_routes.dashboard_participante')
+        )
 
     horario = HorarioVisitacao.query.get_or_404(horario_id)
 
@@ -3114,14 +3194,39 @@ def agendar_visita(horario_id):
             flash('Quantidade de alunos excede vagas disponíveis.', 'danger')
             return redirect(url_for('agendamento_routes.agendar_visita', horario_id=horario_id))
 
+        # Validar usuário/cliente
+        professor_id = None
+        cliente_id = None
+        usuario_id = None
+        if is_professor:
+            professor = Usuario.query.get(current_user.id)
+            if not professor:
+                flash('Professor não encontrado.', 'danger')
+                return redirect(
+                    url_for('agendamento_routes.agendar_visita', horario_id=horario_id)
+                )
+            professor_id = professor.id
+            usuario_id = professor.id
+        else:
+            cliente = Cliente.query.get(current_user.id)
+            if not cliente:
+                flash('Cliente não encontrado.', 'danger')
+                return redirect(
+                    url_for('agendamento_routes.agendar_visita', horario_id=horario_id)
+                )
+            cliente_id = cliente.id
+
         # Criar agendamento
         novo_agendamento = AgendamentoVisita(
             horario_id=horario.id,
+
             professor_id=current_user.id,
+            cliente_id=current_user.cliente_id,
+
             escola_nome=escola_nome,
             turma=turma,
             nivel_ensino=nivel_ensino,
-            quantidade_alunos=quantidade_alunos
+            quantidade_alunos=quantidade_alunos,
         )
 
         # Reduzir vagas disponíveis

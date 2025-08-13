@@ -2503,8 +2503,15 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         caminho_pdf: Caminho onde o PDF será salvo
     """
     
-    # 1) Obter todos os agendamentos do professor para compor o relatório
-    agendamentos = AgendamentoVisita.query.filter_by(professor_id=agendamento.professor_id).all()
+    # 1) Obter agendamentos do professor ou do mesmo cliente para o relatório
+    from sqlalchemy import or_
+
+    agendamentos = AgendamentoVisita.query.filter(
+        or_(
+            AgendamentoVisita.professor_id == agendamento.professor_id,
+            AgendamentoVisita.cliente_id == agendamento.cliente_id,
+        )
+    ).all()
     
     # 2) Cria objeto PDF
     pdf = FPDF()
