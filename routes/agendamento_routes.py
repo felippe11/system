@@ -3637,9 +3637,11 @@ def detalhes_agendamento(agendamento_id):
 @agendamento_routes.route('/professor/meus_agendamentos')
 @login_required
 def meus_agendamentos():
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Lista agendamentos do usuário para professores e participantes."""
+    # Apenas professores ou participantes podem acessar
+    if current_user.tipo not in ('professor', 'participante'):
+        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
+        flash(msg, 'danger')
         return redirect(url_for('auth_routes.login'))
     
     # Filtros
@@ -3702,9 +3704,11 @@ def meus_agendamentos_participante():
 @agendamento_routes.route('/professor/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def cancelar_agendamento_professor(agendamento_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Permite que professores ou participantes cancelem um agendamento."""
+    # Apenas professores ou participantes podem acessar
+    if current_user.tipo not in ('professor', 'participante'):
+        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
+        flash(msg, 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)

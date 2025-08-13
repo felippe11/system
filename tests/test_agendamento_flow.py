@@ -126,6 +126,7 @@ from models import (
     HorarioVisitacao,
     AgendamentoVisita,
     AlunoVisitante,
+    Inscricao,
 )
 
 
@@ -171,9 +172,32 @@ def app():
         )
         db.session.add_all([horario1, horario2])
 
-        professor = Usuario(nome='Prof', cpf='222', email='prof@test',
-                            senha=generate_password_hash('p123'), formacao='F', tipo='professor')
-        db.session.add(professor)
+        professor = Usuario(
+            nome='Prof',
+            cpf='222',
+            email='prof@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='professor',
+        )
+        participante = Usuario(
+            nome='Part',
+            cpf='333',
+            email='part@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='participante',
+        )
+        db.session.add_all([professor, participante])
+        db.session.commit()
+
+        db.session.add(
+            Inscricao(
+                usuario_id=participante.id,
+                evento_id=evento.id,
+                cliente_id=cliente.id,
+            )
+        )
         db.session.commit()
 
     return app
@@ -192,19 +216,17 @@ def test_fluxo_agendamento(app):
         evento = Evento.query.first()
         horario = HorarioVisitacao.query.first()
 
-    resp = client.post('/criar-agendamento', data={
-        'evento_id': evento.id,
-        'data': str(horario.data),
-        'horario_id': horario.id,
-        'escola_nome': 'Escola X',
-        'nome_responsavel': 'Resp',
-        'email_responsavel': 'resp@test',
-        'telefone_escola': '123',
-        'turma': 'T1',
-        'quantidade_alunos': 5,
-        'faixa_etaria': 'Fundamental',
-        'observacoes': ''
-    }, follow_redirects=False)
+    resp = client.post(
+        f'/professor/criar_agendamento/{horario.id}',
+        data={
+            'escola_nome': 'Escola X',
+            'escola_codigo_inep': '',
+            'turma': 'T1',
+            'nivel_ensino': 'Fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=False,
+    )
 
     assert resp.status_code == 302
     assert '/professor/adicionar_alunos/' in resp.headers['Location']
@@ -252,6 +274,52 @@ def test_cliente_cria_agendamento(app):
         assert agendamento.cliente_id is not None
         assert agendamento.professor_id is None
         assert agendamento.status == 'pendente'
+
+
+def test_participante_agendamento_flow(app):
+    client = app.test_client()
+
+    login(client, 'part@test', 'p123')
+
+    with app.app_context():
+        participante = Usuario.query.filter_by(email='part@test').first()
+        horario = HorarioVisitacao.query.first()
+
+    resp = client.post(
+        f'/participante/criar_agendamento/{horario.id}',
+        data={
+            'escola_nome': 'Escola P',
+            'escola_codigo_inep': '',
+            'turma': 'T1',
+            'nivel_ensino': 'Fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 302
+    assert '/participante/meus_agendamentos' in resp.headers['Location']
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.filter_by(
+            professor_id=participante.id
+        ).first()
+        assert agendamento is not None
+        agendamento_id = agendamento.id
+
+    resp = client.get('/participante/meus_agendamentos')
+    assert resp.status_code == 200
+
+    resp = client.post(
+        f'/participante/cancelar_agendamento/{agendamento_id}',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento.status == 'cancelado'
+        assert agendamento.professor_id == participante.id
 
 
 def test_editar_agendamento_shows_current_when_full(app):
