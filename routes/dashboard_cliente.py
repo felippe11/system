@@ -156,7 +156,7 @@ def dashboard_cliente():
     ).filter(
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.horario_inicio
     ).all()
@@ -171,7 +171,7 @@ def dashboard_cliente():
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data > hoje,
         HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio
@@ -355,7 +355,7 @@ def dashboard_aba_agendamentos():
     ).filter(
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.horario_inicio
     ).all()
@@ -370,7 +370,7 @@ def dashboard_aba_agendamentos():
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data > hoje,
         HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio
@@ -439,7 +439,7 @@ def dashboard_aba_agendamentos_hoje():
     ).filter(
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.horario_inicio
     ).all()
@@ -468,7 +468,7 @@ def dashboard_aba_proximos_agendamentos():
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data > hoje,
         HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio
@@ -598,7 +598,7 @@ def set_dashboard_agendamentos_data():
     ).filter(
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data == hoje,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.horario_inicio
     ).all()
@@ -613,7 +613,7 @@ def set_dashboard_agendamentos_data():
         Evento.cliente_id == current_user.id,
         HorarioVisitacao.data > hoje,
         HorarioVisitacao.data <= data_limite,
-        AgendamentoVisita.status == 'confirmado'
+        AgendamentoVisita.status.in_(['pendente', 'confirmado'])
     ).order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio

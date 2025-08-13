@@ -133,7 +133,7 @@
                       'realizado': 'primary'
                     } %}
                     {% set status_badge = status_badges.get(agendamento.status, 'secondary') %}
-                    <span class="badge bg-{{ status_badge }}">{{ agendamento.status }}</span>
+                    <span class="badge bg-{{ status_badge }}">{{ agendamento.status|capitalize }}</span>
                   </td>
                   <td class="text-center">
                       <div class="btn-group btn-group-sm">

@@ -223,6 +223,7 @@ def test_fluxo_agendamento(app):
         agendamento = AgendamentoVisita.query.get(agendamento_id)
         assert agendamento.professor_id is not None
         assert agendamento.cliente_id is None
+        assert agendamento.status == 'pendente'
 
 
 def test_cliente_cria_agendamento(app):
@@ -250,6 +251,7 @@ def test_cliente_cria_agendamento(app):
         agendamento = AgendamentoVisita.query.first()
         assert agendamento.cliente_id is not None
         assert agendamento.professor_id is None
+        assert agendamento.status == 'pendente'
 
 
 def test_editar_agendamento_shows_current_when_full(app):
