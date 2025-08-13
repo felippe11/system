@@ -12,6 +12,11 @@
     </a>
   </div>
 
+  <p class="text-muted mb-4">
+    Você está agendando como
+    {{ 'Professor' if current_user.is_professor() else 'Cliente' }}.
+  </p>
+
   <div class="card shadow">
     <div class="card-body">
       {% if form_erro %}
@@ -22,6 +27,12 @@
 
       <form method="POST" action="{{ url_for('agendamento_routes.criar_agendamento') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if current_user.is_professor() %}
+          <input type="hidden" name="professor_id" value="{{ current_user.id }}">
+          <input type="hidden" name="usuario_id" value="{{ current_user.id }}">
+          {% elif current_user.is_cliente() %}
+          <input type="hidden" name="cliente_id" value="{{ current_user.id }}">
+          {% endif %}
         <div class="row">
           <!-- Coluna 1: Informações do Evento -->
           <div class="col-md-6">

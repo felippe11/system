@@ -1138,7 +1138,8 @@ class HorarioVisitacao(db.Model):
 
 
 class AgendamentoVisita(db.Model):
-    """Agendamento realizado por um professor para uma turma."""
+
+    """Agendamento de visita feito por um professor, opcionalmente vinculado a um cliente."""
 
     __tablename__ = "agendamento_visita"
 
@@ -1146,7 +1147,12 @@ class AgendamentoVisita(db.Model):
     horario_id = db.Column(
         db.Integer, db.ForeignKey("horario_visitacao.id"), nullable=False
     )
+
     professor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+
+    cliente_id = db.Column(
+        db.Integer, db.ForeignKey("cliente.id"), nullable=True
+    )
 
     # Informações da escola e turma
     escola_nome = db.Column(db.String(200), nullable=False)
@@ -1161,8 +1167,8 @@ class AgendamentoVisita(db.Model):
     data_agendamento = db.Column(db.DateTime, default=datetime.utcnow)
     data_cancelamento = db.Column(db.DateTime, nullable=True)
     status = db.Column(
-        db.String(20), default="confirmado"
-    )  # confirmado, cancelado, realizado
+        db.String(20), default="pendente"
+    )  # pendente, confirmado, cancelado, realizado
     checkin_realizado = db.Column(db.Boolean, default=False)
     data_checkin = db.Column(db.DateTime, nullable=True)
 
@@ -1175,11 +1181,16 @@ class AgendamentoVisita(db.Model):
     )  # IDs separados por vírgula
 
     # Relações
+
     horario = db.relationship(
         "HorarioVisitacao", backref=db.backref("agendamentos", lazy=True)
     )
     professor = db.relationship(
         "Usuario", backref=db.backref("agendamentos_visitas", lazy=True)
+
+    )
+    cliente = db.relationship(
+        "Cliente", backref=db.backref("agendamentos_visitas", lazy=True)
     )
 
     def __init__(self, **kwargs):
@@ -1189,7 +1200,13 @@ class AgendamentoVisita(db.Model):
         self.qr_code_token = str(uuid.uuid4())
 
     def __repr__(self):
-        return f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - {self.escola_nome}>"
+
+        cliente_nome = self.cliente.nome if self.cliente else "sem cliente"
+        return (
+            f"<AgendamentoVisita {self.id} - Prof. {self.professor.nome} - "
+            f"{self.escola_nome} ({cliente_nome})>"
+        )
+
 
 
 class AlunoVisitante(db.Model):
