@@ -73,25 +73,19 @@
                             </div>
                           </td>
                           <td class="text-center">
-                            <button class="btn btn-sm btn-primary" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#editarHorarioModal" 
-                                    data-horario-id="{{ horario.id }}"
-                                    data-horario-inicio="{{ horario.horario_inicio.strftime('%H:%M') }}"
-                                    data-horario-fim="{{ horario.horario_fim.strftime('%H:%M') }}"
-                                    data-capacidade="{{ horario.capacidade_total }}"
-                                    data-vagas="{{ horario.vagas_disponiveis }}">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar"
+                                    onclick="editarHorario({{ horario.id }}, '{{ horario.horario_inicio.strftime('%H:%M') }}', '{{ horario.horario_fim.strftime('%H:%M') }}', {{ horario.capacidade_total }}, {{ horario.vagas_disponiveis }})">
                               <i class="bi bi-pencil"></i>
                             </button>
-                            
-                            <button class="btn btn-sm btn-danger" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#excluirHorarioModal"
-                                    data-horario-id="{{ horario.id }}"
-                                    data-horario-data="{{ horario.data.strftime('%d/%m/%Y') }}"
-                                    data-horario-inicio="{{ horario.horario_inicio.strftime('%H:%M') }}">
-                              <i class="bi bi-trash"></i>
-                            </button>
+
+                            <form method="POST" action="{{ url_for('agendamento_routes.excluir_horario_agendamento') }}"
+                                  class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir o horário de {{ horario.data.strftime('%d/%m/%Y') }} às {{ horario.horario_inicio.strftime('%H:%M') }}?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="horario_id" value="{{ horario.id }}">
+                                <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                                  <i class="bi bi-trash"></i>
+                                </button>
+                              </form>
                           </td>
                         </tr>
                       {% endfor %}
@@ -117,121 +111,39 @@
   </div>
 </div>
 
-<!-- Modal de Edição de Horário -->
-<div class="modal fade" id="editarHorarioModal" tabindex="-1" aria-labelledby="editarHorarioModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="editarHorarioModalLabel">Editar Horário</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form id="editarHorarioForm" method="POST" action="{{ url_for('agendamento_routes.editar_horario_agendamento') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="modal-body">
-          <input type="hidden" id="horario_id" name="horario_id">
-          
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label for="horario_inicio" class="form-label">Horário de Início:</label>
-              <input type="time" id="horario_inicio" name="horario_inicio" class="form-control" required>
-            </div>
-            <div class="col-md-6">
-              <label for="horario_fim" class="form-label">Horário de Fim:</label>
-              <input type="time" id="horario_fim" name="horario_fim" class="form-control" required>
-            </div>
-          </div>
-          
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label for="capacidade_total" class="form-label">Capacidade Total:</label>
-              <input type="number" id="capacidade_total" name="capacidade_total" class="form-control" min="1" required>
-            </div>
-            <div class="col-md-6">
-              <label for="vagas_disponiveis" class="form-label">Vagas Disponíveis:</label>
-              <input type="number" id="vagas_disponiveis" name="vagas_disponiveis" class="form-control" min="0" required>
-            </div>
-          </div>
-          
-          <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i> Atenção: Alterar as vagas disponíveis pode afetar agendamentos existentes.
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Exclusão de Horário -->
-<div class="modal fade" id="excluirHorarioModal" tabindex="-1" aria-labelledby="excluirHorarioModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="excluirHorarioModalLabel">Confirmar Exclusão</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Tem certeza que deseja excluir o horário de <strong id="horarioData"></strong> às <strong id="horarioInicio"></strong>?</p>
-        <div class="alert alert-danger">
-          <i class="bi bi-exclamation-triangle"></i> Atenção: A exclusão de um horário que já possui agendamentos irá cancelar todos os agendamentos associados!
-        </div>
-      </div>
-      <div class="modal-footer">
-        <form id="excluirHorarioForm" method="POST" action="{{ url_for('agendamento_routes.excluir_horario_agendamento') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <input type="hidden" id="excluir_horario_id" name="horario_id">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+<form id="editarHorarioForm" method="POST" action="{{ url_for('agendamento_routes.editar_horario_agendamento') }}" class="d-none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" id="editarHorarioId" name="horario_id">
+  <input type="hidden" id="editarHorarioInicio" name="horario_inicio">
+  <input type="hidden" id="editarHorarioFim" name="horario_fim">
+  <input type="hidden" id="editarCapacidade" name="capacidade_total">
+  <input type="hidden" id="editarVagas" name="vagas_disponiveis">
+</form>
 
 {% block scripts %}
 <script>
+  function editarHorario(id, inicio, fim, capacidade, vagas) {
+    const novoInicio = prompt('Horário de Início:', inicio);
+    if (novoInicio === null) return;
+    const novoFim = prompt('Horário de Fim:', fim);
+    if (novoFim === null) return;
+    const novaCapacidade = prompt('Capacidade Total:', capacidade);
+    if (novaCapacidade === null) return;
+    const novasVagas = prompt('Vagas Disponíveis:', vagas);
+    if (novasVagas === null) return;
+
+    document.getElementById('editarHorarioId').value = id;
+    document.getElementById('editarHorarioInicio').value = novoInicio;
+    document.getElementById('editarHorarioFim').value = novoFim;
+    document.getElementById('editarCapacidade').value = novaCapacidade;
+    document.getElementById('editarVagas').value = novasVagas;
+    document.getElementById('editarHorarioForm').submit();
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
-    // Configurar modal de edição
-    var editarHorarioModal = document.getElementById('editarHorarioModal');
-    editarHorarioModal.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var horarioId = button.getAttribute('data-horario-id');
-      var horarioInicio = button.getAttribute('data-horario-inicio');
-      var horarioFim = button.getAttribute('data-horario-fim');
-      var capacidade = button.getAttribute('data-capacidade');
-      var vagas = button.getAttribute('data-vagas');
-      
-      var modal = this;
-      modal.querySelector('#horario_id').value = horarioId;
-      modal.querySelector('#horario_inicio').value = horarioInicio;
-      modal.querySelector('#horario_fim').value = horarioFim;
-      modal.querySelector('#capacidade_total').value = capacidade;
-      modal.querySelector('#vagas_disponiveis').value = vagas;
-      
-      // Validação: vagas disponíveis não podem ser maiores que a capacidade total
-      modal.querySelector('#capacidade_total').addEventListener('change', function() {
-        var vagasInput = modal.querySelector('#vagas_disponiveis');
-        if (parseInt(vagasInput.value) > parseInt(this.value)) {
-          vagasInput.value = this.value;
-        }
-        vagasInput.max = this.value;
-      });
-    });
-    
-    // Configurar modal de exclusão
-    var excluirHorarioModal = document.getElementById('excluirHorarioModal');
-    excluirHorarioModal.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var horarioId = button.getAttribute('data-horario-id');
-      var horarioData = button.getAttribute('data-horario-data');
-      var horarioInicio = button.getAttribute('data-horario-inicio');
-      
-      document.getElementById('excluir_horario_id').value = horarioId;
-      document.getElementById('horarioData').textContent = horarioData;
-      document.getElementById('horarioInicio').textContent = horarioInicio;
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(el) {
+      return new bootstrap.Tooltip(el);
     });
   });
 </script>

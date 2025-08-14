@@ -66,12 +66,15 @@
                       <td>{{ sala.descricao }}</td>
                       <td class="text-center">
                         <div class="btn-group">
-                          <a href="{{ url_for('agendamento_routes.editar_sala_visitacao', sala_id=sala.id) }}" class="btn btn-sm btn-warning">
+                          <a href="{{ url_for('agendamento_routes.editar_sala_visitacao', sala_id=sala.id) }}" class="btn btn-sm btn-warning" data-bs-toggle="tooltip" title="Editar">
                             <i class="bi bi-pencil"></i>
                           </a>
-                          <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#excluirSalaModal" data-sala-id="{{ sala.id }}" data-sala-nome="{{ sala.nome }}">
-                            <i class="bi bi-trash"></i>
-                          </button>
+                          <form method="POST" action="{{ url_for('agendamento_routes.excluir_sala_visitacao', sala_id=sala.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir a sala {{ sala.nome }}?');">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger" data-bs-toggle="tooltip" title="Excluir">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
                         </div>
                       </td>
                     </tr>
@@ -99,43 +102,12 @@
   </div>
 </div>
 
-<!-- Modal de Exclusão de Sala -->
-<div class="modal fade" id="excluirSalaModal" tabindex="-1" aria-labelledby="excluirSalaModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title" id="excluirSalaModalLabel">Confirmar Exclusão</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Tem certeza que deseja excluir a sala <strong id="nomeSala"></strong>?</p>
-        <div class="alert alert-warning">
-          <i class="bi bi-exclamation-triangle"></i> A exclusão de uma sala pode afetar agendamentos existentes.
-        </div>
-      </div>
-      <div class="modal-footer">
-        <form id="excluirSalaForm" method="POST" action="">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Configurar modal de exclusão
-    var excluirSalaModal = document.getElementById('excluirSalaModal');
-    excluirSalaModal.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var salaId = button.getAttribute('data-sala-id');
-      var salaNome = button.getAttribute('data-sala-nome');
-      
-      document.getElementById('nomeSala').textContent = salaNome;
-      document.getElementById('excluirSalaForm').action = "{{ url_for('agendamento_routes.excluir_sala_visitacao', sala_id=0) }}".replace('0', salaId);
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(el) {
+      return new bootstrap.Tooltip(el);
     });
   });
 </script>
