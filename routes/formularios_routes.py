@@ -40,6 +40,7 @@ from models import (
     AuditLog,
     Evento,
     ConfiguracaoCliente,
+    RevisorProcess,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -119,6 +120,7 @@ def criar_formulario():
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
         evento_ids = request.form.getlist("eventos")
+        vincular_processo = "vincular_processo" in request.form
 
         # Checkbox marcado => True; ausente => False
         permitir_multiplas = "permitir_multiplas_respostas" in request.form
@@ -147,6 +149,20 @@ def criar_formulario():
 
         db.session.add(novo_formulario)
         db.session.commit()
+
+        if vincular_processo:
+            processo = RevisorProcess.query.filter_by(
+                cliente_id=current_user.id
+            ).first()
+            if not processo:
+                processo = RevisorProcess(
+                    cliente_id=current_user.id, formulario_id=novo_formulario.id
+                )
+                db.session.add(processo)
+            else:
+                processo.formulario_id = novo_formulario.id
+            db.session.commit()
+
         flash("Formulário criado com sucesso!", "success")
         return redirect(url_for("formularios_routes.listar_formularios"))
 
