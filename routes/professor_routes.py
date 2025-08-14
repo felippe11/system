@@ -233,7 +233,7 @@ def adicionar_alunos_agendamento(agendamento_id):
         redirect_dest = url_for('agendamento_routes.meus_agendamentos')
     else:  # cliente
         pertence = agendamento.cliente_id == current_user.id
-        redirect_dest = url_for('dashboard_routes.dashboard')
+        redirect_dest = url_for('agendamento_routes.meus_agendamentos_cliente')
 
     if not pertence:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
