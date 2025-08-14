@@ -1,0 +1,80 @@
+<!-- Template: cliente/meus_agendamentos.html -->
+{% extends 'base.html' %}
+
+{% block title %}Meus Agendamentos{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4 border-bottom pb-2">Meus Agendamentos</h2>
+
+    {% if agendamentos %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Evento</th>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Professor</th>
+                    <th>Escola</th>
+                    <th>Turma</th>
+                    <th>Alunos</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agendamento in agendamentos %}
+                {% set horario = agendamento.horario %}
+                <tr class="
+                    {% if agendamento.status == 'cancelado' %}table-danger{% endif %}
+                    {% if agendamento.status == 'realizado' %}table-success{% endif %}
+                    {% if horario.data and horario.data < hoje and agendamento.status == 'confirmado' %}
+                        table-warning{% endif %}">
+                    <td>{{ horario.evento.nome }}</td>
+                    <td>{{ horario.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
+                    <td>{{ agendamento.professor.nome if agendamento.professor else '-' }}</td>
+                    <td>{{ agendamento.escola_nome }}</td>
+                    <td>{{ agendamento.turma }}</td>
+                    <td>{{ agendamento.quantidade_alunos }}</td>
+                    <td>
+                        {% if agendamento.status == 'pendente' %}
+                            <span class="badge rounded-pill bg-warning text-dark">Pendente</span>
+                        {% elif agendamento.status == 'confirmado' %}
+                            <span class="badge rounded-pill bg-primary">Confirmado</span>
+                        {% elif agendamento.status == 'cancelado' %}
+                            <span class="badge rounded-pill bg-danger">Cancelado</span>
+                        {% elif agendamento.status == 'realizado' %}
+                            <span class="badge rounded-pill bg-success">Realizado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap justify-content-center gap-1">
+                            <a href="{{ url_for('agendamento_routes.detalhes_agendamento',
+                                                 agendamento_id=agendamento.id) }}"
+                               class="btn btn-sm btn-outline-info" title="Detalhes">
+                                <i class="fas fa-info-circle me-1"></i>Detalhes
+                            </a>
+                            {% if agendamento.status in ['pendente', 'confirmado'] %}
+                            <a href="{{ url_for('agendamento_routes.cancelar_agendamento_cliente',
+                                                 agendamento_id=agendamento.id) }}"
+                               class="btn btn-sm btn-outline-danger" title="Cancelar">
+                                <i class="fas fa-times me-1"></i>Cancelar
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>Não há agendamentos para exibir.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
