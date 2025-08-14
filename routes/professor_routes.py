@@ -218,11 +218,17 @@ def criar_agendamento_professor(horario_id):
 
 
 @routes.route('/professor/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
+@routes.route(
+    '/participante/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST']
+)
 @login_required
 def adicionar_alunos_agendamento(agendamento_id):
-    # Professores e clientes podem acessar
-    if current_user.tipo not in ('professor', 'cliente'):
-        flash('Acesso negado! Esta área é exclusiva para professores e clientes.', 'danger')
+    """Permite adicionar alunos a um agendamento."""
+    # Professores, clientes e participantes podem acessar
+    tipos_permitidos = {'professor', 'cliente', 'participante'}
+    if current_user.tipo not in tipos_permitidos:
+        msg = 'Acesso negado! Esta área é exclusiva para professores, clientes e participantes.'
+        flash(msg, 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
@@ -231,6 +237,9 @@ def adicionar_alunos_agendamento(agendamento_id):
     if current_user.tipo == 'professor':
         pertence = agendamento.professor_id == current_user.id
         redirect_dest = url_for('agendamento_routes.meus_agendamentos')
+    elif current_user.tipo == 'participante':
+        pertence = agendamento.professor_id == current_user.id
+        redirect_dest = url_for('agendamento_routes.meus_agendamentos_participante')
     else:  # cliente
         pertence = agendamento.cliente_id == current_user.id
         redirect_dest = url_for('agendamento_routes.meus_agendamentos_cliente')
@@ -282,20 +291,28 @@ def adicionar_alunos_agendamento(agendamento_id):
 
 
 @routes.route('/professor/remover_aluno/<int:aluno_id>', methods=['POST'])
+@routes.route('/participante/remover_aluno/<int:aluno_id>', methods=['POST'])
 @login_required
 def remover_aluno_agendamento(aluno_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Remove um aluno de um agendamento."""
+    # Professores e participantes podem acessar
+    if current_user.tipo not in ('professor', 'participante'):
+        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
+        flash(msg, 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
     aluno = AlunoVisitante.query.get_or_404(aluno_id)
     agendamento = aluno.agendamento
-    
-    # Verificar se o agendamento pertence ao professor
-    if agendamento.professor_id != current_user.id:
+
+    # Verificar se o agendamento pertence ao usuário
+    pertence = agendamento.professor_id == current_user.id
+    if current_user.tipo == 'professor':
+        redirect_dest = url_for('agendamento_routes.meus_agendamentos')
+    else:
+        redirect_dest = url_for('agendamento_routes.meus_agendamentos_participante')
+    if not pertence:
         flash('Acesso negado! Este aluno não pertence a um agendamento seu.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        return redirect(redirect_dest)
     
     try:
         db.session.delete(aluno)
