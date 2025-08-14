@@ -37,34 +37,31 @@ def app():
         e2 = Evento(cliente_id=c2.id, nome='E2', inscricao_gratuita=True, publico=True)
         db.session.add_all([e1, e2])
         db.session.commit()
-        db.session.add(
-            RevisorProcess(
-                cliente_id=c1.id,
-                formulario_id=f1.id,
-                num_etapas=1,
-                availability_start=date.today() - timedelta(days=1),
-                availability_end=date.today() + timedelta(days=1),
-                exibir_para_participantes=True,
-            )
+        proc1 = RevisorProcess(
+            cliente_id=c1.id,
+            formulario_id=f1.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=1),
+            availability_end=date.today() + timedelta(days=1),
+            exibir_para_participantes=True,
+            eventos=[e1],
         )
-        db.session.add(
-            RevisorProcess(
-                cliente_id=c2.id,
-                formulario_id=f2.id,
-                num_etapas=1,
-                availability_start=date.today() - timedelta(days=3),
-                availability_end=date.today() - timedelta(days=1),
-                exibir_para_participantes=True,
-            )
+        proc2 = RevisorProcess(
+            cliente_id=c2.id,
+            formulario_id=f2.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=3),
+            availability_end=date.today() - timedelta(days=1),
+            exibir_para_participantes=True,
+            eventos=[e2],
         )
-        db.session.add(
-            RevisorProcess(
-                cliente_id=c1.id,
-                formulario_id=f1.id,
-                num_etapas=1,
-                exibir_para_participantes=False,
-            )
+        proc3 = RevisorProcess(
+            cliente_id=c1.id,
+            formulario_id=f1.id,
+            num_etapas=1,
+            exibir_para_participantes=False,
         )
+        db.session.add_all([proc1, proc2, proc3])
         db.session.commit()
     yield app
 

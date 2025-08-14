@@ -49,7 +49,10 @@
                     <label for="eventos" class="form-label fw-medium">Eventos Relacionados</label>
                     <select id="eventos" name="eventos" class="form-select" multiple>
                         {% for ev in eventos %}
-                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                            <option value="{{ ev.id }}"
+                                {% if ev.id|string in request.form.getlist('eventos') %}selected{% endif %}>
+                                {{ ev.nome }}
+                            </option>
                         {% endfor %}
                     </select>
                     <div class="form-text">Segure Ctrl para selecionar vários eventos</div>
