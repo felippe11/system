@@ -227,7 +227,6 @@ def integrar_notificacoes():
             
             if agendamento:
                 # Enviar notificações
-                NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
                 NotificacaoAgendamento.notificar_cliente_novo_agendamento(agendamento)
         
         return response
@@ -2830,11 +2829,14 @@ def atualizar_status_agendamento(agendamento_id):
     if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado']:
         return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado' ou 'realizado'"}), 400
     
+
     status_anterior = agendamento.status
+
 
     # Atualizar o status
     if novo_status:
         agendamento.status = novo_status
+
 
         if novo_status == 'cancelado':
             if status_anterior != 'cancelado':
@@ -2847,6 +2849,7 @@ def atualizar_status_agendamento(agendamento_id):
 
             if not agendamento.data_cancelamento:
                 agendamento.data_cancelamento = datetime.utcnow()
+
     
     # Verificar se houve alteração no check-in
     if 'checkin_realizado' in dados:
@@ -2869,6 +2872,9 @@ def atualizar_status_agendamento(agendamento_id):
     try:
         # Salvar as alterações no banco de dados
         db.session.commit()
+
+        if enviar_confirmacao:
+            NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
 
         if request.is_json or request.method == 'PUT':
             resposta = {
