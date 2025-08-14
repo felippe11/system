@@ -1,3 +1,6 @@
+Aqui está o arquivo resolvido (sem marcadores de conflito) unificando os dois lados e mantendo os stubs, os dois testes e o setup completo do banco:
+
+```python
 import os
 import sys
 import types
@@ -5,10 +8,11 @@ from datetime import date, time
 
 import pytest
 from werkzeug.security import generate_password_hash
+from flask import template_rendered
 
-# --- Stubs de módulos externos ---
+# --- Stubs de módulos externos (evitam dependências reais nos testes) ---
 utils_stub = types.ModuleType('utils')
-taxa_service = types.ModuleType('utils.taxa_service')
+taxa_service = types.ModuleModuleType('utils.taxa_service') if hasattr(types, 'ModuleModuleType') else types.ModuleType('utils.taxa_service')
 taxa_service.calcular_taxa_cliente = lambda *a, **k: {
     'taxa_aplicada': 0,
     'usando_taxa_diferenciada': False
@@ -97,6 +101,7 @@ reportlab_platypus.Spacer = object
 sys.modules.setdefault('reportlab.lib.styles', types.ModuleType('reportlab.lib.styles'))
 sys.modules['reportlab.lib.styles'].getSampleStyleSheet = lambda: None
 
+# Variáveis de ambiente mínimas para create_app
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
 os.environ.setdefault('SECRET_KEY', 'test')
@@ -108,7 +113,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, Evento, HorarioVisitacao
+from models import Usuario, Cliente, Evento, HorarioVisitacao, AgendamentoVisita
 
 
 @pytest.fixture
@@ -117,14 +122,23 @@ def app():
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
-    with app.app_context():
-        db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
-        db.session.add(cliente)
-        db.session.commit()
 
-        Usuario(
-            id=cliente.id,
+    with app.app_context():
+        # Garante banco limpo
+        db.drop_all()
+        db.create_all()
+
+        # Cliente e usuário (para login)
+        cliente = Cliente(
+            nome='Cli',
+            email='cli@test',
+            senha=generate_password_hash('123'),
+        )
+        db.session.add(cliente)
+        db.session.flush()  # precisamos do cliente.id
+
+        usuario = Usuario(
+            id=cliente.id,  # mantém o vínculo 1-1 se o app espera isso
             nome='CliUser',
             cpf='1',
             email='cli@test',
@@ -132,13 +146,26 @@ def app():
             formacao='x',
             tipo='cliente'
         )
+        db.session.add(usuario)
         db.session.commit()
 
-        evento1 = Evento(cliente_id=cliente.id, nome='Evento1')
-        evento2 = Evento(cliente_id=cliente.id, nome='Evento2')
+        # Eventos
+        evento1 = Evento(
+            cliente_id=cliente.id,
+            nome='Evento1',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
+        evento2 = Evento(
+            cliente_id=cliente.id,
+            nome='Evento2',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
         db.session.add_all([evento1, evento2])
-        db.session.commit()
+        db.session.flush()
 
+        # Horários (datas distintas para testar filtro por período)
         h1 = HorarioVisitacao(
             evento_id=evento1.id,
             data=date(2024, 1, 10),
@@ -156,8 +183,44 @@ def app():
             vagas_disponiveis=30,
         )
         db.session.add_all([h1, h2])
+        db.session.flush()
+
+        # Agendamentos associados ao evento1/h1 para alimentar 'estatisticas'
+        ag1 = AgendamentoVisita(
+            horario_id=h1.id,
+            professor_id=None,
+            escola_nome='Esc1',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=10,
+            status='confirmado',
+        )
+        ag2 = AgendamentoVisita(
+            horario_id=h1.id,
+            professor_id=None,
+            escola_nome='Esc2',
+            turma='T2',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=15,
+            status='realizado',
+        )
+        ag3 = AgendamentoVisita(
+            horario_id=h1.id,
+            professor_id=None,
+            escola_nome='Esc3',
+            turma='T3',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='cancelado',
+        )
+        db.session.add_all([ag1, ag2, ag3])
         db.session.commit()
+
     yield app
+
+    # Teardown
+    with app.app_context():
+        db.drop_all()
 
 
 @pytest.fixture
@@ -165,13 +228,53 @@ def client(app):
     return app.test_client()
 
 
-def login(client):
-    return client.post('/login', data={'email': 'cli@test', 'senha': '123'})
+def login(client, email='cli@test', senha='123'):
+    return client.post('/login', data={'email': email, 'senha': senha})
+
+
+def test_relatorio_geral_agendamentos(app, client):
+    login(client)
+    captured = []
+
+    def capture(sender, template, context, **extra):
+        captured.append(context)
+
+    with template_rendered.connected_to(capture, app):
+        resp = client.get('/relatorio_geral_agendamentos')
+
+    assert resp.status_code == 200
+    assert captured, "Nenhum contexto de template capturado"
+
+    context = captured[0]
+    assert 'estatisticas' in context, "Contexto não contém 'estatisticas'"
+    estatisticas = context['estatisticas']
+
+    with app.app_context():
+        evento1 = Evento.query.filter_by(nome='Evento1').first()
+        evento2 = Evento.query.filter_by(nome='Evento2').first()
+
+    # Evento1 tem 3 agendamentos: confirmado(10), realizado(15), cancelado(5)
+    assert estatisticas[evento1.id]['confirmados'] == 1
+    assert estatisticas[evento1.id]['realizados'] == 1
+    assert estatisticas[evento1.id]['cancelados'] == 1
+    assert estatisticas[evento1.id]['visitantes'] == 25
+    assert estatisticas[evento1.id]['total'] == 3
+
+    # Evento2 sem agendamentos
+    assert estatisticas[evento2.id]['confirmados'] == 0
+    assert estatisticas[evento2.id]['realizados'] == 0
+    assert estatisticas[evento2.id]['cancelados'] == 0
+    assert estatisticas[evento2.id]['visitantes'] == 0
+    assert estatisticas[evento2.id]['total'] == 0
 
 
 def test_relatorio_geral_agendamentos_filters_by_date(client):
     login(client)
     resp = client.get('/relatorio_geral_agendamentos?data_inicio=2024-01-01&data_fim=2024-01-31')
     assert resp.status_code == 200
+    # Em jan/2024 só existe Evento1
     assert b'Evento1' in resp.data
     assert b'Evento2' not in resp.data
+```
+
+Se quiser, eu também preparo um patch (`git apply`) com esse conteúdo.
