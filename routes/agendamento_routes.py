@@ -3734,6 +3734,35 @@ def meus_agendamentos_participante():
     )
 
 
+@agendamento_routes.route('/cliente/meus_agendamentos')
+@login_required
+def meus_agendamentos_cliente():
+    """Lista agendamentos do cliente logado."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    status = request.args.get('status')
+
+    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id)
+    if status:
+        query = query.filter(AgendamentoVisita.status == status)
+
+    agendamentos = query.join(
+        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+    ).order_by(
+        HorarioVisitacao.data,
+        HorarioVisitacao.horario_inicio
+    ).all()
+
+    return render_template(
+        'cliente/meus_agendamentos.html',
+        agendamentos=agendamentos,
+        status_filtro=status,
+        today=date.today,
+        hoje=date.today()
+    )
+
 @agendamento_routes.route('/professor/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def cancelar_agendamento_professor(agendamento_id):
@@ -3768,7 +3797,9 @@ def cancelar_agendamento_professor(agendamento_id):
     if config:
         # Calcular prazo limite para cancelamento
         data_hora_visita = datetime.combine(horario.data, horario.horario_inicio)
-        prazo_limite = data_hora_visita - timedelta(hours=config.prazo_cancelamento)
+        prazo_limite = data_hora_visita - timedelta(
+            hours=config.prazo_cancelamento
+        )
         
         # Verificar se está dentro do prazo
         if datetime.utcnow() > prazo_limite:
@@ -3851,6 +3882,67 @@ def cancelar_agendamento_participante(agendamento_id):
     )
 
 
+@agendamento_routes.route('/cliente/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def cancelar_agendamento_cliente(agendamento_id):
+    """Permite que o cliente cancele um agendamento."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(
+            url_for('agendamento_routes.meus_agendamentos_cliente')
+        )
+
+    if agendamento.status == 'cancelado':
+        flash('Este agendamento já foi cancelado!', 'warning')
+        return redirect(
+            url_for('agendamento_routes.meus_agendamentos_cliente')
+        )
+
+    if agendamento.status == 'realizado':
+        flash('Este agendamento já foi realizado e não pode ser cancelado!', 'warning')
+        return redirect(
+            url_for('agendamento_routes.meus_agendamentos_cliente')
+        )
+
+    horario = agendamento.horario
+    config = ConfiguracaoAgendamento.query.filter_by(
+        evento_id=horario.evento_id
+    ).first()
+    data_hora_visita = datetime.combine(horario.data, horario.horario_inicio)
+    prazo_limite = None
+    if config:
+        prazo_limite = data_hora_visita - timedelta(
+            hours=config.prazo_cancelamento
+        )
+        if datetime.utcnow() > prazo_limite:
+            flash('Cancelamento fora do prazo estabelecido!', 'warning')
+
+    if request.method == 'POST':
+        horario.vagas_disponiveis += agendamento.quantidade_alunos
+        agendamento.status = 'cancelado'
+        agendamento.data_cancelamento = datetime.utcnow()
+        try:
+            db.session.commit()
+            flash('Agendamento cancelado com sucesso!', 'success')
+            return redirect(
+                url_for('agendamento_routes.meus_agendamentos_cliente')
+            )
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
+
+    return render_template(
+        'cliente/cancelar_agendamento.html',
+        agendamento=agendamento,
+        horario=horario,
+        prazo_limite=prazo_limite
+    )
 
 
 @agendamento_routes.route('/presenca_aluno/<int:aluno_id>', methods=['POST'])
