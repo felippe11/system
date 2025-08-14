@@ -2519,7 +2519,7 @@ def exportar_agendamentos_pdf():
             agendamento.escola_nome,
             agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
-            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            f"{agendamento.horario.horario_inicio} - {agendamento.horario.horario_fim}",
             agendamento.turma,
             agendamento.status.capitalize(),
         ])
