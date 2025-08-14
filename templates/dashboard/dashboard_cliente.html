@@ -1569,6 +1569,57 @@
         {% endfor %}
       </tbody>
     </table>
+    <h5 class="fw-bold mt-4">Sorteio de Trabalhos</h5>
+    <div class="row g-2 mb-3">
+      <div class="col-md">
+        <input id="filtroRevisorCampo" class="form-control"
+               placeholder="Campo revisor">
+      </div>
+      <div class="col-md">
+        <input id="filtroRevisorValor" class="form-control"
+               placeholder="Valor revisor">
+      </div>
+      <div class="col-md">
+        <input id="filtroSubCampo" class="form-control"
+               placeholder="Campo trabalho">
+      </div>
+      <div class="col-md">
+        <input id="filtroSubValor" class="form-control"
+               placeholder="Valor trabalho">
+      </div>
+      <div class="col-md-auto">
+        <button id="btnSorteioFiltros" class="btn btn-primary w-100">
+          Sortear
+        </button>
+      </div>
+    </div>
+    <div id="resultadoSorteio" class="text-muted"></div>
+    <script>
+      const btnSorteio = document.getElementById('btnSorteioFiltros');
+      btnSorteio.addEventListener('click', () => {
+        const filters = { reviewer: {}, submission: {} };
+        const rKey = document.getElementById('filtroRevisorCampo').value;
+        const rVal = document.getElementById('filtroRevisorValor').value;
+        const sKey = document.getElementById('filtroSubCampo').value;
+        const sVal = document.getElementById('filtroSubValor').value;
+        if (rKey && rVal) filters.reviewer[rKey] = rVal;
+        if (sKey && sVal) filters.submission[sKey] = sVal;
+        fetch('/assign_by_filters', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filters }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            const div = document.getElementById('resultadoSorteio');
+            if (data.success) {
+              div.textContent = `Atribuições criadas: ${data.assignments}`;
+            } else {
+              div.textContent = data.message || 'Erro no sorteio';
+            }
+          });
+      });
+    </script>
   </div>
   <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
