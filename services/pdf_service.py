@@ -1,6 +1,7 @@
 from flask_login import login_required
 from utils import external_url, determinar_turno
 from utils.dia_semana import dia_semana
+from fpdf import FPDF
 import logging
 import psutil
 import os
