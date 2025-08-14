@@ -46,7 +46,7 @@ from services.pdf_service import gerar_pdf_respostas
 logger = logging.getLogger(__name__)
 
 # Extensões permitidas (use com os.path.splitext, que retorna com ponto na extensão)
-ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".gif"}
+ALLOWED_UPLOAD_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".doc", ".docx"}
 
 formularios_routes = Blueprint(
     "formularios_routes", __name__, template_folder="../templates/formulario"
