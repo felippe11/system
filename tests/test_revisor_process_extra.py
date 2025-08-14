@@ -45,6 +45,7 @@ def app():
                 availability_start=date.today() - timedelta(days=1),
                 availability_end=date.today() + timedelta(days=1),
                 exibir_para_participantes=True,
+                evento_id=e1.id,
             )
         )
         db.session.add(
@@ -55,6 +56,7 @@ def app():
                 availability_start=date.today() - timedelta(days=3),
                 availability_end=date.today() - timedelta(days=1),
                 exibir_para_participantes=True,
+                evento_id=e2.id,
             )
         )
         db.session.add(
@@ -63,6 +65,7 @@ def app():
                 formulario_id=f1.id,
                 num_etapas=1,
                 exibir_para_participantes=False,
+                evento_id=e1.id,
             )
         )
         db.session.commit()

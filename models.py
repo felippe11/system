@@ -1788,6 +1788,7 @@ class RevisorProcess(db.Model):
     formulario_id = db.Column(
         db.Integer, db.ForeignKey("formularios.id"), nullable=True
     )
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
 
     # Controle de disponibilidade do processo
@@ -1799,6 +1800,9 @@ class RevisorProcess(db.Model):
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
     )
     formulario = db.relationship("Formulario")
+    evento = db.relationship(
+        "Evento", backref=db.backref("revisor_processes", lazy=True)
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
