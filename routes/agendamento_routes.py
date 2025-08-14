@@ -3580,34 +3580,38 @@ def importar_alunos():
 @agendamento_routes.route('/cancelar_agendamento/<int:agendamento_id>', methods=['POST'])
 @login_required
 def cancelar_agendamento(agendamento_id):
-    # Busca o agendamento no banco de dados
+    """Cancela um agendamento existente."""
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    # Verifica se o usuário é o professor que fez o agendamento ou admin
-    if (
-        current_user.tipo != 'admin'
-        and agendamento.professor_id
-        and current_user.id != agendamento.professor_id
-    ):
-        flash("Você não tem permissão para cancelar este agendamento!", "danger")
+    evento = agendamento.horario.evento
+    is_admin = current_user.tipo == 'admin'
+    is_professor = agendamento.professor_id == current_user.id
+    is_cliente = (
+        current_user.tipo == 'cliente' and evento.cliente_id == current_user.id
+    )
+
+    if not any((is_admin, is_professor, is_cliente)):
+        flash('Você não tem permissão para cancelar este agendamento.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
-    # Atualiza o status do agendamento para cancelado e a data do cancelamento
     agendamento.status = 'cancelado'
     agendamento.data_cancelamento = datetime.utcnow()
 
-    # Atualiza a capacidade do horário, devolvendo as vagas
     horario = agendamento.horario
     horario.vagas_disponiveis += agendamento.quantidade_alunos
 
     try:
         db.session.commit()
-        flash("Agendamento cancelado com sucesso!", "success")
+        flash('Agendamento cancelado com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f"Erro ao cancelar agendamento: {str(e)}", "danger")
+        flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
 
-    return redirect(url_for('dashboard_professor.dashboard_professor' if current_user.tipo == 'participante' else 'dashboard_routes.dashboard'))
+    if current_user.tipo == 'professor':
+        return redirect(url_for('dashboard_professor.dashboard_professor'))
+    if current_user.tipo == 'cliente':
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @agendamento_routes.route('/eventos_disponiveis', methods=['GET'])
 @login_required
