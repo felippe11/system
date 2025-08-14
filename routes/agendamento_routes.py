@@ -2824,13 +2824,23 @@ def atualizar_status_agendamento(agendamento_id):
     if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado']:
         return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado' ou 'realizado'"}), 400
     
+    status_anterior = agendamento.status
+
     # Atualizar o status
     if novo_status:
         agendamento.status = novo_status
-        
-        # Se for cancelado, registrar a data de cancelamento
-        if novo_status == 'cancelado' and not agendamento.data_cancelamento:
-            agendamento.data_cancelamento = datetime.utcnow()
+
+        if novo_status == 'cancelado':
+            if status_anterior != 'cancelado':
+                horario = agendamento.horario
+                if horario:
+                    horario.vagas_disponiveis = min(
+                        horario.vagas_disponiveis + agendamento.quantidade_alunos,
+                        horario.capacidade_total,
+                    )
+
+            if not agendamento.data_cancelamento:
+                agendamento.data_cancelamento = datetime.utcnow()
     
     # Verificar se houve alteração no check-in
     if 'checkin_realizado' in dados:
