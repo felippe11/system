@@ -1,0 +1,58 @@
+<!-- Template: cliente/cancelar_agendamento.html -->
+{% extends 'base.html' %}
+
+{% block title %}Cancelar Agendamento{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Cancelar Agendamento</h2>
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <p><strong>Evento:</strong> {{ horario.evento.nome }}</p>
+            <p><strong>Data:</strong> {{ horario.data.strftime('%d/%m/%Y') }}</p>
+            <p><strong>Horário:</strong> {{ horario.horario_inicio.strftime('%H:%M') }}
+                às {{ horario.horario_fim.strftime('%H:%M') }}</p>
+            <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+            <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+            <p><strong>Quantidade de Alunos:</strong>
+                {{ agendamento.quantidade_alunos }}</p>
+        </div>
+    </div>
+
+    {% if prazo_limite %}
+    <div class="alert alert-info">
+        O prazo limite para cancelamento é
+        {{ prazo_limite.strftime('%d/%m/%Y %H:%M') }}.
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle"></i>
+            Confirmação de Cancelamento
+        </div>
+        <div class="card-body">
+            <p>Tem certeza que deseja cancelar este agendamento?
+               Esta ação não pode ser desfeita.</p>
+            <form method="POST"
+                  action="{{ url_for('agendamento_routes.cancelar_agendamento_cliente',
+                                    agendamento_id=agendamento.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times"></i> Confirmar Cancelamento
+                    </button>
+                    <a href="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}"
+                       class="btn btn-secondary">
+                        <i class="fas fa-chevron-left"></i> Voltar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
