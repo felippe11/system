@@ -33,6 +33,7 @@ from .dashboard_routes import dashboard_routes
 @dashboard_routes.route('/dashboard_cliente')
 @login_required
 def dashboard_cliente():
+    """Renderiza o painel do cliente com estatísticas e candidaturas."""
     if current_user.tipo != 'cliente':
         return redirect(url_for('dashboard_routes.dashboard'))
 
@@ -237,6 +238,16 @@ def dashboard_cliente():
         .all()
     )
 
+    revisor_candidaturas_aprovadas = (
+        RevisorCandidatura.query
+        .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
+        .filter(
+            RevisorProcess.cliente_id == current_user.id,
+            RevisorCandidatura.status == 'aprovado',
+        )
+        .all()
+    )
+
     return render_template(
         'dashboard_cliente.html',
         usuario=current_user,
@@ -262,7 +273,8 @@ def dashboard_cliente():
         finance_data=finance_data,
         valor_caixa=valor_caixa,
         reviewer_apps=reviewer_apps,
-        revisor_candidaturas=revisor_candidaturas
+        revisor_candidaturas=revisor_candidaturas,
+        revisor_candidaturas_aprovadas=revisor_candidaturas_aprovadas,
     )
     
 def obter_configuracao_do_cliente(cliente_id):
