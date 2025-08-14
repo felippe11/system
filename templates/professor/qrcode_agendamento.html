@@ -1,5 +1,6 @@
 
 <!-- Template: professor/qrcode_agendamento.html -->
+<!-- Acesso para professores, participantes, clientes e usuários -->
 {% extends 'base.html' %}
 
 {% block title %}QR Code do Agendamento{% endblock %}
@@ -36,7 +37,7 @@
         </div>
         <div class="card-body text-center">
             <div class="mb-3">
-                <img src="{{ url_for('routes.gerar_qrcode_token', token=token) }}" class="img-fluid" alt="QR Code">
+                <img src="{{ url_for('routes.gerar_qrcode_token_route', token=token) }}" class="img-fluid" alt="QR Code">
             </div>
             
             <div class="alert alert-info">
@@ -50,21 +51,6 @@
             <i class="fas fa-print"></i> Imprimir Comprovante
         </a>
         <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
-            <i class="fas fa-chevron-left"></i> Voltar
-        </a>
-    </div>
-</div>
-{% endblock %} else %}
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle"></i> Não há eventos disponíveis para agendamento no momento.
-        </div>
-    {% endif %}
-    
-    <div class="mt-4">
-        <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-primary">
-            <i class="fas fa-calendar-alt"></i> Meus Agendamentos
-        </a>
-        <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
     </div>
