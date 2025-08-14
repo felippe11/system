@@ -2519,7 +2519,7 @@ def exportar_agendamentos_pdf():
             agendamento.escola_nome,
             agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
-            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            f"{agendamento.horario.horario_inicio} - {agendamento.horario.horario_fim}",
             agendamento.turma,
             agendamento.status.capitalize(),
         ])
@@ -3580,34 +3580,38 @@ def importar_alunos():
 @agendamento_routes.route('/cancelar_agendamento/<int:agendamento_id>', methods=['POST'])
 @login_required
 def cancelar_agendamento(agendamento_id):
-    # Busca o agendamento no banco de dados
+    """Cancela um agendamento existente."""
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    # Verifica se o usuário é o professor que fez o agendamento ou admin
-    if (
-        current_user.tipo != 'admin'
-        and agendamento.professor_id
-        and current_user.id != agendamento.professor_id
-    ):
-        flash("Você não tem permissão para cancelar este agendamento!", "danger")
+    evento = agendamento.horario.evento
+    is_admin = current_user.tipo == 'admin'
+    is_professor = agendamento.professor_id == current_user.id
+    is_cliente = (
+        current_user.tipo == 'cliente' and evento.cliente_id == current_user.id
+    )
+
+    if not any((is_admin, is_professor, is_cliente)):
+        flash('Você não tem permissão para cancelar este agendamento.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
-    # Atualiza o status do agendamento para cancelado e a data do cancelamento
     agendamento.status = 'cancelado'
     agendamento.data_cancelamento = datetime.utcnow()
 
-    # Atualiza a capacidade do horário, devolvendo as vagas
     horario = agendamento.horario
     horario.vagas_disponiveis += agendamento.quantidade_alunos
 
     try:
         db.session.commit()
-        flash("Agendamento cancelado com sucesso!", "success")
+        flash('Agendamento cancelado com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f"Erro ao cancelar agendamento: {str(e)}", "danger")
+        flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
 
-    return redirect(url_for('dashboard_professor.dashboard_professor' if current_user.tipo == 'participante' else 'dashboard_routes.dashboard'))
+    if current_user.tipo == 'professor':
+        return redirect(url_for('dashboard_professor.dashboard_professor'))
+    if current_user.tipo == 'cliente':
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for('dashboard_routes.dashboard'))
 
 @agendamento_routes.route('/eventos_disponiveis', methods=['GET'])
 @login_required
@@ -3634,9 +3638,10 @@ def listar_eventos_disponiveis():
 @agendamento_routes.route('/detalhes_agendamento/<int:agendamento_id>')
 @login_required
 def detalhes_agendamento(agendamento_id):
-    if current_user.tipo != 'professor':
+    """Exibe os detalhes de um agendamento para professores ou clientes."""
+    if current_user.tipo not in ("professor", "cliente"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_professor.dashboard_professor'))
+        return redirect(url_for("dashboard_professor.dashboard_professor"))
 
     # Buscar o agendamento no banco de dados
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
@@ -3645,15 +3650,21 @@ def detalhes_agendamento(agendamento_id):
     horario = HorarioVisitacao.query.get(agendamento.horario_id)
     evento = Evento.query.get(horario.evento_id) if horario else None
 
+    # Validação extra para clientes: o agendamento deve pertencer a um evento do cliente
+    if current_user.tipo == "cliente":
+        if not evento or evento.cliente_id != current_user.id:
+            flash("Acesso negado!", "danger")
+            return redirect(url_for("dashboard_cliente.dashboard_cliente"))
+
     # Buscar lista de alunos vinculados ao agendamento
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
 
     return render_template(
-        'professor/detalhes_agendamento.html',
+        "professor/detalhes_agendamento.html",
         agendamento=agendamento,
         horario=horario,
         evento=evento,
-        alunos=alunos
+        alunos=alunos,
     )
 
 @agendamento_routes.route('/professor/meus_agendamentos')
