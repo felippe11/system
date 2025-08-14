@@ -42,6 +42,7 @@ from models import (
     Submission,
     Usuario,
 )
+from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
 
 # Extensões permitidas para upload de arquivos
@@ -291,6 +292,16 @@ def approve(cand_id: int):
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
 
     db.session.commit()
+    if cand.email:
+        send_email_task.delay(
+            cand.email,
+            cand.nome or "",
+            "Processo Seletivo de Revisores",
+            "Atualização de status da candidatura",
+            "",
+            template_path="emails/revisor_status_change.html",
+            template_context={"status": cand.status, "codigo": cand.codigo},
+        )
     msg = "Candidatura aprovada"
     if request.is_json:
         resp = {"success": True}
@@ -312,6 +323,16 @@ def reject(cand_id: int):
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     cand.status = "rejeitado"
     db.session.commit()
+    if cand.email:
+        send_email_task.delay(
+            cand.email,
+            cand.nome or "",
+            "Processo Seletivo de Revisores",
+            "Atualização de status da candidatura",
+            "",
+            template_path="emails/revisor_status_change.html",
+            template_context={"status": cand.status, "codigo": cand.codigo},
+        )
     if request.is_json:
         return jsonify({"success": True})
     return redirect(url_for("dashboard_routes.dashboard_cliente"))
@@ -328,6 +349,16 @@ def advance(cand_id: int):
     if cand.etapa_atual < cand.process.num_etapas:
         cand.etapa_atual += 1
     db.session.commit()
+    if cand.email:
+        send_email_task.delay(
+            cand.email,
+            cand.nome or "",
+            "Processo Seletivo de Revisores",
+            "Atualização de status da candidatura",
+            "",
+            template_path="emails/revisor_status_change.html",
+            template_context={"status": cand.status, "codigo": cand.codigo},
+        )
     if request.is_json:
         return jsonify({"success": True, "etapa_atual": cand.etapa_atual})
     return redirect(url_for("dashboard_routes.dashboard_cliente"))
