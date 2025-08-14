@@ -117,6 +117,7 @@ def assign_by_filters_logic(
     prazo_dias: int,
 ):
     """Core logic used to assign submissions to reviewers."""
+
     candidaturas = (
         RevisorCandidatura.query.join(
             RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
@@ -131,7 +132,7 @@ def assign_by_filters_logic(
     reviewers = []
     for cand in candidaturas:
         respostas = cand.respostas or {}
-        if all(respostas.get(c) == v for c, v in filtros.items()):
+        if all(respostas.get(c) == v for c, v in filtros_revisor.items()):
             reviewer = Usuario.query.filter_by(email=cand.email).first()
             if reviewer:
                 reviewers.append(reviewer)
@@ -140,7 +141,14 @@ def assign_by_filters_logic(
         return {"success": False, "message": "Nenhum revisor encontrado"}, 400
 
     submissions = Submission.query.all()
-    elegiveis = [s for s in submissions if len(s.assignments) < max_por_sub]
+    elegiveis = [
+        s
+        for s in submissions
+        if len(s.assignments) < max_por_sub
+        and all(
+            (s.attributes or {}).get(c) == v for c, v in filtros_sub.items()
+        )
+    ]
     if not elegiveis:
         return {"success": False, "message": "Nenhuma submissão elegível"}, 400
 

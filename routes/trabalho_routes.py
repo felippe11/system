@@ -3,9 +3,18 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from utils.mfa import mfa_required
 from extensions import db
-from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento, Usuario
+from models import (
+    TrabalhoCientifico,
+    AvaliacaoTrabalho,
+    AuditLog,
+    Evento,
+    Usuario,
+    WorkMetadata,
+)
 import uuid
 import os
+import pandas as pd
+import json
 
 trabalho_routes = Blueprint(
     "trabalho_routes",
@@ -97,6 +106,43 @@ def submeter_trabalho():
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
 
     return render_template("submeter_trabalho.html")
+
+
+# ──────────────────────────────── IMPORTAÇÃO ──────────────────────────────── #
+@trabalho_routes.route("/importar_trabalhos", methods=["GET", "POST"])
+@login_required
+@mfa_required
+def importar_trabalhos():
+    """Importa planilha de trabalhos e salva metadados selecionados."""
+    if request.method == "POST":
+        if request.form.get("data") and request.form.getlist("columns"):
+            rows = json.loads(request.form["data"])
+            cols = request.form.getlist("columns")
+            for row in rows:
+                data = {col: row.get(col) for col in cols}
+                db.session.add(WorkMetadata(data=data))
+            db.session.commit()
+            flash("Metadados importados com sucesso.", "success")
+            return redirect(url_for("trabalho_routes.importar_trabalhos"))
+
+        arquivo = request.files.get("arquivo")
+        if not arquivo:
+            flash("Nenhum arquivo enviado.", "warning")
+            return redirect(url_for("trabalho_routes.importar_trabalhos"))
+        try:
+            df = pd.read_excel(arquivo)
+        except Exception:
+            flash("Erro ao ler planilha.", "danger")
+            return redirect(url_for("trabalho_routes.importar_trabalhos"))
+        cols = df.columns.tolist()
+        data_json = df.to_dict(orient="records")
+        return render_template(
+            "selecionar_colunas_trabalho.html",
+            columns=cols,
+            data_json=json.dumps(data_json),
+        )
+
+    return render_template("importar_trabalhos.html")
 
 
 # ──────────────────────────────── AVALIAÇÃO ──────────────────────────────── #

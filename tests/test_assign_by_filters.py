@@ -66,7 +66,12 @@ def app():
                 tipo='revisor',
             )
         )
-        db.session.add(Submission(title='S1', code_hash='h'))
+        db.session.add(
+            Submission(title='S1', code_hash='h', attributes={'area': 'bio'})
+        )
+        db.session.add(
+            Submission(title='S2', code_hash='h2', attributes={'area': 'chem'})
+        )
         db.session.commit()
     yield app
 
@@ -84,7 +89,13 @@ def test_assign_by_filters(client, app):
     login(client, 'cli@example.com', '123')
     resp = client.post(
         '/assign_by_filters',
-        json={'filters': {'area': 'bio'}, 'limit': 1},
+        json={
+            'filters': {
+                'reviewer': {'area': 'bio'},
+                'submission': {'area': 'bio'},
+            },
+            'limit': 1,
+        },
     )
     assert resp.status_code == 200
     data = resp.get_json()
@@ -92,6 +103,8 @@ def test_assign_by_filters(client, app):
     with app.app_context():
         assert Assignment.query.count() == 1
         ass = Assignment.query.first()
+        sub = Submission.query.get(ass.submission_id)
+        assert sub.attributes.get('area') == 'bio'
         assert AuditLog.query.filter_by(
             submission_id=ass.submission_id, event_type='assignment'
         ).count() == 1
