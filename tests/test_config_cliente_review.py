@@ -1,4 +1,8 @@
 import pytest
+import os
+os.environ.setdefault('SECRET_KEY', 'test')
+os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
+os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
 from werkzeug.security import generate_password_hash
 from config import Config
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
@@ -44,6 +48,8 @@ def test_update_review_settings(client, app):
     assert resp.status_code == 200
     resp = client.post('/set_prazo_parecer_dias', json={'value': 10})
     assert resp.status_code == 200
+    resp = client.post('/set_max_trabalhos_revisor', json={'value': 7})
+    assert resp.status_code == 200
 
     with app.app_context():
         config = ConfiguracaoCliente.query.first()
@@ -52,6 +58,7 @@ def test_update_review_settings(client, app):
         assert config.num_revisores_max == 3
         assert config.prazo_parecer_dias == 10
         assert config.allowed_file_types == 'pdf'
+        assert config.max_trabalhos_por_revisor == 7
 
 
 def test_dashboard_defaults(client, app):
@@ -62,4 +69,5 @@ def test_dashboard_defaults(client, app):
     assert b'id="inputRevisoresMin" value="1"' in resp.data
     assert b'id="inputRevisoresMax" value="2"' in resp.data
     assert b'id="inputPrazoParecer" value="14"' in resp.data
+    assert b'id="inputMaxTrabalhosRevisor" value="5"' in resp.data
     assert b'id="inputAllowedFiles"' in resp.data

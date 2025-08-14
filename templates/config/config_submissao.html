@@ -57,6 +57,10 @@
             <label class="form-label mb-0">Prazo (dias)</label>
             <input type="number" min="1" class="form-control" id="inputPrazoParecer" value="{{ config_cliente.prazo_parecer_dias }}" data-update-url="{{ url_for('config_cliente_routes.set_prazo_parecer_dias') }}">
           </div>
+          <div class="col">
+            <label class="form-label mb-0">Máx. Trab./Revisor</label>
+            <input type="number" min="1" class="form-control" id="inputMaxTrabalhosRevisor" value="{{ config_cliente.max_trabalhos_por_revisor }}" data-update-url="{{ url_for('config_cliente_routes.set_max_trabalhos_revisor') }}">
+          </div>
         </div>
         {% if eventos %}
         <div class="mt-3">
