@@ -3634,9 +3634,10 @@ def listar_eventos_disponiveis():
 @agendamento_routes.route('/detalhes_agendamento/<int:agendamento_id>')
 @login_required
 def detalhes_agendamento(agendamento_id):
-    if current_user.tipo != 'professor':
+    """Exibe os detalhes de um agendamento para professores ou clientes."""
+    if current_user.tipo not in ("professor", "cliente"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_professor.dashboard_professor'))
+        return redirect(url_for("dashboard_professor.dashboard_professor"))
 
     # Buscar o agendamento no banco de dados
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
@@ -3645,15 +3646,21 @@ def detalhes_agendamento(agendamento_id):
     horario = HorarioVisitacao.query.get(agendamento.horario_id)
     evento = Evento.query.get(horario.evento_id) if horario else None
 
+    # Validação extra para clientes: o agendamento deve pertencer a um evento do cliente
+    if current_user.tipo == "cliente":
+        if not evento or evento.cliente_id != current_user.id:
+            flash("Acesso negado!", "danger")
+            return redirect(url_for("dashboard_cliente.dashboard_cliente"))
+
     # Buscar lista de alunos vinculados ao agendamento
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
 
     return render_template(
-        'professor/detalhes_agendamento.html',
+        "professor/detalhes_agendamento.html",
         agendamento=agendamento,
         horario=horario,
         evento=evento,
-        alunos=alunos
+        alunos=alunos,
     )
 
 @agendamento_routes.route('/professor/meus_agendamentos')
