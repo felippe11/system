@@ -1145,6 +1145,9 @@ def criar_agendamento():
                 if not horario:
                     form_erro = "Horário inválido."
                     flash(form_erro, "danger")
+                elif horario.evento_id != int(evento_id):
+                    form_erro = "Horário não pertence ao evento selecionado."
+                    flash(form_erro, "danger")
                 else:
                     quantidade = int(quantidade_alunos)
                     if quantidade > horario.vagas_disponiveis:
@@ -1172,6 +1175,7 @@ def criar_agendamento():
                                 professor_id = usuario.id
 
                         agendamento = AgendamentoVisita(
+                            horario_id=horario.id,
                             professor_id=professor_id,
                             cliente_id=cliente_id,
                             escola_nome=escola_nome,
