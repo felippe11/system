@@ -1688,6 +1688,7 @@ class Submission(db.Model):
     area_id = db.Column(db.Integer, nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    attributes = db.Column(db.JSON, default=dict)  # metadados importados
 
     # relationships
     author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))

@@ -117,7 +117,13 @@ def assign_by_filters():
         return redirect(url_for("dashboard_routes.dashboard"))
 
     data = request.get_json() or {}
-    filtros: dict = data.get("filters", {})
+    filtros_raw: dict = data.get("filters", {})
+    if "reviewer" in filtros_raw or "submission" in filtros_raw:
+        filtros_revisor = filtros_raw.get("reviewer", {})
+        filtros_sub = filtros_raw.get("submission", {})
+    else:
+        filtros_revisor = filtros_raw
+        filtros_sub = {}
     limite = data.get("limit")
 
     usuario = Usuario.query.get(getattr(current_user, "id", None))
@@ -147,7 +153,7 @@ def assign_by_filters():
     reviewers = []
     for cand in candidaturas:
         respostas = cand.respostas or {}
-        if all(respostas.get(c) == v for c, v in filtros.items()):
+        if all(respostas.get(c) == v for c, v in filtros_revisor.items()):
             reviewer = Usuario.query.filter_by(email=cand.email).first()
             if reviewer:
                 reviewers.append(reviewer)
@@ -156,7 +162,14 @@ def assign_by_filters():
         return {"success": False, "message": "Nenhum revisor encontrado"}, 400
 
     submissions = Submission.query.all()
-    elegiveis = [s for s in submissions if len(s.assignments) < max_por_sub]
+    elegiveis = [
+        s
+        for s in submissions
+        if len(s.assignments) < max_por_sub
+        and all(
+            (s.attributes or {}).get(c) == v for c, v in filtros_sub.items()
+        )
+    ]
     if not elegiveis:
         return {"success": False, "message": "Nenhuma submissão elegível"}, 400
 
