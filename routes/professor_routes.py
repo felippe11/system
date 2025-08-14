@@ -429,18 +429,34 @@ def confirmacao_agendamento_professor(agendamento_id):
 @routes.route('/professor/imprimir_agendamento/<int:agendamento_id>')
 @login_required
 def imprimir_agendamento_professor(agendamento_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Gera o comprovante de um agendamento."""
+
+    # Permitir acesso a professores, participantes, clientes e usuários
+    tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
+    if current_user.tipo not in tipos_permitidos:
+        flash(
+            'Acesso negado! Esta área é exclusiva para professores, '
+            'participantes, clientes e usuários.',
+            'danger',
+        )
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-    
-    # Verificar se o agendamento pertence ao professor
-    if agendamento.professor_id != current_user.id:
+
+    # Validar propriedade conforme o tipo do usuário
+    if current_user.tipo == 'professor' and agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
-    
+    if (
+        current_user.tipo == 'cliente'
+        and agendamento.horario.evento.cliente_id != current_user.id
+    ):
+        flash(
+            'Acesso negado! Este agendamento não pertence ao seu evento.',
+            'danger',
+        )
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
     horario = agendamento.horario
     evento = horario.evento
     
@@ -469,18 +485,34 @@ def imprimir_agendamento_professor(agendamento_id):
 @routes.route('/professor/qrcode_agendamento/<int:agendamento_id>')
 @login_required
 def qrcode_agendamento_professor(agendamento_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    """Exibe o QR Code de um agendamento."""
+
+    # Permitir acesso a professores, participantes, clientes e usuários
+    tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
+    if current_user.tipo not in tipos_permitidos:
+        flash(
+            'Acesso negado! Esta área é exclusiva para professores, '
+            'participantes, clientes e usuários.',
+            'danger',
+        )
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-    
-    # Verificar se o agendamento pertence ao professor
-    if agendamento.professor_id != current_user.id:
+
+    # Validar propriedade conforme o tipo do usuário
+    if current_user.tipo == 'professor' and agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
-    
+    if (
+        current_user.tipo == 'cliente'
+        and agendamento.horario.evento.cliente_id != current_user.id
+    ):
+        flash(
+            'Acesso negado! Este agendamento não pertence ao seu evento.',
+            'danger',
+        )
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
     # Página que exibe o QR Code para check-in
     return render_template(
         'professor/qrcode_agendamento.html',
