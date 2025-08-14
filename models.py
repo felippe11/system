@@ -804,7 +804,7 @@ class ConfiguracaoCliente(db.Model):
     num_revisores_min = db.Column(db.Integer, default=1)
     num_revisores_max = db.Column(db.Integer, default=2)
     prazo_parecer_dias = db.Column(db.Integer, default=14)
-    max_trabalhos_por_revisor = db.Column(db.Integer, default=5)
+    max_trabalhos_por_revisor = db.Column(db.Integer, default=5, nullable=True)
 
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
