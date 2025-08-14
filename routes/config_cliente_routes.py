@@ -583,6 +583,32 @@ def set_prazo_parecer_dias():
     return jsonify({"success": True, "value": config_cliente.prazo_parecer_dias})
 
 
+@config_cliente_routes.route("/set_max_trabalhos_revisor", methods=["POST"])
+@login_required
+def set_max_trabalhos_revisor():
+    """Define o número máximo de trabalhos por revisor."""
+    if current_user.tipo != 'cliente':
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    try:
+        value = int(data.get("value"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(
+        cliente_id=current_user.id
+    ).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.max_trabalhos_por_revisor = value
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.max_trabalhos_por_revisor})
+
+
 @config_cliente_routes.route("/set_allowed_file_types", methods=["POST"])
 @login_required
 def set_allowed_file_types():

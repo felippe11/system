@@ -279,6 +279,23 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  const inputMaxTrab = document.getElementById('inputMaxTrabalhosRevisor');
+  if (inputMaxTrab) {
+    inputMaxTrab.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify({ value: this.value })
+      });
+    });
+  }
+
   const inputAllowed = document.getElementById('inputAllowedFiles');
   if (inputAllowed) {
     inputAllowed.addEventListener('change', function() {
