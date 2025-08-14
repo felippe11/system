@@ -153,119 +153,38 @@
                       {% endif %}
                       
                       {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
-                        <button type="button"
-                                class="btn btn-outline-danger"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalCancelar{{ agendamento.id }}"
-                                data-bs-tooltip="tooltip"
-                                title="Cancelar">
-                          <i class="bi bi-x-circle"></i>
-                        </button>
+                        <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}"
+                              method="post" class="d-inline" onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="status" value="cancelado">
+                          <button type="submit" class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Cancelar">
+                            <i class="bi bi-x-circle"></i>
+                          </button>
+                        </form>
                       {% endif %}
 
                       {% if current_user.is_admin or current_user.id == agendamento.professor_id or
                             (current_user.tipo == 'cliente' and current_user.id == agendamento.horario.evento.cliente_id) %}
-                        <button type="button"
-                                class="btn btn-outline-success"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalConfirmar{{ agendamento.id }}"
-                                data-bs-tooltip="tooltip"
-                                title="Confirmar">
-                          <i class="bi bi-check-circle"></i>
-                        </button>
+                        <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}"
+                              method="post" class="d-inline" onsubmit="return confirm('Deseja confirmar este agendamento?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="status" value="confirmado">
+                          <button type="submit" class="btn btn-outline-success" data-bs-toggle="tooltip" title="Confirmar">
+                            <i class="bi bi-check-circle"></i>
+                          </button>
+                        </form>
                       {% endif %}
 
                       {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
-                        <button type="button"
-                                class="btn btn-outline-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalRealizado{{ agendamento.id }}"
-                                data-bs-tooltip="tooltip"
-                                title="Marcar como Realizado">
-                          <i class="bi bi-calendar-check"></i>
-                        </button>
+                        <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}"
+                              method="post" class="d-inline" onsubmit="return confirm('Confirma que este agendamento foi realizado?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="status" value="realizado">
+                          <button type="submit" class="btn btn-outline-primary" data-bs-toggle="tooltip" title="Marcar como Realizado">
+                            <i class="bi bi-calendar-check"></i>
+                          </button>
+                        </form>
                       {% endif %}
-                    </div>
-                    
-                    <!-- Modal de Cancelamento -->
-                    <div class="modal fade" id="modalCancelar{{ agendamento.id }}" tabindex="-1" aria-hidden="true">
-                      <div class="modal-dialog">
-                        <div class="modal-content">
-                          <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">Cancelar Agendamento</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                          </div>
-                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
-                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body">
-                              <input type="hidden" name="status" value="cancelado">
-                              <p>Tem certeza que deseja cancelar este agendamento?</p>
-                              <div class="mb-3">
-                                <label for="motivo{{ agendamento.id }}" class="form-label">Motivo do Cancelamento</label>
-                                <textarea class="form-control" id="motivo{{ agendamento.id }}" name="motivo" rows="3" required></textarea>
-                              </div>
-                            </div>
-                            <div class="modal-footer">
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                              <button type="submit" class="btn btn-danger">Confirmar Cancelamento</button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Modal de Confirmação -->
-                    <div class="modal fade" id="modalConfirmar{{ agendamento.id }}" tabindex="-1" aria-hidden="true">
-                      <div class="modal-dialog">
-                        <div class="modal-content">
-                          <div class="modal-header bg-success text-white">
-                            <h5 class="modal-title">Confirmar Agendamento</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                          </div>
-                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
-                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body">
-                              <input type="hidden" name="status" value="confirmado">
-                              <p>Deseja confirmar este agendamento?</p>
-                              <div class="mb-3">
-                                <label for="observacao{{ agendamento.id }}" class="form-label">Observação (opcional)</label>
-                                <textarea class="form-control" id="observacao{{ agendamento.id }}" name="observacao" rows="3"></textarea>
-                              </div>
-                            </div>
-                            <div class="modal-footer">
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                              <button type="submit" class="btn btn-success">Confirmar</button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Modal de Marcar como Realizado -->
-                    <div class="modal fade" id="modalRealizado{{ agendamento.id }}" tabindex="-1" aria-hidden="true">
-                      <div class="modal-dialog">
-                        <div class="modal-content">
-                          <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title">Marcar como Realizado</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                          </div>
-                          <form action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" method="post">
-                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <div class="modal-body">
-                              <input type="hidden" name="status" value="realizado">
-                              <p>Confirma que este agendamento foi realizado?</p>
-                              <div class="mb-3">
-                                <label for="feedback{{ agendamento.id }}" class="form-label">Feedback/Observações</label>
-                                <textarea class="form-control" id="feedback{{ agendamento.id }}" name="feedback" rows="3"></textarea>
-                              </div>
-                            </div>
-                            <div class="modal-footer">
-                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                              <button type="submit" class="btn btn-primary">Confirmar</button>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
                     </div>
                   </td>
                 </tr>
@@ -321,9 +240,9 @@
 <script>
   // Inicializar tooltips do Bootstrap
   document.addEventListener('DOMContentLoaded', function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-tooltip="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl);
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(el) {
+      return new bootstrap.Tooltip(el);
     });
   });
 </script>
