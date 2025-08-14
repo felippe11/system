@@ -336,10 +336,17 @@ def relatorio_geral_agendamentos():
     else:
         data_fim = datetime.utcnow().date()
     
-    # Buscar todos os eventos do cliente no período
-    eventos = Evento.query.filter_by(
-        cliente_id=current_user.id
-    ).all()
+    # Buscar eventos do cliente com horários dentro do período selecionado
+    eventos = (
+        Evento.query.join(HorarioVisitacao)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .distinct()
+        .all()
+    )
     
     # Estatísticas agregadas em uma única consulta
     aggregados = (
