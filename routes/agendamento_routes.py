@@ -394,18 +394,66 @@ def relatorio_geral_agendamentos():
 
     estatisticas = {}
     for evento in eventos:
-        dados = stats_map.get(evento.id)
-        confirmados = dados.confirmados if dados else 0
-        realizados = dados.realizados if dados else 0
-        cancelados = dados.cancelados if dados else 0
-        visitantes = dados.visitantes if dados else 0
+
+        # Contar agendamentos por status
+        confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'confirmado',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
+        
+        realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'realizado',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
+        
+        cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'cancelado',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
+
+        pendentes = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'pendente',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
+        
+        # Total de visitantes
+        visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status.in_(['confirmado', 'realizado']),
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
+        
+        # Guardar estatísticas
+
         estatisticas[evento.id] = {
             'nome': evento.nome,
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
-            'total': confirmados + realizados + cancelados,
-            'visitantes': visitantes,
+
+            'pendentes': pendentes,
+            'total': confirmados + realizados + cancelados + pendentes,
+            'visitantes': visitantes
+
         }
     
     # Gerar PDF com estatísticas

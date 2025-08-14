@@ -52,12 +52,14 @@
                     {% set total_confirmados = 0 %}
                     {% set total_realizados = 0 %}
                     {% set total_cancelados = 0 %}
+                    {% set total_pendentes = 0 %}
                     {% set total_visitantes = 0 %}
                     
                     {% for stats in estatisticas.values() %}
                         {% set total_confirmados = total_confirmados + stats.confirmados %}
                         {% set total_realizados = total_realizados + stats.realizados %}
                         {% set total_cancelados = total_cancelados + stats.cancelados %}
+                        {% set total_pendentes = total_pendentes + stats.pendentes %}
                         {% set total_visitantes = total_visitantes + stats.visitantes %}
                     {% endfor %}
                     
@@ -75,8 +77,12 @@
                             <span class="badge bg-danger rounded-pill">{{ total_cancelados }}</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Pendentes</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ total_pendentes }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Total de Agendamentos</span>
-                            <span class="badge bg-info rounded-pill">{{ total_confirmados + total_realizados + total_cancelados }}</span>
+                            <span class="badge bg-info rounded-pill">{{ total_confirmados + total_realizados + total_cancelados + total_pendentes }}</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Total de Visitantes</span>
@@ -87,11 +93,12 @@
                     <div class="mt-3">
                         <h6>Distribuição de Status</h6>
                         <div class="progress" style="height: 25px;">
-                            {% set total = total_confirmados + total_realizados + total_cancelados %}
+                            {% set total = total_confirmados + total_realizados + total_cancelados + total_pendentes %}
                             {% if total > 0 %}
                                 {% set porcentagem_confirmados = (total_confirmados / total) * 100 %}
                                 {% set porcentagem_realizados = (total_realizados / total) * 100 %}
                                 {% set porcentagem_cancelados = (total_cancelados / total) * 100 %}
+                                {% set porcentagem_pendentes = (total_pendentes / total) * 100 %}
                                 
                                 <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentagem_confirmados }}%;" title="Confirmados: {{ total_confirmados }}">
                                     {{ porcentagem_confirmados|round }}%
@@ -102,16 +109,20 @@
                                 <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentagem_cancelados }}%;" title="Cancelados: {{ total_cancelados }}">
                                     {{ porcentagem_cancelados|round }}%
                                 </div>
+                                <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ porcentagem_pendentes }}%;" title="Pendentes: {{ total_pendentes }}">
+                                    {{ porcentagem_pendentes|round }}%
+                                </div>
                             {% else %}
                                 <div class="progress-bar" role="progressbar" style="width: 0%;">
                                     Sem dados
                                 </div>
                             {% endif %}
                         </div>
-                        <div class="d-flex justify-content-between mt-1 small">
+                        <div class="d-flex justify-content-between mt-1 small flex-wrap">
                             <span class="text-primary">Confirmados</span>
                             <span class="text-success">Realizados</span>
                             <span class="text-danger">Cancelados</span>
+                            <span class="text-warning">Pendentes</span>
                         </div>
                     </div>
                 </div>
@@ -133,6 +144,7 @@
                                         <th class="text-center">Confirmados</th>
                                         <th class="text-center">Realizados</th>
                                         <th class="text-center">Cancelados</th>
+                                        <th class="text-center">Pendentes</th>
                                         <th class="text-center">Visitantes</th>
                                         <th class="text-center">Taxa Conclusão</th>
                                     </tr>
@@ -144,6 +156,7 @@
                                             <td class="text-center">{{ stats.confirmados }}</td>
                                             <td class="text-center">{{ stats.realizados }}</td>
                                             <td class="text-center">{{ stats.cancelados }}</td>
+                                            <td class="text-center">{{ stats.pendentes }}</td>
                                             <td class="text-center">{{ stats.visitantes }}</td>
                                             <td class="text-center">
                                                 {% if stats.confirmados + stats.realizados > 0 %}
@@ -182,8 +195,9 @@
                 <div class="col-md-6">
                     <h5>Análise Geral</h5>
                     <ul>
-                        {% if total_confirmados + total_realizados + total_cancelados > 0 %}
-                            {% set taxa_cancelamento = (total_cancelados / (total_confirmados + total_realizados + total_cancelados)) * 100 %}
+                        {% if total_confirmados + total_realizados + total_cancelados + total_pendentes > 0 %}
+                            {% set total_ag = total_confirmados + total_realizados + total_cancelados + total_pendentes %}
+                            {% set taxa_cancelamento = (total_cancelados / total_ag) * 100 %}
                             <li>
                                 <strong>Taxa de Cancelamento:</strong> {{ taxa_cancelamento|round(1) }}%
                                 {% if taxa_cancelamento > 30 %}
@@ -211,7 +225,7 @@
                 <div class="col-md-6">
                     <h5>Recomendações</h5>
                     <ul>
-                        {% if total_confirmados + total_realizados + total_cancelados > 0 %}
+                        {% if total_confirmados + total_realizados + total_cancelados + total_pendentes > 0 %}
                             {% if taxa_cancelamento > 30 %}
                                 <li>Considere revisar suas políticas de cancelamento para reduzir a taxa de desistência.</li>
                                 <li>Envie lembretes com mais frequência para professores com agendamentos confirmados.</li>
