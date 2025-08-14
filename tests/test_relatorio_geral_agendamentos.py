@@ -1,7 +1,9 @@
+
 import os
 import sys
 import types
 from datetime import date, time
+
 import contextlib
 
 import pytest
@@ -47,6 +49,7 @@ rl_plat.Image = object
 sys.modules.setdefault('fpdf', types.ModuleType('fpdf'))
 sys.modules['fpdf'].FPDF = object
 
+
 pdf_service_stub = types.ModuleType('services.pdf_service')
 pdf_service_stub.gerar_pdf_comprovante_agendamento = lambda *a, **k: ''
 pdf_service_stub.gerar_pdf_respostas = lambda *a, **k: None
@@ -67,6 +70,7 @@ pdf_service_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
 pdf_service_stub.gerar_revisor_details_pdf = lambda *a, **k: None
 sys.modules.setdefault('services.pdf_service', pdf_service_stub)
 
+
 os.environ.setdefault('SECRET_KEY', 'test')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
@@ -82,11 +86,13 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 )
 
 
+
 @pytest.fixture
 def app():
     app = create_app()
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
+
     with app.app_context():
         db.create_all()
         cliente = Cliente(
@@ -147,6 +153,7 @@ def app():
     yield app
 
 
+
 @pytest.fixture
 def client(app):
     return app.test_client()
@@ -184,3 +191,4 @@ def test_counts_all_statuses(client, app):
     assert stats['realizados'] == 1
     assert stats['cancelados'] == 1
     assert stats['total'] == 4
+
