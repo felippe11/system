@@ -1186,12 +1186,14 @@ def criar_agendamento():
                         try:
                             db.session.commit()
                             flash("Agendamento criado com sucesso!", "success")
-                            return redirect(
-                                url_for(
-                                    'routes.adicionar_alunos_agendamento',
-                                    agendamento_id=agendamento.id,
+                            if current_user.tipo in ('professor', 'cliente'):
+                                return redirect(
+                                    url_for(
+                                        'routes.adicionar_alunos_agendamento',
+                                        agendamento_id=agendamento.id,
+                                    )
                                 )
-                            )
+                            return redirect(url_for('dashboard_routes.dashboard'))
                         except Exception as e:
                             db.session.rollback()
                             form_erro = f"Erro ao salvar agendamento: {str(e)}"
