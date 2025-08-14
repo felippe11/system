@@ -328,6 +328,106 @@ def test_participante_agendamento_flow(app):
         assert agendamento.professor_id == participante.id
 
 
+def test_participante_manage_alunos(app):
+    client = app.test_client()
+
+    login(client, 'part@test', 'p123')
+
+    with app.app_context():
+        participante = Usuario.query.filter_by(email='part@test').first()
+        horario = HorarioVisitacao.query.first()
+        horario_id = horario.id
+
+    resp = client.post(
+        f'/participante/criar_agendamento/{horario_id}',
+        data={
+            'escola_nome': 'Escola P',
+            'escola_codigo_inep': '',
+            'turma': 'T1',
+            'nivel_ensino': 'Fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.filter_by(
+            professor_id=participante.id
+        ).first()
+        agendamento_id = agendamento.id
+
+    resp = client.post(
+        f'/participante/adicionar_alunos/{agendamento_id}',
+        data={'nome': 'Aluno 1', 'cpf': '12345678901'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        aluno = AlunoVisitante.query.filter_by(agendamento_id=agendamento_id).first()
+        assert aluno is not None
+        aluno_id = aluno.id
+
+    resp = client.post(
+        f'/participante/remover_aluno/{aluno_id}',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        assert (
+            AlunoVisitante.query.filter_by(agendamento_id=agendamento_id).count()
+            == 0
+        )
+
+
+def test_participante_cannot_manage_alunos_de_outro(app):
+    client = app.test_client()
+
+    login(client, 'part@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola X',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=1,
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.post(
+        f'/participante/adicionar_alunos/{agendamento_id}',
+        data={'nome': 'Intruso', 'cpf': ''},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/participante/meus_agendamentos' in resp.headers['Location']
+    with app.app_context():
+        assert AlunoVisitante.query.count() == 0
+
+    with app.app_context():
+        aluno = AlunoVisitante(agendamento_id=agendamento_id, nome='Aluno')
+        db.session.add(aluno)
+        db.session.commit()
+        aluno_id = aluno.id
+
+    resp = client.post(
+        f'/participante/remover_aluno/{aluno_id}',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/participante/meus_agendamentos' in resp.headers['Location']
+    with app.app_context():
+        assert AlunoVisitante.query.get(aluno_id) is not None
+
+
 def test_editar_agendamento_shows_current_when_full(app):
     client = app.test_client()
 
