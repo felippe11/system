@@ -3734,6 +3734,36 @@ def meus_agendamentos_participante():
     )
 
 
+@agendamento_routes.route('/cliente/meus_agendamentos')
+@login_required
+def meus_agendamentos_cliente():
+    """Lista agendamentos do cliente logado."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    status = request.args.get('status')
+
+    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id)
+    if status:
+        query = query.filter(AgendamentoVisita.status == status)
+
+    agendamentos = query.join(
+        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+    ).order_by(
+        HorarioVisitacao.data,
+        HorarioVisitacao.horario_inicio
+    ).all()
+
+    return render_template(
+        'cliente/meus_agendamentos.html',
+        agendamentos=agendamentos,
+        status_filtro=status,
+        today=date.today,
+        hoje=date.today()
+    )
+
+
 @agendamento_routes.route('/professor/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def cancelar_agendamento_professor(agendamento_id):
