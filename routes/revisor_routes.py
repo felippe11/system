@@ -215,8 +215,7 @@ def select_event():
 
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
-        .join(Cliente, Cliente.id == Evento.cliente_id)
-        .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
+        .join(RevisorProcess, RevisorProcess.evento_id == Evento.id)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
@@ -386,13 +385,19 @@ def eligible_events():
 
     eventos = (
         Evento.query
-        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        .join(RevisorProcess, RevisorProcess.evento_id == Evento.id)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
             RevisorProcess.exibir_para_participantes.is_(True),
-            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= hoje),
-            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= hoje),
+            or_(
+                RevisorProcess.availability_start.is_(None),
+                RevisorProcess.availability_start <= hoje,
+            ),
+            or_(
+                RevisorProcess.availability_end.is_(None),
+                RevisorProcess.availability_end >= hoje,
+            ),
         )
         .distinct()
         .all()
