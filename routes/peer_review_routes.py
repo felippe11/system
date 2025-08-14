@@ -14,10 +14,13 @@ from models import (
     AuditLog,
     Evento,
     ReviewerApplication,
+    RevisorCandidatura,
+    RevisorProcess,
 )
 
 import uuid
 from datetime import datetime, timedelta
+import random
 
 
 peer_review_routes = Blueprint(
@@ -100,6 +103,107 @@ def assign_reviews():
 
     db.session.commit()
     return {"success": True}
+
+
+# ---------------------------------------------------------------------------
+# Atribuição por filtros para revisores aprovados
+# ---------------------------------------------------------------------------
+@peer_review_routes.route("/assign_by_filters", methods=["POST"])
+@login_required
+def assign_by_filters():
+    """Distribui submissões a revisores aprovados com base em filtros."""
+    if current_user.tipo not in ("cliente", "admin", "superadmin"):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    data = request.get_json() or {}
+    filtros: dict = data.get("filters", {})
+    limite = data.get("limit")
+
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None
+    cliente_id = getattr(current_user, "id", None)
+
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if limite is None and config:
+        limite = config.max_trabalhos_por_revisor
+    if limite is None:
+        limite = 1
+
+    max_por_sub = config.num_revisores_max if config else 1
+    prazo_dias = config.prazo_parecer_dias if config else 14
+
+    candidaturas = (
+        RevisorCandidatura.query.join(
+            RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
+        )
+        .filter(
+            RevisorProcess.cliente_id == cliente_id,
+            RevisorCandidatura.status == "aprovado",
+        )
+        .all()
+    )
+
+    reviewers = []
+    for cand in candidaturas:
+        respostas = cand.respostas or {}
+        if all(respostas.get(c) == v for c, v in filtros.items()):
+            reviewer = Usuario.query.filter_by(email=cand.email).first()
+            if reviewer:
+                reviewers.append(reviewer)
+
+    if not reviewers:
+        return {"success": False, "message": "Nenhum revisor encontrado"}, 400
+
+    submissions = Submission.query.all()
+    elegiveis = [s for s in submissions if len(s.assignments) < max_por_sub]
+    if not elegiveis:
+        return {"success": False, "message": "Nenhuma submissão elegível"}, 400
+
+    random.shuffle(reviewers)
+    random.shuffle(elegiveis)
+
+    contagem_revisor = {
+        r.id: Assignment.query.filter_by(reviewer_id=r.id).count() for r in reviewers
+    }
+    contagem_sub = {s.id: len(s.assignments) for s in elegiveis}
+
+    criados = 0
+    for reviewer in reviewers:
+        while contagem_revisor[reviewer.id] < limite and elegiveis:
+            random.shuffle(elegiveis)
+            atribuido = False
+            for sub in list(elegiveis):
+                existente = Assignment.query.filter_by(
+                    submission_id=sub.id, reviewer_id=reviewer.id
+                ).first()
+                if existente:
+                    continue
+                assignment = Assignment(
+                    submission_id=sub.id,
+                    reviewer_id=reviewer.id,
+                    deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+                )
+                db.session.add(assignment)
+                db.session.add(
+                    AuditLog(
+                        user_id=uid,
+                        submission_id=sub.id,
+                        event_type="assignment",
+                    )
+                )
+                criados += 1
+                contagem_revisor[reviewer.id] += 1
+                contagem_sub[sub.id] += 1
+                if contagem_sub[sub.id] >= max_por_sub:
+                    elegiveis.remove(sub)
+                atribuido = True
+                break
+            if not atribuido:
+                break
+
+    db.session.commit()
+    return {"success": True, "assignments": criados}
 
 
 # ---------------------------------------------------------------------------
