@@ -24,6 +24,7 @@ from models import (
     HorarioVisitacao,
     AgendamentoVisita,
 )
+from routes import agendamento_routes
 
 
 @pytest.fixture
@@ -112,7 +113,12 @@ def get_agendamento(app):
         return AgendamentoVisita.query.first()
 
 
-def test_professor_pode_confirmar_agendamento(client, app):
+def test_professor_pode_confirmar_agendamento(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
     login(client, 'prof@test', 'p123')
     agendamento = get_agendamento(app)
     resp = client.put(
@@ -123,7 +129,12 @@ def test_professor_pode_confirmar_agendamento(client, app):
         assert AgendamentoVisita.query.get(agendamento.id).status == 'confirmado'
 
 
-def test_cliente_pode_confirmar_agendamento(client, app):
+def test_cliente_pode_confirmar_agendamento(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
     login(client, 'cli@test', '123')
     agendamento = get_agendamento(app)
     resp = client.put(
@@ -141,3 +152,48 @@ def test_outro_professor_nao_pode_confirmar(client, app):
         f'/atualizar_status/{agendamento.id}', json={'status': 'confirmado'}
     )
     assert resp.status_code == 403
+
+
+def test_email_enviado_quando_confirmado(client, app, monkeypatch):
+    login(client, 'prof@test', 'p123')
+    agendamento = get_agendamento(app)
+
+    enviado = {'chamado': False}
+
+    def fake_enviar_email(ag):
+        enviado['chamado'] = True
+        assert ag.id == agendamento.id
+
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        fake_enviar_email,
+    )
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento.id}', json={'status': 'confirmado'}
+    )
+    assert resp.status_code == 200
+    assert enviado['chamado']
+
+
+def test_email_nao_enviado_para_outros_status(client, app, monkeypatch):
+    login(client, 'prof@test', 'p123')
+    agendamento = get_agendamento(app)
+
+    chamado = {'count': 0}
+
+    def fake_enviar_email(_):
+        chamado['count'] += 1
+
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        fake_enviar_email,
+    )
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento.id}', json={'status': 'cancelado'}
+    )
+    assert resp.status_code == 200
+    assert chamado['count'] == 0
