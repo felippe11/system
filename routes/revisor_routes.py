@@ -45,7 +45,7 @@ from models import (
 from services.pdf_service import gerar_revisor_details_pdf
 
 # Extensões permitidas para upload de arquivos
-ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg'}
+ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
 
 # -----------------------------------------------------------------------------
 # Blueprint

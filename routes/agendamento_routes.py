@@ -322,30 +322,79 @@ def relatorio_geral_agendamentos():
         return redirect(url_for('dashboard_routes.dashboard'))
     
     # Filtros de data
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    
-    if data_inicio:
-        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+    data_inicio_raw = request.args.get('data_inicio')
+    data_fim_raw = request.args.get('data_fim')
+
+    if data_inicio_raw:
+        try:
+            data_inicio = datetime.strptime(data_inicio_raw, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Data inicial inválida. Usando intervalo padrão.', 'danger')
+            data_inicio = datetime.utcnow().date() - timedelta(days=30)
     else:
         # Padrão: último mês
         data_inicio = datetime.utcnow().date() - timedelta(days=30)
-    
-    if data_fim:
-        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+
+    if data_fim_raw:
+        try:
+            data_fim = datetime.strptime(data_fim_raw, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Data final inválida. Usando a data atual.', 'danger')
+            data_fim = datetime.utcnow().date()
     else:
         data_fim = datetime.utcnow().date()
     
-    # Buscar todos os eventos do cliente no período
-    eventos = Evento.query.filter_by(
-        cliente_id=current_user.id
-    ).all()
+    # Buscar eventos do cliente com horários dentro do período selecionado
+    eventos = (
+        Evento.query.join(HorarioVisitacao)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .distinct()
+        .all()
+    )
     
-    # Estatísticas gerais
+    # Estatísticas agregadas em uma única consulta
+    aggregados = (
+        db.session.query(
+            Evento.id.label('evento_id'),
+            func.count(
+                case((AgendamentoVisita.status == 'confirmado', 1))
+            ).label('confirmados'),
+            func.count(
+                case((AgendamentoVisita.status == 'realizado', 1))
+            ).label('realizados'),
+            func.count(
+                case((AgendamentoVisita.status == 'cancelado', 1))
+            ).label('cancelados'),
+            func.sum(
+                case(
+                    (
+                        AgendamentoVisita.status.in_(['confirmado', 'realizado']),
+                        AgendamentoVisita.quantidade_alunos,
+                    ),
+                    else_=0,
+                )
+            ).label('visitantes'),
+        )
+        .join(HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id)
+        .join(AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .group_by(Evento.id)
+        .all()
+    )
+
+    stats_map = {row.evento_id: row for row in aggregados}
+
     estatisticas = {}
-    
-    # Para cada evento, coletar estatísticas
     for evento in eventos:
+
         # Contar agendamentos por status
         confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
@@ -373,6 +422,15 @@ def relatorio_geral_agendamentos():
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim
         ).scalar() or 0
+
+        pendentes = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'pendente',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
         
         # Total de visitantes
         visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
@@ -385,13 +443,17 @@ def relatorio_geral_agendamentos():
         ).scalar() or 0
         
         # Guardar estatísticas
+
         estatisticas[evento.id] = {
             'nome': evento.nome,
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
-            'total': confirmados + realizados + cancelados,
+
+            'pendentes': pendentes,
+            'total': confirmados + realizados + cancelados + pendentes,
             'visitantes': visitantes
+
         }
     
     # Gerar PDF com estatísticas
@@ -770,7 +832,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     
 # Rotas para a aba de agendamentos no dashboard
 from datetime import datetime, timedelta
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func, or_, case
 from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
 
 # Importe os modelos necessários
