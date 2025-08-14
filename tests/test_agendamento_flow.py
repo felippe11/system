@@ -215,9 +215,10 @@ def test_fluxo_agendamento(app):
     with app.app_context():
         evento = Evento.query.first()
         horario = HorarioVisitacao.query.first()
+        horario_id = horario.id
 
     resp = client.post(
-        f'/professor/criar_agendamento/{horario.id}',
+        f'/professor/criar_agendamento/{horario_id}',
         data={
             'escola_nome': 'Escola X',
             'escola_codigo_inep': '',
@@ -246,6 +247,7 @@ def test_fluxo_agendamento(app):
         assert agendamento.professor_id is not None
         assert agendamento.cliente_id is None
         assert agendamento.status == 'pendente'
+        assert agendamento.horario_id == horario_id
 
 
 def test_cliente_cria_agendamento(app):
@@ -255,9 +257,10 @@ def test_cliente_cria_agendamento(app):
 
     with app.app_context():
         horario = HorarioVisitacao.query.first()
+        horario_id = horario.id
 
     resp = client.post(
-        f'/agendar_visita/{horario.id}',
+        f'/agendar_visita/{horario_id}',
         data={
             'escola_nome': 'Escola C',
             'turma': 'T1',
@@ -274,6 +277,7 @@ def test_cliente_cria_agendamento(app):
         assert agendamento.cliente_id is not None
         assert agendamento.professor_id is None
         assert agendamento.status == 'pendente'
+        assert agendamento.horario_id == horario_id
 
 
 def test_participante_agendamento_flow(app):
@@ -284,9 +288,10 @@ def test_participante_agendamento_flow(app):
     with app.app_context():
         participante = Usuario.query.filter_by(email='part@test').first()
         horario = HorarioVisitacao.query.first()
+        horario_id = horario.id
 
     resp = client.post(
-        f'/participante/criar_agendamento/{horario.id}',
+        f'/participante/criar_agendamento/{horario_id}',
         data={
             'escola_nome': 'Escola P',
             'escola_codigo_inep': '',
@@ -305,6 +310,7 @@ def test_participante_agendamento_flow(app):
             professor_id=participante.id
         ).first()
         assert agendamento is not None
+        assert agendamento.horario_id == horario_id
         agendamento_id = agendamento.id
 
     resp = client.get('/participante/meus_agendamentos')
@@ -427,3 +433,69 @@ def test_editar_agendamento_page_renders(app):
     resp = client.get(f'/editar_agendamento/{agendamento_id}')
     assert resp.status_code == 200
 
+
+def test_cancelamento_restaura_vagas(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        horario.vagas_disponiveis = 5
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento_id}',
+        json={'status': 'cancelado'},
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        horario = HorarioVisitacao.query.first()
+        assert horario.vagas_disponiveis == 10
+
+
+def test_cancelamento_limite_capacidade(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        horario.capacidade_total = 8
+        horario.vagas_disponiveis = 7
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento_id}',
+        json={'status': 'cancelado'},
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        horario = HorarioVisitacao.query.first()
+        assert horario.vagas_disponiveis == 8
