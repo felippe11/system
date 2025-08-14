@@ -108,36 +108,15 @@ def assign_reviews():
 # ---------------------------------------------------------------------------
 # Atribuição por filtros para revisores aprovados
 # ---------------------------------------------------------------------------
-@peer_review_routes.route("/assign_by_filters", methods=["POST"])
-@login_required
-def assign_by_filters():
-    """Distribui submissões a revisores aprovados com base em filtros."""
-    if current_user.tipo not in ("cliente", "admin", "superadmin"):
-        flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
-
-    data = request.get_json() or {}
-    filtros_raw: dict = data.get("filters", {})
-    if "reviewer" in filtros_raw or "submission" in filtros_raw:
-        filtros_revisor = filtros_raw.get("reviewer", {})
-        filtros_sub = filtros_raw.get("submission", {})
-    else:
-        filtros_revisor = filtros_raw
-        filtros_sub = {}
-    limite = data.get("limit")
-
-    usuario = Usuario.query.get(getattr(current_user, "id", None))
-    uid = usuario.id if usuario else None
-    cliente_id = getattr(current_user, "id", None)
-
-    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
-    if limite is None and config:
-        limite = config.max_trabalhos_por_revisor
-    if limite is None:
-        limite = 1
-
-    max_por_sub = config.num_revisores_max if config else 1
-    prazo_dias = config.prazo_parecer_dias if config else 14
+def assign_by_filters_logic(
+    cliente_id: int | None,
+    filtros: dict,
+    limite: int,
+    max_por_sub: int,
+    uid: int | None,
+    prazo_dias: int,
+):
+    """Core logic used to assign submissions to reviewers."""
 
     candidaturas = (
         RevisorCandidatura.query.join(
@@ -182,6 +161,7 @@ def assign_by_filters():
     contagem_sub = {s.id: len(s.assignments) for s in elegiveis}
 
     criados = 0
+    distrib = []
     for reviewer in reviewers:
         while contagem_revisor[reviewer.id] < limite and elegiveis:
             random.shuffle(elegiveis)
@@ -206,6 +186,7 @@ def assign_by_filters():
                     )
                 )
                 criados += 1
+                distrib.append({"submission_id": sub.id, "reviewer_id": reviewer.id})
                 contagem_revisor[reviewer.id] += 1
                 contagem_sub[sub.id] += 1
                 if contagem_sub[sub.id] >= max_por_sub:
@@ -216,7 +197,39 @@ def assign_by_filters():
                 break
 
     db.session.commit()
-    return {"success": True, "assignments": criados}
+    return {"success": True, "assignments": criados, "distribuicoes": distrib}
+
+
+@peer_review_routes.route("/assign_by_filters", methods=["POST"])
+@login_required
+def assign_by_filters():
+    """Distribui submissões a revisores aprovados com base em filtros."""
+    if current_user.tipo not in ("cliente", "admin", "superadmin"):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    data = request.get_json() or {}
+    filtros: dict = data.get("filters", {})
+    limite = data.get("limit")
+    max_por_sub = data.get("max_per_submission")
+
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None
+    cliente_id = getattr(current_user, "id", None)
+
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if limite is None and config:
+        limite = config.max_trabalhos_por_revisor
+    if limite is None:
+        limite = 1
+    if max_por_sub is None and config:
+        max_por_sub = config.num_revisores_max
+    if max_por_sub is None:
+        max_por_sub = 1
+
+    prazo_dias = config.prazo_parecer_dias if config else 14
+    return assign_by_filters_logic(cliente_id, filtros, limite, max_por_sub, uid, prazo_dias)
+
 
 
 # ---------------------------------------------------------------------------
