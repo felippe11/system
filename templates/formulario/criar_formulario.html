@@ -54,6 +54,13 @@
                     </select>
                     <div class="form-text">Segure Ctrl para selecionar vários eventos</div>
                 </div>
+
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" id="vincular_processo" name="vincular_processo">
+                    <label class="form-check-label" for="vincular_processo">
+                        Vincular ao processo seletivo de revisores
+                    </label>
+                </div>
                 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-light me-md-2">
