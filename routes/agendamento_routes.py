@@ -373,6 +373,15 @@ def relatorio_geral_agendamentos():
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim
         ).scalar() or 0
+
+        pendentes = db.session.query(func.count(AgendamentoVisita.id)).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            HorarioVisitacao.evento_id == evento.id,
+            AgendamentoVisita.status == 'pendente',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim
+        ).scalar() or 0
         
         # Total de visitantes
         visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
@@ -390,7 +399,8 @@ def relatorio_geral_agendamentos():
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
-            'total': confirmados + realizados + cancelados,
+            'pendentes': pendentes,
+            'total': confirmados + realizados + cancelados + pendentes,
             'visitantes': visitantes
         }
     
