@@ -3763,6 +3763,7 @@ def meus_agendamentos_cliente():
         hoje=date.today()
     )
 
+
 @agendamento_routes.route('/professor/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def cancelar_agendamento_professor(agendamento_id):
