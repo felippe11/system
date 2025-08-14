@@ -322,17 +322,25 @@ def relatorio_geral_agendamentos():
         return redirect(url_for('dashboard_routes.dashboard'))
     
     # Filtros de data
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    
-    if data_inicio:
-        data_inicio = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+    data_inicio_raw = request.args.get('data_inicio')
+    data_fim_raw = request.args.get('data_fim')
+
+    if data_inicio_raw:
+        try:
+            data_inicio = datetime.strptime(data_inicio_raw, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Data inicial inválida. Usando intervalo padrão.', 'danger')
+            data_inicio = datetime.utcnow().date() - timedelta(days=30)
     else:
         # Padrão: último mês
         data_inicio = datetime.utcnow().date() - timedelta(days=30)
-    
-    if data_fim:
-        data_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+
+    if data_fim_raw:
+        try:
+            data_fim = datetime.strptime(data_fim_raw, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Data final inválida. Usando a data atual.', 'danger')
+            data_fim = datetime.utcnow().date()
     else:
         data_fim = datetime.utcnow().date()
     
