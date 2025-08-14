@@ -427,3 +427,69 @@ def test_editar_agendamento_page_renders(app):
     resp = client.get(f'/editar_agendamento/{agendamento_id}')
     assert resp.status_code == 200
 
+
+def test_cancelamento_restaura_vagas(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        horario.vagas_disponiveis = 5
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento_id}',
+        json={'status': 'cancelado'},
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        horario = HorarioVisitacao.query.first()
+        assert horario.vagas_disponiveis == 10
+
+
+def test_cancelamento_limite_capacidade(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        horario.capacidade_total = 8
+        horario.vagas_disponiveis = 7
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.put(
+        f'/atualizar_status/{agendamento_id}',
+        json={'status': 'cancelado'},
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        horario = HorarioVisitacao.query.first()
+        assert horario.vagas_disponiveis == 8
