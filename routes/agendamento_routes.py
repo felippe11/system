@@ -1144,6 +1144,9 @@ def criar_agendamento():
                 if not horario:
                     form_erro = "Horário inválido."
                     flash(form_erro, "danger")
+                elif horario.evento_id != int(evento_id):
+                    form_erro = "Horário não pertence ao evento selecionado."
+                    flash(form_erro, "danger")
                 else:
                     quantidade = int(quantidade_alunos)
                     if quantidade > horario.vagas_disponiveis:
@@ -1171,6 +1174,7 @@ def criar_agendamento():
                                 professor_id = usuario.id
 
                         agendamento = AgendamentoVisita(
+                            horario_id=horario.id,
                             professor_id=professor_id,
                             cliente_id=cliente_id,
                             escola_nome=escola_nome,
@@ -1185,12 +1189,14 @@ def criar_agendamento():
                         try:
                             db.session.commit()
                             flash("Agendamento criado com sucesso!", "success")
-                            return redirect(
-                                url_for(
-                                    'routes.adicionar_alunos_agendamento',
-                                    agendamento_id=agendamento.id,
+                            if current_user.tipo in ('professor', 'cliente'):
+                                return redirect(
+                                    url_for(
+                                        'routes.adicionar_alunos_agendamento',
+                                        agendamento_id=agendamento.id,
+                                    )
                                 )
-                            )
+                            return redirect(url_for('dashboard_routes.dashboard'))
                         except Exception as e:
                             db.session.rollback()
                             form_erro = f"Erro ao salvar agendamento: {str(e)}"
@@ -2823,18 +2829,27 @@ def atualizar_status_agendamento(agendamento_id):
     if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado']:
         return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado' ou 'realizado'"}), 400
     
-    enviar_confirmacao = False
+
+    status_anterior = agendamento.status
+
 
     # Atualizar o status
     if novo_status:
         agendamento.status = novo_status
 
-        if novo_status == 'confirmado':
-            enviar_confirmacao = True
 
-        # Se for cancelado, registrar a data de cancelamento
-        if novo_status == 'cancelado' and not agendamento.data_cancelamento:
-            agendamento.data_cancelamento = datetime.utcnow()
+        if novo_status == 'cancelado':
+            if status_anterior != 'cancelado':
+                horario = agendamento.horario
+                if horario:
+                    horario.vagas_disponiveis = min(
+                        horario.vagas_disponiveis + agendamento.quantidade_alunos,
+                        horario.capacidade_total,
+                    )
+
+            if not agendamento.data_cancelamento:
+                agendamento.data_cancelamento = datetime.utcnow()
+
     
     # Verificar se houve alteração no check-in
     if 'checkin_realizado' in dados:
