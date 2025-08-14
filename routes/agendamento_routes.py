@@ -341,57 +341,56 @@ def relatorio_geral_agendamentos():
         cliente_id=current_user.id
     ).all()
     
-    # Estatísticas gerais
+    # Estatísticas agregadas em uma única consulta
+    aggregados = (
+        db.session.query(
+            Evento.id.label('evento_id'),
+            func.count(
+                case((AgendamentoVisita.status == 'confirmado', 1))
+            ).label('confirmados'),
+            func.count(
+                case((AgendamentoVisita.status == 'realizado', 1))
+            ).label('realizados'),
+            func.count(
+                case((AgendamentoVisita.status == 'cancelado', 1))
+            ).label('cancelados'),
+            func.sum(
+                case(
+                    (
+                        AgendamentoVisita.status.in_(['confirmado', 'realizado']),
+                        AgendamentoVisita.quantidade_alunos,
+                    ),
+                    else_=0,
+                )
+            ).label('visitantes'),
+        )
+        .join(HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id)
+        .join(AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .group_by(Evento.id)
+        .all()
+    )
+
+    stats_map = {row.evento_id: row for row in aggregados}
+
     estatisticas = {}
-    
-    # Para cada evento, coletar estatísticas
     for evento in eventos:
-        # Contar agendamentos por status
-        confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'confirmado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'realizado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'cancelado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Total de visitantes
-        visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status.in_(['confirmado', 'realizado']),
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Guardar estatísticas
+        dados = stats_map.get(evento.id)
+        confirmados = dados.confirmados if dados else 0
+        realizados = dados.realizados if dados else 0
+        cancelados = dados.cancelados if dados else 0
+        visitantes = dados.visitantes if dados else 0
         estatisticas[evento.id] = {
             'nome': evento.nome,
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
             'total': confirmados + realizados + cancelados,
-            'visitantes': visitantes
+            'visitantes': visitantes,
         }
     
     # Gerar PDF com estatísticas
@@ -770,7 +769,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     
 # Rotas para a aba de agendamentos no dashboard
 from datetime import datetime, timedelta
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, func, or_, case
 from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
 
 # Importe os modelos necessários
