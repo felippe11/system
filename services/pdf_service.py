@@ -2504,6 +2504,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
     """
     
     # 1) Obter agendamentos do professor ou do mesmo cliente para o relatório
+    from models import AgendamentoVisita
     from sqlalchemy import or_
 
     agendamentos = AgendamentoVisita.query.filter(
