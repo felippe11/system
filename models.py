@@ -613,6 +613,10 @@ class Cliente(db.Model, UserMixin):
     def is_admin(self):
         return self.tipo == "admin"
 
+    def is_professor(self):
+        """Indica se o cliente é um professor."""
+        return False
+
 
 class LinkCadastro(db.Model):
     __tablename__ = "link_cadastro"
