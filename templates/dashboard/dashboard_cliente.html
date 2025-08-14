@@ -1538,6 +1538,37 @@
           {% endfor %}
         </tbody>
       </table>
+
+    <h5 class="fw-bold mt-4">Candidaturas Aprovadas</h5>
+    <input
+      type="text"
+      id="searchAprovados"
+      class="form-control mb-3"
+      placeholder="Buscar por nome ou email"
+    >
+    <table class="table table-sm">
+      <thead>
+        <tr><th>Nome</th><th>Código</th><th>Ações</th></tr>
+      </thead>
+      <tbody id="listaAprovados">
+        {% for cand in revisor_candidaturas_aprovadas %}
+        <tr>
+          <td>{{ cand.nome or cand.email }}</td>
+          <td class="codigo">{{ cand.codigo }}</td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-secondary copiar-codigo"
+              data-codigo="{{ cand.codigo }}"
+            >
+              Copiar código
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">Nenhum candidato aprovado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
@@ -1577,6 +1608,24 @@
   }
   if (typeof URL_EXPORTAR_FINANCEIRO === 'undefined') {
     window.URL_EXPORTAR_FINANCEIRO = "{{ url_for('relatorio_pdf_routes.exportar_financeiro') }}";
+  }
+
+  document.querySelectorAll('.copiar-codigo').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const codigo = btn.getAttribute('data-codigo');
+      navigator.clipboard.writeText(codigo);
+    });
+  });
+
+  const searchInput = document.getElementById('searchAprovados');
+  if (searchInput) {
+    searchInput.addEventListener('keyup', () => {
+      const term = searchInput.value.toLowerCase();
+      document.querySelectorAll('#listaAprovados tr').forEach((row) => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
   }
 </script>
 {% endblock %}{% endblock %}
