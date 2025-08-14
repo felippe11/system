@@ -215,14 +215,19 @@ def select_event():
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
         .join(Cliente, Cliente.id == Evento.cliente_id)
-        .join(ConfiguracaoCliente, ConfiguracaoCliente.cliente_id == Cliente.id)
         .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
-            ConfiguracaoCliente.habilitar_submissao_trabalhos.is_(True),
-            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= now),
-            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= now),
+            RevisorProcess.exibir_para_participantes.is_(True),
+            or_(
+                RevisorProcess.availability_start.is_(None),
+                RevisorProcess.availability_start <= now,
+            ),
+            or_(
+                RevisorProcess.availability_end.is_(None),
+                RevisorProcess.availability_end >= now,
+            ),
         )
         .all()
     )
