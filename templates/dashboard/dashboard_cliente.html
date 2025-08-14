@@ -1569,57 +1569,36 @@
         {% endfor %}
       </tbody>
     </table>
-    <h5 class="fw-bold mt-4">Sorteio de Trabalhos</h5>
-    <div class="row g-2 mb-3">
-      <div class="col-md">
-        <input id="filtroRevisorCampo" class="form-control"
-               placeholder="Campo revisor">
+
+    <h5 class="fw-bold mt-4">Sorteio de Revisores</h5>
+    <form id="sorteioRevisoresForm" class="mb-3">
+      <div class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Máx. trabalhos por revisor</label>
+          <input type="number" min="1" name="limit" class="form-control" value="{{ sorteio_config.max_trabalhos }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Revisores por trabalho</label>
+          <input type="number" min="1" name="max_per_submission" class="form-control" value="{{ sorteio_config.revisores_por_trabalho }}">
+        </div>
       </div>
-      <div class="col-md">
-        <input id="filtroRevisorValor" class="form-control"
-               placeholder="Valor revisor">
+      <div class="row g-2 mt-2">
+        {% for campo, valores in sorteio_config.filter_options.items() %}
+        <div class="col-md-4">
+          <label class="form-label">{{ campo }}</label>
+          <select class="form-select" name="filters[{{ campo }}]">
+            <option value=""></option>
+            {% for valor in valores %}
+            <option value="{{ valor }}" {% if sorteio_config.saved_filters.get(campo) == valor %}selected{% endif %}>{{ valor }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endfor %}
       </div>
-      <div class="col-md">
-        <input id="filtroSubCampo" class="form-control"
-               placeholder="Campo trabalho">
-      </div>
-      <div class="col-md">
-        <input id="filtroSubValor" class="form-control"
-               placeholder="Valor trabalho">
-      </div>
-      <div class="col-md-auto">
-        <button id="btnSorteioFiltros" class="btn btn-primary w-100">
-          Sortear
-        </button>
-      </div>
-    </div>
-    <div id="resultadoSorteio" class="text-muted"></div>
-    <script>
-      const btnSorteio = document.getElementById('btnSorteioFiltros');
-      btnSorteio.addEventListener('click', () => {
-        const filters = { reviewer: {}, submission: {} };
-        const rKey = document.getElementById('filtroRevisorCampo').value;
-        const rVal = document.getElementById('filtroRevisorValor').value;
-        const sKey = document.getElementById('filtroSubCampo').value;
-        const sVal = document.getElementById('filtroSubValor').value;
-        if (rKey && rVal) filters.reviewer[rKey] = rVal;
-        if (sKey && sVal) filters.submission[sKey] = sVal;
-        fetch('/assign_by_filters', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filters }),
-        })
-          .then((r) => r.json())
-          .then((data) => {
-            const div = document.getElementById('resultadoSorteio');
-            if (data.success) {
-              div.textContent = `Atribuições criadas: ${data.assignments}`;
-            } else {
-              div.textContent = data.message || 'Erro no sorteio';
-            }
-          });
-      });
-    </script>
+      <button type="submit" class="btn btn-primary mt-3">Sortear</button>
+    </form>
+    <div id="resultadoSorteio"></div>
+
   </div>
   <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
@@ -1676,6 +1655,43 @@
         const text = row.innerText.toLowerCase();
         row.style.display = text.includes(term) ? '' : 'none';
       });
+    });
+  }
+
+  const formSorteio = document.getElementById('sorteioRevisoresForm');
+  if (formSorteio) {
+    formSorteio.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(formSorteio);
+      const payload = {
+        limit: parseInt(formData.get('limit'), 10),
+        max_per_submission: parseInt(formData.get('max_per_submission'), 10),
+        filters: {}
+      };
+      for (const [key, value] of formData.entries()) {
+        if (key.startsWith('filters[') && value) {
+          const campo = key.slice(8, -1);
+          payload.filters[campo] = value;
+        }
+      }
+      const resp = await fetch('{{ url_for('revisor_routes.sortear_revisores') }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await resp.json();
+      const container = document.getElementById('resultadoSorteio');
+      if (json.success) {
+        let list = '';
+        if (json.distribuicoes) {
+          list = '<ul class="list-group mt-2">' +
+            json.distribuicoes.map(d => `<li class="list-group-item">Trabalho ${d.submission_id} → Revisor ${d.reviewer_id}</li>`).join('') +
+            '</ul>';
+        }
+        container.innerHTML = `<div class="alert alert-success">Distribuições: ${json.assignments}</div>` + list;
+      } else {
+        container.innerHTML = `<div class="alert alert-warning">${json.message || 'Nenhum sorteio realizado'}</div>`;
+      }
     });
   }
 </script>
