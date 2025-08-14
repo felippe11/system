@@ -220,17 +220,24 @@ def criar_agendamento_professor(horario_id):
 @routes.route('/professor/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def adicionar_alunos_agendamento(agendamento_id):
-    # Apenas participantes (professores) podem acessar
-    if current_user.tipo != 'professor':
-        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+    # Professores e clientes podem acessar
+    if current_user.tipo not in ('professor', 'cliente'):
+        flash('Acesso negado! Esta área é exclusiva para professores e clientes.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-    
-    # Verificar se o agendamento pertence ao professor
-    if agendamento.professor_id != current_user.id:
+
+    # Verificar se o agendamento pertence ao usuário
+    if current_user.tipo == 'professor':
+        pertence = agendamento.professor_id == current_user.id
+        redirect_dest = url_for('agendamento_routes.meus_agendamentos')
+    else:  # cliente
+        pertence = agendamento.cliente_id == current_user.id
+        redirect_dest = url_for('dashboard_routes.dashboard')
+
+    if not pertence:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        return redirect(redirect_dest)
     
     # Lista de alunos já adicionados
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
