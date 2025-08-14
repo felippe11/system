@@ -1348,6 +1348,15 @@ class ApresentacaoTrabalho(db.Model):
     local = db.Column(db.String(100), nullable=True)
 
 
+class WorkMetadata(db.Model):
+    """Stores selected metadata from imported work spreadsheets."""
+
+    __tablename__ = "work_metadata"
+
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.JSON, nullable=False)
+
+
 class Pagamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
