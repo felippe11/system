@@ -79,6 +79,15 @@ Gmail.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
+## Formulários e processo de revisão
+
+Ao criar um formulário ligado ao processo de revisão, utilize o campo
+**Evento** para selecionar o evento específico. Quando um processo lida com
+múltiplos eventos, essa seleção é obrigatória e define em qual deles o
+formulário operará. O vínculo limita o processo ao evento escolhido;
+demais eventos não poderão usar esse formulário. Se necessário atender
+outros eventos, crie formulários separados para cada um.
+
 ## Conflito com pacotes `config`
 
 Alguns ambientes podem ter instalado um pacote externo chamado `config`,
@@ -153,6 +162,12 @@ Para oferecer acessibilidade em Libras e suporte a pessoas cegas:
 ```
 
 - Verifique se todas as imagens possuem um texto alternativo significativo (`alt`).
+
+## Formulários
+
+Ao criar um formulário, o campo de seleção de eventos relacionados usa o atributo
+`name="eventos[]"` para permitir a seleção múltipla. No back-end, continue
+obtendo os IDs selecionados com `request.form.getlist("eventos")`.
 
 ## Programacao em PDF
 
