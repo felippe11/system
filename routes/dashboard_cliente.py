@@ -248,6 +248,18 @@ def dashboard_cliente():
         .all()
     )
 
+    filtro_opcoes = {}
+    for cand in revisor_candidaturas_aprovadas:
+        for campo, valor in (cand.respostas or {}).items():
+            filtro_opcoes.setdefault(campo, set()).add(valor)
+
+    sorteio_config = {
+        "max_trabalhos": config_cliente.max_trabalhos_por_revisor or 1,
+        "revisores_por_trabalho": config_cliente.num_revisores_max,
+        "saved_filters": session.get("revisor_filters", {}),
+        "filter_options": {k: sorted(v) for k, v in filtro_opcoes.items()},
+    }
+
     return render_template(
         'dashboard_cliente.html',
         usuario=current_user,
@@ -275,6 +287,7 @@ def dashboard_cliente():
         reviewer_apps=reviewer_apps,
         revisor_candidaturas=revisor_candidaturas,
         revisor_candidaturas_aprovadas=revisor_candidaturas_aprovadas,
+        sorteio_config=sorteio_config,
     )
     
 def obter_configuracao_do_cliente(cliente_id):
