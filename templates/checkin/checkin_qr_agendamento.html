@@ -10,8 +10,6 @@
     <div id="scan-status" class="mt-3 text-muted">Inicializando...</div>
     <div id="scan-result" class="mt-3"></div>
 
-    <ul id="scanned-list" class="list-group w-100 mt-3"></ul>
-
     <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-secondary mt-3">
         <i class="bi bi-arrow-left"></i> Voltar
     </a>
@@ -20,44 +18,21 @@
 
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+<script type="module">
+import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_scanner.js') }}";
 
-<script>
-document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
-    const scannedList = document.getElementById('scanned-list');
-    let scanner;
 
-    try {
-        scanner = new Html5Qrcode('qr-video');
-        const cameras = await Html5Qrcode.getCameras();
-        const cameraId = cameras.find(cam => cam.label.toLowerCase().includes('back'))?.id || cameras[0].id;
-
-        await scanner.start(
-            cameraId,
-            { fps: 10, qrbox: 250 },
-            onScanSuccess,
-            onScanError
-        );
-
-        statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
-    } catch (error) {
-        statusElement.innerHTML = `<span class="text-danger">Erro ao iniciar câmera: ${error.message}</span>`;
-    }
-
-    async function onScanSuccess(decodedText) {
+    async function handleScan(decodedText) {
         scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
-
-        const item = document.createElement('li');
-        item.classList.add('list-group-item');
-        item.textContent = decodedText;
-        scannedList.prepend(item);
 
         let token;
         try {
             const url = new URL(decodedText);
             token = url.searchParams.get('token');
-        } catch (err) {
+        } catch {
             token = decodedText;
         }
 
@@ -81,13 +56,14 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
     }
 
-    function onScanError(errorMessage) {
-        // Removido para não poluir console.
+    try {
+        await initScanner('qr-video', handleScan);
+        statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
+    } catch (err) {
+        statusElement.innerHTML = `<span class="text-danger">${err.message || err}</span>`;
     }
 
-    window.addEventListener('beforeunload', () => {
-        if(scanner) scanner.stop();
-    });
+    window.addEventListener('beforeunload', stopScanner);
 });
 </script>
 {% endblock %}

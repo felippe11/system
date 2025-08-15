@@ -133,12 +133,13 @@
 <!-- Socket.IO -->
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
-<script>
+<script type="module">
+import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_scanner.js') }}";
+
     /**
      * 1) Primeiro definimos as variáveis e funções
      */
-    
-    let scanner = null;
+
     const checkinsRegistrados = new Set(); // Evita duplicar a mesma pessoa+oficina
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
@@ -265,32 +266,13 @@
     document.addEventListener("DOMContentLoaded", async function () {
         // Carrega check-ins anteriores antes de iniciar
         await carregarCheckinsAnteriores();
-    
+
         const statusElement = document.getElementById('qr-status');
         const resultElement = document.getElementById('qr-result');
-    
+
         try {
-            scanner = new Html5Qrcode('qr-video');
-    
-            const config = {
-                fps: 15,
-                qrbox: { width: 400, height: 400 },
-                aspectRatio: 1.0,
-                disableFlip: false
-            };
-    
-            const cameraId = await Html5Qrcode.getCameras()
-                .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
-    
-            await scanner.start(
-                cameraId || { facingMode: 'environment' },
-                config,
-                onScanSuccess,
-                onScanError
-            );
-    
+            await initScanner('qr-video', onScanSuccess);
             statusElement.innerHTML = '<i class="bi bi-camera-video-fill me-2 text-success"></i><span>Aponte para o QR Code</span>';
-            
         } catch (error) {
             console.error('Erro na câmera:', error);
             statusElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><span>Erro ao acessar a câmera. Verifique as permissões.</span>';
@@ -301,10 +283,8 @@
                 </div>
             </div>`;
         }
-    
-        window.addEventListener('beforeunload', () => {
-            if (scanner) scanner.stop();
-        });
+
+        window.addEventListener('beforeunload', stopScanner);
     });
     
     const cliente_id = "{{ current_user.id }}";  // Renderiza o ID do cliente
