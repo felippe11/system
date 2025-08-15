@@ -1567,6 +1567,11 @@ class RevisaoConfig(db.Model):
     habilitar_qrcode_evento_credenciamento = db.Column(db.Boolean, default=False)
     habilitar_submissao_trabalhos = db.Column(db.Boolean, default=False)
     mostrar_taxa = db.Column(db.Boolean, default=True)
+    numero_revisores = db.Column(db.Integer, default=2)
+    prazo_revisao = db.Column(db.DateTime, nullable=True)
+    modelo_blind = db.Column(
+        db.String(20), default="single"
+    )  # single | double | open
 
     evento = db.relationship(
         "Evento", backref=db.backref("revisao_config", uselist=False)
@@ -1685,10 +1690,6 @@ class ReviewerApplication(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<ReviewerApplication usuario={self.usuario_id} stage={self.stage}>"
-
-    numero_revisores = db.Column(db.Integer, default=2)
-    prazo_revisao = db.Column(db.DateTime, nullable=True)
-    modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
 
 
 # -----------------------------------------------------------------------------
@@ -1840,10 +1841,7 @@ class RevisorProcess(db.Model):
     )
     formulario = db.relationship("Formulario")
     eventos = db.relationship(
-        "Evento",
-        primaryjoin="RevisorProcess.cliente_id == foreign(Evento.cliente_id)",
-        viewonly=True,
-        lazy="selectin",
+        "Evento", secondary=revisor_process_evento_association, lazy="selectin"
     )
 
 
