@@ -4,7 +4,7 @@ from datetime import datetime, date
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
-from sqlalchemy.orm import relationship  # Adicione esta linha!
+from sqlalchemy.orm import relationship, foreign  # Adicione esta linha!
 
 
 # =================================
@@ -133,6 +133,20 @@ usuario_clientes = db.Table(
     "usuario_clientes",
     db.Column("usuario_id", db.Integer, db.ForeignKey("usuario.id")),
     db.Column("cliente_id", db.Integer, db.ForeignKey("cliente.id")),
+)
+
+# Association table linking RevisorProcess and Evento
+revisor_process_evento_association = db.Table(
+    "revisor_process_evento_association",
+    db.Column(
+        "revisor_process_id",
+        db.Integer,
+        db.ForeignKey("revisor_process.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True
+    ),
 )
 
 
@@ -807,9 +821,11 @@ class ConfiguracaoCliente(db.Model):
 
     review_model = db.Column(db.String(20), default="single")
     num_revisores_min = db.Column(db.Integer, default=1)
+
     num_revisores_max = db.Column(db.Integer, default=2)
     prazo_parecer_dias = db.Column(db.Integer, default=14)
     max_trabalhos_por_revisor = db.Column(db.Integer, default=5, nullable=True)
+
 
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
@@ -1793,6 +1809,14 @@ class Assignment(db.Model):
     reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
 
 
+# Associação N:N entre processos de revisor e eventos
+revisor_process_evento = db.Table(
+    "revisor_process_evento",
+    db.Column("process_id", db.Integer, db.ForeignKey("revisor_process.id"), primary_key=True),
+    db.Column("evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True),
+)
+
+
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
 
@@ -1803,6 +1827,7 @@ class RevisorProcess(db.Model):
     formulario_id = db.Column(
         db.Integer, db.ForeignKey("formularios.id"), nullable=True
     )
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
 
     # Controle de disponibilidade do processo
@@ -1814,6 +1839,13 @@ class RevisorProcess(db.Model):
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
     )
     formulario = db.relationship("Formulario")
+    eventos = db.relationship(
+        "Evento",
+        primaryjoin="RevisorProcess.cliente_id == foreign(Evento.cliente_id)",
+        viewonly=True,
+        lazy="selectin",
+    )
+
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"

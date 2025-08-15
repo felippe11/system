@@ -234,15 +234,17 @@ def dashboard_cliente():
     revisor_candidaturas = (
         RevisorCandidatura.query
         .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
-        .filter(RevisorProcess.cliente_id == current_user.id)
+        .join(RevisorProcess.eventos)
+        .filter(Evento.cliente_id == current_user.id)
         .all()
     )
 
     revisor_candidaturas_aprovadas = (
         RevisorCandidatura.query
         .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
+        .join(RevisorProcess.eventos)
         .filter(
-            RevisorProcess.cliente_id == current_user.id,
+            Evento.cliente_id == current_user.id,
             RevisorCandidatura.status == 'aprovado',
         )
         .all()
