@@ -27,6 +27,14 @@
       </select>
     </div>
     <div class="mb-3">
+      <label class="form-label">Eventos vinculados</label>
+      <select class="form-select" name="eventos_ids" multiple>
+        {% for ev in eventos %}
+        <option value="{{ ev.id }}" {% if ev.id in selected_event_ids %}selected{% endif %}>{{ ev.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="mb-3">
       <label class="form-label">Número de Etapas</label>
       <input type="number" class="form-control" name="num_etapas" value="{{ processo.num_etapas if processo else 1 }}">
     </div>
