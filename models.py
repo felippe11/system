@@ -135,6 +135,20 @@ usuario_clientes = db.Table(
     db.Column("cliente_id", db.Integer, db.ForeignKey("cliente.id")),
 )
 
+# Association table linking RevisorProcess and Evento
+revisor_process_evento_association = db.Table(
+    "revisor_process_evento_association",
+    db.Column(
+        "revisor_process_id",
+        db.Integer,
+        db.ForeignKey("revisor_process.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True
+    ),
+)
+
 
 class Ministrante(db.Model, UserMixin):
     __tablename__ = "ministrante"
@@ -1800,8 +1814,13 @@ class RevisorProcess(db.Model):
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
     )
     formulario = db.relationship("Formulario")
-    evento = db.relationship(
-        "Evento", backref=db.backref("revisor_processes", lazy=True)
+
+    eventos = db.relationship(
+        "Evento",
+        secondary=revisor_process_evento_association,
+        backref=db.backref("revisor_processes", lazy=True),
+        lazy=True,
+
     )
 
     def __repr__(self) -> str:  # pragma: no cover
