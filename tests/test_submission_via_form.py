@@ -1,3 +1,4 @@
+import io
 import pytest
 from werkzeug.security import generate_password_hash
 from config import Config
@@ -13,7 +14,10 @@ from models import (
     ConfiguracaoCliente,
     Formulario,
     CampoFormulario,
+    RespostaFormulario,
+    TrabalhoCientifico,
 )
+
 
 @pytest.fixture
 def app():
@@ -26,7 +30,7 @@ def app():
         cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
         db.session.add(cliente)
         db.session.commit()
-        evento = Evento(cliente_id=cliente.id, nome='EV', submissao_aberta=False)
+        evento = Evento(cliente_id=cliente.id, nome='EV', submissao_aberta=True)
         db.session.add(evento)
         db.session.commit()
         usuario = Usuario(
@@ -41,18 +45,18 @@ def app():
         )
         db.session.add(usuario)
         db.session.commit()
-        form = Formulario(
-            nome='FSub', cliente_id=cliente.id, is_submission_form=True
-        )
+        form = Formulario(nome='FSub', cliente_id=cliente.id, is_submission_form=True)
         db.session.add(form)
         db.session.commit()
-        campo = CampoFormulario(
-            formulario_id=form.id,
-            nome='Arquivo',
-            tipo='file',
-            obrigatorio=True,
+        campo_text = CampoFormulario(
+            formulario_id=form.id, nome='Titulo', tipo='text'
         )
-        db.session.add(campo)
+        db.session.add(campo_text)
+        db.session.commit()
+        campo_file = CampoFormulario(
+            formulario_id=form.id, nome='Arquivo', tipo='file', obrigatorio=True
+        )
+        db.session.add(campo_file)
         db.session.commit()
         config = ConfiguracaoCliente(
             cliente_id=cliente.id,
@@ -63,33 +67,41 @@ def app():
         db.session.commit()
     yield app
 
+
 @pytest.fixture
 def client(app):
     return app.test_client()
+
 
 def login(client, email, senha):
     return client.post('/login', data={'email': email, 'senha': senha}, follow_redirects=True)
 
 
-def test_toggle_submissao_evento(client, app):
-    with app.app_context():
-        evento = Evento.query.first()
-    login(client, 'cli@test', '123')
-    resp = client.post(f'/toggle_submissao_evento/{evento.id}')
-    assert resp.status_code == 200
-    with app.app_context():
-        assert Evento.query.get(evento.id).submissao_aberta is True
-    client.post(f'/toggle_submissao_evento/{evento.id}')
-    with app.app_context():
-        assert Evento.query.get(evento.id).submissao_aberta is False
-
-
-def test_form_without_event_field(client, app):
-    with app.app_context():
-        evento = Evento.query.first()
-        evento.submissao_aberta = True
-        db.session.commit()
+def test_get_submission_form(client, app):
     login(client, 'part@test', '123')
     resp = client.get('/submeter_trabalho')
     assert resp.status_code == 200
-    assert b'name="evento_id"' not in resp.data
+    with app.app_context():
+        campo = CampoFormulario.query.filter_by(tipo='file').first()
+        assert f'name="file_{campo.id}"'.encode() in resp.data
+
+
+def test_submission_creates_record(client, app):
+    login(client, 'part@test', '123')
+    with app.app_context():
+        campo_text = CampoFormulario.query.filter_by(tipo='text').first()
+        campo_file = CampoFormulario.query.filter_by(tipo='file').first()
+    data = {
+        str(campo_text.id): 'Meu Titulo',
+        f'file_{campo_file.id}': (io.BytesIO(b'PDF'), 'teste.pdf'),
+    }
+    resp = client.post(
+        '/submeter_trabalho',
+        data=data,
+        content_type='multipart/form-data',
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        assert TrabalhoCientifico.query.count() == 1
+        assert RespostaFormulario.query.count() == 1
