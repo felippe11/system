@@ -215,8 +215,7 @@ def select_event():
 
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
-        .join(Cliente, Cliente.id == Evento.cliente_id)
-        .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
+        .join(RevisorProcess, RevisorProcess.eventos)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
@@ -386,7 +385,7 @@ def eligible_events():
 
     eventos = (
         Evento.query
-        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        .join(RevisorProcess, RevisorProcess.eventos)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
