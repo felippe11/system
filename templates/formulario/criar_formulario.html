@@ -45,23 +45,23 @@
                     <input type="datetime-local" id="data_fim" name="data_fim" class="form-control">
                 </div>
 
-                <div class="mb-4">
-                    <label for="eventos" class="form-label fw-medium">Eventos Relacionados</label>
-                    <select id="eventos" name="eventos" class="form-select" multiple>
-                        {% for ev in eventos %}
-                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Segure Ctrl para selecionar vários eventos</div>
-                </div>
-
                 <div class="form-check mb-4">
                     <input class="form-check-input" type="checkbox" id="vincular_processo" name="vincular_processo">
                     <label class="form-check-label" for="vincular_processo">
                         Vincular ao processo seletivo de revisores
                     </label>
                 </div>
-                
+
+                <div class="mb-4 d-none" id="evento_relacionado_container">
+                    <label for="evento_relacionado" class="form-label fw-medium">Evento Relacionado</label>
+                    <select id="evento_relacionado" name="evento_relacionado" class="form-select">
+                        <option value="" selected>Selecione um evento</option>
+                        {% for ev in eventos %}
+                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-light me-md-2">
                         Cancelar
@@ -79,6 +79,31 @@
             <i class="bi bi-info-circle me-1"></i> 
             Após criar o formulário, você poderá adicionar campos personalizados.
         </small>
-    </div>
 </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkbox = document.getElementById('vincular_processo');
+    const container = document.getElementById('evento_relacionado_container');
+    const select = document.getElementById('evento_relacionado');
+
+    function toggleEvento() {
+        if (checkbox.checked) {
+            container.classList.remove('d-none');
+        } else {
+            container.classList.add('d-none');
+            if (select) {
+                select.value = '';
+            }
+        }
+    }
+
+    checkbox.addEventListener('change', toggleEvento);
+    toggleEvento();
+});
+</script>
 {% endblock %}

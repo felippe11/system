@@ -119,7 +119,7 @@ def criar_formulario():
         descricao = request.form.get("descricao")
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
-        evento_ids = request.form.getlist("eventos")
+        evento_id = request.form.get("evento_relacionado")
         vincular_processo = "vincular_processo" in request.form
 
         # Checkbox marcado => True; ausente => False
@@ -143,9 +143,13 @@ def criar_formulario():
             cliente_id=current_user.id,
         )
 
-        if evento_ids:
-            eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
-            novo_formulario.eventos = eventos_sel
+        if evento_id:
+            evento = Evento.query.get(int(evento_id))
+            if evento:
+                novo_formulario.eventos = [evento]
+            evento_id = int(evento_id)
+        else:
+            evento_id = None
 
         db.session.add(novo_formulario)
         db.session.commit()
@@ -156,11 +160,14 @@ def criar_formulario():
             ).first()
             if not processo:
                 processo = RevisorProcess(
-                    cliente_id=current_user.id, formulario_id=novo_formulario.id
+                    cliente_id=current_user.id,
+                    formulario_id=novo_formulario.id,
+                    evento_id=evento_id,
                 )
                 db.session.add(processo)
             else:
                 processo.formulario_id = novo_formulario.id
+                processo.evento_id = evento_id
             db.session.commit()
 
         flash("Formulário criado com sucesso!", "success")
