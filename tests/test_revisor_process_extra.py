@@ -101,6 +101,20 @@ def test_eligible_events_route(client, app):
     assert data == [{'id': e1.id, 'nome': 'E1'}]
 
 
+def test_select_event_route(client):
+    resp = client.get('/processo_seletivo')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'E1' in html
+    assert 'E2' not in html
+
+
+def test_revisorprocess_eventos_relationship(app):
+    with app.app_context():
+        proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
+        nomes = {e.nome for e in proc.eventos}
+        assert nomes == {'E1'}
+
 def test_config_route_saves_availability(client, app):
     with app.app_context():
         cliente = Cliente.query.filter_by(email='c1@test').first()
