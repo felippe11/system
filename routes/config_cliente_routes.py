@@ -664,6 +664,29 @@ def set_allowed_file_types():
     return jsonify({"success": True, "value": config_cliente.allowed_file_types})
 
 
+@config_cliente_routes.route("/set_formulario_submissao", methods=["POST"])
+@login_required
+def set_formulario_submissao():
+    """Define o formulário de submissão para o cliente atual."""
+    if current_user.tipo != "cliente":
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    formulario_id = data.get("formulario_id")
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(
+        cliente_id=current_user.id
+    ).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.formulario_submissao_id = formulario_id
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.formulario_submissao_id})
+
+
 @config_cliente_routes.route('/set_limite_eventos/<int:cliente_id>', methods=['POST'])
 @login_required
 def set_limite_eventos(cliente_id):
@@ -838,6 +861,11 @@ def config_submissao():
         db.session.commit()
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    formularios = (
+        Formulario.query.filter_by(
+            cliente_id=current_user.id, is_submission_form=True
+        ).all()
+    )
     revisao_configs = {
         cfg.evento_id: {
             "numero_revisores": cfg.numero_revisores,
@@ -853,6 +881,7 @@ def config_submissao():
         'config/config_submissao.html',
         config_cliente=config_cliente,
         eventos=eventos,
+        formularios=formularios,
         revisao_configs=revisao_configs,
     )
 
