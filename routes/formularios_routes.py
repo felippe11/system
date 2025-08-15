@@ -143,8 +143,16 @@ def criar_formulario():
             cliente_id=current_user.id,
         )
 
+
         if evento_ids:
             eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
+            if any(evento.cliente_id != current_user.id for evento in eventos_sel):
+                flash("Evento inválido.", "danger")
+                return redirect(url_for("formularios_routes.criar_formulario"))
+
+       
+        if eventos_sel:
+
             novo_formulario.eventos = eventos_sel
 
         db.session.add(novo_formulario)
@@ -156,11 +164,15 @@ def criar_formulario():
             ).first()
             if not processo:
                 processo = RevisorProcess(
-                    cliente_id=current_user.id, formulario_id=novo_formulario.id
+                    cliente_id=current_user.id,
+                    formulario_id=novo_formulario.id,
+                    eventos=eventos_sel,
                 )
                 db.session.add(processo)
             else:
                 processo.formulario_id = novo_formulario.id
+                if eventos_sel:
+                    processo.eventos = eventos_sel
             db.session.commit()
 
         flash("Formulário criado com sucesso!", "success")
@@ -188,6 +200,12 @@ def editar_formulario(formulario_id):
         flash("Você não tem permissão para editar este formulário.", "danger")
         return redirect(url_for("formularios_routes.listar_formularios"))
 
+    eventos_disponiveis = (
+        Evento.query.filter_by(cliente_id=current_user.id).all()
+        if current_user.tipo == "cliente"
+        else Evento.query.all()
+    )
+
     if request.method == "POST":
         formulario.nome = request.form.get("nome")
         formulario.descricao = request.form.get("descricao")
@@ -203,11 +221,20 @@ def editar_formulario(formulario_id):
             datetime.strptime(data_fim_str, "%Y-%m-%dT%H:%M") if data_fim_str else None
         )
 
+        evento_ids = request.form.getlist("eventos")
+        formulario.eventos = (
+            Evento.query.filter(Evento.id.in_(evento_ids)).all()
+            if evento_ids
+            else []
+        )
+
         db.session.commit()
         flash("Formulário atualizado com sucesso!", "success")
         return redirect(url_for("formularios_routes.listar_formularios"))
 
-    return render_template("editar_formulario.html", formulario=formulario)
+    return render_template(
+        "editar_formulario.html", formulario=formulario, eventos=eventos_disponiveis
+    )
 
 
 @formularios_routes.route("/formularios/<int:formulario_id>/deletar", methods=["POST"])

@@ -7,7 +7,8 @@ Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
 from flask import Flask
-from extensions import db, login_manager
+from extensions import db, login_manager, migrate
+from flask_migrate import upgrade
 
 from models import Cliente, Formulario, RevisorProcess, Evento
 from routes.revisor_routes import revisor_routes
@@ -20,11 +21,16 @@ def app():
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options('sqlite://')
+    app.jinja_env.globals['csrf_token'] = lambda: ''
     login_manager.init_app(app)
     db.init_app(app)
+    migrate.init_app(app, db)
     app.register_blueprint(revisor_routes)
     with app.app_context():
-        db.create_all()
+        try:
+            upgrade(revision="heads")
+        except SystemExit:
+            db.create_all()
         c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123'))
         c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123'))
         db.session.add_all([c1, c2])
@@ -37,6 +43,10 @@ def app():
         e2 = Evento(cliente_id=c2.id, nome='E2', inscricao_gratuita=True, publico=True)
         db.session.add_all([e1, e2])
         db.session.commit()
+
+        e1.formularios.append(f1)
+        e2.formularios.append(f2)
+        db.session.commit()
         db.session.add(
             RevisorProcess(
                 cliente_id=c1.id,
@@ -46,25 +56,35 @@ def app():
                 availability_end=date.today() + timedelta(days=1),
                 exibir_para_participantes=True,
             )
+
+
+        proc1 = RevisorProcess(
+            cliente_id=c1.id,
+            formulario_id=f1.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=1),
+            availability_end=date.today() + timedelta(days=1),
+            exibir_para_participantes=True,
+            eventos=[e1],
+
         )
-        db.session.add(
-            RevisorProcess(
-                cliente_id=c2.id,
-                formulario_id=f2.id,
-                num_etapas=1,
-                availability_start=date.today() - timedelta(days=3),
-                availability_end=date.today() - timedelta(days=1),
-                exibir_para_participantes=True,
-            )
+        proc2 = RevisorProcess(
+            cliente_id=c2.id,
+            formulario_id=f2.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=3),
+            availability_end=date.today() - timedelta(days=1),
+            exibir_para_participantes=True,
+            eventos=[e2],
         )
-        db.session.add(
-            RevisorProcess(
-                cliente_id=c1.id,
-                formulario_id=f1.id,
-                num_etapas=1,
-                exibir_para_participantes=False,
-            )
+        proc3 = RevisorProcess(
+            cliente_id=c1.id,
+            formulario_id=f1.id,
+            num_etapas=1,
+            exibir_para_participantes=False,
+
         )
+        db.session.add_all([proc1, proc2, proc3])
         db.session.commit()
     yield app
 
@@ -86,8 +106,20 @@ def test_process_creation_with_dates(app):
 
 def test_visibility_flag_filters(app):
     with app.app_context():
-        visible = RevisorProcess.query.filter_by(exibir_para_participantes=True).all()
-        hidden = RevisorProcess.query.filter_by(exibir_para_participantes=False).all()
+        visible = (
+            RevisorProcess.query
+            .join(RevisorProcess.formulario)
+            .join(Formulario.eventos)
+            .filter(RevisorProcess.exibir_para_participantes.is_(True))
+            .all()
+        )
+        hidden = (
+            RevisorProcess.query
+            .join(RevisorProcess.formulario)
+            .join(Formulario.eventos)
+            .filter(RevisorProcess.exibir_para_participantes.is_(False))
+            .all()
+        )
         assert len(visible) == 2
         assert len(hidden) == 1
 
@@ -100,6 +132,20 @@ def test_eligible_events_route(client, app):
         e1 = Evento.query.filter_by(nome='E1').first()
     assert data == [{'id': e1.id, 'nome': 'E1'}]
 
+
+def test_select_event_route(client):
+    resp = client.get('/processo_seletivo')
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert 'E1' in html
+    assert 'E2' not in html
+
+
+def test_revisorprocess_eventos_relationship(app):
+    with app.app_context():
+        proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
+        nomes = {e.nome for e in proc.eventos}
+        assert nomes == {'E1'}
 
 def test_config_route_saves_availability(client, app):
     with app.app_context():
@@ -131,4 +177,32 @@ def test_config_route_saves_availability(client, app):
         proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
         assert proc.availability_start.date() == start
         assert proc.availability_end.date() == end
+
+
+def test_config_route_saves_eventos(client, app):
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='c1@test').first()
+        formulario = Formulario.query.filter_by(cliente_id=cliente.id).first()
+        evento = Evento.query.filter_by(cliente_id=cliente.id).first()
+
+        from flask_login import login_user, logout_user
+
+        with client:
+            with app.test_request_context():
+                login_user(cliente)
+            resp = client.post(
+                '/config_revisor',
+                data={
+                    'formulario_id': formulario.id,
+                    'num_etapas': 1,
+                    'stage_name': ['Etapa 1'],
+                    'eventos_ids': [evento.id],
+                },
+            )
+            with app.test_request_context():
+                logout_user()
+
+        assert resp.status_code in (302, 200)
+        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert [e.id for e in proc.eventos] == [evento.id]
 
