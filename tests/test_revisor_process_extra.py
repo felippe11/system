@@ -42,6 +42,7 @@ def app():
         e2 = Evento(cliente_id=c2.id, nome='E2', inscricao_gratuita=True, publico=True)
         db.session.add_all([e1, e2])
         db.session.commit()
+
         proc1 = RevisorProcess(
             cliente_id=c1.id,
             formulario_id=f1.id,
@@ -65,6 +66,7 @@ def app():
             formulario_id=f1.id,
             num_etapas=1,
             exibir_para_participantes=False,
+
         )
         db.session.add_all([proc1, proc2, proc3])
         db.session.commit()
