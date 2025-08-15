@@ -4,7 +4,7 @@ from datetime import datetime, date
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash
 from extensions import db  # Se você inicializa o SQLAlchemy em 'extensions.py'
-from sqlalchemy.orm import relationship  # Adicione esta linha!
+from sqlalchemy.orm import relationship, foreign  # Adicione esta linha!
 
 
 # =================================
@@ -1824,17 +1824,11 @@ class RevisorProcess(db.Model):
     formulario = db.relationship("Formulario")
     eventos = db.relationship(
         "Evento",
-        secondary=revisor_process_evento,
-        backref=db.backref("revisor_processes", lazy=True),
+        primaryjoin="RevisorProcess.cliente_id == foreign(Evento.cliente_id)",
+        viewonly=True,
+        lazy="selectin",
     )
 
-    eventos = db.relationship(
-        "Evento",
-        secondary=revisor_process_evento_association,
-        backref=db.backref("revisor_processes", lazy=True),
-        lazy=True,
-
-    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
