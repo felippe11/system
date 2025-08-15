@@ -7,7 +7,8 @@ Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
 from flask import Flask
-from extensions import db, login_manager
+from extensions import db, login_manager, migrate
+from flask_migrate import upgrade
 
 from models import Cliente, Formulario, RevisorProcess, Evento
 from routes.revisor_routes import revisor_routes
@@ -22,9 +23,13 @@ def app():
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options('sqlite://')
     login_manager.init_app(app)
     db.init_app(app)
+    migrate.init_app(app, db)
     app.register_blueprint(revisor_routes)
     with app.app_context():
-        db.create_all()
+        try:
+            upgrade(revision="heads")
+        except SystemExit:
+            db.create_all()
         c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123'))
         c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123'))
         db.session.add_all([c1, c2])
