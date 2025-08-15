@@ -3,7 +3,14 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from utils.mfa import mfa_required
 from extensions import db
-from models import TrabalhoCientifico, AvaliacaoTrabalho, AuditLog, Evento, Usuario
+from models import (
+    TrabalhoCientifico,
+    AvaliacaoTrabalho,
+    AuditLog,
+    Evento,
+    Usuario,
+    Formulario,
+)
 import uuid
 import os
 
@@ -23,6 +30,20 @@ def submeter_trabalho():
     if current_user.tipo != "participante":
         flash("Apenas participantes podem submeter trabalhos.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
+
+    config = current_user.cliente.configuracao if current_user.cliente else None
+    formulario_sub = None
+    if config and config.formulario_submissao_id:
+        formulario_sub = Formulario.query.get(config.formulario_submissao_id)
+        if not formulario_sub or not formulario_sub.is_submission_form:
+            flash("Formulário de submissão inválido.", "danger")
+            return redirect(url_for("dashboard_routes.dashboard"))
+        if (
+            formulario_sub.eventos
+            and current_user.evento_id not in [ev.id for ev in formulario_sub.eventos]
+        ):
+            flash("Formulário indisponível para seu evento.", "danger")
+            return redirect(url_for("dashboard_routes.dashboard"))
 
 
     if request.method == "POST":

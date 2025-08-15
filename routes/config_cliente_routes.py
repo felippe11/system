@@ -3,7 +3,15 @@ from flask_login import login_required, current_user
 from extensions import db
 
 
-from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento, ConfiguracaoEvento
+from models import (
+    ConfiguracaoCliente,
+    Configuracao,
+    Cliente,
+    RevisaoConfig,
+    Evento,
+    ConfiguracaoEvento,
+    Formulario,
+)
 
 from datetime import datetime
 import logging
@@ -253,18 +261,45 @@ def toggle_submissao_trabalhos_cliente():
     
     config = current_user.configuracao
     if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id, habilitar_submissao_trabalhos=False)
+        config = ConfiguracaoCliente(
+            cliente_id=current_user.id, habilitar_submissao_trabalhos=False
+        )
         db.session.add(config)
         db.session.commit()
-    
+
+    if not config.habilitar_submissao_trabalhos:
+        if not config.formulario_submissao_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Defina um formulário de submissão.",
+                    }
+                ),
+                400,
+            )
+        form = Formulario.query.get(config.formulario_submissao_id)
+        if not form or not form.is_submission_form:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Formulário de submissão inválido.",
+                    }
+                ),
+                400,
+            )
+
     config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
     db.session.commit()
-    
-    return jsonify({
-        "success": True,
-        "value": config.habilitar_submissao_trabalhos,
-        "message": "Configuração de submissão de trabalhos atualizada!",
-    })
+
+    return jsonify(
+        {
+            "success": True,
+            "value": config.habilitar_submissao_trabalhos,
+            "message": "Configuração de submissão de trabalhos atualizada!",
+        }
+    )
     
 @config_cliente_routes.route('/toggle_mostrar_taxa', methods=['POST'])
 @login_required
