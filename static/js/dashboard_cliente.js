@@ -312,6 +312,23 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
+
+  const selectFormulario = document.getElementById('selectFormularioSubmissao');
+  if (selectFormulario) {
+    selectFormulario.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify({ formulario_id: this.value || null })
+      });
+    });
+  }
 });
 
 // Funções auxiliares
