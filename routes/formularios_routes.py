@@ -145,6 +145,9 @@ def criar_formulario():
 
         if evento_ids:
             eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
+            if any(evento.cliente_id != current_user.id for evento in eventos_sel):
+                flash("Evento inválido.", "danger")
+                return redirect(url_for("formularios_routes.criar_formulario"))
             novo_formulario.eventos = eventos_sel
 
         db.session.add(novo_formulario)
