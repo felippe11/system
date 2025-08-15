@@ -9,7 +9,10 @@ from models import (
     AuditLog,
     Evento,
     Usuario,
-    WorkMetadata,
+    Formulario,
+    RespostaFormulario,
+    RespostaCampo,
+    ConfiguracaoCliente,
 )
 import uuid
 import os
@@ -28,71 +31,103 @@ trabalho_routes = Blueprint(
 @login_required
 @mfa_required
 def submeter_trabalho():
-    """Participante faz upload do PDF e registra o trabalho no banco."""
+    """Participante preenche o formulário configurado para submissão."""
     if current_user.tipo != "participante":
         flash("Apenas participantes podem submeter trabalhos.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
+    config_cli = ConfiguracaoCliente.query.filter_by(
+        cliente_id=current_user.cliente_id
+    ).first()
+    form_id = config_cli.formulario_submissao_id if config_cli else None
+    formulario = Formulario.query.get(form_id) if form_id else None
+    if not formulario or not formulario.is_submission_form:
+        flash("Formulário de submissão não configurado.", "warning")
+        return redirect(
+            url_for("dashboard_participante_routes.dashboard_participante")
+        )
+
+    evento_id = getattr(current_user, "evento_id", None)
+    if not evento_id:
+        flash("Usuário sem evento associado.", "danger")
+        return redirect(
+            url_for("dashboard_participante_routes.dashboard_participante")
+        )
+
+    evento = Evento.query.get(evento_id)
+    if not evento or not evento.submissao_aberta:
+        flash("Submissão encerrada para seu evento.", "danger")
+        return redirect(
+            url_for("dashboard_participante_routes.dashboard_participante")
+        )
 
     if request.method == "POST":
-        titulo = request.form.get("titulo")
-        resumo = request.form.get("resumo")
-        area_tematica = request.form.get("area_tematica")
-        arquivo = request.files.get("arquivo_pdf")
-        evento_id = getattr(current_user, "evento_id", None)
-
-        if not evento_id:
-            flash("Usuário sem evento associado.", "danger")
-            return redirect(url_for("trabalho_routes.submeter_trabalho"))
-
-        evento = Evento.query.get(evento_id)
-        if not evento or not evento.submissao_aberta:
-            flash("Submissão encerrada para seu evento.", "danger")
-            return redirect(url_for("trabalho_routes.submeter_trabalho"))
-
-        # Validação básica
-        if not all([titulo, resumo, area_tematica, arquivo]):
-            flash("Todos os campos são obrigatórios!", "warning")
-            return redirect(url_for("trabalho_routes.submeter_trabalho"))
+        resposta_formulario = RespostaFormulario(
+            formulario_id=formulario.id, usuario_id=current_user.id
+        )
+        db.session.add(resposta_formulario)
+        db.session.flush()
 
         allowed = "pdf"
         if current_user.cliente and current_user.cliente.configuracao:
-            allowed = current_user.cliente.configuracao.allowed_file_types or "pdf"
-        ext_ok = False
-        if allowed:
-            exts = [e.strip().lower() for e in allowed.split(',')]
-            ext_ok = any(arquivo.filename.lower().endswith(f".{ext}") for ext in exts)
-        if not ext_ok:
-            flash("Tipo de arquivo não permitido.", "warning")
-            return redirect(url_for("trabalho_routes.submeter_trabalho"))
+            allowed = (
+                current_user.cliente.configuracao.allowed_file_types or "pdf"
+            )
+        exts = [e.strip().lower() for e in allowed.split(",")] if allowed else []
+        arquivo_principal = None
 
-        # Salva o arquivo
-        filename = secure_filename(arquivo.filename)
-        uploads_dir = current_app.config.get("UPLOAD_FOLDER", "static/uploads/trabalhos")
-        os.makedirs(uploads_dir, exist_ok=True)
-        caminho_pdf = os.path.join(uploads_dir, filename)
-        arquivo.save(caminho_pdf)
+        for campo in formulario.campos:
+            valor = request.form.get(str(campo.id))
 
-        # Registra no banco
+            if campo.tipo == "file" and f"file_{campo.id}" in request.files:
+                arquivo = request.files[f"file_{campo.id}"]
+                if arquivo and arquivo.filename:
+                    ext = os.path.splitext(arquivo.filename)[1].lower().lstrip(".")
+                    if exts and ext not in exts:
+                        db.session.rollback()
+                        flash("Tipo de arquivo não permitido.", "warning")
+                        return redirect(url_for("trabalho_routes.submeter_trabalho"))
+                    filename = secure_filename(arquivo.filename)
+                    uploads_dir = current_app.config.get(
+                        "UPLOAD_FOLDER", "static/uploads/trabalhos"
+                    )
+                    os.makedirs(uploads_dir, exist_ok=True)
+                    caminho = os.path.join(uploads_dir, filename)
+                    arquivo.save(caminho)
+                    valor = caminho
+                    if not arquivo_principal:
+                        arquivo_principal = caminho
+
+            if campo.obrigatorio and not valor:
+                db.session.rollback()
+                flash(f"O campo '{campo.nome}' é obrigatório.", "danger")
+                return redirect(url_for("trabalho_routes.submeter_trabalho"))
+
+            db.session.add(
+                RespostaCampo(
+                    resposta_formulario_id=resposta_formulario.id,
+                    campo_id=campo.id,
+                    valor=valor,
+                )
+            )
+
+        db.session.commit()
+
         trabalho = TrabalhoCientifico(
-            titulo=titulo,
-            resumo=resumo,
-            area_tematica=area_tematica,
-            arquivo_pdf=caminho_pdf,
+            titulo=f"Submissão {resposta_formulario.id}",
+            resumo=None,
+            area_tematica=None,
+            arquivo_pdf=arquivo_principal,
             usuario_id=current_user.id,
             evento_id=evento_id,
             locator=str(uuid.uuid4()),
         )
         db.session.add(trabalho)
         db.session.commit()
-        locator = trabalho.locator
 
-        # Audit log
-        usuario = Usuario.query.get(getattr(current_user, "id", None))
-        uid = usuario.id if usuario else None  # salva log mesmo sem usuário
         db.session.add(
             AuditLog(
-                user_id=uid,
+                user_id=current_user.id,
                 submission_id=trabalho.id,
                 event_type="submission",
             )
@@ -100,12 +135,14 @@ def submeter_trabalho():
         db.session.commit()
 
         flash(
-            f"Trabalho submetido com sucesso! Localizador: {locator}",
+            f"Trabalho submetido com sucesso! Localizador: {trabalho.locator}",
             "success",
         )
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
 
-    return render_template("submeter_trabalho.html")
+    return render_template(
+        "inscricao/preencher_formulario.html", formulario=formulario
+    )
 
 
 # ──────────────────────────────── IMPORTAÇÃO ──────────────────────────────── #
