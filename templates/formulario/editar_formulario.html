@@ -22,6 +22,14 @@
             <label for="data_fim" class="form-label">Data de Fim</label>
             <input type="datetime-local" id="data_fim" name="data_fim" class="form-control" value="{{ formulario.data_fim.strftime('%Y-%m-%dT%H:%M') if formulario.data_fim else '' }}">
         </div>
+        <div class="mb-3">
+            <label for="eventos" class="form-label">Eventos Relacionados</label>
+            <select id="eventos" name="eventos" class="form-select" multiple>
+                {% for ev in eventos %}
+                    <option value="{{ ev.id }}" {% if ev in formulario.eventos %}selected{% endif %}>{{ ev.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
         <button type="submit" class="btn btn-success">Salvar Alterações</button>
     </form>
 
