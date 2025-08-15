@@ -122,12 +122,14 @@ def criar_formulario():
 
         nome = request.form.get("nome")
         descricao = request.form.get("descricao")
+
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
         evento_ids = request.form.getlist("eventos")
         is_submission_form = "is_submission_form" in request.form
         evento_submissao_id = request.form.get("evento_submissao")
         vincular_processo = "vincular_processo" in request.form
+
 
         # Checkbox marcado => True; ausente => False
         permitir_multiplas = "permitir_multiplas_respostas" in request.form
@@ -153,6 +155,7 @@ def criar_formulario():
             is_submission_form=is_submission_form,
         )
 
+
         if is_submission_form:
             if not evento_submissao_id:
                 flash("Selecione um evento para submissão.", "danger")
@@ -166,6 +169,7 @@ def criar_formulario():
             eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
             novo_formulario.eventos = eventos_sel
 
+
         db.session.add(novo_formulario)
         db.session.commit()
 
@@ -176,16 +180,16 @@ def criar_formulario():
             ).first()
             if not processo:
                 processo = RevisorProcess(
-                    cliente_id=current_user.id, formulario_id=novo_formulario.id
+                    cliente_id=current_user.id,
+                    formulario_id=novo_formulario.id,
+                    evento_id=evento_id,
                 )
-                if eventos_sel:
-                    processo.eventos = eventos_sel
                 db.session.add(processo)
             else:
                 processo.formulario_id = novo_formulario.id
-                if eventos_sel:
-                    processo.eventos = eventos_sel
+                processo.evento_id = evento_id
             db.session.commit()
+
 
         flash("Formulário criado com sucesso!", "success")
         return redirect(url_for("formularios_routes.listar_formularios"))
