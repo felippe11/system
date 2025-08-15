@@ -23,6 +23,8 @@ from models import (
     Usuario,
     Assignment,
     AuditLog,
+    Formulario,
+    Evento,
 )
 
 
@@ -45,7 +47,20 @@ def app():
                 cliente_id=cliente.id, max_trabalhos_por_revisor=2
             )
         )
-        proc = RevisorProcess(cliente_id=cliente.id)
+        form = Formulario(nome='F', cliente_id=cliente.id)
+        db.session.add(form)
+        db.session.commit()
+        event = Evento(
+            cliente_id=cliente.id,
+            nome='E1',
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(event)
+        db.session.commit()
+        form.eventos.append(event)
+        db.session.commit()
+        proc = RevisorProcess(cliente_id=cliente.id, formulario_id=form.id)
         db.session.add(proc)
         db.session.flush()
         db.session.add(
