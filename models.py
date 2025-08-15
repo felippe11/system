@@ -687,6 +687,7 @@ class Formulario(db.Model):
     data_inicio = db.Column(db.DateTime, nullable=True)
     data_fim = db.Column(db.DateTime, nullable=True)
     permitir_multiplas_respostas = db.Column(db.Boolean, default=True)
+    is_submission_form = db.Column(db.Boolean, default=False)
 
     # Relação com Cliente (opcional por cliente)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
@@ -813,12 +814,18 @@ class ConfiguracaoCliente(db.Model):
     taxa_diferenciada = db.Column(db.Numeric(5, 2), nullable=True)
 
     allowed_file_types = db.Column(db.String(100), default="pdf")
+    formulario_submissao_id = db.Column(
+        db.Integer, db.ForeignKey("formularios.id"), nullable=True
+    )
+    formulario_submissao = db.relationship("Formulario")
 
     review_model = db.Column(db.String(20), default="single")
     num_revisores_min = db.Column(db.Integer, default=1)
+
     num_revisores_max = db.Column(db.Integer, default=2)
     prazo_parecer_dias = db.Column(db.Integer, default=14)
-    max_trabalhos_por_revisor = db.Column(db.Integer, default=5)
+    max_trabalhos_por_revisor = db.Column(db.Integer, default=5, nullable=True)
+
 
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
@@ -1362,6 +1369,15 @@ class ApresentacaoTrabalho(db.Model):
     local = db.Column(db.String(100), nullable=True)
 
 
+class WorkMetadata(db.Model):
+    """Stores selected metadata from imported work spreadsheets."""
+
+    __tablename__ = "work_metadata"
+
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.JSON, nullable=False)
+
+
 class Pagamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
@@ -1702,6 +1718,7 @@ class Submission(db.Model):
     area_id = db.Column(db.Integer, nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    attributes = db.Column(db.JSON, default=dict)  # metadados importados
 
     # relationships
     author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))

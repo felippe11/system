@@ -3,7 +3,15 @@ from flask_login import login_required, current_user
 from extensions import db
 
 
-from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento, ConfiguracaoEvento
+from models import (
+    ConfiguracaoCliente,
+    Configuracao,
+    Cliente,
+    RevisaoConfig,
+    Evento,
+    ConfiguracaoEvento,
+    Formulario,
+)
 
 from datetime import datetime
 import logging
@@ -427,7 +435,8 @@ def configuracao_cliente_atual():
         "obrigatorio_email": config_cliente.obrigatorio_email,
         "obrigatorio_senha": config_cliente.obrigatorio_senha,
         "obrigatorio_formacao": config_cliente.obrigatorio_formacao,
-        "allowed_file_types": config_cliente.allowed_file_types
+        "allowed_file_types": config_cliente.allowed_file_types,
+        "formulario_submissao_id": config_cliente.formulario_submissao_id,
 
     })
 
@@ -629,6 +638,29 @@ def set_allowed_file_types():
     return jsonify({"success": True, "value": config_cliente.allowed_file_types})
 
 
+@config_cliente_routes.route("/set_submission_form", methods=["POST"])
+@login_required
+def set_submission_form():
+    if current_user.tipo != "cliente":
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    form_id = (
+        request.get_json(silent=True) or {}
+    ).get("form_id") or request.form.get("form_id", type=int)
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(
+        cliente_id=current_user.id
+    ).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.formulario_submissao_id = form_id
+    db.session.commit()
+
+    return jsonify({"success": True, "form_id": config_cliente.formulario_submissao_id})
+
+
 @config_cliente_routes.route('/set_limite_eventos/<int:cliente_id>', methods=['POST'])
 @login_required
 def set_limite_eventos(cliente_id):
@@ -799,11 +831,15 @@ def config_submissao():
         db.session.commit()
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    formularios = Formulario.query.filter_by(
+        cliente_id=current_user.id, is_submission_form=True
+    ).all()
 
     return render_template(
         'config/config_submissao.html',
         config_cliente=config_cliente,
         eventos=eventos,
+        formularios=formularios,
     )
 
 
