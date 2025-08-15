@@ -115,6 +115,11 @@ def criar_formulario():
             flash("Limite de formulários atingido.", "danger")
             return redirect(url_for("formularios_routes.listar_formularios"))
 
+
+
+        # Checkbox marcado => True; ausente => False
+        permitir_multiplas = "permitir_multiplas_respostas" in request.form
+
         nome = request.form.get("nome")
         descricao = request.form.get("descricao")
         data_inicio_str = request.form.get("data_inicio")
@@ -126,6 +131,7 @@ def criar_formulario():
 
         # Checkbox marcado => True; ausente => False
         permitir_multiplas = "permitir_multiplas_respostas" in request.form
+
 
         data_inicio = (
             datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
@@ -143,6 +149,7 @@ def criar_formulario():
             data_fim=data_fim,
             permitir_multiplas_respostas=permitir_multiplas,
             cliente_id=current_user.id,
+
             is_submission_form=is_submission_form,
         )
 
@@ -162,6 +169,7 @@ def criar_formulario():
         db.session.add(novo_formulario)
         db.session.commit()
 
+
         if vincular_processo:
             processo = RevisorProcess.query.filter_by(
                 cliente_id=current_user.id
@@ -170,9 +178,13 @@ def criar_formulario():
                 processo = RevisorProcess(
                     cliente_id=current_user.id, formulario_id=novo_formulario.id
                 )
+                if eventos_sel:
+                    processo.eventos = eventos_sel
                 db.session.add(processo)
             else:
                 processo.formulario_id = novo_formulario.id
+                if eventos_sel:
+                    processo.eventos = eventos_sel
             db.session.commit()
 
         flash("Formulário criado com sucesso!", "success")
