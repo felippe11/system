@@ -39,6 +39,7 @@ from models import (
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
+    revisor_process_evento_association,
     Submission,
     Usuario,
 )
@@ -215,8 +216,17 @@ def select_event():
 
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
-        .join(Cliente, Cliente.id == Evento.cliente_id)
-        .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
+
+        .join(
+            revisor_process_evento_association,
+            revisor_process_evento_association.c.evento_id == Evento.id,
+        )
+        .join(
+            RevisorProcess,
+            RevisorProcess.id
+            == revisor_process_evento_association.c.revisor_process_id,
+        )
+
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
@@ -386,13 +396,19 @@ def eligible_events():
 
     eventos = (
         Evento.query
-        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        .join(RevisorProcess, RevisorProcess.evento_id == Evento.id)
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
             RevisorProcess.exibir_para_participantes.is_(True),
-            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= hoje),
-            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= hoje),
+            or_(
+                RevisorProcess.availability_start.is_(None),
+                RevisorProcess.availability_start <= hoje,
+            ),
+            or_(
+                RevisorProcess.availability_end.is_(None),
+                RevisorProcess.availability_end >= hoje,
+            ),
         )
         .distinct()
         .all()
