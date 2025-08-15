@@ -82,6 +82,16 @@ def app():
         form = Formulario(nome="Cand", cliente_id=cliente.id)
         db.session.add(form)
         db.session.commit()
+        event = Evento(
+            cliente_id=cliente.id,
+            nome="E1",
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(event)
+        db.session.commit()
+        form.eventos.append(event)
+        db.session.commit()
         campo_email = CampoFormulario(formulario_id=form.id, nome="email", tipo="text")
         campo_nome = CampoFormulario(formulario_id=form.id, nome="nome", tipo="text")
         db.session.add_all([campo_email, campo_nome])
