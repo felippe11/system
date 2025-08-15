@@ -48,6 +48,7 @@ from models import (
     Usuario,
     Submission,
     Assignment,
+    Evento,
 )
 from app import create_app
 import routes.dashboard_cliente  # noqa: F401
@@ -81,6 +82,14 @@ def app():
         campo_nome = CampoFormulario(formulario_id=form.id, nome="nome", tipo="text")
         db.session.add_all([campo_email, campo_nome])
         db.session.commit()
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome="E1",
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(evento)
+        db.session.commit()
         now = datetime.utcnow()
         proc = RevisorProcess(
             cliente_id=cliente.id,
@@ -90,6 +99,7 @@ def app():
             availability_end=now + timedelta(days=1),
             exibir_para_participantes=True,
         )
+        proc.eventos.append(evento)
         db.session.add(proc)
         db.session.commit()
         sub = Submission(title="T", locator="loc", code_hash="x")

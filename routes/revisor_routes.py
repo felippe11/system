@@ -39,6 +39,7 @@ from models import (
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
+    revisor_process_evento_association,
     Submission,
     Usuario,
 )
@@ -215,8 +216,15 @@ def select_event():
 
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
-        .join(Cliente, Cliente.id == Evento.cliente_id)
-        .join(RevisorProcess, RevisorProcess.cliente_id == Cliente.id)
+        .join(
+            revisor_process_evento_association,
+            revisor_process_evento_association.c.evento_id == Evento.id,
+        )
+        .join(
+            RevisorProcess,
+            RevisorProcess.id
+            == revisor_process_evento_association.c.revisor_process_id,
+        )
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
