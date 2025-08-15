@@ -47,11 +47,38 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     async function onScanSuccess(decodedText) {
         scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
-        
+
         const item = document.createElement('li');
         item.classList.add('list-group-item');
         item.textContent = decodedText;
         scannedList.prepend(item);
+
+        let token;
+        try {
+            const url = new URL(decodedText);
+            token = url.searchParams.get('token');
+        } catch (err) {
+            token = decodedText;
+        }
+
+        try {
+            const response = await fetch('/processar_qrcode_agendamento', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.redirect) {
+                    window.location.href = '/confirmar_checkin_agendamento';
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao processar QR Code:', error);
+        }
     }
 
     function onScanError(errorMessage) {
