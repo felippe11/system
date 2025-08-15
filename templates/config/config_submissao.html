@@ -36,6 +36,17 @@
       </div>
       <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
         <div>
+          <h6 class="mb-0 fw-semibold">Formulário de Submissão</h6>
+        </div>
+        <select id="selectFormularioSubmissao" class="form-select w-auto" data-update-url="{{ url_for('config_cliente_routes.set_formulario_submissao') }}">
+          <option value="" {% if not config_cliente.formulario_submissao_id %}selected{% endif %}>Padrão</option>
+          {% for formulario in formularios %}
+          <option value="{{ formulario.id }}" {% if config_cliente.formulario_submissao_id == formulario.id %}selected{% endif %}>{{ formulario.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom">
+        <div>
           <h6 class="mb-0 fw-semibold">Modelo de Revisão</h6>
         </div>
         <select id="selectReviewModel" class="form-select w-auto" data-update-url="{{ url_for('config_cliente_routes.set_review_model') }}">
