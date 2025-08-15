@@ -45,6 +45,7 @@ from models import (
 )
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
+from .peer_review_routes import assign_by_filters_logic
 
 # Extensões permitidas para upload de arquivos
 ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
@@ -404,6 +405,40 @@ def view_candidatura(cand_id: int):
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     return render_template("revisor/candidatura_detail.html", candidatura=cand)
+
+
+# -----------------------------------------------------------------------------
+# SORTEIO DE REVISORES
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisores/sortear", methods=["POST"])
+@login_required
+def sortear_revisores():
+    """Realiza sorteio de revisores aprovados com filtros e limites."""
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    data = request.get_json() or {}
+    filtros = data.get("filters", {})
+    limite = data.get("limit")
+    max_por_sub = data.get("max_per_submission")
+
+    usuario = Usuario.query.get(getattr(current_user, "id", None))
+    uid = usuario.id if usuario else None
+    cliente_id = getattr(current_user, "id", None)
+
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
+    if limite is None and config:
+        limite = config.max_trabalhos_por_revisor
+    if max_por_sub is None and config:
+        max_por_sub = config.num_revisores_max
+    prazo_dias = config.prazo_parecer_dias if config else 14
+
+    session["revisor_filters"] = filtros
+    result = assign_by_filters_logic(
+        cliente_id, filtros, limite or 1, max_por_sub or 1, uid, prazo_dias
+    )
+    return jsonify(result)
 
 
 # -----------------------------------------------------------------------------
