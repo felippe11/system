@@ -66,6 +66,7 @@ from models import (
     CampoFormulario,
     RevisorProcess,
     RevisorCandidatura,
+    Evento,
 )
 from routes.auth_routes import auth_routes
 
@@ -167,6 +168,16 @@ def test_revisor_approval_without_email(client, app):
         cliente = Cliente.query.filter_by(email='cli@test').first()
         form = Formulario(nome='Form', cliente_id=cliente.id)
         db.session.add(form)
+        db.session.commit()
+        event = Evento(
+            cliente_id=cliente.id,
+            nome='E1',
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(event)
+        db.session.commit()
+        form.eventos.append(event)
         db.session.commit()
         campo_nome = CampoFormulario(formulario_id=form.id, nome='nome', tipo='text')
         db.session.add(campo_nome)
