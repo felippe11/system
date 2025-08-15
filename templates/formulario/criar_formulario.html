@@ -14,22 +14,42 @@
         <div class="card-body p-4">
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Informações Básicas -->
+                <h5 class="mb-3">Informações Básicas</h5>
                 <div class="mb-4">
                     <label for="nome" class="form-label fw-medium">Nome do Formulário</label>
-                    <input type="text" id="nome" name="nome" class="form-control form-control-lg"
-                           required placeholder="Digite o nome do formulário" autofocus>
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        class="form-control form-control-lg"
+                        required
+                        placeholder="Digite o nome do formulário"
+                        autofocus
+                    >
                     <div class="form-text">O nome ajuda a identificar o formulário na lista.</div>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="descricao" class="form-label fw-medium">Descrição</label>
-                    <textarea id="descricao" name="descricao" class="form-control"
-                              rows="4" placeholder="Adicione uma descrição (opcional)"></textarea>
+                    <textarea
+                        id="descricao"
+                        name="descricao"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Adicione uma descrição (opcional)"
+                    ></textarea>
                     <div class="form-text">Uma breve descrição sobre o propósito deste formulário.</div>
                 </div>
 
                 <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" id="permitir_multiplas_respostas" name="permitir_multiplas_respostas">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="permitir_multiplas_respostas"
+                        name="permitir_multiplas_respostas"
+                    >
                     <label class="form-check-label" for="permitir_multiplas_respostas">
                         Permitir apenas uma resposta por usuário
                     </label>
@@ -37,15 +57,26 @@
 
                 <div class="mb-4">
                     <label for="data_inicio" class="form-label fw-medium">Data de Início</label>
-                    <input type="datetime-local" id="data_inicio" name="data_inicio" class="form-control">
+                    <input
+                        type="datetime-local"
+                        id="data_inicio"
+                        name="data_inicio"
+                        class="form-control"
+                    >
                 </div>
 
                 <div class="mb-4">
                     <label for="data_fim" class="form-label fw-medium">Data de Fim</label>
-                    <input type="datetime-local" id="data_fim" name="data_fim" class="form-control">
+                    <input
+                        type="datetime-local"
+                        id="data_fim"
+                        name="data_fim"
+                        class="form-control"
+                    >
                 </div>
 
-
+                <!-- Eventos -->
+                <h5 class="mb-3">Eventos</h5>
                 <div class="mb-4">
                     <label for="eventos" class="form-label fw-medium">Eventos Relacionados</label>
                     <select id="eventos" name="eventos" class="form-select" multiple>
@@ -57,7 +88,12 @@
                 </div>
 
                 <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" id="is_submission_form" name="is_submission_form">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="is_submission_form"
+                        name="is_submission_form"
+                    >
                     <label class="form-check-label" for="is_submission_form">
                         Formulário para submissão de trabalhos
                     </label>
@@ -67,23 +103,43 @@
                     <label for="evento_submissao" class="form-label fw-medium">Evento para submissão</label>
                     <select id="evento_submissao" name="evento_submissao" class="form-select">
                         <option value="">Selecione um evento</option>
-
                         {% for ev in eventos %}
                             <option value="{{ ev.id }}">{{ ev.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-
+                <!-- Processo Seletivo -->
+                <h5 class="mb-3">Processo Seletivo</h5>
                 <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" id="vincular_processo" name="vincular_processo">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="vincular_processo"
+                        name="vincular_processo"
+                    >
                     <label class="form-check-label" for="vincular_processo">
                         Vincular ao processo seletivo de revisores
                     </label>
                 </div>
-                
+
+                <div id="evento_relacionado_container" class="mb-4 d-none">
+                    <label for="evento_relacionado" class="form-label fw-medium">Evento relacionado</label>
+                    <select id="evento_relacionado" name="evento_id" class="form-select">
+                        <option value="">Selecione um evento</option>
+                        {% for ev in eventos %}
+                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <!-- Placeholder para extensões futuras, como distribuição de trabalhos -->
+                    <div id="distribuicao_trabalhos_placeholder" class="mt-3 text-muted small"></div>
+                </div>
+
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                    <a href="{{ url_for('formularios_routes.listar_formularios') }}" class="btn btn-light me-md-2">
+                    <a
+                        href="{{ url_for('formularios_routes.listar_formularios') }}"
+                        class="btn btn-light me-md-2"
+                    >
                         Cancelar
                     </a>
                     <button type="submit" class="btn btn-primary">
@@ -106,25 +162,5 @@
 
 {% block scripts %}
 {{ super() }}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const checkbox = document.getElementById('vincular_processo');
-    const container = document.getElementById('evento_relacionado_container');
-    const select = document.getElementById('evento_relacionado');
-
-    function toggleEvento() {
-        if (checkbox.checked) {
-            container.classList.remove('d-none');
-        } else {
-            container.classList.add('d-none');
-            if (select) {
-                select.value = '';
-            }
-        }
-    }
-
-    checkbox.addEventListener('change', toggleEvento);
-    toggleEvento();
-});
-</script>
+<script src="{{ url_for('static', filename='js/formulario.js') }}"></script>
 {% endblock %}
