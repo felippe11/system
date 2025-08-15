@@ -43,6 +43,20 @@ def app():
         db.session.add_all([e1, e2])
         db.session.commit()
 
+        e1.formularios.append(f1)
+        e2.formularios.append(f2)
+        db.session.commit()
+        db.session.add(
+            RevisorProcess(
+                cliente_id=c1.id,
+                formulario_id=f1.id,
+                num_etapas=1,
+                availability_start=date.today() - timedelta(days=1),
+                availability_end=date.today() + timedelta(days=1),
+                exibir_para_participantes=True,
+            )
+
+
         proc1 = RevisorProcess(
             cliente_id=c1.id,
             formulario_id=f1.id,
@@ -51,6 +65,7 @@ def app():
             availability_end=date.today() + timedelta(days=1),
             exibir_para_participantes=True,
             eventos=[e1],
+
         )
         proc2 = RevisorProcess(
             cliente_id=c2.id,
@@ -90,8 +105,20 @@ def test_process_creation_with_dates(app):
 
 def test_visibility_flag_filters(app):
     with app.app_context():
-        visible = RevisorProcess.query.filter_by(exibir_para_participantes=True).all()
-        hidden = RevisorProcess.query.filter_by(exibir_para_participantes=False).all()
+        visible = (
+            RevisorProcess.query
+            .join(RevisorProcess.formulario)
+            .join(Formulario.eventos)
+            .filter(RevisorProcess.exibir_para_participantes.is_(True))
+            .all()
+        )
+        hidden = (
+            RevisorProcess.query
+            .join(RevisorProcess.formulario)
+            .join(Formulario.eventos)
+            .filter(RevisorProcess.exibir_para_participantes.is_(False))
+            .all()
+        )
         assert len(visible) == 2
         assert len(hidden) == 1
 
