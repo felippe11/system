@@ -21,6 +21,7 @@ def app():
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options('sqlite://')
+    app.jinja_env.globals['csrf_token'] = lambda: ''
     login_manager.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -162,4 +163,32 @@ def test_config_route_saves_availability(client, app):
         proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
         assert proc.availability_start.date() == start
         assert proc.availability_end.date() == end
+
+
+def test_config_route_saves_eventos(client, app):
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='c1@test').first()
+        formulario = Formulario.query.filter_by(cliente_id=cliente.id).first()
+        evento = Evento.query.filter_by(cliente_id=cliente.id).first()
+
+        from flask_login import login_user, logout_user
+
+        with client:
+            with app.test_request_context():
+                login_user(cliente)
+            resp = client.post(
+                '/config_revisor',
+                data={
+                    'formulario_id': formulario.id,
+                    'num_etapas': 1,
+                    'stage_name': ['Etapa 1'],
+                    'eventos_ids': [evento.id],
+                },
+            )
+            with app.test_request_context():
+                logout_user()
+
+        assert resp.status_code in (302, 200)
+        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert [e.id for e in proc.eventos] == [evento.id]
 
