@@ -3,7 +3,15 @@ from flask_login import login_required, current_user
 from extensions import db
 
 
-from models import ConfiguracaoCliente, Configuracao, Cliente, RevisaoConfig, Evento, ConfiguracaoEvento
+from models import (
+    ConfiguracaoCliente,
+    Configuracao,
+    Cliente,
+    RevisaoConfig,
+    Evento,
+    ConfiguracaoEvento,
+    Formulario,
+)
 
 from datetime import datetime
 import logging
@@ -253,18 +261,45 @@ def toggle_submissao_trabalhos_cliente():
     
     config = current_user.configuracao
     if not config:
-        config = ConfiguracaoCliente(cliente_id=current_user.id, habilitar_submissao_trabalhos=False)
+        config = ConfiguracaoCliente(
+            cliente_id=current_user.id, habilitar_submissao_trabalhos=False
+        )
         db.session.add(config)
         db.session.commit()
-    
+
+    if not config.habilitar_submissao_trabalhos:
+        if not config.formulario_submissao_id:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Defina um formulário de submissão.",
+                    }
+                ),
+                400,
+            )
+        form = Formulario.query.get(config.formulario_submissao_id)
+        if not form or not form.is_submission_form:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Formulário de submissão inválido.",
+                    }
+                ),
+                400,
+            )
+
     config.habilitar_submissao_trabalhos = not config.habilitar_submissao_trabalhos
     db.session.commit()
-    
-    return jsonify({
-        "success": True,
-        "value": config.habilitar_submissao_trabalhos,
-        "message": "Configuração de submissão de trabalhos atualizada!",
-    })
+
+    return jsonify(
+        {
+            "success": True,
+            "value": config.habilitar_submissao_trabalhos,
+            "message": "Configuração de submissão de trabalhos atualizada!",
+        }
+    )
     
 @config_cliente_routes.route('/toggle_mostrar_taxa', methods=['POST'])
 @login_required
@@ -629,6 +664,29 @@ def set_allowed_file_types():
     return jsonify({"success": True, "value": config_cliente.allowed_file_types})
 
 
+@config_cliente_routes.route("/set_formulario_submissao", methods=["POST"])
+@login_required
+def set_formulario_submissao():
+    """Define o formulário de submissão para o cliente atual."""
+    if current_user.tipo != "cliente":
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+
+    data = request.get_json() or {}
+    formulario_id = data.get("formulario_id")
+
+    config_cliente = ConfiguracaoCliente.query.filter_by(
+        cliente_id=current_user.id
+    ).first()
+    if not config_cliente:
+        config_cliente = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config_cliente)
+
+    config_cliente.formulario_submissao_id = formulario_id
+    db.session.commit()
+
+    return jsonify({"success": True, "value": config_cliente.formulario_submissao_id})
+
+
 @config_cliente_routes.route('/set_limite_eventos/<int:cliente_id>', methods=['POST'])
 @login_required
 def set_limite_eventos(cliente_id):
@@ -714,11 +772,15 @@ def atualizar_revisao_config(evento_id):
     if not config:
         config = RevisaoConfig(evento_id=evento_id)
         db.session.add(config)
-    config.numero_revisores = int(data.get('numero_revisores', config.numero_revisores))
+    numero = data.get('numero_revisores')
+    if numero is not None:
+        config.numero_revisores = int(numero)
     prazo = data.get('prazo_revisao')
     if prazo:
         config.prazo_revisao = datetime.fromisoformat(prazo)
-    config.modelo_blind = data.get('modelo_blind', config.modelo_blind)
+    modelo = data.get('modelo_blind')
+    if modelo:
+        config.modelo_blind = modelo
     db.session.commit()
     return jsonify({"success": True})
 
@@ -799,11 +861,28 @@ def config_submissao():
         db.session.commit()
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    formularios = (
+        Formulario.query.filter_by(
+            cliente_id=current_user.id, is_submission_form=True
+        ).all()
+    )
+    revisao_configs = {
+        cfg.evento_id: {
+            "numero_revisores": cfg.numero_revisores,
+            "prazo_revisao": cfg.prazo_revisao.isoformat() if cfg.prazo_revisao else None,
+            "modelo_blind": cfg.modelo_blind,
+        }
+        for cfg in RevisaoConfig.query.filter(
+            RevisaoConfig.evento_id.in_([e.id for e in eventos])
+        ).all()
+    }
 
     return render_template(
         'config/config_submissao.html',
         config_cliente=config_cliente,
         eventos=eventos,
+        formularios=formularios,
+        revisao_configs=revisao_configs,
     )
 
 

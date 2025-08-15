@@ -44,8 +44,15 @@ def submission_control():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     submissions = Submission.query.all()
+    reviewers = Usuario.query.filter_by(tipo="professor").all()
+    config = ConfiguracaoCliente.query.filter_by(
+        cliente_id=getattr(current_user, "id", None)
+    ).first()
     return render_template(
-        "peer_review/submission_control.html", submissions=submissions
+        "peer_review/submission_control.html",
+        submissions=submissions,
+        reviewers=reviewers,
+        config=config,
     )
 
 

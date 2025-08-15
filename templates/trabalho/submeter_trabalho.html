@@ -6,26 +6,29 @@
     {% if csrf_token is defined %}
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% endif %}
-    <div class="mb-3">
-      <label for="titulo" class="form-label">Título</label>
-      <input type="text" class="form-control" name="titulo" required>
-    </div>
-    <div class="mb-3">
-      <label for="resumo" class="form-label">Resumo</label>
-      <textarea class="form-control" name="resumo" rows="4" required></textarea>
-    </div>
-    <div class="mb-3">
-      <label for="area_tematica" class="form-label">Área Temática</label>
-      <input type="text" class="form-control" name="area_tematica" required>
-    </div>
     {% set tipos = current_user.cliente.configuracao.allowed_file_types if current_user.cliente and current_user.cliente.configuracao else 'pdf' %}
     {% set accept_str = '.' + tipos.replace(',', ',.').replace(' ', '') %}
-    <div class="mb-3">
-      <label for="arquivo_pdf" class="form-label">Arquivo</label>
-      <input type="file" class="form-control" name="arquivo_pdf" accept="{{ accept_str }}" required>
-      <small class="text-muted">Tipos permitidos: {{ tipos }}</small>
-    </div>
-    <p class="text-muted small">Após a submissão, um localizador único será exibido para que você consulte seu trabalho.</p>
+    {% for campo in formulario.campos %}
+      <div class="mb-3">
+        <label class="form-label">{{ campo.nome }}</label>
+        {% if campo.tipo == 'textarea' %}
+          <textarea class="form-control" name="{{ campo.id }}" rows="4" {% if campo.obrigatorio %}required{% endif %}{% if campo.tamanho_max %} maxlength="{{ campo.tamanho_max }}"{% endif %}></textarea>
+        {% elif campo.tipo == 'file' %}
+          <input type="file" class="form-control" name="file_{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %} accept="{{ accept_str }}">
+        {% elif campo.tipo == 'select' %}
+          <select class="form-select" name="{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}>
+            {% for opt in campo.opcoes.split(',') if campo.opcoes %}
+              <option value="{{ opt.strip() }}">{{ opt.strip() }}</option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <input type="{{ campo.tipo }}" class="form-control" name="{{ campo.id }}" {% if campo.obrigatorio %}required{% endif %}{% if campo.tamanho_max %} maxlength="{{ campo.tamanho_max }}"{% endif %}>
+        {% endif %}
+        {% if campo.descricao %}
+          <small class="form-text text-muted">{{ campo.descricao }}</small>
+        {% endif %}
+      </div>
+    {% endfor %}
     <button type="submit" class="btn btn-success">
       <i class="bi bi-upload me-2"></i>Submeter Trabalho
     </button>
