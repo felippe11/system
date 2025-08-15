@@ -2,6 +2,7 @@ from flask_login import login_required
 from utils import external_url, determinar_turno
 from utils.dia_semana import dia_semana
 from fpdf import FPDF
+from datetime import datetime
 import logging
 import psutil
 import os
@@ -2745,19 +2746,122 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
 
 
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """
-    Gera um PDF com o relatório de agendamentos para o cliente/organizador.
-    
-    Args:
-        evento: Objeto Evento
-        agendamentos: Lista de objetos AgendamentoVisita
-        caminho_pdf: Caminho onde o PDF será salvo
-    """
+    """Gera um relatório em PDF com a lista de agendamentos de um evento."""
+
     pdf = FPDF()
     pdf.add_page()
-    
-    # Configurações iniciais
+
+    # Título
     pdf.set_font('Arial', 'B', 16)
+    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
+
+    # Informações do evento
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
+    periodo = (
+        f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} '
+        f'a {evento.data_fim.strftime("%d/%m/%Y")}'
+    )
+    pdf.cell(190, 10, periodo, 0, 1)
+
+    # Data e hora de geração
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(
+        190,
+        10,
+        f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}',
+        0,
+        1,
+        'R',
+    )
+
+    # Estatísticas
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(190, 10, 'Estatísticas', 0, 1)
+
+    total_agendamentos = len(agendamentos)
+    confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
+    realizados = sum(1 for a in agendamentos if a.status == 'realizado')
+    cancelados = sum(1 for a in agendamentos if a.status == 'cancelado')
+
+    total_alunos = sum(
+        a.quantidade_alunos
+        for a in agendamentos
+        if a.status in ['confirmado', 'realizado']
+    )
+    presentes = 0
+    for a in agendamentos:
+        if a.status == 'realizado':
+            presentes += sum(1 for aluno in a.alunos if aluno.presente)
+
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
+    pdf.cell(95, 10, f'Total de Alunos: {total_alunos}', 0, 1)
+
+    pdf.cell(95, 10, f'Confirmados: {confirmados}', 0, 0)
+    pdf.cell(95, 10, f'Realizados: {realizados}', 0, 1)
+
+    pdf.cell(95, 10, f'Cancelados: {cancelados}', 0, 0)
+    if realizados > 0:
+        pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
+
+    # Lista de agendamentos
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
+
+    # Cabeçalho da tabela
+    pdf.set_font('Arial', 'B', 9)
+    pdf.cell(15, 10, 'ID', 1, 0, 'C')
+    pdf.cell(25, 10, 'Data', 1, 0, 'C')
+    pdf.cell(20, 10, 'Horário', 1, 0, 'C')
+    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
+    pdf.cell(35, 10, 'Professor', 1, 0, 'C')
+    pdf.cell(15, 10, 'Alunos', 1, 0, 'C')
+    pdf.cell(30, 10, 'Status', 1, 1, 'C')
+
+    pdf.set_font('Arial', '', 8)
+    for agendamento in agendamentos:
+        horario = agendamento.horario
+
+        escola_nome = agendamento.escola_nome
+        if len(escola_nome) > 25:
+            escola_nome = escola_nome[:22] + '...'
+
+        professor_nome = (
+            agendamento.professor.nome if agendamento.professor else '-'
+        )
+        if len(professor_nome) > 18:
+            professor_nome = professor_nome[:15] + '...'
+
+        pdf.cell(15, 8, str(agendamento.id), 1, 0, 'C')
+        pdf.cell(25, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(20, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
+        pdf.cell(50, 8, escola_nome, 1, 0, 'L')
+        pdf.cell(35, 8, professor_nome, 1, 0, 'L')
+        pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
+
+        status_txt = agendamento.status.capitalize()
+        if agendamento.checkin_realizado:
+            status_txt += ' ✓'
+
+        pdf.cell(30, 8, status_txt, 1, 1, 'C')
+
+    # Rodapé
+    pdf.ln(10)
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(
+        190,
+        10,
+        'Este relatório é gerado automaticamente pelo sistema de agendamentos.',
+        0,
+        1,
+        'C',
+    )
+
+    # Salvar o PDF
+    pdf.output(caminho_pdf)
     
 # Funções para manipulação de QR Code e checkin
 import qrcode

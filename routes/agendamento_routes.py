@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
+from services.pdf_service import gerar_pdf_relatorio_agendamentos
 import logging
 from utils.arquivo_utils import arquivo_permitido
 
@@ -723,6 +724,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf.output(caminho_pdf)
 
 
+
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     """
     Gera um relatório em PDF com a lista de agendamentos para um evento específico.
@@ -881,7 +883,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     # Salvar o PDF
     pdf.output(caminho_pdf)
     
-# Rotas para a aba de agendamentos no dashboard
+
 from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_, case
 from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
