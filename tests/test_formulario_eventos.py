@@ -44,8 +44,30 @@ def test_atribuir_eventos(client, app):
         ev2 = Evento.query.filter_by(nome='E2').first()
 
     login(client, 'cli@test', '123')
-    resp = client.post(f'/formularios/{form.id}/eventos', data={'eventos': [ev1.id, ev2.id]}, follow_redirects=True)
+    resp = client.post(
+        f'/formularios/{form.id}/eventos',
+        data={'eventos': [ev1.id, ev2.id]},
+        follow_redirects=True,
+    )
     assert resp.status_code == 200
     with app.app_context():
         form = Formulario.query.get(form.id)
+        assert {e.id for e in form.eventos} == {ev1.id, ev2.id}
+
+
+def test_criar_formulario_com_eventos(client, app):
+    with app.app_context():
+        ev1 = Evento.query.filter_by(nome='E1').first()
+        ev2 = Evento.query.filter_by(nome='E2').first()
+
+    login(client, 'cli@test', '123')
+    resp = client.post(
+        '/formularios/novo',
+        data={'nome': 'F2', 'eventos[]': [ev1.id, ev2.id]},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        form = Formulario.query.filter_by(nome='F2').first()
+        assert form is not None
         assert {e.id for e in form.eventos} == {ev1.id, ev2.id}

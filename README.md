@@ -154,6 +154,12 @@ Para oferecer acessibilidade em Libras e suporte a pessoas cegas:
 
 - Verifique se todas as imagens possuem um texto alternativo significativo (`alt`).
 
+## Formulários
+
+Ao criar um formulário, o campo de seleção de eventos relacionados usa o atributo
+`name="eventos[]"` para permitir a seleção múltipla. No back-end, continue
+obtendo os IDs selecionados com `request.form.getlist("eventos")`.
+
 ## Programacao em PDF
 
 Use a rota `/gerar_folder_evento/<evento_id>` para baixar a programacao do evento no formato de folder. Esta rota gera um PDF em modo paisagem com duas colunas, facilitando a impressao frente e verso.
