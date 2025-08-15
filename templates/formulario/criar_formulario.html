@@ -47,7 +47,7 @@
 
                 <div class="mb-4">
                     <label for="eventos" class="form-label fw-medium">Eventos Relacionados</label>
-                    <select id="eventos" name="eventos" class="form-select" multiple>
+                    <select id="eventos" name="eventos[]" class="form-select" multiple>
                         {% for ev in eventos %}
                             <option value="{{ ev.id }}">{{ ev.nome }}</option>
                         {% endfor %}
