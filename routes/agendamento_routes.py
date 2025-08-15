@@ -4048,26 +4048,40 @@ def marcar_presenca_aluno(aluno_id):
 @agendamento_routes.route('/qrcode_agendamento/<int:agendamento_id>', methods=['GET'])
 @login_required
 def qrcode_agendamento(agendamento_id):
+    """Gera um QR code para o check-in de um agendamento.
+
+    O código embute uma URL que contém o ``qr_code_token`` do agendamento,
+    permitindo que o frontend processe o check-in a partir da leitura do QR
+    code.
+    """
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    if current_user.id not in (agendamento.professor_id, agendamento.horario.evento.cliente_id):
+    if current_user.id not in (
+        agendamento.professor_id,
+        agendamento.horario.evento.cliente_id,
+    ):
         abort(403)
 
-    # Dados que estarão no QR Code
-    qr_data = f"Agendamento ID: {agendamento.id}, Evento: {agendamento.horario.evento.nome}, Data: {agendamento.horario.data.strftime('%d/%m/%Y')}"
+    qr_data = url_for(
+        'agendamento_routes.checkin_qr_agendamento',
+        token=agendamento.qr_code_token,
+    )
 
-    # Gerando QR Code
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(qr_data)
     qr.make(fit=True)
     img = qr.make_image(fill='black', back_color='white')
 
-    # Envia o QR Code como imagem
     buf = io.BytesIO()
     img.save(buf, 'PNG')
     buf.seek(0)
 
-    return send_file(buf, mimetype='image/png', as_attachment=False, download_name=f'qrcode_agendamento_{agendamento.id}.png')
+    return send_file(
+        buf,
+        mimetype='image/png',
+        as_attachment=False,
+        download_name=f'qrcode_agendamento_{agendamento.id}.png',
+    )
 
 @agendamento_routes.route('/api/horarios_disponiveis', methods=['GET'])
 @login_required
