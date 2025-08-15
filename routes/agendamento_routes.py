@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
+from services.pdf_service import gerar_pdf_relatorio_agendamentos
 import logging
 from utils.arquivo_utils import arquivo_permitido
 
@@ -723,113 +724,6 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
     pdf.output(caminho_pdf)
 
 
-def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """
-    Gera um relatório em PDF com a lista de agendamentos para um evento específico.
-    
-    Args:
-        evento: Objeto Evento
-        agendamentos: Lista de objetos AgendamentoVisita
-        caminho_pdf: Caminho onde o PDF será salvo
-    """
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Configurar fonte
-    pdf.set_font('Arial', 'B', 16)
-    
-    # Título
-    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
-    
-    # Informações do evento
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
-    pdf.cell(190, 10, f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} a {evento.data_fim.strftime("%d/%m/%Y")}', 0, 1)
-    
-    # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
-    pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
-    
-    # Estatísticas
-    pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Estatísticas', 0, 1)
-    
-    # Contadores
-    total_agendamentos = len(agendamentos)
-    confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
-    realizados = sum(1 for a in agendamentos if a.status == 'realizado')
-    cancelados = sum(1 for a in agendamentos if a.status == 'cancelado')
-    
-    total_alunos = sum(a.quantidade_alunos for a in agendamentos if a.status in ['confirmado', 'realizado'])
-    presentes = 0
-    for a in agendamentos:
-        if a.status == 'realizado':
-            presentes += sum(1 for aluno in a.alunos if aluno.presente)
-    
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
-    pdf.cell(95, 10, f'Total de Alunos: {total_alunos}', 0, 1)
-    
-    pdf.cell(95, 10, f'Confirmados: {confirmados}', 0, 0)
-    pdf.cell(95, 10, f'Realizados: {realizados}', 0, 1)
-    
-    pdf.cell(95, 10, f'Cancelados: {cancelados}', 0, 0)
-    if realizados > 0:
-        pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
-    
-    # Lista de agendamentos
-    pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
-    
-    # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(15, 10, 'ID', 1, 0, 'C')
-    pdf.cell(25, 10, 'Data', 1, 0, 'C')
-    pdf.cell(20, 10, 'Horário', 1, 0, 'C')
-    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
-    pdf.cell(35, 10, 'Professor', 1, 0, 'C')
-    pdf.cell(15, 10, 'Alunos', 1, 0, 'C')
-    pdf.cell(30, 10, 'Status', 1, 1, 'C')
-    
-    # Dados da tabela
-    pdf.set_font('Arial', '', 8)
-    for agendamento in agendamentos:
-        horario = agendamento.horario
-        
-        # Limitar tamanho dos nomes para caber na tabela
-        escola_nome = agendamento.escola_nome
-        if len(escola_nome) > 25:
-            escola_nome = escola_nome[:22] + '...'
-        
-        professor_nome = (
-            agendamento.professor.nome if agendamento.professor else "-"
-        )
-        if len(professor_nome) > 18:
-            professor_nome = professor_nome[:15] + '...'
-        
-        pdf.cell(15, 8, str(agendamento.id), 1, 0, 'C')
-        pdf.cell(25, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
-        pdf.cell(20, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
-        pdf.cell(50, 8, escola_nome, 1, 0, 'L')
-        pdf.cell(35, 8, professor_nome, 1, 0, 'L')
-        pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
-        
-        status_txt = agendamento.status.capitalize()
-        if agendamento.checkin_realizado:
-            status_txt += " ✓"
-        
-        pdf.cell(30, 8, status_txt, 1, 1, 'C')
-    
-    # Rodapé
-    pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
-    pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
-    
-    # Salvar o PDF
-    pdf.output(caminho_pdf)
-    
 # Rotas para a aba de agendamentos no dashboard
 from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_, case
