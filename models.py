@@ -1778,6 +1778,14 @@ class Assignment(db.Model):
     reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
 
 
+# Associação N:N entre processos de revisor e eventos
+revisor_process_evento = db.Table(
+    "revisor_process_evento",
+    db.Column("process_id", db.Integer, db.ForeignKey("revisor_process.id"), primary_key=True),
+    db.Column("evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True),
+)
+
+
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
 
@@ -1799,6 +1807,11 @@ class RevisorProcess(db.Model):
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
     )
     formulario = db.relationship("Formulario")
+    eventos = db.relationship(
+        "Evento",
+        secondary=revisor_process_evento,
+        backref=db.backref("revisor_processes", lazy=True),
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
