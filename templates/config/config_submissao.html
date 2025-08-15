@@ -138,8 +138,79 @@
         </div>
       </div>
     </div>
+    </div>
+  <div class="accordion mt-4" id="accordionDistribuicao">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingDistribuicao">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDistribuicao" aria-expanded="false" aria-controls="collapseDistribuicao">
+          Distribuição de Trabalhos
+        </button>
+      </h2>
+      <div id="collapseDistribuicao" class="accordion-collapse collapse" aria-labelledby="headingDistribuicao" data-bs-parent="#accordionDistribuicao">
+        <div class="accordion-body">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Localizador</th>
+                <th>Autor</th>
+                <th>Revisores</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in submissions %}
+              <tr>
+                <td>{{ sub.title }}</td>
+                <td>{{ sub.locator }}</td>
+                <td>{{ sub.author.nome if sub.author else 'N/A' }}</td>
+                <td>
+                  <ul class="mb-0">
+                    {% for rev in sub.reviews %}
+                    <li>{{ rev.reviewer.nome if rev.reviewer else 'N/A' }} - {{ rev.access_code }}</li>
+                    {% else %}
+                    <li>Nenhum revisor atribuído</li>
+                    {% endfor %}
+                  </ul>
+                  <button class="btn btn-sm btn-secondary mt-1 gerar-codigos" data-locator="{{ sub.locator }}">Gerar Códigos</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <div class="mt-5">
+            <h4>Atribuir Revisores</h4>
+            <div class="mb-3">
+              <label for="submissionSelect" class="form-label">Submissão</label>
+              <select id="submissionSelect" class="form-select">
+                {% for sub in submissions %}
+                <option value="{{ sub.id }}">{{ sub.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="reviewerSelect" class="form-label">Revisores</label>
+              <select id="reviewerSelect" class="form-select" multiple>
+                {% for r in reviewers %}
+                <option value="{{ r.id }}">{{ r.nome }}</option>
+                {% endfor %}
+              </select>
+              <small class="form-text text-muted">
+                Selecione entre {{ config_cliente.num_revisores_min if config_cliente else 1 }} e {{ config_cliente.num_revisores_max if config_cliente else 2 }} revisores.
+              </small>
+            </div>
+            <button id="assignManual" class="btn btn-primary me-2">Atribuir Manualmente</button>
+            <button id="assignAutomatic" class="btn btn-secondary me-2">Sorteio Automático</button>
+            <div class="input-group mt-2" style="max-width: 300px;">
+              <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" />
+              <button id="autoArea" class="btn btn-info">Auto por Área</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
+  </div>
 {% endblock %}
 
 {% block scripts %}
@@ -187,6 +258,85 @@
     } else {
       alert('Erro ao salvar configuração');
     }
+  });
+
+  // ---------------- Distribuição de Trabalhos ----------------
+  document.querySelectorAll('.gerar-codigos').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const loc = btn.dataset.locator;
+      fetch(`/submissions/${loc}/codes`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.reviews) {
+            alert(data.reviews.map((r) => r.access_code).join('\n'));
+          }
+        });
+    });
+  });
+
+  const minRev = {{ config_cliente.num_revisores_min if config_cliente else 1 }};
+  const maxRev = {{ config_cliente.num_revisores_max if config_cliente else 2 }};
+
+  document.getElementById('assignManual')?.addEventListener('click', () => {
+    const subId = document.getElementById('submissionSelect').value;
+    const selected = Array.from(
+      document.getElementById('reviewerSelect').selectedOptions
+    ).map((o) => o.value);
+    if (selected.length < minRev || selected.length > maxRev) {
+      alert(`Selecione entre ${minRev} e ${maxRev} revisores.`);
+      return;
+    }
+    const payload = {};
+    payload[subId] = selected;
+    fetch('/assign_reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          alert('Revisores atribuídos com sucesso');
+          location.reload();
+        } else {
+          alert('Falha ao atribuir revisores');
+        }
+      });
+  });
+
+  document.getElementById('assignAutomatic')?.addEventListener('click', () => {
+    fetch('/assign_by_filters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filters: {} }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          alert('Sorteio realizado');
+          location.reload();
+        } else {
+          alert(data.message || 'Falha no sorteio');
+        }
+      });
+  });
+
+  document.getElementById('autoArea')?.addEventListener('click', () => {
+    const eventoId = document.getElementById('eventoId').value;
+    if (!eventoId) {
+      alert('Informe o ID do evento');
+      return;
+    }
+    fetch(`/auto_assign/${eventoId}`, { method: 'POST' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          alert('Atribuições criadas');
+          location.reload();
+        } else {
+          alert(data.message || 'Erro na atribuição automática');
+        }
+      });
   });
 </script>
 {% endblock %}
