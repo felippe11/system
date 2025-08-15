@@ -389,7 +389,7 @@
   <!-- Container unificado para as ações -->
   <div class="container-fluid px-4 mt-5">
     <div class="d-flex flex-wrap justify-content-center gap-3">
-      {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_submissao_trabalhos %}
+      {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_submissao_trabalhos and config_cliente and config_cliente.formulario_submissao_id %}
         <a href="{{ url_for('trabalho_routes.submeter_trabalho') }}" class="btn btn-success btn-lg">
           <i class="bi bi-upload me-2"></i> Submeter Trabalho
         </a>
