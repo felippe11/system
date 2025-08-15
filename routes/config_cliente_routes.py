@@ -714,11 +714,15 @@ def atualizar_revisao_config(evento_id):
     if not config:
         config = RevisaoConfig(evento_id=evento_id)
         db.session.add(config)
-    config.numero_revisores = int(data.get('numero_revisores', config.numero_revisores))
+    numero = data.get('numero_revisores')
+    if numero is not None:
+        config.numero_revisores = int(numero)
     prazo = data.get('prazo_revisao')
     if prazo:
         config.prazo_revisao = datetime.fromisoformat(prazo)
-    config.modelo_blind = data.get('modelo_blind', config.modelo_blind)
+    modelo = data.get('modelo_blind')
+    if modelo:
+        config.modelo_blind = modelo
     db.session.commit()
     return jsonify({"success": True})
 
@@ -799,11 +803,22 @@ def config_submissao():
         db.session.commit()
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    revisao_configs = {
+        cfg.evento_id: {
+            "numero_revisores": cfg.numero_revisores,
+            "prazo_revisao": cfg.prazo_revisao.isoformat() if cfg.prazo_revisao else None,
+            "modelo_blind": cfg.modelo_blind,
+        }
+        for cfg in RevisaoConfig.query.filter(
+            RevisaoConfig.evento_id.in_([e.id for e in eventos])
+        ).all()
+    }
 
     return render_template(
         'config/config_submissao.html',
         config_cliente=config_cliente,
         eventos=eventos,
+        revisao_configs=revisao_configs,
     )
 
 
