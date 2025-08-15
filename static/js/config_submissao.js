@@ -1,3 +1,4 @@
+
 /* global atualizarBotao, csrfToken */
 (function () {
   const REVISAO_CONFIGS = window.REVISAO_CONFIGS || {};
