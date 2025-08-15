@@ -120,6 +120,8 @@ def criar_formulario():
         data_inicio_str = request.form.get("data_inicio")
         data_fim_str = request.form.get("data_fim")
         evento_ids = request.form.getlist("eventos")
+        is_submission_form = "is_submission_form" in request.form
+        evento_submissao_id = request.form.get("evento_submissao")
         vincular_processo = "vincular_processo" in request.form
 
         # Checkbox marcado => True; ausente => False
@@ -141,9 +143,19 @@ def criar_formulario():
             data_fim=data_fim,
             permitir_multiplas_respostas=permitir_multiplas,
             cliente_id=current_user.id,
+            is_submission_form=is_submission_form,
         )
 
-        if evento_ids:
+        if is_submission_form:
+            if not evento_submissao_id:
+                flash("Selecione um evento para submissão.", "danger")
+                return render_template(
+                    "criar_formulario.html", eventos=eventos_disponiveis
+                )
+            evento_sub = Evento.query.get(int(evento_submissao_id))
+            if evento_sub:
+                novo_formulario.eventos = [evento_sub]
+        elif evento_ids:
             eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
             novo_formulario.eventos = eventos_sel
 
