@@ -37,6 +37,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 from flask import Flask
 from flask import render_template
 from extensions import db, login_manager
+from flask_migrate import upgrade
 
 from datetime import datetime, timedelta
 from models import (
@@ -69,7 +70,10 @@ def app():
 
 
     with app.app_context():
-        db.create_all()
+        try:
+            upgrade(revision="heads")
+        except SystemExit:
+            db.create_all()
         cliente = Cliente(
             nome="Cli", email="cli@test", senha=generate_password_hash("123")
         )
@@ -92,6 +96,14 @@ def app():
         campo_nome = CampoFormulario(formulario_id=form.id, nome="nome", tipo="text")
         db.session.add_all([campo_email, campo_nome])
         db.session.commit()
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome="E1",
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(evento)
+        db.session.commit()
         now = datetime.utcnow()
         proc = RevisorProcess(
             cliente_id=cliente.id,
@@ -101,6 +113,7 @@ def app():
             availability_end=now + timedelta(days=1),
             exibir_para_participantes=True,
         )
+        proc.eventos.append(evento)
         db.session.add(proc)
         db.session.commit()
         sub = Submission(title="T", locator="loc", code_hash="x")
