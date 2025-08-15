@@ -143,6 +143,7 @@ def criar_formulario():
             cliente_id=current_user.id,
         )
 
+        eventos_sel: list[Evento] = []
         if evento_ids:
             eventos_sel = Evento.query.filter(Evento.id.in_(evento_ids)).all()
             novo_formulario.eventos = eventos_sel
@@ -158,9 +159,13 @@ def criar_formulario():
                 processo = RevisorProcess(
                     cliente_id=current_user.id, formulario_id=novo_formulario.id
                 )
+                if eventos_sel:
+                    processo.eventos = eventos_sel
                 db.session.add(processo)
             else:
                 processo.formulario_id = novo_formulario.id
+                if eventos_sel:
+                    processo.eventos = eventos_sel
             db.session.commit()
 
         flash("Formulário criado com sucesso!", "success")

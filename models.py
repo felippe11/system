@@ -1840,10 +1840,7 @@ class RevisorProcess(db.Model):
     )
     formulario = db.relationship("Formulario")
     eventos = db.relationship(
-        "Evento",
-        primaryjoin="RevisorProcess.cliente_id == foreign(Evento.cliente_id)",
-        viewonly=True,
-        lazy="selectin",
+        "Evento", secondary=revisor_process_evento_association, lazy="selectin"
     )
 
 
