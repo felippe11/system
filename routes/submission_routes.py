@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, abort
+from flask_login import current_user
 import uuid
 import secrets
 from datetime import datetime, timedelta
@@ -98,7 +99,12 @@ def add_review(locator):
 
 @submission_routes.route('/submissions/<locator>/codes')
 def list_review_codes(locator):
+    """Return review access codes for a submission when authorized."""
+    code = request.args.get('code')
     submission = Submission.query.filter_by(locator=locator).first_or_404()
+    if not (current_user.is_authenticated or submission.check_code(code)):
+        abort(401)
+
     reviews = Review.query.filter_by(submission_id=submission.id).all()
     return jsonify({
         'locator': locator,
