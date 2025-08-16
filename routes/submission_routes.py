@@ -81,8 +81,13 @@ def add_review(locator):
     reviewer_name = request.form.get("reviewer_name")
     comment = request.form.get("comment")
 
+    reviewer_id_val = (
+        int(reviewer_id) if reviewer_id and str(reviewer_id).isdigit() else None
+    )
+
     review = Review(
         submission_id=submission.id,
+        reviewer_id=reviewer_id_val,
         reviewer_name=reviewer_name,
         comments=comment,
     )
@@ -96,9 +101,7 @@ def add_review(locator):
 
     assignment = Assignment(
         submission_id=submission.id,
-        reviewer_id=int(reviewer_id)
-        if reviewer_id and str(reviewer_id).isdigit()
-        else None,
+        reviewer_id=reviewer_id_val,
         deadline=datetime.utcnow() + timedelta(days=prazo_dias),
     )
     db.session.add(assignment)
@@ -132,7 +135,8 @@ def list_review_codes(locator):
                 'access_code': r.access_code,
                 'started_at': r.started_at.isoformat() if r.started_at else None,
                 'finished_at': r.finished_at.isoformat() if r.finished_at else None,
-                'duration_seconds': r.duration_seconds
+                'duration_seconds': r.duration_seconds,
+                'reviewer_name': r.reviewer.nome if r.reviewer else r.reviewer_name,
             }
             for r in reviews
         ]

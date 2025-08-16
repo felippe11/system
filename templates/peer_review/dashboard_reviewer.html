@@ -4,11 +4,12 @@
   <h3>Trabalhos para Revisão</h3>
   <p>Prazo: {{ config.prazo_revisao.strftime('%d/%m/%Y') if config and config.prazo_revisao else 'N/A' }}</p>
   <table class="table table-striped">
-    <thead><tr><th>Título</th><th>Status</th><th>Prazo</th></tr></thead>
+    <thead><tr><th>Título</th><th>Revisor</th><th>Status</th><th>Prazo</th></tr></thead>
     <tbody>
       {% for a in assignments %}
       <tr>
         <td>{{ a.submission.title }}</td>
+        <td>{{ a.reviewer.nome if a.reviewer else '' }}</td>
         <td>{{ 'Concluída' if a.completed else 'Pendente' }}</td>
         <td>{{ a.deadline.strftime('%d/%m/%Y') if a.deadline else '' }}</td>
       </tr>

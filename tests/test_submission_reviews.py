@@ -60,5 +60,5 @@ def test_add_review_separate_fields(client, app):
         review = Review.query.first()
         assignment = Assignment.query.first()
         assert review.reviewer_name == 'Prof'
-        assert review.reviewer_id is None
+        assert review.reviewer_id == 1
         assert assignment.reviewer_id == 1
