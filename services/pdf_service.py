@@ -2813,13 +2813,15 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Cabeçalho da tabela
     pdf.set_font('Arial', 'B', 9)
-    pdf.cell(15, 10, 'ID', 1, 0, 'C')
-    pdf.cell(25, 10, 'Data', 1, 0, 'C')
-    pdf.cell(20, 10, 'Horário', 1, 0, 'C')
-    pdf.cell(50, 10, 'Escola', 1, 0, 'C')
-    pdf.cell(35, 10, 'Professor', 1, 0, 'C')
+    pdf.cell(10, 10, 'ID', 1, 0, 'C')
+    pdf.cell(20, 10, 'Data', 1, 0, 'C')
+    pdf.cell(15, 10, 'Horário', 1, 0, 'C')
+    pdf.cell(40, 10, 'Escola', 1, 0, 'C')
+    pdf.cell(30, 10, 'Professor', 1, 0, 'C')
     pdf.cell(15, 10, 'Alunos', 1, 0, 'C')
-    pdf.cell(30, 10, 'Status', 1, 1, 'C')
+    pdf.cell(20, 10, 'Presentes', 1, 0, 'C')
+    pdf.cell(25, 10, 'Check-in', 1, 0, 'C')
+    pdf.cell(15, 10, 'Status', 1, 1, 'C')
 
     pdf.set_font('Arial', '', 8)
     for agendamento in agendamentos:
@@ -2835,18 +2837,40 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         if len(professor_nome) > 18:
             professor_nome = professor_nome[:15] + '...'
 
-        pdf.cell(15, 8, str(agendamento.id), 1, 0, 'C')
-        pdf.cell(25, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
-        pdf.cell(20, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
-        pdf.cell(50, 8, escola_nome, 1, 0, 'L')
-        pdf.cell(35, 8, professor_nome, 1, 0, 'L')
+        pdf.cell(10, 8, str(agendamento.id), 1, 0, 'C')
+        pdf.cell(20, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
+        pdf.cell(15, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
+        pdf.cell(40, 8, escola_nome, 1, 0, 'L')
+        pdf.cell(30, 8, professor_nome, 1, 0, 'L')
         pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
+
+        presentes = sum(1 for aluno in agendamento.alunos if aluno.presente)
+        presentes_txt = (
+            'Prof + ' + str(presentes)
+            if agendamento.checkin_realizado
+            else '- + ' + str(presentes)
+        )
+        pdf.cell(20, 8, presentes_txt, 1, 0, 'C')
+
+        checkin_txt = (
+            agendamento.data_checkin.strftime('%d/%m/%Y %H:%M')
+            if agendamento.data_checkin
+            else '-'
+        )
+        pdf.cell(25, 8, checkin_txt, 1, 0, 'C')
 
         status_txt = agendamento.status.capitalize()
         if agendamento.checkin_realizado:
             status_txt += ' ✓'
 
-        pdf.cell(30, 8, status_txt, 1, 1, 'C')
+        pdf.cell(15, 8, status_txt, 1, 1, 'C')
+
+        if agendamento.alunos:
+            pdf.set_font('Arial', 'I', 7)
+            for aluno in agendamento.alunos:
+                pres = 'Presente' if aluno.presente else 'Ausente'
+                pdf.cell(190, 5, f"- {aluno.nome} ({pres})", 0, 1)
+            pdf.set_font('Arial', '', 8)
 
     # Rodapé
     pdf.ln(10)

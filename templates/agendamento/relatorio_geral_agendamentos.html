@@ -185,7 +185,60 @@
             </div>
         </div>
     </div>
-    
+
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <i class="fas fa-table"></i> Lista de Agendamentos
+        </div>
+        <div class="card-body table-responsive">
+            {% if agendamentos %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Data</th>
+                        <th>Horário</th>
+                        <th>Escola</th>
+                        <th>Professor</th>
+                        <th>Alunos</th>
+                        <th>Presentes</th>
+                        <th>Check-in</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for agendamento in agendamentos %}
+                    <tr>
+                        <td>{{ agendamento.id }}</td>
+                        <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</td>
+                        <td>{{ agendamento.escola_nome }}</td>
+                        <td>{{ agendamento.professor.nome if agendamento.professor else '-' }}</td>
+                        <td>{{ agendamento.quantidade_alunos }}</td>
+                        <td>{{ 'Prof' if agendamento.checkin_realizado else '-' }} + {{ agendamento.alunos|selectattr('presente')|list|length }}</td>
+                        <td>{{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}</td>
+                        <td>{{ agendamento.status }}</td>
+                    </tr>
+                    {% if agendamento.alunos %}
+                    <tr>
+                        <td colspan="9">
+                            <ul class="mb-0">
+                                {% for aluno in agendamento.alunos %}
+                                <li>{{ aluno.nome }} - {{ 'Presente' if aluno.presente else 'Ausente' }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-info mb-0">Nenhum agendamento no período.</div>
+            {% endif %}
+        </div>
+    </div>
+
     <div class="card mb-4">
         <div class="card-header bg-warning text-dark">
             <i class="fas fa-lightbulb"></i> Insights e Recomendações

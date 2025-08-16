@@ -11,6 +11,7 @@ from extensions import db
 from services.mailjet_service import send_via_mailjet
 from services.pdf_service import gerar_pdf_relatorio_agendamentos
 import logging
+
 from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ import pandas as pd
 import qrcode
 import io
 from . import routes
+
 
 # Aliases for backward compatibility used later in this module
 ConfigAgendamento = ConfiguracaoAgendamento
@@ -463,22 +465,43 @@ def relatorio_geral_agendamentos():
             'visitantes': visitantes
 
         }
-    
-    # Gerar PDF com estatísticas
+
+    agendamentos = (
+        AgendamentoVisita.query.join(HorarioVisitacao)
+        .join(Evento)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+        .all()
+    )
+
+    # Gerar PDF com detalhes
     if request.args.get('gerar_pdf'):
-        pdf_filename = f"relatorio_geral_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.pdf"
+        pdf_filename = (
+            f"relatorio_geral_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.pdf"
+        )
         pdf_path = os.path.join("static", "relatorios", pdf_filename)
         os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
-        
-        # Chamar função para gerar PDF
-        gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, pdf_path)
-        
+
+        dummy_evento = SimpleNamespace(
+            nome='Relatório Geral',
+            local='-',
+            data_inicio=datetime.combine(data_inicio, datetime.min.time()),
+            data_fim=datetime.combine(data_fim, datetime.min.time()),
+        )
+
+        gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
+
         return send_file(pdf_path, as_attachment=True)
     
     return render_template(
         'relatorio_geral_agendamentos.html',
         eventos=eventos,
         estatisticas=estatisticas,
+        agendamentos=agendamentos,
         filtros={
             'data_inicio': data_inicio,
             'data_fim': data_fim
@@ -3250,6 +3273,7 @@ def confirmar_checkin_agendamento(token):
     # Se for POST, realiza o check-in
     if request.method == 'POST':
         try:
+
             # Atualiza o status do agendamento
             if not agendamento.checkin_realizado:
                 agendamento.checkin_realizado = True
@@ -3268,6 +3292,7 @@ def confirmar_checkin_agendamento(token):
                 alunos_presentes = request.form.getlist('alunos_presentes')
                 for aluno in agendamento.alunos:
                     aluno.presente = str(aluno.id) in alunos_presentes
+
 
                 db.session.commit()
                 
