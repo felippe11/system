@@ -233,6 +233,7 @@ def progress_query():
 # -----------------------------------------------------------------------------
 @revisor_routes.route("/processo_seletivo")
 def select_event():
+    """Lista eventos com processo seletivo visível a participantes."""
     now = datetime.utcnow()
 
     processos = (
@@ -278,6 +279,12 @@ def select_event():
                         "status": "Aberto" if proc.is_available() else "Encerrado",
                     }
                 )
+
+    if not registros:
+        flash(
+            "Nenhum processo seletivo de revisores disponível no momento.",
+            "info",
+        )
 
     return render_template("revisor/select_event.html", eventos=registros)
 
