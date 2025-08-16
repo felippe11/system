@@ -29,8 +29,11 @@ from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 from extensions import db
+from sqlalchemy import func, desc
 from sqlalchemy.orm import selectinload
+
 from models import (
+
     Assignment,
     CampoFormulario,
     Cliente,
@@ -38,7 +41,10 @@ from models import (
 
     Evento,
     Formulario,
+
+
     Barema,
+
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
@@ -535,3 +541,50 @@ def eligible_events():
     )
 
     return jsonify([{"id": e.id, "nome": e.nome} for e in eventos])
+
+
+@revisor_routes.route("/ranking_trabalhos")
+@login_required
+def ranking_trabalhos():
+    """Lista trabalhos com a soma das notas recebidas.
+
+    Permite ordenar por qualquer campo de ``Submission`` através do
+    parâmetro de query ``ordenar_por``. Quando não informado, ordena pelo
+    total de notas (``total_nota``) de forma decrescente.
+    """
+
+    if current_user.tipo not in ("cliente", "admin", "superadmin"):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    ordenar_por = request.args.get("ordenar_por", "total_nota")
+
+    notas_sub = (
+        db.session.query(
+            Review.submission_id.label("sub_id"),
+            func.coalesce(func.sum(Review.note), 0).label("total_nota"),
+        )
+        .group_by(Review.submission_id)
+        .subquery()
+    )
+
+    query = (
+        db.session.query(Submission, notas_sub.c.total_nota)
+        .outerjoin(notas_sub, Submission.id == notas_sub.c.sub_id)
+    )
+
+    if ordenar_por != "total_nota" and hasattr(Submission, ordenar_por):
+        query = query.order_by(getattr(Submission, ordenar_por))
+    else:
+        ordenar_por = "total_nota"
+        query = query.order_by(desc(notas_sub.c.total_nota))
+
+    resultados = [
+        {"submission": sub, "total_nota": nota or 0} for sub, nota in query.all()
+    ]
+
+    return render_template(
+        "revisor/ranking.html",
+        resultados=resultados,
+        ordenar_por=ordenar_por,
+    )
