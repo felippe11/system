@@ -2,7 +2,7 @@
 import os
 import sys
 import types
-from datetime import date, time
+from datetime import date, time, datetime
 
 import contextlib
 
@@ -68,6 +68,7 @@ pdf_service_stub.gerar_programacao_evento_pdf = lambda *a, **k: None
 pdf_service_stub.gerar_placas_oficinas_pdf = lambda *a, **k: None
 pdf_service_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
 pdf_service_stub.gerar_revisor_details_pdf = lambda *a, **k: None
+pdf_service_stub.gerar_pdf_relatorio_agendamentos = lambda *a, **k: None
 sys.modules.setdefault('services.pdf_service', pdf_service_stub)
 
 
@@ -78,7 +79,7 @@ os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
 from config import Config
 from app import create_app
 from extensions import db
-from models import Cliente, Evento, HorarioVisitacao, AgendamentoVisita
+from models import Cliente, Evento, HorarioVisitacao, AgendamentoVisita, AlunoVisitante
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
@@ -137,6 +138,8 @@ def app():
                 nivel_ensino='1',
                 quantidade_alunos=10,
                 status='realizado',
+                checkin_realizado=True,
+                data_checkin=datetime.utcnow(),
             ),
             AgendamentoVisita(
                 horario_id=horario.id,
@@ -148,6 +151,21 @@ def app():
             ),
         ]
         db.session.add_all(ags)
+        db.session.commit()
+
+        alunos = [
+            AlunoVisitante(
+                agendamento_id=ags[2].id,
+                nome='Aluno 1',
+                presente=True,
+            ),
+            AlunoVisitante(
+                agendamento_id=ags[2].id,
+                nome='Aluno 2',
+                presente=False,
+            ),
+        ]
+        db.session.add_all(alunos)
         db.session.commit()
         app.evento_id = evento.id
     yield app
@@ -191,4 +209,13 @@ def test_counts_all_statuses(client, app):
     assert stats['realizados'] == 1
     assert stats['cancelados'] == 1
     assert stats['total'] == 4
+
+
+def test_template_contains_new_columns(client):
+    login(client)
+    resp = client.get('/relatorio_geral_agendamentos')
+    html = resp.get_data(as_text=True)
+    assert 'Check-in' in html
+    assert 'Presentes' in html
+    assert 'Aluno 1' in html
 
