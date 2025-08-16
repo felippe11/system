@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from flask import Request
 
 from extensions import db
-from models import RevisorEtapa, RevisorProcess
+from models import Evento, RevisorEtapa, RevisorProcess
 
 
 def parse_revisor_form(req: Request) -> Dict[str, Any]:
@@ -14,6 +14,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     formulario_id = req.form.get("formulario_id", type=int)
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = req.form.getlist("stage_name")
+    eventos_ids: List[int] = req.form.getlist("eventos_ids", type=int)
     start_raw = req.form.get("availability_start")
     end_raw = req.form.get("availability_end")
     exibir_val = req.form.get("exibir_participantes")
@@ -32,6 +33,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         "availability_start": _parse_dt(start_raw),
         "availability_end": _parse_dt(end_raw),
         "exibir_para_participantes": exibir_para_participantes,
+        "eventos_ids": eventos_ids,
     }
 
 
@@ -42,6 +44,14 @@ def update_revisor_process(processo: RevisorProcess, dados: Dict[str, Any]) -> N
     processo.availability_start = dados.get("availability_start")
     processo.availability_end = dados.get("availability_end")
     processo.exibir_para_participantes = dados.get("exibir_para_participantes")
+    db.session.commit()
+
+
+def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> None:
+    """Atualiza a relação de eventos associados ao processo."""
+    processo.eventos = []
+    if eventos_ids:
+        processo.eventos = Evento.query.filter(Evento.id.in_(eventos_ids)).all()
     db.session.commit()
 
 

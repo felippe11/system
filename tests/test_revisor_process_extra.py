@@ -61,10 +61,12 @@ def app():
             num_etapas=1,
             availability_start=date.today() - timedelta(days=1),
             availability_end=date.today() + timedelta(days=1),
+
             exibir_para_participantes=True,
             eventos=[e1],
 
         )
+
         proc2 = RevisorProcess(
             cliente_id=c2.id,
             formulario_id=f2.id,
