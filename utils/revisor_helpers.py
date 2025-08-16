@@ -58,7 +58,6 @@ def update_revisor_process(processo: RevisorProcess, dados: Dict[str, Any]) -> N
     processo.availability_start = dados.get("availability_start")
     processo.availability_end = dados.get("availability_end")
     processo.exibir_para_participantes = dados.get("exibir_para_participantes")
-    db.session.commit()
 
 
 def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> None:
@@ -66,7 +65,6 @@ def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> 
     processo.eventos = []
     if eventos_ids:
         processo.eventos = Evento.query.filter(Evento.id.in_(eventos_ids)).all()
-    db.session.commit()
 
 
 def recreate_stages(processo: RevisorProcess, stage_names: List[str]) -> None:
@@ -75,7 +73,6 @@ def recreate_stages(processo: RevisorProcess, stage_names: List[str]) -> None:
     for idx, nome in enumerate(stage_names, start=1):
         if nome:
             db.session.add(RevisorEtapa(process_id=processo.id, numero=idx, nome=nome))
-    db.session.commit()
 
 
 def recreate_criterios(
@@ -95,4 +92,3 @@ def recreate_criterios(
                 db.session.add(
                     RevisorRequisito(criterio_id=criterio.id, descricao=req_desc)
                 )
-    db.session.commit()

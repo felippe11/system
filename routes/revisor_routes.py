@@ -110,6 +110,7 @@ def config_revisor():
     eventos: List[Evento] = Evento.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
+
     selected_event_ids: List[int] = [e.id for e in processo.eventos] if processo else []
 
 
@@ -144,6 +145,7 @@ def config_revisor():
         processo=processo,
         formularios=formularios,
         etapas=etapas,
+
         criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
