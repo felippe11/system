@@ -43,7 +43,7 @@ from models import (
     Formulario,
 
 
-    Barema,
+    EventoBarema,
 
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
@@ -484,7 +484,7 @@ def view_candidatura(cand_id: int):
 def avaliar(submission_id: int):
     """Permite ao revisor atribuir notas a uma submissão com base no barema."""
     submission = Submission.query.get_or_404(submission_id)
-    barema = Barema.query.filter_by(evento_id=submission.evento_id).first()
+    barema = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
     review = Review.query.filter_by(
         submission_id=submission.id, reviewer_id=current_user.id
     ).first()
