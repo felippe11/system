@@ -55,7 +55,20 @@ def app():
         e1.formularios.append(f1)
         e2.formularios.append(f2)
         db.session.commit()
+
+        db.session.add(
+            RevisorProcess(
+                cliente_id=c1.id,
+                formulario_id=f1.id,
+                num_etapas=1,
+                availability_start=date.today() - timedelta(days=1),
+                availability_end=date.today() + timedelta(days=1),
+                exibir_para_participantes=True,
+            )
+        )
+
         proc1 = RevisorProcess(
+
             cliente_id=c1.id,
             formulario_id=f1.id,
             num_etapas=1,
@@ -166,7 +179,7 @@ def test_config_route_saves_availability(client, app):
                     'stage_name': ['Etapa 1'],
                     'availability_start': start.strftime('%Y-%m-%d'),
                     'availability_end': end.strftime('%Y-%m-%d'),
-                    'exibir_participantes': 'on',
+                    'exibir_para_participantes': 'on',
                 },
             )
             with app.test_request_context():

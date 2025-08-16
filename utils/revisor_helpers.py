@@ -17,7 +17,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     eventos_ids: List[int] = req.form.getlist("eventos_ids", type=int)
     start_raw = req.form.get("availability_start")
     end_raw = req.form.get("availability_end")
-    exibir_val = req.form.get("exibir_participantes")
+    exibir_val = req.form.get("exibir_para_participantes")
     exibir_para_participantes = exibir_val in {"on", "1", "true"}
 
     def _parse_dt(raw: str | None) -> datetime | None:
