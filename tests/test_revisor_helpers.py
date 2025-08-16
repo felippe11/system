@@ -10,10 +10,11 @@ os.environ.setdefault("SECRET_KEY", "test")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "y")
 from config import Config
-from models import Cliente, Formulario, RevisorProcess
+from models import Cliente, Evento, Formulario, RevisorProcess
 from utils.revisor_helpers import (
     parse_revisor_form,
     recreate_stages,
+    update_process_eventos,
     update_revisor_process,
 )
 
@@ -52,6 +53,7 @@ def test_parse_revisor_form(app):
             "availability_start": "2024-01-10",
             "availability_end": "2024-01-20",
             "exibir_participantes": "on",
+            "eventos_ids": [1, 2],
         },
     ):
         dados = parse_revisor_form(request)
@@ -61,6 +63,7 @@ def test_parse_revisor_form(app):
     assert dados["availability_start"].date() == date(2024, 1, 10)
     assert dados["availability_end"].date() == date(2024, 1, 20)
     assert dados["exibir_para_participantes"] is True
+    assert dados["eventos_ids"] == [1, 2]
 
 
 def test_update_and_recreate_stages(app):
@@ -100,3 +103,23 @@ def test_update_and_recreate_stages(app):
         db.session.refresh(processo)
         assert processo.num_etapas == 1
         assert [e.nome for e in processo.etapas] == ["Novo"]
+
+
+def test_update_process_eventos(app):
+    with app.app_context():
+        cliente, form = _create_cliente_formulario()
+        e1 = Evento(cliente_id=cliente.id, nome="E1", inscricao_gratuita=True, publico=True)
+        e2 = Evento(cliente_id=cliente.id, nome="E2", inscricao_gratuita=True, publico=True)
+        db.session.add_all([e1, e2])
+        db.session.commit()
+        processo = RevisorProcess(cliente_id=cliente.id)
+        db.session.add(processo)
+        db.session.commit()
+
+        update_process_eventos(processo, [e1.id])
+        db.session.refresh(processo)
+        assert [e.id for e in processo.eventos] == [e1.id]
+
+        update_process_eventos(processo, [e2.id])
+        db.session.refresh(processo)
+        assert [e.id for e in processo.eventos] == [e2.id]
