@@ -1826,7 +1826,9 @@ class RevisorProcess(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
     formulario_id = db.Column(
-        db.Integer, db.ForeignKey("formularios.id"), nullable=True
+        db.Integer,
+        db.ForeignKey("formularios.id", ondelete="SET NULL"),
+        nullable=True,
     )
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
@@ -1839,7 +1841,10 @@ class RevisorProcess(db.Model):
     cliente = db.relationship(
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
     )
-    formulario = db.relationship("Formulario")
+    formulario = db.relationship(
+        "Formulario",
+        backref=db.backref("revisor_processes", passive_deletes=True),
+    )
     eventos = db.relationship(
         "Evento", secondary=revisor_process_evento_association, lazy="selectin"
     )
