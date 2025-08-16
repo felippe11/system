@@ -1,15 +1,21 @@
+
 from flask import Blueprint, request, jsonify, abort, current_app
 import os
+
 import uuid
 import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
-from werkzeug.utils import secure_filename
+
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db
 from services.mailjet_service import send_via_mailjet
+from mailjet_rest.client import ApiError
+import logging
 
 submission_routes = Blueprint('submission_routes', __name__)
+
+logger = logging.getLogger(__name__)
 
 
 @submission_routes.route('/submissions', methods=['POST'])
@@ -17,9 +23,6 @@ def create_submission():
     title = request.form.get('title')
     content = request.form.get('content')
     email = request.form.get('email')
-    author_id = request.form.get('author_id', type=int)
-    evento_id = request.form.get('evento_id', type=int)
-    uploaded_file = request.files.get('file')
 
     if not title or not email:
         return jsonify({'error': 'title and email required'}), 400
@@ -28,37 +31,11 @@ def create_submission():
     raw_code = secrets.token_urlsafe(8)[:8]
     code_hash = generate_password_hash(raw_code)
 
-    file_path = None
-    if uploaded_file and uploaded_file.filename:
-        filename = secure_filename(uploaded_file.filename)
-        uploads_dir = current_app.config.get(
-            'UPLOAD_FOLDER', 'static/uploads/submissions'
-        )
-        os.makedirs(uploads_dir, exist_ok=True)
-        unique_name = f"{uuid.uuid4().hex}_{filename}"
-        file_path = os.path.join(uploads_dir, unique_name)
-        uploaded_file.save(file_path)
-
-    submission = Submission(
-        title=title,
-        content=content,
-        locator=locator,
-        code_hash=code_hash,
-        file_path=file_path,
-        author_id=author_id,
-        evento_id=evento_id,
-    )
+    submission = Submission(title=title, content=content,
+                            locator=locator, code_hash=code_hash)
     db.session.add(submission)
     db.session.commit()
 
-    db.session.add(
-        AuditLog(
-            user_id=author_id,
-            submission_id=submission.id,
-            event_type="submission",
-        )
-    )
-    db.session.commit()
 
     try:
         send_via_mailjet(
@@ -66,8 +43,11 @@ def create_submission():
             subject='Submission Access Code',
             text=f'Locator: {locator}\nAccess code: {raw_code}'
         )
-    except Exception:
-        pass
+
+    except ApiError as exc:
+        logger.exception("Erro ao enviar código de acesso para %s", email)
+        return jsonify({'error': 'falha ao enviar email'}), 500
+
 
     return jsonify({'locator': locator, 'code': raw_code}), 201
 
