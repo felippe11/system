@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Barema{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="h3 mb-4">Barema do Processo {{ processo.id }}</h1>
+  {% if requisitos %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Descrição</th>
+        <th>Mín</th>
+        <th>Máx</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in requisitos %}
+      <tr>
+        <td>{{ r.nome }}</td>
+        <td>{{ r.descricao }}</td>
+        <td>{{ r.pontuacao_min }}</td>
+        <td>{{ r.pontuacao_max }}</td>
+        <td>
+          <a class="btn btn-sm btn-secondary" href="{{ url_for('revisor_routes.edit_requisito', req_id=r.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('revisor_routes.delete_requisito', req_id=r.id) }}" class="d-inline">
+            <button class="btn btn-sm btn-danger" onclick="return confirm('Remover requisito?');">Remover</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nenhum requisito cadastrado.</p>
+  {% endif %}
+  <a class="btn btn-primary" href="{{ url_for('revisor_routes.add_requisito', barema_id=barema.id) }}">Novo requisito</a>
+  <form method="post" action="{{ url_for('revisor_routes.delete_barema', process_id=processo.id) }}" class="d-inline">
+    <button class="btn btn-danger" onclick="return confirm('Remover barema?');">Remover Barema</button>
+  </form>
+</div>
+{% endblock %}
+
