@@ -1,8 +1,18 @@
 
 /* global atualizarBotao, csrfToken */
 (function () {
+
+  function attachOnce(el, event, handler) {
+    if (!el) return;
+    const key = `listener_${event}`;
+    if (el.dataset[key]) return;
+    el.dataset[key] = 'true';
+    el.addEventListener(event, handler);
+  }
+
+
   document.querySelectorAll('.btn-toggle').forEach((btn) => {
-    btn.addEventListener('click', async () => {
+    attachOnce(btn, 'click', async () => {
       const url = btn.dataset.toggleUrl;
       if (!url) return;
       try {
