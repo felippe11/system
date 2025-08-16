@@ -1565,6 +1565,18 @@ class RevisaoConfig(db.Model):
     )
 
 
+class Barema(db.Model):
+    """Define os critérios de avaliação para um evento."""
+
+    __tablename__ = "barema"
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
+    requisitos = db.Column(db.JSON, nullable=False)
+
+    evento = db.relationship("Evento", backref=db.backref("barema", uselist=False))
+
+
 class ConfiguracaoCertificadoEvento(db.Model):
     """Regras personalizadas para emissão de certificados em eventos."""
 
