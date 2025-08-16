@@ -109,32 +109,6 @@
                     </select>
                 </div>
 
-                <!-- Processo Seletivo -->
-                <h5 class="mb-3">Processo Seletivo</h5>
-                <div class="form-check mb-4">
-                    <input
-                        class="form-check-input"
-                        type="checkbox"
-                        id="vincular_processo"
-                        name="vincular_processo"
-                    >
-                    <label class="form-check-label" for="vincular_processo">
-                        Vincular ao processo seletivo de revisores
-                    </label>
-                </div>
-
-                <div id="evento_relacionado_container" class="mb-4 d-none">
-                    <label for="evento_relacionado" class="form-label fw-medium">Evento relacionado</label>
-                    <select id="evento_relacionado" name="evento_id" class="form-select">
-                        <option value="">Selecione um evento</option>
-                        {% for ev in eventos %}
-                            <option value="{{ ev.id }}">{{ ev.nome }}</option>
-                        {% endfor %}
-                    </select>
-                    <!-- Placeholder para extensões futuras, como distribuição de trabalhos -->
-                    <div id="distribuicao_trabalhos_placeholder" class="mt-3 text-muted small"></div>
-                </div>
-
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                     <a
                         href="{{ url_for('formularios_routes.listar_formularios') }}"
@@ -162,5 +136,4 @@
 
 {% block scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='js/formulario.js') }}"></script>
 {% endblock %}
