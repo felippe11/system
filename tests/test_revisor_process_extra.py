@@ -3,6 +3,7 @@ from datetime import date, timedelta
 import pytest
 from werkzeug.security import generate_password_hash
 from config import Config
+from jinja2 import ChoiceLoader, DictLoader
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
@@ -17,12 +18,19 @@ from routes.revisor_routes import revisor_routes
 def app():
     templates_path = os.path.join(os.path.dirname(__file__), '..', 'templates')
     app = Flask(__name__, template_folder=templates_path)
+    app.jinja_loader = ChoiceLoader([
+        DictLoader({'base.html': '{% block content %}{% endblock %}'}),
+        app.jinja_loader,
+    ])
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = Config.build_engine_options('sqlite://')
     app.jinja_env.globals['csrf_token'] = lambda: ''
     login_manager.init_app(app)
+    @login_manager.user_loader
+    def load_user(user_id):
+        return Cliente.query.get(int(user_id))
     db.init_app(app)
     migrate.init_app(app, db)
     app.register_blueprint(revisor_routes)
@@ -47,6 +55,7 @@ def app():
         e1.formularios.append(f1)
         e2.formularios.append(f2)
         db.session.commit()
+
         db.session.add(
             RevisorProcess(
                 cliente_id=c1.id,
@@ -59,15 +68,18 @@ def app():
         )
 
         proc1 = RevisorProcess(
+
             cliente_id=c1.id,
             formulario_id=f1.id,
             num_etapas=1,
             availability_start=date.today() - timedelta(days=1),
             availability_end=date.today() + timedelta(days=1),
+
             exibir_para_participantes=True,
             eventos=[e1],
 
         )
+
         proc2 = RevisorProcess(
             cliente_id=c2.id,
             formulario_id=f2.id,
@@ -205,4 +217,25 @@ def test_config_route_saves_eventos(client, app):
         assert resp.status_code in (302, 200)
         proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
         assert [e.id for e in proc.eventos] == [evento.id]
+
+
+def test_config_route_renders_eventos(client, app):
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='c1@test').first()
+        evento = Evento.query.filter_by(cliente_id=cliente.id).first()
+
+        from flask_login import login_user, logout_user
+
+        with client:
+            with app.test_request_context():
+                login_user(cliente)
+            resp = client.get('/config_revisor')
+            with app.test_request_context():
+                logout_user()
+
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert evento.nome in html
+    assert f'value="{evento.id}" selected' in html
+    assert 'E2' not in html
 
