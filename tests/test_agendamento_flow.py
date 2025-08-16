@@ -654,3 +654,44 @@ def test_confirmar_checkin_cria_checkin(app):
             palavra_chave='QR-AGENDAMENTO',
         ).first()
         assert chk is not None
+
+
+def test_checkin_agendamento_cria_checkin(app):
+    client = app.test_client()
+
+    login(client, 'prof@test', 'p123')
+
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            cliente_id=cliente.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        token = agendamento.qr_code_token
+        agendamento_id = agendamento.id
+        evento_id = horario.evento_id
+        cliente_id = cliente.id
+
+    resp = client.post(f'/checkin/{token}')
+    assert resp.status_code == 200
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento.checkin_realizado is True
+        chk = Checkin.query.filter_by(
+            usuario_id=agendamento.professor_id,
+            evento_id=evento_id,
+            cliente_id=cliente_id,
+            palavra_chave='QR-AGENDAMENTO',
+        ).first()
+        assert chk is not None
