@@ -1,3 +1,4 @@
+
 /* global window */
 (function () {
   const container = document.getElementById('configSubmissao');

@@ -1,6 +1,7 @@
 
 /* global atualizarBotao, csrfToken */
 (function () {
+
   function attachOnce(el, event, handler) {
     if (!el) return;
     const key = `listener_${event}`;
@@ -8,6 +9,7 @@
     el.dataset[key] = 'true';
     el.addEventListener(event, handler);
   }
+
 
   document.querySelectorAll('.btn-toggle').forEach((btn) => {
     attachOnce(btn, 'click', async () => {

@@ -195,7 +195,9 @@
             </div>
             <div class="mb-3">
               <label for="reviewerSelect" class="form-label">Revisores</label>
-              <select id="reviewerSelect" class="form-select" multiple>
+              <select id="reviewerSelect" class="form-select" multiple
+                      data-min="{{ config_cliente.num_revisores_min if config_cliente else 1 }}"
+                      data-max="{{ config_cliente.num_revisores_max if config_cliente else 2 }}">
                 {% for r in reviewers %}
                 <option value="{{ r.id }}">{{ r.nome }}</option>
                 {% endfor %}
@@ -220,9 +222,12 @@
 {% endblock %}
 
 
+
 {% block scripts %}
+
 {{ super() }}
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
 <script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
 {% endblock %}
+
