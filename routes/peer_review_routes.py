@@ -326,26 +326,48 @@ def review_form(locator):
         if codigo != review.access_code:
             flash("Código incorreto!", "danger")
             return render_template("peer_review/review_form.html", review=review)
+        # Coleta notas individuais e calcula o total -----------------------
+        scores = {}
+        total = 0.0
+        for field, value in request.form.items():
+            if field.startswith("score_"):
+                try:
+                    val = float(value)
+                except (TypeError, ValueError):
+                    continue
+                scores[field[6:]] = val
+                total += val
 
-        try:
-            nota = int(request.form.get("nota"))
-            if nota not in range(1, 6):
-                raise ValueError
-        except (TypeError, ValueError):
-            flash("Nota inválida (use 1–5).", "danger")
-            return render_template("peer_review/review_form.html", review=review)
-        review.note = nota
+        if not scores:
+            try:
+                total = float(request.form.get("nota", 0))
+            except (TypeError, ValueError):
+                flash("Nota inválida (use 1–5).", "danger")
+                return render_template("peer_review/review_form.html", review=review)
+
+        review.scores = scores or None
+        review.note = total
         review.comments = request.form.get("comentarios")
-        review.blind_type = "nome" if request.form.get("mostrar_nome") == "on" else "anonimo"
+        review.blind_type = (
+            "nome" if request.form.get("mostrar_nome") == "on" else "anonimo"
+        )
         review.finished_at = datetime.utcnow()
         if review.started_at:
             review.duration_seconds = int(
                 (review.finished_at - review.started_at).total_seconds()
             )
         review.submitted_at = review.finished_at
+
+        # Marca o assignment como concluído -------------------------------
+        assignment = Assignment.query.filter_by(
+            submission_id=review.submission_id, reviewer_id=review.reviewer_id
+        ).first()
+        if assignment:
+            assignment.completed = True
+
         db.session.commit()
 
-        flash("Revisão enviada!", "success")
+        flash(f"Revisão enviada! Total: {total}", "success")
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
     return render_template("peer_review/review_form.html", review=review)
@@ -380,6 +402,45 @@ def editor_reviews(evento_id):
 
     trabalhos = TrabalhoCientifico.query.filter_by(evento_id=evento_id).all()
     return render_template("peer_review/dashboard_editor.html", trabalhos=trabalhos)
+
+
+@peer_review_routes.route("/dashboard/client_reviews")
+@login_required
+def client_reviews_panel():
+    """Painel para clientes acompanharem o progresso das revisões."""
+    if current_user.tipo not in ("cliente", "admin", "superadmin"):
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    submissions = (
+        Submission.query.join(Evento).filter(
+            Evento.cliente_id == getattr(current_user, "id", None)
+        ).all()
+    )
+
+    items = []
+    for sub in submissions:
+        assignments = sub.assignments
+        total = len(assignments)
+        completed = sum(1 for a in assignments if a.completed)
+        notes = [r.note for r in sub.reviews if r.note is not None]
+        grade = sum(notes) / len(notes) if notes else None
+        reviewers = [
+            a.reviewer.nome
+            for a in assignments
+            if a.completed and a.reviewer and a.reviewer.nome
+        ]
+        items.append(
+            {
+                "submission": sub,
+                "completed": completed,
+                "total": total,
+                "grade": grade,
+                "reviewers": reviewers,
+            }
+        )
+
+    return render_template("peer_review/dashboard_client.html", items=items)
 
 
 # ------------------------- ROTAS FLAT PARA SPAS ---------------------------

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Acompanhamento das Revisões</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Avaliações</th>
+        <th>Nota Final</th>
+        <th>Revisores</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.submission.title }}</td>
+        <td>{{ item.completed }}/{{ item.total }}</td>
+        <td>{{ '%.1f'|format(item.grade) if item.grade is not none else '-' }}</td>
+        <td>{{ ', '.join(item.reviewers) if item.reviewers else '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
