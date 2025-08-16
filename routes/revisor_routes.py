@@ -48,6 +48,7 @@ from services.pdf_service import gerar_revisor_details_pdf
 from utils.revisor_helpers import (
     parse_revisor_form,
     recreate_stages,
+    update_process_eventos,
     update_revisor_process,
 )
 
@@ -92,6 +93,7 @@ def config_revisor():
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
         update_revisor_process(processo, dados)
+        update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
