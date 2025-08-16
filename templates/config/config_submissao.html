@@ -2,7 +2,11 @@
 {% block title %}Configurações de Submissão{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" id="configSubmissao"
+     data-url-config-cliente-atual="{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}"
+     data-revisao-configs='{{ revisao_configs|tojson }}'
+     data-min-rev="{{ config_cliente.num_revisores_min if config_cliente else 1 }}"
+     data-max-rev="{{ config_cliente.num_revisores_max if config_cliente else 2 }}">
   <h1 class="h3 mb-4"><i class="bi bi-journal-text me-2"></i>Submissões e Revisão</h1>
   <div class="card border-info border-top border-4 shadow-sm mb-4">
     <div class="card-header bg-info text-white">
@@ -222,15 +226,8 @@
 {% block scripts %}
 
 {{ super() }}
-<script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
-<script>
-  window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
-  window.REVISAO_CONFIGS = {{ revisao_configs|tojson }};
-
-</script>
-
-
-
-<script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
+<script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
 {% endblock %}
+
