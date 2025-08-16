@@ -85,6 +85,10 @@ def config_revisor():
     formularios: List[Formulario] = Formulario.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
+    eventos: List[Evento] = Evento.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    selected_event_ids: List[int] = [e.id for e in processo.eventos] if processo else []
 
     if request.method == "POST":
         dados = parse_revisor_form(request)
@@ -98,7 +102,12 @@ def config_revisor():
 
     etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
     return render_template(
-        "revisor/config.html", processo=processo, formularios=formularios, etapas=etapas
+        "revisor/config.html",
+        processo=processo,
+        formularios=formularios,
+        etapas=etapas,
+        eventos=eventos,
+        selected_event_ids=selected_event_ids,
     )
 
 
