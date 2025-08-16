@@ -40,7 +40,6 @@ from models import (
     AuditLog,
     Evento,
     ConfiguracaoCliente,
-    RevisorProcess,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -128,31 +127,9 @@ def criar_formulario():
         evento_ids = [int(eid) for eid in request.form.getlist("eventos")]
         is_submission_form = "is_submission_form" in request.form
         evento_submissao_id = request.form.get("evento_submissao")
-        vincular_processo = "vincular_processo" in request.form
 
         # Checkbox marcado => True; ausente => False
         permitir_multiplas = "permitir_multiplas_respostas" in request.form
-
-        evento_id = None
-        if vincular_processo:
-            if is_submission_form:
-                if not evento_submissao_id:
-                    flash("Selecione um evento para vincular ao processo.", "danger")
-                    return render_template(
-                        "criar_formulario.html", eventos=eventos_disponiveis
-                    )
-                evento_id = int(evento_submissao_id)
-            else:
-                if not evento_ids or len(evento_ids) != 1:
-                    flash(
-                        "Selecione exatamente um evento para vincular ao processo.",
-                        "danger",
-                    )
-                    return render_template(
-                        "criar_formulario.html", eventos=eventos_disponiveis
-                    )
-                evento_id = evento_ids[0]
-
 
         data_inicio = (
             datetime.strptime(data_inicio_str, "%Y-%m-%dT%H:%M")
@@ -191,23 +168,6 @@ def criar_formulario():
 
         db.session.add(novo_formulario)
         db.session.commit()
-
-
-        if vincular_processo:
-            processo = RevisorProcess.query.filter_by(
-                cliente_id=current_user.id
-            ).first()
-            if not processo:
-                processo = RevisorProcess(
-                    cliente_id=current_user.id,
-                    formulario_id=novo_formulario.id,
-                    evento_id=evento_id,
-                )
-                db.session.add(processo)
-            else:
-                processo.formulario_id = novo_formulario.id
-                processo.evento_id = evento_id
-            db.session.commit()
 
 
         flash("Formulário criado com sucesso!", "success")

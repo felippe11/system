@@ -39,7 +39,7 @@ def login(client, email, senha):
     )
 
 
-def test_form_creation_links_revisor_process_with_event(client, app):
+def test_form_creation_does_not_create_revisor_process(client, app):
     with app.app_context():
         cliente = Cliente.query.first()
         evento = Evento(
@@ -55,7 +55,7 @@ def test_form_creation_links_revisor_process_with_event(client, app):
     login(client, 'cli@test', '123')
     resp = client.post(
         '/formularios/novo',
-        data={'nome': 'F1', 'vincular_processo': 'on', 'eventos': [evento_id]},
+        data={'nome': 'F1', 'eventos': [evento_id]},
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -63,7 +63,5 @@ def test_form_creation_links_revisor_process_with_event(client, app):
         form = Formulario.query.filter_by(nome='F1').first()
         assert form is not None
         proc = RevisorProcess.query.filter_by(cliente_id=form.cliente_id).first()
-        assert proc is not None
-        assert proc.formulario_id == form.id
-        assert proc.evento_id == evento_id
+        assert proc is None
 
