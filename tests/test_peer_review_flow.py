@@ -135,6 +135,9 @@ def test_control_endpoints_and_dashboard_auth(client, app):
     assert resp.status_code == 200
 
     resp = client.get(f'/submissions/{locator}/codes')
+    assert resp.status_code == 401
+
+    resp = client.get(f'/submissions/{locator}/codes?code={code}')
     assert resp.status_code == 200
     assert resp.get_json()['locator'] == locator
 
