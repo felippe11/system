@@ -31,6 +31,7 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from sqlalchemy import func, desc
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import ProgrammingError
 
 from models import (
 
@@ -109,6 +110,7 @@ def config_revisor():
     eventos: List[Evento] = Evento.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
+
     selected_event_ids: List[int] = [e.id for e in processo.eventos] if processo else []
 
 
@@ -117,31 +119,33 @@ def config_revisor():
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
-        try:
-            update_revisor_process(processo, dados)
-            update_process_eventos(processo, dados["eventos_ids"])
-            recreate_stages(processo, dados["stage_names"])
-            recreate_criterios(processo, dados["criterios"])
-            db.session.commit()
-            flash("Processo atualizado", "success")
-            return redirect(url_for("revisor_routes.config_revisor"))
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Erro ao atualizar processo revisor")
-            flash("Erro ao atualizar processo", "danger")
-            processo = RevisorProcess.query.filter_by(
-                cliente_id=current_user.id  # type: ignore[attr-defined]
-            ).first()
+        update_revisor_process(processo, dados)
+        update_process_eventos(processo, dados["eventos_ids"])
+        recreate_stages(processo, dados["stage_names"])
+        recreate_criterios(processo, dados["criterios"])
+        flash("Processo atualizado", "success")
+        return redirect(url_for("revisor_routes.config_revisor"))
 
     etapas: List[RevisorEtapa] = (
-        processo.etapas if processo else []  # type: ignore[index]
-    )
-    criterios = processo.criterios if processo else []  # type: ignore[attr-defined]
+        processo.etapas if processo else []
+    )  # type: ignore[index]
+    try:
+        criterios = (
+            processo.criterios if processo else []
+        )  # type: ignore[attr-defined]
+    except ProgrammingError as exc:  # pragma: no cover - depends on db state
+        current_app.logger.error("Erro ao acessar criterios: %s", exc)
+        flash(
+            "Banco de dados desatualizado. Administradores: executem as migrações.",
+            "warning",
+        )
+        criterios = []
     return render_template(
         "revisor/config.html",
         processo=processo,
         formularios=formularios,
         etapas=etapas,
+
         criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
