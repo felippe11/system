@@ -3103,11 +3103,19 @@ def checkin_agendamento(qr_code_token):
     agendamento.checkin_realizado = True
     agendamento.data_checkin = datetime.utcnow()
     agendamento.status = 'realizado'
-    
+
+    checkin = Checkin(
+        usuario_id=agendamento.professor_id,
+        evento_id=agendamento.horario.evento_id,
+        cliente_id=agendamento.cliente_id,
+        palavra_chave='QR-AGENDAMENTO',
+    )
+    db.session.add(checkin)
+
     try:
-        # Salvar as alterações no banco de dados
+        # Salvar as alterações no banco de dados antes de responder
         db.session.commit()
-        
+
         # Formatar resposta
         resposta = {
             "mensagem": "Check-in realizado com sucesso",
@@ -3115,12 +3123,12 @@ def checkin_agendamento(qr_code_token):
                 "id": agendamento.id,
                 "status": agendamento.status,
                 "checkin_realizado": agendamento.checkin_realizado,
-                "data_checkin": agendamento.data_checkin.isoformat()
-            }
+                "data_checkin": agendamento.data_checkin.isoformat(),
+            },
         }
-        
+
         return jsonify(resposta), 200
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"erro": f"Erro ao realizar check-in: {str(e)}"}), 500
