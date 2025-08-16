@@ -27,6 +27,7 @@ pdf_stub.gerar_programacao_evento_pdf = lambda *a, **k: None
 pdf_stub.gerar_placas_oficinas_pdf = lambda *a, **k: None
 pdf_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
 pdf_stub.gerar_revisor_details_pdf = lambda *a, **k: None
+pdf_stub.gerar_pdf_relatorio_agendamentos = lambda *a, **k: None
 sys.modules.setdefault('services.pdf_service', pdf_stub)
 
 Config.SQLALCHEMY_DATABASE_URI = "sqlite://"
@@ -306,3 +307,57 @@ def test_approve_candidatura_without_email(client, app):
     with app.app_context():
         cand = RevisorCandidatura.query.get(cand_id)
         assert cand.status == "aprovado"
+
+
+def test_missing_required_field(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+        campo_nome = CampoFormulario.query.get(campos["nome"])
+        campo_nome.obrigatorio = True
+        db.session.commit()
+        proc_id = proc.id
+        email_id = campos["email"]
+        base = RevisorCandidatura.query.count()
+
+    resp = client.post(
+        f"/revisor/apply/{proc_id}",
+        data={str(email_id): "req@test"},
+        follow_redirects=True,
+    )
+    assert "O campo nome é obrigatório.".encode() in resp.data
+
+    with app.app_context():
+        assert RevisorCandidatura.query.count() == base
+
+
+def test_duplicate_email(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        campos = {c.nome: c.id for c in proc.formulario.campos}
+        proc_id = proc.id
+        email_id = campos["email"]
+        nome_id = campos["nome"]
+        start = RevisorCandidatura.query.count()
+
+    client.post(
+        f"/revisor/apply/{proc_id}",
+        data={str(email_id): "dup@test", str(nome_id): "A"},
+    )
+
+    with app.app_context():
+        first_count = RevisorCandidatura.query.count()
+        assert first_count == start + 1
+
+    resp = client.post(
+        f"/revisor/apply/{proc_id}",
+        data={str(email_id): "dup@test", str(nome_id): "B"},
+        follow_redirects=True,
+    )
+    assert (
+        "Já existe uma candidatura com este e-mail para este processo.".encode()
+        in resp.data
+    )
+
+    with app.app_context():
+        assert RevisorCandidatura.query.count() == first_count
