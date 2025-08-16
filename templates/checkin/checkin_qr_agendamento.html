@@ -10,8 +10,6 @@
     <div id="scan-status" class="mt-3 text-muted">Inicializando...</div>
     <div id="scan-result" class="mt-3"></div>
 
-    <ul id="scanned-list" class="list-group w-100 mt-3"></ul>
-
     <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-secondary mt-3">
         <i class="bi bi-arrow-left"></i> Voltar
     </a>
@@ -19,15 +17,16 @@
 {% endblock %}
 
 {% block scripts %}
-<script
-    src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"
-    defer
-    crossorigin="anonymous"></script>
 
-<script>
-document.addEventListener("DOMContentLoaded", async function () {
+<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+<script type="module">
+import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_scanner.js') }}";
+
+
+document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
+
     const scannedList = document.getElementById('scanned-list');
     let scanner;
 
@@ -53,19 +52,15 @@ document.addEventListener("DOMContentLoaded", async function () {
         return;
     }
 
-    async function onScanSuccess(decodedText) {
-        scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
 
-        const item = document.createElement('li');
-        item.classList.add('list-group-item');
-        item.textContent = decodedText;
-        scannedList.prepend(item);
+    async function handleScan(decodedText) {
+        scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
 
         let token;
         try {
             const url = new URL(decodedText);
             token = url.searchParams.get('token');
-        } catch (err) {
+        } catch {
             token = decodedText;
         }
 
@@ -89,13 +84,16 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
     }
 
-    function onScanError(errorMessage) {
-        // Removido para não poluir console.
+    try {
+        await initScanner('qr-video', handleScan);
+        statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
+    } catch (err) {
+        statusElement.innerHTML = `<span class="text-danger">${err.message || err}</span>`;
     }
 
-    window.addEventListener('beforeunload', () => {
-        if (scanner) scanner.stop();
-    });
+
+    window.addEventListener('beforeunload', stopScanner);
+
 });
 </script>
 {% endblock %}
