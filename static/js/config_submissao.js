@@ -21,6 +21,7 @@
           headers: {
             'X-CSRFToken': csrfToken,
           },
+          credentials: 'include',
         });
         if (resp.ok) {
           const data = await resp.json();
@@ -30,7 +31,8 @@
             alert(data.message || 'Erro ao atualizar');
           }
         } else {
-          alert('Erro ao processar solicitação');
+          const data = await resp.json().catch(() => null);
+          alert(data?.message || 'Erro ao processar solicitação');
         }
       } catch (err) {
         console.error('Erro de rede', err);
