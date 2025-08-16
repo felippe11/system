@@ -202,6 +202,15 @@ def add_requisito(barema_id: int):
             pontuacao_min=request.form.get("pontuacao_min", type=float) or 0,
             pontuacao_max=request.form.get("pontuacao_max", type=float) or 0,
         )
+        if requisito.pontuacao_min > requisito.pontuacao_max:
+            error = "Pontuação mínima não pode ser maior que a máxima."
+            flash(error, "danger")
+            return render_template(
+                "revisor/requisito_form.html",
+                barema=barema,
+                requisito=requisito,
+                error=error,
+            )
         db.session.add(requisito)
         db.session.commit()
         flash("Requisito adicionado", "success")
@@ -233,6 +242,15 @@ def edit_requisito(req_id: int):
         requisito.pontuacao_max = (
             request.form.get("pontuacao_max", type=float) or 0
         )
+        if requisito.pontuacao_min > requisito.pontuacao_max:
+            error = "Pontuação mínima não pode ser maior que a máxima."
+            flash(error, "danger")
+            return render_template(
+                "revisor/requisito_form.html",
+                barema=requisito.barema,
+                requisito=requisito,
+                error=error,
+            )
         db.session.commit()
         flash("Requisito atualizado", "success")
         return redirect(
