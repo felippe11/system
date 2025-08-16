@@ -651,10 +651,24 @@ def avaliar(submission_id: int):
 
     if request.method == "POST" and barema:
         scores: Dict[str, int] = {}
-        for requisito, _max in barema.requisitos.items():
+        for requisito, faixa in barema.requisitos.items():
             nota_raw = request.form.get(requisito)
             if nota_raw:
-                scores[requisito] = int(nota_raw)
+                nota = int(nota_raw)
+                min_val = faixa.get("min", 0)
+                max_val = faixa.get("max")
+                if max_val is not None and (nota < min_val or nota > max_val):
+                    flash(
+                        f"Nota para {requisito} deve estar entre {min_val} e {max_val}",
+                        "danger",
+                    )
+                    return render_template(
+                        "revisor/avaliacao.html",
+                        submission=submission,
+                        barema=barema,
+                        review=review,
+                    )
+                scores[requisito] = nota
 
         if review is None:
             review = Review(

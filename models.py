@@ -1566,7 +1566,12 @@ class RevisaoConfig(db.Model):
 
 
 class EventoBarema(db.Model):
-    """Define os critérios de avaliação para um evento."""
+    """Define os critérios de avaliação para um evento.
+
+    ``requisitos`` armazena um dicionário onde cada chave é o nome do
+    requisito e o valor é um objeto com os limites ``min`` e ``max``.
+    Ex.: {"Critério": {"min": 1, "max": 5}}
+    """
 
     __tablename__ = "evento_barema"
 
