@@ -33,6 +33,7 @@ from fpdf import FPDF
 import pandas as pd
 import qrcode
 import io
+from types import SimpleNamespace
 from . import routes
 
 
