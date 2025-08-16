@@ -3273,9 +3273,15 @@ def confirmar_checkin_agendamento(token):
                 
                 # Processa os alunos presentes
                 alunos_presentes = request.form.getlist('alunos_presentes')
+
                 for aluno in agendamento.alunos:
-                    aluno.presente = str(aluno.id) in alunos_presentes
-                
+                    aluno.presente = True
+
+                if alunos_presentes:
+                    ids_presentes = set(alunos_presentes)
+                    for aluno in agendamento.alunos:
+                        aluno.presente = str(aluno.id) in ids_presentes
+
                 db.session.commit()
                 
                 flash('Check-in realizado com sucesso!', 'success')
