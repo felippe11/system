@@ -600,14 +600,23 @@ def view_candidatura(cand_id: int):
 # AVALIAÇÃO DE TRABALHOS
 # -----------------------------------------------------------------------------
 @revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
+
 @login_required
 def avaliar(submission_id: int):
     """Permite ao revisor atribuir notas a uma submissão com base no barema."""
     submission = Submission.query.get_or_404(submission_id)
-    barema = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
+    assignment = Assignment.query.filter_by(
+        submission_id=submission.id, reviewer_id=current_user.id
+    ).first()
+    if not assignment:
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
+    barema = Barema.query.filter_by(evento_id=submission.evento_id).first()
     review = Review.query.filter_by(
         submission_id=submission.id, reviewer_id=current_user.id
     ).first()
+
 
     if request.method == "POST" and barema:
         scores: Dict[str, int] = {}
