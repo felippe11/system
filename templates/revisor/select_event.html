@@ -9,15 +9,19 @@
     <div class="col-md-6">
       <div class="card h-100 shadow-sm">
         <div class="card-header bg-primary text-white">
-          {{ item.evento.nome }}
+          {{ item.evento.nome if item.evento else item.processo.formulario.nome }}
         </div>
         <div class="card-body">
+          {% if item.evento %}
           <p class="mb-1"><strong>Cliente:</strong> {{ item.evento.cliente.nome }}</p>
           <p class="mb-1"><strong>Período:</strong>
             {% if item.evento.data_inicio %}{{ item.evento.data_inicio.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
             a
             {% if item.evento.data_fim %}{{ item.evento.data_fim.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
           </p>
+          {% else %}
+          <p class="mb-1"><strong>Formulário:</strong> {{ item.processo.formulario.nome }}</p>
+          {% endif %}
           <p class="mb-1"><strong>Status do processo:</strong> {{ item.status }}</p>
         </div>
         <div class="card-footer bg-white border-0">
@@ -29,7 +33,7 @@
   </div>
   {% else %}
   <div class="alert alert-info">
-    Nenhum evento com seleção de revisores disponível no momento.
+    Nenhum processo seletivo de revisores disponível no momento.
     <a href="{{ url_for('evento_routes.home') }}" class="alert-link">Voltar para a página inicial</a>.
   </div>
   {% endif %}

@@ -29,6 +29,7 @@ from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 
 from extensions import db
+from sqlalchemy.orm import selectinload
 from models import (
     Assignment,
     CampoFormulario,
@@ -209,23 +210,9 @@ def progress_query():
 def select_event():
     now = datetime.utcnow()
 
-    eventos_proc = (
-        db.session.query(Evento, RevisorProcess)
-        .outerjoin(
-            revisor_process_evento_association,
-            Evento.id == revisor_process_evento_association.c.evento_id,
-        )
-        .join(
-            RevisorProcess,
-            or_(
-                revisor_process_evento_association.c.revisor_process_id
-                == RevisorProcess.id,
-                RevisorProcess.evento_id == Evento.id,
-            ),
-        )
+    processos = (
+        RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
         .filter(
-            Evento.status == "ativo",
-            Evento.publico.is_(True),
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),
@@ -239,14 +226,33 @@ def select_event():
         .all()
     )
 
-    registros = [
-        {
-            "evento": ev,
-            "processo": proc,
-            "status": "Aberto" if proc.is_available() else "Encerrado",
-        }
-        for ev, proc in eventos_proc
-    ]
+    registros: list[dict[str, object]] = []
+    for proc in processos:
+        eventos = list(proc.eventos)
+        if not eventos and proc.evento_id:
+            ev = Evento.query.get(proc.evento_id)
+            if ev:
+                eventos.append(ev)
+
+        if not eventos:
+            registros.append(
+                {
+                    "evento": None,
+                    "processo": proc,
+                    "status": "Aberto" if proc.is_available() else "Encerrado",
+                }
+            )
+            continue
+
+        for ev in eventos:
+            if ev.status == "ativo" and ev.publico:
+                registros.append(
+                    {
+                        "evento": ev,
+                        "processo": proc,
+                        "status": "Aberto" if proc.is_available() else "Encerrado",
+                    }
+                )
 
     return render_template("revisor/select_event.html", eventos=registros)
 
