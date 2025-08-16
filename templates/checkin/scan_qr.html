@@ -138,12 +138,13 @@
 <!-- Socket.IO -->
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
-<script>
+<script type="module">
+import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_scanner.js') }}";
+
     /**
      * 1) Primeiro definimos as variáveis e funções
      */
-    
-    let scanner = null;
+
     const checkinsRegistrados = new Set(); // Evita duplicar a mesma pessoa+oficina
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
@@ -268,6 +269,8 @@
      * 2) Depois chamamos o DOMContentLoaded, usando as funções definidas acima
      */
     document.addEventListener("DOMContentLoaded", async function () {
+
+
         const statusElement = document.getElementById('qr-status');
         const resultElement = document.getElementById('qr-result');
 
@@ -314,6 +317,7 @@
         } else {
             statusElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><span>Biblioteca de QR Code não carregada.</span>';
         }
+
     });
     
     const cliente_id = "{{ current_user.id }}";  // Renderiza o ID do cliente
