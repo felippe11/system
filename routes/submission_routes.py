@@ -1,14 +1,25 @@
-from flask import Blueprint, request, jsonify, abort
+
 from flask_login import current_user
+
+
+from flask import Blueprint, request, jsonify, abort, current_app
+import os
+
+
 import uuid
 import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
+
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db
 from services.mailjet_service import send_via_mailjet
+from mailjet_rest.client import ApiError
+import logging
 
 submission_routes = Blueprint('submission_routes', __name__)
+
+logger = logging.getLogger(__name__)
 
 
 @submission_routes.route('/submissions', methods=['POST'])
@@ -29,14 +40,18 @@ def create_submission():
     db.session.add(submission)
     db.session.commit()
 
+
     try:
         send_via_mailjet(
             to_email=email,
             subject='Submission Access Code',
             text=f'Locator: {locator}\nAccess code: {raw_code}'
         )
-    except Exception:
-        pass
+
+    except ApiError as exc:
+        logger.exception("Erro ao enviar código de acesso para %s", email)
+        return jsonify({'error': 'falha ao enviar email'}), 500
+
 
     return jsonify({'locator': locator, 'code': raw_code}), 201
 
@@ -62,12 +77,13 @@ def add_review(locator):
     if not submission.check_code(code):
         abort(401)
 
-    reviewer = request.form.get('reviewer')
-    comment = request.form.get('comment')
+    reviewer_id = request.form.get("reviewer_id")
+    reviewer_name = request.form.get("reviewer_name")
+    comment = request.form.get("comment")
 
     review = Review(
         submission_id=submission.id,
-        reviewer_name=reviewer,
+        reviewer_name=reviewer_name,
         comments=comment,
     )
     db.session.add(review)
@@ -80,7 +96,9 @@ def add_review(locator):
 
     assignment = Assignment(
         submission_id=submission.id,
-        reviewer_id=int(reviewer) if reviewer and str(reviewer).isdigit() else None,
+        reviewer_id=int(reviewer_id)
+        if reviewer_id and str(reviewer_id).isdigit()
+        else None,
         deadline=datetime.utcnow() + timedelta(days=prazo_dias),
     )
     db.session.add(assignment)
