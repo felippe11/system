@@ -19,7 +19,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+<script
+    src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"
+    defer
+    crossorigin="anonymous"></script>
 
 <script>
 document.addEventListener("DOMContentLoaded", async function () {
@@ -28,21 +31,26 @@ document.addEventListener("DOMContentLoaded", async function () {
     const scannedList = document.getElementById('scanned-list');
     let scanner;
 
-    try {
-        scanner = new Html5Qrcode('qr-video');
-        const cameras = await Html5Qrcode.getCameras();
-        const cameraId = cameras.find(cam => cam.label.toLowerCase().includes('back'))?.id || cameras[0].id;
+    if (window.Html5Qrcode) {
+        try {
+            scanner = new Html5Qrcode('qr-video');
+            const cameras = await Html5Qrcode.getCameras();
+            const cameraId = cameras.find(cam => cam.label.toLowerCase().includes('back'))?.id || cameras[0].id;
 
-        await scanner.start(
-            cameraId,
-            { fps: 10, qrbox: 250 },
-            onScanSuccess,
-            onScanError
-        );
+            await scanner.start(
+                cameraId,
+                { fps: 10, qrbox: 250 },
+                onScanSuccess,
+                onScanError
+            );
 
-        statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
-    } catch (error) {
-        statusElement.innerHTML = `<span class="text-danger">Erro ao iniciar câmera: ${error.message}</span>`;
+            statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
+        } catch (error) {
+            statusElement.innerHTML = `<span class="text-danger">Erro ao iniciar câmera: ${error.message}</span>`;
+        }
+    } else {
+        statusElement.innerHTML = '<span class="text-danger">Biblioteca de QR Code não carregada.</span>';
+        return;
     }
 
     async function onScanSuccess(decodedText) {
@@ -86,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     window.addEventListener('beforeunload', () => {
-        if(scanner) scanner.stop();
+        if (scanner) scanner.stop();
     });
 });
 </script>
