@@ -37,15 +37,19 @@ from models import (
     Assignment,
     CampoFormulario,
     Cliente,
+
     ConfiguracaoCliente,
+
 
     Evento,
     Formulario,
 
 
-    EventoBarema,
 
+    Barema,
+    BaremaRequisito,
     RevisorCandidatura,
+
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
@@ -130,6 +134,122 @@ def config_revisor():
         eventos=eventos,
         selected_event_ids=selected_event_ids,
     )
+
+
+# -----------------------------------------------------------------------------
+# CONFIGURAÇÃO DE BAREMAS
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/<int:process_id>/barema")
+@login_required
+def manage_barema(process_id: int):
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    processo = RevisorProcess.query.get_or_404(process_id)
+    barema = Barema.query.filter_by(process_id=process_id).first()
+    if barema is None:
+        barema = Barema(process_id=process_id)
+        db.session.add(barema)
+        db.session.commit()
+    requisitos = barema.requisitos
+    return render_template(
+        "revisor/barema_form.html",
+        processo=processo,
+        barema=barema,
+        requisitos=requisitos,
+    )
+
+
+@revisor_routes.route(
+    "/revisor/barema/<int:barema_id>/requisito/new", methods=["GET", "POST"]
+)
+@login_required
+def add_requisito(barema_id: int):
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    barema = Barema.query.get_or_404(barema_id)
+    if request.method == "POST":
+        requisito = BaremaRequisito(
+            barema_id=barema_id,
+            nome=request.form.get("nome") or "",
+            descricao=request.form.get("descricao"),
+            pontuacao_min=request.form.get("pontuacao_min", type=float) or 0,
+            pontuacao_max=request.form.get("pontuacao_max", type=float) or 0,
+        )
+        db.session.add(requisito)
+        db.session.commit()
+        flash("Requisito adicionado", "success")
+        return redirect(
+            url_for("revisor_routes.manage_barema", process_id=barema.process_id)
+        )
+    return render_template(
+        "revisor/requisito_form.html", barema=barema, requisito=None
+    )
+
+
+@revisor_routes.route(
+    "/revisor/requisito/<int:req_id>/edit", methods=["GET", "POST"]
+)
+@login_required
+def edit_requisito(req_id: int):
+    requisito = BaremaRequisito.query.get_or_404(req_id)
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    if request.method == "POST":
+        requisito.nome = request.form.get("nome") or requisito.nome
+        requisito.descricao = request.form.get("descricao")
+        requisito.pontuacao_min = (
+            request.form.get("pontuacao_min", type=float) or 0
+        )
+        requisito.pontuacao_max = (
+            request.form.get("pontuacao_max", type=float) or 0
+        )
+        db.session.commit()
+        flash("Requisito atualizado", "success")
+        return redirect(
+            url_for(
+                "revisor_routes.manage_barema",
+                process_id=requisito.barema.process_id,
+            )
+        )
+    return render_template(
+        "revisor/requisito_form.html",
+        barema=requisito.barema,
+        requisito=requisito,
+    )
+
+
+@revisor_routes.route(
+    "/revisor/requisito/<int:req_id>/delete", methods=["POST"]
+)
+@login_required
+def delete_requisito(req_id: int):
+    requisito = BaremaRequisito.query.get_or_404(req_id)
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    process_id = requisito.barema.process_id
+    db.session.delete(requisito)
+    db.session.commit()
+    flash("Requisito removido", "success")
+    return redirect(url_for("revisor_routes.manage_barema", process_id=process_id))
+
+
+@revisor_routes.route(
+    "/revisor/<int:process_id>/barema/delete", methods=["POST"]
+)
+@login_required
+def delete_barema(process_id: int):
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+    barema = Barema.query.filter_by(process_id=process_id).first_or_404()
+    db.session.delete(barema)
+    db.session.commit()
+    flash("Barema removido", "success")
+    return redirect(url_for("revisor_routes.manage_barema", process_id=process_id))
 
 
 # -----------------------------------------------------------------------------
