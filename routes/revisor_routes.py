@@ -143,6 +143,14 @@ def config_revisor():
 @revisor_routes.route("/revisor/<int:process_id>/barema")
 @login_required
 def manage_barema(process_id: int):
+    """Display and ensure a barema exists for the given process.
+
+    Args:
+        process_id: Identifier of the review process.
+
+    Returns:
+        Response rendering the barema management page.
+    """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -170,6 +178,7 @@ def add_requisito(barema_id: int):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     barema = ProcessoBarema.query.get_or_404(barema_id)
+
     if request.method == "POST":
         requisito = ProcessoBaremaRequisito(
             barema_id=barema_id,
@@ -197,6 +206,8 @@ def edit_requisito(req_id: int):
     requisito = ProcessoBaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
+
+
         return redirect(url_for("dashboard_routes.dashboard"))
     if request.method == "POST":
         requisito.nome = request.form.get("nome") or requisito.nome
@@ -224,12 +235,14 @@ def edit_requisito(req_id: int):
 
 @revisor_routes.route(
     "/revisor/requisito/<int:req_id>/delete", methods=["POST"]
+
 )
 @login_required
 def delete_requisito(req_id: int):
     requisito = ProcessoBaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
+
         return redirect(url_for("dashboard_routes.dashboard"))
     process_id = requisito.barema.process_id
     db.session.delete(requisito)
@@ -240,6 +253,7 @@ def delete_requisito(req_id: int):
 
 @revisor_routes.route(
     "/revisor/<int:process_id>/barema/delete", methods=["POST"]
+
 )
 @login_required
 def delete_barema(process_id: int):
@@ -247,6 +261,7 @@ def delete_barema(process_id: int):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     barema = ProcessoBarema.query.filter_by(process_id=process_id).first_or_404()
+
     db.session.delete(barema)
     db.session.commit()
     flash("Barema removido", "success")
