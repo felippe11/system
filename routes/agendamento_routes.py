@@ -757,14 +757,11 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
 
 
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """
-    Gera um relatório em PDF com a lista de agendamentos para um evento específico.
-    Inclui estatísticas gerais, tabela de agendamentos e, quando disponível, a
-    presença detalhada dos alunos.
+    """Gera um PDF de agendamentos com presença registrada via QR code.
 
     Args:
         evento: Objeto Evento
-        agendamentos: Lista de objetos AgendamentoVisita
+        agendamentos: Lista de objetos ``AgendamentoVisita``
         caminho_pdf: Caminho onde o PDF será salvo
     """
     pdf = FPDF()
@@ -863,13 +860,14 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         professor_nome = (
             agendamento.professor.nome if agendamento.professor else "-"
         )
+        presentes = sum(1 for aluno in agendamento.alunos if aluno.presente)
 
         pdf.cell(15, 8, str(agendamento.id), 1, 0, 'C')
         pdf.cell(25, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
         pdf.cell(20, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
         pdf.cell(escola_w, 8, escola_nome, 1, 0, 'L')
         pdf.cell(prof_w, 8, professor_nome, 1, 0, 'L')
-        pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
+        pdf.cell(15, 8, str(presentes), 1, 0, 'C')
 
         status_txt = agendamento.status.capitalize()
         if agendamento.checkin_realizado:
@@ -879,7 +877,9 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Seção de presença dos alunos
     agendamentos_com_presenca = [
-        a for a in agendamentos if a.checkin_realizado and a.alunos
+        a
+        for a in agendamentos
+        if a.checkin_realizado and any(aluno.presente for aluno in a.alunos)
     ]
     if agendamentos_com_presenca:
         pdf.ln(10)
@@ -894,9 +894,10 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
             pdf.cell(30, 8, 'Presente', 1, 1, 'C')
             pdf.set_font('Arial', '', 9)
             for aluno in ag.alunos:
+                if not aluno.presente:
+                    continue
                 pdf.cell(160, 8, aluno.nome, 1, 0, 'L')
-                presente_txt = 'Sim' if aluno.presente else 'Não'
-                pdf.cell(30, 8, presente_txt, 1, 1, 'C')
+                pdf.cell(30, 8, 'Sim', 1, 1, 'C')
             pdf.ln(2)
 
     # Rodapé
@@ -1189,9 +1190,7 @@ def salas_visitacao(evento_id):
 @agendamento_routes.route('/gerar_relatorio_agendamentos/<int:evento_id>')
 @login_required
 def gerar_relatorio_agendamentos(evento_id):
-    """
-    Gera um relatório em PDF dos agendamentos para um evento.
-    """
+    """Gera um PDF com agendamentos que tiveram presença via QR code."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
@@ -1209,10 +1208,19 @@ def gerar_relatorio_agendamentos(evento_id):
     status = request.args.get('status')
     escola = request.args.get('escola')
     
-    # Base da consulta
-    query = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).filter(HorarioVisitacao.evento_id == evento_id)
+    # Base da consulta: apenas agendamentos com check-in via QR code
+    query = (
+        AgendamentoVisita.query.join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
+        .join(
+            Checkin,
+            (Checkin.usuario_id == AgendamentoVisita.professor_id)
+            & (Checkin.evento_id == HorarioVisitacao.evento_id),
+        )
+        .filter(Checkin.palavra_chave == 'QR-AGENDAMENTO')
+        .filter(HorarioVisitacao.evento_id == evento_id)
+    )
     
     # Aplicar filtros
     if data_inicio:

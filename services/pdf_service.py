@@ -2746,7 +2746,7 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
 
 
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """Gera um relatório em PDF com a lista de agendamentos de um evento."""
+    """Gera um PDF de agendamentos com presenças via QR code."""
 
     pdf = FPDF()
     pdf.add_page()
@@ -2865,11 +2865,13 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
         pdf.cell(15, 8, status_txt, 1, 1, 'C')
 
-        if agendamento.alunos:
+        presentes_alunos = [
+            aluno for aluno in agendamento.alunos if aluno.presente
+        ]
+        if presentes_alunos:
             pdf.set_font('Arial', 'I', 7)
-            for aluno in agendamento.alunos:
-                pres = 'Presente' if aluno.presente else 'Ausente'
-                pdf.cell(190, 5, f"- {aluno.nome} ({pres})", 0, 1)
+            for aluno in presentes_alunos:
+                pdf.cell(190, 5, f"- {aluno.nome}", 0, 1)
             pdf.set_font('Arial', '', 8)
 
     # Rodapé
