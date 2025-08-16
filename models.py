@@ -1608,6 +1608,38 @@ class RevisorEtapa(db.Model):
         return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
 
 
+class RevisorCriterio(db.Model):
+    __tablename__ = "revisor_criterio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("criterios", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCriterio process={self.process_id} nome={self.nome}>"
+
+
+class RevisorRequisito(db.Model):
+    __tablename__ = "revisor_requisito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    criterio_id = db.Column(
+        db.Integer,
+        db.ForeignKey("revisor_criterio.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    descricao = db.Column(db.String(255), nullable=False)
+
+    criterio = db.relationship(
+        "RevisorCriterio", backref=db.backref("requisitos", lazy=True)
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorRequisito criterio={self.criterio_id}>"
+
+
 class RevisorCandidatura(db.Model):
     __tablename__ = "revisor_candidatura"
 
