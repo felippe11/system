@@ -1,4 +1,5 @@
 import os
+
 os.environ.setdefault('SECRET_KEY', 'test')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
@@ -23,6 +24,7 @@ from models import (
     Usuario,
     Assignment,
     AuditLog,
+    Evento,
 )
 
 
@@ -45,9 +47,14 @@ def app():
                 cliente_id=cliente.id, max_trabalhos_por_revisor=2
             )
         )
+        evento1 = Evento(cliente_id=cliente.id, nome='E1')
+        evento2 = Evento(cliente_id=cliente.id, nome='E2')
+        db.session.add_all([evento1, evento2])
+        db.session.flush()
         proc = RevisorProcess(cliente_id=cliente.id)
         db.session.add(proc)
         db.session.flush()
+        proc.eventos.append(evento1)
         db.session.add(
             RevisorCandidatura(
                 process_id=proc.id,
@@ -66,7 +73,12 @@ def app():
                 tipo='revisor',
             )
         )
-        db.session.add(Submission(title='S1', code_hash='h'))
+        db.session.add(
+            Submission(title='S1', code_hash='h', evento_id=evento1.id)
+        )
+        db.session.add(
+            Submission(title='S2', code_hash='h2', evento_id=evento2.id)
+        )
         db.session.commit()
     yield app
 
@@ -90,8 +102,12 @@ def test_assign_by_filters(client, app):
     data = resp.get_json()
     assert data['success']
     with app.app_context():
+        sub1 = Submission.query.filter_by(title='S1').first()
+        sub2 = Submission.query.filter_by(title='S2').first()
         assert Assignment.query.count() == 1
         ass = Assignment.query.first()
+        assert ass.submission_id == sub1.id
+        assert not sub2.assignments
         assert AuditLog.query.filter_by(
             submission_id=ass.submission_id, event_type='assignment'
         ).count() == 1
