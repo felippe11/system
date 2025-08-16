@@ -45,7 +45,9 @@
     </div>
     <div class="mb-3">
       <label for="reviewerSelect" class="form-label">Revisores</label>
-      <select id="reviewerSelect" class="form-select" multiple>
+      <select id="reviewerSelect" class="form-select" multiple
+              data-min="{{ config.num_revisores_min if config else 1 }}"
+              data-max="{{ config.num_revisores_max if config else 2 }}">
         {% for r in reviewers %}
         <option value="{{ r.id }}">{{ r.nome }}</option>
         {% endfor %}
@@ -62,64 +64,9 @@
     </div>
   </div>
 </div>
-<script>
-  document.addEventListener('DOMContentLoaded', function(){
-    document.querySelectorAll('.gerar-codigos').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        const loc = this.dataset.locator;
-        fetch(`/submissions/${loc}/codes`).then(r=>r.json()).then(data=>{
-          if(data.reviews){
-            alert(data.reviews.map(r=>r.access_code).join('\n'));
-          }
-        });
-      });
-    });
+{% endblock %}
 
-    const minRev = {{ config.num_revisores_min if config else 1 }};
-    const maxRev = {{ config.num_revisores_max if config else 2 }};
-
-    document.getElementById('assignManual').addEventListener('click', function(){
-      const subId = document.getElementById('submissionSelect').value;
-      const selected = Array.from(document.getElementById('reviewerSelect').selectedOptions).map(o => o.value);
-      if(selected.length < minRev || selected.length > maxRev){
-        alert(`Selecione entre ${minRev} e ${maxRev} revisores.`);
-        return;
-      }
-      const payload = {};
-      payload[subId] = selected;
-      fetch('/assign_reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(r => r.json()).then(data => {
-        if(data.success){
-          location.reload();
-        }
-      });
-    });
-
-    document.getElementById('assignAutomatic').addEventListener('click', function(){
-      fetch('/assign_by_filters', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({filters: {}})
-      }).then(r => r.json()).then(data => {
-        if(data.success){
-          location.reload();
-        }
-      });
-    });
-
-    document.getElementById('autoArea').addEventListener('click', function(){
-      const eventoId = document.getElementById('eventoId').value;
-      if(!eventoId){
-        alert('Informe o ID do evento');
-        return;
-      }
-      fetch(`/auto_assign/${eventoId}`, {method: 'POST'})
-        .then(r => r.json())
-        .then(data => { if(data.success){ location.reload(); }});
-    });
-  });
-</script>
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 {% endblock %}
