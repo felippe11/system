@@ -129,7 +129,12 @@
 </style>
 
 <!-- QR Scanner -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+
+<script
+  src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+  defer
+  crossorigin="anonymous"></script>
+
 <!-- Socket.IO -->
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
@@ -263,48 +268,52 @@
      * 2) Depois chamamos o DOMContentLoaded, usando as funções definidas acima
      */
     document.addEventListener("DOMContentLoaded", async function () {
-        // Carrega check-ins anteriores antes de iniciar
-        await carregarCheckinsAnteriores();
-    
         const statusElement = document.getElementById('qr-status');
         const resultElement = document.getElementById('qr-result');
-    
-        try {
-            scanner = new Html5Qrcode('qr-video');
-    
-            const config = {
-                fps: 15,
-                qrbox: { width: 400, height: 400 },
-                aspectRatio: 1.0,
-                disableFlip: false
-            };
-    
-            const cameraId = await Html5Qrcode.getCameras()
-                .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
-    
-            await scanner.start(
-                cameraId || { facingMode: 'environment' },
-                config,
-                onScanSuccess,
-                onScanError
-            );
-    
-            statusElement.innerHTML = '<i class="bi bi-camera-video-fill me-2 text-success"></i><span>Aponte para o QR Code</span>';
-            
-        } catch (error) {
-            console.error('Erro na câmera:', error);
-            statusElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><span>Erro ao acessar a câmera. Verifique as permissões.</span>';
-            resultElement.innerHTML = `<div class="alert alert-danger">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-x-circle-fill me-2 fs-5"></i>
-                    <div>${error.message}</div>
-                </div>
-            </div>`;
+
+        if (window.Html5Qrcode) {
+            // Carrega check-ins anteriores antes de iniciar
+            await carregarCheckinsAnteriores();
+
+            try {
+                scanner = new Html5Qrcode('qr-video');
+
+                const config = {
+                    fps: 15,
+                    qrbox: { width: 400, height: 400 },
+                    aspectRatio: 1.0,
+                    disableFlip: false
+                };
+
+                const cameraId = await Html5Qrcode.getCameras()
+                    .then(devices => devices.find(d => d.label.includes('back'))?.id || null);
+
+                await scanner.start(
+                    cameraId || { facingMode: 'environment' },
+                    config,
+                    onScanSuccess,
+                    onScanError
+                );
+
+                statusElement.innerHTML = '<i class="bi bi-camera-video-fill me-2 text-success"></i><span>Aponte para o QR Code</span>';
+
+            } catch (error) {
+                console.error('Erro na câmera:', error);
+                statusElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><span>Erro ao acessar a câmera. Verifique as permissões.</span>';
+                resultElement.innerHTML = `<div class="alert alert-danger">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-x-circle-fill me-2 fs-5"></i>
+                        <div>${error.message}</div>
+                    </div>
+                </div>`;
+            }
+
+            window.addEventListener('beforeunload', () => {
+                if (scanner) scanner.stop();
+            });
+        } else {
+            statusElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><span>Biblioteca de QR Code não carregada.</span>';
         }
-    
-        window.addEventListener('beforeunload', () => {
-            if (scanner) scanner.stop();
-        });
     });
     
     const cliente_id = "{{ current_user.id }}";  // Renderiza o ID do cliente
