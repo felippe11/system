@@ -52,8 +52,9 @@ def test_parse_revisor_form(app):
             "stage_name": ["Etapa 1", "Etapa 2"],
             "availability_start": "2024-01-10",
             "availability_end": "2024-01-20",
-            "exibir_participantes": "on",
-            "eventos_ids": [1, 2],
+
+            "exibir_para_participantes": "on",
+
         },
     ):
         dados = parse_revisor_form(request)
@@ -79,7 +80,7 @@ def test_update_and_recreate_stages(app):
                 "formulario_id": form.id,
                 "num_etapas": 2,
                 "stage_name": ["E1", "E2"],
-                "exibir_participantes": "on",
+                "exibir_para_participantes": "on",
             },
         ):
             dados = parse_revisor_form(request)
