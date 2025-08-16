@@ -46,8 +46,9 @@ from models import (
 
 
 
-    Barema,
-    BaremaRequisito,
+    EventoBarema,
+    ProcessoBarema,
+    ProcessoBaremaRequisito,
     RevisorCandidatura,
 
     RevisorCandidaturaEtapa,
@@ -146,9 +147,9 @@ def manage_barema(process_id: int):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     processo = RevisorProcess.query.get_or_404(process_id)
-    barema = Barema.query.filter_by(process_id=process_id).first()
+    barema = ProcessoBarema.query.filter_by(process_id=process_id).first()
     if barema is None:
-        barema = Barema(process_id=process_id)
+        barema = ProcessoBarema(process_id=process_id)
         db.session.add(barema)
         db.session.commit()
     requisitos = barema.requisitos
@@ -168,9 +169,9 @@ def add_requisito(barema_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-    barema = Barema.query.get_or_404(barema_id)
+    barema = ProcessoBarema.query.get_or_404(barema_id)
     if request.method == "POST":
-        requisito = BaremaRequisito(
+        requisito = ProcessoBaremaRequisito(
             barema_id=barema_id,
             nome=request.form.get("nome") or "",
             descricao=request.form.get("descricao"),
@@ -193,7 +194,7 @@ def add_requisito(barema_id: int):
 )
 @login_required
 def edit_requisito(req_id: int):
-    requisito = BaremaRequisito.query.get_or_404(req_id)
+    requisito = ProcessoBaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -226,7 +227,7 @@ def edit_requisito(req_id: int):
 )
 @login_required
 def delete_requisito(req_id: int):
-    requisito = BaremaRequisito.query.get_or_404(req_id)
+    requisito = ProcessoBaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -245,7 +246,7 @@ def delete_barema(process_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-    barema = Barema.query.filter_by(process_id=process_id).first_or_404()
+    barema = ProcessoBarema.query.filter_by(process_id=process_id).first_or_404()
     db.session.delete(barema)
     db.session.commit()
     flash("Barema removido", "success")
@@ -612,7 +613,7 @@ def avaliar(submission_id: int):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    barema = Barema.query.filter_by(evento_id=submission.evento_id).first()
+    barema = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
     review = Review.query.filter_by(
         submission_id=submission.id, reviewer_id=current_user.id
     ).first()
