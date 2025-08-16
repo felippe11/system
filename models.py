@@ -1718,11 +1718,13 @@ class Submission(db.Model):
     status = db.Column(db.String(50), nullable=True)
     area_id = db.Column(db.Integer, nullable=True)
     author_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     attributes = db.Column(db.JSON, default=dict)  # metadados importados
 
     # relationships
     author = db.relationship("Usuario", backref=db.backref("submissions", lazy=True))
+    evento = db.relationship("Evento", backref=db.backref("submissions", lazy=True))
 
     # ------------------------------------------------------------------
     # utility

@@ -1,8 +1,12 @@
-from flask import Blueprint, request, jsonify, abort
+
+from flask import Blueprint, request, jsonify, abort, current_app
+import os
+
 import uuid
 import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
+
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db
 from services.mailjet_service import send_via_mailjet
@@ -32,15 +36,18 @@ def create_submission():
     db.session.add(submission)
     db.session.commit()
 
+
     try:
         send_via_mailjet(
             to_email=email,
             subject='Submission Access Code',
             text=f'Locator: {locator}\nAccess code: {raw_code}'
         )
+
     except ApiError as exc:
         logger.exception("Erro ao enviar código de acesso para %s", email)
         return jsonify({'error': 'falha ao enviar email'}), 500
+
 
     return jsonify({'locator': locator, 'code': raw_code}), 201
 
