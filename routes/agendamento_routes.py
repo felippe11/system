@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
-from services.pdf_service import gerar_pdf_relatorio_agendamentos
+from services import pdf_service
 from mailjet_rest.client import ApiError
 import logging
 
@@ -494,7 +494,7 @@ def relatorio_geral_agendamentos():
             data_fim=datetime.combine(data_fim, datetime.min.time()),
         )
 
-        gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
+        pdf_service.gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
 
         return send_file(pdf_path, as_attachment=True)
     
@@ -756,163 +756,6 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
 
 
 
-def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """
-    Gera um relatório em PDF com a lista de agendamentos para um evento específico.
-    Inclui estatísticas gerais, tabela de agendamentos e, quando disponível, a
-    presença detalhada dos alunos.
-
-    Args:
-        evento: Objeto Evento
-        agendamentos: Lista de objetos AgendamentoVisita
-        caminho_pdf: Caminho onde o PDF será salvo
-    """
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Configurar fonte
-    pdf.set_font('Arial', 'B', 16)
-    
-    # Título
-    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
-    
-    # Informações do evento
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(190, 10, f'Local: {evento.local}', 0, 1)
-    pdf.cell(190, 10, f'Período: {evento.data_inicio.strftime("%d/%m/%Y")} a {evento.data_fim.strftime("%d/%m/%Y")}', 0, 1)
-    
-    # Data e hora de geração
-    pdf.set_font('Arial', 'I', 10)
-    pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
-    
-    # Estatísticas
-    pdf.ln(5)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Estatísticas', 0, 1)
-    
-    # Contadores
-    total_agendamentos = len(agendamentos)
-    confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
-    realizados = sum(1 for a in agendamentos if a.status == 'realizado')
-    cancelados = sum(1 for a in agendamentos if a.status == 'cancelado')
-    
-    total_alunos = sum(a.quantidade_alunos for a in agendamentos if a.status in ['confirmado', 'realizado'])
-    presentes = 0
-    for a in agendamentos:
-        if a.status == 'realizado':
-            presentes += sum(1 for aluno in a.alunos if aluno.presente)
-    
-    pdf.set_font('Arial', '', 12)
-    pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
-    pdf.cell(95, 10, f'Total de Alunos: {total_alunos}', 0, 1)
-    
-    pdf.cell(95, 10, f'Confirmados: {confirmados}', 0, 0)
-    pdf.cell(95, 10, f'Realizados: {realizados}', 0, 1)
-    
-    pdf.cell(95, 10, f'Cancelados: {cancelados}', 0, 0)
-    if realizados > 0:
-        pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
-    
-    # Lista de agendamentos
-    pdf.ln(10)
-    pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
-
-    # Larguras dinâmicas para escola e professor
-    pdf.set_font('Arial', '', 8)
-    max_escola = max(
-        (pdf.get_string_width(a.escola_nome) for a in agendamentos),
-        default=0,
-    )
-    max_prof = max(
-        (
-            pdf.get_string_width(
-                a.professor.nome if a.professor else "-"
-            )
-            for a in agendamentos
-        ),
-        default=0,
-    )
-    max_escola += 2
-    max_prof += 2
-    min_escola, min_prof = 40, 30
-    fixed_width = 15 + 25 + 20 + 15 + 30
-    avail = 190 - fixed_width
-    escola_w = max(max_escola, min_escola)
-    prof_w = max(max_prof, min_prof)
-    if escola_w + prof_w > avail and escola_w + prof_w > 0:
-        scale = avail / (escola_w + prof_w)
-        escola_w *= scale
-        prof_w *= scale
-
-    # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(15, 10, 'ID', 1, 0, 'C')
-    pdf.cell(25, 10, 'Data', 1, 0, 'C')
-    pdf.cell(20, 10, 'Horário', 1, 0, 'C')
-    pdf.cell(escola_w, 10, 'Escola', 1, 0, 'C')
-    pdf.cell(prof_w, 10, 'Professor', 1, 0, 'C')
-    pdf.cell(15, 10, 'Alunos', 1, 0, 'C')
-    pdf.cell(30, 10, 'Status', 1, 1, 'C')
-
-    # Dados da tabela
-    pdf.set_font('Arial', '', 8)
-    for agendamento in agendamentos:
-        horario = agendamento.horario
-        escola_nome = agendamento.escola_nome
-        professor_nome = (
-            agendamento.professor.nome if agendamento.professor else "-"
-        )
-
-        pdf.cell(15, 8, str(agendamento.id), 1, 0, 'C')
-        pdf.cell(25, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
-        pdf.cell(20, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
-        pdf.cell(escola_w, 8, escola_nome, 1, 0, 'L')
-        pdf.cell(prof_w, 8, professor_nome, 1, 0, 'L')
-        pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
-
-        status_txt = agendamento.status.capitalize()
-        if agendamento.checkin_realizado:
-            status_txt += " ✓"
-
-        pdf.cell(30, 8, status_txt, 1, 1, 'C')
-
-    # Seção de presença dos alunos
-    agendamentos_com_presenca = [
-        a for a in agendamentos if a.checkin_realizado and a.alunos
-    ]
-    if agendamentos_com_presenca:
-        pdf.ln(10)
-        pdf.set_font('Arial', 'B', 14)
-        pdf.cell(190, 10, 'Lista de Presença', 0, 1)
-
-        for ag in agendamentos_com_presenca:
-            pdf.set_font('Arial', 'B', 10)
-            pdf.cell(190, 8, f'Agendamento {ag.id} - {ag.escola_nome}', 0, 1)
-            pdf.set_font('Arial', 'B', 9)
-            pdf.cell(160, 8, 'Aluno', 1, 0, 'L')
-            pdf.cell(30, 8, 'Presente', 1, 1, 'C')
-            pdf.set_font('Arial', '', 9)
-            for aluno in ag.alunos:
-                pdf.cell(160, 8, aluno.nome, 1, 0, 'L')
-                presente_txt = 'Sim' if aluno.presente else 'Não'
-                pdf.cell(30, 8, presente_txt, 1, 1, 'C')
-            pdf.ln(2)
-
-    # Rodapé
-    pdf.ln(10)
-    pdf.set_font('Arial', 'I', 10)
-    pdf.cell(
-        190,
-        10,
-        'Este relatório é gerado automaticamente pelo sistema de agendamentos.',
-        0,
-        1,
-        'C',
-    )
-
-    # Salvar o PDF
-    pdf.output(caminho_pdf)
     
 
 from datetime import datetime, timedelta
@@ -1241,7 +1084,7 @@ def gerar_relatorio_agendamentos(evento_id):
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
     
     # Chamar função para gerar PDF
-    gerar_pdf_relatorio_agendamentos(evento, agendamentos, pdf_path)
+    pdf_service.gerar_pdf_relatorio_agendamentos(evento, agendamentos, pdf_path)
     
     return send_file(pdf_path, as_attachment=True)
 
