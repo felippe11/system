@@ -49,3 +49,4 @@ def test_review_timing(client, app):
     data = resp.get_json()
     assert data['locator'] == 'loc1'
     assert data['reviews'][0]['access_code'] == 'revcode'
+    assert 'reviewer_name' in data['reviews'][0]
