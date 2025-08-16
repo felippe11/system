@@ -31,6 +31,7 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from sqlalchemy import func, desc
 from sqlalchemy.orm import selectinload
+from sqlalchemy.exc import ProgrammingError
 
 from models import (
 
@@ -124,8 +125,20 @@ def config_revisor():
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
 
-    etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
-    criterios = processo.criterios if processo else []  # type: ignore[attr-defined]
+    etapas: List[RevisorEtapa] = (
+        processo.etapas if processo else []
+    )  # type: ignore[index]
+    try:
+        criterios = (
+            processo.criterios if processo else []
+        )  # type: ignore[attr-defined]
+    except ProgrammingError as exc:  # pragma: no cover - depends on db state
+        current_app.logger.error("Erro ao acessar criterios: %s", exc)
+        flash(
+            "Banco de dados desatualizado. Administradores: executem as migrações.",
+            "warning",
+        )
+        criterios = []
     return render_template(
         "revisor/config.html",
         processo=processo,
