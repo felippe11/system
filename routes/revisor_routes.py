@@ -142,6 +142,14 @@ def config_revisor():
 @revisor_routes.route("/revisor/<int:process_id>/barema")
 @login_required
 def manage_barema(process_id: int):
+    """Display and ensure a barema exists for the given process.
+
+    Args:
+        process_id: Identifier of the review process.
+
+    Returns:
+        Response rendering the barema management page.
+    """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -165,6 +173,14 @@ def manage_barema(process_id: int):
 )
 @login_required
 def add_requisito(barema_id: int):
+    """Create a new requirement for a barema or show the form.
+
+    Args:
+        barema_id: Identifier of the barema.
+
+    Returns:
+        Redirect on success or the requirement form response.
+    """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -193,6 +209,14 @@ def add_requisito(barema_id: int):
 )
 @login_required
 def edit_requisito(req_id: int):
+    """Edit an existing barema requirement.
+
+    Args:
+        req_id: Identifier of the requirement to edit.
+
+    Returns:
+        Redirect on success or the requirement form response.
+    """
     requisito = BaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
@@ -226,6 +250,14 @@ def edit_requisito(req_id: int):
 )
 @login_required
 def delete_requisito(req_id: int):
+    """Remove a requirement from a barema.
+
+    Args:
+        req_id: Identifier of the requirement to delete.
+
+    Returns:
+        Redirect to the barema management page.
+    """
     requisito = BaremaRequisito.query.get_or_404(req_id)
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
@@ -242,6 +274,14 @@ def delete_requisito(req_id: int):
 )
 @login_required
 def delete_barema(process_id: int):
+    """Delete a barema and its requirements for a process.
+
+    Args:
+        process_id: Identifier of the review process.
+
+    Returns:
+        Redirect to the barema management page.
+    """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
