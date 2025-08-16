@@ -144,9 +144,7 @@ revisor_process_evento_association = db.Table(
         db.ForeignKey("revisor_process.id"),
         primary_key=True,
     ),
-    db.Column(
-        "evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True
-    ),
+    db.Column("evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True),
 )
 
 
@@ -676,10 +674,10 @@ class PasswordResetToken(db.Model):
 
 from extensions import db
 
-class Formulario(db.Model):
-    __tablename__ = 'formularios'
 
-    
+class Formulario(db.Model):
+    __tablename__ = "formularios"
+
     id = db.Column(db.Integer, primary_key=True)
 
     nome = db.Column(db.String(255), nullable=False)
@@ -690,7 +688,9 @@ class Formulario(db.Model):
     is_submission_form = db.Column(db.Boolean, default=False)
 
     # Relação com Cliente (opcional por cliente)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # Se cada cliente puder ter seus próprios formulários
+    cliente_id = db.Column(
+        db.Integer, db.ForeignKey("cliente.id"), nullable=True
+    )  # Se cada cliente puder ter seus próprios formulários
     cliente = db.relationship("Cliente", backref=db.backref("formularios", lazy=True))
 
     # Campos do formulário
@@ -717,6 +717,7 @@ class Formulario(db.Model):
 
     def __repr__(self):
         return f"<Formulario {self.nome}>"
+
 
 class CampoFormulario(db.Model):
     __tablename__ = "campos_formulario"
@@ -826,7 +827,6 @@ class ConfiguracaoCliente(db.Model):
     prazo_parecer_dias = db.Column(db.Integer, default=14)
     max_trabalhos_por_revisor = db.Column(db.Integer, default=5, nullable=True)
 
-
     obrigatorio_nome = db.Column(db.Boolean, default=True)
     obrigatorio_cpf = db.Column(db.Boolean, default=True)
 
@@ -928,9 +928,7 @@ class FeedbackCampo(db.Model):
     # Relacionamentos
     resposta_campo = db.relationship(
         "RespostaCampo",
-        backref=db.backref(
-            "feedbacks_campo", lazy=True, cascade="all, delete-orphan"
-        ),
+        backref=db.backref("feedbacks_campo", lazy=True, cascade="all, delete-orphan"),
     )
     ministrante = db.relationship(
         "Ministrante", backref=db.backref("feedbacks_campo", lazy=True)
@@ -1164,7 +1162,6 @@ class HorarioVisitacao(db.Model):
 
 
 class AgendamentoVisita(db.Model):
-
     """Agendamento de visita feito por um professor, opcionalmente vinculado a um cliente."""
 
     __tablename__ = "agendamento_visita"
@@ -1174,13 +1171,9 @@ class AgendamentoVisita(db.Model):
         db.Integer, db.ForeignKey("horario_visitacao.id"), nullable=False
     )
 
-    professor_id = db.Column(
-        db.Integer, db.ForeignKey("usuario.id"), nullable=True
-    )
+    professor_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
 
-    cliente_id = db.Column(
-        db.Integer, db.ForeignKey("cliente.id"), nullable=True
-    )
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=True)
 
     # Informações da escola e turma
     escola_nome = db.Column(db.String(200), nullable=False)
@@ -1215,7 +1208,6 @@ class AgendamentoVisita(db.Model):
     )
     professor = db.relationship(
         "Usuario", backref=db.backref("agendamentos_visitas", lazy=True)
-
     )
     cliente = db.relationship(
         "Cliente", backref=db.backref("agendamentos_visitas", lazy=True)
@@ -1230,14 +1222,11 @@ class AgendamentoVisita(db.Model):
     def __repr__(self):
 
         cliente_nome = self.cliente.nome if self.cliente else "sem cliente"
-        professor_nome = (
-            self.professor.nome if self.professor else "sem professor"
-        )
+        professor_nome = self.professor.nome if self.professor else "sem professor"
         return (
             f"<AgendamentoVisita {self.id} - Prof. {professor_nome} - "
             f"{self.escola_nome} ({cliente_nome})>"
         )
-
 
 
 class AlunoVisitante(db.Model):
@@ -1569,13 +1558,23 @@ class RevisaoConfig(db.Model):
     mostrar_taxa = db.Column(db.Boolean, default=True)
     numero_revisores = db.Column(db.Integer, default=2)
     prazo_revisao = db.Column(db.DateTime, nullable=True)
-    modelo_blind = db.Column(
-        db.String(20), default="single"
-    )  # single | double | open
+    modelo_blind = db.Column(db.String(20), default="single")  # single | double | open
 
     evento = db.relationship(
         "Evento", backref=db.backref("revisao_config", uselist=False)
     )
+
+
+class Barema(db.Model):
+    """Define os critérios de avaliação para um evento."""
+
+    __tablename__ = "barema"
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
+    requisitos = db.Column(db.JSON, nullable=False)
+
+    evento = db.relationship("Evento", backref=db.backref("barema", uselist=False))
 
 
 class ConfiguracaoCertificadoEvento(db.Model):
@@ -1619,6 +1618,38 @@ class RevisorEtapa(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
+
+
+class RevisorCriterio(db.Model):
+    __tablename__ = "revisor_criterio"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+
+    process = db.relationship("RevisorProcess", backref=db.backref("criterios", lazy=True))
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorCriterio process={self.process_id} nome={self.nome}>"
+
+
+class RevisorRequisito(db.Model):
+    __tablename__ = "revisor_requisito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    criterio_id = db.Column(
+        db.Integer,
+        db.ForeignKey("revisor_criterio.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    descricao = db.Column(db.String(255), nullable=False)
+
+    criterio = db.relationship(
+        "RevisorCriterio", backref=db.backref("requisitos", lazy=True)
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<RevisorRequisito criterio={self.criterio_id}>"
 
 
 class RevisorCandidatura(db.Model):
@@ -1815,7 +1846,9 @@ class Assignment(db.Model):
 # Associação N:N entre processos de revisor e eventos
 revisor_process_evento = db.Table(
     "revisor_process_evento",
-    db.Column("process_id", db.Integer, db.ForeignKey("revisor_process.id"), primary_key=True),
+    db.Column(
+        "process_id", db.Integer, db.ForeignKey("revisor_process.id"), primary_key=True
+    ),
     db.Column("evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True),
 )
 
@@ -1851,7 +1884,6 @@ class RevisorProcess(db.Model):
         "Evento", secondary=revisor_process_evento_association, lazy="selectin"
     )
 
-
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorProcess id={self.id} cliente={self.cliente_id}>"
 
@@ -1863,3 +1895,41 @@ class RevisorProcess(db.Model):
         if self.availability_end and now > self.availability_end:
             return False
         return True
+
+
+class Barema(db.Model):
+    """Conjunto de critérios de avaliação para um processo de revisores."""
+
+    __tablename__ = "barema"
+
+    id = db.Column(db.Integer, primary_key=True)
+    process_id = db.Column(
+        db.Integer, db.ForeignKey("revisor_process.id"), nullable=False, unique=True
+    )
+
+    process = db.relationship(
+        "RevisorProcess",
+        backref=db.backref("barema", uselist=False, cascade="all, delete-orphan"),
+    )
+    requisitos = db.relationship(
+        "BaremaRequisito", backref="barema", cascade="all, delete-orphan", lazy=True
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<Barema id={self.id} process={self.process_id}>"
+
+
+class BaremaRequisito(db.Model):
+    """Requisito avaliativo pertencente a um barema."""
+
+    __tablename__ = "barema_requisito"
+
+    id = db.Column(db.Integer, primary_key=True)
+    barema_id = db.Column(db.Integer, db.ForeignKey("barema.id"), nullable=False)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    pontuacao_min = db.Column(db.Numeric(5, 2), nullable=False, default=0)
+    pontuacao_max = db.Column(db.Numeric(5, 2), nullable=False)
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<BaremaRequisito id={self.id} barema={self.barema_id}>"

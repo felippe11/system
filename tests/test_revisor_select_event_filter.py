@@ -7,7 +7,7 @@ os.environ.setdefault("SECRET_KEY", "test")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
 from config import Config
-from flask import Flask
+from flask import Flask, get_flashed_messages
 from extensions import db, login_manager, csrf
 from models import Cliente, Formulario, RevisorProcess, Evento
 from routes.revisor_routes import revisor_routes, select_event
@@ -57,24 +57,28 @@ def app():
             nome="LinkedDirect",
             inscricao_gratuita=True,
             publico=True,
+            status="ativo",
         )
         linked_assoc = Evento(
             cliente_id=cliente.id,
             nome="LinkedAssoc",
             inscricao_gratuita=True,
             publico=True,
+            status="ativo",
         )
         unlinked = Evento(
             cliente_id=cliente.id,
             nome="Unlinked",
             inscricao_gratuita=True,
             publico=True,
+            status="ativo",
         )
         inactive = Evento(
             cliente_id=cliente.id,
             nome="Inactive",
             inscricao_gratuita=True,
             publico=True,
+            status="ativo",
         )
         db.session.add_all([linked_direct, linked_assoc, unlinked, inactive])
         db.session.commit()
@@ -121,3 +125,19 @@ def test_only_linked_events_are_listed(app):
     assert "LinkedAssoc" in eventos
     assert "Unlinked" not in eventos
     assert "Inactive" not in eventos
+
+
+def test_select_event_no_processes_flash(app):
+    with app.app_context():
+        RevisorProcess.query.delete()
+        db.session.commit()
+    with app.test_request_context("/processo_seletivo"):
+        with patch("routes.revisor_routes.render_template") as rt:
+            rt.side_effect = lambda tpl, **ctx: ctx
+            ctx = select_event()
+        flashes = get_flashed_messages(with_categories=True)
+    assert ctx["eventos"] == []
+    assert (
+        "info",
+        "Nenhum processo seletivo de revisores disponível no momento.",
+    ) in flashes

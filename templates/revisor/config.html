@@ -45,6 +45,23 @@
       <input type="text" class="form-control mb-2" name="stage_name" value="{{ etapas[i].nome if etapas|length > i else '' }}">
       {% endfor %}
     </div>
+    <div class="mb-3">
+      <label class="form-label">Barema (Critérios e Requisitos)</label>
+      {% set crit_total = criterios|length %}
+      {% for c in criterios %}
+      <div class="border rounded p-3 mb-3">
+        <input type="text" class="form-control mb-2" name="criterio_nome" value="{{ c.nome }}">
+        {% for r in c.requisitos %}
+        <input type="text" class="form-control mb-1" name="criterio_{{ loop.parent.loop.index0 }}_requisito" value="{{ r.descricao }}">
+        {% endfor %}
+        <input type="text" class="form-control mb-1" name="criterio_{{ loop.index0 }}_requisito" placeholder="Novo requisito">
+      </div>
+      {% endfor %}
+      <div class="border rounded p-3 mb-3">
+        <input type="text" class="form-control mb-2" name="criterio_nome" placeholder="Novo critério">
+        <input type="text" class="form-control mb-1" name="criterio_{{ crit_total }}_requisito" placeholder="Requisito">
+      </div>
+    </div>
     <button type="submit" class="btn btn-primary">Salvar</button>
   </form>
 </div>

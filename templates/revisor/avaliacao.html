@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h3>Avaliar Trabalho</h3>
+  <h5 class="mb-4">{{ submission.title }}</h5>
+  {% if submission.file_path %}
+  <iframe src="{{ url_for('static', filename=submission.file_path) }}" width="100%" height="600"></iframe>
+  {% elif submission.content %}
+  <div class="border p-3 mb-4">{{ submission.content|safe }}</div>
+  {% endif %}
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if barema and barema.requisitos %}
+      {% for requisito, max_nota in barema.requisitos.items() %}
+      <div class="mb-3">
+        <label class="form-label">{{ requisito }} (0-{{ max_nota }})</label>
+        <input type="number" class="form-control" name="{{ requisito }}" min="0" max="{{ max_nota }}" value="{{ review.scores[requisito] if review and review.scores }}">
+      </div>
+      {% endfor %}
+    {% else %}
+      <p>Não há barema cadastrado para este evento.</p>
+    {% endif %}
+    <button class="btn btn-primary">Salvar</button>
+  </form>
+</div>
+{% endblock %}
