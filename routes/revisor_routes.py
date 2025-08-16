@@ -31,7 +31,9 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from sqlalchemy import func, desc
 from sqlalchemy.orm import selectinload
+
 from models import (
+
     Assignment,
     CampoFormulario,
     Cliente,
@@ -39,6 +41,10 @@ from models import (
 
     Evento,
     Formulario,
+
+
+    Barema,
+
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
@@ -50,12 +56,13 @@ from models import (
 )
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
-from utils.revisor_helpers import (
-    parse_revisor_form,
-    recreate_stages,
-    update_process_eventos,
-    update_revisor_process,
-)
+import utils.revisor_helpers as rh
+
+parse_revisor_form = rh.parse_revisor_form
+recreate_stages = rh.recreate_stages
+update_process_eventos = rh.update_process_eventos
+update_revisor_process = rh.update_revisor_process
+recreate_criterios = getattr(rh, "recreate_criterios", lambda *a, **k: None)
 
 
 # Extensões permitidas para upload de arquivos
@@ -108,16 +115,18 @@ def config_revisor():
         update_revisor_process(processo, dados)
         update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
+        recreate_criterios(processo, dados["criterios"])
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
 
-
     etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
+    criterios = processo.criterios if processo else []  # type: ignore[attr-defined]
     return render_template(
         "revisor/config.html",
         processo=processo,
         formularios=formularios,
         etapas=etapas,
+        criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
     )
@@ -235,6 +244,7 @@ def progress_query():
 # -----------------------------------------------------------------------------
 @revisor_routes.route("/processo_seletivo")
 def select_event():
+    """Lista eventos com processo seletivo visível a participantes."""
     now = datetime.utcnow()
 
     processos = (
@@ -280,6 +290,12 @@ def select_event():
                         "status": "Aberto" if proc.is_available() else "Encerrado",
                     }
                 )
+
+    if not registros:
+        flash(
+            "Nenhum processo seletivo de revisores disponível no momento.",
+            "info",
+        )
 
     return render_template("revisor/select_event.html", eventos=registros)
 
@@ -458,6 +474,41 @@ def view_candidatura(cand_id: int):
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     return render_template("revisor/candidatura_detail.html", candidatura=cand)
+
+
+# -----------------------------------------------------------------------------
+# AVALIAÇÃO DE TRABALHOS
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
+@login_required
+def avaliar(submission_id: int):
+    """Permite ao revisor atribuir notas a uma submissão com base no barema."""
+    submission = Submission.query.get_or_404(submission_id)
+    barema = Barema.query.filter_by(evento_id=submission.evento_id).first()
+    review = Review.query.filter_by(
+        submission_id=submission.id, reviewer_id=current_user.id
+    ).first()
+
+    if request.method == "POST" and barema:
+        scores: Dict[str, int] = {}
+        for requisito, _max in barema.requisitos.items():
+            nota_raw = request.form.get(requisito)
+            if nota_raw:
+                scores[requisito] = int(nota_raw)
+
+        if review is None:
+            review = Review(
+                submission_id=submission.id, reviewer_id=current_user.id
+            )
+        review.scores = scores
+        db.session.add(review)
+        db.session.commit()
+        flash("Avaliação registrada", "success")
+        return redirect(url_for("revisor_routes.avaliar", submission_id=submission.id))
+
+    return render_template(
+        "revisor/avaliacao.html", submission=submission, barema=barema, review=review
+    )
 
 
 # -----------------------------------------------------------------------------

@@ -6,7 +6,13 @@ from typing import Any, Dict, List
 from flask import Request
 
 from extensions import db
-from models import Evento, RevisorEtapa, RevisorProcess
+from models import (
+    Evento,
+    RevisorCriterio,
+    RevisorEtapa,
+    RevisorProcess,
+    RevisorRequisito,
+)
 
 
 def parse_revisor_form(req: Request) -> Dict[str, Any]:
@@ -15,6 +21,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = req.form.getlist("stage_name")
     eventos_ids: List[int] = req.form.getlist("eventos_ids", type=int)
+    criterio_nomes: List[str] = req.form.getlist("criterio_nome")
     start_raw = req.form.get("availability_start")
     end_raw = req.form.get("availability_end")
     exibir_val = req.form.get("exibir_para_participantes")
@@ -26,6 +33,12 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         except ValueError:
             return None
 
+    criterios: List[Dict[str, Any]] = []
+    for idx, nome in enumerate(criterio_nomes):
+        requisitos = [r for r in req.form.getlist(f"criterio_{idx}_requisito") if r]
+        if nome or requisitos:
+            criterios.append({"nome": nome, "requisitos": requisitos})
+
     return {
         "formulario_id": formulario_id,
         "num_etapas": num_etapas,
@@ -34,6 +47,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         "availability_end": _parse_dt(end_raw),
         "exibir_para_participantes": exibir_para_participantes,
         "eventos_ids": eventos_ids,
+        "criterios": criterios,
     }
 
 
@@ -61,4 +75,24 @@ def recreate_stages(processo: RevisorProcess, stage_names: List[str]) -> None:
     for idx, nome in enumerate(stage_names, start=1):
         if nome:
             db.session.add(RevisorEtapa(process_id=processo.id, numero=idx, nome=nome))
+    db.session.commit()
+
+
+def recreate_criterios(
+    processo: RevisorProcess, criterios: List[Dict[str, Any]]
+) -> None:
+    """Recreates barema criteria and requirements for a process."""
+    RevisorCriterio.query.filter_by(process_id=processo.id).delete()
+    for dados in criterios:
+        nome = dados.get("nome")
+        if not nome:
+            continue
+        criterio = RevisorCriterio(process_id=processo.id, nome=nome)
+        db.session.add(criterio)
+        db.session.flush()
+        for req_desc in dados.get("requisitos", []):
+            if req_desc:
+                db.session.add(
+                    RevisorRequisito(criterio_id=criterio.id, descricao=req_desc)
+                )
     db.session.commit()
