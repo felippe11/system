@@ -139,22 +139,38 @@ def submit_application(process_id: int):
         email: str | None = None
 
         for campo in formulario.campos:  # type: ignore[attr-defined]
-            raw_val = request.form.get(str(campo.id))
-            valor: Any = raw_val
-            if campo.tipo == "file" and f"file_{campo.id}" in request.files:
-                arquivo = request.files[f"file_{campo.id}"]
-                if arquivo.filename:
+            key = str(campo.id)
+            valor: Any = None
+            is_required = getattr(campo, "obrigatorio", False)
+
+            if campo.tipo == "file":
+                file_key = f"file_{campo.id}"
+                arquivo = request.files.get(file_key)
+                if is_required and (not arquivo or not arquivo.filename):
+                    flash(f"O campo {campo.nome} é obrigatório.", "danger")
+                    return redirect(request.url)
+                if arquivo and arquivo.filename:
                     filename = secure_filename(arquivo.filename)
                     ext = os.path.splitext(filename)[1].lower()
                     if ext not in ALLOWED_EXTENSIONS:
                         flash("Extensão de arquivo não permitida.", "danger")
                         return redirect(request.url)
-                    unique_name = f"{uuid.uuid4().hex}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
+                    unique_name = (
+                        f"{uuid.uuid4().hex}_"
+                        f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}{ext}"
+                    )
                     dir_path = os.path.join("uploads", "candidaturas", str(process_id))
                     os.makedirs(dir_path, exist_ok=True)
                     path = os.path.join(dir_path, unique_name)
                     arquivo.save(path)
                     valor = path
+            else:
+                raw_val = request.form.get(key)
+                if is_required and not raw_val:
+                    flash(f"O campo {campo.nome} é obrigatório.", "danger")
+                    return redirect(request.url)
+                valor = raw_val
+
             respostas[campo.nome] = valor
 
             low = campo.nome.lower()
@@ -162,6 +178,15 @@ def submit_application(process_id: int):
                 nome = valor  # type: ignore[assignment]
             elif low == "email":
                 email = valor  # type: ignore[assignment]
+
+        if email and RevisorCandidatura.query.filter_by(
+            process_id=process_id, email=email
+        ).first():
+            flash(
+                "Já existe uma candidatura com este e-mail para este processo.",
+                "danger",
+            )
+            return redirect(request.url)
 
         candidatura = RevisorCandidatura(
             process_id=process_id,
@@ -373,8 +398,38 @@ def advance(cand_id: int):
         return jsonify({"success": False}), 403
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
-    if cand.etapa_atual < cand.process.num_etapas:
-        cand.etapa_atual += 1
+
+    current_num = cand.etapa_atual
+    curr_etapa = RevisorEtapa.query.filter_by(
+        process_id=cand.process_id, numero=current_num
+    ).first()
+    if curr_etapa:
+        curr_status = RevisorCandidaturaEtapa.query.filter_by(
+            candidatura_id=cand.id, etapa_id=curr_etapa.id
+        ).first()
+        if not curr_status:
+            curr_status = RevisorCandidaturaEtapa(
+                candidatura_id=cand.id, etapa_id=curr_etapa.id
+            )
+            db.session.add(curr_status)
+        curr_status.status = "concluída"
+
+    if current_num < cand.process.num_etapas:
+        cand.etapa_atual = current_num + 1
+        next_etapa = RevisorEtapa.query.filter_by(
+            process_id=cand.process_id, numero=cand.etapa_atual
+        ).first()
+        if next_etapa:
+            next_status = RevisorCandidaturaEtapa.query.filter_by(
+                candidatura_id=cand.id, etapa_id=next_etapa.id
+            ).first()
+            if not next_status:
+                next_status = RevisorCandidaturaEtapa(
+                    candidatura_id=cand.id, etapa_id=next_etapa.id
+                )
+                db.session.add(next_status)
+            next_status.status = "em_andamento"
+
     db.session.commit()
     if cand.email:
         send_email_task.delay(
