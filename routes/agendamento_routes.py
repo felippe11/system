@@ -15,9 +15,16 @@ from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
 from models import (
-    AgendamentoVisita, HorarioVisitacao, Evento,
-    EventoInscricaoTipo, ConfiguracaoAgendamento,
-    Usuario, Cliente, Oficina, ProfessorBloqueado
+    AgendamentoVisita,
+    HorarioVisitacao,
+    Evento,
+    EventoInscricaoTipo,
+    ConfiguracaoAgendamento,
+    Usuario,
+    Cliente,
+    Oficina,
+    ProfessorBloqueado,
+    Checkin,
 )
 from utils import obter_estados
 from fpdf import FPDF
@@ -3248,12 +3255,20 @@ def confirmar_checkin_agendamento(token):
                 agendamento.checkin_realizado = True
                 agendamento.data_checkin = datetime.utcnow()
                 agendamento.status = 'realizado'
-                
+
+                checkin = Checkin(
+                    usuario_id=agendamento.professor_id,
+                    evento_id=agendamento.horario.evento_id,
+                    cliente_id=agendamento.cliente_id,
+                    palavra_chave='QR-AGENDAMENTO',
+                )
+                db.session.add(checkin)
+
                 # Processa os alunos presentes
                 alunos_presentes = request.form.getlist('alunos_presentes')
                 for aluno in agendamento.alunos:
                     aluno.presente = str(aluno.id) in alunos_presentes
-                
+
                 db.session.commit()
                 
                 flash('Check-in realizado com sucesso!', 'success')

@@ -64,6 +64,7 @@ pdf_service_stub.gerar_certificado_personalizado = lambda *a, **k: ''
 pdf_service_stub.gerar_pdf_inscritos_pdf = lambda *a, **k: ''
 pdf_service_stub.gerar_lista_frequencia_pdf = lambda *a, **k: ''
 pdf_service_stub.gerar_pdf_feedback = lambda *a, **k: ''
+pdf_service_stub.gerar_pdf_relatorio_agendamentos = lambda *a, **k: ''
 pdf_service_stub.gerar_etiquetas = lambda *a, **k: None
 pdf_service_stub.gerar_lista_frequencia = lambda *a, **k: None
 pdf_service_stub.gerar_certificados = lambda *a, **k: None
@@ -78,6 +79,14 @@ sys.modules.setdefault('services.pdf_service', pdf_service_stub)
 arquivo_utils_stub = types.ModuleType('utils.arquivo_utils')
 arquivo_utils_stub.arquivo_permitido = lambda *a, **k: True
 sys.modules.setdefault('utils.arquivo_utils', arquivo_utils_stub)
+
+utils_revisor_helpers = types.ModuleType('utils.revisor_helpers')
+utils_revisor_helpers.parse_revisor_form = lambda *a, **k: None
+utils_revisor_helpers.recreate_stages = lambda *a, **k: None
+utils_revisor_helpers.update_process_eventos = lambda *a, **k: None
+utils_revisor_helpers.update_revisor_process = lambda *a, **k: None
+sys.modules.setdefault('utils.revisor_helpers', utils_revisor_helpers)
+utils_stub.revisor_helpers = utils_revisor_helpers
 
 sys.modules.setdefault('pandas', types.ModuleType('pandas'))
 sys.modules.setdefault('qrcode', types.ModuleType('qrcode'))
@@ -127,6 +136,7 @@ from models import (
     AgendamentoVisita,
     AlunoVisitante,
     Inscricao,
+    Checkin,
 )
 
 
@@ -599,3 +609,48 @@ def test_cancelamento_limite_capacidade(app):
     with app.app_context():
         horario = HorarioVisitacao.query.first()
         assert horario.vagas_disponiveis == 8
+
+
+def test_confirmar_checkin_cria_checkin(app):
+    client = app.test_client()
+
+    login(client, 'cli@test', '123')
+
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            cliente_id=cliente.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        token = agendamento.qr_code_token
+        agendamento_id = agendamento.id
+        evento_id = horario.evento_id
+        cliente_id = cliente.id
+
+    resp = client.post(
+        f'/confirmar_checkin_agendamento/{token}',
+        data={},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento.checkin_realizado is True
+        chk = Checkin.query.filter_by(
+            usuario_id=agendamento.professor_id,
+            evento_id=evento_id,
+            cliente_id=cliente_id,
+            palavra_chave='QR-AGENDAMENTO',
+        ).first()
+        assert chk is not None
