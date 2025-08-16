@@ -16,7 +16,15 @@ mercadopago_stub = types.ModuleType('mercadopago')
 mercadopago_stub.SDK = lambda *a, **k: None
 sys.modules.setdefault('mercadopago', mercadopago_stub)
 
-from models import Usuario, Cliente, Evento, TrabalhoCientifico, Submission, Review
+from models import (
+    Usuario,
+    Cliente,
+    Evento,
+    TrabalhoCientifico,
+    Submission,
+    Review,
+    Assignment,
+)
 from routes.auth_routes import auth_routes
 from routes.trabalho_routes import trabalho_routes
 from routes.peer_review_routes import peer_review_routes
@@ -122,6 +130,12 @@ def test_submission_and_reviewer_flow(client, app):
         rev = Review.query.get(rev_id)
         assert rev.finished_at is not None
         assert rev.note == 7
+        assignment = Assignment.query.filter_by(submission_id=sub_id, reviewer_id=reviewer_id).first()
+        assert assignment.completed is True
+
+    login(client, 'cli@test', '123')
+    resp = client.get('/dashboard/client_reviews')
+    assert resp.status_code == 200
 
 
 def test_control_endpoints_and_dashboard_auth(client, app):
