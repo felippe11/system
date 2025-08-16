@@ -373,8 +373,38 @@ def advance(cand_id: int):
         return jsonify({"success": False}), 403
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
-    if cand.etapa_atual < cand.process.num_etapas:
-        cand.etapa_atual += 1
+
+    current_num = cand.etapa_atual
+    curr_etapa = RevisorEtapa.query.filter_by(
+        process_id=cand.process_id, numero=current_num
+    ).first()
+    if curr_etapa:
+        curr_status = RevisorCandidaturaEtapa.query.filter_by(
+            candidatura_id=cand.id, etapa_id=curr_etapa.id
+        ).first()
+        if not curr_status:
+            curr_status = RevisorCandidaturaEtapa(
+                candidatura_id=cand.id, etapa_id=curr_etapa.id
+            )
+            db.session.add(curr_status)
+        curr_status.status = "concluída"
+
+    if current_num < cand.process.num_etapas:
+        cand.etapa_atual = current_num + 1
+        next_etapa = RevisorEtapa.query.filter_by(
+            process_id=cand.process_id, numero=cand.etapa_atual
+        ).first()
+        if next_etapa:
+            next_status = RevisorCandidaturaEtapa.query.filter_by(
+                candidatura_id=cand.id, etapa_id=next_etapa.id
+            ).first()
+            if not next_status:
+                next_status = RevisorCandidaturaEtapa(
+                    candidatura_id=cand.id, etapa_id=next_etapa.id
+                )
+                db.session.add(next_status)
+            next_status.status = "em_andamento"
+
     db.session.commit()
     if cand.email:
         send_email_task.delay(
