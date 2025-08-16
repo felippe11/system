@@ -108,6 +108,17 @@
                         <i class="fas fa-times me-1"></i>Cancelar
                       </a>
                       {% endif %}
+
+                      {% if agendamento.status == 'confirmado' %}
+                      <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}"
+                         class="btn btn-sm btn-outline-primary" title="Imprimir Comprovante">
+                        <i class="fas fa-print me-1"></i>Imprimir Comprovante
+                      </a>
+                      <a href="{{ url_for('routes.qrcode_agendamento_professor', agendamento_id=agendamento.id) }}"
+                         class="btn btn-sm btn-outline-secondary" title="Ver QR Code">
+                        <i class="fas fa-qrcode me-1"></i>Ver QR Code
+                      </a>
+                      {% endif %}
                     </div>
                   </td>
                 </tr>
