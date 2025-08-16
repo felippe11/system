@@ -117,14 +117,25 @@ def config_revisor():
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
-        update_revisor_process(processo, dados)
-        update_process_eventos(processo, dados["eventos_ids"])
-        recreate_stages(processo, dados["stage_names"])
-        recreate_criterios(processo, dados["criterios"])
-        flash("Processo atualizado", "success")
-        return redirect(url_for("revisor_routes.config_revisor"))
+        try:
+            update_revisor_process(processo, dados)
+            update_process_eventos(processo, dados["eventos_ids"])
+            recreate_stages(processo, dados["stage_names"])
+            recreate_criterios(processo, dados["criterios"])
+            db.session.commit()
+            flash("Processo atualizado", "success")
+            return redirect(url_for("revisor_routes.config_revisor"))
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Erro ao atualizar processo revisor")
+            flash("Erro ao atualizar processo", "danger")
+            processo = RevisorProcess.query.filter_by(
+                cliente_id=current_user.id  # type: ignore[attr-defined]
+            ).first()
 
-    etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
+    etapas: List[RevisorEtapa] = (
+        processo.etapas if processo else []  # type: ignore[index]
+    )
     criterios = processo.criterios if processo else []  # type: ignore[attr-defined]
     return render_template(
         "revisor/config.html",
