@@ -7,12 +7,15 @@ from services.pdf_service import gerar_certificado_personalizado  # ajuste confo
 
 import os
 from datetime import datetime
+import logging
 
 certificado_routes = Blueprint(
     'certificado_routes',
     __name__,
     template_folder="../templates/certificado"
 )
+
+logger = logging.getLogger(__name__)
 
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
@@ -230,8 +233,8 @@ def preview_certificado():
         for f in temp_files:
             try:
                 os.remove(f)
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.exception("Erro ao remover arquivo temporário %s", f)
         return response
 
     return send_file(pdf_path, mimetype="application/pdf")
