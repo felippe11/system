@@ -219,3 +219,21 @@ def test_template_contains_new_columns(client):
     assert 'Presentes' in html
     assert 'Aluno 1' in html
 
+
+def test_generate_pdf_uses_service(client, monkeypatch):
+    login(client)
+    called = {}
+
+    def fake_pdf(evento, agendamentos, caminho_pdf):
+        called['used'] = True
+        os.makedirs(os.path.dirname(caminho_pdf), exist_ok=True)
+        with open(caminho_pdf, 'wb') as f:
+            f.write(b'PDF')
+
+    monkeypatch.setattr(
+        'services.pdf_service.gerar_pdf_relatorio_agendamentos', fake_pdf
+    )
+    resp = client.get('/relatorio_geral_agendamentos?gerar_pdf=1')
+    assert resp.status_code == 200
+    assert called.get('used')
+
