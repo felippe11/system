@@ -2,7 +2,11 @@
 {% block title %}Configurações de Submissão{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" id="configSubmissao"
+     data-url-config-cliente-atual="{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}"
+     data-revisao-configs='{{ revisao_configs|tojson }}'
+     data-min-rev="{{ config_cliente.num_revisores_min if config_cliente else 1 }}"
+     data-max-rev="{{ config_cliente.num_revisores_max if config_cliente else 2 }}">
   <h1 class="h3 mb-4"><i class="bi bi-journal-text me-2"></i>Submissões e Revisão</h1>
   <div class="card border-info border-top border-4 shadow-sm mb-4">
     <div class="card-header bg-info text-white">
@@ -218,132 +222,7 @@
 
 {% block scripts %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
-<script>
-  window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
-  const REVISAO_CONFIGS = {{ revisao_configs|tojson }};
-
-  const formRevisao = document.getElementById('formRevisaoConfig');
-  const selectEventoRevisao = document.getElementById('selectEventoRevisao');
-  const inputNumeroRevisores = document.getElementById('inputNumeroRevisores');
-  const inputPrazoRevisao = document.getElementById('inputPrazoRevisao');
-  const selectModeloBlind = document.getElementById('selectModeloBlind');
-
-  function carregarConfig(id) {
-    const cfg = REVISAO_CONFIGS[id] || {};
-    inputNumeroRevisores.value = cfg.numero_revisores || 2;
-    inputPrazoRevisao.value = cfg.prazo_revisao ? cfg.prazo_revisao.split('T')[0] : '';
-    selectModeloBlind.value = cfg.modelo_blind || 'single';
-  }
-
-  if (selectEventoRevisao) {
-    carregarConfig(selectEventoRevisao.value);
-    selectEventoRevisao.addEventListener('change', () => carregarConfig(selectEventoRevisao.value));
-  }
-
-  formRevisao?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const eventoId = selectEventoRevisao.value;
-    const payload = {
-      numero_revisores: parseInt(inputNumeroRevisores.value, 10),
-      modelo_blind: selectModeloBlind.value,
-    };
-    if (inputPrazoRevisao.value) {
-      payload.prazo_revisao = inputPrazoRevisao.value;
-    }
-    const resp = await fetch(`/revisao_config/${eventoId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (resp.ok) {
-      REVISAO_CONFIGS[eventoId] = payload;
-      alert('Configuração de revisão atualizada');
-    } else {
-      alert('Erro ao salvar configuração');
-    }
-  });
-
-  // ---------------- Distribuição de Trabalhos ----------------
-  document.querySelectorAll('.gerar-codigos').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const loc = btn.dataset.locator;
-      fetch(`/submissions/${loc}/codes`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.reviews) {
-            alert(data.reviews.map((r) => r.access_code).join('\n'));
-          }
-        });
-    });
-  });
-
-  const minRev = {{ config_cliente.num_revisores_min if config_cliente else 1 }};
-  const maxRev = {{ config_cliente.num_revisores_max if config_cliente else 2 }};
-
-  document.getElementById('assignManual')?.addEventListener('click', () => {
-    const subId = document.getElementById('submissionSelect').value;
-    const selected = Array.from(
-      document.getElementById('reviewerSelect').selectedOptions
-    ).map((o) => o.value);
-    if (selected.length < minRev || selected.length > maxRev) {
-      alert(`Selecione entre ${minRev} e ${maxRev} revisores.`);
-      return;
-    }
-    const payload = {};
-    payload[subId] = selected;
-    fetch('/assign_reviews', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          alert('Revisores atribuídos com sucesso');
-          location.reload();
-        } else {
-          alert('Falha ao atribuir revisores');
-        }
-      });
-  });
-
-  document.getElementById('assignAutomatic')?.addEventListener('click', () => {
-    fetch('/assign_by_filters', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filters: {} }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          alert('Sorteio realizado');
-          location.reload();
-        } else {
-          alert(data.message || 'Falha no sorteio');
-        }
-      });
-  });
-
-  document.getElementById('autoArea')?.addEventListener('click', () => {
-    const eventoId = document.getElementById('eventoId').value;
-    if (!eventoId) {
-      alert('Informe o ID do evento');
-      return;
-    }
-    fetch(`/auto_assign/${eventoId}`, { method: 'POST' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          alert('Atribuições criadas');
-          location.reload();
-        } else {
-          alert(data.message || 'Erro na atribuição automática');
-        }
-      });
-  });
-
-</script>
-
 <script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
 {% endblock %}
