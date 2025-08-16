@@ -457,6 +457,10 @@ def imprimir_agendamento_professor(agendamento_id):
         )
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
+    if agendamento.status != 'confirmado':
+        flash('Agendamento ainda não confirmado.', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
     horario = agendamento.horario
     evento = horario.evento
     
@@ -511,6 +515,10 @@ def qrcode_agendamento_professor(agendamento_id):
             'Acesso negado! Este agendamento não pertence ao seu evento.',
             'danger',
         )
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
+    if agendamento.status != 'confirmado':
+        flash('Agendamento ainda não confirmado.', 'warning')
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
     # Página que exibe o QR Code para check-in

@@ -151,18 +151,25 @@ def assign_by_filters():
         .all()
     )
 
-    reviewers = []
+    reviewers: list[Usuario] = []
+    evento_ids: set[int] = set()
     for cand in candidaturas:
         respostas = cand.respostas or {}
         if all(respostas.get(c) == v for c, v in filtros.items()):
             reviewer = Usuario.query.filter_by(email=cand.email).first()
             if reviewer:
                 reviewers.append(reviewer)
+                processo = cand.process
+                if processo.evento_id:
+                    evento_ids.add(processo.evento_id)
+                evento_ids.update(e.id for e in processo.eventos)
 
     if not reviewers:
         return {"success": False, "message": "Nenhum revisor encontrado"}, 400
 
-    submissions = Submission.query.all()
+    submissions = Submission.query.filter(
+        Submission.evento_id.in_(evento_ids)
+    ).all()
     elegiveis = [s for s in submissions if len(s.assignments) < max_por_sub]
     if not elegiveis:
         return {"success": False, "message": "Nenhuma submissão elegível"}, 400

@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
-from services.pdf_service import gerar_pdf_relatorio_agendamentos
+from services import pdf_service
 from mailjet_rest.client import ApiError
 import logging
 
@@ -494,7 +494,7 @@ def relatorio_geral_agendamentos():
             data_fim=datetime.combine(data_fim, datetime.min.time()),
         )
 
-        gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
+        pdf_service.gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
 
         return send_file(pdf_path, as_attachment=True)
     
@@ -756,6 +756,7 @@ def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, cami
 
 
 
+
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     """Gera um PDF de agendamentos com presença registrada via QR code.
 
@@ -914,8 +915,8 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
     # Salvar o PDF
     pdf.output(caminho_pdf)
-    
 
+    
 from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_, case
 from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
@@ -1249,7 +1250,7 @@ def gerar_relatorio_agendamentos(evento_id):
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
     
     # Chamar função para gerar PDF
-    gerar_pdf_relatorio_agendamentos(evento, agendamentos, pdf_path)
+    pdf_service.gerar_pdf_relatorio_agendamentos(evento, agendamentos, pdf_path)
     
     return send_file(pdf_path, as_attachment=True)
 
