@@ -1,3 +1,4 @@
+
 /* global window */
 /**
  * Funções para gestão de revisão: geração de códigos e atribuições.
