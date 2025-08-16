@@ -674,6 +674,28 @@ def avaliar(submission_id: int):
             if nota_raw:
                 scores[requisito] = int(nota_raw)
 
+        processo = (
+            RevisorProcess.query.join(RevisorProcess.eventos)
+            .filter(Evento.id == submission.evento_id)
+            .first()
+        )
+        requisitos_map: Dict[str, ProcessoBaremaRequisito] = {}
+        if processo and processo.processo_barema:
+            requisitos_map = {
+                r.nome: r for r in processo.processo_barema.requisitos
+            }
+
+        for nome, nota in scores.items():
+            req = requisitos_map.get(nome)
+            if req and not (req.pontuacao_min <= nota <= req.pontuacao_max):
+                flash(
+                    f"Nota para {nome} deve estar entre {req.pontuacao_min} e {req.pontuacao_max}.",
+                    "danger",
+                )
+                return redirect(
+                    url_for("revisor_routes.avaliar", submission_id=submission.id)
+                )
+
         if review is None:
             review = Review(
                 submission_id=submission.id, reviewer_id=current_user.id
