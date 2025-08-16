@@ -134,10 +134,14 @@ def login(client, email):
 )
 def test_imprimir_agendamento_access(app, client, email):
     from models import AgendamentoVisita
+    from extensions import db
 
     login(client, email)
     with app.app_context():
-        agendamento_id = AgendamentoVisita.query.first().id
+        agendamento = AgendamentoVisita.query.first()
+        agendamento.status = 'confirmado'
+        db.session.commit()
+        agendamento_id = agendamento.id
     resp = client.get(f'/professor/imprimir_agendamento/{agendamento_id}')
     assert resp.status_code == 200
     assert resp.data.startswith(b'PDF')
@@ -149,10 +153,14 @@ def test_imprimir_agendamento_access(app, client, email):
 )
 def test_qrcode_agendamento_access(app, client, email):
     from models import AgendamentoVisita
+    from extensions import db
 
     login(client, email)
     with app.app_context():
-        agendamento_id = AgendamentoVisita.query.first().id
+        agendamento = AgendamentoVisita.query.first()
+        agendamento.status = 'confirmado'
+        db.session.commit()
+        agendamento_id = agendamento.id
     resp = client.get(f'/professor/qrcode_agendamento/{agendamento_id}')
     assert resp.status_code == 200
     assert b'QR Code do Agendamento' in resp.data
