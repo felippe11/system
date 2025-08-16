@@ -32,6 +32,7 @@ pdf_stub.gerar_programacao_evento_pdf = lambda *a, **k: None
 pdf_stub.gerar_placas_oficinas_pdf = lambda *a, **k: None
 pdf_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
 pdf_stub.gerar_revisor_details_pdf = lambda *a, **k: None
+pdf_stub.gerar_pdf_relatorio_agendamentos = lambda *a, **k: None
 sys.modules.setdefault('services.pdf_service', pdf_stub)
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
@@ -47,6 +48,8 @@ from models import (
     CampoFormulario,
     RevisorProcess,
     RevisorCandidatura,
+    RevisorEtapa,
+    RevisorCandidaturaEtapa,
 )
 import tasks
 import routes.revisor_routes as rr
@@ -84,6 +87,11 @@ def app():
             exibir_para_participantes=True,
         )
         db.session.add(proc)
+        db.session.commit()
+        for i in range(1, proc.num_etapas + 1):
+            db.session.add(
+                RevisorEtapa(process_id=proc.id, numero=i, nome=f"Etapa {i}")
+            )
         db.session.commit()
     yield app
 
@@ -159,3 +167,26 @@ def test_advance_sends_email(client, app, monkeypatch):
     assert args[0] == email
     assert kwargs['template_context']['status'] == 'pendente'
     assert kwargs['template_context']['codigo'] == codigo
+
+
+def test_advance_updates_stage_status(client, app):
+    cand_id, codigo, _ = create_candidate(app, email='stage@test')
+    login(client, 'cli@test', '123')
+    resp = client.post(f'/revisor/advance/{cand_id}', json={})
+    assert resp.status_code == 200
+    with app.app_context():
+        cand = RevisorCandidatura.query.get(cand_id)
+        etapa1 = RevisorEtapa.query.filter_by(
+            process_id=cand.process_id, numero=1
+        ).first()
+        etapa2 = RevisorEtapa.query.filter_by(
+            process_id=cand.process_id, numero=2
+        ).first()
+        status1 = RevisorCandidaturaEtapa.query.filter_by(
+            candidatura_id=cand.id, etapa_id=etapa1.id
+        ).first()
+        status2 = RevisorCandidaturaEtapa.query.filter_by(
+            candidatura_id=cand.id, etapa_id=etapa2.id
+        ).first()
+        assert status1.status == 'concluída'
+        assert status2.status == 'em_andamento'
