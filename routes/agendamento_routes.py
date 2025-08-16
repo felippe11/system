@@ -24,6 +24,7 @@ from fpdf import FPDF
 import pandas as pd
 import qrcode
 import io
+from types import SimpleNamespace
 from . import routes
 
 # Aliases for backward compatibility used later in this module
@@ -456,22 +457,43 @@ def relatorio_geral_agendamentos():
             'visitantes': visitantes
 
         }
-    
-    # Gerar PDF com estatísticas
+
+    agendamentos = (
+        AgendamentoVisita.query.join(HorarioVisitacao)
+        .join(Evento)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+        .all()
+    )
+
+    # Gerar PDF com detalhes
     if request.args.get('gerar_pdf'):
-        pdf_filename = f"relatorio_geral_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.pdf"
+        pdf_filename = (
+            f"relatorio_geral_{data_inicio.strftime('%Y%m%d')}_{data_fim.strftime('%Y%m%d')}.pdf"
+        )
         pdf_path = os.path.join("static", "relatorios", pdf_filename)
         os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
-        
-        # Chamar função para gerar PDF
-        gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, pdf_path)
-        
+
+        dummy_evento = SimpleNamespace(
+            nome='Relatório Geral',
+            local='-',
+            data_inicio=datetime.combine(data_inicio, datetime.min.time()),
+            data_fim=datetime.combine(data_fim, datetime.min.time()),
+        )
+
+        gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
+
         return send_file(pdf_path, as_attachment=True)
     
     return render_template(
         'relatorio_geral_agendamentos.html',
         eventos=eventos,
         estatisticas=estatisticas,
+        agendamentos=agendamentos,
         filtros={
             'data_inicio': data_inicio,
             'data_fim': data_fim
