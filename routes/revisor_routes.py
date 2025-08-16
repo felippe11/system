@@ -5,6 +5,7 @@ submetam formulários, acompanhem o andamento e que administradores aprovem
 candidaturas. Também expõe endpoints para listar eventos elegíveis a partir
 da perspectiva de participantes.
 """
+
 from __future__ import annotations
 
 import os
@@ -33,6 +34,7 @@ from models import (
     CampoFormulario,
     Cliente,
     ConfiguracaoCliente,
+
     Evento,
     Formulario,
     RevisorCandidatura,
@@ -48,16 +50,20 @@ from services.pdf_service import gerar_revisor_details_pdf
 from utils.revisor_helpers import (
     parse_revisor_form,
     recreate_stages,
+    update_process_eventos,
     update_revisor_process,
 )
 
+
 # Extensões permitidas para upload de arquivos
-ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
+ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx"}
 
 # -----------------------------------------------------------------------------
 # Blueprint
 # -----------------------------------------------------------------------------
-revisor_routes = Blueprint("revisor_routes", __name__, template_folder="../templates/revisor")
+revisor_routes = Blueprint(
+    "revisor_routes", __name__, template_folder="../templates/revisor"
+)
 
 
 @revisor_routes.record_once
@@ -86,15 +92,18 @@ def config_revisor():
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
 
+
     if request.method == "POST":
         dados = parse_revisor_form(request)
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
         update_revisor_process(processo, dados)
+        update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
+
 
     etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
     return render_template(
@@ -161,14 +170,18 @@ def submit_application(process_id: int):
 
 @revisor_routes.route("/revisor/progress/<codigo>")
 def progress(codigo: str):
-    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
+    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(
+        codigo=codigo
+    ).first_or_404()
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template("revisor/progress.html", candidatura=cand, pdf_url=pdf_url)
 
 
 @revisor_routes.route("/revisor/progress/<codigo>/pdf")
 def progress_pdf(codigo: str):
-    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(codigo=codigo).first_or_404()
+    cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(
+        codigo=codigo
+    ).first_or_404()
     return gerar_revisor_details_pdf(cand)
 
 
@@ -189,14 +202,17 @@ def select_event():
 
     eventos_proc = (
         db.session.query(Evento, RevisorProcess)
-        .join(
+        .outerjoin(
             revisor_process_evento_association,
             Evento.id == revisor_process_evento_association.c.evento_id,
         )
         .join(
             RevisorProcess,
-            revisor_process_evento_association.c.revisor_process_id
-            == RevisorProcess.id,
+            or_(
+                revisor_process_evento_association.c.revisor_process_id
+                == RevisorProcess.id,
+                RevisorProcess.evento_id == Evento.id,
+            ),
         )
         .filter(
             Evento.status == "ativo",
@@ -215,7 +231,11 @@ def select_event():
     )
 
     registros = [
-        {"evento": ev, "processo": proc, "status": "Aberto" if proc.is_available() else "Encerrado"}
+        {
+            "evento": ev,
+            "processo": proc,
+            "status": "Aberto" if proc.is_available() else "Encerrado",
+        }
         for ev, proc in eventos_proc
     ]
 
@@ -233,17 +253,26 @@ def approve(cand_id: int):
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
 
-    config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cand.process.cliente_id).first()
+    config_cli = ConfiguracaoCliente.query.filter_by(
+        cliente_id=cand.process.cliente_id
+    ).first()
     if config_cli:
         aprovados = (
-            RevisorCandidatura.query
-            .join(RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id)
-            .filter(RevisorProcess.cliente_id == cand.process.cliente_id, RevisorCandidatura.status == 'aprovado')
+            RevisorCandidatura.query.join(
+                RevisorProcess, RevisorCandidatura.process_id == RevisorProcess.id
+            )
+            .filter(
+                RevisorProcess.cliente_id == cand.process.cliente_id,
+                RevisorCandidatura.status == "aprovado",
+            )
             .count()
         )
-        if config_cli.limite_revisores is not None and aprovados >= config_cli.limite_revisores:
-            flash('Limite de revisores atingido.', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        if (
+            config_cli.limite_revisores is not None
+            and aprovados >= config_cli.limite_revisores
+        ):
+            flash("Limite de revisores atingido.", "danger")
+            return redirect(url_for("dashboard_routes.dashboard_cliente"))
     cand.status = "aprovado"
     cand.etapa_atual = cand.process.num_etapas  # type: ignore[attr-defined]
 
@@ -267,7 +296,9 @@ def approve(cand_id: int):
 
     # Se informado, cria assignment imediato
     submission_id: int | None = (
-        request.json.get("submission_id") if request.is_json else request.form.get("submission_id", type=int)
+        request.json.get("submission_id")
+        if request.is_json
+        else request.form.get("submission_id", type=int)
     )
     if submission_id and reviewer:
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
@@ -366,14 +397,21 @@ def eligible_events():
     hoje = date.today()
 
     eventos = (
-        Evento.query
-        .join(RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id)
+        Evento.query.join(
+            RevisorProcess, Evento.cliente_id == RevisorProcess.cliente_id
+        )
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
             RevisorProcess.exibir_para_participantes.is_(True),
-            or_(RevisorProcess.availability_start.is_(None), RevisorProcess.availability_start <= hoje),
-            or_(RevisorProcess.availability_end.is_(None), RevisorProcess.availability_end >= hoje),
+            or_(
+                RevisorProcess.availability_start.is_(None),
+                RevisorProcess.availability_start <= hoje,
+            ),
+            or_(
+                RevisorProcess.availability_end.is_(None),
+                RevisorProcess.availability_end >= hoje,
+            ),
         )
         .distinct()
         .all()

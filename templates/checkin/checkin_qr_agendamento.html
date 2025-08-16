@@ -18,7 +18,7 @@
 
 {% block scripts %}
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='js/lib/html5-qrcode.min.js') }}"></script>
 <script type="module">
 import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_scanner.js') }}";
 
@@ -26,31 +26,6 @@ import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_s
 document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
-
-    const scannedList = document.getElementById('scanned-list');
-    let scanner;
-
-    if (window.Html5Qrcode) {
-        try {
-            scanner = new Html5Qrcode('qr-video');
-            const cameras = await Html5Qrcode.getCameras();
-            const cameraId = cameras.find(cam => cam.label.toLowerCase().includes('back'))?.id || cameras[0].id;
-
-            await scanner.start(
-                cameraId,
-                { fps: 10, qrbox: 250 },
-                onScanSuccess,
-                onScanError
-            );
-
-            statusElement.textContent = '✅ Câmera ativa. Aponte para o QR Code!';
-        } catch (error) {
-            statusElement.innerHTML = `<span class="text-danger">Erro ao iniciar câmera: ${error.message}</span>`;
-        }
-    } else {
-        statusElement.innerHTML = '<span class="text-danger">Biblioteca de QR Code não carregada.</span>';
-        return;
-    }
 
 
     async function handleScan(decodedText) {

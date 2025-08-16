@@ -218,13 +218,19 @@
 {% endblock %}
 
 
+
 {% block scripts %}
+
 {{ super() }}
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
 <script>
   window.URL_CONFIG_CLIENTE_ATUAL = "{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}";
   window.REVISAO_CONFIGS = {{ revisao_configs|tojson }};
+
 </script>
+
+
+
 <script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 {% endblock %}
