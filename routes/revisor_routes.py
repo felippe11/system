@@ -669,32 +669,26 @@ def avaliar(submission_id: int):
 
     if request.method == "POST" and barema:
         scores: Dict[str, int] = {}
-        for requisito, _max in barema.requisitos.items():
+
+        for requisito, faixa in barema.requisitos.items():
             nota_raw = request.form.get(requisito)
             if nota_raw:
-                scores[requisito] = int(nota_raw)
+                nota = int(nota_raw)
+                min_val = faixa.get("min", 0)
+                max_val = faixa.get("max")
+                if max_val is not None and (nota < min_val or nota > max_val):
+                    flash(
+                        f"Nota para {requisito} deve estar entre {min_val} e {max_val}",
+                        "danger",
+                    )
+                    return render_template(
+                        "revisor/avaliacao.html",
+                        submission=submission,
+                        barema=barema,
+                        review=review,
+                    )
+                scores[requisito] = nota
 
-        processo = (
-            RevisorProcess.query.join(RevisorProcess.eventos)
-            .filter(Evento.id == submission.evento_id)
-            .first()
-        )
-        requisitos_map: Dict[str, ProcessoBaremaRequisito] = {}
-        if processo and processo.processo_barema:
-            requisitos_map = {
-                r.nome: r for r in processo.processo_barema.requisitos
-            }
-
-        for nome, nota in scores.items():
-            req = requisitos_map.get(nome)
-            if req and not (req.pontuacao_min <= nota <= req.pontuacao_max):
-                flash(
-                    f"Nota para {nome} deve estar entre {req.pontuacao_min} e {req.pontuacao_max}.",
-                    "danger",
-                )
-                return redirect(
-                    url_for("revisor_routes.avaliar", submission_id=submission.id)
-                )
 
         if review is None:
             review = Review(
