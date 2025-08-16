@@ -48,12 +48,13 @@ from models import (
 )
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
-from utils.revisor_helpers import (
-    parse_revisor_form,
-    recreate_stages,
-    update_process_eventos,
-    update_revisor_process,
-)
+import utils.revisor_helpers as rh
+
+parse_revisor_form = rh.parse_revisor_form
+recreate_stages = rh.recreate_stages
+update_process_eventos = rh.update_process_eventos
+update_revisor_process = rh.update_revisor_process
+recreate_criterios = getattr(rh, "recreate_criterios", lambda *a, **k: None)
 
 
 # Extensões permitidas para upload de arquivos
@@ -106,16 +107,18 @@ def config_revisor():
         update_revisor_process(processo, dados)
         update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
+        recreate_criterios(processo, dados["criterios"])
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
 
-
     etapas: List[RevisorEtapa] = processo.etapas if processo else []  # type: ignore[index]
+    criterios = processo.criterios if processo else []  # type: ignore[attr-defined]
     return render_template(
         "revisor/config.html",
         processo=processo,
         formularios=formularios,
         etapas=etapas,
+        criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
     )
