@@ -73,12 +73,13 @@ def add_review(locator):
     if not submission.check_code(code):
         abort(401)
 
-    reviewer = request.form.get('reviewer')
-    comment = request.form.get('comment')
+    reviewer_id = request.form.get("reviewer_id")
+    reviewer_name = request.form.get("reviewer_name")
+    comment = request.form.get("comment")
 
     review = Review(
         submission_id=submission.id,
-        reviewer_name=reviewer,
+        reviewer_name=reviewer_name,
         comments=comment,
     )
     db.session.add(review)
@@ -91,7 +92,9 @@ def add_review(locator):
 
     assignment = Assignment(
         submission_id=submission.id,
-        reviewer_id=int(reviewer) if reviewer and str(reviewer).isdigit() else None,
+        reviewer_id=int(reviewer_id)
+        if reviewer_id and str(reviewer_id).isdigit()
+        else None,
         deadline=datetime.utcnow() + timedelta(days=prazo_dias),
     )
     db.session.add(assignment)
