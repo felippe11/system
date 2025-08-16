@@ -9,7 +9,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-from models import Cliente, Formulario, RevisorProcess
+from models import Cliente, Formulario, RevisorProcess, Evento
 
 
 @pytest.fixture
@@ -39,11 +39,23 @@ def login(client, email, senha):
     )
 
 
-def test_form_creation_links_revisor_process(client, app):
+def test_form_creation_links_revisor_process_with_event(client, app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome='E1',
+            inscricao_gratuita=True,
+            publico=True,
+        )
+        db.session.add(evento)
+        db.session.commit()
+        evento_id = evento.id
+
     login(client, 'cli@test', '123')
     resp = client.post(
         '/formularios/novo',
-        data={'nome': 'F1', 'vincular_processo': 'on'},
+        data={'nome': 'F1', 'vincular_processo': 'on', 'eventos': [evento_id]},
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -53,4 +65,5 @@ def test_form_creation_links_revisor_process(client, app):
         proc = RevisorProcess.query.filter_by(cliente_id=form.cliente_id).first()
         assert proc is not None
         assert proc.formulario_id == form.id
+        assert proc.evento_id == evento_id
 
