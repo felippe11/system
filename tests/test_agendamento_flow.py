@@ -249,8 +249,8 @@ def test_fluxo_agendamento(app):
     assert resp.status_code == 302
 
     resp = client.get(f'/professor/imprimir_agendamento/{agendamento_id}')
-    assert resp.status_code == 200
-    assert resp.data.startswith(b'PDF')
+    assert resp.status_code == 302
+    assert '/professor/meus_agendamentos' in resp.headers['Location']
 
     with app.app_context():
         agendamento = AgendamentoVisita.query.get(agendamento_id)

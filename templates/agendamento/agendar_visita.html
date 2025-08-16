@@ -33,4 +33,14 @@
         <button type="submit" class="btn btn-success">Confirmar Agendamento</button>
     </form>
 </div>
+
+<div id="chat-ajuda" class="border rounded p-3 bg-light" style="display:none; position:fixed; bottom:20px; right:20px; max-width:300px; z-index:1000;">
+    <strong>Precisa de ajuda?</strong>
+    <p class="mb-0">Após concluir o agendamento, acesse <strong>Meus Agendamentos</strong> para inserir nome e CPF dos alunos e baixar o comprovante.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/agendamento_chat.js') }}"></script>
 {% endblock %}

@@ -104,10 +104,12 @@
                                                         </a>
                                                     {% endif %}
                                                     
-                                                    <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" 
-                                                       class="btn btn-sm btn-outline-primary" title="Imprimir">
-                                                        <i class="fas fa-print me-1"></i>Imprimir
-                                                    </a>
+                                                    {% if agendamento.status == 'confirmado' %}
+                                                        <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}"
+                                                           class="btn btn-sm btn-outline-primary" title="Imprimir">
+                                                            <i class="fas fa-print me-1"></i>Imprimir
+                                                        </a>
+                                                    {% endif %}
                                                 </div>
                                             </td>
                                         </tr>

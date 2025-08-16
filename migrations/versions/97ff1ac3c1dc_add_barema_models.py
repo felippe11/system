@@ -1,4 +1,4 @@
-"""add barema models
+"""add processo_barema and evento_barema models
 
 Revision ID: 97ff1ac3c1dc
 Revises: a16bd5bf6b16
@@ -19,14 +19,14 @@ depends_on = None
 
 def upgrade():
     op.create_table(
-        "barema",
+        "processo_barema",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("process_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["process_id"], ["revisor_process.id"]),
         sa.UniqueConstraint("process_id"),
     )
     op.create_table(
-        "barema_requisito",
+        "processo_barema_requisito",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("barema_id", sa.Integer(), nullable=False),
         sa.Column("nome", sa.String(length=255), nullable=False),
@@ -35,10 +35,19 @@ def upgrade():
             "pontuacao_min", sa.Numeric(5, 2), nullable=False, server_default="0"
         ),
         sa.Column("pontuacao_max", sa.Numeric(5, 2), nullable=False),
-        sa.ForeignKeyConstraint(["barema_id"], ["barema.id"]),
+        sa.ForeignKeyConstraint(["barema_id"], ["processo_barema.id"]),
+    )
+    op.create_table(
+        "evento_barema",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("evento_id", sa.Integer(), nullable=False),
+        sa.Column("requisitos", sa.JSON(), nullable=False),
+        sa.ForeignKeyConstraint(["evento_id"], ["evento.id"]),
+        sa.UniqueConstraint("evento_id"),
     )
 
 
 def downgrade():
-    op.drop_table("barema_requisito")
-    op.drop_table("barema")
+    op.drop_table("evento_barema")
+    op.drop_table("processo_barema_requisito")
+    op.drop_table("processo_barema")
