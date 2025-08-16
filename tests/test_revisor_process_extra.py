@@ -47,8 +47,20 @@ def app():
         f2 = Formulario(nome='F2', cliente_id=c2.id)
         db.session.add_all([f1, f2])
         db.session.commit()
-        e1 = Evento(cliente_id=c1.id, nome='E1', inscricao_gratuita=True, publico=True)
-        e2 = Evento(cliente_id=c2.id, nome='E2', inscricao_gratuita=True, publico=True)
+        e1 = Evento(
+            cliente_id=c1.id,
+            nome='E1',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
+        e2 = Evento(
+            cliente_id=c2.id,
+            nome='E2',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
         db.session.add_all([e1, e2])
         db.session.commit()
 
@@ -108,6 +120,7 @@ def client(app):
 def test_process_creation_with_dates(app):
     with app.app_context():
         proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
+        assert proc.exibir_para_participantes is True
         assert proc.availability_start is not None
         assert proc.availability_end is not None
         start = proc.availability_start.date() if hasattr(proc.availability_start, 'date') else proc.availability_start
@@ -120,20 +133,22 @@ def test_visibility_flag_filters(app):
     with app.app_context():
         visible = (
             RevisorProcess.query
-            .join(RevisorProcess.formulario)
-            .join(Formulario.eventos)
-            .filter(RevisorProcess.exibir_para_participantes.is_(True))
+            .filter(
+                RevisorProcess.exibir_para_participantes.is_(True),
+                RevisorProcess.eventos.any(),
+            )
             .all()
         )
         hidden = (
             RevisorProcess.query
-            .join(RevisorProcess.formulario)
-            .join(Formulario.eventos)
-            .filter(RevisorProcess.exibir_para_participantes.is_(False))
+            .filter(
+                RevisorProcess.exibir_para_participantes.is_(False),
+                RevisorProcess.eventos.any(),
+            )
             .all()
         )
         assert len(visible) == 2
-        assert len(hidden) == 1
+        assert len(hidden) == 0
 
 
 def test_eligible_events_route(client, app):
@@ -155,9 +170,20 @@ def test_select_event_route(client):
 
 def test_revisorprocess_eventos_relationship(app):
     with app.app_context():
-        proc = RevisorProcess.query.filter_by(exibir_para_participantes=True).first()
+        proc = RevisorProcess.query.filter(
+            RevisorProcess.exibir_para_participantes.is_(True),
+            RevisorProcess.eventos.any(),
+        ).first()
         nomes = {e.nome for e in proc.eventos}
         assert nomes == {'E1'}
+
+
+def test_process_events_are_active_and_public(app):
+    with app.app_context():
+        proc = RevisorProcess.query.filter(RevisorProcess.eventos.any()).first()
+        evento = proc.eventos[0]
+        assert evento.status == 'ativo'
+        assert evento.publico is True
 
 def test_config_route_saves_availability(client, app):
     with app.app_context():
