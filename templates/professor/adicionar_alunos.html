@@ -136,15 +136,17 @@
             </div>
         {% endif %}
         
-        {% if total_adicionados > 0 %}
+        {% if agendamento.status == 'confirmado' and total_adicionados > 0 %}
         <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
             <i class="fas fa-print"></i> Imprimir Comprovante
         </a>
         {% endif %}
-        
+
+        {% if agendamento.status == 'confirmado' %}
         <a href="{{ url_for('routes.qrcode_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-info">
             <i class="fas fa-qrcode"></i> Ver QR Code
         </a>
+        {% endif %}
         
         <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
