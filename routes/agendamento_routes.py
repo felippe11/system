@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash
 from extensions import db
 from services.mailjet_service import send_via_mailjet
 from services.pdf_service import gerar_pdf_relatorio_agendamentos
+from mailjet_rest.client import ApiError
 import logging
 
 from utils.arquivo_utils import arquivo_permitido
@@ -183,8 +184,8 @@ class NotificacaoAgendamento:
         """Função interna para enviar email de forma assíncrona."""
         try:
             send_via_mailjet(to_email=dest, subject=subject, html=html)
-        except Exception:
-            pass
+        except ApiError as exc:
+            logger.exception("Erro ao enviar email de agendamento: %s", exc)
     
     @staticmethod
     def processar_lembretes_diarios():
