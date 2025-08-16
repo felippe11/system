@@ -11,21 +11,29 @@ from extensions import db
 from services.mailjet_service import send_via_mailjet
 from services.pdf_service import gerar_pdf_relatorio_agendamentos
 import logging
+
 from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
 from models import (
-    AgendamentoVisita, HorarioVisitacao, Evento,
-    EventoInscricaoTipo, ConfiguracaoAgendamento,
-    Usuario, Cliente, Oficina, ProfessorBloqueado
+    AgendamentoVisita,
+    HorarioVisitacao,
+    Evento,
+    EventoInscricaoTipo,
+    ConfiguracaoAgendamento,
+    Usuario,
+    Cliente,
+    Oficina,
+    ProfessorBloqueado,
+    Checkin,
 )
 from utils import obter_estados
 from fpdf import FPDF
 import pandas as pd
 import qrcode
 import io
-from types import SimpleNamespace
 from . import routes
+
 
 # Aliases for backward compatibility used later in this module
 ConfigAgendamento = ConfiguracaoAgendamento
@@ -3265,22 +3273,26 @@ def confirmar_checkin_agendamento(token):
     # Se for POST, realiza o check-in
     if request.method == 'POST':
         try:
+
             # Atualiza o status do agendamento
             if not agendamento.checkin_realizado:
                 agendamento.checkin_realizado = True
                 agendamento.data_checkin = datetime.utcnow()
                 agendamento.status = 'realizado'
-                
+
+                checkin = Checkin(
+                    usuario_id=agendamento.professor_id,
+                    evento_id=agendamento.horario.evento_id,
+                    cliente_id=agendamento.cliente_id,
+                    palavra_chave='QR-AGENDAMENTO',
+                )
+                db.session.add(checkin)
+
                 # Processa os alunos presentes
                 alunos_presentes = request.form.getlist('alunos_presentes')
-
                 for aluno in agendamento.alunos:
-                    aluno.presente = True
+                    aluno.presente = str(aluno.id) in alunos_presentes
 
-                if alunos_presentes:
-                    ids_presentes = set(alunos_presentes)
-                    for aluno in agendamento.alunos:
-                        aluno.presente = str(aluno.id) in ids_presentes
 
                 db.session.commit()
                 
