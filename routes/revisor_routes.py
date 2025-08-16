@@ -45,6 +45,11 @@ from models import (
 )
 from tasks import send_email_task
 from services.pdf_service import gerar_revisor_details_pdf
+from utils.revisor_helpers import (
+    parse_revisor_form,
+    recreate_stages,
+    update_revisor_process,
+)
 
 # Extensões permitidas para upload de arquivos
 ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
@@ -82,44 +87,12 @@ def config_revisor():
     ).all()
 
     if request.method == "POST":
-        # --- coleta de dados do formulário -----------------------------------
-        formulario_id = request.form.get("formulario_id", type=int)
-        num_etapas = request.form.get("num_etapas", type=int, default=1)
-        stage_names: List[str] = request.form.getlist("stage_name")
-        start_raw = request.form.get("availability_start")
-        end_raw = request.form.get("availability_end")
-        exibir_val = request.form.get("exibir_participantes")
-        exibir_para_participantes = exibir_val in {"on", "1", "true"}
-
-        # --- parse de datas ---------------------------------------------------
-        def _parse_dt(raw: str | None) -> datetime | None:
-            try:
-                return datetime.strptime(raw, "%Y-%m-%d") if raw else None
-            except ValueError:
-                return None
-
-        start_dt = _parse_dt(start_raw)
-        end_dt = _parse_dt(end_raw)
-
-        # --- cria ou atualiza processo ---------------------------------------
+        dados = parse_revisor_form(request)
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
-
-        processo.formulario_id = formulario_id
-        processo.num_etapas = num_etapas
-        processo.availability_start = start_dt
-        processo.availability_end = end_dt
-        processo.exibir_para_participantes = exibir_para_participantes
-        db.session.commit()
-
-        # --- (re)cria etapas --------------------------------------------------
-        RevisorEtapa.query.filter_by(process_id=processo.id).delete()
-        for idx, nome in enumerate(stage_names, start=1):
-            if nome:
-                db.session.add(RevisorEtapa(process_id=processo.id, numero=idx, nome=nome))
-        db.session.commit()
-
+        update_revisor_process(processo, dados)
+        recreate_stages(processo, dados["stage_names"])
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
 
