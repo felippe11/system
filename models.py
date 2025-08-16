@@ -1565,16 +1565,18 @@ class RevisaoConfig(db.Model):
     )
 
 
-class Barema(db.Model):
+class EventoBarema(db.Model):
     """Define os critérios de avaliação para um evento."""
 
-    __tablename__ = "barema"
+    __tablename__ = "evento_barema"
 
     id = db.Column(db.Integer, primary_key=True)
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
     requisitos = db.Column(db.JSON, nullable=False)
 
-    evento = db.relationship("Evento", backref=db.backref("barema", uselist=False))
+    evento = db.relationship(
+        "Evento", backref=db.backref("evento_barema", uselist=False)
+    )
 
 
 class ConfiguracaoCertificadoEvento(db.Model):
@@ -1897,10 +1899,10 @@ class RevisorProcess(db.Model):
         return True
 
 
-class Barema(db.Model):
+class ProcessoBarema(db.Model):
     """Conjunto de critérios de avaliação para um processo de revisores."""
 
-    __tablename__ = "barema"
+    __tablename__ = "processo_barema"
 
     id = db.Column(db.Integer, primary_key=True)
     process_id = db.Column(
@@ -1909,27 +1911,34 @@ class Barema(db.Model):
 
     process = db.relationship(
         "RevisorProcess",
-        backref=db.backref("barema", uselist=False, cascade="all, delete-orphan"),
+        backref=db.backref(
+            "processo_barema", uselist=False, cascade="all, delete-orphan"
+        ),
     )
     requisitos = db.relationship(
-        "BaremaRequisito", backref="barema", cascade="all, delete-orphan", lazy=True
+        "ProcessoBaremaRequisito",
+        backref="barema",
+        cascade="all, delete-orphan",
+        lazy=True,
     )
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<Barema id={self.id} process={self.process_id}>"
+        return f"<ProcessoBarema id={self.id} process={self.process_id}>"
 
 
-class BaremaRequisito(db.Model):
-    """Requisito avaliativo pertencente a um barema."""
+class ProcessoBaremaRequisito(db.Model):
+    """Requisito avaliativo pertencente a um barema de processo."""
 
-    __tablename__ = "barema_requisito"
+    __tablename__ = "processo_barema_requisito"
 
     id = db.Column(db.Integer, primary_key=True)
-    barema_id = db.Column(db.Integer, db.ForeignKey("barema.id"), nullable=False)
+    barema_id = db.Column(
+        db.Integer, db.ForeignKey("processo_barema.id"), nullable=False
+    )
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
     pontuacao_min = db.Column(db.Numeric(5, 2), nullable=False, default=0)
     pontuacao_max = db.Column(db.Numeric(5, 2), nullable=False)
 
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<BaremaRequisito id={self.id} barema={self.barema_id}>"
+        return f"<ProcessoBaremaRequisito id={self.id} barema={self.barema_id}>"
