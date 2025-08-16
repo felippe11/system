@@ -38,12 +38,14 @@ from models import (
 
     Evento,
     Formulario,
+    Barema,
     RevisorCandidatura,
     RevisorCandidaturaEtapa,
     RevisorEtapa,
     RevisorProcess,
     revisor_process_evento_association,
     Submission,
+    Review,
     Usuario,
 )
 from tasks import send_email_task
@@ -456,6 +458,41 @@ def view_candidatura(cand_id: int):
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     return render_template("revisor/candidatura_detail.html", candidatura=cand)
+
+
+# -----------------------------------------------------------------------------
+# AVALIAÇÃO DE TRABALHOS
+# -----------------------------------------------------------------------------
+@revisor_routes.route("/revisor/avaliar/<int:submission_id>", methods=["GET", "POST"])
+@login_required
+def avaliar(submission_id: int):
+    """Permite ao revisor atribuir notas a uma submissão com base no barema."""
+    submission = Submission.query.get_or_404(submission_id)
+    barema = Barema.query.filter_by(evento_id=submission.evento_id).first()
+    review = Review.query.filter_by(
+        submission_id=submission.id, reviewer_id=current_user.id
+    ).first()
+
+    if request.method == "POST" and barema:
+        scores: Dict[str, int] = {}
+        for requisito, _max in barema.requisitos.items():
+            nota_raw = request.form.get(requisito)
+            if nota_raw:
+                scores[requisito] = int(nota_raw)
+
+        if review is None:
+            review = Review(
+                submission_id=submission.id, reviewer_id=current_user.id
+            )
+        review.scores = scores
+        db.session.add(review)
+        db.session.commit()
+        flash("Avaliação registrada", "success")
+        return redirect(url_for("revisor_routes.avaliar", submission_id=submission.id))
+
+    return render_template(
+        "revisor/avaliacao.html", submission=submission, barema=barema, review=review
+    )
 
 
 # -----------------------------------------------------------------------------
