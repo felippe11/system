@@ -141,3 +141,40 @@ def test_select_event_no_processes_flash(app):
         "info",
         "Nenhum processo seletivo de revisores disponível no momento.",
     ) in flashes
+
+
+def test_open_process_without_valid_events(app):
+    with app.app_context():
+        cliente = Cliente.query.first()
+        form = Formulario.query.first()
+        invalid_event = Evento(
+            cliente_id=cliente.id,
+            nome="Private",
+            inscricao_gratuita=True,
+            publico=False,
+            status="ativo",
+        )
+        db.session.add(invalid_event)
+        db.session.commit()
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=1),
+            availability_end=date.today() + timedelta(days=1),
+            exibir_para_participantes=True,
+            evento_id=invalid_event.id,
+        )
+        db.session.add(proc)
+        db.session.commit()
+        proc_id = proc.id
+
+    with app.test_request_context("/processo_seletivo"):
+        with patch("routes.revisor_routes.render_template") as rt:
+            rt.side_effect = lambda tpl, **ctx: ctx
+            ctx = select_event()
+
+    assert any(
+        item["processo"].id == proc_id and item["evento"] is None
+        for item in ctx["eventos"]
+    )
