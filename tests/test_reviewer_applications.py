@@ -1,5 +1,7 @@
 import sys
 import types
+import uuid
+import logging
 import pytest
 from io import BytesIO
 from flask import send_file
@@ -33,6 +35,15 @@ utils_mfa = types.ModuleType('utils.mfa')
 utils_mfa.mfa_required = lambda f: f
 sys.modules.setdefault('utils.mfa', utils_mfa)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
+utils_dia_semana = types.ModuleType('utils.dia_semana')
+utils_dia_semana.dia_semana = lambda *a, **k: ''
+sys.modules.setdefault('utils.dia_semana', utils_dia_semana)
+utils_revisor_helpers = types.ModuleType('utils.revisor_helpers')
+utils_revisor_helpers.parse_revisor_form = lambda *a, **k: {}
+utils_revisor_helpers.update_revisor_process = lambda *a, **k: None
+utils_revisor_helpers.update_process_eventos = lambda *a, **k: None
+utils_revisor_helpers.recreate_stages = lambda *a, **k: None
+sys.modules.setdefault('utils.revisor_helpers', utils_revisor_helpers)
 pdf_service_stub = types.ModuleType('services.pdf_service')
 pdf_service_stub.gerar_pdf_respostas = lambda *a, **k: None
 pdf_service_stub.gerar_comprovante_pdf = lambda *a, **k: ''
@@ -86,27 +97,30 @@ def app():
         def gerar_etiquetas_route(cliente_id):
             return ''
 
-        app.add_url_rule(
-            '/gerar_etiquetas/<int:cliente_id>',
-            endpoint='routes.gerar_etiquetas_route',
-            view_func=gerar_etiquetas_route,
-        )
+        if 'routes.gerar_etiquetas_route' not in app.view_functions:
+            app.add_url_rule(
+                '/gerar_etiquetas/<int:cliente_id>',
+                endpoint='routes.gerar_etiquetas_route',
+                view_func=gerar_etiquetas_route,
+            )
         def gerar_placas_oficinas(evento_id):
             return ''
 
-        app.add_url_rule(
-            '/gerar_placas_oficinas/<int:evento_id>',
-            endpoint='routes.gerar_placas_oficinas',
-            view_func=gerar_placas_oficinas,
-        )
+        if 'routes.gerar_placas_oficinas' not in app.view_functions:
+            app.add_url_rule(
+                '/gerar_placas_oficinas/<int:evento_id>',
+                endpoint='routes.gerar_placas_oficinas',
+                view_func=gerar_placas_oficinas,
+            )
         def exportar_checkins_filtrados():
             return ''
 
-        app.add_url_rule(
-            '/exportar_checkins_filtrados',
-            endpoint='routes.exportar_checkins_filtrados',
-            view_func=exportar_checkins_filtrados,
-        )
+        if 'routes.exportar_checkins_filtrados' not in app.view_functions:
+            app.add_url_rule(
+                '/exportar_checkins_filtrados',
+                endpoint='routes.exportar_checkins_filtrados',
+                view_func=exportar_checkins_filtrados,
+            )
     yield app
 
 @pytest.fixture
@@ -201,3 +215,95 @@ def test_duplicate_application_redirects(client, app):
     with app.app_context():
         user = Usuario.query.filter_by(email='user@test').first()
         assert ReviewerApplication.query.filter_by(usuario_id=user.id).count() == 1
+
+
+def test_approve_revisor_cpf_collision(client, app, monkeypatch):
+    """Gera novo CPF quando ocorre colisão durante aprovação."""
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        form = Formulario(nome='Form', cliente_id=cliente.id)
+        db.session.add(form)
+        db.session.commit()
+        proc = RevisorProcess(
+            cliente_id=cliente.id, formulario_id=form.id, num_etapas=1
+        )
+        db.session.add(proc)
+        db.session.commit()
+        cand = RevisorCandidatura(
+            process_id=proc.id, nome='Cand', email='cand@test'
+        )
+        db.session.add(cand)
+        existing = Usuario(
+            nome='Exist',
+            cpf='12345678901',
+            email='exist@test',
+            senha=generate_password_hash('123'),
+            formacao='x',
+        )
+        db.session.add(existing)
+        db.session.commit()
+        cand_id = cand.id
+
+        collisions = [
+            uuid.UUID(int=int(existing.cpf)),
+            uuid.UUID(int=99999999999),
+        ]
+        uuid_iter = iter(collisions)
+        monkeypatch.setattr(uuid, 'uuid4', lambda: next(uuid_iter))
+        import routes.revisor_routes as rr
+        monkeypatch.setattr(rr.send_email_task, 'delay', lambda *a, **k: None)
+
+    login(client, 'cli@test', '123')
+    resp = client.post(f'/revisor/approve/{cand_id}', json={})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success']
+    reviewer_id = data['reviewer_id']
+    with app.app_context():
+        reviewer = Usuario.query.get(reviewer_id)
+        assert reviewer.cpf != '12345678901'
+
+
+def test_approve_revisor_cpf_collision_error(client, app, monkeypatch, caplog):
+    """Notifica operador após colisões repetidas de CPF."""
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        form = Formulario(nome='Form', cliente_id=cliente.id)
+        db.session.add(form)
+        db.session.commit()
+        proc = RevisorProcess(
+            cliente_id=cliente.id, formulario_id=form.id, num_etapas=1
+        )
+        db.session.add(proc)
+        db.session.commit()
+        cand = RevisorCandidatura(
+            process_id=proc.id, nome='Cand', email='cand2@test'
+        )
+        db.session.add(cand)
+        existing = Usuario(
+            nome='Exist',
+            cpf='12345678901',
+            email='exist@test',
+            senha=generate_password_hash('123'),
+            formacao='x',
+        )
+        db.session.add(existing)
+        db.session.commit()
+        cand_id = cand.id
+
+        monkeypatch.setattr(uuid, 'uuid4', lambda: uuid.UUID(int=int(existing.cpf)))
+        import routes.revisor_routes as rr
+        monkeypatch.setattr(rr.send_email_task, 'delay', lambda *a, **k: None)
+
+    login(client, 'cli@test', '123')
+    caplog.set_level(logging.ERROR)
+    resp = client.post(f'/revisor/approve/{cand_id}', json={})
+    assert resp.status_code == 500
+    data = resp.get_json()
+    assert not data['success']
+    assert 'CPF' in data['error']
+    assert 'Falha ao gerar CPF' in caplog.text
+    with app.app_context():
+        cand_db = RevisorCandidatura.query.get(cand_id)
+        assert cand_db.status == 'pendente'
+        assert Usuario.query.filter_by(email='cand2@test').first() is None
