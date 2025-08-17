@@ -1340,7 +1340,9 @@ def gerar_pdf_checkins_qr():
     from flask_login import current_user
     from sqlalchemy import or_
 
-    print(f"\n📥 DEBUG: Cliente logado: {current_user.id} ({current_user.nome})")
+    logger.info(
+        "\n📥 DEBUG: Cliente logado: %s (%s)", current_user.id, current_user.nome
+    )
 
     checkins_qr = (
         Checkin.query
@@ -1358,13 +1360,17 @@ def gerar_pdf_checkins_qr():
         .all()
     )
 
-    print(f"📊 DEBUG: Total de check-ins encontrados: {len(checkins_qr)}")
+    logger.info("📊 DEBUG: Total de check-ins encontrados: %s", len(checkins_qr))
     for i, ck in enumerate(checkins_qr, start=1):
-        print(f" - Checkin {i}: Usuario={ck.usuario.nome if ck.usuario else 'N/A'} | "
-              f"Email={ck.usuario.email if ck.usuario else 'N/A'} | "
-              f"Palavra={ck.palavra_chave} | "
-              f"Oficina={'N/A' if not ck.oficina else ck.oficina.titulo} | "
-              f"ClienteID={ck.cliente_id}")
+        logger.info(
+            " - Checkin %s: Usuario=%s | Email=%s | Palavra=%s | Oficina=%s | ClienteID=%s",
+            i,
+            ck.usuario.nome if ck.usuario else "N/A",
+            ck.usuario.email if ck.usuario else "N/A",
+            ck.palavra_chave,
+            "N/A" if not ck.oficina else ck.oficina.titulo,
+            ck.cliente_id,
+        )
 
     if not checkins_qr:
         flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
@@ -2013,18 +2019,21 @@ def exportar_checkins_evento_pdf(evento_id):
     from reportlab.platypus.frames import Frame
     from reportlab.platypus.tableofcontents import TableOfContents
 
-    print(f"[DEBUG] Usuário acessou exportação de check-ins do evento ID {evento_id}")
+    logger.info(
+        "[DEBUG] Usuário acessou exportação de check-ins do evento ID %s",
+        evento_id,
+    )
 
     if current_user.is_cliente():
             evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
             if not evento:
                 flash("Evento não encontrado ou não pertence ao seu acesso.", "danger")
-                print("[DEBUG] Evento não pertence ao cliente logado.")
+                logger.info("[DEBUG] Evento não pertence ao cliente logado.")
                 return redirect(url_for('dashboard_routes.dashboard_cliente'))
     else:
         evento = Evento.query.get_or_404(evento_id)
 
-    print(f"[DEBUG] Evento encontrado: {evento.nome} (ID: {evento.id})")
+    logger.info("[DEBUG] Evento encontrado: %s (ID: %s)", evento.nome, evento.id)
 
     checkins = (
         Checkin.query
@@ -2032,7 +2041,7 @@ def exportar_checkins_evento_pdf(evento_id):
         .filter(Checkin.palavra_chave == 'QR-EVENTO')
         .all()
     )
-    print(f"[DEBUG] Total de check-ins encontrados: {len(checkins)}")
+    logger.info("[DEBUG] Total de check-ins encontrados: %s", len(checkins))
 
     if not checkins:
         flash("Nenhum check-in encontrado para este evento.", "warning")
@@ -2040,7 +2049,12 @@ def exportar_checkins_evento_pdf(evento_id):
 
     # DEBUG de alguns dados dos check-ins
     for c in checkins[:5]:
-        print(f"[DEBUG] Check-in: Nome={c.usuario.nome}, Data={c.data_hora}, Palavra-chave={c.palavra_chave}")
+        logger.info(
+            "[DEBUG] Check-in: Nome=%s, Data=%s, Palavra-chave=%s",
+            c.usuario.nome,
+            c.data_hora,
+            c.palavra_chave,
+        )
 
     # ...continua o restante da geração do PDF normalmente
 
