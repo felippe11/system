@@ -126,6 +126,7 @@ def assign_by_filters():
     data = request.get_json() or {}
     filtros: dict = data.get("filters", {})
     limite = data.get("limit")
+    max_per_submission = data.get("max_per_submission")
 
     usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None
@@ -138,6 +139,8 @@ def assign_by_filters():
         limite = 1
 
     max_por_sub = config.num_revisores_max if config else 1
+    if max_per_submission is not None:
+        max_por_sub = int(max_per_submission)
     prazo_dias = config.prazo_parecer_dias if config else 14
 
     candidaturas = (
