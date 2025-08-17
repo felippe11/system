@@ -115,7 +115,11 @@ def config_revisor():
 
 
     if request.method == "POST":
-        dados = parse_revisor_form(request)
+        try:
+            dados = parse_revisor_form(request)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("revisor_routes.config_revisor"))
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
