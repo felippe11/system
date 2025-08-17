@@ -690,7 +690,9 @@ def excluir_evento(evento_id):
         ).delete(synchronize_session=False)
         ProfessorBloqueado.query.filter_by(evento_id=evento.id).delete()
         Patrocinador.query.filter_by(evento_id=evento.id).delete()
+
         Sorteio.query.filter_by(evento_id=evento.id).delete()
+
         Submission.query.filter_by(evento_id=evento.id).delete()
 
         ConfiguracaoEvento.query.filter_by(evento_id=evento.id).delete()

@@ -7,13 +7,13 @@
     <tbody>
     {% for t in trabalhos %}
       <tr>
-        <td>{{ t.titulo }}</td>
-        <td>{{ t.area_tematica }}</td>
+        <td>{{ t.title }}</td>
+        <td>{{ t.area_id }}</td>
         <td><code>{{ t.locator }}</code></td>
         <td>{{ t.reviews|length }}</td>
         <td>
           <form method="post" action="{{ url_for('peer_review_routes.create_review') }}" class="d-flex">
-            <input type="hidden" name="trabalho_id" value="{{ t.id }}">
+            <input type="hidden" name="submission_id" value="{{ t.id }}">
             <input name="reviewer_id" class="form-control form-control-sm me-1" placeholder="ID do revisor" required>
             <button type="submit" class="btn btn-sm btn-primary">Gerar</button>
           </form>
