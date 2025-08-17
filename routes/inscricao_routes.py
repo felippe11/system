@@ -791,18 +791,18 @@ def inscrever(oficina_id):
                 oficina=oficina,
             )
 
-            enviar_email(
-                destinatario=current_user.email,
-                nome_participante=current_user.nome,
-                nome_oficina=oficina.titulo,
-                assunto=assunto,
-                corpo_texto=corpo_texto,
-                anexo_path=pdf_path,
-                corpo_html=corpo_html,
-            )
-        except Exception as e:
-            logger.error(f"❌ ERRO ao enviar e-mail: {e}", exc_info=True)
-            # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
+        enviar_email(
+            destinatario=current_user.email,
+            nome_participante=current_user.nome,
+            nome_oficina=oficina.titulo,
+            assunto=assunto,
+            corpo_texto=corpo_texto,
+            anexo_path=pdf_path,
+            corpo_html=corpo_html,
+        )
+    except Exception as e:
+        logger.exception("❌ ERRO ao enviar e-mail: %s", e)
+        # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
             
         return jsonify({
             'success': True,
@@ -812,7 +812,7 @@ def inscrever(oficina_id):
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"❌ ERRO ao realizar inscrição: {e}", exc_info=True)
+        logger.exception("❌ ERRO ao realizar inscrição: %s", e)
         return jsonify({
             'success': False,
             'message': f'Erro ao realizar inscrição: {str(e)}'
@@ -1009,7 +1009,7 @@ def inscrever_participantes_lote():
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao inscrever participantes em lote: {str(e)}", "danger")
-        logger.error("Erro ao inscrever participantes: %s", e)
+        logger.exception("Erro ao inscrever participantes: %s", e)
 
     return redirect(url_for('dashboard_routes.dashboard'))
 
