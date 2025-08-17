@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 from utils.mfa import mfa_required
 from extensions import db
 from models import (
-    TrabalhoCientifico,
+    Submission,
     AvaliacaoTrabalho,
     AuditLog,
     Evento,
@@ -15,6 +16,7 @@ from models import (
 )
 import uuid
 import os
+import secrets
 
 trabalho_routes = Blueprint(
     "trabalho_routes",
@@ -117,28 +119,31 @@ def submeter_trabalho():
 
         titulo = titulo or "Trabalho sem título"
 
-        trabalho = TrabalhoCientifico(
-            titulo=titulo,
-            resumo=None,
-            area_tematica=None,
-            arquivo_pdf=arquivo_pdf,
-            usuario_id=current_user.id,
+        raw_code = secrets.token_urlsafe(8)[:8]
+        code_hash = generate_password_hash(raw_code)
+        submission = Submission(
+            title=titulo,
+            abstract=None,
+            content=None,
+            file_path=arquivo_pdf,
+            author_id=current_user.id,
             evento_id=evento_id,
             locator=str(uuid.uuid4()),
+            code_hash=code_hash,
         )
-        db.session.add(trabalho)
+        db.session.add(submission)
         db.session.flush()
 
         usuario = Usuario.query.get(getattr(current_user, "id", None))
         uid = usuario.id if usuario else None
         db.session.add(
-            AuditLog(user_id=uid, submission_id=trabalho.id, event_type="submission")
+            AuditLog(user_id=uid, submission_id=submission.id, event_type="submission")
         )
 
         db.session.commit()
 
         flash(
-            f"Trabalho submetido com sucesso! Localizador: {trabalho.locator}",
+            f"Trabalho submetido com sucesso! Localizador: {submission.locator} - Código: {raw_code}",
             "success",
         )
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
@@ -156,8 +161,8 @@ def avaliar_trabalhos():
         flash("Apenas administradores ou avaliadores têm acesso.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    trabalhos = TrabalhoCientifico.query.filter(
-        TrabalhoCientifico.status != "aceito"
+    trabalhos = Submission.query.filter(
+        Submission.status != "aceito"
     ).all()
     return render_template("avaliar_trabalhos.html", trabalhos=trabalhos)
 
@@ -172,7 +177,7 @@ def avaliar_trabalho(trabalho_id):
         flash("Apenas administradores ou avaliadores têm acesso.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
-    trabalho = TrabalhoCientifico.query.get_or_404(trabalho_id)
+    trabalho = Submission.query.get_or_404(trabalho_id)
 
     if request.method == "POST":
         estrelas = request.form.get("estrelas")
@@ -238,5 +243,5 @@ def meus_trabalhos():
     if current_user.tipo != "participante":
         return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
 
-    trabalhos = TrabalhoCientifico.query.filter_by(usuario_id=current_user.id).all()
+    trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("meus_trabalhos.html", trabalhos=trabalhos)
