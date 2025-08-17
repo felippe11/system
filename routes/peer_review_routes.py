@@ -5,9 +5,11 @@ from extensions import db
 
 
 from models import (
+    TrabalhoCientifico,
     Usuario,
     Review,
     RevisaoConfig,
+
     Submission,
     Assignment,
     ConfiguracaoCliente,
@@ -17,6 +19,7 @@ from models import (
     RevisorCandidatura,
     RevisorProcess,
 )
+from services.review_notification_service import notify_reviewer
 
 
 import uuid
@@ -80,14 +83,18 @@ def assign_reviews():
         if not sub:
             continue
 
+
         for reviewer_id in reviewers:
             # Cria Review + Assignment --------------------------------------
             rev = Review(
-                submission_id=sub.id,
+                submission_id=trabalho.id,
                 reviewer_id=reviewer_id,
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
+            db.session.flush()
+            notify_reviewer(rev)
+
 
             evento = Evento.query.get(sub.evento_id)
             cliente_id = evento.cliente_id if evento else None
@@ -262,6 +269,8 @@ def auto_assign(evento_id):
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
+            db.session.flush()
+            notify_reviewer(rev)
 
             config_cli = ConfiguracaoCliente.query.filter_by(
                 cliente_id=t.evento.cliente_id
@@ -312,6 +321,8 @@ def create_review():
         access_code=str(uuid.uuid4())[:8],
     )
     db.session.add(rev)
+    db.session.flush()
+    notify_reviewer(rev)
     db.session.commit()
 
     if request.is_json:
