@@ -41,7 +41,7 @@ from extensions import db, login_manager
 from flask_migrate import upgrade
 
 from datetime import datetime, timedelta
-from models import (
+
     Cliente,
     Formulario,
     CampoFormulario,

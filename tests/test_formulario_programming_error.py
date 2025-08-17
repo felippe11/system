@@ -8,7 +8,7 @@ from unittest.mock import patch
 from sqlalchemy.exc import ProgrammingError
 from config import Config
 from extensions import db, login_manager, csrf
-from models import Cliente, Usuario
+from models.user import Cliente, Usuario
 from routes.dashboard_participante import dashboard_participante_routes, dashboard_participante
 from routes.formularios_routes import formularios_routes, listar_formularios
 

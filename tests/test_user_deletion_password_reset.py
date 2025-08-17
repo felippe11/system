@@ -12,7 +12,8 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app  # noqa: E402
 from extensions import db  # noqa: E402
-from models import Usuario, PasswordResetToken  # noqa: E402
+from models import PasswordResetToken  # noqa: E402
+from models.user import Usuario
 
 
 @pytest.fixture

@@ -79,7 +79,8 @@ os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
 from config import Config
 from app import create_app
 from extensions import db
-from models import Cliente, Evento, HorarioVisitacao, AgendamentoVisita, AlunoVisitante
+from models import Evento, HorarioVisitacao, AgendamentoVisita, AlunoVisitante
+from models.user import Cliente
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(

@@ -5,7 +5,8 @@ from werkzeug.utils import secure_filename
 from io import BytesIO
 
 from extensions import db
-from models import ArquivoBinario, AuditLog, Usuario
+from models import ArquivoBinario, AuditLog
+from models.user import Usuario
 
 binary_routes = Blueprint('binary_routes', __name__)
 

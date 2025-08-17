@@ -10,7 +10,9 @@ os.environ.setdefault("SECRET_KEY", "test")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "y")
 from config import Config
-from models import Cliente, Evento, Formulario, RevisorProcess
+from models import Evento, Formulario
+from models.user import Cliente
+from models.review import RevisorProcess
 from utils.revisor_helpers import (
     parse_revisor_form,
     recreate_stages,

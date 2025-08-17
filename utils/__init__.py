@@ -38,7 +38,8 @@ try:
     import qrcode
 except Exception:  # pragma: no cover
     qrcode = None
-from models import CertificadoTemplate, Usuario, Inscricao, Evento
+from models import CertificadoTemplate, Inscricao, Evento
+from models.user import Usuario
 import logging
 
 
@@ -61,7 +62,8 @@ if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     )
 
 from decimal import Decimal, ROUND_HALF_UP
-from models import Configuracao, Cliente
+from models import Configuracao
+from models.user import Cliente
 from flask import current_app, request
 from utils.taxa_service import calcular_taxa_cliente
 

@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import Ministrante, Cliente, Oficina, RelatorioOficina, MaterialOficina
+from models import Oficina, RelatorioOficina, MaterialOficina
+from models.user import Ministrante, Cliente
 from extensions import db
 from werkzeug.security import generate_password_hash
 import os

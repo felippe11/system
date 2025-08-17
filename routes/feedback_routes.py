@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from extensions import db
-from models import Feedback, Oficina, Cliente
+from models import Feedback, Oficina
+from models.user import Cliente
 
 feedback_routes = Blueprint('feedback_routes', __name__)
 

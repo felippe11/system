@@ -6,7 +6,8 @@ from unittest.mock import patch
 from config import Config
 from flask import Flask, Blueprint
 from extensions import db, login_manager, csrf
-from models import Cliente, Evento, Usuario, Inscricao
+from models import Evento, Inscricao
+from models.user import Cliente, Usuario
 
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')

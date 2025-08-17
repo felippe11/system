@@ -1,7 +1,8 @@
 from flask import Blueprint, request, redirect, url_for, flash, session, abort
 from flask_login import login_user, login_required, current_user
 from extensions import db
-from models import Inscricao, Configuracao, ConfiguracaoCliente, Cliente
+from models import Inscricao, Configuracao, ConfiguracaoCliente
+from models.user import Cliente
 import os
 
 from services.mp_service import get_sdk

@@ -21,7 +21,7 @@ sys.modules.setdefault('utils.taxa_service', taxa_service)
 
 from flask import Flask
 from extensions import db, login_manager
-from models import Usuario, Cliente
+from models.user import Usuario, Cliente
 from routes.auth_routes import auth_routes
 from flask import Blueprint
 from routes.dashboard_participante import dashboard_participante_routes

@@ -11,7 +11,7 @@ os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
 
 import utils
-from models import Usuario, PasswordResetToken
+from models.user import Usuario, PasswordResetToken
 from werkzeug.security import generate_password_hash
 import pytest
 

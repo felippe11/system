@@ -11,7 +11,7 @@ from extensions import db
 import logging
 
 logger = logging.getLogger(__name__)
-from models import (
+
     Evento, Oficina, LinkCadastro, LoteInscricao, EventoInscricaoTipo,
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
     ConfiguracaoCertificadoEvento, Checkin, OficinaDia, MaterialOficina,
