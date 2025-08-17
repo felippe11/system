@@ -5,10 +5,13 @@ Atualiza chamadas render_template("arquivo.html", ...)
 inserindo o sub-diretório adequado segundo o dicionário `mapping`.
 """
 
+import logging
 import os
 import re
 import argparse
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # ────────────────────────────────
 # 1) Mapeamento: arquivo → sub-pasta
@@ -158,7 +161,7 @@ def update_file(filepath: str) -> None:
     if modified:
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(new_content)
-        print('Atualizado:', filepath)
+        logger.info('Atualizado: %s', filepath)
 
 # ────────────────────────────────
 # 5) Percorre todos os .py do projeto

@@ -784,9 +784,11 @@ if token:
     try:
         sdk = mercadopago.SDK(token)
     except Exception as e:
-        print(f"⚠️ Erro ao inicializar SDK do Mercado Pago: {e}")
+        logger.warning("⚠️ Erro ao inicializar SDK do Mercado Pago: %s", e)
 else:
-    print("⚠️ AVISO: MERCADOPAGO_ACCESS_TOKEN não definido. Funcionalidades de pagamento estarão indisponíveis.")
+    logger.warning(
+        "⚠️ AVISO: MERCADOPAGO_ACCESS_TOKEN não definido. Funcionalidades de pagamento estarão indisponíveis."
+    )
 
 def criar_preferencia_pagamento(nome, email, descricao, valor, return_url):
     preference_data = {

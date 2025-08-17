@@ -1,8 +1,9 @@
-"""
-Script de demonstração para popular o banco de dados PostgreSQL
-"""
+"""Script de demonstração para popular o banco de dados PostgreSQL."""
+import logging
 import os
 import traceback
+
+logger = logging.getLogger(__name__)
 
 try:
     from app import create_app, db
@@ -16,30 +17,40 @@ try:
 
     # Executa dentro do contexto da aplicação
     with app.app_context():
-        print("Iniciando população do banco com credenciais PostgreSQL...")
-        print("URL do banco: postgresql://iafap:123456@localhost:5432/iafap_database")
+        logger.info(
+            "Iniciando população do banco com credenciais PostgreSQL..."
+        )
+        logger.info(
+            "URL do banco: postgresql://iafap:123456@localhost:5432/iafap_database"
+        )
         dados = popular_banco()
-        print("População concluída com sucesso!")
-        
+        logger.info("População concluída com sucesso!")
+
         # Exibe alguns números
-        print("\nResumo dos dados criados:")
-        print(f"- {len(dados['clientes'])} clientes")
-        print(f"- {len(dados['eventos'])} eventos")
-        print(f"- {len(dados['ministrantes'])} ministrantes")
-        print(f"- {len(dados['oficinas'])} oficinas")
-        print(f"- {len(dados['usuarios'])} usuários")
-        print(f"- {len(dados['inscricoes'])} inscrições")
-        print(f"- {len(dados['submissoes'])} submissões")
-        print(f"- {len(dados['reviews'])} reviews")
-        print(f"- {len(dados['assignments'])} assignments")
-        print(f"- {len(dados['arquivos'])} arquivos binários")
-        print(f"- {len(dados['agendamentos'])} agendamentos de visita")
+        logger.info("\nResumo dos dados criados:")
+        logger.info("- %s clientes", len(dados["clientes"]))
+        logger.info("- %s eventos", len(dados["eventos"]))
+        logger.info("- %s ministrantes", len(dados["ministrantes"]))
+        logger.info("- %s oficinas", len(dados["oficinas"]))
+        logger.info("- %s usuários", len(dados["usuarios"]))
+        logger.info("- %s inscrições", len(dados["inscricoes"]))
+        logger.info("- %s submissões", len(dados["submissoes"]))
+        logger.info("- %s reviews", len(dados["reviews"]))
+        logger.info("- %s assignments", len(dados["assignments"]))
+        logger.info("- %s arquivos binários", len(dados["arquivos"]))
+        logger.info(
+            "- %s agendamentos de visita",
+            len(dados["agendamentos"]),
+        )
 except Exception as e:
-    print(f"Erro durante a execução: {e}")
+    logger.error("Erro durante a execução: %s", e)
     traceback.print_exc()
-    print("\nDica: Verifique se o banco de dados PostgreSQL está em execução e acessível com as credenciais fornecidas.")
-    print("\nResumo dos dados criados:")
-    print(f"- {len(dados['clientes'])} clientes")
-    print(f"- {len(dados['eventos'])} eventos")
-    print(f"- {len(dados['usuarios'])} usuários")
-    print(f"- {len(dados['inscricoes'])} inscrições")
+    logger.info(
+        "\nDica: Verifique se o banco de dados PostgreSQL está em execução e acessível "
+        "com as credenciais fornecidas."
+    )
+    logger.info("\nResumo dos dados criados:")
+    logger.info("- %s clientes", len(dados["clientes"]))
+    logger.info("- %s eventos", len(dados["eventos"]))
+    logger.info("- %s usuários", len(dados["usuarios"]))
+    logger.info("- %s inscrições", len(dados["inscricoes"]))

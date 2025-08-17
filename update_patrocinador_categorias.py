@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Atualiza categorias de patrocinadores para usar acentuação correta."""
+import logging
+
 from app import create_app
 from extensions import db
 from models import Patrocinador
+
+logger = logging.getLogger(__name__)
 
 CATEGORIA_MAP = {
     "Realizacao": "Realização",
@@ -26,7 +30,7 @@ def main():
             count += 1
         if count:
             db.session.commit()
-        print(f"Categorias atualizadas: {count}")
+        logger.info("Categorias atualizadas: %s", count)
 
 
 if __name__ == "__main__":
