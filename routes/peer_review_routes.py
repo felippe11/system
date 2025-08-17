@@ -1,15 +1,21 @@
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session
+from flask import (
+    Blueprint,
+    request,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    session,
+)
 from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
 
 
 from models import (
-    TrabalhoCientifico,
     Usuario,
     Review,
     RevisaoConfig,
-
     Submission,
     Assignment,
     ConfiguracaoCliente,
@@ -19,7 +25,6 @@ from models import (
     RevisorCandidatura,
     RevisorProcess,
 )
-from services.review_notification_service import notify_reviewer
 
 
 import uuid
@@ -78,31 +83,28 @@ def assign_reviews():
     if not data:
         return {"success": False}, 400
 
-    for submission_id, reviewers in data.items():
-        sub = Submission.query.get(submission_id)
-        if not sub:
-            continue
 
+    for submission_id, reviewers in data.items():
+        submission = Submission.query.get(submission_id)
+        if not submission:
+            continue
 
         for reviewer_id in reviewers:
             # Cria Review + Assignment --------------------------------------
             rev = Review(
-                submission_id=trabalho.id,
+                submission_id=submission.id,
                 reviewer_id=reviewer_id,
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
-            db.session.flush()
-            notify_reviewer(rev)
 
-
-            evento = Evento.query.get(sub.evento_id)
+            evento = Evento.query.get(submission.evento_id)
             cliente_id = evento.cliente_id if evento else None
             config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
             prazo_dias = config.prazo_parecer_dias if config else 14
 
             assignment = Assignment(
-                submission_id=sub.id,
+                submission_id=submission.id,
                 reviewer_id=reviewer_id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias),
             )
@@ -112,10 +114,11 @@ def assign_reviews():
             db.session.add(
                 AuditLog(
                     user_id=uid,
-                    submission_id=sub.id,
+                    submission_id=submission.id,
                     event_type="assignment",
                 )
             )
+
 
     db.session.commit()
     return {"success": True}
@@ -250,6 +253,7 @@ def auto_assign(evento_id):
     if not config:
         return {"success": False, "message": "Configuração não encontrada"}, 400
 
+
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
     revisores = Usuario.query.filter_by(tipo="professor").all()
 
@@ -259,7 +263,8 @@ def auto_assign(evento_id):
         area_map.setdefault(r.formacao, []).append(r)
 
     for t in trabalhos:
-        revisores_area = area_map.get(getattr(t, "area_tematica", None), revisores)
+        area = t.attributes.get("area_tematica") if t.attributes else None
+        revisores_area = area_map.get(area, revisores)
         selecionados = revisores_area[: config.numero_revisores]
 
         for reviewer in selecionados:
@@ -269,8 +274,6 @@ def auto_assign(evento_id):
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
-            db.session.flush()
-            notify_reviewer(rev)
 
             config_cli = ConfiguracaoCliente.query.filter_by(
                 cliente_id=t.evento.cliente_id
@@ -292,6 +295,7 @@ def auto_assign(evento_id):
                 )
             )
 
+
     db.session.commit()
     return {"success": True}
 
@@ -302,20 +306,21 @@ def auto_assign(evento_id):
 @peer_review_routes.route("/create_review", methods=["POST"])
 @login_required
 def create_review():
-    """Cria uma revisão única para um trabalho e um revisor."""
+    """Cria uma revisão única para uma submissão e um revisor."""
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
 
     data = request.get_json(silent=True) or {}
-    trabalho_id = request.form.get("trabalho_id") or data.get("trabalho_id")
+    submission_id = request.form.get("submission_id") or data.get("submission_id")
     reviewer_id = request.form.get("reviewer_id") or data.get("reviewer_id")
 
-    if not trabalho_id or not reviewer_id:
+    if not submission_id or not reviewer_id:
         return {"success": False, "message": "dados insuficientes"}, 400
 
+    submission = Submission.query.get(int(submission_id))
     rev = Review(
-        submission_id=int(trabalho_id),
+        submission_id=submission.id,
         reviewer_id=int(reviewer_id),
         locator=str(uuid.uuid4()),
         access_code=str(uuid.uuid4())[:8],
@@ -326,11 +331,16 @@ def create_review():
     db.session.commit()
 
     if request.is_json:
-        return {"success": True, "locator": rev.locator, "access_code": rev.access_code}
+        return {
+            "success": True,
+            "locator": rev.locator,
+            "access_code": rev.access_code,
+        }
 
     flash(f"Código do revisor: {rev.access_code}", "success")
     return redirect(
-        request.referrer or url_for("peer_review_routes.editor_reviews", evento_id=trabalho_id)
+        request.referrer
+        or url_for("peer_review_routes.editor_reviews", evento_id=submission.evento_id)
     )
 
 
@@ -426,11 +436,13 @@ def review_form(locator):
 # ---------------------------------------------------------------------------
 # Dashboards (autor | revisor | editor)
 # ---------------------------------------------------------------------------
+
 @peer_review_routes.route("/dashboard/author_reviews")
 @login_required
 def author_reviews():
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("peer_review/dashboard_author.html", trabalhos=trabalhos)
+
 
 
 @peer_review_routes.route("/dashboard/reviewer_reviews")
@@ -492,6 +504,7 @@ def client_reviews_panel():
         )
 
     return render_template("peer_review/dashboard_client.html", items=items)
+
 
 
 # ------------------------- ROTAS FLAT PARA SPAS ---------------------------

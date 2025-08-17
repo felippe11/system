@@ -15,11 +15,11 @@
     <tbody>
       {% for trabalho in trabalhos %}
       <tr>
-        <td>{{ trabalho.titulo }}</td>
-        <td>{{ trabalho.area_tematica }}</td>
+        <td>{{ trabalho.title }}</td>
+        <td>{{ trabalho.area_id }}</td>
         <td>{{ trabalho.status }}</td>
         <td><code>{{ trabalho.locator }}</code></td>
-        <td><a href="{{ url_for('static', filename=trabalho.arquivo_pdf.split('static/')[-1]) }}" target="_blank">Abrir</a></td>
+        <td><a href="{{ url_for('static', filename=trabalho.file_path.split('static/')[-1]) }}" target="_blank">Abrir</a></td>
       </tr>
       {% endfor %}
     </tbody>

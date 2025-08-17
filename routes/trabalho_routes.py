@@ -1,4 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    current_app,
+)
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
@@ -6,7 +14,9 @@ from utils.mfa import mfa_required
 from extensions import db
 from models import (
     Submission,
+
     AvaliacaoTrabalho,
+
     AuditLog,
     Evento,
     Usuario,
@@ -16,7 +26,9 @@ from models import (
 )
 import uuid
 import os
-import secrets
+
+from werkzeug.security import generate_password_hash
+
 
 trabalho_routes = Blueprint(
     "trabalho_routes",
@@ -119,17 +131,16 @@ def submeter_trabalho():
 
         titulo = titulo or "Trabalho sem título"
 
-        raw_code = secrets.token_urlsafe(8)[:8]
-        code_hash = generate_password_hash(raw_code)
+
+        code = uuid.uuid4().hex[:8]
         submission = Submission(
             title=titulo,
-            abstract=None,
-            content=None,
             file_path=arquivo_pdf,
             author_id=current_user.id,
             evento_id=evento_id,
-            locator=str(uuid.uuid4()),
-            code_hash=code_hash,
+            status="submitted",
+            code_hash=generate_password_hash(code),
+
         )
         db.session.add(submission)
         db.session.flush()
@@ -143,7 +154,10 @@ def submeter_trabalho():
         db.session.commit()
 
         flash(
-            f"Trabalho submetido com sucesso! Localizador: {submission.locator} - Código: {raw_code}",
+
+            "Trabalho submetido com sucesso! "
+            f"Localizador: {submission.locator} Código: {code}",
+
             "success",
         )
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
@@ -151,97 +165,16 @@ def submeter_trabalho():
     return render_template("submeter_trabalho.html", formulario=formulario)
 
 
-# ──────────────────────────────── AVALIAÇÃO ──────────────────────────────── #
-@trabalho_routes.route("/avaliar_trabalhos")
-@login_required
-@mfa_required
-def avaliar_trabalhos():
-    """Lista trabalhos pendentes para avaliação."""
-    if current_user.tipo != "cliente" and not current_user.is_superuser():
-        flash("Apenas administradores ou avaliadores têm acesso.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
-
-    trabalhos = Submission.query.filter(
-        Submission.status != "aceito"
-    ).all()
-    return render_template("avaliar_trabalhos.html", trabalhos=trabalhos)
-
-
-@trabalho_routes.route("/avaliar_trabalho/<int:trabalho_id>", methods=["GET", "POST"])
-@login_required
-@mfa_required
-def avaliar_trabalho(trabalho_id):
-    """Tela de avaliação individual de um trabalho."""
-
-    if current_user.tipo != "cliente" and not current_user.is_superuser():
-        flash("Apenas administradores ou avaliadores têm acesso.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
-
-    trabalho = Submission.query.get_or_404(trabalho_id)
-
-    if request.method == "POST":
-        estrelas = request.form.get("estrelas")
-        nota = request.form.get("nota")
-        conceito = request.form.get("conceito")
-        comentario = request.form.get("comentario")
-
-        # Validações
-        try:
-            estrelas_val = int(estrelas)
-        except (TypeError, ValueError):
-            flash("Número de estrelas inválido.", "danger")
-            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
-        if not 1 <= estrelas_val <= 5:
-            flash("Número de estrelas deve estar entre 1 e 5.", "danger")
-            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
-
-        try:
-            nota_val = float(nota)
-        except (TypeError, ValueError):
-            flash("Nota inválida.", "danger")
-            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
-        if not 0 <= nota_val <= 10:
-            flash("Nota deve estar entre 0 e 10.", "danger")
-            return redirect(url_for("trabalho_routes.avaliar_trabalho", trabalho_id=trabalho_id))
-
-        avaliacao = AvaliacaoTrabalho(
-            trabalho_id=trabalho.id,
-            avaliador_id=current_user.id,
-            estrelas=estrelas_val,
-            nota=nota_val,
-            conceito=conceito,
-            comentario=comentario,
-        )
-        db.session.add(avaliacao)
-
-        trabalho.status = "avaliado"
-        db.session.commit()
-
-        # Audit log
-        usuario = Usuario.query.get(getattr(current_user, "id", None))
-        uid = usuario.id if usuario else None  # salva log mesmo sem usuário
-        db.session.add(
-            AuditLog(
-                user_id=uid,
-                submission_id=trabalho.id,
-                event_type="decision",
-            )
-        )
-        db.session.commit()
-
-        flash("Avaliação registrada!", "success")
-        return redirect(url_for("trabalho_routes.avaliar_trabalhos"))
-
-    return render_template("avaliar_trabalho.html", trabalho=trabalho)
-
-
 # ──────────────────────────────── MEUS TRABALHOS ─────────────────────────── #
 @trabalho_routes.route("/meus_trabalhos")
 @login_required
 def meus_trabalhos():
+
     """Lista trabalhos do participante logado."""
     if current_user.tipo != "participante":
-        return redirect(url_for("dashboard_participante_routes.dashboard_participante"))
+        return redirect(
+            url_for("dashboard_participante_routes.dashboard_participante")
+        )
 
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("meus_trabalhos.html", trabalhos=trabalhos)
