@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'partials/card.html' import render_card %}
 {% block title %}Processo Seletivo{% endblock %}
 {% block content %}
 <div class="container py-4">
@@ -7,27 +8,28 @@
   <div class="row g-4">
     {% for item in eventos %}
     <div class="col-md-6">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header bg-primary text-white">
-          {{ item.evento.nome if item.evento else item.processo.formulario.nome }}
-        </div>
-        <div class="card-body">
-          {% if item.evento %}
-          <p class="mb-1"><strong>Cliente:</strong> {{ item.evento.cliente.nome }}</p>
-          <p class="mb-1"><strong>Período:</strong>
-            {% if item.evento.data_inicio %}{{ item.evento.data_inicio.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
-            a
-            {% if item.evento.data_fim %}{{ item.evento.data_fim.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
-          </p>
-          {% else %}
-          <p class="mb-1"><strong>Formulário:</strong> {{ item.processo.formulario.nome }}</p>
-          {% endif %}
-          <p class="mb-1"><strong>Status do processo:</strong> {{ item.status }}</p>
-        </div>
-        <div class="card-footer bg-white border-0">
-          <a href="{{ url_for('revisor_routes.submit_application', process_id=item.processo.id) }}" class="btn btn-success w-100">Participar do processo seletivo</a>
-        </div>
-      </div>
+      {% set body %}
+        {% if item.evento %}
+        <p class="mb-1"><strong>Cliente:</strong> {{ item.evento.cliente.nome }}</p>
+        <p class="mb-1"><strong>Período:</strong>
+          {% if item.evento.data_inicio %}{{ item.evento.data_inicio.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %} a
+          {% if item.evento.data_fim %}{{ item.evento.data_fim.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
+        </p>
+        {% else %}
+        <p class="mb-1"><strong>Formulário:</strong> {{ item.processo.formulario.nome }}</p>
+        {% endif %}
+        <p class="mb-1"><strong>Status do processo:</strong> {{ item.status }}</p>
+      {% endset %}
+      {% set footer %}
+        <a href="{{ url_for('revisor_routes.submit_application', process_id=item.processo.id) }}"
+           class="btn btn-success w-100">Participar do processo seletivo</a>
+      {% endset %}
+      {{ render_card(
+          item.evento.nome if item.evento else item.processo.formulario.nome,
+          body,
+          footer,
+          'card h-100 shadow-sm'
+      ) }}
     </div>
     {% endfor %}
   </div>
