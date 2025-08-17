@@ -11,9 +11,13 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
 from utils.mfa import mfa_required
+
 from extensions import db
 from models import (
     Submission,
+
+    AvaliacaoTrabalho,
+
     AuditLog,
     Evento,
     Usuario,
@@ -23,8 +27,6 @@ from models import (
 )
 import uuid
 import os
-
-from werkzeug.security import generate_password_hash
 
 
 trabalho_routes = Blueprint(
