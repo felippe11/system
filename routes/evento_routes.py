@@ -1,26 +1,26 @@
+import logging
+import os
+from collections import defaultdict
+from datetime import datetime, date, time
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import or_, cast, Date, func, text
 from werkzeug.utils import secure_filename
-from datetime import datetime, date, time
-from collections import defaultdict
-import os
-
 
 from extensions import db
-import logging
-
-logger = logging.getLogger(__name__)
-
+from models import (
     Evento, Oficina, LinkCadastro, LoteInscricao, EventoInscricaoTipo,
     Usuario, RegraInscricaoEvento, LoteTipoInscricao, Inscricao,
     ConfiguracaoCertificadoEvento, Checkin, OficinaDia, MaterialOficina,
     RelatorioOficina, ConfiguracaoAgendamento, SalaVisitacao,
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
     ProfessorBloqueado, Patrocinador, Sorteio, Submission,
-    Feedback, Pagamento, ConfiguracaoCliente, ConfiguracaoEvento
+    Feedback, Pagamento, ConfiguracaoCliente, ConfiguracaoEvento,
 )
 from utils import preco_com_taxa
+
+logger = logging.getLogger(__name__)
 
 evento_routes = Blueprint('evento_routes', __name__, template_folder="../templates")
 
