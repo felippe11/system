@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
 
+
 from models import (
     Usuario,
     Review,
@@ -17,9 +18,11 @@ from models import (
     RevisorProcess,
 )
 
+
 import uuid
 from datetime import datetime, timedelta
 import random
+from typing import Dict
 
 
 peer_review_routes = Blueprint(
@@ -114,6 +117,7 @@ def assign_reviews():
 # ---------------------------------------------------------------------------
 # Atribuição por filtros para revisores aprovados
 # ---------------------------------------------------------------------------
+@peer_review_routes.route("/revisores/sortear", methods=["POST"])
 @peer_review_routes.route("/assign_by_filters", methods=["POST"])
 @login_required
 def assign_by_filters():
@@ -125,6 +129,7 @@ def assign_by_filters():
     data = request.get_json() or {}
     filtros: dict = data.get("filters", {})
     limite = data.get("limit")
+    max_per_submission = data.get("max_per_submission")
 
     usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None
@@ -137,6 +142,8 @@ def assign_by_filters():
         limite = 1
 
     max_por_sub = config.num_revisores_max if config else 1
+    if max_per_submission is not None:
+        max_por_sub = int(max_per_submission)
     prazo_dias = config.prazo_parecer_dias if config else 14
 
     candidaturas = (
@@ -320,8 +327,13 @@ def create_review():
 # Formulário de revisão (público via locator)
 # ---------------------------------------------------------------------------
 @peer_review_routes.route("/review/<locator>", methods=["GET", "POST"])
+
 def review_form(locator):
     review = Review.query.filter_by(locator=locator).first_or_404()
+    barema = EventoBarema.query.filter_by(
+        evento_id=review.submission.evento_id
+    ).first()
+
 
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
@@ -331,25 +343,43 @@ def review_form(locator):
         codigo = request.form.get("codigo")
         if codigo != review.access_code:
             flash("Código incorreto!", "danger")
-            return render_template("peer_review/review_form.html", review=review)
-        # Coleta notas individuais e calcula o total -----------------------
-        scores = {}
+
+            return render_template(
+                "peer_review/review_form.html", review=review, barema=barema
+            )
+
+        scores: Dict[str, float] = {}
+
         total = 0.0
-        for field, value in request.form.items():
-            if field.startswith("score_"):
+        if barema and barema.requisitos:
+            for requisito, faixa in barema.requisitos.items():
+                nota_raw = request.form.get(requisito)
+                if nota_raw is None:
+                    continue
                 try:
-                    val = float(value)
+                    nota = float(nota_raw)
                 except (TypeError, ValueError):
                     continue
-                scores[field[6:]] = val
-                total += val
-
-        if not scores:
+                min_val = faixa.get("min", 0)
+                max_val = faixa.get("max")
+                if max_val is not None and (nota < min_val or nota > max_val):
+                    flash(
+                        f"Nota para {requisito} deve estar entre {min_val} e {max_val}",
+                        "danger",
+                    )
+                    return render_template(
+                        "peer_review/review_form.html", review=review, barema=barema
+                    )
+                scores[requisito] = nota
+                total += nota
+        else:
             try:
                 total = float(request.form.get("nota", 0))
             except (TypeError, ValueError):
                 flash("Nota inválida (use 1–5).", "danger")
-                return render_template("peer_review/review_form.html", review=review)
+                return render_template(
+                    "peer_review/review_form.html", review=review, barema=barema
+                )
 
         review.scores = scores or None
         review.note = total
@@ -364,7 +394,6 @@ def review_form(locator):
             )
         review.submitted_at = review.finished_at
 
-        # Marca o assignment como concluído -------------------------------
         assignment = Assignment.query.filter_by(
             submission_id=review.submission_id, reviewer_id=review.reviewer_id
         ).first()
@@ -374,9 +403,13 @@ def review_form(locator):
         db.session.commit()
 
         flash(f"Revisão enviada! Total: {total}", "success")
+
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
-    return render_template("peer_review/review_form.html", review=review)
+    return render_template(
+        "peer_review/review_form.html", review=review, barema=barema
+    )
+
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +438,7 @@ def editor_reviews(evento_id):
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
+
 
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
     return render_template("peer_review/dashboard_editor.html", trabalhos=trabalhos)

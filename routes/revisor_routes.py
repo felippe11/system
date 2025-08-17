@@ -115,7 +115,11 @@ def config_revisor():
 
 
     if request.method == "POST":
-        dados = parse_revisor_form(request)
+        try:
+            dados = parse_revisor_form(request)
+        except ValueError as exc:
+            flash(str(exc), "danger")
+            return redirect(url_for("revisor_routes.config_revisor"))
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
@@ -502,12 +506,28 @@ def approve(cand_id: int):
         if not reviewer:
             reviewer = Usuario(
                 nome=cand.nome or cand.email,
-                cpf=str(uuid.uuid4().int)[:11],
                 email=cand.email,
                 senha=generate_password_hash("temp123"),
                 formacao="",
                 tipo="revisor",
             )
+            for _ in range(5):
+                novo_cpf = str(uuid.uuid4().int)[:11]
+                if not Usuario.query.filter_by(cpf=novo_cpf).first():
+                    reviewer.cpf = novo_cpf
+                    break
+            else:  # pragma: no cover - defensive branch
+                current_app.logger.error(
+                    "Falha ao gerar CPF único para revisor %s", cand.email
+                )
+                err_msg = (
+                    "Erro ao gerar CPF único. "
+                    "Tente novamente ou contate o suporte."
+                )
+                if request.is_json:
+                    return jsonify({"success": False, "error": err_msg}), 500
+                flash(err_msg, "danger")
+                return redirect(url_for("dashboard_routes.dashboard_cliente"))
             db.session.add(reviewer)
             db.session.flush()
         else:

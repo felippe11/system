@@ -19,7 +19,11 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     """Extracts and normalizes form data for reviewer process configuration."""
     formulario_id = req.form.get("formulario_id", type=int)
     num_etapas = req.form.get("num_etapas", type=int, default=1)
-    stage_names: List[str] = req.form.getlist("stage_name")
+    stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
+    if len(stage_names) < num_etapas or any(
+        not nome for nome in stage_names[:num_etapas]
+    ):
+        raise ValueError("Todos os nomes das etapas são obrigatórios")
     eventos_ids: List[int] = req.form.getlist("eventos_ids", type=int)
     criterio_nomes: List[str] = req.form.getlist("criterio_nome")
     start_raw = req.form.get("availability_start")
@@ -68,6 +72,7 @@ def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> 
     processo.eventos = []
     if eventos_ids:
         processo.eventos = Evento.query.filter(Evento.id.in_(eventos_ids)).all()
+    db.session.flush()
 
 
 def recreate_stages(processo: RevisorProcess, stage_names: List[str]) -> None:
