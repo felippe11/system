@@ -15,7 +15,7 @@ from models import (
     Formulario,
     CampoFormulario,
     RespostaFormulario,
-    TrabalhoCientifico,
+    Submission,
 )
 
 
@@ -103,5 +103,5 @@ def test_submission_creates_record(client, app):
     )
     assert resp.status_code == 200
     with app.app_context():
-        assert TrabalhoCientifico.query.count() == 1
+        assert Submission.query.count() == 1
         assert RespostaFormulario.query.count() == 1
