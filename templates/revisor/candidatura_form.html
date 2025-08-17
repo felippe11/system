@@ -1,53 +1,57 @@
 {% extends "base.html" %}
+{% from 'partials/card.html' import render_card %}
+{% block title %}Processo Seletivo{% endblock %}
 {% block content %}
-<div class="container py-5">
-    <div class="card shadow-sm border-0 rounded-lg">
-        <div class="card-header bg-primary text-white">
-            <h2 class="mb-0 fs-4">{{ formulario.nome }}</h2>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-info mb-4">
-                <i class="bi bi-info-circle me-2"></i>{{ formulario.descricao }}
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                {% for campo in formulario.campos %}
-                <div class="mb-4">
-                    <label class="form-label fw-bold" for="campo-{{ campo.id }}">
-                        {{ campo.nome }}{% if campo.obrigatorio %}<span class="text-danger">*</span>{% endif %}
-                    </label>
-                    <div class="form-field-container">
-                        {% if campo.tipo == 'text' %}
-                        <input type="text" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
-                        {% elif campo.tipo == 'textarea' %}
-                        <textarea id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" rows="4" {% if campo.obrigatorio %}required{% endif %}></textarea>
-                        {% elif campo.tipo == 'number' %}
-                        <input type="number" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
-                        {% elif campo.tipo == 'file' %}
-                        <input type="file" id="campo-{{ campo.id }}" name="file_{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
-                        {% elif campo.tipo == 'date' %}
-                        <input type="date" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" {% if campo.obrigatorio %}required{% endif %}>
-                        {% elif campo.tipo == 'dropdown' %}
-                        <select id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-select" {% if campo.obrigatorio %}required{% endif %}>
-                            <option value="" disabled selected>Selecione uma opção</option>
-                            {% for opcao in campo.opcoes.split(',') %}
-                            <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
-                            {% endfor %}
-                        </select>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-                <div class="d-grid gap-2 d-md-flex mt-5">
-                    <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left me-1"></i>Voltar
-                    </a>
-                    <button type="submit" class="btn btn-primary ms-auto">
-                        <i class="bi bi-check-circle me-1"></i>Enviar Formulário
-                    </button>
-                </div>
-            </form>
-        </div>
+<div class="container py-4">
+  {% set body %}
+    <div class="alert alert-info mb-4">
+      <i class="bi bi-info-circle me-2"></i>{{ formulario.descricao }}
     </div>
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% for campo in formulario.campos %}
+      <div class="mb-4">
+        <label class="form-label fw-bold" for="campo-{{ campo.id }}">
+          {{ campo.nome }}{% if campo.obrigatorio %}<span class="text-danger">*</span>{% endif %}
+        </label>
+        <div class="form-field-container">
+          {% if campo.tipo == 'text' %}
+          <input type="text" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
+                 {% if campo.obrigatorio %}required{% endif %}>
+          {% elif campo.tipo == 'textarea' %}
+          <textarea id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" rows="4"
+                    {% if campo.obrigatorio %}required{% endif %}></textarea>
+          {% elif campo.tipo == 'number' %}
+          <input type="number" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
+                 {% if campo.obrigatorio %}required{% endif %}>
+          {% elif campo.tipo == 'file' %}
+          <input type="file" id="campo-{{ campo.id }}" name="file_{{ campo.id }}" class="form-control"
+                 {% if campo.obrigatorio %}required{% endif %}>
+          {% elif campo.tipo == 'date' %}
+          <input type="date" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
+                 {% if campo.obrigatorio %}required{% endif %}>
+          {% elif campo.tipo == 'dropdown' %}
+          <select id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-select"
+                  {% if campo.obrigatorio %}required{% endif %}>
+            <option value="" disabled selected>Selecione uma opção</option>
+            {% for opcao in campo.opcoes.split(',') %}
+            <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      <div class="d-grid gap-2 d-md-flex mt-5">
+        <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+        <button type="submit" class="btn btn-primary ms-auto">
+          <i class="bi bi-check-circle me-1"></i>Enviar Formulário
+        </button>
+      </div>
+    </form>
+  {% endset %}
+  {{ render_card(formulario.nome, body, '', 'card shadow-sm border-0 rounded-lg') }}
 </div>
 {% endblock %}
