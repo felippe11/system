@@ -111,13 +111,18 @@
   });
 
   attachOnce(document.getElementById('assignAutomatic'), 'click', () => {
+    const filters = {};
+    document.querySelectorAll('[data-filter]').forEach((el) => {
+      const valor = el.value.trim();
+      if (valor) filters[el.dataset.filter] = valor;
+    });
     fetch('/assign_by_filters', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-CSRFToken': csrfToken,
       },
-      body: JSON.stringify({ filters: {} }),
+      body: JSON.stringify({ filters }),
     })
       .then((r) => r.json())
       .then((data) => {
