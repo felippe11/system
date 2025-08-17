@@ -111,3 +111,28 @@ def test_assign_by_filters(client, app):
         assert AuditLog.query.filter_by(
             submission_id=ass.submission_id, event_type='assignment'
         ).count() == 1
+
+
+def test_assign_by_filters_max_per_submission(client, app):
+    login(client, 'cli@example.com', '123')
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        evento2 = Evento.query.filter_by(nome='E2').first()
+        proc.eventos.append(evento2)
+        reviewer = Usuario.query.filter_by(email='rev@example.com').first()
+        sub1 = Submission.query.filter_by(title='S1').first()
+        db.session.add(Assignment(submission_id=sub1.id, reviewer_id=reviewer.id))
+        db.session.commit()
+    resp = client.post(
+        '/assign_by_filters',
+        json={'filters': {'area': 'bio'}, 'limit': 1, 'max_per_submission': 1},
+    )
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success']
+    assert data['assignments'] == 1
+    with app.app_context():
+        sub1 = Submission.query.filter_by(title='S1').first()
+        sub2 = Submission.query.filter_by(title='S2').first()
+        assert len(sub1.assignments) == 1
+        assert len(sub2.assignments) == 1
