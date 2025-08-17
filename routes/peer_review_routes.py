@@ -115,6 +115,7 @@ def assign_reviews():
 # ---------------------------------------------------------------------------
 # Atribuição por filtros para revisores aprovados
 # ---------------------------------------------------------------------------
+@peer_review_routes.route("/revisores/sortear", methods=["POST"])
 @peer_review_routes.route("/assign_by_filters", methods=["POST"])
 @login_required
 def assign_by_filters():
