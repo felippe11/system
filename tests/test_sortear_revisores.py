@@ -21,6 +21,7 @@ from models import (
     Submission,
     Usuario,
     Assignment,
+    Evento,
 )
 
 
@@ -45,9 +46,13 @@ def app():
                 num_revisores_max=1,
             )
         )
+        evento = Evento(cliente_id=cliente.id, nome='E1')
+        db.session.add(evento)
+        db.session.flush()
         proc = RevisorProcess(cliente_id=cliente.id)
         db.session.add(proc)
         db.session.flush()
+        proc.eventos.append(evento)
         db.session.add(
             RevisorCandidatura(
                 process_id=proc.id,
@@ -84,8 +89,8 @@ def app():
                 tipo='revisor',
             )
         )
-        db.session.add(Submission(title='S1', code_hash='h1'))
-        db.session.add(Submission(title='S2', code_hash='h2'))
+        db.session.add(Submission(title='S1', code_hash='h1', evento_id=evento.id))
+        db.session.add(Submission(title='S2', code_hash='h2', evento_id=evento.id))
         db.session.commit()
     yield app
 
@@ -102,7 +107,7 @@ def login(client, email, senha):
 def test_sortear_revisores_limits(client, app):
     login(client, 'cli@example.com', '123')
     resp = client.post(
-        '/revisores/sortear',
+        '/assign_by_filters',
         json={'filters': {'area': 'bio'}, 'limit': 1, 'max_per_submission': 1},
     )
     assert resp.status_code == 200
