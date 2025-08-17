@@ -3,9 +3,8 @@ import sys
 import os
 from services.mp_service import get_sdk
 
-# Configuração básica de logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("mp_test")
+# Logger do módulo
+logger = logging.getLogger(__name__)
 
 def main():
     logger.info("Testando conexão com o Mercado Pago")
