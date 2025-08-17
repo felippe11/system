@@ -1,3 +1,4 @@
+
 import os
 import uuid
 from datetime import datetime, date
@@ -1624,6 +1625,7 @@ class RevisorRequisito(db.Model):
 class RevisorCandidatura(db.Model):
     __tablename__ = "revisor_candidatura"
 
+
     id = db.Column(db.Integer, primary_key=True)
     process_id = db.Column(
         db.Integer, db.ForeignKey("revisor_process.id"), nullable=False
@@ -1791,6 +1793,7 @@ class Review(db.Model):
 
 
 # -----------------------------------------------------------------------------
+
 # ASSIGNMENT (vincula revisor ↔ submissão)
 # -----------------------------------------------------------------------------
 class Assignment(db.Model):

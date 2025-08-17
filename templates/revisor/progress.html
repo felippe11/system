@@ -15,12 +15,8 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if pdf_url %}
+  <a class="btn btn-primary" href="{{ pdf_url }}" target="_blank">Baixar PDF</a>
+  {% endif %}
 </div>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    {% if pdf_url %}
-    window.location.href = '{{ pdf_url }}';
-    {% endif %}
-  });
-</script>
 {% endblock %}

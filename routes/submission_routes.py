@@ -14,6 +14,7 @@ from werkzeug.security import generate_password_hash
 from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
 from extensions import db
 from services.mailjet_service import send_via_mailjet
+from services.review_notification_service import notify_reviewer
 from mailjet_rest.client import ApiError
 import logging
 
@@ -92,6 +93,8 @@ def add_review(locator):
         comments=comment,
     )
     db.session.add(review)
+    db.session.flush()
+    notify_reviewer(review)
 
     cliente_id = submission.author.cliente_id if submission.author else None
     config = None

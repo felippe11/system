@@ -13,7 +13,9 @@ from models import (
     Usuario,
     ConfiguracaoCliente,
     Formulario,
+
     CampoFormulario,
+
     RespostaFormulario,
     Submission,
 )
@@ -104,4 +106,6 @@ def test_submission_creates_record(client, app):
     assert resp.status_code == 200
     with app.app_context():
         assert Submission.query.count() == 1
+
         assert RespostaFormulario.query.count() == 1
+

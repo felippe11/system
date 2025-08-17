@@ -100,11 +100,13 @@ def test_submission_and_reviewer_flow(client, app):
 
     with app.app_context():
         sub = Submission.query.filter_by(locator=locator).first()
+
         evento = Evento.query.first()
         author = Usuario.query.filter_by(email='author@test').first()
         sub.evento_id = evento.id
         sub.author_id = author.id
         db.session.commit()
+
         reviewer = Usuario.query.filter_by(email='rev@test').first()
         sub_id = sub.id
         reviewer_id = reviewer.id
