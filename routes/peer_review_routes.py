@@ -117,6 +117,7 @@ def assign_reviews():
 # ---------------------------------------------------------------------------
 # Atribuição por filtros para revisores aprovados
 # ---------------------------------------------------------------------------
+@peer_review_routes.route("/revisores/sortear", methods=["POST"])
 @peer_review_routes.route("/assign_by_filters", methods=["POST"])
 @login_required
 def assign_by_filters():
@@ -323,11 +324,13 @@ def create_review():
 # Formulário de revisão (público via locator)
 # ---------------------------------------------------------------------------
 @peer_review_routes.route("/review/<locator>", methods=["GET", "POST"])
+
 def review_form(locator):
     review = Review.query.filter_by(locator=locator).first_or_404()
     barema = EventoBarema.query.filter_by(
         evento_id=review.submission.evento_id
     ).first()
+
 
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
@@ -337,11 +340,13 @@ def review_form(locator):
         codigo = request.form.get("codigo")
         if codigo != review.access_code:
             flash("Código incorreto!", "danger")
+
             return render_template(
                 "peer_review/review_form.html", review=review, barema=barema
             )
 
         scores: Dict[str, float] = {}
+
         total = 0.0
         if barema and barema.requisitos:
             for requisito, faixa in barema.requisitos.items():
@@ -395,11 +400,13 @@ def review_form(locator):
         db.session.commit()
 
         flash(f"Revisão enviada! Total: {total}", "success")
+
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
     return render_template(
         "peer_review/review_form.html", review=review, barema=barema
     )
+
 
 
 # ---------------------------------------------------------------------------
