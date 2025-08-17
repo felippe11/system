@@ -414,7 +414,7 @@ def progress_query():
 @revisor_routes.route("/processo_seletivo")
 def select_event():
     """Lista eventos com processo seletivo visível a participantes."""
-    now = datetime.utcnow()
+    today = date.today()
 
     processos = (
         RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
@@ -422,11 +422,11 @@ def select_event():
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),
-                RevisorProcess.availability_start <= now,
+                func.date(RevisorProcess.availability_start) <= today,
             ),
             or_(
                 RevisorProcess.availability_end.is_(None),
-                RevisorProcess.availability_end >= now,
+                func.date(RevisorProcess.availability_end) >= today,
             ),
         )
         .all()
