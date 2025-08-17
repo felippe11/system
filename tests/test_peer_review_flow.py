@@ -20,7 +20,6 @@ from models import (
     Usuario,
     Cliente,
     Evento,
-    TrabalhoCientifico,
     Submission,
     Review,
     Assignment,
@@ -101,11 +100,6 @@ def test_submission_and_reviewer_flow(client, app):
 
     with app.app_context():
         sub = Submission.query.filter_by(locator=locator).first()
-        evento = Evento.query.first()
-        author = Usuario.query.filter_by(email='author@test').first()
-        trabalho = TrabalhoCientifico(id=sub.id, titulo=sub.title, resumo='r', area_tematica='a', usuario_id=author.id, evento_id=evento.id)
-        db.session.add(trabalho)
-        db.session.commit()
         reviewer = Usuario.query.filter_by(email='rev@test').first()
         sub_id = sub.id
         reviewer_id = reviewer.id

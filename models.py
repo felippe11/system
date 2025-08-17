@@ -1320,25 +1320,10 @@ class CampoPersonalizadoCadastro(db.Model):
     )
 
 
-class TrabalhoCientifico(db.Model):
-    __tablename__ = "trabalhos_cientificos"
-    id = db.Column(db.Integer, primary_key=True)
-    titulo = db.Column(db.String(255), nullable=False)
-    resumo = db.Column(db.Text, nullable=True)
-    arquivo_pdf = db.Column(db.String(255), nullable=True)
-    area_tematica = db.Column(db.String(100), nullable=True)
-    locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
-    status = db.Column(
-        db.String(50), default="submetido"
-    )  # Ex: submetido, em avaliação, aceito, rejeitado, revisando
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
-
-
 class AvaliacaoTrabalho(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     trabalho_id = db.Column(
-        db.Integer, db.ForeignKey("trabalhos_cientificos.id"), nullable=False
+        db.Integer, db.ForeignKey("submission.id"), nullable=False
     )
     avaliador_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
     nota = db.Column(db.Float, nullable=True)
@@ -1351,7 +1336,7 @@ class AvaliacaoTrabalho(db.Model):
 class ApresentacaoTrabalho(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     trabalho_id = db.Column(
-        db.Integer, db.ForeignKey("trabalhos_cientificos.id"), nullable=False
+        db.Integer, db.ForeignKey("submission.id"), nullable=False
     )
     data = db.Column(db.Date, nullable=False)
     horario = db.Column(db.String(5), nullable=False)

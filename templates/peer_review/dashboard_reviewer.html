@@ -4,14 +4,45 @@
   <h3>Trabalhos para Revisão</h3>
   <p>Prazo: {{ config.prazo_revisao.strftime('%d/%m/%Y') if config and config.prazo_revisao else 'N/A' }}</p>
   <table class="table table-striped">
-    <thead><tr><th>Título</th><th>Revisor</th><th>Status</th><th>Prazo</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Título</th>
+        <th>Revisor</th>
+        <th>Status</th>
+        <th>Prazo</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
     <tbody>
       {% for a in assignments %}
+      {% set rev = (
+        a.submission.reviews
+        | selectattr('reviewer_id', 'equalto', a.reviewer_id)
+        | first
+      ) %}
       <tr>
         <td>{{ a.submission.title }}</td>
         <td>{{ a.reviewer.nome if a.reviewer else '' }}</td>
         <td>{{ 'Concluída' if a.completed else 'Pendente' }}</td>
         <td>{{ a.deadline.strftime('%d/%m/%Y') if a.deadline else '' }}</td>
+        <td>
+          {% if a.submission.evento and a.submission.evento.evento_barema %}
+          <a
+            class="btn btn-primary btn-sm"
+            href="{{ url_for('revisor_routes.avaliar', submission_id=a.submission_id) }}"
+            >Avaliar</a
+          >
+          {% else %}
+          <a
+            class="btn btn-primary btn-sm"
+            href="{{ url_for('peer_review_routes.review_form', submission_id=a.submission_id) }}"
+            >Revisar</a
+          >
+          {% if rev and rev.access_code %}
+          <div class="small text-muted">Código: {{ rev.access_code }}</div>
+          {% endif %}
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
