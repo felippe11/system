@@ -54,6 +54,7 @@ def test_parse_revisor_form(app):
             "availability_end": "2024-01-20",
 
             "exibir_para_participantes": "on",
+            "eventos_ids": [1, 2],
 
         },
     ):
@@ -66,6 +67,14 @@ def test_parse_revisor_form(app):
     assert dados["exibir_para_participantes"] is True
     assert dados["eventos_ids"] == [1, 2]
 
+
+def test_parse_revisor_form_missing_stage(app):
+    with app.test_request_context(
+        method="POST",
+        data={"num_etapas": 2, "stage_name": ["Etapa 1"]},
+    ):
+        with pytest.raises(ValueError):
+            parse_revisor_form(request)
 
 def test_update_and_recreate_stages(app):
     with app.app_context():
