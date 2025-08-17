@@ -20,7 +20,8 @@ sys.modules.setdefault('utils.taxa_service', taxa_service)
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, ReviewerApplication
+from models.user import Usuario, Cliente
+from models.review import ReviewerApplication
 
 @pytest.fixture
 def app():

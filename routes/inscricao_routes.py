@@ -5,7 +5,7 @@ from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from models import (
+
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
     LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
     CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, Formulario, RegraInscricaoEvento,

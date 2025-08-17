@@ -13,7 +13,7 @@ from werkzeug.security import generate_password_hash
 from utils.mfa import mfa_required
 
 from extensions import db
-from models import (
+
     Submission,
     AuditLog,
     Evento,

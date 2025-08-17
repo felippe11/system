@@ -11,7 +11,8 @@ import secrets
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
-from models import Submission, Review, Assignment, ConfiguracaoCliente, AuditLog
+from models import ConfiguracaoCliente, AuditLog
+from models.review import Submission, Review, Assignment
 from extensions import db
 from services.mailjet_service import send_via_mailjet
 from services.review_notification_service import notify_reviewer

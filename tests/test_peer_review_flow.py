@@ -16,7 +16,7 @@ mercadopago_stub = types.ModuleType('mercadopago')
 mercadopago_stub.SDK = lambda *a, **k: None
 sys.modules.setdefault('mercadopago', mercadopago_stub)
 
-from models import (
+
     Usuario,
     Cliente,
     Evento,

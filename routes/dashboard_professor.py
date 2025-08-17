@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required, current_user
-from models import AgendamentoVisita, Review
+from models import AgendamentoVisita
+from models.review import Review
 
 dashboard_professor_routes = Blueprint("dashboard_professor", __name__)
 

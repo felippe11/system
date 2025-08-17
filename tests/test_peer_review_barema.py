@@ -18,7 +18,7 @@ mercadopago_stub.SDK = lambda *a, **k: None
 sys.modules.setdefault("mercadopago", mercadopago_stub)
 
 from extensions import db
-from models import (
+
     Cliente,
     Evento,
     Submission,

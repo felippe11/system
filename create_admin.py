@@ -1,5 +1,5 @@
 from app import create_app, db
-from models import Usuario
+from models.user import Usuario
 from werkzeug.security import generate_password_hash
 
 # Cria a aplicação

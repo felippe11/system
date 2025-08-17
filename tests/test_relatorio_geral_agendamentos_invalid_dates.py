@@ -9,7 +9,7 @@ os.environ.setdefault('SECRET_KEY', 'test')
 from config import Config
 from app import create_app
 from extensions import db
-from models import Cliente
+from models.user import Cliente
 
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'

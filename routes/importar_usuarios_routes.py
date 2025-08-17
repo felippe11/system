@@ -6,7 +6,7 @@ import pandas as pd
 import os
 
 from extensions import db
-from models import Usuario
+from models.user import Usuario
 from flask import current_app
 from utils.arquivo_utils import arquivo_permitido
 import logging

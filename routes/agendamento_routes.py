@@ -16,7 +16,7 @@ import logging
 from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
-from models import (
+
     AgendamentoVisita,
     HorarioVisitacao,
     Evento,
@@ -923,7 +923,7 @@ from sqlalchemy import and_, func, or_, case
 from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
 
 # Importe os modelos necessários
-from models import (
+
     Evento, 
     ConfiguracaoAgendamento, 
     SalaVisitacao, 

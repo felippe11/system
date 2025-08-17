@@ -13,7 +13,8 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app
 from extensions import db
-from models import Cliente, Evento, Formulario
+from models import Evento, Formulario
+from models.user import Cliente
 
 
 @pytest.fixture
