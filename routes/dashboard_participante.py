@@ -9,9 +9,16 @@ from sqlalchemy.exc import ProgrammingError
 logger = logging.getLogger(__name__)
 
 from extensions import db
-
-    Evento, Oficina, OficinaDia, ConfiguracaoCliente, ConfiguracaoEvento, HorarioVisitacao,
-    Usuario, Formulario, RegraInscricaoEvento
+from models import (
+    Evento,
+    Oficina,
+    OficinaDia,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    HorarioVisitacao,
+    Usuario,
+    Formulario,
+    RegraInscricaoEvento,
 )
 
 dashboard_participante_routes = Blueprint('dashboard_participante_routes', __name__)
