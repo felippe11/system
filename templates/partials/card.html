@@ -1,0 +1,15 @@
+{% macro render_card(title, body, footer='', card_class='card shadow-sm') -%}
+<div class="{{ card_class }}">
+  <div class="card-header bg-primary text-white">
+    <h2 class="mb-0 fs-4">{{ title }}</h2>
+  </div>
+  <div class="card-body">
+    {{ body | safe }}
+  </div>
+  {% if footer %}
+  <div class="card-footer bg-white border-0">
+    {{ footer | safe }}
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}
