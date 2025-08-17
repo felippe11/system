@@ -27,7 +27,6 @@ from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
 from sqlalchemy import text
 
-logger = logging.getLogger(__name__)
 
 oficina_routes = Blueprint('oficina_routes', __name__, template_folder="../templates/oficina")
 
