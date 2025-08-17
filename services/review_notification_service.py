@@ -30,6 +30,9 @@ def notify_reviewer(review):
     audited later.
     """
     if not review.reviewer or not review.reviewer.email:
+        logger.warning(
+            "Review %s has no email destination; skipping notification", review.id
+        )
         return
 
     link = url_for(
