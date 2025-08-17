@@ -56,8 +56,23 @@
         Selecione entre {{ config.num_revisores_min if config else 1 }} e {{ config.num_revisores_max if config else 2 }} revisores.
       </small>
     </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">
+        <label for="filterArea" class="form-label">Área</label>
+        <input type="text" id="filterArea" class="form-control" data-filter="area" placeholder="Ex.: Computação" />
+      </div>
+      <div class="col-md-4">
+        <label for="filterNivel" class="form-label">Nível</label>
+        <input type="text" id="filterNivel" class="form-control" data-filter="nivel" placeholder="Ex.: Doutorado" />
+      </div>
+    </div>
+    <small class="form-text text-muted mb-3">
+      Filtros disponíveis: área e nível. Deixe em branco para incluir todos os revisores.
+    </small>
     <button id="assignManual" class="btn btn-primary me-2">Atribuir Manualmente</button>
-    <button id="assignAutomatic" class="btn btn-secondary me-2">Sorteio Automático</button>
+    <button id="assignAutomatic" class="btn btn-secondary me-2" data-bs-toggle="tooltip" title="Sorteia revisores usando os filtros preenchidos">
+      Sorteio Automático
+    </button>
     <div class="input-group mt-2" style="max-width: 300px;">
       <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" />
       <button id="autoArea" class="btn btn-info">Auto por Área</button>
