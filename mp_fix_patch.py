@@ -106,4 +106,7 @@ Para usar este patch:
 """
 
 if __name__ == "__main__":
-    print(usage_doc)
+    import logging
+
+    logger = logging.getLogger(__name__)
+    logger.info(usage_doc)

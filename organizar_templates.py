@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Organiza arquivos de template em suas pastas usando shutil.move."""
+import logging
 import shutil
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 moves = [
     ("agendar_visita.html", "agendamento"),
@@ -31,10 +34,10 @@ def main() -> None:
         dest = dest_dir / filename
         if src.exists():
             dest_dir.mkdir(parents=True, exist_ok=True)
-            print(f"Movendo {src} -> {dest}")
+            logger.info("Movendo %s -> %s", src, dest)
             shutil.move(str(src), str(dest))
         else:
-            print(f"Arquivo {src} não encontrado, ignorando")
+            logger.warning("Arquivo %s não encontrado, ignorando", src)
 
 if __name__ == "__main__":
     main()

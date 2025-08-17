@@ -1,6 +1,10 @@
+import logging
+
 from app import create_app, db
 from models.user import Usuario
 from werkzeug.security import generate_password_hash
+
+logger = logging.getLogger(__name__)
 
 # Cria a aplicação
 app = create_app()
@@ -20,6 +24,7 @@ with app.app_context():  # ✅ Criando um contexto da aplicação Flask
 
         db.session.add(admin)
         db.session.commit()
-        print("✅ Administrador criado com sucesso!")
+        logger.info("✅ Administrador criado com sucesso!")
     else:
-        print("⚠️ O administrador já existe no banco de dados.")
+        logger.warning("⚠️ O administrador já existe no banco de dados.")
+
