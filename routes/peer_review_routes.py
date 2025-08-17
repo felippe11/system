@@ -321,8 +321,23 @@ def create_review():
 # Formulário de revisão (público via locator)
 # ---------------------------------------------------------------------------
 @peer_review_routes.route("/review/<locator>", methods=["GET", "POST"])
-def review_form(locator):
-    review = Review.query.filter_by(locator=locator).first_or_404()
+@peer_review_routes.route(
+    "/review/submission/<int:submission_id>", methods=["GET", "POST"]
+)
+def review_form(locator: str | None = None, submission_id: int | None = None):
+    if submission_id is not None:
+        if not current_user.is_authenticated:
+            flash("Acesso negado!", "danger")
+            return redirect(url_for("auth_routes.login"))
+        review = Review.query.filter_by(
+            submission_id=submission_id, reviewer_id=current_user.id
+        ).first()
+        if review is None:
+            flash("Acesso negado!", "danger")
+            return redirect(url_for("peer_review_routes.reviewer_reviews"))
+        locator = review.locator
+    else:
+        review = Review.query.filter_by(locator=locator).first_or_404()
 
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
@@ -334,7 +349,7 @@ def review_form(locator):
             flash("Código incorreto!", "danger")
             return render_template("peer_review/review_form.html", review=review)
         # Coleta notas individuais e calcula o total -----------------------
-        scores = {}
+        scores: dict[str, float] = {}
         total = 0.0
         for field, value in request.form.items():
             if field.startswith("score_"):
@@ -375,7 +390,15 @@ def review_form(locator):
         db.session.commit()
 
         flash(f"Revisão enviada! Total: {total}", "success")
-        return redirect(url_for("peer_review_routes.review_form", locator=locator))
+        if submission_id is not None:
+            return redirect(
+                url_for(
+                    "peer_review_routes.review_form", submission_id=submission_id
+                )
+            )
+        return redirect(
+            url_for("peer_review_routes.review_form", locator=locator)
+        )
 
     return render_template("peer_review/review_form.html", review=review)
 
