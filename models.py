@@ -1829,6 +1829,23 @@ class Review(db.Model):
 
 
 # -----------------------------------------------------------------------------
+# LOG DE FALHA DE E-MAIL DE REVIEW
+# -----------------------------------------------------------------------------
+class ReviewEmailLog(db.Model):
+    """Registra falhas no envio de e-mails de revisão."""
+
+    __tablename__ = "review_email_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey("review.id"), nullable=False)
+    recipient = db.Column(db.String(255), nullable=False)
+    error = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    review = db.relationship("Review", backref=db.backref("email_logs", lazy=True))
+
+
+# -----------------------------------------------------------------------------
 # ASSIGNMENT (vincula revisor ↔ submissão)
 # -----------------------------------------------------------------------------
 class Assignment(db.Model):
