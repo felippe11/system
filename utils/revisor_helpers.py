@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 from typing import Any, Dict, List
 
 from flask import Request
@@ -27,9 +27,12 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     exibir_val = req.form.get("exibir_para_participantes")
     exibir_para_participantes = exibir_val in {"on", "1", "true"}
 
-    def _parse_dt(raw: str | None) -> datetime | None:
+    def _parse_dt(raw: str | None, *, end: bool = False) -> datetime | None:
         try:
-            return datetime.strptime(raw, "%Y-%m-%d") if raw else None
+            if not raw:
+                return None
+            dt = datetime.strptime(raw, "%Y-%m-%d")
+            return datetime.combine(dt.date(), time.max if end else time.min)
         except ValueError:
             return None
 
@@ -44,7 +47,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         "num_etapas": num_etapas,
         "stage_names": stage_names,
         "availability_start": _parse_dt(start_raw),
-        "availability_end": _parse_dt(end_raw),
+        "availability_end": _parse_dt(end_raw, end=True),
         "exibir_para_participantes": exibir_para_participantes,
         "eventos_ids": eventos_ids,
         "criterios": criterios,
