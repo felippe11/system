@@ -14,9 +14,6 @@ from utils.mfa import mfa_required
 from extensions import db
 from models import (
     Submission,
-
-    AvaliacaoTrabalho,
-
     AuditLog,
     Evento,
     Usuario,
