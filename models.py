@@ -1896,10 +1896,10 @@ class RevisorProcess(db.Model):
 
     def is_available(self) -> bool:
         """Return True if the process is currently available."""
-        now = datetime.utcnow()
-        if self.availability_start and now < self.availability_start:
+        today = date.today()
+        if self.availability_start and today < self.availability_start.date():
             return False
-        if self.availability_end and now > self.availability_end:
+        if self.availability_end and today > self.availability_end.date():
             return False
         return True
 
