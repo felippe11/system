@@ -8,7 +8,8 @@ from werkzeug.security import generate_password_hash
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, CampoPersonalizadoCadastro, Evento, ConfiguracaoCliente, ConfiguracaoEvento
+from models import CampoPersonalizadoCadastro, Evento, ConfiguracaoCliente, ConfiguracaoEvento
+from models.user import Usuario, Cliente
 import os
 import tempfile
 from unittest.mock import patch

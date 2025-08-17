@@ -58,7 +58,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Importe suas extensões e modelos
 from extensions import db
-from models import (
+
     Cliente,
     Usuario,
     Evento,

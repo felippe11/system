@@ -1,6 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
-from models import Oficina, OficinaDia, Ministrante, Evento, Cliente, Checkin, Inscricao, MaterialOficina, RelatorioOficina, InscricaoTipo, Feedback
+from models import Oficina, OficinaDia, Evento, Checkin, Inscricao, MaterialOficina, RelatorioOficina, InscricaoTipo, Feedback
+from models.user import Ministrante, Cliente
 from extensions import db
 import logging
 
@@ -9,7 +10,7 @@ from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
 from routes.auth_routes import login_required
 from sqlalchemy import text
-from models import (
+
     Usuario, CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario
 )
 from flask import Blueprint

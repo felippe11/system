@@ -28,7 +28,7 @@ sys.modules.setdefault('qrcode', qrcode_stub)
 
 from flask import Flask
 from extensions import db, login_manager
-from models import Usuario, Cliente
+from models.user import Usuario, Cliente
 from routes.auth_routes import auth_routes
 from routes.dashboard_routes import dashboard_routes
 from flask import Blueprint

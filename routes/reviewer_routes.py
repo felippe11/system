@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import ReviewerApplication
+from models.review import ReviewerApplication
 
 reviewer_routes = Blueprint(
     'reviewer_routes', __name__, template_folder="../templates/reviewer"

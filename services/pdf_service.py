@@ -3504,7 +3504,8 @@ from datetime import datetime
 import qrcode
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from models import CertificadoTemplate, Oficina, Usuario, Cliente, Inscricao
+from models import CertificadoTemplate, Oficina, Inscricao
+from models.user import Usuario, Cliente
 from flask_mail import Message
 from extensions import mail
 import logging

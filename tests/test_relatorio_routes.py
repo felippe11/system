@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash
 from config import Config
 from app import create_app
 from extensions import db
-from models import Usuario
+from models.user import Usuario
 
 # Configure in-memory database
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'

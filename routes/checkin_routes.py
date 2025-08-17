@@ -6,7 +6,7 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-from models import (
+
     Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
     AgendamentoVisita, Evento, Usuario
 )

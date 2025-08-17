@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
-from models import Evento, LinkCadastro
+from models import Evento
+from models.user import LinkCadastro
 import uuid
 
 gerar_link_routes = Blueprint('gerar_link_routes', __name__)

@@ -10,7 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from sqlalchemy import func
 from decimal import Decimal
 
-from models import (
+
     db,
     Oficina,
     Feedback,

@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 import pyotp
 import logging
 
-from models import Usuario, Ministrante, Cliente, PasswordResetToken, Inscricao
+from models import Inscricao
+from models.user import Usuario, Ministrante, Cliente, PasswordResetToken
 from extensions import login_manager, db
 from utils import enviar_email
 from forms import PublicClienteForm

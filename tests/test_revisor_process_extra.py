@@ -11,7 +11,9 @@ from flask import Flask
 from extensions import db, login_manager, migrate
 from flask_migrate import upgrade
 
-from models import Cliente, Formulario, RevisorProcess, Evento
+from models import Formulario, Evento
+from models.user import Cliente
+from models.review import RevisorProcess
 from routes.revisor_routes import revisor_routes
 
 @pytest.fixture

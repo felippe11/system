@@ -3,7 +3,7 @@ participante_routes = Blueprint("participante_routes", __name__)
 from flask import render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
-from models import Usuario, PasswordResetToken
+from models.user import Usuario, PasswordResetToken
 from extensions import db
 
 

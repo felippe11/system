@@ -6,7 +6,8 @@ from werkzeug.security import generate_password_hash
 from config import Config
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, Evento
+from models import Evento
+from models.user import Usuario, Cliente
 
 Config.SQLALCHEMY_DATABASE_URI = "sqlite://"
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(

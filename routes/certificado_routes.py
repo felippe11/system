@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from extensions import db
-from models import Cliente, Oficina, CertificadoTemplate
+from models import Oficina, CertificadoTemplate
+from models.user import Cliente
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 
 import os
