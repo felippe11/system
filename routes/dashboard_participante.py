@@ -9,7 +9,7 @@ from sqlalchemy.exc import ProgrammingError
 logger = logging.getLogger(__name__)
 
 from extensions import db
-from models import (
+
     Evento, Oficina, OficinaDia, ConfiguracaoCliente, ConfiguracaoEvento, HorarioVisitacao,
     Usuario, Formulario, RegraInscricaoEvento
 )

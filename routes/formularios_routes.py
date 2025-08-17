@@ -25,7 +25,7 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError, SQLAlchemyError
 
 
 from extensions import db
-from models import (
+
     Formulario,
     RespostaFormulario,
     RespostaCampo,

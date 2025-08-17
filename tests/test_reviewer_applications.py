@@ -69,7 +69,7 @@ sys.modules.setdefault('utils.arquivo_utils', arquivo_utils_stub)
 
 from app import create_app
 from extensions import db, login_manager
-from models import (
+
     Usuario,
     Cliente,
     ReviewerApplication,

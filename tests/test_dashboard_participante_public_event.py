@@ -11,7 +11,8 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from flask import Flask, Blueprint
 from extensions import db, login_manager, csrf
-from models import Cliente, Evento, Usuario, Oficina, OficinaDia
+from models import Evento, Oficina, OficinaDia
+from models.user import Cliente, Usuario
 from routes.auth_routes import auth_routes
 from routes.dashboard_participante import dashboard_participante_routes, dashboard_participante
 from routes.inscricao_routes import inscricao_routes

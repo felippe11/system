@@ -33,7 +33,7 @@ from sqlalchemy import func, desc
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import ProgrammingError
 
-from models import (
+
 
     Assignment,
     CampoFormulario,

@@ -10,7 +10,7 @@ from fpdf import FPDF
 from PIL import Image
 
 from extensions import db
-from models import (
+
     Evento, ProfessorBloqueado, SalaVisitacao, HorarioVisitacao,
     AgendamentoVisita, AlunoVisitante, ConfiguracaoAgendamento, Oficina,
     Inscricao,

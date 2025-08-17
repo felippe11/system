@@ -13,7 +13,8 @@ from werkzeug.security import generate_password_hash
 import logging
 
 from extensions import db
-from models import Cliente, ConfiguracaoCliente
+from models import ConfiguracaoCliente
+from models.user import Cliente
 
 cliente_routes = Blueprint("cliente_routes", __name__)
 logger = logging.getLogger(__name__)

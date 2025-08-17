@@ -7,7 +7,8 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-from models import Usuario, Cliente, Evento, EventoInscricaoTipo, Inscricao
+from models import Evento, EventoInscricaoTipo, Inscricao
+from models.user import Usuario, Cliente
 
 @pytest.fixture
 def app():

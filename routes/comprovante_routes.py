@@ -1,7 +1,8 @@
 from flask import Blueprint, flash, redirect, url_for, send_file
 from flask_login import login_required, current_user
 from extensions import db
-from models import Oficina, Inscricao, Evento, Checkin, CertificadoTemplate, Cliente
+from models import Oficina, Inscricao, Evento, Checkin, CertificadoTemplate
+from models.user import Cliente
 from services.pdf_service import gerar_comprovante_pdf, gerar_certificados_pdf
 from services.certificado_service import verificar_criterios_certificado
 

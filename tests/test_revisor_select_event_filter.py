@@ -9,7 +9,9 @@ os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
 from config import Config
 from flask import Flask, get_flashed_messages
 from extensions import db, login_manager, csrf
-from models import Cliente, Formulario, RevisorProcess, Evento
+from models import Formulario, Evento
+from models.user import Cliente
+from models.review import RevisorProcess
 from routes.revisor_routes import revisor_routes, select_event
 from flask import Blueprint
 from unittest.mock import patch

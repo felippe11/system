@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
-from models import (
+
     Evento, Oficina, Inscricao, Checkin,
     ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
     EventoInscricaoTipo, Configuracao, ReviewerApplication,

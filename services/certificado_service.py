@@ -1,4 +1,6 @@
-from models import (Checkin, Oficina, Evento, ConfiguracaoCertificadoEvento, CertificadoTemplate, Cliente)
+from models import Checkin, Oficina, Evento, CertificadoTemplate
+from models.user import Cliente
+from models.review import ConfiguracaoCertificadoEvento
 from sqlalchemy import func
 
 

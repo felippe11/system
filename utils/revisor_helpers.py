@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from flask import Request
 
 from extensions import db
-from models import (
+
     Evento,
     RevisorCriterio,
     RevisorEtapa,

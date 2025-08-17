@@ -1,6 +1,7 @@
 from app import create_app
 from extensions import db
-from models import Usuario, ConfiguracaoCliente, Cliente
+from models import ConfiguracaoCliente
+from models.user import Usuario, Cliente
 from sqlalchemy import text
 
 app = create_app()
