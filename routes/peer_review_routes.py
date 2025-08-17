@@ -17,6 +17,7 @@ from models import (
     RevisorCandidatura,
     RevisorProcess,
 )
+from services.review_notification_service import notify_reviewer
 
 import uuid
 from datetime import datetime, timedelta
@@ -86,6 +87,8 @@ def assign_reviews():
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
+            db.session.flush()
+            notify_reviewer(rev)
 
             evento = Evento.query.get(trabalho.evento_id)
             cliente_id = evento.cliente_id if evento else None
@@ -256,6 +259,8 @@ def auto_assign(evento_id):
                 access_code=str(uuid.uuid4())[:8],
             )
             db.session.add(rev)
+            db.session.flush()
+            notify_reviewer(rev)
 
             config_cli = ConfiguracaoCliente.query.filter_by(
                 cliente_id=t.evento.cliente_id
@@ -306,6 +311,8 @@ def create_review():
         access_code=str(uuid.uuid4())[:8],
     )
     db.session.add(rev)
+    db.session.flush()
+    notify_reviewer(rev)
     db.session.commit()
 
     if request.is_json:
