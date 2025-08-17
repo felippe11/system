@@ -163,7 +163,10 @@ def test_application_and_approval_flow(client, app):
 
     resp = client.get(f"/revisor/progress/{code}")
     assert resp.status_code == 200
-    assert code in resp.get_data(as_text=True)
+    html = resp.get_data(as_text=True)
+    assert code in html
+    assert "Baixar PDF" in html
+    assert f"/revisor/progress/{code}/pdf" in html
 
     login(client, "cli@test", "123")
     resp = client.post(f"/revisor/approve/{cand_id}", json={})

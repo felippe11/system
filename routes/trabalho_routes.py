@@ -9,10 +9,14 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash
 from utils.mfa import mfa_required
 from extensions import db
 from models import (
     Submission,
+
+    AvaliacaoTrabalho,
+
     AuditLog,
     Evento,
     Usuario,
@@ -22,7 +26,9 @@ from models import (
 )
 import uuid
 import os
+
 from werkzeug.security import generate_password_hash
+
 
 trabalho_routes = Blueprint(
     "trabalho_routes",
@@ -125,6 +131,7 @@ def submeter_trabalho():
 
         titulo = titulo or "Trabalho sem título"
 
+
         code = uuid.uuid4().hex[:8]
         submission = Submission(
             title=titulo,
@@ -133,6 +140,7 @@ def submeter_trabalho():
             evento_id=evento_id,
             status="submitted",
             code_hash=generate_password_hash(code),
+
         )
         db.session.add(submission)
         db.session.flush()
@@ -146,18 +154,22 @@ def submeter_trabalho():
         db.session.commit()
 
         flash(
+
             "Trabalho submetido com sucesso! "
             f"Localizador: {submission.locator} Código: {code}",
+
             "success",
         )
         return redirect(url_for("trabalho_routes.meus_trabalhos"))
 
     return render_template("submeter_trabalho.html", formulario=formulario)
 
+
 # ──────────────────────────────── MEUS TRABALHOS ─────────────────────────── #
 @trabalho_routes.route("/meus_trabalhos")
 @login_required
 def meus_trabalhos():
+
     """Lista trabalhos do participante logado."""
     if current_user.tipo != "participante":
         return redirect(
