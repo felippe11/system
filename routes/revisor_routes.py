@@ -440,25 +440,17 @@ def select_event():
             if ev:
                 eventos.append(ev)
 
+        status = "Aberto" if proc.is_available() else "Encerrado"
         if not eventos:
-            registros.append(
-                {
-                    "evento": None,
-                    "processo": proc,
-                    "status": "Aberto" if proc.is_available() else "Encerrado",
-                }
-            )
+            registros.append({"evento": None, "processo": proc, "status": status})
             continue
 
-        for ev in eventos:
-            if ev.status == "ativo" and ev.publico:
-                registros.append(
-                    {
-                        "evento": ev,
-                        "processo": proc,
-                        "status": "Aberto" if proc.is_available() else "Encerrado",
-                    }
-                )
+        validos = [ev for ev in eventos if ev.status == "ativo" and ev.publico]
+        if validos:
+            for ev in validos:
+                registros.append({"evento": ev, "processo": proc, "status": status})
+        elif proc.is_available():
+            registros.append({"evento": None, "processo": proc, "status": status})
 
     if not registros:
         flash(
