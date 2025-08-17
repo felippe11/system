@@ -5,10 +5,22 @@ from flask import url_for
 from mailjet_rest.client import ApiError
 
 from extensions import db
-from models import ReviewEmailLog
 from services.mailjet_service import send_via_mailjet
 
 logger = logging.getLogger(__name__)
+
+
+def _log_review_email_error(review, exc):
+    """Persist a failed review notification for later auditing."""
+    from models import ReviewEmailLog  # imported here to avoid circular imports
+
+    db.session.add(
+        ReviewEmailLog(
+            review_id=review.id,
+            recipient=review.reviewer.email,
+            error=str(exc),
+        )
+    )
 
 
 def notify_reviewer(review):
@@ -34,26 +46,15 @@ def notify_reviewer(review):
             subject="Novo parecer disponível",
             text=text,
         )
-    except ApiError as exc:  # pragma: no cover - network errors are rare
-        logger.exception(
-            "Erro ao enviar e-mail de revisão para %s", review.reviewer.email
-        )
-        db.session.add(
-            ReviewEmailLog(
-                review_id=review.id,
-                recipient=review.reviewer.email,
-                error=str(exc),
+    except Exception as exc:  # pragma: no cover - network errors are rare
+        if isinstance(exc, ApiError):
+            logger.exception(
+                "Erro ao enviar e-mail de revisão para %s",
+                review.reviewer.email,
             )
-        )
-    except Exception as exc:  # pragma: no cover
-        logger.exception(
-            "Erro inesperado ao enviar e-mail de revisão para %s",
-            review.reviewer.email,
-        )
-        db.session.add(
-            ReviewEmailLog(
-                review_id=review.id,
-                recipient=review.reviewer.email,
-                error=str(exc),
+        else:
+            logger.exception(
+                "Erro inesperado ao enviar e-mail de revisão para %s",
+                review.reviewer.email,
             )
-        )
+        _log_review_email_error(review, exc)
