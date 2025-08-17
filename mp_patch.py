@@ -8,9 +8,7 @@ import sys
 import logging
 from dotenv import load_dotenv
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Logger do módulo
 logger = logging.getLogger(__name__)
 
 # Carregar variáveis de ambiente

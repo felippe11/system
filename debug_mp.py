@@ -7,9 +7,7 @@ from dotenv import load_dotenv
 # Carregar variáveis de ambiente do .env
 load_dotenv()
 
-# Configurar logging
-logging.basicConfig(level=logging.DEBUG, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Logger deste módulo
 logger = logging.getLogger(__name__)
 
 # Tentar importar o módulo mercadopago

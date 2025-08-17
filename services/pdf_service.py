@@ -3522,8 +3522,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 
-# Configuração de logging
-logging.basicConfig(level=logging.DEBUG)
+# Logger do módulo
 logger = logging.getLogger(__name__)
 
 # Escopo necessário para envio de e-mails

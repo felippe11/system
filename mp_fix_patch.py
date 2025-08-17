@@ -8,9 +8,7 @@ import logging
 from flask import request, current_app, url_for
 import os
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Logger do módulo
 logger = logging.getLogger(__name__)
 
 # Função para gerar URLs absolutas corretamente

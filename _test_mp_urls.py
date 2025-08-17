@@ -3,9 +3,7 @@ import logging
 from flask import Flask, url_for, request
 import sys
 
-# Configurar logging
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Logger do módulo
 logger = logging.getLogger(__name__)
 
 # Criar uma aplicação Flask simples para testar a geração de URLs
