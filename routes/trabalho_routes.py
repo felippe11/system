@@ -27,9 +27,6 @@ from models import (
 import uuid
 import os
 
-from werkzeug.security import generate_password_hash
-
-
 trabalho_routes = Blueprint(
     "trabalho_routes",
     __name__,
