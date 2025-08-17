@@ -2,11 +2,15 @@
 Script para depurar problemas com o reCAPTCHA.
 Execute com: python debug_recaptcha.py
 """
+import logging
+import os
+
 from flask import Flask, render_template_string, request
 from flask_wtf import FlaskForm, RecaptchaField
 from wtforms import SubmitField
-import os
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # Carrega as variáveis de ambiente
 load_dotenv()
@@ -24,11 +28,31 @@ app.config["RECAPTCHA_OPTIONS"] = {"hl": "pt-BR"}
 # app.config["RECAPTCHA_USE_SSL"] = False
 
 # Informações de debug
-print("DEBUG: RECAPTCHA_PUBLIC_KEY =", app.config["RECAPTCHA_PUBLIC_KEY"])
-print("DEBUG: RECAPTCHA_PRIVATE_KEY =", "*" * len(app.config["RECAPTCHA_PRIVATE_KEY"]) if app.config["RECAPTCHA_PRIVATE_KEY"] else "Não definida")
-print("DEBUG: Chave pública parece ser v3?", app.config["RECAPTCHA_PUBLIC_KEY"].startswith("6Lf") if app.config["RECAPTCHA_PUBLIC_KEY"] else "N/A")
-print("DEBUG: Comprimento da chave pública:", len(app.config["RECAPTCHA_PUBLIC_KEY"]) if app.config["RECAPTCHA_PUBLIC_KEY"] else 0)
-print("DEBUG: Comprimento da chave privada:", len(app.config["RECAPTCHA_PRIVATE_KEY"]) if app.config["RECAPTCHA_PRIVATE_KEY"] else 0)
+logger.info("DEBUG: RECAPTCHA_PUBLIC_KEY = %s", app.config["RECAPTCHA_PUBLIC_KEY"])
+logger.info(
+    "DEBUG: RECAPTCHA_PRIVATE_KEY = %s",
+    "*" * len(app.config["RECAPTCHA_PRIVATE_KEY"])
+    if app.config["RECAPTCHA_PRIVATE_KEY"]
+    else "Não definida",
+)
+logger.info(
+    "DEBUG: Chave pública parece ser v3? %s",
+    app.config["RECAPTCHA_PUBLIC_KEY"].startswith("6Lf")
+    if app.config["RECAPTCHA_PUBLIC_KEY"]
+    else "N/A",
+)
+logger.info(
+    "DEBUG: Comprimento da chave pública: %s",
+    len(app.config["RECAPTCHA_PUBLIC_KEY"])
+    if app.config["RECAPTCHA_PUBLIC_KEY"]
+    else 0,
+)
+logger.info(
+    "DEBUG: Comprimento da chave privada: %s",
+    len(app.config["RECAPTCHA_PRIVATE_KEY"])
+    if app.config["RECAPTCHA_PRIVATE_KEY"]
+    else 0,
+)
 
 # Formulário de teste simples
 class TestForm(FlaskForm):
@@ -82,7 +106,7 @@ def test_recaptcha():
             success = True
         else:
             resultado = f"Erro na validação do reCAPTCHA: {form.errors}"
-            print("DEBUG: Erros do formulário:", form.errors)
+            logger.info("DEBUG: Erros do formulário: %s", form.errors)
     
     return render_template_string(
         test_template, 

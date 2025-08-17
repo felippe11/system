@@ -40,6 +40,7 @@ PERSONALIZAÇÃO:
 - Ajuste as quantidades modificando os parâmetros nas chamadas de função
 - Modifique as listas de constantes para personalizar os valores gerados
 """
+import logging
 import os
 import sys
 import random
@@ -50,6 +51,8 @@ import uuid
 from slugify import slugify  # You may need to pip install python-slugify
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 # Assumindo que o app flask está inicializado em outro arquivo
 # Você precisará importar seus modelos e extensões
@@ -173,13 +176,13 @@ def criar_clientes(quantidade=5):
             
             clientes.append(cliente)
         except Exception as e:
-            print(f"Erro ao criar cliente #{i+1}: {str(e)}")
+            logger.error("Erro ao criar cliente #%s: %s", i + 1, str(e))
             db.session.rollback()
     
     try:
         db.session.commit()
     except Exception as e:
-        print(f"Erro ao fazer commit dos clientes: {str(e)}")
+        logger.error("Erro ao fazer commit dos clientes: %s", str(e))
         db.session.rollback()
     
     fake.unique.clear()
@@ -635,9 +638,11 @@ def criar_usuarios(clientes, quantidade=150):
             )
             db.session.add(superadmin)
             db.session.commit()
-            print("Superadmin criado com sucesso")
+            logger.info("Superadmin criado com sucesso")
         except IntegrityError as e:
-            print(f"Erro ao criar superadmin (possivelmente já existe): {str(e)}")
+            logger.error(
+                "Erro ao criar superadmin (possivelmente já existe): %s", str(e)
+            )
             db.session.rollback()
             # Tenta buscar novamente após o rollback
             superadmin = Usuario.query.filter_by(email="admin@sistema.com").first()
@@ -645,7 +650,7 @@ def criar_usuarios(clientes, quantidade=150):
     # Adiciona o superadmin existente ou recém-criado à lista de usuários
     if superadmin:
         usuarios.append(superadmin)
-        print("Superadmin adicionado à lista de usuários")
+        logger.info("Superadmin adicionado à lista de usuários")
 
     # Criar usuários regulares em lotes para melhorar desempenho
     usuario_batch = []
@@ -694,13 +699,17 @@ def criar_usuarios(clientes, quantidade=150):
                     db.session.commit()
                     usuarios.extend(usuario_batch)
                     usuario_batch = []
-                    print(f"Lote de 50 usuários criado. Total: {len(usuarios)}")
+                    logger.info(
+                        "Lote de 50 usuários criado. Total: %s", len(usuarios)
+                    )
                 except IntegrityError as e:
-                    print(f"Erro ao criar lote de usuários: {str(e)}")
+                    logger.error(
+                        "Erro ao criar lote de usuários: %s", str(e)
+                    )
                     db.session.rollback()
                     
         except Exception as e:
-            print(f"Erro ao criar usuário #{i+1}: {str(e)}")
+            logger.error("Erro ao criar usuário #%s: %s", i + 1, str(e))
             db.session.rollback()
     
     # Commit do lote final
@@ -708,9 +717,13 @@ def criar_usuarios(clientes, quantidade=150):
         try:
             db.session.commit()
             usuarios.extend(usuario_batch)
-            print(f"Lote final de {len(usuario_batch)} usuários criado. Total: {len(usuarios)}")
+            logger.info(
+                "Lote final de %s usuários criado. Total: %s",
+                len(usuario_batch),
+                len(usuarios),
+            )
         except IntegrityError as e:
-            print(f"Erro ao criar lote final de usuários: {str(e)}")
+            logger.error("Erro ao criar lote final de usuários: %s", str(e))
             db.session.rollback()
 
     fake.unique.clear()
@@ -722,7 +735,9 @@ def criar_inscricoes(usuarios, eventos, oficinas):
     participantes = [u for u in usuarios if u.tipo in ('participante', 'professor')]
     
     if not participantes:
-        print("Aviso: Nenhum participante ou professor encontrado para criar inscrições")
+        logger.warning(
+            "Aviso: Nenhum participante ou professor encontrado para criar inscrições"
+        )
         return []
         
     inscricoes = []
@@ -731,7 +746,9 @@ def criar_inscricoes(usuarios, eventos, oficinas):
     # Inscrições em eventos
     for i, evento in enumerate(eventos):
         try:
-            print(f"Processando inscrições para evento {i+1}/{len(eventos)}")
+            logger.info(
+                "Processando inscrições para evento %s/%s", i + 1, len(eventos)
+            )
             
             # Seleciona aleatoriamente usuários para inscrever neste evento
             num_inscritos = random.randint(10, min(len(participantes), 100))
@@ -740,7 +757,10 @@ def criar_inscricoes(usuarios, eventos, oficinas):
             # Lista de tipos de inscrição disponíveis
             tipos_inscricao = evento.tipos_inscricao
             if not tipos_inscricao:
-                print(f"Aviso: Evento {evento.nome} não possui tipos de inscrição. Pulando...")
+                logger.warning(
+                    "Aviso: Evento %s não possui tipos de inscrição. Pulando...",
+                    evento.nome,
+                )
                 continue
             
             # Se o evento tem lotes, pega o lote ativo
@@ -848,14 +868,22 @@ def criar_inscricoes(usuarios, eventos, oficinas):
                         try:
                             db.session.commit()
                             inscricoes.extend(inscricoes_lote)
-                            print(f"Lote de {len(inscricoes_lote)} inscrições criado. Total: {len(inscricoes)}")
+                            logger.info(
+                                "Lote de %s inscrições criado. Total: %s",
+                                len(inscricoes_lote),
+                                len(inscricoes),
+                            )
                             inscricoes_lote = []
                         except IntegrityError as e:
-                            print(f"Erro ao criar lote de inscrições: {str(e)}")
+                            logger.error(
+                                "Erro ao criar lote de inscrições: %s", str(e)
+                            )
                             db.session.rollback()
                 
                 except Exception as e:
-                    print(f"Erro ao criar inscrição para usuário {idx+1}: {str(e)}")
+                    logger.error(
+                        "Erro ao criar inscrição para usuário %s: %s", idx + 1, str(e)
+                    )
                     continue
             
             # Commit do lote final de inscrições
@@ -863,25 +891,31 @@ def criar_inscricoes(usuarios, eventos, oficinas):
                 try:
                     db.session.commit()
                     inscricoes.extend(inscricoes_lote)
-                    print(f"Lote final de {len(inscricoes_lote)} inscrições criado. Total: {len(inscricoes)}")
+                    logger.info(
+                        "Lote final de %s inscrições criado. Total: %s",
+                        len(inscricoes_lote),
+                        len(inscricoes),
+                    )
                 except IntegrityError as e:
-                    print(f"Erro ao criar lote final de inscrições: {str(e)}")
+                    logger.error(
+                        "Erro ao criar lote final de inscrições: %s", str(e)
+                    )
                     db.session.rollback()
                     
         except Exception as e:
-            print(f"Erro ao processar evento {i+1}: {str(e)}")
+            logger.error("Erro ao processar evento %s: %s", i + 1, str(e))
             db.session.rollback()
     
     # Após criar inscrições, criar checkins para algumas delas
     if inscricoes:
-        print("Criando checkins...")
+        logger.info("Criando checkins...")
         criar_checkins(inscricoes, oficinas, eventos)
-        
+
         # Criar feedbacks para algumas oficinas
-        print("Criando feedbacks...")
+        logger.info("Criando feedbacks...")
         criar_feedbacks(inscricoes, oficinas)
     else:
-        print("Nenhuma inscrição criada para gerar checkins ou feedbacks")
+        logger.info("Nenhuma inscrição criada para gerar checkins ou feedbacks")
     
     return inscricoes
 
@@ -1049,7 +1083,7 @@ def criar_agendamentos_visita(eventos, usuarios):
             try:
                 db.session.add(agendamento)
             except Exception as e:
-                print(f"Erro ao criar agendamento: {str(e)}")
+                logger.error("Erro ao criar agendamento: %s", str(e))
                 db.session.rollback()
                 continue
                 
@@ -1061,14 +1095,18 @@ def criar_agendamentos_visita(eventos, usuarios):
 
     try:
         db.session.commit()
-        print(f"Criados {len(agendamentos)} agendamentos de visita com sucesso.")
+        logger.info(
+            "Criados %s agendamentos de visita com sucesso.", len(agendamentos)
+        )
     except Exception as e:
-        print(f"Erro ao salvar agendamentos: {str(e)}")
+        logger.error("Erro ao salvar agendamentos: %s", str(e))
         db.session.rollback()
     
     # Resumo dos horários e agendamentos criados
-    print(f"Total de horários disponíveis: {len(horarios_disponiveis)}")
-    print(f"Total de agendamentos criados: {len(agendamentos)}")
+    logger.info(
+        "Total de horários disponíveis: %s", len(horarios_disponiveis)
+    )
+    logger.info("Total de agendamentos criados: %s", len(agendamentos))
     return agendamentos
 
 
@@ -1169,7 +1207,7 @@ def criar_binarios(submissoes, quantidade=3):
 
 def popular_banco():
     """Função principal para popular o banco de dados"""
-    print("Iniciando população do banco de dados...")
+    logger.info("Iniciando população do banco de dados...")
     
     # Limpa tabelas existentes (opcional - tenha cuidado em produção!)
     try:
@@ -1183,54 +1221,54 @@ def popular_banco():
         
         db.session.commit()
     except Exception as e:
-        print(f"Aviso ao preparar banco: {e}")
+        logger.warning("Aviso ao preparar banco: %s", e)
         db.session.rollback()
     
-    print("Criando clientes...")
+    logger.info("Criando clientes...")
     clientes = criar_clientes(5)
     
-    print("Criando eventos...")
+    logger.info("Criando eventos...")
     eventos = criar_eventos(clientes, 10)
     
-    print("Criando ministrantes...")
+    logger.info("Criando ministrantes...")
     ministrantes = criar_ministrantes(clientes, 20)
     
-    print("Criando oficinas...")
+    logger.info("Criando oficinas...")
     oficinas = criar_oficinas(eventos, ministrantes, 10)
     
-    print("Criando usuários...")
+    logger.info("Criando usuários...")
     usuarios = criar_usuarios(clientes, 200)
 
-    print("Criando inscrições...")
+    logger.info("Criando inscrições...")
     inscricoes = criar_inscricoes(usuarios, eventos, oficinas)
 
-    print("Criando submissões...")
+    logger.info("Criando submissões...")
     submissoes, logs_sub = criar_submissoes(eventos, usuarios)
 
-    print("Criando reviews e assignments...")
+    logger.info("Criando reviews e assignments...")
     reviews, assignments, logs_rev = criar_reviews_assignments(submissoes, usuarios)
 
-    print("Criando arquivos binários...")
+    logger.info("Criando arquivos binários...")
     arquivos = criar_binarios(submissoes)
 
     audit_logs = logs_sub + logs_rev
 
-    print("Criando agendamentos de visita...")
+    logger.info("Criando agendamentos de visita...")
     agendamentos = criar_agendamentos_visita(eventos, usuarios)
 
-    print("Banco de dados populado com sucesso!")
-    print("Foram criados:")
-    print(f"- {len(clientes)} clientes")
-    print(f"- {len(eventos)} eventos")
-    print(f"- {len(ministrantes)} ministrantes")
-    print(f"- {len(oficinas)} oficinas")
-    print(f"- {len(usuarios)} usuários")
-    print(f"- {len(inscricoes)} inscrições")
-    print(f"- {len(submissoes)} submissões")
-    print(f"- {len(reviews)} reviews")
-    print(f"- {len(assignments)} assignments")
-    print(f"- {len(arquivos)} arquivos binários")
-    print(f"- {len(agendamentos)} agendamentos de visita")
+    logger.info("Banco de dados populado com sucesso!")
+    logger.info("Foram criados:")
+    logger.info("- %s clientes", len(clientes))
+    logger.info("- %s eventos", len(eventos))
+    logger.info("- %s ministrantes", len(ministrantes))
+    logger.info("- %s oficinas", len(oficinas))
+    logger.info("- %s usuários", len(usuarios))
+    logger.info("- %s inscrições", len(inscricoes))
+    logger.info("- %s submissões", len(submissoes))
+    logger.info("- %s reviews", len(reviews))
+    logger.info("- %s assignments", len(assignments))
+    logger.info("- %s arquivos binários", len(arquivos))
+    logger.info("- %s agendamentos de visita", len(agendamentos))
     
     return {
         'clientes': clientes,
@@ -1259,19 +1297,21 @@ if __name__ == "__main__":
         
         app = create_app()
         with app.app_context():
-            print("Iniciando população do banco com app.context()")
+            logger.info("Iniciando população do banco com app.context()")
             dados = popular_banco()
-            print("População concluída com sucesso!")
+            logger.info("População concluída com sucesso!")
     except ImportError:
         # Se você estiver usando este script fora do aplicativo Flask, configure o contexto
-        print("Para executar este script, você deve importá-lo em seu aplicativo Flask")
-        print("e executá-lo dentro de um contexto de aplicativo.")
-        print("Exemplo:")
-        print("```")
-        print("from app import app, db")
-        print("from populate_script import popular_banco")
-        print("with app.app_context():")
-        print("    popular_banco()")
-        print("```")
-        print("\nOu execute diretamente com:")
-        print("python populate_script.py")
+        logger.info(
+            "Para executar este script, você deve importá-lo em seu aplicativo Flask"
+        )
+        logger.info("e executá-lo dentro de um contexto de aplicativo.")
+        logger.info("Exemplo:")
+        logger.info("```")
+        logger.info("from app import app, db")
+        logger.info("from populate_script import popular_banco")
+        logger.info("with app.app_context():")
+        logger.info("    popular_banco()")
+        logger.info("```")
+        logger.info("\nOu execute diretamente com:")
+        logger.info("python populate_script.py")

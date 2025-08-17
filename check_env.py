@@ -1,2 +1,9 @@
+import logging
 import os
-print('MERCADOPAGO_ACCESS_TOKEN: ', bool(os.getenv('MERCADOPAGO_ACCESS_TOKEN')))
+
+logger = logging.getLogger(__name__)
+
+logger.info(
+    'MERCADOPAGO_ACCESS_TOKEN: %s',
+    bool(os.getenv('MERCADOPAGO_ACCESS_TOKEN')),
+)

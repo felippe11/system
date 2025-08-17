@@ -3,9 +3,12 @@ Repara a integração com o Mercado Pago adicionando o patch
 diretamente ao arquivo routes/inscricao_routes.py
 """
 
+import logging
 import os
 import sys
 import re
+
+logger = logging.getLogger(__name__)
 
 def apply_mp_fix():
     """
@@ -14,7 +17,7 @@ def apply_mp_fix():
     filepath = os.path.join('routes', 'inscricao_routes.py')
     
     if not os.path.exists(filepath):
-        print(f"Erro: O arquivo {filepath} não foi encontrado.")
+        logger.error("Erro: O arquivo %s não foi encontrado.", filepath)
         return False
         
     with open(filepath, 'r', encoding='utf-8') as file:
@@ -45,30 +48,30 @@ def apply_mp_fix():
     with open(filepath, 'w', encoding='utf-8') as file:
         file.write(content)
     
-    print(f"Arquivo {filepath} atualizado com sucesso!")
+    logger.info("Arquivo %s atualizado com sucesso!", filepath)
     return True
 
 def main():
     """
     Função principal que aplica os patches necessários
     """
-    print("\nAplicando correções para integração com Mercado Pago...")
+    logger.info("\nAplicando correções para integração com Mercado Pago...")
     
     # Verificar se estamos no diretório raiz do projeto
     if not os.path.exists('app.py'):
-        print("Erro: Este script deve ser executado no diretório raiz do projeto.")
+        logger.error("Erro: Este script deve ser executado no diretório raiz do projeto.")
         return False
     
     # Aplicar correção ao inscricao_routes.py
     if apply_mp_fix():
-        print("\nCorreção aplicada com sucesso!")
-        print("\nPróximos passos:")
-        print("1. Reinicie a aplicação: python app.py")
-        print("2. Teste o fluxo de cadastro de participante")
-        print("3. Verifique os logs para confirmar que as URLs estão corretas")
+        logger.info("\nCorreção aplicada com sucesso!")
+        logger.info("\nPróximos passos:")
+        logger.info("1. Reinicie a aplicação: python app.py")
+        logger.info("2. Teste o fluxo de cadastro de participante")
+        logger.info("3. Verifique os logs para confirmar que as URLs estão corretas")
         return True
     else:
-        print("\nErro ao aplicar correções.")
+        logger.error("\nErro ao aplicar correções.")
         return False
 
 if __name__ == "__main__":
