@@ -50,6 +50,11 @@ def inject_reviewer_registration_flag():
 @peer_review_routes.route("/submissoes/controle")
 @login_required
 def submission_control():
+    """Render the submission control panel.
+
+    Returns:
+        Response: Page listing submissions and available reviewers.
+    """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -72,6 +77,13 @@ def submission_control():
 @peer_review_routes.route("/assign_reviews", methods=["POST"])
 @login_required
 def assign_reviews():
+    """Assign reviewers to submissions via JSON.
+
+    The request body must map submission IDs to lists of reviewer IDs.
+
+    Returns:
+        dict: JSON object with success flag.
+    """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -242,6 +254,14 @@ def assign_by_filters():
 @peer_review_routes.route("/auto_assign/<int:evento_id>", methods=["POST"])
 @login_required
 def auto_assign(evento_id):
+    """Automatically assign reviewers to submissions by area.
+
+    Args:
+        evento_id (int): Event identifier.
+
+    Returns:
+        dict: JSON response with success flag.
+    """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
@@ -348,8 +368,15 @@ def create_review():
 # Formulário de revisão (público via locator)
 # ---------------------------------------------------------------------------
 @peer_review_routes.route("/review/<locator>", methods=["GET", "POST"])
-
 def review_form(locator):
+    """Handle display and submission of a review form.
+
+    Args:
+        locator (str): Public identifier for the review.
+
+    Returns:
+        Response: Rendered form or redirect after submission.
+    """
     review = Review.query.filter_by(locator=locator).first_or_404()
     barema = EventoBarema.query.filter_by(
         evento_id=review.submission.evento_id
@@ -440,6 +467,11 @@ def review_form(locator):
 @peer_review_routes.route("/dashboard/author_reviews")
 @login_required
 def author_reviews():
+    """Show review status for submissions by the current user.
+
+    Returns:
+        Response: Author dashboard page.
+    """
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("peer_review/dashboard_author.html", trabalhos=trabalhos)
 
@@ -448,6 +480,11 @@ def author_reviews():
 @peer_review_routes.route("/dashboard/reviewer_reviews")
 @login_required
 def reviewer_reviews():
+    """Show assignments for the logged-in reviewer.
+
+    Returns:
+        Response: Reviewer dashboard page.
+    """
     assignments = Assignment.query.filter_by(reviewer_id=current_user.id).all()
     config = RevisaoConfig.query.first()
     return render_template(
@@ -458,10 +495,17 @@ def reviewer_reviews():
 @peer_review_routes.route("/dashboard/editor_reviews/<int:evento_id>")
 @login_required
 def editor_reviews(evento_id):
+    """List reviews for an event to privileged users.
+
+    Args:
+        evento_id (int): Event identifier.
+
+    Returns:
+        Response: Editor dashboard page.
+    """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-
 
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
     return render_template("peer_review/dashboard_editor.html", trabalhos=trabalhos)
@@ -510,6 +554,11 @@ def client_reviews_panel():
 # ------------------------- ROTAS FLAT PARA SPAS ---------------------------
 @peer_review_routes.route("/peer-review/author")
 def author_dashboard():
+    """Serve base page for the author dashboard SPA.
+
+    Returns:
+        Response: Rendered HTML template.
+    """
     # SPA / Vue / React etc. – serve apenas o HTML base
     return render_template("peer_review/author/dashboard.html", submissions=[])
 
@@ -564,6 +613,11 @@ def reviewer_dashboard():
 
 @peer_review_routes.route("/peer-review/editor")
 def editor_dashboard_page():
+    """Serve base page for the editor dashboard SPA.
+
+    Returns:
+        Response: Rendered HTML template.
+    """
     return render_template("peer_review/editor/dashboard.html", decisions=[])
 
 
