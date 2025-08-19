@@ -25,6 +25,7 @@ from models import (
     ConfiguracaoEvento,
     Cliente,
 )
+
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
 import logging
