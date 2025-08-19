@@ -1,4 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    session,
+)
 from flask_login import login_required, current_user
 from extensions import db, socketio
 from datetime import datetime
@@ -19,12 +28,15 @@ from .agendamento_routes import agendamento_routes  # Needed for URL generation 
 
 logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
+
 checkin_routes = Blueprint('checkin_routes', __name__)
 
 
 @checkin_routes.route('/leitor_checkin', methods=['GET'])
 @login_required
 def leitor_checkin():
+    """Realiza check-in com base no token fornecido."""
     logger.debug("Entrou em /leitor_checkin")
 
     token = request.args.get('token')
@@ -48,6 +60,34 @@ def leitor_checkin():
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
         return redirect(url_for('dashboard_routes.dashboard'))
+
+    if inscricao.oficina_id:
+        cliente_id_associado = inscricao.oficina.cliente_id
+    elif inscricao.evento_id:
+        cliente_id_associado = inscricao.evento.cliente_id
+    else:
+        cliente_id_associado = None
+
+    is_admin = getattr(current_user, "is_admin", False)
+    is_super = getattr(current_user, "is_superuser", False)
+    if callable(is_super):
+        is_super = is_super()
+
+    if (
+        cliente_id_associado is not None
+        and current_user.id != cliente_id_associado
+        and not (is_admin or is_super)
+    ):
+        mensagem = "Você não tem permissão para realizar check-in."
+        logger.warning(
+            "Usuário %s não autorizado para check-in do cliente %s",
+            current_user.id,
+            cliente_id_associado,
+        )
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "erro", "mensagem": mensagem}), 403
+        flash(mensagem, "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
 
     # Verifica se é check-in de oficina ou evento (prioriza oficina)
     if inscricao.oficina_id:

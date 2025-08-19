@@ -10,6 +10,7 @@ os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
 
 utils_stub = types.ModuleType('utils')
+utils_stub.__path__ = []
 taxa_service = types.ModuleType('utils.taxa_service')
 taxa_service.calcular_taxa_cliente = lambda *a, **k: {
     'taxa_aplicada': 0,
@@ -26,6 +27,9 @@ utils_stub.formatar_brasilia = lambda *a, **k: ''
 utils_stub.determinar_turno = lambda *a, **k: ''
 sys.modules.setdefault('utils', utils_stub)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
+dia_semana_stub = types.ModuleType('utils.dia_semana')
+dia_semana_stub.dia_semana = lambda *a, **k: ''
+sys.modules.setdefault('utils.dia_semana', dia_semana_stub)
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
 utils_security.password_is_strong = lambda x: True
@@ -59,6 +63,9 @@ sys.modules.setdefault('pandas', types.ModuleType('pandas'))
 sys.modules.setdefault('qrcode', types.ModuleType('qrcode'))
 sys.modules.setdefault('openpyxl', types.ModuleType('openpyxl'))
 sys.modules['openpyxl'].Workbook = object
+agendamento_stub = types.ModuleType('routes.agendamento_routes')
+agendamento_stub.agendamento_routes = object()
+sys.modules.setdefault('routes.agendamento_routes', agendamento_stub)
 pil_stub = types.ModuleType('PIL')
 pil_stub.Image = types.SimpleNamespace(new=lambda *a, **k: None, open=lambda *a, **k: None)
 pil_stub.ImageDraw = types.SimpleNamespace(Draw=lambda *a, **k: None)
@@ -94,8 +101,13 @@ from app import create_app
 from extensions import db
 from models import Evento, Oficina, Inscricao
 from models.user import Cliente, Usuario, Ministrante
-                    ConfiguracaoCliente, HorarioVisitacao, AgendamentoVisita,
-                    AlunoVisitante, Checkin)
+from models.event import (
+    ConfiguracaoCliente,
+    HorarioVisitacao,
+    AgendamentoVisita,
+    AlunoVisitante,
+    Checkin,
+)
 
 @pytest.fixture
 def app():
@@ -340,3 +352,67 @@ def test_leitor_checkin_json_other_client_denied(client, app):
     assert resp.status_code == 403
     data = resp.get_json()
     assert data['status'] == 'error'
+
+
+def test_leitor_checkin_html_success(client, app):
+    with app.app_context():
+        token = (
+            Inscricao.query.filter(Inscricao.evento_id.isnot(None))
+            .first()
+            .qr_code_token
+        )
+        participante = Usuario.query.filter_by(email='part@test').first()
+        evento = Evento.query.first()
+    login(client, 'cli@test', '123')
+    resp = client.get('/leitor_checkin', query_string={'token': token})
+    assert resp.status_code == 302
+    with app.app_context():
+        assert (
+            Checkin.query.filter_by(
+                usuario_id=participante.id, evento_id=evento.id
+            ).count()
+            == 1
+        )
+
+
+def test_leitor_checkin_html_other_client_denied(client, app):
+    with app.app_context():
+        other = Cliente(
+            nome='Other',
+            email='otherhtml@test',
+            senha=generate_password_hash('123'),
+        )
+        db.session.add(other)
+        db.session.commit()
+
+        evento = Evento(
+            cliente_id=other.id,
+            nome='E2',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
+        db.session.add(evento)
+        db.session.commit()
+
+        participante = Usuario.query.filter_by(email='part@test').first()
+        insc = Inscricao(
+            usuario_id=participante.id,
+            cliente_id=other.id,
+            evento_id=evento.id,
+            status_pagamento='approved',
+        )
+        db.session.add(insc)
+        db.session.commit()
+        token = insc.qr_code_token
+
+    login(client, 'cli@test', '123')
+    resp = client.get(
+        '/leitor_checkin',
+        query_string={'token': token},
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert resp.status_code == 403
+    data = resp.get_json()
+    assert data['status'] in ('erro', 'error')
+    with app.app_context():
+        assert Checkin.query.filter_by(evento_id=evento.id).count() == 0
