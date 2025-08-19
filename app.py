@@ -22,6 +22,14 @@ from utils.dia_semana import dia_semana
 
 
 def create_app():
+    """Create and configure the Flask application.
+
+    Initializes extensions, registers routes and filters, and schedules
+    background tasks required by the project.
+
+    Returns:
+        Flask: Configured application instance ready to serve requests.
+    """
     app = Flask(__name__)
     app.config.from_object(Config)
     # Normaliza o URI para garantir que seja uma string
