@@ -84,13 +84,24 @@ def create_app():
     from routes import register_routes
     register_routes(app)
     
-    # Registro de rotas de diagnóstico (remova ou comente em produção se necessário)
-    try:
-        from routes.debug_recaptcha_routes import debug_recaptcha_routes
-        app.register_blueprint(debug_recaptcha_routes)
-        app.logger.info("Rotas de diagnóstico de reCAPTCHA registradas - REMOVER EM PRODUÇÃO")
-    except ImportError as e:
-        app.logger.warning(f"Não foi possível carregar rotas de diagnóstico: {e}")
+    # Registro de rotas de diagnóstico (opcional em desenvolvimento)
+    enable_debug_routes = Config.DEBUG or os.getenv("ENABLE_DIAGNOSTIC_ROUTES") == "1"
+
+    if enable_debug_routes:
+        try:
+            from routes.debug_recaptcha_routes import debug_recaptcha_routes
+            app.register_blueprint(debug_recaptcha_routes)
+            app.logger.info(
+                "Rotas de diagnóstico de reCAPTCHA habilitadas"
+            )
+        except ImportError as e:
+            app.logger.warning(
+                "Não foi possível carregar rotas de diagnóstico: %s", e
+            )
+    else:
+        app.logger.info(
+            "Rotas de diagnóstico de reCAPTCHA desabilitadas"
+        )
 
     # Agendamento do reconciliador e rotas utilitárias são registrados aqui
     scheduler = BackgroundScheduler()
