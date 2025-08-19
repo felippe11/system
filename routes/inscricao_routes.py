@@ -6,11 +6,28 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
-    Evento, Oficina, Inscricao, Usuario, LinkCadastro,
-    LoteInscricao, EventoInscricaoTipo, LoteTipoInscricao,
-    CampoPersonalizadoCadastro, RespostaCampo, RespostaFormulario, Formulario, RegraInscricaoEvento,
-    Patrocinador, Ministrante, InscricaoTipo, ConfiguracaoCliente, ConfiguracaoEvento, Cliente
+from models import (
+    Evento,
+    Oficina,
+    Inscricao,
+    Usuario,
+    LinkCadastro,
+    LoteInscricao,
+    EventoInscricaoTipo,
+    LoteTipoInscricao,
+    CampoPersonalizadoCadastro,
+    RespostaCampo,
+    RespostaFormulario,
+    Formulario,
+    RegraInscricaoEvento,
+    Patrocinador,
+    Ministrante,
+    InscricaoTipo,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    Cliente,
 )
+
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
 import uuid
