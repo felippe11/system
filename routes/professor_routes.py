@@ -9,6 +9,7 @@ import io
 import qrcode
 
 from extensions import db
+
 from models import (
     Evento,
     ProfessorBloqueado,
@@ -106,9 +107,14 @@ def horarios_disponiveis_professor(evento_id):
         professor_id=current_user.id,
         evento_id=evento_id
     ).filter(ProfessorBloqueado.data_final >= datetime.utcnow()).first()
-    
+
     if bloqueio:
-        flash(f'Você está temporariamente bloqueado até {bloqueio.data_final.strftime("%d/%m/%Y")}. Motivo: {bloqueio.motivo}', 'danger')
+        flash(
+            f'Você está temporariamente bloqueado até '
+            f'{bloqueio.data_final.strftime("%d/%m/%Y")}. '
+            f'Motivo: {bloqueio.motivo}',
+            'danger',
+        )
         return redirect(url_for('routes.eventos_disponiveis_professor'))
     
     evento = Evento.query.get_or_404(evento_id)
@@ -177,9 +183,14 @@ def criar_agendamento_professor(horario_id):
         professor_id=current_user.id,
         evento_id=evento.id
     ).filter(ProfessorBloqueado.data_final >= datetime.utcnow()).first()
-    
+
     if bloqueio:
-        flash(f'Você está temporariamente bloqueado até {bloqueio.data_final.strftime("%d/%m/%Y")}. Motivo: {bloqueio.motivo}', 'danger')
+        flash(
+            f'Você está temporariamente bloqueado até '
+            f'{bloqueio.data_final.strftime("%d/%m/%Y")}. '
+            f'Motivo: {bloqueio.motivo}',
+            'danger',
+        )
         return redirect(url_for('routes.eventos_disponiveis_professor'))
     
     # Verificar se ainda há vagas
