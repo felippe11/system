@@ -210,7 +210,7 @@ def checkin(oficina_id):
 @login_required
 def lista_checkins(oficina_id):
     if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso Autorizado!", "danger")
+        flash("Acesso não autorizado!", "danger")
 
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
