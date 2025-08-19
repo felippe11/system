@@ -121,6 +121,23 @@ def create_app():
 
 # Função para reconciliar pagamentos pendentes
 def reconciliar_pendentes():
+    """Reconcile pending payments with Mercado Pago.
+
+    Retrieves ``Inscricao`` records with status ``pending`` that are older than
+    24 hours and checks each payment via the Mercado Pago SDK. Approved
+    payments have their status updated in the database. If the SDK cannot be
+    initialized, the function exits without making changes.
+
+    Args:
+        None
+
+    Returns:
+        None: This function does not return a value.
+
+    Exceptions:
+        Any database commit error is caught, the session is rolled back, and
+        the error is logged.
+    """
     sdk = get_sdk()
     if not sdk:
         return
