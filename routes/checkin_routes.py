@@ -6,9 +6,15 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
-    AgendamentoVisita, Evento, Usuario
+from models import (
+    Checkin,
+    Inscricao,
+    Oficina,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    AgendamentoVisita,
+    Evento,
+    Usuario,
 )
 from utils import formatar_brasilia, determinar_turno
 from .agendamento_routes import agendamento_routes  # Needed for URL generation
