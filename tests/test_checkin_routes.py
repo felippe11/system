@@ -4,10 +4,13 @@ import types
 import pytest
 from werkzeug.security import generate_password_hash
 from datetime import date, time
-from config import Config
+from flask import Blueprint
 
+os.environ.setdefault('SECRET_KEY', 'testing')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
+
+from config import Config
 
 utils_stub = types.ModuleType('utils')
 utils_stub.__path__ = []
@@ -25,11 +28,18 @@ utils_stub.gerar_comprovante_pdf = lambda *a, **k: ''
 utils_stub.enviar_email = lambda *a, **k: None
 utils_stub.formatar_brasilia = lambda *a, **k: ''
 utils_stub.determinar_turno = lambda *a, **k: ''
+dia_semana_mod = types.ModuleType('utils.dia_semana')
+dia_semana_mod.dia_semana = lambda *a, **k: ''
+utils_stub.dia_semana = dia_semana_mod
 sys.modules.setdefault('utils', utils_stub)
 sys.modules.setdefault('utils.taxa_service', taxa_service)
-dia_semana_stub = types.ModuleType('utils.dia_semana')
-dia_semana_stub.dia_semana = lambda *a, **k: ''
-sys.modules.setdefault('utils.dia_semana', dia_semana_stub)
+# utils.dia_semana stub/unificação
+if 'dia_semana_mod' in globals() and isinstance(dia_semana_mod, types.ModuleType):
+    sys.modules.setdefault('utils.dia_semana', dia_semana_mod)
+else:
+    dia_semana_stub = types.ModuleType('utils.dia_semana')
+    dia_semana_stub.dia_semana = lambda *a, **k: ''
+    sys.modules.setdefault('utils.dia_semana', dia_semana_stub)
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
 utils_security.password_is_strong = lambda x: True
@@ -94,12 +104,25 @@ reportlab_platypus.Spacer = object
 sys.modules.setdefault('reportlab.lib.styles', types.ModuleType('reportlab.lib.styles'))
 sys.modules['reportlab.lib.styles'].getSampleStyleSheet = lambda: None
 
+agendamento_stub = types.ModuleType('routes.agendamento_routes')
+agendamento_stub.agendamento_routes = Blueprint('agendamento_routes', __name__)
+sys.modules.setdefault('routes.agendamento_routes', agendamento_stub)
+
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
 
 from app import create_app
 from extensions import db
-from models import Evento, Oficina, Inscricao
+from models import (
+    Evento,
+    Oficina,
+    Inscricao,
+    ConfiguracaoCliente,
+    HorarioVisitacao,
+    AgendamentoVisita,
+    AlunoVisitante,
+    Checkin,
+)
 from models.user import Cliente, Usuario, Ministrante
 from models.event import (
     ConfiguracaoCliente,
@@ -109,8 +132,20 @@ from models.event import (
     Checkin,
 )
 
+
 @pytest.fixture
 def app():
+    import routes
+
+    def minimal_register_routes(app):
+        from routes.auth_routes import auth_routes
+        from routes.checkin_routes import checkin_routes
+
+        app.register_blueprint(auth_routes)
+        app.register_blueprint(checkin_routes)
+
+    routes.register_routes = minimal_register_routes
+
     app = create_app()
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
@@ -121,49 +156,99 @@ def app():
         db.session.add(cliente)
         db.session.commit()
 
-        db.session.add(ConfiguracaoCliente(cliente_id=cliente.id,
-                                            permitir_checkin_global=True))
+        db.session.add(
+            ConfiguracaoCliente(cliente_id=cliente.id, permitir_checkin_global=True)
+        )
         db.session.commit()
 
-        evento = Evento(cliente_id=cliente.id, nome='Evento', habilitar_lotes=False, inscricao_gratuita=True)
+        evento = Evento(
+            cliente_id=cliente.id,
+            nome='Evento',
+            habilitar_lotes=False,
+            inscricao_gratuita=True,
+        )
         db.session.add(evento)
         db.session.commit()
 
-        ministrante = Ministrante(nome='Min', formacao='F', categorias_formacao=None,
-                                  foto=None, areas_atuacao='a', cpf='mcpf', pix='1',
-                                  cidade='C', estado='ST', email='min@test',
-                                  senha=generate_password_hash('123'), cliente_id=cliente.id)
+        ministrante = Ministrante(
+            nome='Min',
+            formacao='F',
+            categorias_formacao=None,
+            foto=None,
+            areas_atuacao='a',
+            cpf='mcpf',
+            pix='1',
+            cidade='C',
+            estado='ST',
+            email='min@test',
+            senha=generate_password_hash('123'),
+            cliente_id=cliente.id,
+        )
         db.session.add(ministrante)
         db.session.commit()
 
-        oficina = Oficina(titulo='Oficina', descricao='Desc', ministrante_id=ministrante.id,
-                          vagas=10, carga_horaria='2h', estado='ST', cidade='City',
-                          cliente_id=cliente.id, evento_id=evento.id,
-                          opcoes_checkin='correct,other', palavra_correta='correct')
+        oficina = Oficina(
+            titulo='Oficina',
+            descricao='Desc',
+            ministrante_id=ministrante.id,
+            vagas=10,
+            carga_horaria='2h',
+            estado='ST',
+            cidade='City',
+            cliente_id=cliente.id,
+            evento_id=evento.id,
+            opcoes_checkin='correct,other',
+            palavra_correta='correct',
+        )
         db.session.add(oficina)
         db.session.commit()
 
-        participante = Usuario(nome='Part', cpf='111', email='part@test',
-                               senha=generate_password_hash('p123'), formacao='F',
-                               tipo='participante', cliente_id=cliente.id)
+        participante = Usuario(
+            nome='Part',
+            cpf='111',
+            email='part@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='participante',
+            cliente_id=cliente.id,
+        )
         db.session.add(participante)
         db.session.commit()
 
-        insc_oficina = Inscricao(usuario_id=participante.id, cliente_id=cliente.id,
-                                 oficina_id=oficina.id, status_pagamento='approved')
-        insc_evento = Inscricao(usuario_id=participante.id, cliente_id=cliente.id,
-                                 evento_id=evento.id, status_pagamento='approved')
+        insc_oficina = Inscricao(
+            usuario_id=participante.id,
+            cliente_id=cliente.id,
+            oficina_id=oficina.id,
+            status_pagamento='approved',
+        )
+        insc_evento = Inscricao(
+            usuario_id=participante.id,
+            cliente_id=cliente.id,
+            evento_id=evento.id,
+            status_pagamento='approved',
+        )
         db.session.add_all([insc_oficina, insc_evento])
         db.session.commit()
 
-        professor = Usuario(nome='Prof', cpf='222', email='prof@test',
-                            senha=generate_password_hash('p123'), formacao='F', tipo='professor')
+        professor = Usuario(
+            nome='Prof',
+            cpf='222',
+            email='prof@test',
+            senha=generate_password_hash('p123'),
+            formacao='F',
+            tipo='professor',
+        )
         db.session.add(professor)
         db.session.commit()
 
-        horario = HorarioVisitacao(evento_id=evento.id, data=date.today(),
-                                   horario_inicio=time(9,0), horario_fim=time(10,0),
-                                   capacidade_total=30, vagas_disponiveis=30)
+        horario = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today(),
+            horario_inicio=time(9, 0),
+            horario_fim=time(10, 0),
+            capacidade_total=30,
+            vagas_disponiveis=30,
+        )
         db.session.add(horario)
         db.session.commit()
 
@@ -174,7 +259,7 @@ def app():
             turma='T1',
             nivel_ensino='fundamental',
             quantidade_alunos=10,
-            status='confirmado'
+            status='confirmado',
         )
         db.session.add(agendamento)
         db.session.commit()
@@ -354,6 +439,29 @@ def test_leitor_checkin_json_other_client_denied(client, app):
     assert data['status'] == 'error'
 
 
+def test_checkin_manual_denied_for_participante(client, app):
+    """Participants should not perform manual check-ins."""
+    with app.app_context():
+        participante = Usuario.query.filter_by(email='part@test').first()
+        oficina = Oficina.query.first()
+
+    login(client, 'part@test', 'p123')
+    resp = client.post(
+        f'/cliente/checkin_manual/{participante.id}/{oficina.id}',
+        headers={'Referer': '/origem'},
+    )
+    assert resp.status_code == 302
+    with client.session_transaction() as sess:
+        assert ('danger', 'Acesso negado!') in sess.get('_flashes', [])
+    with app.app_context():
+        assert (
+            Checkin.query.filter_by(
+                usuario_id=participante.id, oficina_id=oficina.id
+            ).count()
+            == 0
+        )
+
+
 def test_leitor_checkin_html_success(client, app):
     with app.app_context():
         token = (
@@ -363,9 +471,13 @@ def test_leitor_checkin_html_success(client, app):
         )
         participante = Usuario.query.filter_by(email='part@test').first()
         evento = Evento.query.first()
+
+    # login como cliente (operador do leitor de check-in)
     login(client, 'cli@test', '123')
+
     resp = client.get('/leitor_checkin', query_string={'token': token})
-    assert resp.status_code == 302
+    assert resp.status_code == 302  # redireciona após registrar o check-in
+
     with app.app_context():
         assert (
             Checkin.query.filter_by(
@@ -405,7 +517,9 @@ def test_leitor_checkin_html_other_client_denied(client, app):
         db.session.commit()
         token = insc.qr_code_token
 
+    # operador logado pertence a outro cliente
     login(client, 'cli@test', '123')
+
     resp = client.get(
         '/leitor_checkin',
         query_string={'token': token},
@@ -414,5 +528,7 @@ def test_leitor_checkin_html_other_client_denied(client, app):
     assert resp.status_code == 403
     data = resp.get_json()
     assert data['status'] in ('erro', 'error')
+
     with app.app_context():
         assert Checkin.query.filter_by(evento_id=evento.id).count() == 0
+
