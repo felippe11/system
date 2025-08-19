@@ -10,11 +10,10 @@ from fpdf import FPDF
 from PIL import Image
 
 from extensions import db
-
+from models import (
     Evento, ProfessorBloqueado, SalaVisitacao, HorarioVisitacao,
     AgendamentoVisita, AlunoVisitante, ConfiguracaoAgendamento, Oficina,
     Inscricao,
-
 )
 from services.pdf_service import gerar_pdf_comprovante_agendamento
 from . import routes
