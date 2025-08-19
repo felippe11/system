@@ -6,9 +6,15 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
-    AgendamentoVisita, Evento, Usuario
+from models import (
+    Checkin,
+    Inscricao,
+    Oficina,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    AgendamentoVisita,
+    Evento,
+    Usuario,
 )
 from utils import formatar_brasilia, determinar_turno
 from .agendamento_routes import agendamento_routes  # Needed for URL generation
@@ -124,25 +130,38 @@ def leitor_checkin():
 @checkin_routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
 @login_required
 def checkin_manual(usuario_id, oficina_id):
-    checkin_existente = Checkin.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
+    if current_user.tipo not in ['admin', 'cliente']:
+        mensagem = 'Acesso negado!'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'erro', 'mensagem': mensagem}), 403
+        flash(mensagem, 'danger')
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=usuario_id, oficina_id=oficina_id
+    ).first()
     if checkin_existente:
         flash('Participante já realizou check-in.', 'warning')
-        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+        return redirect(
+            request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
+        )
 
     oficina = Oficina.query.get_or_404(oficina_id)
-    
+
     checkin = Checkin(
         usuario_id=usuario_id,
         oficina_id=oficina_id,
         palavra_chave="manual",
         cliente_id=oficina.cliente_id,
-        evento_id=oficina.evento_id
+        evento_id=oficina.evento_id,
     )
     db.session.add(checkin)
     db.session.commit()
 
     flash('Check-in manual registrado com sucesso!', 'success')
-    return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+    return redirect(
+        request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
+    )
 
 @checkin_routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
