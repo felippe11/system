@@ -3,7 +3,6 @@ from utils.security import sanitize_input
 from flask_login import login_required, current_user
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from datetime import datetime
 
     Evento, Oficina, Inscricao, Usuario, LinkCadastro,
@@ -13,7 +12,6 @@ from datetime import datetime
 )
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
-import uuid
 import logging
 from dateutil import parser
 
