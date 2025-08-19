@@ -3,11 +3,8 @@ from flask import Blueprint
 # Cria o Blueprint principal
 routes = Blueprint("routes", __name__)
 
-# Middleware para permitir acesso a usuários pendentes (ajustável conforme regra de negócio)
-@routes.before_request
-def bloquear_usuarios_pendentes():
-    # Atualmente o acesso é liberado para todos os usuários
-    return
+# Usuários com pagamento pendente continuam com acesso liberado, portanto
+# nenhum middleware de bloqueio é aplicado ao blueprint.
 
 def register_routes(app):
     # Importações e registros dos Blueprints de módulos organizados
