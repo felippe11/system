@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+"""Routes for managing event visits by professors and participants."""
 
 from flask import render_template, redirect, url_for, flash, request, send_file
 from flask_login import login_required, current_user
@@ -6,8 +7,6 @@ from datetime import datetime, timedelta
 import os
 import io
 import qrcode
-from fpdf import FPDF
-from PIL import Image
 
 from extensions import db
 
@@ -29,6 +28,11 @@ from . import routes
 @routes.route('/professor/eventos_disponiveis')
 @login_required
 def eventos_disponiveis_professor():
+    """List active events available for scheduling by professors.
+
+    Returns:
+        Response: Rendered template listing available events.
+    """
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
@@ -50,6 +54,14 @@ def eventos_disponiveis_professor():
 @routes.route('/professor/evento/<int:evento_id>')
 @login_required
 def detalhes_evento_professor(evento_id):
+    """Show details of a specific event to the logged professor.
+
+    Args:
+        evento_id (int): Identifier of the event.
+
+    Returns:
+        Response: Rendered template with event information.
+    """
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
@@ -77,6 +89,14 @@ def detalhes_evento_professor(evento_id):
 @routes.route('/professor/horarios_disponiveis/<int:evento_id>')
 @login_required
 def horarios_disponiveis_professor(evento_id):
+    """List available visitation times for the professor.
+
+    Args:
+        evento_id (int): Identifier of the event.
+
+    Returns:
+        Response: Rendered template with times grouped by date.
+    """
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
@@ -344,6 +364,14 @@ def remover_aluno_agendamento(aluno_id):
 @routes.route('/professor/importar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def importar_alunos_agendamento(agendamento_id):
+    """Import a list of students for an appointment from a CSV file.
+
+    Args:
+        agendamento_id (int): Identifier of the appointment.
+
+    Returns:
+        Response: Redirect or rendered template depending on the request.
+    """
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
@@ -421,6 +449,14 @@ def importar_alunos_agendamento(agendamento_id):
 @routes.route('/professor/confirmacao_agendamento/<int:agendamento_id>')
 @login_required
 def confirmacao_agendamento_professor(agendamento_id):
+    """Display confirmation page after student registration.
+
+    Args:
+        agendamento_id (int): Identifier of the appointment.
+
+    Returns:
+        Response: Rendered confirmation template.
+    """
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
@@ -446,7 +482,6 @@ def confirmacao_agendamento_professor(agendamento_id):
 @login_required
 def imprimir_agendamento_professor(agendamento_id):
     """Gera o comprovante de um agendamento."""
-
     # Permitir acesso a professores, participantes, clientes e usuários
     tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
     if current_user.tipo not in tipos_permitidos:
@@ -506,7 +541,6 @@ def imprimir_agendamento_professor(agendamento_id):
 @login_required
 def qrcode_agendamento_professor(agendamento_id):
     """Exibe o QR Code de um agendamento."""
-
     # Permitir acesso a professores, participantes, clientes e usuários
     tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
     if current_user.tipo not in tipos_permitidos:
