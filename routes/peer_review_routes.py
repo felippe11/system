@@ -11,8 +11,7 @@ from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
 
-
-
+from models import (
     Usuario,
     Review,
     RevisaoConfig,
@@ -25,7 +24,6 @@ from extensions import db
     RevisorCandidatura,
     RevisorProcess,
 )
-
 
 import uuid
 from datetime import datetime, timedelta
