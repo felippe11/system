@@ -1,19 +1,21 @@
+import os
+import uuid
+
 from flask import (
     Blueprint,
+    current_app,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
     url_for,
-    flash,
-    current_app,
 )
-from flask_login import login_required, current_user
-from werkzeug.utils import secure_filename
+from flask_login import current_user, login_required
 from werkzeug.security import generate_password_hash
-from utils.mfa import mfa_required
+from werkzeug.utils import secure_filename
 
 from extensions import db
-
+from models import (
     Submission,
     AuditLog,
     Evento,
@@ -22,8 +24,7 @@ from extensions import db
     RespostaFormulario,
     RespostaCampo,
 )
-import uuid
-import os
+from utils.mfa import mfa_required
 
 
 trabalho_routes = Blueprint(
