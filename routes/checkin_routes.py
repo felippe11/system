@@ -6,9 +6,15 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
-    AgendamentoVisita, Evento, Usuario
+from models import (
+    Checkin,
+    Inscricao,
+    Oficina,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    AgendamentoVisita,
+    Evento,
+    Usuario,
 )
 from utils import formatar_brasilia, determinar_turno
 from .agendamento_routes import agendamento_routes  # Needed for URL generation
@@ -209,8 +215,9 @@ def checkin(oficina_id):
 @checkin_routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
 @login_required
 def lista_checkins(oficina_id):
-    if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso Autorizado!", "danger")
+    if current_user.tipo not in ["admin", "cliente"]:
+        flash("Acesso não autorizado", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
 
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
