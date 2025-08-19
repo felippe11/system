@@ -1,17 +1,23 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required, current_user
 from extensions import db, socketio
-from werkzeug.utils import secure_filename
 from datetime import datetime
 import logging
 
-logger = logging.getLogger(__name__)
-
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
-    AgendamentoVisita, Evento, Usuario
+from models import (
+    Checkin,
+    Inscricao,
+    Oficina,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    AgendamentoVisita,
+    Evento,
+    Usuario,
 )
 from utils import formatar_brasilia, determinar_turno
-from .agendamento_routes import agendamento_routes  # Needed for URL generation
+from .agendamento_routes import agendamento_routes  # Needed for URL generation  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 checkin_routes = Blueprint('checkin_routes', __name__)
 
@@ -293,8 +299,6 @@ def leitor_checkin_json():
     Sempre grava o cliente_id para que apareça
     na lista filtrada por cliente.
     """
-    from datetime import datetime      # ← agora importado
-    import sys
 
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
