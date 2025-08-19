@@ -117,6 +117,13 @@ from models import (
     Evento,
     Oficina,
     Inscricao,
+)
+from models.user import (
+    Cliente,
+    Usuario,
+    Ministrante,
+)
+
     ConfiguracaoCliente,
     HorarioVisitacao,
     AgendamentoVisita,
@@ -351,6 +358,15 @@ def test_checkin_wrong_password(client, app):
         refreshed = Inscricao.query.get(insc.id)
         assert refreshed.checkin_attempts == 1
         assert Checkin.query.filter_by(usuario_id=participante.id, oficina_id=oficina.id).count() == 0
+
+
+def test_lista_checkins_requires_privileged_user(client, app):
+    with app.app_context():
+        oficina = Oficina.query.first()
+    login(client, 'part@test', 'p123')
+    resp = client.get(f'/oficina/{oficina.id}/checkins', follow_redirects=True)
+    assert resp.request.path == '/dashboard'
+    assert 'Acesso não autorizado' in resp.get_data(as_text=True)
 
 
 def test_processar_qrcode_success(client, app):
