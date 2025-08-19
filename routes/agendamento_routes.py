@@ -17,6 +17,7 @@ from utils.arquivo_utils import arquivo_permitido
 
 logger = logging.getLogger(__name__)
 
+from models import (
     AgendamentoVisita,
     HorarioVisitacao,
     Evento,
@@ -920,17 +921,26 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     
 from datetime import datetime, timedelta
 from sqlalchemy import and_, func, or_, case
-from flask import render_template, redirect, url_for, flash, request, send_file, session, jsonify
+from flask import (
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    request,
+    send_file,
+    session,
+    jsonify,
+)
 
 # Importe os modelos necessários
-
-    Evento, 
-    ConfiguracaoAgendamento, 
-    SalaVisitacao, 
-    HorarioVisitacao, 
-    AgendamentoVisita, 
-    AlunoVisitante, 
-    ProfessorBloqueado
+from models import (
+    Evento,
+    ConfiguracaoAgendamento,
+    SalaVisitacao,
+    HorarioVisitacao,
+    AgendamentoVisita,
+    AlunoVisitante,
+    ProfessorBloqueado,
 )
 
 @agendamento_routes.route('/configurar_agendamentos/<int:evento_id>', methods=['GET', 'POST'])
