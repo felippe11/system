@@ -270,8 +270,10 @@ def checkin(oficina_id):
 @checkin_routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
 @login_required
 def lista_checkins(oficina_id):
-    if current_user.tipo not in ['admin', 'cliente']:
+    if current_user.tipo not in ["admin", "cliente"]:
         flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
 
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
