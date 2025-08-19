@@ -3,9 +3,7 @@ from utils.security import sanitize_input
 from flask_login import login_required, current_user
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from datetime import datetime
-
 from models import (
     Evento,
     Oficina,
@@ -30,7 +28,6 @@ from models import (
 
 import os
 from mp_fix_patch import fix_mp_notification_url, create_mp_preference
-import uuid
 import logging
 from dateutil import parser
 
@@ -46,6 +43,161 @@ class LoteEsgotadoError(RuntimeError):
     """Lançada quando o lote escolhido não possui mais vagas."""
     pass
 
+
+class SenhaIncorretaError(RuntimeError):
+    """Erro levantado quando a senha informada não corresponde ao usuário."""
+
+
+class InscricaoExistenteError(RuntimeError):
+    """Erro levantado ao tentar inscrever usuário já cadastrado no evento."""
+
+
+def _resolver_link_evento(identifier: str):
+    """Obtém link, evento e cliente associados ao identificador.
+
+    O identificador pode ser um token, slug customizado ou o ID de um
+    evento público. Em caso de identificador inválido, ``ValueError`` é
+    levantado.
+    """
+
+    link = LinkCadastro.query.filter(
+        (LinkCadastro.token == identifier)
+        | (LinkCadastro.slug_customizado == identifier)
+    ).first()
+
+    if link:
+        return link, link.evento, link.cliente_id
+
+    if identifier.isdigit():
+        evento = Evento.query.get(int(identifier))
+        if (
+            evento
+            and evento.publico
+            and evento.status == "ativo"
+            and not evento.requer_aprovacao
+        ):
+            return None, evento, evento.cliente_id
+        return None, None, None
+
+    raise ValueError("Link de inscrição inválido.")
+
+
+def _criar_usuario_e_inscricao(
+    *,
+    nome: str,
+    cpf: str,
+    email: str,
+    senha: str,
+    formacao: str,
+    estados: list[str],
+    cidades: list[str],
+    lote_id: str | None,
+    lote_tipo_id: str | None,
+    tipo_insc_id: str | None,
+    cliente_id: int,
+    evento: Evento,
+    form,
+):
+    """Cria ou reutiliza usuário e gera sua inscrição.
+
+    Retorna ``(usuario, inscricao, duplicado)`` onde ``duplicado`` indica se
+    o usuário já existia. Pode levantar ``SenhaIncorretaError`` ou
+    ``InscricaoExistenteError`` quando aplicável.
+    """
+
+    config_cli = ConfiguracaoCliente.query.filter_by(
+        cliente_id=cliente_id
+    ).first()
+
+    def obrig(attr):  # pylint: disable=unused-variable
+        return getattr(config_cli, attr) if config_cli else True
+
+    total_insc = Inscricao.query.filter_by(cliente_id=cliente_id).count()
+    if (
+        config_cli
+        and config_cli.limite_inscritos is not None
+        and total_insc >= config_cli.limite_inscritos
+    ):
+        raise ValueError("Limite de inscritos atingido.")
+
+    if (
+        (obrig("obrigatorio_nome") and not nome)
+        or (obrig("obrigatorio_cpf") and not cpf)
+        or (obrig("obrigatorio_email") and not email)
+        or (obrig("obrigatorio_senha") and not senha)
+        or (obrig("obrigatorio_formacao") and not formacao)
+    ):
+        raise ValueError("Preencha todos os campos obrigatórios.")
+
+    duplicado = Usuario.query.filter(
+        (Usuario.email == email) | (Usuario.cpf == cpf)
+    ).first()
+
+    usuario = None
+    if duplicado:
+        if not check_password_hash(duplicado.senha, senha):
+            raise SenhaIncorretaError("Senha incorreta. Faça login.")
+        usuario = duplicado
+        inscr_existente = Inscricao.query.filter_by(
+            usuario_id=duplicado.id, evento_id=evento.id
+        ).first()
+        if inscr_existente:
+            raise InscricaoExistenteError(
+                "Você já possui inscrição neste evento. Faça login."
+            )
+
+    resolved_tipo = None
+    if lote_tipo_id:
+        lt = LoteTipoInscricao.query.get(lote_tipo_id)
+        if not lt:
+            raise ValueError("Tipo de inscrição inválido.")
+        resolved_tipo = lt.tipo_inscricao_id
+        lote_id = lt.lote_id
+    elif tipo_insc_id:
+        resolved_tipo = int(tipo_insc_id)
+
+    if lote_id:
+        _reservar_vaga(int(lote_id))
+
+    if not usuario:
+        usuario = Usuario(
+            nome=nome,
+            cpf=cpf,
+            email=email,
+            senha=generate_password_hash(senha),
+            formacao=formacao,
+            tipo="participante",
+            cliente_id=cliente_id,
+            evento_id=evento.id,
+            tipo_inscricao_id=resolved_tipo,
+            estados=",".join(estados) if estados else None,
+            cidades=",".join(cidades) if cidades else None,
+        )
+        db.session.add(usuario)
+        db.session.flush()
+    else:
+        if usuario.evento_id != evento.id:
+            usuario.evento_id = evento.id
+            if current_user.is_authenticated and current_user.id == usuario.id:
+                current_user.evento_id = evento.id
+
+    cliente_obj = Cliente.query.get(cliente_id)
+    if cliente_obj and cliente_obj not in usuario.clientes:
+        usuario.clientes.append(cliente_obj)
+
+    inscricao = Inscricao(
+        usuario_id=usuario.id,
+        evento_id=evento.id,
+        cliente_id=cliente_id,
+        lote_id=lote_id if lote_id else None,
+        tipo_inscricao_id=resolved_tipo,
+    )
+    db.session.add(inscricao)
+
+    _salvar_campos_personalizados(usuario.id, cliente_id, form)
+
+    return usuario, inscricao, bool(duplicado)
+
 inscricao_routes = Blueprint('inscricao_routes', __name__)
 
 
@@ -55,30 +207,11 @@ def cadastro_participante(identifier: str | None = None):
 
     from services.mp_service import get_sdk
 
-    # ------------------------------------------------------------------
-    # 1) Localiza o link e o evento relacionados
-    # ------------------------------------------------------------------
-    link = LinkCadastro.query.filter(
-        (LinkCadastro.token == identifier) |
-        (LinkCadastro.slug_customizado == identifier)
-    ).first()
-
-    evento = None
-    cliente_id = None
-
-    if link:
-        evento = link.evento
-        cliente_id = link.cliente_id
-    else:
-        if identifier.isdigit():
-            evento = Evento.query.get(int(identifier))
-            if evento and evento.publico and evento.status == "ativo" and not evento.requer_aprovacao:
-                cliente_id = evento.cliente_id
-            else:
-                evento = None
-        else:
-            flash("Link de inscrição inválido.", "danger")
-            return redirect(url_for("evento_routes.home"))
+    try:
+        link, evento, cliente_id = _resolver_link_evento(identifier)
+    except ValueError:
+        flash("Link de inscrição inválido.", "danger")
+        return redirect(url_for("evento_routes.home"))
 
     if not evento:
         flash("Evento não encontrado.", "danger")
@@ -118,104 +251,39 @@ def cadastro_participante(identifier: str | None = None):
         tipo_insc_id = request.form.get("tipo_inscricao_id")
 
         try:
-            config_cli = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
-
-            def obrig(attr):
-                return getattr(config_cli, attr) if config_cli else True
-
-            total_insc = Inscricao.query.filter_by(cliente_id=cliente_id).count()
-            if config_cli and config_cli.limite_inscritos is not None and total_insc >= config_cli.limite_inscritos:
-                flash('Limite de inscritos atingido.', 'danger')
-                return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                                   lotes_ativos=lotes_ativos, cliente_id=cliente_id)
-
-            if (
-                (obrig("obrigatorio_nome") and not nome) or
-                (obrig("obrigatorio_cpf") and not cpf) or
-                (obrig("obrigatorio_email") and not email) or
-                (obrig("obrigatorio_senha") and not senha) or
-                (obrig("obrigatorio_formacao") and not formacao)
-            ):
-                raise ValueError("Preencha todos os campos obrigatórios.")
-
-            duplicado = Usuario.query.filter(
-                (Usuario.email == email) | (Usuario.cpf == cpf)
-            ).first()
-
-            usuario = None
-            if duplicado:
-                if not check_password_hash(duplicado.senha, senha):
-                    flash("Senha incorreta. Faça login.", "warning")
-                    return redirect(url_for("auth_routes.login"))
-                usuario = duplicado
-                inscr_existente = Inscricao.query.filter_by(
-                    usuario_id=duplicado.id, evento_id=evento.id
-                ).first()
-                if inscr_existente:
-                    flash("Você já possui inscrição neste evento. Faça login.", "warning")
-                    return redirect(url_for("auth_routes.login"))
-
-            resolved_tipo = None
-            if lote_tipo_id:
-                lt = LoteTipoInscricao.query.get(lote_tipo_id)
-                if not lt:
-                    raise ValueError("Tipo de inscrição inválido.")
-                resolved_tipo = lt.tipo_inscricao_id
-                lote_id = lt.lote_id
-            elif tipo_insc_id:
-                resolved_tipo = int(tipo_insc_id)
-
-            if lote_id:
-                _reservar_vaga(int(lote_id))
-
-            if not usuario:
-                usuario = Usuario(
-                    nome=nome,
-                    cpf=cpf,
-                    email=email,
-                    senha=generate_password_hash(senha),
-                    formacao=formacao,
-                    tipo="participante",
-                    cliente_id=cliente_id,
-                    evento_id=evento.id,
-                    tipo_inscricao_id=resolved_tipo,
-                    estados=",".join(estados) if estados else None,
-                    cidades=",".join(cidades) if cidades else None,
-                )
-                db.session.add(usuario)
-                db.session.flush()
-            else:
-                if usuario.evento_id != evento.id:
-                    usuario.evento_id = evento.id
-                    if current_user.is_authenticated and current_user.id == usuario.id:
-                        current_user.evento_id = evento.id
-
-            cliente_obj = Cliente.query.get(cliente_id)
-            if cliente_obj and cliente_obj not in usuario.clientes:
-                usuario.clientes.append(cliente_obj)
-
-            inscricao = Inscricao(
-                usuario_id=usuario.id,
-                evento_id=evento.id,
+            usuario, inscricao, duplicado = _criar_usuario_e_inscricao(
+                nome=nome,
+                cpf=cpf,
+                email=email,
+                senha=senha,
+                formacao=formacao,
+                estados=estados,
+                cidades=cidades,
+                lote_id=lote_id,
+                lote_tipo_id=lote_tipo_id,
+                tipo_insc_id=tipo_insc_id,
                 cliente_id=cliente_id,
-                lote_id=lote_id if lote_id else None,
-                tipo_inscricao_id=resolved_tipo,
+                evento=evento,
+                form=request.form,
             )
-            db.session.add(inscricao)
 
-            _salvar_campos_personalizados(usuario.id, cliente_id, request.form)
-
-            preco, titulo = _calcular_preco(evento, lote_tipo_id, tipo_insc_id, lote_vigente)
+            preco, titulo = _calcular_preco(
+                evento, lote_tipo_id, tipo_insc_id, lote_vigente
+            )
             sdk = get_sdk()
             if preco > 0 and sdk:
-                url_pagamento = _criar_preferencia_mp(sdk, preco, titulo, inscricao, usuario)
+                url_pagamento = _criar_preferencia_mp(
+                    sdk, preco, titulo, inscricao, usuario
+                )
                 db.session.commit()
                 return redirect(url_pagamento)
 
             inscricao.status_pagamento = "approved"
             db.session.commit()
             if duplicado:
-                flash("Conta já existente. Utilize seus dados para acessar.", "info")
+                flash(
+                    "Conta já existente. Utilize seus dados para acessar.", "info"
+                )
             else:
                 flash("Inscrição realizada com sucesso!", "success")
             return redirect(url_for("auth_routes.login"))
@@ -223,13 +291,30 @@ def cadastro_participante(identifier: str | None = None):
         except LoteEsgotadoError:
             db.session.rollback()
             flash("Lote esgotado. Escolha outro tipo de inscrição.", "danger")
-            return redirect(url_for("inscricao_routes.cadastro_participante", identifier=identifier))
+            return redirect(
+                url_for(
+                    "inscricao_routes.cadastro_participante", identifier=identifier
+                )
+            )
+        except SenhaIncorretaError as exc:
+            db.session.rollback()
+            flash(str(exc), "warning")
+            return redirect(url_for("auth_routes.login"))
+        except InscricaoExistenteError as exc:
+            db.session.rollback()
+            flash(str(exc), "warning")
+            return redirect(url_for("auth_routes.login"))
         except Exception as e:
             logging.exception("Erro no cadastro de participante")
             db.session.rollback()
             flash(str(e), "danger")
-            return _render_form(link=link, evento=evento, lote_vigente=lote_vigente,
-                               lotes_ativos=lotes_ativos, cliente_id=cliente_id)
+            return _render_form(
+                link=link,
+                evento=evento,
+                lote_vigente=lote_vigente,
+                lotes_ativos=lotes_ativos,
+                cliente_id=cliente_id,
+            )
 
     # ------------------------------------------------------------------
     # 4) GET - apenas renderiza o formulário
@@ -787,7 +872,8 @@ def inscrever(oficina_id):
                         'message': 'Redirecionando para o pagamento...'
                     })
             
-        # Se chegou aqui, é porque a inscrição é gratuita ou não precisa de pagamento
+        # Se chegou aqui, é porque a inscrição é gratuita ou não precisa de
+        # pagamento
         inscricao.status_pagamento = "approved"
         db.session.commit()
 
@@ -808,24 +894,26 @@ def inscrever(oficina_id):
                 oficina=oficina,
             )
 
-        enviar_email(
-            destinatario=current_user.email,
-            nome_participante=current_user.nome,
-            nome_oficina=oficina.titulo,
-            assunto=assunto,
-            corpo_texto=corpo_texto,
-            anexo_path=pdf_path,
-            corpo_html=corpo_html,
-        )
-    except Exception as e:
-        logger.exception("❌ ERRO ao enviar e-mail: %s", e)
-        # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi concluída
-            
-        return jsonify({
-            'success': True,
-            'message': 'Inscrição realizada com sucesso!',
-            'pdf_url': url_for('comprovante_routes.baixar_comprovante', oficina_id=oficina.id)
-        })
+            enviar_email(
+                destinatario=current_user.email,
+                nome_participante=current_user.nome,
+                nome_oficina=oficina.titulo,
+                assunto=assunto,
+                corpo_texto=corpo_texto,
+                anexo_path=pdf_path,
+                corpo_html=corpo_html,
+            )
+        except Exception as e:
+            logger.exception("❌ ERRO ao enviar e-mail: %s", e)
+            # Continuamos mesmo se houver erro no e-mail, pois a inscrição já foi
+            # concluída
+
+            return jsonify({
+                'success': True,
+                'message': 'Inscrição realizada com sucesso!',
+                'pdf_url': url_for('comprovante_routes.baixar_comprovante',
+                                   oficina_id=oficina.id)
+            })
         
     except Exception as e:
         db.session.rollback()
