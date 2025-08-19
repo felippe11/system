@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 import os
 import io
 import qrcode
-from fpdf import FPDF
-from PIL import Image
 
 from extensions import db
 
