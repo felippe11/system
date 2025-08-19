@@ -7,7 +7,7 @@ from flask_login import login_required, current_user
 from io import BytesIO
 from openpyxl import Workbook
 from extensions import db
-
+from models import (
     Evento,
     Oficina,
     Inscricao,
