@@ -10,6 +10,14 @@ def bloquear_usuarios_pendentes():
     return
 
 def register_routes(app):
+    """Register all route blueprints with the given Flask app.
+
+    Args:
+        app (Flask): Application instance to attach blueprints to.
+
+    The function mutates ``app`` by registering multiple blueprints.
+    """
+
     # Importações e registros dos Blueprints de módulos organizados
     from .auth_routes import auth_routes
     from .dashboard_routes import dashboard_routes
