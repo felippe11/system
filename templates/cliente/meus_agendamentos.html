@@ -99,7 +99,7 @@
                       </a>
 
                       {% if agendamento.status in ['pendente', 'confirmado'] %}
-                      <a href="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}"
+                      <a href="{{ url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id) }}"
                          class="btn btn-sm btn-outline-success" title="Adicionar alunos">
                         <i class="fas fa-user-plus me-1"></i>Adicionar
                       </a>
