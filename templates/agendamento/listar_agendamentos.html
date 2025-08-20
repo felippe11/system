@@ -137,17 +137,26 @@
                   </td>
                   <td class="text-center">
                       <div class="btn-group btn-group-sm">
-                        {% if current_user.tipo == 'admin' or current_user.id == agendamento.professor_id %}
-                          <a href="{{ url_for('agendamento_routes.visualizar_agendamento', agendamento_id=agendamento.id) }}"
-                             class="btn btn-outline-info" data-bs-toggle="tooltip" title="Visualizar">
-                            <i class="bi bi-eye"></i>
-                          </a>
-                        {% endif %}
-                      
-                      {% if current_user.tipo in ['admin', 'cliente'] or
-                            current_user.id == agendamento.professor_id %}
-                        <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}"
-                           class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar">
+                          {% if current_user.tipo == 'admin' or current_user.id == agendamento.professor_id %}
+                            <a href="{{ url_for('agendamento_routes.visualizar_agendamento', agendamento_id=agendamento.id) }}"
+                               class="btn btn-outline-info" data-bs-toggle="tooltip" title="Visualizar">
+                              <i class="bi bi-eye"></i>
+                            </a>
+                          {% endif %}
+
+                          {% if current_user.is_admin or current_user.id == agendamento.professor_id or
+                                (current_user.tipo == 'cliente' and current_user.id == agendamento.horario.evento.cliente_id) %}
+                            <a href="{{ url_for('agendamento_routes.qrcode_agendamento', agendamento_id=agendamento.id) }}"
+                               class="btn btn-outline-secondary"
+                               data-bs-toggle="tooltip" title="Gerar QR Code / Check-in">
+                              <i class="bi bi-qr-code"></i>
+                            </a>
+                          {% endif %}
+
+                        {% if current_user.tipo in ['admin', 'cliente'] or
+                              current_user.id == agendamento.professor_id %}
+                          <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}"
+                             class="btn btn-outline-warning" data-bs-toggle="tooltip" title="Editar">
                           <i class="bi bi-pencil"></i>
                         </a>
                       {% endif %}
