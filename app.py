@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
-from config import Config
+from config import Config, normalize_pg
 from extensions import db, login_manager, migrate, mail, socketio, csrf
 from models import Inscricao
 import pytz
@@ -22,10 +22,18 @@ from utils.dia_semana import dia_semana
 
 
 def create_app():
+    """Create and configure the Flask application.
+
+    Initializes extensions, registers routes and filters, and schedules
+    background tasks required by the project.
+
+    Returns:
+        Flask: Configured application instance ready to serve requests.
+    """
     app = Flask(__name__)
     app.config.from_object(Config)
     # Normaliza o URI para garantir que seja uma string
-    app.config["SQLALCHEMY_DATABASE_URI"] = Config.normalize_pg(
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalize_pg(
         app.config["SQLALCHEMY_DATABASE_URI"]
     )
     # Recalcula as opções de conexão caso o URI tenha sido alterado nos testes
@@ -84,13 +92,24 @@ def create_app():
     from routes import register_routes
     register_routes(app)
     
-    # Registro de rotas de diagnóstico (remova ou comente em produção se necessário)
-    try:
-        from routes.debug_recaptcha_routes import debug_recaptcha_routes
-        app.register_blueprint(debug_recaptcha_routes)
-        app.logger.info("Rotas de diagnóstico de reCAPTCHA registradas - REMOVER EM PRODUÇÃO")
-    except ImportError as e:
-        app.logger.warning(f"Não foi possível carregar rotas de diagnóstico: {e}")
+    # Registro de rotas de diagnóstico (opcional em desenvolvimento)
+    enable_debug_routes = Config.DEBUG or os.getenv("ENABLE_DIAGNOSTIC_ROUTES") == "1"
+
+    if enable_debug_routes:
+        try:
+            from routes.debug_recaptcha_routes import debug_recaptcha_routes
+            app.register_blueprint(debug_recaptcha_routes)
+            app.logger.info(
+                "Rotas de diagnóstico de reCAPTCHA habilitadas"
+            )
+        except ImportError as e:
+            app.logger.warning(
+                "Não foi possível carregar rotas de diagnóstico: %s", e
+            )
+    else:
+        app.logger.info(
+            "Rotas de diagnóstico de reCAPTCHA desabilitadas"
+        )
 
     # Agendamento do reconciliador e rotas utilitárias são registrados aqui
     scheduler = BackgroundScheduler()
@@ -113,6 +132,23 @@ def create_app():
 
 # Função para reconciliar pagamentos pendentes
 def reconciliar_pendentes():
+    """Reconcile pending payments with Mercado Pago.
+
+    Retrieves ``Inscricao`` records with status ``pending`` that are older than
+    24 hours and checks each payment via the Mercado Pago SDK. Approved
+    payments have their status updated in the database. If the SDK cannot be
+    initialized, the function exits without making changes.
+
+    Args:
+        None
+
+    Returns:
+        None: This function does not return a value.
+
+    Exceptions:
+        Any database commit error is caught, the session is rolled back, and
+        the error is logged.
+    """
     sdk = get_sdk()
     if not sdk:
         return

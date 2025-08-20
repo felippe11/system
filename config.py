@@ -8,6 +8,8 @@ load_dotenv()
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
+
+
 def normalize_pg(uri: str | bytes) -> str:
     """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
     if isinstance(uri, bytes):
@@ -18,7 +20,12 @@ def normalize_pg(uri: str | bytes) -> str:
 # ------------------------------------------------------------------ #
 #  Config                                                            #
 # ------------------------------------------------------------------ #
+
+
 class Config:
+    """Application configuration settings."""
+    _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
+
     # ------------------------------------------------------------------ #
     #  Chave secreta                                                     #
     # ------------------------------------------------------------------ #
@@ -27,11 +34,10 @@ class Config:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
-    
     # ------------------------------------------------------------------ #
     #  Ambiente de desenvolvimento                                       #
     # ------------------------------------------------------------------ #
-    DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
+    DEBUG = os.getenv("FLASK_DEBUG") == "1"
 
     # ------------------------------------------------------------------ #
     #  Logging                                                           #
@@ -42,16 +48,22 @@ class Config:
     #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
     # ------------------------------------------------------------------ #
     DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASS = os.getenv("DB_PASS", "postgres")          # <- senha padrão
+    DB_PASS = os.getenv("DB_PASS")
+
+    if not DB_PASS:
+        if DEBUG:
+            DB_PASS = "postgres"  # fallback só para dev
+        else:
+            raise RuntimeError(
+                "DB_PASS environment variable is required; set the database password."
+            )
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("DB_NAME", "iafap_database")
 
     # Se existir DATABASE_URL / DB_ONLINE, ele tem prioridade
-    _URI_FROM_ENV = (
-        os.getenv("DB_ONLINE") or
-        os.getenv("DATABASE_URL")
-    )
+    _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
+
 
     SQLALCHEMY_DATABASE_URI = normalize_pg(
         _URI_FROM_ENV
@@ -97,7 +109,9 @@ class Config:
     # ------------------------------------------------------------------ #
     # Configurações do provedor de e-mail (Mailjet)
     MAILJET_API_KEY = os.getenv("MAILJET_API_KEY") or os.getenv("MAIL_USERNAME", "")
-    MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    MAILJET_SECRET_KEY = (
+        os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    )
 
     MAIL_SERVER = "in-v3.mailjet.com"
     MAIL_PORT = 587
@@ -122,3 +136,4 @@ class Config:
     #  Cache de arquivos estáticos                                       #
     # ------------------------------------------------------------------ #
     SEND_FILE_MAX_AGE_DEFAULT = 31536000  # 1 ano
+

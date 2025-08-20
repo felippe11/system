@@ -1,17 +1,36 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    session,
+)
 from flask_login import login_required, current_user
 from extensions import db, socketio
-from werkzeug.utils import secure_filename
 from datetime import datetime
 import logging
 
-logger = logging.getLogger(__name__)
 
-    Checkin, Inscricao, Oficina, ConfiguracaoCliente, ConfiguracaoEvento,
-    AgendamentoVisita, Evento, Usuario
+logger = logging.getLogger(__name__)
+from models import (
+    Checkin,
+    Inscricao,
+    Oficina,
+    ConfiguracaoCliente,
+    ConfiguracaoEvento,
+    AgendamentoVisita,
+    Evento,
+    Usuario,
 )
 from utils import formatar_brasilia, determinar_turno
-from .agendamento_routes import agendamento_routes  # Needed for URL generation
+from .agendamento_routes import agendamento_routes  # Needed for URL generation  # noqa: F401
+
+logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__)
 
 checkin_routes = Blueprint('checkin_routes', __name__)
 
@@ -19,6 +38,7 @@ checkin_routes = Blueprint('checkin_routes', __name__)
 @checkin_routes.route('/leitor_checkin', methods=['GET'])
 @login_required
 def leitor_checkin():
+    """Realiza check-in com base no token fornecido."""
     logger.debug("Entrou em /leitor_checkin")
 
     token = request.args.get('token')
@@ -42,6 +62,34 @@ def leitor_checkin():
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
         return redirect(url_for('dashboard_routes.dashboard'))
+
+    if inscricao.oficina_id:
+        cliente_id_associado = inscricao.oficina.cliente_id
+    elif inscricao.evento_id:
+        cliente_id_associado = inscricao.evento.cliente_id
+    else:
+        cliente_id_associado = None
+
+    is_admin = getattr(current_user, "is_admin", False)
+    is_super = getattr(current_user, "is_superuser", False)
+    if callable(is_super):
+        is_super = is_super()
+
+    if (
+        cliente_id_associado is not None
+        and current_user.id != cliente_id_associado
+        and not (is_admin or is_super)
+    ):
+        mensagem = "Você não tem permissão para realizar check-in."
+        logger.warning(
+            "Usuário %s não autorizado para check-in do cliente %s",
+            current_user.id,
+            cliente_id_associado,
+        )
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "erro", "mensagem": mensagem}), 403
+        flash(mensagem, "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
 
     # Verifica se é check-in de oficina ou evento (prioriza oficina)
     if inscricao.oficina_id:
@@ -124,25 +172,38 @@ def leitor_checkin():
 @checkin_routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
 @login_required
 def checkin_manual(usuario_id, oficina_id):
-    checkin_existente = Checkin.query.filter_by(usuario_id=usuario_id, oficina_id=oficina_id).first()
+    if current_user.tipo not in ['admin', 'cliente']:
+        mensagem = 'Acesso negado!'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'status': 'erro', 'mensagem': mensagem}), 403
+        flash(mensagem, 'danger')
+        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+
+    checkin_existente = Checkin.query.filter_by(
+        usuario_id=usuario_id, oficina_id=oficina_id
+    ).first()
     if checkin_existente:
         flash('Participante já realizou check-in.', 'warning')
-        return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+        return redirect(
+            request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
+        )
 
     oficina = Oficina.query.get_or_404(oficina_id)
-    
+
     checkin = Checkin(
         usuario_id=usuario_id,
         oficina_id=oficina_id,
         palavra_chave="manual",
         cliente_id=oficina.cliente_id,
-        evento_id=oficina.evento_id
+        evento_id=oficina.evento_id,
     )
     db.session.add(checkin)
     db.session.commit()
 
     flash('Check-in manual registrado com sucesso!', 'success')
-    return redirect(request.referrer or url_for('inscricao_routes.gerenciar_inscricoes'))
+    return redirect(
+        request.referrer or url_for('inscricao_routes.gerenciar_inscricoes')
+    )
 
 @checkin_routes.route('/checkin/<int:oficina_id>', methods=['GET', 'POST'])
 @login_required
@@ -209,8 +270,10 @@ def checkin(oficina_id):
 @checkin_routes.route('/oficina/<int:oficina_id>/checkins', methods=['GET'])
 @login_required
 def lista_checkins(oficina_id):
-    if current_user.tipo not in ['admin', 'cliente']:
-        flash("Acesso Autorizado!", "danger")
+    if current_user.tipo not in ["admin", "cliente"]:
+        flash("Acesso não autorizado!", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
 
     oficina = Oficina.query.get_or_404(oficina_id)
     checkins = Checkin.query.filter_by(oficina_id=oficina_id).all()
@@ -293,8 +356,6 @@ def leitor_checkin_json():
     Sempre grava o cliente_id para que apareça
     na lista filtrada por cliente.
     """
-    from datetime import datetime      # ← agora importado
-    import sys
 
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
