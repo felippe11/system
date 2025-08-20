@@ -1300,10 +1300,28 @@ def criar_agendamento():
             quantidade_alunos = request.form.get('quantidade_alunos')
             faixa_etaria = request.form.get('faixa_etaria')
             observacoes = request.form.get('observacoes')
+            compromissos = [
+                request.form.get('compromisso1'),
+                request.form.get('compromisso2'),
+                request.form.get('compromisso3'),
+                request.form.get('compromisso4'),
+            ]
+            aceite_final = request.form.get('aceite_final')
             
             # Validar dados obrigatórios
-            if not evento_id or not data or not horario_id or not escola_nome or not quantidade_alunos:
+            if (
+                not evento_id
+                or not data
+                or not horario_id
+                or not escola_nome
+                or not quantidade_alunos
+            ):
                 form_erro = "Preencha todos os campos obrigatórios."
+                flash(form_erro, "danger")
+            elif not all(compromissos) or not aceite_final:
+                form_erro = (
+                    'É necessário confirmar todos os compromissos e o aceite final.'
+                )
                 flash(form_erro, "danger")
             else:
                 horario = HorarioVisitacao.query.get(horario_id)
@@ -1348,6 +1366,20 @@ def criar_agendamento():
                             nivel_ensino=faixa_etaria,
                             quantidade_alunos=quantidade,
                         )
+                        extra_campos = {
+                            'nome_responsavel': nome_responsavel,
+                            'email_responsavel': email_responsavel,
+                            'telefone_escola': telefone_escola,
+                            'observacoes': observacoes,
+                            'compromisso1': True,
+                            'compromisso2': True,
+                            'compromisso3': True,
+                            'compromisso4': True,
+                            'aceite_final': True,
+                        }
+                        for campo, valor in extra_campos.items():
+                            if valor and hasattr(AgendamentoVisita, campo):
+                                setattr(agendamento, campo, valor)
 
                         horario.vagas_disponiveis -= quantidade
                         db.session.add(agendamento)

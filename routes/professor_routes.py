@@ -209,13 +209,33 @@ def criar_agendamento_professor(horario_id):
         nivel_ensino = request.form.get('nivel_ensino')
         quantidade_alunos = request.form.get('quantidade_alunos', type=int)
         salas_selecionadas = request.form.getlist('salas_selecionadas')
-        
+        nome_responsavel = request.form.get('nome_responsavel')
+        email_responsavel = request.form.get('email_responsavel')
+        telefone_escola = request.form.get('telefone_escola')
+        observacoes = request.form.get('observacoes')
+
+        compromissos = [
+            request.form.get('compromisso1'),
+            request.form.get('compromisso2'),
+            request.form.get('compromisso3'),
+            request.form.get('compromisso4'),
+        ]
+        aceite_final = request.form.get('aceite_final')
+
         if not escola_nome or not turma or not nivel_ensino or not quantidade_alunos:
             flash('Preencha todos os campos obrigatórios!', 'danger')
         elif quantidade_alunos <= 0:
             flash('A quantidade de alunos deve ser maior que zero!', 'danger')
         elif quantidade_alunos > horario.vagas_disponiveis:
-            flash(f'Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}', 'danger')
+            flash(
+                f'Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}',
+                'danger',
+            )
+        elif not all(compromissos) or not aceite_final:
+            flash(
+                'É necessário confirmar todos os compromissos e o aceite final.',
+                'danger',
+            )
         else:
             # Criar o agendamento
             agendamento = AgendamentoVisita(
@@ -227,20 +247,42 @@ def criar_agendamento_professor(horario_id):
                 turma=turma,
                 nivel_ensino=nivel_ensino,
                 quantidade_alunos=quantidade_alunos,
-                salas_selecionadas=','.join(salas_selecionadas) if salas_selecionadas else None
+                salas_selecionadas=','.join(salas_selecionadas)
+                if salas_selecionadas
+                else None,
             )
-            
+
+            extra_campos = {
+                'nome_responsavel': nome_responsavel,
+                'email_responsavel': email_responsavel,
+                'telefone_escola': telefone_escola,
+                'observacoes': observacoes,
+                'compromisso1': True,
+                'compromisso2': True,
+                'compromisso3': True,
+                'compromisso4': True,
+                'aceite_final': True,
+            }
+            for campo, valor in extra_campos.items():
+                if valor and hasattr(AgendamentoVisita, campo):
+                    setattr(agendamento, campo, valor)
+
             # Atualizar vagas disponíveis
             horario.vagas_disponiveis -= quantidade_alunos
-            
+
             db.session.add(agendamento)
-            
+
             try:
                 db.session.commit()
                 flash('Agendamento realizado com sucesso!', 'success')
-                
+
                 # Redirecionar para a página de adicionar alunos
-                return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                return redirect(
+                    url_for(
+                        'routes.adicionar_alunos_agendamento',
+                        agendamento_id=agendamento.id,
+                    )
+                )
             except Exception as e:
                 db.session.rollback()
                 flash(f'Erro ao realizar agendamento: {str(e)}', 'danger')
@@ -666,6 +708,18 @@ def criar_agendamento_participante(horario_id):
         nivel_ensino = request.form.get('nivel_ensino')
         quantidade_alunos = request.form.get('quantidade_alunos', type=int)
         salas_selecionadas = request.form.getlist('salas_selecionadas')
+        nome_responsavel = request.form.get('nome_responsavel')
+        email_responsavel = request.form.get('email_responsavel')
+        telefone_escola = request.form.get('telefone_escola')
+        observacoes = request.form.get('observacoes')
+
+        compromissos = [
+            request.form.get('compromisso1'),
+            request.form.get('compromisso2'),
+            request.form.get('compromisso3'),
+            request.form.get('compromisso4'),
+        ]
+        aceite_final = request.form.get('aceite_final')
 
         # Validações básicas
         if not escola_nome or not turma or not nivel_ensino or not quantidade_alunos:
@@ -673,7 +727,15 @@ def criar_agendamento_participante(horario_id):
         elif quantidade_alunos <= 0:
             flash('A quantidade de alunos deve ser maior que zero!', 'danger')
         elif quantidade_alunos > horario.vagas_disponiveis:
-            flash(f'Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}', 'danger')
+            flash(
+                f'Não há vagas suficientes! Disponíveis: {horario.vagas_disponiveis}',
+                'danger',
+            )
+        elif not all(compromissos) or not aceite_final:
+            flash(
+                'É necessário confirmar todos os compromissos e o aceite final.',
+                'danger',
+            )
         else:
             agendamento = AgendamentoVisita(
                 horario_id=horario.id,
@@ -684,15 +746,34 @@ def criar_agendamento_participante(horario_id):
                 turma=turma,
                 nivel_ensino=nivel_ensino,
                 quantidade_alunos=quantidade_alunos,
-                salas_selecionadas=','.join(salas_selecionadas) if salas_selecionadas else None
+                salas_selecionadas=','.join(salas_selecionadas)
+                if salas_selecionadas
+                else None,
             )
+
+            extra_campos = {
+                'nome_responsavel': nome_responsavel,
+                'email_responsavel': email_responsavel,
+                'telefone_escola': telefone_escola,
+                'observacoes': observacoes,
+                'compromisso1': True,
+                'compromisso2': True,
+                'compromisso3': True,
+                'compromisso4': True,
+                'aceite_final': True,
+            }
+            for campo, valor in extra_campos.items():
+                if valor and hasattr(AgendamentoVisita, campo):
+                    setattr(agendamento, campo, valor)
 
             horario.vagas_disponiveis -= quantidade_alunos
             db.session.add(agendamento)
             try:
                 db.session.commit()
                 flash('Agendamento realizado com sucesso!', 'success')
-                return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+                return redirect(
+                    url_for('agendamento_routes.meus_agendamentos_participante')
+                )
             except Exception as e:
                 db.session.rollback()
                 flash(f'Erro ao realizar agendamento: {str(e)}', 'danger')
