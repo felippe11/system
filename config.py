@@ -8,6 +8,7 @@ load_dotenv()
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
+
 def normalize_pg(uri: str | bytes) -> str:
     """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
     if isinstance(uri, bytes):
@@ -27,7 +28,7 @@ class Config:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
-    
+
     # ------------------------------------------------------------------ #
     #  Ambiente de desenvolvimento                                       #
     # ------------------------------------------------------------------ #
@@ -57,10 +58,6 @@ class Config:
         _URI_FROM_ENV
         or f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-
-    @staticmethod
-    def normalize_pg(uri: str | bytes) -> str:
-        return normalize_pg(uri)
 
     @staticmethod
     def build_engine_options(uri: str) -> dict:
@@ -97,7 +94,9 @@ class Config:
     # ------------------------------------------------------------------ #
     # Configurações do provedor de e-mail (Mailjet)
     MAILJET_API_KEY = os.getenv("MAILJET_API_KEY") or os.getenv("MAIL_USERNAME", "")
-    MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    MAILJET_SECRET_KEY = (
+        os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    )
 
     MAIL_SERVER = "in-v3.mailjet.com"
     MAIL_PORT = 587
