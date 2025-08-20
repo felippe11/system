@@ -24,6 +24,7 @@ def normalize_pg(uri: str | bytes) -> str:
 
 class Config:
     """Application configuration settings."""
+    _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
 
     # ------------------------------------------------------------------ #
     #  Chave secreta                                                     #
