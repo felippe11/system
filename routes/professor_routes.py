@@ -40,7 +40,6 @@ def eventos_disponiveis_professor():
     
     # Buscar eventos disponíveis para agendamento
     eventos = Evento.query.filter(
-        Evento.data_inicio <= datetime.utcnow(),
         Evento.data_fim >= datetime.utcnow(),
         Evento.status == 'ativo'
     ).all()
@@ -128,7 +127,7 @@ def horarios_disponiveis_professor(evento_id):
     ).filter(HorarioVisitacao.vagas_disponiveis > 0)
     
     # Filtrar apenas datas futuras (a partir de amanhã)
-    amanha = datetime.now().date() + timedelta(days=1)
+    amanha = datetime.utcnow().date() + timedelta(days=1)
     query = query.filter(HorarioVisitacao.data >= amanha)
     
     # Aplicar filtro por data específica
@@ -647,7 +646,7 @@ def horarios_disponiveis_participante(evento_id):
 
     query = HorarioVisitacao.query.filter_by(evento_id=evento_id).filter(
         HorarioVisitacao.vagas_disponiveis > 0,
-        HorarioVisitacao.data >= datetime.now().date() + timedelta(days=1)
+        HorarioVisitacao.data >= datetime.utcnow().date() + timedelta(days=1)
     )
 
     if data_filtro:
