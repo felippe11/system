@@ -34,7 +34,6 @@ class Config:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
-
     # ------------------------------------------------------------------ #
     #  Ambiente de desenvolvimento                                       #
     # ------------------------------------------------------------------ #
@@ -50,6 +49,7 @@ class Config:
     # ------------------------------------------------------------------ #
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASS = os.getenv("DB_PASS")
+
     if not DB_PASS:
         if DEBUG:
             DB_PASS = "postgres"  # fallback só para dev
@@ -63,6 +63,7 @@ class Config:
 
     # Se existir DATABASE_URL / DB_ONLINE, ele tem prioridade
     _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
+
 
     SQLALCHEMY_DATABASE_URI = normalize_pg(
         _URI_FROM_ENV
