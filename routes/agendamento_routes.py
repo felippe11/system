@@ -14,6 +14,7 @@ from mailjet_rest.client import ApiError
 import logging
 
 from utils.arquivo_utils import arquivo_permitido
+from utils.dia_semana import dia_semana
 
 logger = logging.getLogger(__name__)
 
@@ -2194,17 +2195,7 @@ def criar_periodo_agendamento():
                     # Como não sabemos a estrutura exata do seu modelo,
                     # vamos apenas exibir uma mensagem de sucesso simulada
                     
-                    # Converter lista de strings para dias da semana
-                    dias_nomes = {
-                        '0': 'Domingo',
-                        '1': 'Segunda',
-                        '2': 'Terça',
-                        '3': 'Quarta',
-                        '4': 'Quinta',
-                        '5': 'Sexta',
-                        '6': 'Sábado'
-                    }
-                    dias_selecionados = [dias_nomes.get(dia, '') for dia in dias_semana if dia in dias_nomes]
+                    dias_selecionados = [dia_semana(dia) for dia in dias_semana]
                     dias_texto = ", ".join(dias_selecionados)
                     
                     flash(f"Período de agendamento criado com sucesso! Horários configurados para {dias_texto} das {hora_inicio} às {hora_fim}.", "success")
