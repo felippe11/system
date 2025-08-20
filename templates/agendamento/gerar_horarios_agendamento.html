@@ -21,13 +21,8 @@
             </div>
             <div class="col-md-6">
               <p><strong>Horário de Funcionamento:</strong> {% if config.horario_inicio %}{{ config.horario_inicio.strftime('%H:%M') }}{% else %}08:00{% endif %} às {% if config.horario_fim %}{{ config.horario_fim.strftime('%H:%M') }}{% else %}17:00{% endif %}</p>
-              <p><strong>Dias da Semana:</strong> 
-                {% set dias_map = {'0': 'Domingo', '1': 'Segunda', '2': 'Terça', '3': 'Quarta', '4': 'Quinta', '5': 'Sexta', '6': 'Sábado'} %}
-                {% set dias_lista = [] %}
-                {% for dia in config.dias_semana.split(',') %}
-                  {% do dias_lista.append(dias_map[dia]) %}
-                {% endfor %}
-                {{ dias_lista|join(', ') }}
+              <p><strong>Dias da Semana:</strong>
+                {{ config.dias_semana.split(',') | map('dia_semana') | join(', ') }}
               </p>
             </div>
           </div>
