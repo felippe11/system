@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
-from config import Config
+from config import Config, normalize_pg
 from extensions import db, login_manager, migrate, mail, socketio, csrf
 from models import Inscricao
 import pytz
@@ -33,7 +33,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     # Normaliza o URI para garantir que seja uma string
-    app.config["SQLALCHEMY_DATABASE_URI"] = Config.normalize_pg(
+    app.config["SQLALCHEMY_DATABASE_URI"] = normalize_pg(
         app.config["SQLALCHEMY_DATABASE_URI"]
     )
     # Recalcula as opções de conexão caso o URI tenha sido alterado nos testes
