@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-
 from sqlalchemy.pool import QueuePool
 
 # Carrega o arquivo .env explicitamente
@@ -9,6 +8,8 @@ load_dotenv()
 # ------------------------------------------------------------------ #
 #  Helpers                                                           #
 # ------------------------------------------------------------------ #
+
+
 def normalize_pg(uri: str | bytes) -> str:
     """Garante o prefixo aceito pelo SQLAlchemy/psycopg2."""
     if isinstance(uri, bytes):
@@ -19,16 +20,33 @@ def normalize_pg(uri: str | bytes) -> str:
 # ------------------------------------------------------------------ #
 #  Config                                                            #
 # ------------------------------------------------------------------ #
+
+
 class Config:
+    """Application configuration settings."""
+    _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
+
     # ------------------------------------------------------------------ #
     #  Chave secreta                                                     #
     # ------------------------------------------------------------------ #
-
     SECRET_KEY = os.getenv("SECRET_KEY")
     if not SECRET_KEY:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
+    # ------------------------------------------------------------------ #
+    #  Ambiente de desenvolvimento                                       #
+    # ------------------------------------------------------------------ #
+    DEBUG = os.getenv("FLASK_DEBUG") == "1"
+
+    # ------------------------------------------------------------------ #
+    #  Logging                                                           #
+    # ------------------------------------------------------------------ #
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+    # ------------------------------------------------------------------ #
+    #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
+    # ------------------------------------------------------------------ #
     DB_USER = os.getenv("DB_USER", "postgres")
     DB_PASS = os.getenv("DB_PASS")
 
@@ -39,15 +57,19 @@ class Config:
             raise RuntimeError(
                 "DB_PASS environment variable is required; set the database password."
             )
-
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("DB_NAME", "iafap_database")
+
+    # Se existir DATABASE_URL / DB_ONLINE, ele tem prioridade
+    _URI_FROM_ENV = os.getenv("DB_ONLINE") or os.getenv("DATABASE_URL")
+
 
     SQLALCHEMY_DATABASE_URI = normalize_pg(
         _URI_FROM_ENV
         or f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+
     @staticmethod
     def normalize_pg(uri: str | bytes) -> str:
         return normalize_pg(uri)
