@@ -10,7 +10,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from sqlalchemy import func
 from decimal import Decimal
 
-
+from models import (
     db,
     Oficina,
     Feedback,
@@ -43,6 +43,7 @@ relatorio_pdf_routes = Blueprint("relatorio_pdf_routes", __name__)
 @relatorio_pdf_routes.route('/gerar_pdf_inscritos/<int:oficina_id>')
 @login_required
 def gerar_inscritos_pdf_route(oficina_id):
+    """Gera um PDF dos inscritos da oficina especificada pelo oficina_id."""
     return gerar_pdf_inscritos_pdf(oficina_id)
 
 # faça o mesmo para outras rotas PDF...
