@@ -382,6 +382,12 @@ def relatorio_geral_agendamentos():
             func.count(
                 case((AgendamentoVisita.status == 'cancelado', 1))
             ).label('cancelados'),
+            func.count(
+                case((AgendamentoVisita.status == 'pendente', 1))
+            ).label('pendentes'),
+            func.count(
+                case((AgendamentoVisita.checkin_realizado == True, 1))
+            ).label('checkins'),
             func.sum(
                 case(
                     (
@@ -407,66 +413,23 @@ def relatorio_geral_agendamentos():
 
     estatisticas = {}
     for evento in eventos:
-
-        # Contar agendamentos por status
-        confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'confirmado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'realizado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'cancelado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-
-        pendentes = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'pendente',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Total de visitantes
-        visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status.in_(['confirmado', 'realizado']),
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Guardar estatísticas
+        row = stats_map.get(evento.id)
+        confirmados = row.confirmados if row else 0
+        realizados = row.realizados if row else 0
+        cancelados = row.cancelados if row else 0
+        pendentes = row.pendentes if row else 0
+        checkins = row.checkins if row else 0
+        visitantes = row.visitantes if row else 0
 
         estatisticas[evento.id] = {
             'nome': evento.nome,
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
-
             'pendentes': pendentes,
+            'checkins': checkins,
             'total': confirmados + realizados + cancelados + pendentes,
-            'visitantes': visitantes
-
+            'visitantes': visitantes,
         }
 
     agendamentos = (
