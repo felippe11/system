@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+
 from sqlalchemy.pool import QueuePool
 
 # Carrega o arquivo .env explicitamente
@@ -22,46 +23,31 @@ class Config:
     # ------------------------------------------------------------------ #
     #  Chave secreta                                                     #
     # ------------------------------------------------------------------ #
+
     SECRET_KEY = os.getenv("SECRET_KEY")
     if not SECRET_KEY:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
-    
-    # ------------------------------------------------------------------ #
-    #  Ambiente de desenvolvimento                                       #
-    # ------------------------------------------------------------------ #
-    DEBUG = os.getenv("FLASK_DEBUG", "1") == "1"
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASS")
 
-    # ------------------------------------------------------------------ #
-    #  Logging                                                           #
-    # ------------------------------------------------------------------ #
-    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-
-    # ------------------------------------------------------------------ #
-    #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
-    # ------------------------------------------------------------------ #
-    DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASS = os.getenv("DB_PASS")
-    if not DB_PASS:
+if not DB_PASS:
+    if DEBUG:
+        DB_PASS = "postgres"  # fallback só para dev
+    else:
         raise RuntimeError(
             "DB_PASS environment variable is required; set the database password."
         )
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = os.getenv("DB_PORT", "5432")
-    DB_NAME = os.getenv("DB_NAME", "iafap_database")
 
-    # Se existir DATABASE_URL / DB_ONLINE, ele tem prioridade
-    _URI_FROM_ENV = (
-        os.getenv("DB_ONLINE") or
-        os.getenv("DATABASE_URL")
-    )
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "iafap_database")
 
     SQLALCHEMY_DATABASE_URI = normalize_pg(
         _URI_FROM_ENV
         or f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
-
     @staticmethod
     def normalize_pg(uri: str | bytes) -> str:
         return normalize_pg(uri)
@@ -101,7 +87,9 @@ class Config:
     # ------------------------------------------------------------------ #
     # Configurações do provedor de e-mail (Mailjet)
     MAILJET_API_KEY = os.getenv("MAILJET_API_KEY") or os.getenv("MAIL_USERNAME", "")
-    MAILJET_SECRET_KEY = os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    MAILJET_SECRET_KEY = (
+        os.getenv("MAILJET_SECRET_KEY") or os.getenv("MAIL_PASSWORD", "")
+    )
 
     MAIL_SERVER = "in-v3.mailjet.com"
     MAIL_PORT = 587
@@ -126,3 +114,4 @@ class Config:
     #  Cache de arquivos estáticos                                       #
     # ------------------------------------------------------------------ #
     SEND_FILE_MAX_AGE_DEFAULT = 31536000  # 1 ano
+
