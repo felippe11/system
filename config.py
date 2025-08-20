@@ -42,7 +42,11 @@ class Config:
     #  Parâmetros individuais (podem vir de .env ou variáveis do sistema) #
     # ------------------------------------------------------------------ #
     DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASS = os.getenv("DB_PASS", "postgres")          # <- senha padrão
+    DB_PASS = os.getenv("DB_PASS")
+    if not DB_PASS:
+        raise RuntimeError(
+            "DB_PASS environment variable is required; set the database password."
+        )
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("DB_NAME", "iafap_database")
