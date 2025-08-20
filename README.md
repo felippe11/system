@@ -23,6 +23,7 @@ export LOG_LEVEL="DEBUG"
 export APP_BASE_URL="https://seu-dominio.com"
 export RECAPTCHA_PUBLIC_KEY="<sua_chave_publica_recaptcha>"
 export RECAPTCHA_PRIVATE_KEY="<sua_chave_privada_recaptcha>"
+export DATABASE_URL="postgresql://usuario:senha@host:5432/banco"
 export DB_ONLINE="<url_do_banco_online>"
 export DB_LOCAL="<url_do_banco_local>"
 ```
@@ -34,6 +35,10 @@ chaves do Google são necessárias para a autenticação via Gmail. A variável
 `LOG_LEVEL` controla a verbosidade do log e, se não definida, assume `INFO`,
 reduzindo o volume de mensagens em produção. Ajuste para `DEBUG` durante o
 desenvolvimento para obter logs mais detalhados.
+
+A variável `DATABASE_URL`, quando definida, deve conter a URI completa do
+banco de dados e tem precedência sobre as variáveis `DB_USER`, `DB_PASS`,
+`DB_HOST`, `DB_PORT` e `DB_NAME`.
 
 ## Banco de Dados
 
