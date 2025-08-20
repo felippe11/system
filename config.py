@@ -29,20 +29,20 @@ class Config:
         raise RuntimeError(
             "SECRET_KEY environment variable is required; define a secure value."
         )
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS")
+    DB_USER = os.getenv("DB_USER", "postgres")
+    DB_PASS = os.getenv("DB_PASS")
 
-if not DB_PASS:
-    if DEBUG:
-        DB_PASS = "postgres"  # fallback só para dev
-    else:
-        raise RuntimeError(
-            "DB_PASS environment variable is required; set the database password."
-        )
+    if not DB_PASS:
+        if DEBUG:
+            DB_PASS = "postgres"  # fallback só para dev
+        else:
+            raise RuntimeError(
+                "DB_PASS environment variable is required; set the database password."
+            )
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "iafap_database")
+    DB_HOST = os.getenv("DB_HOST", "localhost")
+    DB_PORT = os.getenv("DB_PORT", "5432")
+    DB_NAME = os.getenv("DB_NAME", "iafap_database")
 
     SQLALCHEMY_DATABASE_URI = normalize_pg(
         _URI_FROM_ENV
