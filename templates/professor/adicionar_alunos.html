@@ -6,6 +6,19 @@
 {% block title %}Adicionar Alunos{% endblock %}
 
 {% block content %}
+{% if current_user.tipo == 'professor' %}
+    {% set add_route = 'routes.adicionar_alunos_professor' %}
+    {% set remove_route = 'routes.remover_aluno_professor' %}
+    {% set print_route = 'routes.imprimir_agendamento_professor' %}
+    {% set qrcode_route = 'routes.qrcode_agendamento_professor' %}
+    {% set agendamentos_route = 'agendamento_routes.meus_agendamentos' %}
+{% else %}
+    {% set add_route = 'routes.adicionar_alunos_participante' %}
+    {% set remove_route = 'routes.remover_aluno_participante' %}
+    {% set print_route = 'routes.imprimir_agendamento_participante' %}
+    {% set qrcode_route = 'routes.qrcode_agendamento_participante' %}
+    {% set agendamentos_route = 'agendamento_routes.meus_agendamentos_participante' %}
+{% endif %}
 <div class="container mt-4">
     <h2>Adicionar Alunos ao Agendamento</h2>
     
@@ -45,7 +58,7 @@
                     <i class="fas fa-user-plus"></i> Adicionar Aluno
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id) }}">
+                    <form method="POST" action="{{ url_for(add_route, agendamento_id=agendamento.id) }}">
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Aluno *</label>
                             <input type="text" class="form-control" id="nome" name="nome" required>
@@ -78,11 +91,13 @@
                     <pre>Nome do Aluno,CPF</pre>
                     <p>O CPF é opcional e pode ser deixado em branco.</p>
                     
+                    {% if current_user.tipo == 'professor' %}
                     <div class="d-grid">
                         <a href="{{ url_for('routes.importar_alunos_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-info">
                             <i class="fas fa-file-import"></i> Importar Alunos
                         </a>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -110,7 +125,7 @@
                                     <td>{{ aluno.nome }}</td>
                                     <td>{{ aluno.cpf or '-' }}</td>
                                     <td class="text-end">
-                                        <form method="POST" action="{{ url_for('routes.remover_aluno_agendamento', aluno_id=aluno.id) }}" class="d-inline">
+                                        <form method="POST" action="{{ url_for(remove_route, aluno_id=aluno.id) }}" class="d-inline">
                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja remover este aluno?')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -137,18 +152,18 @@
         {% endif %}
         
         {% if agendamento.status == 'confirmado' and total_adicionados > 0 %}
-        <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
+        <a href="{{ url_for(print_route, agendamento_id=agendamento.id) }}" class="btn btn-primary">
             <i class="fas fa-print"></i> Imprimir Comprovante
         </a>
         {% endif %}
 
         {% if agendamento.status == 'confirmado' %}
-        <a href="{{ url_for('routes.qrcode_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-info">
+        <a href="{{ url_for(qrcode_route, agendamento_id=agendamento.id) }}" class="btn btn-info">
             <i class="fas fa-qrcode"></i> Ver QR Code
         </a>
         {% endif %}
         
-        <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
+        <a href="{{ url_for(agendamentos_route) }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
     </div>

@@ -6,6 +6,13 @@
 {% block title %}QR Code do Agendamento{% endblock %}
 
 {% block content %}
+{% if current_user.tipo == 'professor' %}
+    {% set print_route = 'routes.imprimir_agendamento_professor' %}
+    {% set agendamentos_route = 'agendamento_routes.meus_agendamentos' %}
+{% else %}
+    {% set print_route = 'routes.imprimir_agendamento_participante' %}
+    {% set agendamentos_route = 'agendamento_routes.meus_agendamentos_participante' %}
+{% endif %}
 <div class="container mt-4">
     <h2>QR Code do Agendamento</h2>
     
@@ -48,11 +55,11 @@
     
     <div class="mt-4">
         {% if agendamento.status == 'confirmado' %}
-        <a href="{{ url_for('routes.imprimir_agendamento_professor', agendamento_id=agendamento.id) }}" class="btn btn-primary">
+        <a href="{{ url_for(print_route, agendamento_id=agendamento.id) }}" class="btn btn-primary">
             <i class="fas fa-print"></i> Imprimir Comprovante
         </a>
         {% endif %}
-        <a href="{{ url_for('agendamento_routes.meus_agendamentos') }}" class="btn btn-secondary">
+        <a href="{{ url_for(agendamentos_route) }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
     </div>

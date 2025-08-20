@@ -1355,10 +1355,17 @@ def criar_agendamento():
                         try:
                             db.session.commit()
                             flash("Agendamento criado com sucesso!", "success")
-                            if current_user.tipo in ('professor', 'cliente'):
+                            if current_user.tipo == 'professor':
                                 return redirect(
                                     url_for(
-                                        'routes.adicionar_alunos_agendamento',
+                                        'routes.adicionar_alunos_professor',
+                                        agendamento_id=agendamento.id,
+                                    )
+                                )
+                            if current_user.tipo == 'cliente':
+                                return redirect(
+                                    url_for(
+                                        'routes.adicionar_alunos_professor',
                                         agendamento_id=agendamento.id,
                                     )
                                 )
