@@ -54,12 +54,14 @@
                     {% set total_cancelados = 0 %}
                     {% set total_pendentes = 0 %}
                     {% set total_visitantes = 0 %}
-                    
+                    {% set total_checkins = 0 %}
+
                     {% for stats in estatisticas.values() %}
                         {% set total_confirmados = total_confirmados + stats.confirmados %}
                         {% set total_realizados = total_realizados + stats.realizados %}
                         {% set total_cancelados = total_cancelados + stats.cancelados %}
                         {% set total_pendentes = total_pendentes + stats.pendentes %}
+                        {% set total_checkins = total_checkins + stats.checkins %}
                         {% set total_visitantes = total_visitantes + stats.visitantes %}
                     {% endfor %}
                     
@@ -79,6 +81,10 @@
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Pendentes</span>
                             <span class="badge bg-warning text-dark rounded-pill">{{ total_pendentes }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Check-ins</span>
+                            <span class="badge bg-secondary rounded-pill">{{ total_checkins }}</span>
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Total de Agendamentos</span>
@@ -145,6 +151,7 @@
                                         <th class="text-center">Realizados</th>
                                         <th class="text-center">Cancelados</th>
                                         <th class="text-center">Pendentes</th>
+                                        <th class="text-center">Check-ins</th>
                                         <th class="text-center">Visitantes</th>
                                         <th class="text-center">Taxa Conclusão</th>
                                     </tr>
@@ -157,6 +164,7 @@
                                             <td class="text-center">{{ stats.realizados }}</td>
                                             <td class="text-center">{{ stats.cancelados }}</td>
                                             <td class="text-center">{{ stats.pendentes }}</td>
+                                            <td class="text-center">{{ stats.checkins }}</td>
                                             <td class="text-center">{{ stats.visitantes }}</td>
                                             <td class="text-center">
                                                 {% if stats.confirmados + stats.realizados > 0 %}
