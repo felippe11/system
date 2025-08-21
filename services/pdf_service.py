@@ -35,29 +35,59 @@ def _profile(func):
 
 @_profile
 def gerar_revisor_details_pdf(cand, pdf_path=None):
-    """Gera um PDF simples com dados do revisor."""
+    """Gera um PDF simples com dados do revisor e suas respostas."""
     from reportlab.lib.pagesizes import letter
     from reportlab.pdfgen import canvas
     import tempfile
     import os
     from flask import send_file
+    from textwrap import wrap
 
     if pdf_path is None:
         pdf_filename = f"revisor_{cand.codigo}.pdf"
         pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
 
-    c = canvas.Canvas(pdf_path, pagesize=letter)
+    c = canvas.Canvas(pdf_path, pagesize=letter, pageCompression=0)
     width, height = letter
+    margin = 72
+    y = height - margin
+
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(72, height - 72, "Dados do Revisor")
+    c.drawString(margin, y, "Dados do Revisor")
+    y -= 28
+
     c.setFont("Helvetica", 12)
-    c.drawString(72, height - 100, f"Nome: {cand.nome}")
-    c.drawString(72, height - 120, f"E-mail: {cand.email}")
-    c.drawString(72, height - 140, f"Código: {cand.codigo}")
+    c.drawString(margin, y, f"Nome: {cand.nome}")
+    y -= 20
+    c.drawString(margin, y, f"E-mail: {cand.email}")
+    y -= 20
+    c.drawString(margin, y, f"Código: {cand.codigo}")
+    y -= 24
+
+    respostas = cand.respostas or {}
+    for campo, valor in respostas.items():
+        if isinstance(valor, str) and ("/" in valor or "\\" in valor):
+            display_value = os.path.basename(valor) or "arquivo anexado"
+        else:
+            display_value = str(valor)
+
+        text = f"{campo}: {display_value}"
+        for line in wrap(text, width=80):
+            c.drawString(margin, y, line)
+            y -= 20
+            if y < margin:
+                c.showPage()
+                y = height - margin
+                c.setFont("Helvetica", 12)
+
     c.showPage()
     c.save()
 
-    return send_file(pdf_path, as_attachment=True, download_name=os.path.basename(pdf_path))
+    return send_file(
+        pdf_path,
+        as_attachment=True,
+        download_name=os.path.basename(pdf_path),
+    )
 
 @_profile
 def gerar_lista_frequencia_pdf(oficina, pdf_path):
