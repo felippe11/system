@@ -14,14 +14,20 @@
         body: data,
         headers: { 'X-CSRFToken': csrfToken },
       });
+      const resData = await resp.json().catch(() => null);
       if (resp.ok) {
-        window.location.reload();
+        if (resData?.status === 'ok') {
+          alert(resData.message || 'Importação concluída');
+          window.location.reload();
+        } else {
+          alert(resData?.message || 'Erro ao importar');
+        }
       } else {
-        const err = await resp.json().catch(() => null);
-        alert(err?.message || 'Erro ao importar');
+        alert(resData?.message || 'Erro ao importar');
       }
     } catch (error) {
       console.error('Erro de rede', error);
+      alert('Erro de rede');
     }
   });
 })();
