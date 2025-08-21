@@ -3,11 +3,17 @@
   const form = document.getElementById('formImportarTrabalhos');
   if (!form) return;
 
-  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+  const csrfToken = document
+    .querySelector('meta[name="csrf-token"]')
+    ?.getAttribute('content') || '';
+  const eventoInput = document.getElementById('eventoId');
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const data = new FormData(form);
+    if (eventoInput && eventoInput.value) {
+      data.append('evento_id', eventoInput.value);
+    }
     try {
       const resp = await fetch(form.action, {
         method: 'POST',
