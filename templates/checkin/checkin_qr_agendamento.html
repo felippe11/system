@@ -26,9 +26,11 @@ import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_s
 document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
-
+    let isProcessing = false;
 
     async function handleScan(decodedText) {
+        if (isProcessing) return;
+        isProcessing = true;
         scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
 
         let token;
@@ -50,13 +52,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (response.ok) {
                 const data = await response.json();
+                await stopScanner();
                 if (data.redirect) {
-                    let redirectUrl = data.redirect;
-                    if (token && !redirectUrl.includes(token)) {
-                        const separator = redirectUrl.includes('?') ? '&' : '?';
-                        redirectUrl += `${separator}token=${encodeURIComponent(token)}`;
-                    }
-                    window.location.href = redirectUrl;
+
+                    window.location.href = data.redirect;
+
                 }
             }
         } catch (error) {
