@@ -449,7 +449,7 @@ def relatorio_geral_agendamentos():
     )
     if evento_id:
         eventos_query = eventos_query.filter(Evento.id == evento_id)
-    eventos_periodo = eventos_query.distinct().all()
+    eventos_periodo = eventos_query.distinct().order_by(Evento.nome).all()
 
     # Estatísticas agregadas em uma única consulta
     aggregados_query = (

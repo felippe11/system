@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+  <h3>Distribuição de Trabalhos</h3>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% if columns %}
+    <form method="post">
+      <input type="hidden" name="data" value='{{ data_json }}'>
+      {% for campo in campos %}
+        <div class="mb-3">
+          <label for="map_{{ campo }}" class="form-label">{{ campo|capitalize }}</label>
+          <select class="form-select" name="map_{{ campo }}" id="map_{{ campo }}">
+            {% for col in columns %}
+              <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endfor %}
+      <h4>Pré-visualização</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            {% for col in columns %}
+              <th>{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data_preview %}
+            <tr>
+              {% for col in columns %}
+                <td>{{ row[col] }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button class="btn btn-success" type="submit">Confirmar</button>
+    </form>
+  {% else %}
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Enviar</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}
