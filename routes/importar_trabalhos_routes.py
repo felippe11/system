@@ -21,6 +21,7 @@ def importar_trabalhos():
     1. Upload an Excel file via ``arquivo`` to preview available columns.
     2. Submit selected ``columns`` and ``data`` (JSON list) to persist them.
     """
+    evento_id = request.form.get("evento_id", type=int)
     if "arquivo" in request.files:
         file = request.files["arquivo"]
         try:
@@ -39,6 +40,7 @@ def importar_trabalhos():
             submission = Submission(
                 title=title,
                 code_hash=generate_password_hash(uuid.uuid4().hex),
+                evento_id=evento_id,
             )
             db.session.add(submission)
             imported += 1
@@ -56,7 +58,6 @@ def importar_trabalhos():
 
     columns = request.form.getlist("columns")
     data_json = request.form.get("data")
-    evento_id = request.form.get("evento_id", type=int)
 
     if not data_json:
         return jsonify({"error": "missing data"}), 400
