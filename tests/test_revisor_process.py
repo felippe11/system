@@ -3,6 +3,11 @@ import sys
 import types
 import pytest
 from werkzeug.security import generate_password_hash
+
+os.environ.setdefault("SECRET_KEY", "test")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "y")
+os.environ.setdefault("DB_PASS", "test")
 from config import Config
 
 # Stubs to avoid heavy optional dependencies
@@ -41,7 +46,7 @@ from extensions import db, login_manager
 from flask_migrate import upgrade
 
 from datetime import datetime, timedelta
-
+from models import (
     Cliente,
     Formulario,
     CampoFormulario,
@@ -364,3 +369,39 @@ def test_duplicate_email(client, app):
 
     with app.app_context():
         assert RevisorCandidatura.query.count() == first_count
+
+
+def test_revisor_details_pdf_contains_resposta(app):
+    """Gera PDF e verifica se um campo de resposta aparece no conteúdo."""
+    import importlib.util
+    import os
+    import tempfile
+
+    pdf_path = os.path.join(
+        os.path.dirname(__file__), "..", "services", "pdf_service.py"
+    )
+    spec = importlib.util.spec_from_file_location("pdf_service_real", pdf_path)
+    pdf_service_real = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pdf_service_real)
+
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        cand = RevisorCandidatura(
+            process_id=proc.id,
+            nome="Teste",
+            email="teste@example.com",
+            respostas={"telefone": "9999-8888"},
+        )
+        db.session.add(cand)
+        db.session.commit()
+
+        fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(fd)
+
+        with app.test_request_context():
+            pdf_service_real.gerar_revisor_details_pdf(cand, pdf_path=tmp_path)
+
+        with open(tmp_path, "rb") as f:
+            content = f.read().decode("latin-1")
+
+    assert "telefone" in content
