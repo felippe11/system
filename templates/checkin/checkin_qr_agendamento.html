@@ -30,6 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const csrfToken = document
         .querySelector('meta[name="csrf-token"]')?.content || '';
 
+    let isProcessing = false;
+
 
 
     async function handleScan(decodedText) {
@@ -45,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             token = decodedText;
         }
 
+        let redirected = false;
         try {
             const response = await fetch('/processar_qrcode_agendamento', {
                 method: 'POST',
@@ -55,17 +58,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ token })
             });
 
+            const data = await response.json();
             if (response.ok) {
-                const data = await response.json();
                 await stopScanner();
                 if (data.redirect) {
-
+                    redirected = true;
                     window.location.href = data.redirect;
-
                 }
+            } else {
+                scanResult.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
             }
         } catch (error) {
             console.error('Erro ao processar QR Code:', error);
+        } finally {
+            if (!redirected) {
+                isProcessing = false;
+            }
         }
     }
 
