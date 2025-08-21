@@ -196,55 +196,125 @@
 
     <div class="card mb-4">
         <div class="card-header bg-secondary text-white">
-            <i class="fas fa-table"></i> Lista de Agendamentos
+            <i class="fas fa-table"></i> Listas
         </div>
-        <div class="card-body table-responsive">
-            {% if agendamentos %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Data</th>
-                        <th>Horário</th>
-                        <th>Escola</th>
-                        <th>Professor</th>
-                        <th>Alunos</th>
-                        <th>Presentes</th>
-                        <th>Check-in</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for agendamento in agendamentos %}
-                    <tr>
-                        <td>{{ agendamento.id }}</td>
-                        <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
-                        <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</td>
-                        <td>{{ agendamento.escola_nome }}</td>
-                        <td>{{ agendamento.professor.nome if agendamento.professor else '-' }}</td>
-                        <td>{{ agendamento.quantidade_alunos }}</td>
-                        <td>{{ 'Prof' if agendamento.checkin_realizado else '-' }} + {{ agendamento.alunos|selectattr('presente')|list|length }}</td>
-                        <td>{{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}</td>
-                        <td>{{ agendamento.status }}</td>
-                    </tr>
-                    {% set presentes = agendamento.alunos|selectattr('presente')|list %}
-                    {% if presentes %}
-                    <tr>
-                        <td colspan="9">
-                            <ul class="mb-0">
-                                {% for aluno in presentes %}
-                                <li>{{ aluno.nome }}</li>
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="relatorioTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="agendamentos-tab"
+                            data-bs-toggle="tab" data-bs-target="#agendamentos"
+                            type="button" role="tab">
+                        Agendamentos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="professores-tab"
+                            data-bs-toggle="tab" data-bs-target="#professores"
+                            type="button" role="tab">
+                        Professores Confirmados
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content pt-3">
+                <div class="tab-pane fade show active" id="agendamentos"
+                     role="tabpanel" aria-labelledby="agendamentos-tab">
+                    <div class="table-responsive">
+                        {% if agendamentos %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Data</th>
+                                    <th>Horário</th>
+                                    <th>Escola</th>
+                                    <th>Professor</th>
+                                    <th>Alunos</th>
+                                    <th>Presentes</th>
+                                    <th>Check-in</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for agendamento in agendamentos %}
+                                <tr>
+                                    <td>{{ agendamento.id }}</td>
+                                    <td>
+                                        {{ agendamento.horario.data.strftime('%d/%m/%Y') }}
+                                    </td>
+                                    <td>
+                                        {{ agendamento.horario.horario_inicio.strftime('%H:%M') }}
+                                    </td>
+                                    <td>{{ agendamento.escola_nome }}</td>
+                                    <td>
+                                        {{ agendamento.professor.nome if agendamento.professor else '-' }}
+                                    </td>
+                                    <td>{{ agendamento.quantidade_alunos }}</td>
+                                    <td>
+                                        {{ 'Prof' if agendamento.checkin_realizado else '-' }} +
+                                        {{ agendamento.alunos|selectattr('presente')|list|length }}
+                                    </td>
+                                    <td>
+                                        {{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}
+                                    </td>
+                                    <td>{{ agendamento.status }}</td>
+                                </tr>
+                                {% set presentes = agendamento.alunos|selectattr('presente')|list %}
+                                {% if presentes %}
+                                <tr>
+                                    <td colspan="9">
+                                        <ul class="mb-0">
+                                            {% for aluno in presentes %}
+                                            <li>{{ aluno.nome }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </td>
+                                </tr>
+                                {% endif %}
                                 {% endfor %}
-                            </ul>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="alert alert-info mb-0">Nenhum agendamento no período.</div>
-            {% endif %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="alert alert-info mb-0">
+                            Nenhum agendamento no período.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="professores"
+                     role="tabpanel" aria-labelledby="professores-tab">
+                    <div class="table-responsive">
+                        {% if professores_confirmados %}
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Email</th>
+                                    <th>WhatsApp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for prof in professores_confirmados %}
+                                <tr>
+                                    <td>{{ prof.nome }}</td>
+                                    <td>{{ prof.email }}</td>
+                                    <td>
+                                        <a href="https://api.whatsapp.com/send?phone={{ prof.responsavel_whatsapp }}"
+                                           target="_blank">
+                                            {{ prof.responsavel_whatsapp }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <div class="alert alert-info mb-0">
+                            Nenhum professor com agendamento confirmado.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

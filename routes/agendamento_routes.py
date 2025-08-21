@@ -504,6 +504,30 @@ def relatorio_geral_agendamentos():
         .all()
     )
 
+    professores_confirmados = (
+        db.session.query(
+            Usuario.nome.label('nome'),
+            Usuario.email.label('email'),
+            AgendamentoVisita.responsavel_whatsapp.label(
+                'responsavel_whatsapp'
+            ),
+        )
+        .join(AgendamentoVisita, AgendamentoVisita.professor_id == Usuario.id)
+        .join(
+            HorarioVisitacao,
+            AgendamentoVisita.horario_id == HorarioVisitacao.id,
+        )
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == current_user.id,
+            AgendamentoVisita.status == 'confirmado',
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
+        )
+        .distinct()
+        .all()
+    )
+
     # Gerar PDF com detalhes
     if request.args.get('gerar_pdf'):
         pdf_filename = (
@@ -528,6 +552,7 @@ def relatorio_geral_agendamentos():
         eventos=eventos,
         estatisticas=estatisticas,
         agendamentos=agendamentos,
+        professores_confirmados=professores_confirmados,
         filtros={
             'data_inicio': data_inicio,
             'data_fim': data_fim
