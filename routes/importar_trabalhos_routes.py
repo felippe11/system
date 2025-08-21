@@ -36,8 +36,19 @@ def importar_trabalhos():
         imported = 0
         for _, row in df.iterrows():
             row_dict = row.to_dict()
-            raw_title = row_dict.get(title_column) if title_column else None
-            if raw_title is None or (isinstance(raw_title, float) and pd.isna(raw_title)):
+            attributes = {}
+            for key, value in row_dict.items():
+                if isinstance(value, pd.Timestamp):
+                    value = value.isoformat()
+                elif pd.isna(value):
+                    value = None
+                elif hasattr(value, "item"):
+                    value = value.item()
+                if not isinstance(value, (str, int, float, bool, type(None))):
+                    value = str(value)
+                attributes[key] = value
+            raw_title = attributes.get(title_column) if title_column else None
+            if raw_title is None or raw_title == "":
                 title = f"Trabalho {imported + 1}"
             else:
                 title = str(raw_title)
@@ -45,7 +56,7 @@ def importar_trabalhos():
                 title=title,
                 code_hash=generate_password_hash(uuid.uuid4().hex),
                 evento_id=evento_id,
-                attributes=row_dict,
+                attributes=attributes,
             )
             db.session.add(submission)
             imported += 1
