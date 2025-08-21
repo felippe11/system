@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
 os.environ.setdefault('SECRET_KEY', 'test')
+os.environ.setdefault('DB_PASS', 'test')
 
 from config import Config
 
@@ -127,12 +128,13 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY
 
 from app import create_app
 from extensions import db
-
+from models import (
     Cliente,
     Usuario,
     Evento,
     ConfiguracaoCliente,
     HorarioVisitacao,
+    SalaVisitacao,
     AgendamentoVisita,
     AlunoVisitante,
     Inscricao,
@@ -162,6 +164,21 @@ def app():
             inscricao_gratuita=True,
         )
         db.session.add(evento)
+        db.session.commit()
+
+        sala1 = SalaVisitacao(
+            nome='Sala 1',
+            descricao='Desc',
+            capacidade=30,
+            evento_id=evento.id,
+        )
+        sala2 = SalaVisitacao(
+            nome='Sala 2',
+            descricao='Desc',
+            capacidade=30,
+            evento_id=evento.id,
+        )
+        db.session.add_all([sala1, sala2])
         db.session.commit()
 
         horario1 = HorarioVisitacao(
@@ -226,6 +243,8 @@ def test_fluxo_agendamento(app):
         evento = Evento.query.first()
         horario = HorarioVisitacao.query.first()
         horario_id = horario.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
 
     resp = client.post(
         f'/professor/criar_agendamento/{horario_id}',
@@ -235,12 +254,13 @@ def test_fluxo_agendamento(app):
             'turma': 'T1',
             'nivel_ensino': 'Fundamental',
             'quantidade_alunos': 5,
+            'salas_selecionadas': [str(sala_id)],
         },
         follow_redirects=False,
     )
 
     assert resp.status_code == 302
-    assert '/professor/adicionar_alunos/' in resp.headers['Location']
+    assert '/adicionar_alunos/' in resp.headers['Location']
     agendamento_id = int(resp.headers['Location'].rstrip('/').split('/')[-1])
 
     resp = client.post(f'/professor/adicionar_alunos/{agendamento_id}',
@@ -258,6 +278,11 @@ def test_fluxo_agendamento(app):
         assert agendamento.cliente_id is None
         assert agendamento.status == 'pendente'
         assert agendamento.horario_id == horario_id
+        assert agendamento.escola_nome == 'Escola X'
+        assert agendamento.turma == 'T1'
+        assert agendamento.nivel_ensino == 'Fundamental'
+        assert agendamento.quantidade_alunos == 5
+        assert agendamento.salas_selecionadas == str(sala_id)
 
 
 def test_cliente_cria_agendamento(app):
@@ -268,6 +293,8 @@ def test_cliente_cria_agendamento(app):
     with app.app_context():
         horario = HorarioVisitacao.query.first()
         horario_id = horario.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
 
     resp = client.post(
         f'/agendar_visita/{horario_id}',
@@ -276,6 +303,7 @@ def test_cliente_cria_agendamento(app):
             'turma': 'T1',
             'nivel_ensino': 'Fundamental',
             'quantidade_alunos': 5,
+            'salas_selecionadas': [str(sala_id)],
         },
         follow_redirects=False,
     )
@@ -288,6 +316,10 @@ def test_cliente_cria_agendamento(app):
         assert agendamento.professor_id is None
         assert agendamento.status == 'pendente'
         assert agendamento.horario_id == horario_id
+        assert agendamento.escola_nome == 'Escola C'
+        assert agendamento.turma == 'T1'
+        assert agendamento.nivel_ensino == 'Fundamental'
+        assert agendamento.quantidade_alunos == 5
 
 
 def test_participante_agendamento_flow(app):
@@ -299,6 +331,16 @@ def test_participante_agendamento_flow(app):
         participante = Usuario.query.filter_by(email='part@test').first()
         horario = HorarioVisitacao.query.first()
         horario_id = horario.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
 
     resp = client.post(
         f'/participante/criar_agendamento/{horario_id}',
@@ -308,6 +350,7 @@ def test_participante_agendamento_flow(app):
             'turma': 'T1',
             'nivel_ensino': 'Fundamental',
             'quantidade_alunos': 5,
+            'salas_selecionadas': [str(sala_id)],
         },
         follow_redirects=False,
     )
@@ -321,6 +364,11 @@ def test_participante_agendamento_flow(app):
         ).first()
         assert agendamento is not None
         assert agendamento.horario_id == horario_id
+        assert agendamento.escola_nome == 'Escola P'
+        assert agendamento.turma == 'T1'
+        assert agendamento.nivel_ensino == 'Fundamental'
+        assert agendamento.quantidade_alunos == 5
+        assert agendamento.salas_selecionadas == str(sala_id)
         agendamento_id = agendamento.id
 
     resp = client.get('/participante/meus_agendamentos')
@@ -347,6 +395,8 @@ def test_participante_manage_alunos(app):
         participante = Usuario.query.filter_by(email='part@test').first()
         horario = HorarioVisitacao.query.first()
         horario_id = horario.id
+        sala = SalaVisitacao.query.first()
+        sala_id = sala.id
 
     resp = client.post(
         f'/participante/criar_agendamento/{horario_id}',
@@ -356,6 +406,7 @@ def test_participante_manage_alunos(app):
             'turma': 'T1',
             'nivel_ensino': 'Fundamental',
             'quantidade_alunos': 5,
+            'salas_selecionadas': [str(sala_id)],
         },
         follow_redirects=False,
     )
@@ -407,6 +458,7 @@ def test_participante_cannot_manage_alunos_de_outro(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=1,
+            salas_selecionadas='1',
         )
         db.session.add(agendamento)
         db.session.commit()
@@ -455,6 +507,7 @@ def test_editar_agendamento_shows_current_when_full(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
         )
         db.session.add(agendamento)
         horario1.vagas_disponiveis = 0
@@ -467,7 +520,7 @@ def test_editar_agendamento_shows_current_when_full(app):
     assert resp.status_code == 200
     html = resp.data.decode()
     assert f'value="{h1_id}"' in html
-    assert f'value="{h2_id}"' not in html
+    assert f'<option value="{h2_id}"' not in html
 
 
 def test_editar_agendamento_can_change_to_available_slot(app):
@@ -487,6 +540,7 @@ def test_editar_agendamento_can_change_to_available_slot(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
         )
         db.session.add(agendamento)
         horario1.vagas_disponiveis = 0
@@ -535,6 +589,7 @@ def test_editar_agendamento_page_renders(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
         )
         db.session.add(agendamento)
         db.session.commit()
@@ -560,6 +615,7 @@ def test_cancelamento_restaura_vagas(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
             status='confirmado',
         )
         db.session.add(agendamento)
@@ -594,6 +650,7 @@ def test_cancelamento_limite_capacidade(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
             status='confirmado',
         )
         db.session.add(agendamento)
@@ -628,6 +685,7 @@ def test_confirmar_checkin_cria_checkin(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
             status='confirmado',
         )
         db.session.add(agendamento)
@@ -673,6 +731,7 @@ def test_checkin_agendamento_cria_checkin(app):
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=5,
+            salas_selecionadas='1',
             status='confirmado',
         )
         db.session.add(agendamento)

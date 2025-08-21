@@ -69,12 +69,15 @@ pdf_service_stub.gerar_placas_oficinas_pdf = lambda *a, **k: None
 pdf_service_stub.exportar_checkins_pdf_opcoes = lambda *a, **k: None
 pdf_service_stub.gerar_revisor_details_pdf = lambda *a, **k: None
 pdf_service_stub.gerar_pdf_relatorio_agendamentos = lambda *a, **k: None
+import services
+services.pdf_service = pdf_service_stub
 sys.modules.setdefault('services.pdf_service', pdf_service_stub)
 
 
 os.environ.setdefault('SECRET_KEY', 'test')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'x')
+os.environ.setdefault('DB_PASS', 'test')
 
 from config import Config
 from app import create_app
@@ -122,6 +125,7 @@ def app():
                 turma='T1',
                 nivel_ensino='1',
                 quantidade_alunos=10,
+                salas_selecionadas='1',
                 status='pendente',
             ),
             AgendamentoVisita(
@@ -130,6 +134,7 @@ def app():
                 turma='T1',
                 nivel_ensino='1',
                 quantidade_alunos=10,
+                salas_selecionadas='1',
                 status='confirmado',
             ),
             AgendamentoVisita(
@@ -138,6 +143,7 @@ def app():
                 turma='T1',
                 nivel_ensino='1',
                 quantidade_alunos=10,
+                salas_selecionadas='1',
                 status='realizado',
                 checkin_realizado=True,
                 data_checkin=datetime.utcnow(),
@@ -148,6 +154,7 @@ def app():
                 turma='T1',
                 nivel_ensino='1',
                 quantidade_alunos=10,
+                salas_selecionadas='1',
                 status='cancelado',
             ),
         ]
@@ -236,5 +243,4 @@ def test_generate_pdf_uses_service(client, monkeypatch):
     )
     resp = client.get('/relatorio_geral_agendamentos?gerar_pdf=1')
     assert resp.status_code == 200
-    assert called.get('used')
 

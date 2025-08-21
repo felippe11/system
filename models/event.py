@@ -951,6 +951,21 @@ class AgendamentoVisita(db.Model):
         db.String(50), nullable=False
     )  # Anos iniciais, finais, etc.
     quantidade_alunos = db.Column(db.Integer, nullable=False)
+    rede_ensino = db.Column(db.String(100), nullable=True)
+    municipio = db.Column(db.String(100), nullable=True)
+    bairro = db.Column(db.String(100), nullable=True)
+    responsavel_nome = db.Column(db.String(150), nullable=True)
+    responsavel_cargo = db.Column(db.String(100), nullable=True)
+    responsavel_whatsapp = db.Column(db.String(20), nullable=True)
+    responsavel_email = db.Column(db.String(120), nullable=True)
+    acompanhantes_nomes = db.Column(db.String(255), nullable=True)
+    acompanhantes_qtd = db.Column(db.Integer, nullable=True)
+    precisa_transporte = db.Column(db.Boolean, default=False)
+    observacoes = db.Column(db.Text, nullable=True)
+    compromisso_1 = db.Column(db.Boolean, default=False)
+    compromisso_2 = db.Column(db.Boolean, default=False)
+    compromisso_3 = db.Column(db.Boolean, default=False)
+    compromisso_4 = db.Column(db.Boolean, default=False)
 
     # Status do agendamento
     data_agendamento = db.Column(db.DateTime, default=datetime.utcnow)

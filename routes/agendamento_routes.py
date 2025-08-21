@@ -14,6 +14,7 @@ from mailjet_rest.client import ApiError
 import logging
 
 from utils.arquivo_utils import arquivo_permitido
+from utils.dia_semana import dia_semana
 
 logger = logging.getLogger(__name__)
 
@@ -382,6 +383,12 @@ def relatorio_geral_agendamentos():
             func.count(
                 case((AgendamentoVisita.status == 'cancelado', 1))
             ).label('cancelados'),
+            func.count(
+                case((AgendamentoVisita.status == 'pendente', 1))
+            ).label('pendentes'),
+            func.count(
+                case((AgendamentoVisita.checkin_realizado == True, 1))
+            ).label('checkins'),
             func.sum(
                 case(
                     (
@@ -407,66 +414,23 @@ def relatorio_geral_agendamentos():
 
     estatisticas = {}
     for evento in eventos:
-
-        # Contar agendamentos por status
-        confirmados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'confirmado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        realizados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'realizado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        cancelados = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'cancelado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-
-        pendentes = db.session.query(func.count(AgendamentoVisita.id)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status == 'pendente',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Total de visitantes
-        visitantes = db.session.query(func.sum(AgendamentoVisita.quantidade_alunos)).join(
-            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-        ).filter(
-            HorarioVisitacao.evento_id == evento.id,
-            AgendamentoVisita.status.in_(['confirmado', 'realizado']),
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim
-        ).scalar() or 0
-        
-        # Guardar estatísticas
+        row = stats_map.get(evento.id)
+        confirmados = row.confirmados if row else 0
+        realizados = row.realizados if row else 0
+        cancelados = row.cancelados if row else 0
+        pendentes = row.pendentes if row else 0
+        checkins = row.checkins if row else 0
+        visitantes = row.visitantes if row else 0
 
         estatisticas[evento.id] = {
             'nome': evento.nome,
             'confirmados': confirmados,
             'realizados': realizados,
             'cancelados': cancelados,
-
             'pendentes': pendentes,
+            'checkins': checkins,
             'total': confirmados + realizados + cancelados + pendentes,
-            'visitantes': visitantes
-
+            'visitantes': visitantes,
         }
 
     agendamentos = (
@@ -1300,10 +1264,28 @@ def criar_agendamento():
             quantidade_alunos = request.form.get('quantidade_alunos')
             faixa_etaria = request.form.get('faixa_etaria')
             observacoes = request.form.get('observacoes')
+            compromissos = [
+                request.form.get('compromisso1'),
+                request.form.get('compromisso2'),
+                request.form.get('compromisso3'),
+                request.form.get('compromisso4'),
+            ]
+            aceite_final = request.form.get('aceite_final')
             
             # Validar dados obrigatórios
-            if not evento_id or not data or not horario_id or not escola_nome or not quantidade_alunos:
+            if (
+                not evento_id
+                or not data
+                or not horario_id
+                or not escola_nome
+                or not quantidade_alunos
+            ):
                 form_erro = "Preencha todos os campos obrigatórios."
+                flash(form_erro, "danger")
+            elif not all(compromissos) or not aceite_final:
+                form_erro = (
+                    'É necessário confirmar todos os compromissos e o aceite final.'
+                )
                 flash(form_erro, "danger")
             else:
                 horario = HorarioVisitacao.query.get(horario_id)
@@ -1348,6 +1330,20 @@ def criar_agendamento():
                             nivel_ensino=faixa_etaria,
                             quantidade_alunos=quantidade,
                         )
+                        extra_campos = {
+                            'nome_responsavel': nome_responsavel,
+                            'email_responsavel': email_responsavel,
+                            'telefone_escola': telefone_escola,
+                            'observacoes': observacoes,
+                            'compromisso1': True,
+                            'compromisso2': True,
+                            'compromisso3': True,
+                            'compromisso4': True,
+                            'aceite_final': True,
+                        }
+                        for campo, valor in extra_campos.items():
+                            if valor and hasattr(AgendamentoVisita, campo):
+                                setattr(agendamento, campo, valor)
 
                         horario.vagas_disponiveis -= quantidade
                         db.session.add(agendamento)
@@ -2201,17 +2197,7 @@ def criar_periodo_agendamento():
                     # Como não sabemos a estrutura exata do seu modelo,
                     # vamos apenas exibir uma mensagem de sucesso simulada
                     
-                    # Converter lista de strings para dias da semana
-                    dias_nomes = {
-                        '0': 'Domingo',
-                        '1': 'Segunda',
-                        '2': 'Terça',
-                        '3': 'Quarta',
-                        '4': 'Quinta',
-                        '5': 'Sexta',
-                        '6': 'Sábado'
-                    }
-                    dias_selecionados = [dias_nomes.get(dia, '') for dia in dias_semana if dia in dias_nomes]
+                    dias_selecionados = [dia_semana(dia) for dia in dias_semana]
                     dias_texto = ", ".join(dias_selecionados)
                     
                     flash(f"Período de agendamento criado com sucesso! Horários configurados para {dias_texto} das {hora_inicio} às {hora_fim}.", "success")
@@ -3004,7 +2990,7 @@ def atualizar_status_agendamento(agendamento_id):
     
 
     status_anterior = agendamento.status
-
+    enviar_confirmacao = novo_status == 'confirmado' and status_anterior != 'confirmado'
 
     # Atualizar o status
     if novo_status:
