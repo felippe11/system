@@ -1,9 +1,11 @@
+import json
 import os
 import uuid
 import json
 
 import pandas as pd
 
+import pandas as pd
 from flask import (
     Blueprint,
     current_app,
@@ -19,13 +21,13 @@ from werkzeug.utils import secure_filename
 
 from extensions import db
 from models import (
-    Submission,
     AuditLog,
     Evento,
-    Usuario,
     Formulario,
-    RespostaFormulario,
     RespostaCampo,
+    RespostaFormulario,
+    Submission,
+    Usuario,
     WorkMetadata,
 )
 from utils.mfa import mfa_required
@@ -181,42 +183,49 @@ def meus_trabalhos():
     return render_template("meus_trabalhos.html", trabalhos=trabalhos)
 
 
-@trabalho_routes.route("/importar_trabalhos", methods=["GET", "POST"])
-def importar_trabalhos():
-    """Importa planilhas de trabalhos em duas etapas."""
+# ───────────────────────────── DISTRIBUIÇÃO ──────────────────────────────── #
+@trabalho_routes.route("/distribuicao", methods=["GET", "POST"])
+@login_required
+def distribuicao():
+    """Permite importar planilha e mapear campos para distribuição."""
 
-    required = [
-        "titulo",
-        "categoria",
-        "rede_ensino",
-        "etapa",
-        "link_pdf",
-    ]
+    campos = ["titulo", "resumo"]
     if request.method == "POST":
-        if "arquivo" in request.files:
-            file = request.files["arquivo"]
-            if not file.filename:
-                flash("Nenhum arquivo selecionado.", "warning")
-                return redirect(url_for("trabalho_routes.importar_trabalhos"))
-            df = pd.read_excel(file)
-            columns = df.columns.tolist()
-            data_json = df.to_json(orient="records")
-            return render_template(
-                "selecionar_colunas_trabalho.html",
-                columns=columns,
-                data_json=data_json,
-                fields=required,
-            )
-        data_json = request.form.get("data")
-        mapping = {field: request.form.get(field) for field in required}
-        if not all(mapping.values()):
-            flash("Mapeie todas as colunas obrigatórias.", "warning")
-            return redirect(url_for("trabalho_routes.importar_trabalhos"))
-        rows = json.loads(data_json) if data_json else []
-        for row in rows:
-            mapped = {f: row.get(col) for f, col in mapping.items()}
-            db.session.add(WorkMetadata(data=mapped))
-        db.session.commit()
-        flash("Trabalhos importados com sucesso.", "success")
-        return redirect(url_for("trabalho_routes.importar_trabalhos"))
-    return render_template("importar_trabalhos.html")
+        if "data" in request.form and all(
+            f"map_{c}" in request.form for c in campos
+        ):
+            data_json = request.form.get("data", "[]")
+            try:
+                rows = json.loads(data_json)
+            except json.JSONDecodeError:
+                flash("Dados inválidos.", "danger")
+                return redirect(url_for("trabalho_routes.distribuicao"))
+            mapping = {c: request.form.get(f"map_{c}") for c in campos}
+            for row in rows:
+                item = {c: row.get(col) for c, col in mapping.items()}
+                db.session.add(WorkMetadata(data=item))
+            db.session.commit()
+            flash("Dados importados com sucesso!", "success")
+            return redirect(url_for("trabalho_routes.distribuicao"))
+
+        arquivo = request.files.get("arquivo")
+        if not arquivo or arquivo.filename == "":
+            flash("Nenhum arquivo selecionado.", "warning")
+            return render_template("distribuicao.html")
+        try:
+            df = pd.read_excel(arquivo)
+        except Exception:
+            flash("Erro ao processar o arquivo.", "danger")
+            return render_template("distribuicao.html")
+        columns = df.columns.tolist()
+        data = df.to_dict(orient="records")
+        flash("Planilha carregada com sucesso.", "info")
+        return render_template(
+            "distribuicao.html",
+            columns=columns,
+            data_preview=data[:5],
+            data_json=json.dumps(data),
+            campos=campos,
+        )
+
+    return render_template("distribuicao.html")
