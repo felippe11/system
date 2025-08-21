@@ -238,7 +238,7 @@ class Submission(db.Model):
 
     # locator & code (para acesso do autor e revisores externos)
     locator = db.Column(db.String(36), unique=True, default=lambda: str(uuid.uuid4()))
-    code_hash = db.Column(db.String(128), nullable=False)
+    code_hash = db.Column(db.String(256), nullable=False)
 
     # metadata
     status = db.Column(db.String(50), nullable=True)
