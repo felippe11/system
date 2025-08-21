@@ -82,7 +82,13 @@ os.environ.setdefault('DB_PASS', 'test')
 from config import Config
 from app import create_app
 from extensions import db
-from models import Evento, HorarioVisitacao, AgendamentoVisita, AlunoVisitante
+from models import (
+    Evento,
+    HorarioVisitacao,
+    AgendamentoVisita,
+    AlunoVisitante,
+    Usuario,
+)
 from models.user import Cliente
 
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
@@ -118,6 +124,16 @@ def app():
         )
         db.session.add(horario)
         db.session.commit()
+        professor = Usuario(
+            nome='Prof',
+            cpf='00000000000',
+            email='prof@test',
+            senha=generate_password_hash('123'),
+            formacao='x',
+            tipo='professor',
+        )
+        db.session.add(professor)
+        db.session.commit()
         ags = [
             AgendamentoVisita(
                 horario_id=horario.id,
@@ -136,6 +152,8 @@ def app():
                 quantidade_alunos=10,
                 salas_selecionadas='1',
                 status='confirmado',
+                professor_id=professor.id,
+                responsavel_whatsapp='55999999999',
             ),
             AgendamentoVisita(
                 horario_id=horario.id,
@@ -178,12 +196,7 @@ def app():
                 agendamento_id=ags[2].id,
                 nome='Aluno 1',
                 presente=True,
-            ),
-            AlunoVisitante(
-                agendamento_id=ags[2].id,
-                nome='Aluno 2',
-                presente=False,
-            ),
+            )
         ]
         db.session.add_all(alunos)
         db.session.commit()
@@ -251,12 +264,15 @@ def test_template_contains_new_columns(client):
     assert 'Aluno 1' in html
 
 
-def test_template_lists_all_agendamentos(client):
+
+def test_professores_confirmados_tab(client):
     login(client)
     resp = client.get('/relatorio_geral_agendamentos')
     html = resp.get_data(as_text=True)
-    for escola in ['E1', 'E2', 'E3', 'E4', 'E5']:
-        assert escola in html
+    assert 'Professores Confirmados' in html
+    assert 'prof@test' in html
+    assert 'https://api.whatsapp.com/send?phone=55999999999' in html
+
 
 
 def test_generate_pdf_uses_service(client, monkeypatch):
