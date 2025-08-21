@@ -22,7 +22,10 @@ def importar_trabalhos():
     if "arquivo" in request.files:
         file = request.files["arquivo"]
         df = pd.read_excel(file)
-        return jsonify({"columns": df.columns.tolist()})
+        return jsonify({
+            "columns": df.columns.tolist(),
+            "data": df.to_dict(orient="records"),
+        })
 
     columns = request.form.getlist("columns")
     data_json = request.form.get("data")
@@ -45,4 +48,4 @@ def importar_trabalhos():
         )
         db.session.add(wm)
     db.session.commit()
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "message": "Importação concluída"})
