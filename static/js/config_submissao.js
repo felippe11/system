@@ -39,4 +39,25 @@
       }
     });
   });
+
+  const form = document.getElementById('formImportarTrabalhos');
+  attachOnce(form, 'submit', async (ev) => {
+    ev.preventDefault();
+    const formData = new FormData(form);
+    try {
+      const resp = await fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': csrfToken },
+      });
+      if (resp.ok) {
+        window.location.reload();
+      } else {
+        const data = await resp.json().catch(() => null);
+        alert(data?.message || 'Erro ao importar');
+      }
+    } catch (err) {
+      console.error('Erro de rede', err);
+    }
+  });
 })();
