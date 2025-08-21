@@ -51,6 +51,7 @@ def register_routes(app):
     from .agendamento_routes import agendamento_routes
     from .cliente_routes import cliente_routes
     from .importar_usuarios_routes import importar_usuarios_routes
+    from .importar_trabalhos_routes import importar_trabalhos_routes
     from .sorteio_routes import sorteio_routes
     from .api_cidades import api_cidades
     from .mercadopago_routes import mercadopago_routes
@@ -94,6 +95,7 @@ def register_routes(app):
     app.register_blueprint(agendamento_routes)
     app.register_blueprint(cliente_routes)
     app.register_blueprint(importar_usuarios_routes)
+    app.register_blueprint(importar_trabalhos_routes)
     app.register_blueprint(sorteio_routes)
     app.register_blueprint(api_cidades)
     app.register_blueprint(mercadopago_routes)
