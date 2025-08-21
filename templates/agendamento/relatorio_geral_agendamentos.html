@@ -14,21 +14,31 @@
         <div class="card-body">
             <form method="GET" action="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}">
                 <div class="row">
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
                         <label for="data_inicio" class="form-label">Data Inicial:</label>
                         <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '' }}">
                     </div>
 
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
                         <label for="data_fim" class="form-label">Data Final:</label>
                         <input type="date" id="data_fim" name="data_fim" class="form-control" value="{{ filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '' }}">
                     </div>
 
-                    <div class="col-md-3 mb-3">
+                    <div class="col-md-2 mb-3">
                         <label for="tipo_data" class="form-label">Tipo de Data:</label>
                         <select id="tipo_data" name="tipo_data" class="form-select">
                             <option value="horario" {% if filtros.tipo_data == 'horario' %}selected{% endif %}>Data da Visita</option>
                             <option value="agendamento" {% if filtros.tipo_data == 'agendamento' %}selected{% endif %}>Data do Agendamento</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label for="evento_id" class="form-label">Evento:</label>
+                        <select id="evento_id" name="evento_id" class="form-select">
+                            <option value="">Todos</option>
+                            {% for evento in eventos %}
+                                <option value="{{ evento.id }}" {% if filtros.evento_id == evento.id %}selected{% endif %}>{{ evento.nome }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 
@@ -143,6 +153,7 @@
                                         <th class="text-center">Pendentes</th>
                                         <th class="text-center">Check-ins</th>
                                         <th class="text-center">Visitantes</th>
+                                        <th class="text-center">Total</th>
                                         <th class="text-center">Taxa Conclusão</th>
                                     </tr>
                                 </thead>
@@ -156,6 +167,7 @@
                                             <td class="text-center">{{ stats.pendentes }}</td>
                                             <td class="text-center">{{ stats.checkins }}</td>
                                             <td class="text-center">{{ stats.visitantes_confirmados }}</td>
+                                            <td class="text-center">{{ stats.total }}</td>
                                             <td class="text-center">
                                                 {% if stats.confirmados + stats.realizados > 0 %}
                                                     {% set taxa = (stats.realizados / (stats.confirmados + stats.realizados)) * 100 %}

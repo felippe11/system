@@ -425,8 +425,16 @@ def relatorio_geral_agendamentos():
         else current_user.cliente_id
     )
 
-    # Buscar eventos do cliente com agendamentos no período selecionado
+    evento_id = request.args.get('evento_id', type=int)
+
     eventos = (
+        Evento.query.filter_by(cliente_id=cliente_id)
+        .order_by(Evento.nome)
+        .all()
+    )
+
+    # Buscar eventos do cliente com agendamentos no período selecionado
+    eventos_query = (
         Evento.query.outerjoin(
             HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id
         )
@@ -438,12 +446,13 @@ def relatorio_geral_agendamentos():
             coluna_data >= data_inicio,
             coluna_data <= data_fim,
         )
-        .distinct()
-        .all()
     )
+    if evento_id:
+        eventos_query = eventos_query.filter(Evento.id == evento_id)
+    eventos_periodo = eventos_query.distinct().all()
 
     # Estatísticas agregadas em uma única consulta
-    aggregados = (
+    aggregados_query = (
         db.session.query(
             Evento.id.label('evento_id'),
             func.count(
@@ -523,14 +532,15 @@ def relatorio_geral_agendamentos():
             coluna_data >= data_inicio,
             coluna_data <= data_fim,
         )
-        .group_by(Evento.id)
-        .all()
     )
+    if evento_id:
+        aggregados_query = aggregados_query.filter(Evento.id == evento_id)
+    aggregados = aggregados_query.group_by(Evento.id).all()
 
     stats_map = {row.evento_id: row for row in aggregados}
 
     estatisticas = {}
-    for evento in eventos:
+    for evento in eventos_periodo:
         row = stats_map.get(evento.id)
         confirmados = row.confirmados if row else 0
         realizados = row.realizados if row else 0
@@ -569,7 +579,10 @@ def relatorio_geral_agendamentos():
         + totais['pendentes']
     )
 
-    agendamentos = (
+
+    agendamentos_query = (
+
+
         db.session.query(AgendamentoVisita)
         .outerjoin(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
@@ -583,11 +596,16 @@ def relatorio_geral_agendamentos():
             coluna_data >= data_inicio,
             coluna_data <= data_fim,
         )
-        .order_by(order_col, HorarioVisitacao.horario_inicio)
-        .all()
+    )
+    if evento_id:
+        agendamentos_query = agendamentos_query.filter(Evento.id == evento_id)
+    agendamentos = (
+        agendamentos_query.order_by(
+            order_col, HorarioVisitacao.horario_inicio
+        ).all()
     )
 
-    professores_confirmados = (
+    professores_query = (
         db.session.query(
             Usuario.nome.label('nome'),
             Usuario.email.label('email'),
@@ -607,9 +625,10 @@ def relatorio_geral_agendamentos():
             coluna_data >= data_inicio,
             coluna_data <= data_fim,
         )
-        .distinct()
-        .all()
     )
+    if evento_id:
+        professores_query = professores_query.filter(Evento.id == evento_id)
+    professores_confirmados = professores_query.distinct().all()
 
     # Gerar PDF com detalhes
     if request.args.get('gerar_pdf'):
@@ -642,6 +661,7 @@ def relatorio_geral_agendamentos():
             'data_inicio': data_inicio,
             'data_fim': data_fim,
             'tipo_data': tipo_data,
+            'evento_id': evento_id,
         }
     )
 
