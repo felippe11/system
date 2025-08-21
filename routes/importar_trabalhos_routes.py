@@ -1,10 +1,12 @@
 """Endpoints for importing work metadata from spreadsheets."""
 
 import json
+import uuid
 from flask import Blueprint, request, jsonify
 import pandas as pd
 from extensions import db
-from models import WorkMetadata
+from werkzeug.security import generate_password_hash
+from models import WorkMetadata, Submission
 
 importar_trabalhos_routes = Blueprint(
     "importar_trabalhos_routes", __name__
@@ -22,6 +24,19 @@ def importar_trabalhos():
     if "arquivo" in request.files:
         file = request.files["arquivo"]
         df = pd.read_excel(file)
+
+        for _, row in df.iterrows():
+            title = row.get("title") or row.get("titulo")
+            if not title:
+                continue
+            submission = Submission(
+                title=title,
+                code_hash=generate_password_hash(uuid.uuid4().hex),
+            )
+            db.session.add(submission)
+        if not df.empty:
+            db.session.commit()
+
         return jsonify({
             "columns": df.columns.tolist(),
             "data": df.to_dict(orient="records"),

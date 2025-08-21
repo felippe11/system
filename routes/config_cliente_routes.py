@@ -989,3 +989,11 @@ def config_submissao():
         submissions=submissions,
         reviewers=reviewers,
     )
+
+
+@config_cliente_routes.route("/importar_trabalhos", methods=["POST"])
+def importar_trabalhos():
+    """Proxy endpoint to reuse the generic import logic."""
+    from .importar_trabalhos_routes import importar_trabalhos as handler
+
+    return handler()
