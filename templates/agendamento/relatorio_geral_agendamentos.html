@@ -56,93 +56,75 @@
                 <div class="card-header bg-primary text-white">
                     <i class="fas fa-calendar-check"></i> Totais por Status
                 </div>
-                <div class="card-body">
-                    {% set total_confirmados = 0 %}
-                    {% set total_realizados = 0 %}
-                    {% set total_cancelados = 0 %}
-                    {% set total_pendentes = 0 %}
-                    {% set total_visitantes_confirmados = 0 %}
-                    {% set total_checkins = 0 %}
 
-                    {% for stats in estatisticas.values() %}
-                        {% set total_confirmados = total_confirmados + stats.confirmados %}
-                        {% set total_realizados = total_realizados + stats.realizados %}
-                        {% set total_cancelados = total_cancelados + stats.cancelados %}
-                        {% set total_pendentes = total_pendentes + stats.pendentes %}
-                        {% set total_checkins = total_checkins + stats.checkins %}
-                        {% set total_visitantes_confirmados = total_visitantes_confirmados + stats.visitantes_confirmados %}
-                    {% endfor %}
-                    
-                    <div class="list-group">
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Confirmados</span>
-                            <span class="badge bg-primary rounded-pill">{{ total_confirmados }}</span>
+        <div class="card-body">
+            <div class="list-group">
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Confirmados</span>
+                    <span class="badge bg-primary rounded-pill">{{ totais.confirmados }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Realizados</span>
+                    <span class="badge bg-success rounded-pill">{{ totais.realizados }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Cancelados</span>
+                    <span class="badge bg-danger rounded-pill">{{ totais.cancelados }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Pendentes</span>
+                    <span class="badge bg-warning text-dark rounded-pill">{{ totais.pendentes }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Check-ins</span>
+                    <span class="badge bg-secondary rounded-pill">{{ totais.checkins }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Total de Agendamentos</span>
+                    <span class="badge bg-info rounded-pill">{{ total_agendamentos }}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>Total de Visitantes</span>
+                    <span class="badge bg-warning text-dark rounded-pill">{{ totais.visitantes_confirmados }}</span>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <h6>Distribuição de Status</h6>
+                <div class="progress" style="height: 25px;">
+                    {% if total_agendamentos > 0 %}
+                        {% set porcentagem_confirmados = (totais.confirmados / total_agendamentos) * 100 %}
+                        {% set porcentagem_realizados = (totais.realizados / total_agendamentos) * 100 %}
+                        {% set porcentagem_cancelados = (totais.cancelados / total_agendamentos) * 100 %}
+                        {% set porcentagem_pendentes = (totais.pendentes / total_agendamentos) * 100 %}
+
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentagem_confirmados }}%;" title="Confirmados: {{ totais.confirmados }}">
+                            {{ porcentagem_confirmados|round }}%
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Realizados</span>
-                            <span class="badge bg-success rounded-pill">{{ total_realizados }}</span>
+                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentagem_realizados }}%;" title="Realizados: {{ totais.realizados }}">
+                            {{ porcentagem_realizados|round }}%
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Cancelados</span>
-                            <span class="badge bg-danger rounded-pill">{{ total_cancelados }}</span>
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentagem_cancelados }}%;" title="Cancelados: {{ totais.cancelados }}">
+                            {{ porcentagem_cancelados|round }}%
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Pendentes</span>
-                            <span class="badge bg-warning text-dark rounded-pill">{{ total_pendentes }}</span>
+                        <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ porcentagem_pendentes }}%;" title="Pendentes: {{ totais.pendentes }}">
+                            {{ porcentagem_pendentes|round }}%
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Check-ins</span>
-                            <span class="badge bg-secondary rounded-pill">{{ total_checkins }}</span>
+                    {% else %}
+                        <div class="progress-bar" role="progressbar" style="width: 0%;">
+                            Sem dados
                         </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Total de Agendamentos</span>
-                            <span class="badge bg-info rounded-pill">{{ total_confirmados + total_realizados + total_cancelados + total_pendentes }}</span>
-                        </div>
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <span>Total de Visitantes</span>
-                            <span class="badge bg-warning text-dark rounded-pill">{{ total_visitantes_confirmados }}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3">
-                        <h6>Distribuição de Status</h6>
-                        <div class="progress" style="height: 25px;">
-                            {% set total = total_confirmados + total_realizados + total_cancelados + total_pendentes %}
-                            {% if total > 0 %}
-                                {% set porcentagem_confirmados = (total_confirmados / total) * 100 %}
-                                {% set porcentagem_realizados = (total_realizados / total) * 100 %}
-                                {% set porcentagem_cancelados = (total_cancelados / total) * 100 %}
-                                {% set porcentagem_pendentes = (total_pendentes / total) * 100 %}
-                                
-                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentagem_confirmados }}%;" title="Confirmados: {{ total_confirmados }}">
-                                    {{ porcentagem_confirmados|round }}%
-                                </div>
-                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentagem_realizados }}%;" title="Realizados: {{ total_realizados }}">
-                                    {{ porcentagem_realizados|round }}%
-                                </div>
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentagem_cancelados }}%;" title="Cancelados: {{ total_cancelados }}">
-                                    {{ porcentagem_cancelados|round }}%
-                                </div>
-                                <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ porcentagem_pendentes }}%;" title="Pendentes: {{ total_pendentes }}">
-                                    {{ porcentagem_pendentes|round }}%
-                                </div>
-                            {% else %}
-                                <div class="progress-bar" role="progressbar" style="width: 0%;">
-                                    Sem dados
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="d-flex justify-content-between mt-1 small flex-wrap">
-                            <span class="text-primary">Confirmados</span>
-                            <span class="text-success">Realizados</span>
-                            <span class="text-danger">Cancelados</span>
-                            <span class="text-warning">Pendentes</span>
-                        </div>
-                    </div>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between mt-1 small flex-wrap">
+                    <span class="text-primary">Confirmados</span>
+                    <span class="text-success">Realizados</span>
+                    <span class="text-danger">Cancelados</span>
+                    <span class="text-warning">Pendentes</span>
                 </div>
             </div>
         </div>
-        
+    </div>
         <div class="col-md-8">
             <div class="card h-100">
                 <div class="card-header bg-success text-white">
@@ -335,9 +317,8 @@
                 <div class="col-md-6">
                     <h5>Análise Geral</h5>
                     <ul>
-                        {% if total_confirmados + total_realizados + total_cancelados + total_pendentes > 0 %}
-                            {% set total_ag = total_confirmados + total_realizados + total_cancelados + total_pendentes %}
-                            {% set taxa_cancelamento = (total_cancelados / total_ag) * 100 %}
+                        {% if total_agendamentos > 0 %}
+                            {% set taxa_cancelamento = (totais.cancelados / total_agendamentos) * 100 %}
                             <li>
                                 <strong>Taxa de Cancelamento:</strong> {{ taxa_cancelamento|round(1) }}%
                                 {% if taxa_cancelamento > 30 %}
@@ -347,9 +328,9 @@
                                 {% endif %}
                             </li>
                         {% endif %}
-                        
-                        {% if total_confirmados + total_realizados > 0 %}
-                            {% set taxa_conclusao = (total_realizados / (total_confirmados + total_realizados)) * 100 %}
+
+                        {% if totais.confirmados + totais.realizados > 0 %}
+                            {% set taxa_conclusao = (totais.realizados / (totais.confirmados + totais.realizados)) * 100 %}
                             <li>
                                 <strong>Taxa de Conclusão:</strong> {{ taxa_conclusao|round(1) }}%
                                 {% if taxa_conclusao < 50 %}
@@ -365,17 +346,17 @@
                 <div class="col-md-6">
                     <h5>Recomendações</h5>
                     <ul>
-                        {% if total_confirmados + total_realizados + total_cancelados + total_pendentes > 0 %}
+                        {% if total_agendamentos > 0 %}
                             {% if taxa_cancelamento > 30 %}
                                 <li>Considere revisar suas políticas de cancelamento para reduzir a taxa de desistência.</li>
                                 <li>Envie lembretes com mais frequência para professores com agendamentos confirmados.</li>
                             {% endif %}
-                            
-                            {% if total_realizados < total_confirmados %}
+
+                            {% if totais.realizados < totais.confirmados %}
                                 <li>Implementar um sistema de lembretes mais eficiente para aumentar o comparecimento.</li>
                             {% endif %}
-                            
-                            {% if total_visitantes_confirmados < 100 %}
+
+                            {% if totais.visitantes_confirmados < 100 %}
                                 <li>Divulgue mais seu evento entre escolas e professores para aumentar a quantidade de visitantes.</li>
                             {% endif %}
                         {% else %}

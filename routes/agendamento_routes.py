@@ -552,6 +552,23 @@ def relatorio_geral_agendamentos():
             'visitantes_confirmados': visitantes_confirmados,
         }
 
+    totais = {
+        'confirmados': sum(e['confirmados'] for e in estatisticas.values()),
+        'realizados': sum(e['realizados'] for e in estatisticas.values()),
+        'cancelados': sum(e['cancelados'] for e in estatisticas.values()),
+        'pendentes': sum(e['pendentes'] for e in estatisticas.values()),
+        'checkins': sum(e['checkins'] for e in estatisticas.values()),
+        'visitantes_confirmados': sum(
+            e['visitantes_confirmados'] for e in estatisticas.values()
+        ),
+    }
+    total_agendamentos = (
+        totais['confirmados']
+        + totais['realizados']
+        + totais['cancelados']
+        + totais['pendentes']
+    )
+
     agendamentos = (
         db.session.query(AgendamentoVisita)
         .outerjoin(
@@ -617,6 +634,8 @@ def relatorio_geral_agendamentos():
         'relatorio_geral_agendamentos.html',
         eventos=eventos,
         estatisticas=estatisticas,
+        totais=totais,
+        total_agendamentos=total_agendamentos,
         agendamentos=agendamentos,
         professores_confirmados=professores_confirmados,
         filtros={
