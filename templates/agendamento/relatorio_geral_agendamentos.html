@@ -14,17 +14,25 @@
         <div class="card-body">
             <form method="GET" action="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}">
                 <div class="row">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="data_inicio" class="form-label">Data Inicial:</label>
                         <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '' }}">
                     </div>
-                    
-                    <div class="col-md-4 mb-3">
+
+                    <div class="col-md-3 mb-3">
                         <label for="data_fim" class="form-label">Data Final:</label>
                         <input type="date" id="data_fim" name="data_fim" class="form-control" value="{{ filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '' }}">
                     </div>
-                    
-                    <div class="col-md-4 mb-3 d-flex align-items-end">
+
+                    <div class="col-md-3 mb-3">
+                        <label for="tipo_data" class="form-label">Tipo de Data:</label>
+                        <select id="tipo_data" name="tipo_data" class="form-select">
+                            <option value="horario" {% if filtros.tipo_data == 'horario' %}selected{% endif %}>Data da Visita</option>
+                            <option value="agendamento" {% if filtros.tipo_data == 'agendamento' %}selected{% endif %}>Data do Agendamento</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
                         <div class="d-grid gap-2 d-md-flex w-100">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> Filtrar
@@ -385,7 +393,7 @@
         <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}" class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
-        <button type="button" class="btn btn-danger" onclick="window.location.href='{{ url_for('agendamento_routes.relatorio_geral_agendamentos', data_inicio=filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '', data_fim=filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '', gerar_pdf=1) }}'">
+        <button type="button" class="btn btn-danger" onclick="window.location.href='{{ url_for('agendamento_routes.relatorio_geral_agendamentos', data_inicio=filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '', data_fim=filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '', tipo_data=filtros.tipo_data, gerar_pdf=1) }}'">
             <i class="fas fa-file-pdf"></i> Gerar PDF
         </button>
     </div>
