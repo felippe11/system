@@ -2794,15 +2794,18 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Estatísticas', 0, 1)
 
-    total_agendamentos = len(agendamentos)
     confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
     realizados = sum(1 for a in agendamentos if a.status == 'realizado')
     cancelados = sum(1 for a in agendamentos if a.status == 'cancelado')
+    pendentes = sum(1 for a in agendamentos if a.status == 'pendente')
+    checkins = sum(1 for a in agendamentos if a.checkin_realizado)
+
+    total_agendamentos = confirmados + realizados + cancelados + pendentes
 
     total_alunos = sum(
         a.quantidade_alunos
         for a in agendamentos
-        if a.status in ['confirmado', 'realizado']
+        if a.status in ['confirmado', 'realizado', 'pendente']
     )
     presentes = 0
     for a in agendamentos:
@@ -2817,8 +2820,13 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(95, 10, f'Realizados: {realizados}', 0, 1)
 
     pdf.cell(95, 10, f'Cancelados: {cancelados}', 0, 0)
+    pdf.cell(95, 10, f'Pendentes: {pendentes}', 0, 1)
+
+    pdf.cell(95, 10, f'Check-ins: {checkins}', 0, 0)
     if realizados > 0:
         pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
+    else:
+        pdf.ln(10)
 
     # Lista de agendamentos
     pdf.ln(10)
