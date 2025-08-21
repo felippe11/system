@@ -238,6 +238,7 @@ def test_agendamento_created_outside_range_included(client, app):
     assert resp.status_code == 200
     template, context = templates[0]
     ags = context['agendamentos']
+    assert len(ags) == 5
     assert any(a.escola_nome == 'E5' for a in ags)
 
 
@@ -248,6 +249,14 @@ def test_template_contains_new_columns(client):
     assert 'Check-in' in html
     assert 'Presentes' in html
     assert 'Aluno 1' in html
+
+
+def test_template_lists_all_agendamentos(client):
+    login(client)
+    resp = client.get('/relatorio_geral_agendamentos')
+    html = resp.get_data(as_text=True)
+    for escola in ['E1', 'E2', 'E3', 'E4', 'E5']:
+        assert escola in html
 
 
 def test_generate_pdf_uses_service(client, monkeypatch):
