@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const url = new URL(decodedText);
             token = url.searchParams.get('token');
+            if (!token) {
+                const segments = url.pathname.split('/').filter(Boolean);
+                token = segments.pop() || '';
+            }
         } catch {
             token = decodedText;
         }
