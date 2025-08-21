@@ -579,7 +579,10 @@ def relatorio_geral_agendamentos():
         + totais['pendentes']
     )
 
+
     agendamentos_query = (
+
+
         db.session.query(AgendamentoVisita)
         .outerjoin(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
