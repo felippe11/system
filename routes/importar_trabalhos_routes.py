@@ -23,8 +23,15 @@ def importar_trabalhos():
     """
     if "arquivo" in request.files:
         file = request.files["arquivo"]
-        df = pd.read_excel(file)
+        try:
+            df = pd.read_excel(file)
+        except Exception:
+            return jsonify({"message": "Erro ao ler o arquivo"}), 400
 
+        if not ({"title", "titulo"} & set(df.columns)):
+            return jsonify({"message": "Arquivo sem coluna título"}), 400
+
+        imported = 0
         for _, row in df.iterrows():
             title = row.get("title") or row.get("titulo")
             if not title:
@@ -34,13 +41,18 @@ def importar_trabalhos():
                 code_hash=generate_password_hash(uuid.uuid4().hex),
             )
             db.session.add(submission)
-        if not df.empty:
+            imported += 1
+
+        if imported:
             db.session.commit()
 
-        return jsonify({
-            "columns": df.columns.tolist(),
-            "data": df.to_dict(orient="records"),
-        })
+        return jsonify(
+            {
+                "columns": df.columns.tolist(),
+                "data": df.to_dict(orient="records"),
+                "imported": imported,
+            }
+        )
 
     columns = request.form.getlist("columns")
     data_json = request.form.get("data")
