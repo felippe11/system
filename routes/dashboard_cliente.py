@@ -646,18 +646,6 @@ def set_dashboard_agendamentos_data():
     if ocupacao_query and ocupacao_query.total and ocupacao_query.total > 0:
         ocupacao_media = (ocupacao_query.ocupadas / ocupacao_query.total) * 100
 
-    # Todos os agendamentos do cliente (usados na tabela da aba Agendamentos)
-    todos_agendamentos = AgendamentoVisita.query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).join(
-        Evento, HorarioVisitacao.evento_id == Evento.id
-    ).filter(
-        Evento.cliente_id == current_user.id
-    ).order_by(
-        HorarioVisitacao.data,
-        HorarioVisitacao.horario_inicio
-    ).all()
-
     # Períodos de agendamento e configuração opcional
     periodos_agendamento = []
     if PeriodoAgendamento:  # pragma: no branch - depende da existência do modelo
@@ -698,7 +686,6 @@ def set_dashboard_agendamentos_data():
         'agendamentos_hoje': agendamentos_hoje,
         'proximos_agendamentos': proximos_agendamentos,
         'ocupacao_media': ocupacao_media,
-        'todos_agendamentos': todos_agendamentos,
         'periodos_agendamento': periodos_agendamento,
         'config_agendamento': config_agendamento
     }
@@ -718,7 +705,6 @@ def dashboard_agendamentos():
         'agendamentos_cancelados': 0,
         'agendamentos_hoje': [],
         'proximos_agendamentos': [],
-        'todos_agendamentos': [],
         'periodos_agendamento': [],
         'config_agendamento': None,
     }
