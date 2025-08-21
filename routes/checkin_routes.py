@@ -553,17 +553,24 @@ def confirmar_checkin(agendamento_id):
         return redirect(url_for('dashboard_routes.dashboard'))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-    
+
     # Verificar se o agendamento pertence a um evento do cliente
     evento = agendamento.horario.evento
     if evento.cliente_id != current_user.id:
         flash('Este agendamento não pertence a um evento seu!', 'danger')
         return redirect(url_for('agendamento_routes.checkin_qr_agendamento'))
-    
+
+    form_action = url_for('checkin_routes.confirmar_checkin', agendamento_id=agendamento.id)
+
     # Verificar se já foi feito check-in
     if agendamento.checkin_realizado:
         flash('Check-in já foi realizado para este agendamento!', 'warning')
-        return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
+        return redirect(
+            url_for(
+                'agendamento_routes.detalhes_agendamento',
+                agendamento_id=agendamento.id,
+            )
+        )
     
     if request.method == 'POST':
         alunos_presentes = request.form.getlist('alunos_presentes')
@@ -577,6 +584,7 @@ def confirmar_checkin(agendamento_id):
                 agendamento=agendamento,
                 horario=agendamento.horario,
                 evento=evento,
+                form_action=form_action,
             )
 
         agendamento.checkin_realizado = True
@@ -603,7 +611,8 @@ def confirmar_checkin(agendamento_id):
         'checkin/confirmar_checkin.html',
         agendamento=agendamento,
         horario=agendamento.horario,
-        evento=evento
+        evento=evento,
+        form_action=form_action,
     )
 
 @checkin_routes.route('/processar_qrcode', methods=['POST'])
