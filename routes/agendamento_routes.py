@@ -29,6 +29,7 @@ from models import (
     Oficina,
     ProfessorBloqueado,
     Checkin,
+    AlunoVisitante,
 )
 from utils import obter_estados
 from fpdf import FPDF
@@ -400,18 +401,28 @@ def relatorio_geral_agendamentos():
             func.sum(
                 case(
                     (
-                        AgendamentoVisita.status.in_(['confirmado', 'realizado']),
-                        AgendamentoVisita.quantidade_alunos,
+                        and_(
+                            AgendamentoVisita.status.in_([
+                                'confirmado',
+                                'realizado',
+                            ]),
+                            AlunoVisitante.presente.is_(True),
+                        ),
+                        1,
                     ),
                     else_=0,
                 )
-            ).label('visitantes'),
+            ).label('visitantes_confirmados'),
         )
         .outerjoin(
             HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id
         )
         .outerjoin(
             AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
+        .outerjoin(
+            AlunoVisitante,
+            AlunoVisitante.agendamento_id == AgendamentoVisita.id,
         )
         .filter(
             Evento.cliente_id == current_user.id,
@@ -432,7 +443,9 @@ def relatorio_geral_agendamentos():
         cancelados = row.cancelados if row else 0
         pendentes = row.pendentes if row else 0
         checkins = row.checkins if row else 0
-        visitantes = row.visitantes if row else 0
+        visitantes_confirmados = (
+            row.visitantes_confirmados if row else 0
+        )
 
         estatisticas[evento.id] = {
             'nome': evento.nome,
@@ -442,7 +455,7 @@ def relatorio_geral_agendamentos():
             'pendentes': pendentes,
             'checkins': checkins,
             'total': confirmados + realizados + cancelados + pendentes,
-            'visitantes': visitantes,
+            'visitantes_confirmados': visitantes_confirmados,
         }
 
     agendamentos = (
