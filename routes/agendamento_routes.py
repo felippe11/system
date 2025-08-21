@@ -2983,7 +2983,7 @@ def atualizar_status_agendamento(agendamento_id):
     
 
     status_anterior = agendamento.status
-
+    enviar_confirmacao = novo_status == 'confirmado' and status_anterior != 'confirmado'
 
     # Atualizar o status
     if novo_status:

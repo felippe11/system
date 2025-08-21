@@ -7,6 +7,9 @@ from werkzeug.security import generate_password_hash
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
 os.environ.setdefault('SECRET_KEY', 'test')
+os.environ.setdefault('DB_PASS', 'test')
+os.environ.setdefault('DATABASE_URL', 'sqlite://')
+os.environ.setdefault('DB_PASS', 'test')
 
 from config import Config
 
@@ -17,11 +20,12 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-
+from models import (
     Cliente,
     Usuario,
     Evento,
     HorarioVisitacao,
+    SalaVisitacao,
     AgendamentoVisita,
 )
 from routes import agendamento_routes
@@ -90,13 +94,12 @@ def app():
             turma='T1',
             nivel_ensino='Fundamental',
             quantidade_alunos=10,
+            salas_selecionadas='1',
             status='pendente',
         )
         db.session.add(agendamento)
         db.session.commit()
     yield app
-    with app.app_context():
-        db.drop_all()
 
 
 @pytest.fixture
