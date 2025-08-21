@@ -3334,10 +3334,10 @@ def confirmar_checkin_agendamento(token):
                 )
                 db.session.add(checkin)
 
-                # Processa os alunos presentes
-                alunos_presentes = request.form.getlist('alunos_presentes')
+                # Processa os alunos ausentes
+                alunos_ausentes = request.form.getlist('alunos_ausentes')
                 for aluno in agendamento.alunos:
-                    aluno.presente = str(aluno.id) in alunos_presentes
+                    aluno.presente = str(aluno.id) not in alunos_ausentes
 
 
                 db.session.commit()
