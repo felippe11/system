@@ -1,5 +1,7 @@
 import pytest
 import os
+import io
+import pandas as pd
 os.environ.setdefault('SECRET_KEY', 'test')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
@@ -126,3 +128,21 @@ def test_revisao_config_update_and_interface(client, app):
     assert b'id="selectModeloBlind"' in resp.data
     assert b'"numero_revisores": 3' in resp.data
     assert b'"modelo_blind": "double"' in resp.data
+
+
+def test_importar_trabalhos_aparece_na_tabela(client, app):
+    login(client, 'cli@example.com', '123')
+    df = pd.DataFrame({'title': ['Trabalho X']})
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    buffer.seek(0)
+    resp = client.post(
+        '/importar_trabalhos',
+        data={'arquivo': (buffer, 'dados.xlsx')},
+        content_type='multipart/form-data',
+    )
+    assert resp.status_code == 200
+    resp = client.get('/config_submissao')
+    assert resp.status_code == 200
+    assert b'Trabalho X' in resp.data
