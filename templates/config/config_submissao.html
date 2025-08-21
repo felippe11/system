@@ -153,6 +153,16 @@
       </h2>
       <div id="collapseDistribuicao" class="accordion-collapse collapse" aria-labelledby="headingDistribuicao" data-bs-parent="#accordionDistribuicao">
         <div class="accordion-body">
+          <form id="formImportarTrabalhos"
+                class="mb-3"
+                method="post"
+                enctype="multipart/form-data"
+                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+            <div class="input-group">
+              <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
+              <button class="btn btn-primary" type="submit">Importar</button>
+            </div>
+          </form>
           <table class="table table-striped">
             <thead>
               <tr>
