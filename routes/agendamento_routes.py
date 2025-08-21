@@ -383,28 +383,36 @@ def relatorio_geral_agendamentos():
             func.count(
                 func.distinct(
                     case(
+
                         (AgendamentoVisita.status == 'confirmado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('confirmados'),
             func.count(
                 func.distinct(
                     case(
+
                         (AgendamentoVisita.status == 'realizado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('realizados'),
             func.count(
                 func.distinct(
                     case(
+
                         (AgendamentoVisita.status == 'cancelado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('cancelados'),
             func.count(
                 func.distinct(
                     case(
+
                         (AgendamentoVisita.status == 'pendente', AgendamentoVisita.id)
+
                     )
                 )
             ).label('pendentes'),
@@ -3363,10 +3371,10 @@ def confirmar_checkin_agendamento(token):
                 )
                 db.session.add(checkin)
 
-                # Processa os alunos presentes
-                alunos_presentes = request.form.getlist('alunos_presentes')
+                # Processa os alunos ausentes
+                alunos_ausentes = request.form.getlist('alunos_ausentes')
                 for aluno in agendamento.alunos:
-                    aluno.presente = str(aluno.id) in alunos_presentes
+                    aluno.presente = str(aluno.id) not in alunos_ausentes
 
 
                 db.session.commit()
