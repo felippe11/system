@@ -1,19 +1,26 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="container mt-4">
-  <h3>Selecione colunas para importar</h3>
+  <h3>Mapear colunas da planilha</h3>
   <form method="POST">
     {% if csrf_token is defined %}
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     {% endif %}
     <input type="hidden" name="data" value="{{ data_json }}">
-    {% for col in columns %}
-      <div class="form-check">
-        <input class="form-check-input" type="checkbox" name="columns" value="{{ col }}" id="col_{{ loop.index }}">
-        <label class="form-check-label" for="col_{{ loop.index }}">{{ col }}</label>
+    {% for field in fields %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ field }}">
+          {{ field.replace('_', ' ')|title }}
+        </label>
+        <select class="form-select" name="{{ field }}" id="{{ field }}" required>
+          <option value="">Selecione</option>
+          {% for col in columns %}
+            <option value="{{ col }}">{{ col }}</option>
+          {% endfor %}
+        </select>
       </div>
     {% endfor %}
-    <button class="btn btn-success mt-3" type="submit">Importar</button>
+    <button class="btn btn-success" type="submit">Importar</button>
   </form>
 </div>
 {% endblock %}
