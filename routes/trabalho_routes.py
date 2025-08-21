@@ -1,5 +1,8 @@
 import os
 import uuid
+import json
+
+import pandas as pd
 
 from flask import (
     Blueprint,
@@ -23,6 +26,7 @@ from models import (
     Formulario,
     RespostaFormulario,
     RespostaCampo,
+    WorkMetadata,
 )
 from utils.mfa import mfa_required
 
@@ -175,3 +179,44 @@ def meus_trabalhos():
 
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("meus_trabalhos.html", trabalhos=trabalhos)
+
+
+@trabalho_routes.route("/importar_trabalhos", methods=["GET", "POST"])
+def importar_trabalhos():
+    """Importa planilhas de trabalhos em duas etapas."""
+
+    required = [
+        "titulo",
+        "categoria",
+        "rede_ensino",
+        "etapa",
+        "link_pdf",
+    ]
+    if request.method == "POST":
+        if "arquivo" in request.files:
+            file = request.files["arquivo"]
+            if not file.filename:
+                flash("Nenhum arquivo selecionado.", "warning")
+                return redirect(url_for("trabalho_routes.importar_trabalhos"))
+            df = pd.read_excel(file)
+            columns = df.columns.tolist()
+            data_json = df.to_json(orient="records")
+            return render_template(
+                "selecionar_colunas_trabalho.html",
+                columns=columns,
+                data_json=data_json,
+                fields=required,
+            )
+        data_json = request.form.get("data")
+        mapping = {field: request.form.get(field) for field in required}
+        if not all(mapping.values()):
+            flash("Mapeie todas as colunas obrigatórias.", "warning")
+            return redirect(url_for("trabalho_routes.importar_trabalhos"))
+        rows = json.loads(data_json) if data_json else []
+        for row in rows:
+            mapped = {f: row.get(col) for f, col in mapping.items()}
+            db.session.add(WorkMetadata(data=mapped))
+        db.session.commit()
+        flash("Trabalhos importados com sucesso.", "success")
+        return redirect(url_for("trabalho_routes.importar_trabalhos"))
+    return render_template("importar_trabalhos.html")
