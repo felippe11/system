@@ -76,20 +76,37 @@
             
             <!-- Nome do Responsável -->
             <div class="mb-3">
-              <label for="nome_responsavel" class="form-label">Nome do Responsável</label>
-              <input type="text" class="form-control" id="nome_responsavel" name="nome_responsavel">
+              <label for="responsavel_nome" class="form-label">Nome do Responsável</label>
+              <input type="text" class="form-control" id="responsavel_nome" name="responsavel_nome">
             </div>
-            
+
+            <!-- Cargo do Responsável -->
+            <div class="mb-3">
+              <label for="responsavel_cargo" class="form-label">Cargo/Função</label>
+              <input type="text" class="form-control" id="responsavel_cargo" name="responsavel_cargo">
+            </div>
+
             <!-- Email do Responsável -->
             <div class="mb-3">
-              <label for="email_responsavel" class="form-label">Email do Responsável</label>
-              <input type="email" class="form-control" id="email_responsavel" name="email_responsavel">
+              <label for="responsavel_email" class="form-label">Email do Responsável</label>
+              <input type="email" class="form-control" id="responsavel_email" name="responsavel_email">
             </div>
-            
-            <!-- Telefone da Escola -->
+
+            <!-- WhatsApp para Contato -->
             <div class="mb-3">
-              <label for="telefone_escola" class="form-label">Telefone para Contato</label>
-              <input type="tel" class="form-control" id="telefone_escola" name="telefone_escola">
+              <label for="responsavel_whatsapp" class="form-label">WhatsApp para Contato</label>
+              <input type="tel" class="form-control" id="responsavel_whatsapp" name="responsavel_whatsapp">
+            </div>
+
+            <!-- Acompanhantes -->
+            <div class="mb-3">
+              <label for="acompanhantes_qtd" class="form-label">Quantidade de Acompanhantes</label>
+              <input type="number" class="form-control" id="acompanhantes_qtd" name="acompanhantes_qtd" min="0">
+            </div>
+            <div class="mb-3">
+              <label for="acompanhantes_nomes" class="form-label">Lista de Acompanhantes</label>
+              <textarea class="form-control" id="acompanhantes_nomes" name="acompanhantes_nomes" rows="1"></textarea>
+              <small class="text-muted">Separe os nomes por vírgula</small>
             </div>
           </div>
         </div>
