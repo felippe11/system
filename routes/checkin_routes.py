@@ -566,22 +566,35 @@ def confirmar_checkin(agendamento_id):
         return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
     
     if request.method == 'POST':
-        # Realizar check-in
+        alunos_presentes = request.form.getlist('alunos_presentes')
+        if not alunos_presentes:
+            flash(
+                'Selecione pelo menos um aluno para confirmar o check-in.',
+                'danger',
+            )
+            return render_template(
+                'checkin/confirmar_checkin.html',
+                agendamento=agendamento,
+                horario=agendamento.horario,
+                evento=evento,
+            )
+
         agendamento.checkin_realizado = True
         agendamento.data_checkin = datetime.utcnow()
         agendamento.status = 'realizado'
-        
-        # Verificar se há alunos marcados como presentes
-        alunos_presentes = request.form.getlist('alunos_presentes')
-        
-        # Marcar alunos como presentes
+
         for aluno in agendamento.alunos:
             aluno.presente = str(aluno.id) in alunos_presentes
-        
+
         try:
             db.session.commit()
             flash('Check-in realizado com sucesso!', 'success')
-            return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
+            return redirect(
+                url_for(
+                    'agendamento_routes.detalhes_agendamento',
+                    agendamento_id=agendamento.id,
+                )
+            )
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao realizar check-in: {str(e)}', 'danger')
