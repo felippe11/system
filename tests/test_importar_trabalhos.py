@@ -1,14 +1,24 @@
 import io
 import json
 import os
+
 import pandas as pd
 import pytest
+
 from extensions import db
 from models import WorkMetadata
 
 
 def make_excel():
-    df = pd.DataFrame({"titulo": ["T1"], "resumo": ["R1"], "extra": ["E1"]})
+    df = pd.DataFrame(
+        {
+            "t": ["T1"],
+            "cat": ["C1"],
+            "rede": ["R1"],
+            "et": ["E1"],
+            "pdf": ["L1"],
+        }
+    )
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False)
@@ -22,6 +32,7 @@ def app():
     os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
     os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
     os.environ.setdefault("DB_ONLINE", "sqlite:///:memory:")
+    os.environ.setdefault("DB_PASS", "test")
     from app import create_app
 
     app = create_app()
@@ -47,17 +58,30 @@ def test_upload_and_persist(client, app):
         content_type="multipart/form-data",
     )
     assert resp.status_code == 200
-    assert b"titulo" in resp.data
-    assert b"resumo" in resp.data
+    assert b"name=\"titulo\"" in resp.data
+    assert b"<option value=\"t\"" in resp.data
 
     data_json = df.to_dict(orient="records")
     resp = client.post(
         "/importar_trabalhos",
-        data={"columns": ["titulo", "resumo"], "data": json.dumps(data_json)},
+        data={
+            "titulo": "t",
+            "categoria": "cat",
+            "rede_ensino": "rede",
+            "etapa": "et",
+            "link_pdf": "pdf",
+            "data": json.dumps(data_json),
+        },
         follow_redirects=True,
     )
     assert resp.status_code == 200
     with app.app_context():
         rows = WorkMetadata.query.all()
         assert len(rows) == 1
-        assert rows[0].data == {"titulo": "T1", "resumo": "R1"}
+        assert rows[0].data == {
+            "titulo": "T1",
+            "categoria": "C1",
+            "rede_ensino": "R1",
+            "etapa": "E1",
+            "link_pdf": "L1",
+        }
