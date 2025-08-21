@@ -358,9 +358,6 @@ def relatorio_geral_agendamentos():
     else:
         data_fim = datetime.utcnow().date()
 
-    inicio_dt = datetime.combine(data_inicio, datetime.min.time())
-    fim_dt = datetime.combine(data_fim, datetime.max.time())
-
     # Buscar eventos do cliente com agendamentos no período selecionado
     eventos = (
         Evento.query.outerjoin(
@@ -371,13 +368,13 @@ def relatorio_geral_agendamentos():
         )
         .filter(
             Evento.cliente_id == current_user.id,
-            AgendamentoVisita.data_agendamento >= inicio_dt,
-            AgendamentoVisita.data_agendamento <= fim_dt,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
         )
         .distinct()
         .all()
     )
-    
+
     # Estatísticas agregadas em uma única consulta
     aggregados = (
         db.session.query(
@@ -415,8 +412,8 @@ def relatorio_geral_agendamentos():
         )
         .filter(
             Evento.cliente_id == current_user.id,
-            AgendamentoVisita.data_agendamento >= inicio_dt,
-            AgendamentoVisita.data_agendamento <= fim_dt,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
         )
         .group_by(Evento.id)
         .all()
@@ -450,8 +447,8 @@ def relatorio_geral_agendamentos():
         .join(Evento)
         .filter(
             Evento.cliente_id == current_user.id,
-            AgendamentoVisita.data_agendamento >= inicio_dt,
-            AgendamentoVisita.data_agendamento <= fim_dt,
+            HorarioVisitacao.data >= data_inicio,
+            HorarioVisitacao.data <= data_fim,
         )
         .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
         .all()
