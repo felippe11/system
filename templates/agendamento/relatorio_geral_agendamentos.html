@@ -142,8 +142,10 @@
                 </div>
                 <div class="card-body">
                     {% if estatisticas %}
+
                         {% set estatisticas_ordenadas = estatisticas.values()|sort(attribute='nome') %}
                         {% include 'partials/relatorio_evento_table.html' %}
+
                     {% else %}
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> Não há dados para o período selecionado.
