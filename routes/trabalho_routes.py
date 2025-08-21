@@ -1,6 +1,8 @@
+import json
 import os
 import uuid
 
+import pandas as pd
 from flask import (
     Blueprint,
     current_app,
@@ -16,13 +18,14 @@ from werkzeug.utils import secure_filename
 
 from extensions import db
 from models import (
-    Submission,
     AuditLog,
     Evento,
-    Usuario,
     Formulario,
-    RespostaFormulario,
     RespostaCampo,
+    RespostaFormulario,
+    Submission,
+    Usuario,
+    WorkMetadata,
 )
 from utils.mfa import mfa_required
 
@@ -175,3 +178,51 @@ def meus_trabalhos():
 
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("meus_trabalhos.html", trabalhos=trabalhos)
+
+
+# ───────────────────────────── DISTRIBUIÇÃO ──────────────────────────────── #
+@trabalho_routes.route("/distribuicao", methods=["GET", "POST"])
+@login_required
+def distribuicao():
+    """Permite importar planilha e mapear campos para distribuição."""
+
+    campos = ["titulo", "resumo"]
+    if request.method == "POST":
+        if "data" in request.form and all(
+            f"map_{c}" in request.form for c in campos
+        ):
+            data_json = request.form.get("data", "[]")
+            try:
+                rows = json.loads(data_json)
+            except json.JSONDecodeError:
+                flash("Dados inválidos.", "danger")
+                return redirect(url_for("trabalho_routes.distribuicao"))
+            mapping = {c: request.form.get(f"map_{c}") for c in campos}
+            for row in rows:
+                item = {c: row.get(col) for c, col in mapping.items()}
+                db.session.add(WorkMetadata(data=item))
+            db.session.commit()
+            flash("Dados importados com sucesso!", "success")
+            return redirect(url_for("trabalho_routes.distribuicao"))
+
+        arquivo = request.files.get("arquivo")
+        if not arquivo or arquivo.filename == "":
+            flash("Nenhum arquivo selecionado.", "warning")
+            return render_template("distribuicao.html")
+        try:
+            df = pd.read_excel(arquivo)
+        except Exception:
+            flash("Erro ao processar o arquivo.", "danger")
+            return render_template("distribuicao.html")
+        columns = df.columns.tolist()
+        data = df.to_dict(orient="records")
+        flash("Planilha carregada com sucesso.", "info")
+        return render_template(
+            "distribuicao.html",
+            columns=columns,
+            data_preview=data[:5],
+            data_json=json.dumps(data),
+            campos=campos,
+        )
+
+    return render_template("distribuicao.html")
