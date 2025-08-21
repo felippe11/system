@@ -118,16 +118,6 @@ def app():
         )
         db.session.add(horario)
         db.session.commit()
-        horario_fora = HorarioVisitacao(
-            evento_id=evento.id,
-            data=date.today() + timedelta(days=60),
-            horario_inicio=time(9, 0),
-            horario_fim=time(10, 0),
-            capacidade_total=100,
-            vagas_disponiveis=100,
-        )
-        db.session.add(horario_fora)
-        db.session.commit()
         ags = [
             AgendamentoVisita(
                 horario_id=horario.id,
@@ -170,17 +160,17 @@ def app():
         ]
         db.session.add_all(ags)
         db.session.commit()
-        ag_foras = AgendamentoVisita(
-            horario_id=horario_fora.id,
+        ag_antigo = AgendamentoVisita(
+            horario_id=horario.id,
             escola_nome='E5',
             turma='T1',
             nivel_ensino='1',
             quantidade_alunos=10,
             salas_selecionadas='1',
             status='pendente',
-            data_agendamento=datetime.utcnow(),
+            data_agendamento=datetime.utcnow() - timedelta(days=60),
         )
-        db.session.add(ag_foras)
+        db.session.add(ag_antigo)
         db.session.commit()
 
         alunos = [
@@ -241,7 +231,7 @@ def test_counts_all_statuses(client, app):
     assert stats['total'] == 5
 
 
-def test_agendamento_outside_horario_range_included(client, app):
+def test_agendamento_created_outside_range_included(client, app):
     login(client)
     with captured_templates(app) as templates:
         resp = client.get('/relatorio_geral_agendamentos')
