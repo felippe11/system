@@ -29,15 +29,18 @@ def importar_trabalhos():
         except Exception:
             return jsonify({"message": "Erro ao ler o arquivo"}), 400
 
-        if not ({"title", "titulo"} & set(df.columns)):
-            return jsonify({"message": "Arquivo sem coluna título"}), 400
+        title_column = request.form.get("title_column")
+        if not title_column or title_column not in df.columns:
+            title_column = df.columns[0] if not df.columns.empty else None
 
         imported = 0
         for _, row in df.iterrows():
             row_dict = row.to_dict()
-            title = row_dict.get("title") or row_dict.get("titulo")
-            if not title:
-                continue
+            raw_title = row_dict.get(title_column) if title_column else None
+            if raw_title is None or (isinstance(raw_title, float) and pd.isna(raw_title)):
+                title = f"Trabalho {imported + 1}"
+            else:
+                title = str(raw_title)
             submission = Submission(
                 title=title,
                 code_hash=generate_password_hash(uuid.uuid4().hex),

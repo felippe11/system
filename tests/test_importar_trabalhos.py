@@ -26,6 +26,20 @@ def make_excel():
     return buffer, df
 
 
+def make_excel_sem_titulo():
+    df = pd.DataFrame(
+        {
+            "categoria": ["C1"],
+            "resumo": ["R1"],
+        }
+    )
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    buffer.seek(0)
+    return buffer, df
+
+
 @pytest.fixture
 def app():
     os.environ.setdefault("SECRET_KEY", "test")
@@ -84,4 +98,35 @@ def test_upload_and_persist(client, app):
         assert row.rede_ensino == "Rede1"
         assert row.etapa_ensino == "Etapa1"
         assert row.pdf_url == "http://example.com/doc.pdf"
+        assert row.data == data_json[0]
+
+
+def test_upload_sem_titulo(client, app):
+    excel, df = make_excel_sem_titulo()
+    evento_id = 456
+    resp = client.post(
+        "/importar_trabalhos",
+        data={"arquivo": (excel, "dados.xlsx"), "evento_id": evento_id},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    data_json = df.to_dict(orient="records")
+    with app.app_context():
+        subs = Submission.query.all()
+        assert len(subs) == 1
+        assert subs[0].title == "C1"
+        assert subs[0].attributes == data_json[0]
+
+    resp = client.post(
+        "/importar_trabalhos",
+        data={"data": json.dumps(data_json), "evento_id": evento_id},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        rows = WorkMetadata.query.all()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row.titulo is None
+        assert row.categoria == "C1"
         assert row.data == data_json[0]
