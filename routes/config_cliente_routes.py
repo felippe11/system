@@ -18,8 +18,6 @@ from models import (
     Evento,
     ConfiguracaoEvento,
     Formulario,
-    Submission,
-    Usuario,
 )
 
 from datetime import datetime
@@ -977,17 +975,12 @@ def config_submissao():
         ).all()
     }
 
-    submissions = Submission.query.all()
-    reviewers = Usuario.query.filter_by(tipo="professor").all()
-
     return render_template(
         "config/config_submissao.html",
         config_cliente=config_cliente,
         eventos=eventos,
         formularios=formularios,
         revisao_configs=revisao_configs,
-        submissions=submissions,
-        reviewers=reviewers,
     )
 
 
