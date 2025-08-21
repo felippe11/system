@@ -4,6 +4,11 @@
 {% block title %}Confirmar Agendamento{% endblock %}
 
 {% block content %}
+{% if current_user.tipo == 'professor' %}
+    {% set voltar_route = 'routes.adicionar_alunos_professor' %}
+{% else %}
+    {% set voltar_route = 'routes.adicionar_alunos_participante' %}
+{% endif %}
 <div class="container mt-4">
     <h2>Confirmar Agendamento</h2>
 
@@ -64,7 +69,7 @@
                 <i class="fas fa-check"></i> Confirmar
             </button>
             <a href="{{ url_for(
-                'routes.adicionar_alunos_agendamento',
+                voltar_route,
                 agendamento_id=agendamento.id
             ) }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Voltar

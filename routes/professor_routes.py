@@ -160,11 +160,9 @@ def horarios_disponiveis_professor(evento_id):
 @routes.route('/professor/criar_agendamento/<int:horario_id>', methods=['GET', 'POST'])
 @login_required
 def criar_agendamento_professor(horario_id):
-    """Permite que professores ou participantes criem um agendamento."""
-    # Apenas professores ou participantes podem acessar
-    if current_user.tipo not in ('professor', 'participante'):
-        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
-        flash(msg, 'danger')
+    """Permite que o professor crie um agendamento."""
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
     
     horario = HorarioVisitacao.query.get_or_404(horario_id)
@@ -278,7 +276,9 @@ def criar_agendamento_professor(horario_id):
                 # Redirecionar para a página de adicionar alunos
                 return redirect(
                     url_for(
-                        'routes.adicionar_alunos_agendamento',
+
+                        'routes.adicionar_alunos_professor',
+
                         agendamento_id=agendamento.id,
                     )
                 )
@@ -292,105 +292,149 @@ def criar_agendamento_professor(horario_id):
         evento=evento,
         salas=salas
     )
-
-
 @routes.route('/professor/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
-@routes.route(
-    '/participante/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST']
-)
 @login_required
-def adicionar_alunos_agendamento(agendamento_id):
-    """Permite adicionar alunos a um agendamento."""
-    # Professores, clientes e participantes podem acessar
-    tipos_permitidos = {'professor', 'cliente', 'participante'}
-    if current_user.tipo not in tipos_permitidos:
-        msg = 'Acesso negado! Esta área é exclusiva para professores, clientes e participantes.'
-        flash(msg, 'danger')
+def adicionar_alunos_professor(agendamento_id):
+    """Permite que o professor adicione alunos a um agendamento."""
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    # Verificar se o agendamento pertence ao usuário
-    if current_user.tipo == 'professor':
-        pertence = agendamento.professor_id == current_user.id
-        redirect_dest = url_for('agendamento_routes.meus_agendamentos')
-    elif current_user.tipo == 'participante':
-        pertence = agendamento.professor_id == current_user.id
-        redirect_dest = url_for('agendamento_routes.meus_agendamentos_participante')
-    else:  # cliente
-        pertence = agendamento.cliente_id == current_user.id
-        redirect_dest = url_for('agendamento_routes.meus_agendamentos_cliente')
-
-    if not pertence:
+    if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(redirect_dest)
-    
-    # Lista de alunos já adicionados
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
-    
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
-        
+
         if nome:
-            # Validar CPF se fornecido
             if cpf and len(cpf.replace('.', '').replace('-', '')) != 11:
                 flash('CPF inválido. Digite apenas os números ou deixe em branco.', 'danger')
             else:
                 aluno = AlunoVisitante(
                     agendamento_id=agendamento.id,
                     nome=nome,
-                    cpf=cpf
+                    cpf=cpf,
                 )
                 db.session.add(aluno)
-
                 try:
                     db.session.commit()
                     flash('Aluno adicionado com sucesso!', 'success')
-                    total = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+                    total = AlunoVisitante.query.filter_by(
+                        agendamento_id=agendamento.id
+                    ).count()
                     if total >= agendamento.quantidade_alunos:
-                        return redirect(url_for('routes.confirmacao_agendamento_professor', agendamento_id=agendamento.id))
-                    # Recarregar a página para mostrar o aluno adicionado
-                    return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                        return redirect(
+                            url_for(
+                                'routes.confirmacao_agendamento_professor',
+                                agendamento_id=agendamento.id,
+                            )
+                        )
+                    return redirect(
+                        url_for(
+                            'routes.adicionar_alunos_professor',
+                            agendamento_id=agendamento.id,
+                        )
+                    )
                 except Exception as e:
                     db.session.rollback()
                     flash(f'Erro ao adicionar aluno: {str(e)}', 'danger')
         else:
             flash('Nome do aluno é obrigatório!', 'danger')
-    
+
     return render_template(
         'professor/adicionar_alunos.html',
         agendamento=agendamento,
         alunos=alunos,
         total_adicionados=len(alunos),
-        quantidade_esperada=agendamento.quantidade_alunos
+        quantidade_esperada=agendamento.quantidade_alunos,
+    )
+
+
+@routes.route('/participante/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def adicionar_alunos_participante(agendamento_id):
+    """Permite que o participante adicione alunos a um agendamento."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        cpf = request.form.get('cpf')
+
+        if nome:
+            if cpf and len(cpf.replace('.', '').replace('-', '')) != 11:
+                flash('CPF inválido. Digite apenas os números ou deixe em branco.', 'danger')
+            else:
+                aluno = AlunoVisitante(
+                    agendamento_id=agendamento.id,
+                    nome=nome,
+                    cpf=cpf,
+                )
+                db.session.add(aluno)
+                try:
+                    db.session.commit()
+                    flash('Aluno adicionado com sucesso!', 'success')
+                    total = AlunoVisitante.query.filter_by(
+                        agendamento_id=agendamento.id
+                    ).count()
+                    if total >= agendamento.quantidade_alunos:
+                        return redirect(
+                            url_for(
+                                'routes.confirmacao_agendamento_participante',
+                                agendamento_id=agendamento.id,
+                            )
+                        )
+                    return redirect(
+                        url_for(
+                            'routes.adicionar_alunos_participante',
+                            agendamento_id=agendamento.id,
+                        )
+                    )
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Erro ao adicionar aluno: {str(e)}', 'danger')
+        else:
+            flash('Nome do aluno é obrigatório!', 'danger')
+
+    return render_template(
+        'professor/adicionar_alunos.html',
+        agendamento=agendamento,
+        alunos=alunos,
+        total_adicionados=len(alunos),
+        quantidade_esperada=agendamento.quantidade_alunos,
     )
 
 
 @routes.route('/professor/remover_aluno/<int:aluno_id>', methods=['POST'])
-@routes.route('/participante/remover_aluno/<int:aluno_id>', methods=['POST'])
 @login_required
-def remover_aluno_agendamento(aluno_id):
-    """Remove um aluno de um agendamento."""
-    # Professores e participantes podem acessar
-    if current_user.tipo not in ('professor', 'participante'):
-        msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
-        flash(msg, 'danger')
+def remover_aluno_professor(aluno_id):
+    """Remove um aluno de um agendamento (professor)."""
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
     aluno = AlunoVisitante.query.get_or_404(aluno_id)
     agendamento = aluno.agendamento
 
-    # Verificar se o agendamento pertence ao usuário
-    pertence = agendamento.professor_id == current_user.id
-    if current_user.tipo == 'professor':
-        redirect_dest = url_for('agendamento_routes.meus_agendamentos')
-    else:
-        redirect_dest = url_for('agendamento_routes.meus_agendamentos_participante')
-    if not pertence:
+    if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este aluno não pertence a um agendamento seu.', 'danger')
-        return redirect(redirect_dest)
-    
+        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+
     try:
         db.session.delete(aluno)
         db.session.commit()
@@ -398,8 +442,40 @@ def remover_aluno_agendamento(aluno_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao remover aluno: {str(e)}', 'danger')
-    
-    return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+
+    return redirect(
+        url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id)
+    )
+
+
+@routes.route('/participante/remover_aluno/<int:aluno_id>', methods=['POST'])
+@login_required
+def remover_aluno_participante(aluno_id):
+    """Remove um aluno de um agendamento (participante)."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    aluno = AlunoVisitante.query.get_or_404(aluno_id)
+    agendamento = aluno.agendamento
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este aluno não pertence a um agendamento seu.', 'danger')
+        return redirect(
+            url_for('agendamento_routes.meus_agendamentos_participante')
+        )
+
+    try:
+        db.session.delete(aluno)
+        db.session.commit()
+        flash('Aluno removido com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover aluno: {str(e)}', 'danger')
+
+    return redirect(
+        url_for('routes.adicionar_alunos_participante', agendamento_id=agendamento.id)
+    )
 
 
 @routes.route('/professor/importar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
@@ -474,7 +550,12 @@ def importar_alunos_agendamento(agendamento_id):
                 else:
                     flash('Nenhum aluno encontrado no arquivo!', 'warning')
 
-                return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+                return redirect(
+                    url_for(
+                        'routes.adicionar_alunos_professor',
+                        agendamento_id=agendamento.id,
+                    )
+                )
             except Exception as e:
                 db.session.rollback()
                 flash(f'Erro ao processar arquivo: {str(e)}', 'danger')
@@ -511,7 +592,12 @@ def confirmacao_agendamento_professor(agendamento_id):
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
     if not alunos:
         flash('Nenhum aluno cadastrado neste agendamento.', 'warning')
-        return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+        return redirect(
+            url_for(
+                'routes.adicionar_alunos_professor',
+                agendamento_id=agendamento.id,
+            )
+        )
 
     return render_template(
         'professor/confirmacao_agendamento.html',
@@ -519,34 +605,49 @@ def confirmacao_agendamento_professor(agendamento_id):
         alunos=alunos
     )
 
-@routes.route('/professor/imprimir_agendamento/<int:agendamento_id>')
+
+@routes.route('/participante/confirmacao_agendamento/<int:agendamento_id>')
 @login_required
-def imprimir_agendamento_professor(agendamento_id):
-    """Gera o comprovante de um agendamento."""
-    # Permitir acesso a professores, participantes, clientes e usuários
-    tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
-    if current_user.tipo not in tipos_permitidos:
-        flash(
-            'Acesso negado! Esta área é exclusiva para professores, '
-            'participantes, clientes e usuários.',
-            'danger',
-        )
+def confirmacao_agendamento_participante(agendamento_id):
+    """Exibe a página de confirmação do agendamento para participantes."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    # Validar propriedade conforme o tipo do usuário
-    if current_user.tipo == 'professor' and agendamento.professor_id != current_user.id:
+    if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
-    if (
-        current_user.tipo == 'cliente'
-        and agendamento.horario.evento.cliente_id != current_user.id
-    ):
-        flash(
-            'Acesso negado! Este agendamento não pertence ao seu evento.',
-            'danger',
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+    if not alunos:
+        flash('Nenhum aluno cadastrado neste agendamento.', 'warning')
+        return redirect(
+            url_for(
+                'routes.adicionar_alunos_participante',
+                agendamento_id=agendamento.id,
+            )
         )
+
+    return render_template(
+        'professor/confirmacao_agendamento.html',
+        agendamento=agendamento,
+        alunos=alunos,
+    )
+
+@routes.route('/professor/imprimir_agendamento/<int:agendamento_id>')
+@login_required
+def imprimir_agendamento_professor(agendamento_id):
+    """Gera o comprovante de um agendamento."""
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
     if agendamento.status != 'confirmado':
@@ -565,7 +666,12 @@ def imprimir_agendamento_professor(agendamento_id):
 
     if not alunos:
         flash('Adicione alunos antes de imprimir o comprovante.', 'warning')
-        return redirect(url_for('routes.adicionar_alunos_agendamento', agendamento_id=agendamento.id))
+        return redirect(
+            url_for(
+                'routes.adicionar_alunos_professor',
+                agendamento_id=agendamento.id,
+            )
+        )
 
     # Gerar PDF para impressão
     pdf_filename = f"agendamento_{agendamento_id}.pdf"
@@ -574,7 +680,61 @@ def imprimir_agendamento_professor(agendamento_id):
     
     # Chamar função para gerar PDF
     gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, alunos, pdf_path)
-    
+
+    return send_file(pdf_path, as_attachment=True)
+
+
+@routes.route('/participante/imprimir_agendamento/<int:agendamento_id>')
+@login_required
+def imprimir_agendamento_participante(agendamento_id):
+    """Gera o comprovante de um agendamento para participantes."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    if agendamento.status != 'confirmado':
+        flash('Agendamento ainda não confirmado.', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    horario = agendamento.horario
+    evento = horario.evento
+
+    salas_ids = (
+        agendamento.salas_selecionadas.split(',')
+        if agendamento.salas_selecionadas
+        else []
+    )
+    salas = (
+        SalaVisitacao.query.filter(SalaVisitacao.id.in_(salas_ids)).all()
+        if salas_ids
+        else []
+    )
+
+    alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+
+    if not alunos:
+        flash('Adicione alunos antes de imprimir o comprovante.', 'warning')
+        return redirect(
+            url_for(
+                'routes.adicionar_alunos_participante',
+                agendamento_id=agendamento.id,
+            )
+        )
+
+    pdf_filename = f"agendamento_{agendamento_id}.pdf"
+    pdf_path = os.path.join("static", "agendamentos", pdf_filename)
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+
+    gerar_pdf_comprovante_agendamento(
+        agendamento, horario, evento, salas, alunos, pdf_path
+    )
+
     return send_file(pdf_path, as_attachment=True)
 
 
@@ -582,41 +742,49 @@ def imprimir_agendamento_professor(agendamento_id):
 @login_required
 def qrcode_agendamento_professor(agendamento_id):
     """Exibe o QR Code de um agendamento."""
-    # Permitir acesso a professores, participantes, clientes e usuários
-    tipos_permitidos = {'professor', 'participante', 'cliente', 'usuario'}
-    if current_user.tipo not in tipos_permitidos:
-        flash(
-            'Acesso negado! Esta área é exclusiva para professores, '
-            'participantes, clientes e usuários.',
-            'danger',
-        )
+    if current_user.tipo != 'professor':
+        flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    # Validar propriedade conforme o tipo do usuário
-    if current_user.tipo == 'professor' and agendamento.professor_id != current_user.id:
+    if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
-    if (
-        current_user.tipo == 'cliente'
-        and agendamento.horario.evento.cliente_id != current_user.id
-    ):
-        flash(
-            'Acesso negado! Este agendamento não pertence ao seu evento.',
-            'danger',
-        )
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
     if agendamento.status != 'confirmado':
         flash('Agendamento ainda não confirmado.', 'warning')
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
-    # Página que exibe o QR Code para check-in
     return render_template(
         'professor/qrcode_agendamento.html',
         agendamento=agendamento,
-        token=agendamento.qr_code_token
+        token=agendamento.qr_code_token,
+    )
+
+
+@routes.route('/participante/qrcode_agendamento/<int:agendamento_id>')
+@login_required
+def qrcode_agendamento_participante(agendamento_id):
+    """Exibe o QR Code de um agendamento para participantes."""
+    if current_user.tipo != 'participante':
+        flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    if agendamento.professor_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    if agendamento.status != 'confirmado':
+        flash('Agendamento ainda não confirmado.', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+
+    return render_template(
+        'professor/qrcode_agendamento.html',
+        agendamento=agendamento,
+        token=agendamento.qr_code_token,
     )
 
 
