@@ -52,7 +52,7 @@
       <div class="border rounded p-3 mb-3">
         <input type="text" class="form-control mb-2" name="criterio_nome" value="{{ c.nome }}">
         {% for r in c.requisitos %}
-        <input type="text" class="form-control mb-1" name="criterio_{{ loop.parent.loop.index0 }}_requisito" value="{{ r.descricao }}">
+        <input type="text" class="form-control mb-1" name="criterio_{{ loop.parent.index0 }}_requisito" value="{{ r.descricao }}">
         {% endfor %}
         <input type="text" class="form-control mb-1" name="criterio_{{ loop.index0 }}_requisito" placeholder="Novo requisito">
       </div>
