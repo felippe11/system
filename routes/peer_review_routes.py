@@ -273,10 +273,18 @@ def auto_assign(evento_id):
 
 
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
-    revisores = Usuario.query.filter_by(tipo="professor").all()
+    revisores = (
+        Usuario.query.join(
+            RevisorCandidatura, Usuario.email == RevisorCandidatura.email
+        )
+        .filter(
+            Usuario.tipo == "revisor", RevisorCandidatura.status == "aprovado"
+        )
+        .all()
+    )
 
     # Agrupa revisores por formação/área -----------------------------------
-    area_map = {}
+    area_map: dict[str, list[Usuario]] = {}
     for r in revisores:
         area_map.setdefault(r.formacao, []).append(r)
 
