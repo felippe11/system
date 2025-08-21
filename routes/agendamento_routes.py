@@ -381,19 +381,50 @@ def relatorio_geral_agendamentos():
         db.session.query(
             Evento.id.label('evento_id'),
             func.count(
-                case((AgendamentoVisita.status == 'confirmado', 1))
+                func.distinct(
+                    case(
+
+                        (AgendamentoVisita.status == 'confirmado', AgendamentoVisita.id)
+
+                    )
+                )
             ).label('confirmados'),
             func.count(
-                case((AgendamentoVisita.status == 'realizado', 1))
+                func.distinct(
+                    case(
+
+                        (AgendamentoVisita.status == 'realizado', AgendamentoVisita.id)
+
+                    )
+                )
             ).label('realizados'),
             func.count(
-                case((AgendamentoVisita.status == 'cancelado', 1))
+                func.distinct(
+                    case(
+
+                        (AgendamentoVisita.status == 'cancelado', AgendamentoVisita.id)
+
+                    )
+                )
             ).label('cancelados'),
             func.count(
-                case((AgendamentoVisita.status == 'pendente', 1))
+                func.distinct(
+                    case(
+
+                        (AgendamentoVisita.status == 'pendente', AgendamentoVisita.id)
+
+                    )
+                )
             ).label('pendentes'),
             func.count(
-                case((AgendamentoVisita.checkin_realizado == True, 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.checkin_realizado == True,
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('checkins'),
             func.sum(
                 case(
@@ -456,10 +487,16 @@ def relatorio_geral_agendamentos():
         }
 
     agendamentos = (
-        AgendamentoVisita.query.join(HorarioVisitacao)
-        .join(Evento)
+        db.session.query(AgendamentoVisita)
+        .outerjoin(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
+        .outerjoin(Evento, HorarioVisitacao.evento_id == Evento.id)
         .filter(
-            Evento.cliente_id == current_user.id,
+            or_(
+                AgendamentoVisita.cliente_id == current_user.id,
+                Evento.cliente_id == current_user.id,
+            ),
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
         )
@@ -3359,10 +3396,10 @@ def confirmar_checkin_agendamento(token):
                 )
                 db.session.add(checkin)
 
-                # Processa os alunos presentes
-                alunos_presentes = request.form.getlist('alunos_presentes')
+                # Processa os alunos ausentes
+                alunos_ausentes = request.form.getlist('alunos_ausentes')
                 for aluno in agendamento.alunos:
-                    aluno.presente = str(aluno.id) in alunos_presentes
+                    aluno.presente = str(aluno.id) not in alunos_ausentes
 
 
                 db.session.commit()
