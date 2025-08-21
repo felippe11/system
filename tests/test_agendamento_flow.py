@@ -714,6 +714,45 @@ def test_confirmar_checkin_cria_checkin(app):
         assert chk is not None
 
 
+def test_confirmar_checkin_sem_alunos_presente(app):
+    client = app.test_client()
+
+    login(client, 'cli@test', '123')
+
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        horario = HorarioVisitacao.query.first()
+        agendamento = AgendamentoVisita(
+            professor_id=professor.id,
+            cliente_id=cliente.id,
+            horario_id=horario.id,
+            escola_nome='Escola',
+            turma='T1',
+            nivel_ensino='Fundamental',
+            quantidade_alunos=5,
+            salas_selecionadas='1',
+            status='confirmado',
+        )
+        db.session.add(agendamento)
+        db.session.commit()
+        db.session.add(AlunoVisitante(agendamento_id=agendamento.id, nome='A1'))
+        db.session.commit()
+        agendamento_id = agendamento.id
+
+    resp = client.post(
+        f'/confirmar_checkin/{agendamento_id}',
+        data={},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        assert agendamento.checkin_realizado is False
+        assert agendamento.status == 'confirmado'
+
+
 def test_checkin_agendamento_cria_checkin(app):
     client = app.test_client()
 
