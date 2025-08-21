@@ -383,40 +383,36 @@ def relatorio_geral_agendamentos():
             func.count(
                 func.distinct(
                     case(
-                        (
-                            AgendamentoVisita.status == 'confirmado',
-                            AgendamentoVisita.id,
-                        )
+
+                        (AgendamentoVisita.status == 'confirmado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('confirmados'),
             func.count(
                 func.distinct(
                     case(
-                        (
-                            AgendamentoVisita.status == 'realizado',
-                            AgendamentoVisita.id,
-                        )
+
+                        (AgendamentoVisita.status == 'realizado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('realizados'),
             func.count(
                 func.distinct(
                     case(
-                        (
-                            AgendamentoVisita.status == 'cancelado',
-                            AgendamentoVisita.id,
-                        )
+
+                        (AgendamentoVisita.status == 'cancelado', AgendamentoVisita.id)
+
                     )
                 )
             ).label('cancelados'),
             func.count(
                 func.distinct(
                     case(
-                        (
-                            AgendamentoVisita.status == 'pendente',
-                            AgendamentoVisita.id,
-                        )
+
+                        (AgendamentoVisita.status == 'pendente', AgendamentoVisita.id)
+
                     )
                 )
             ).label('pendentes'),
@@ -491,10 +487,16 @@ def relatorio_geral_agendamentos():
         }
 
     agendamentos = (
-        AgendamentoVisita.query.join(HorarioVisitacao)
-        .join(Evento)
+        db.session.query(AgendamentoVisita)
+        .outerjoin(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
+        .outerjoin(Evento, HorarioVisitacao.evento_id == Evento.id)
         .filter(
-            Evento.cliente_id == current_user.id,
+            or_(
+                AgendamentoVisita.cliente_id == current_user.id,
+                Evento.cliente_id == current_user.id,
+            ),
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
         )
