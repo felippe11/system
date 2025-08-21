@@ -1110,6 +1110,14 @@ class WorkMetadata(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.JSON, nullable=False)
+    titulo = db.Column(db.String(255), nullable=True)
+    categoria = db.Column(db.String(100), nullable=True)
+    rede_ensino = db.Column(db.String(100), nullable=True)
+    etapa_ensino = db.Column(db.String(100), nullable=True)
+    pdf_url = db.Column(db.String(255), nullable=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
+
+    evento = db.relationship("Evento")
 
 
 class Pagamento(db.Model):
