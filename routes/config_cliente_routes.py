@@ -942,34 +942,6 @@ def toggle_configuracao_evento(evento_id, campo):
     return jsonify({"success": True, "value": getattr(config, campo)})
 
 
-@config_cliente_routes.route("/importar_trabalhos", methods=["POST"])
-@login_required
-def importar_trabalhos():
-    """Importa trabalhos a partir de planilha Excel."""
-    if current_user.tipo != "cliente":
-        return jsonify({"success": False, "message": "Acesso negado"}), 403
-    file = request.files.get("arquivo")
-    if not file:
-        return jsonify({"success": False, "message": "Arquivo não enviado"}), 400
-    try:
-        df = pd.read_excel(file)
-    except Exception:
-        return jsonify({"success": False, "message": "Erro ao ler arquivo"}), 400
-
-    for _, row in df.iterrows():
-        title = row.get("title") or row.get("titulo")
-        if not title:
-            continue
-        locator = str(uuid.uuid4())
-        raw_code = secrets.token_urlsafe(8)[:8]
-        submission = Submission(
-            title=title,
-            locator=locator,
-            code_hash=generate_password_hash(raw_code),
-        )
-        db.session.add(submission)
-    db.session.commit()
-    return jsonify({"success": True})
 
 
 @config_cliente_routes.route("/config_submissao")
