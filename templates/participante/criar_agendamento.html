@@ -31,181 +31,229 @@
             Informações da Visita
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}">
+            <form method="POST" action="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}" id="agendamentoForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="escola_nome" class="form-label">Nome da Escola *</label>
-                        <input type="text" class="form-control" id="escola_nome" name="escola_nome" required>
-                    </div>
+                <div class="progress mb-4">
+                    <div class="progress-bar" id="formProgress" role="progressbar" style="width: 33%" aria-valuenow="33" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label for="escola_codigo_inep" class="form-label">Código INEP (opcional)</label>
-                        <input type="text" class="form-control" id="escola_codigo_inep" name="escola_codigo_inep">
+                <div class="form-step">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="escola_nome" class="form-label">Nome da Escola *</label>
+                            <input type="text" class="form-control" id="escola_nome" name="escola_nome" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="escola_codigo_inep" class="form-label">Código INEP (opcional)</label>
+                            <input type="text" class="form-control" id="escola_codigo_inep" name="escola_codigo_inep">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="rede_ensino" class="form-label">Rede de Ensino *</label>
+                            <select class="form-select" id="rede_ensino" name="rede_ensino" required>
+                                <option value="">Selecione...</option>
+                                <option value="municipal">Municipal</option>
+                                <option value="estadual">Estadual</option>
+                                <option value="federal">Federal</option>
+                                <option value="particular">Particular</option>
+                                <option value="comunitaria">Comunitária</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="municipio" class="form-label">Município *</label>
+                            <input type="text" class="form-control" id="municipio" name="municipio" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="bairro" class="form-label">Bairro *</label>
+                            <input type="text" class="form-control" id="bairro" name="bairro" required>
+                        </div>
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-4 mb-3">
-                        <label for="rede_ensino" class="form-label">Rede de Ensino *</label>
-                        <select class="form-select" id="rede_ensino" name="rede_ensino" required>
-                            <option value="">Selecione...</option>
-                            <option value="municipal">Municipal</option>
-                            <option value="estadual">Estadual</option>
-                            <option value="federal">Federal</option>
-                            <option value="particular">Particular</option>
-                            <option value="comunitaria">Comunitária</option>
-                        </select>
+                <div class="form-step d-none">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="turma" class="form-label">Turma *</label>
+                            <input type="text" class="form-control" id="turma" name="turma" required>
+                            <small class="text-muted">Ex: 9º Ano B, 2º Ano EM</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="nivel_ensino" class="form-label">Nível de Ensino *</label>
+                            <select class="form-select" id="nivel_ensino" name="nivel_ensino" required>
+                                <option value="">Selecione...</option>
+                                <option value="Educação Infantil">Educação Infantil</option>
+                                <option value="Ensino Fundamental - Anos Iniciais">Ensino Fundamental - Anos Iniciais</option>
+                                <option value="Ensino Fundamental - Anos Finais">Ensino Fundamental - Anos Finais</option>
+                                <option value="Ensino Médio">Ensino Médio</option>
+                                <option value="Educação de Jovens e Adultos">Educação de Jovens e Adultos</option>
+                                <option value="Ensino Técnico">Ensino Técnico</option>
+                                <option value="Ensino Superior">Ensino Superior</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="municipio" class="form-label">Município *</label>
-                        <input type="text" class="form-control" id="municipio" name="municipio" required>
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="bairro" class="form-label">Bairro *</label>
-                        <input type="text" class="form-control" id="bairro" name="bairro" required>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="turma" class="form-label">Turma *</label>
-                        <input type="text" class="form-control" id="turma" name="turma" required>
-                        <small class="text-muted">Ex: 9º Ano B, 2º Ano EM</small>
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label for="nivel_ensino" class="form-label">Nível de Ensino *</label>
-                        <select class="form-select" id="nivel_ensino" name="nivel_ensino" required>
-                            <option value="">Selecione...</option>
-                            <option value="Educação Infantil">Educação Infantil</option>
-                            <option value="Ensino Fundamental - Anos Iniciais">Ensino Fundamental - Anos Iniciais</option>
-                            <option value="Ensino Fundamental - Anos Finais">Ensino Fundamental - Anos Finais</option>
-                            <option value="Ensino Médio">Ensino Médio</option>
-                            <option value="Educação de Jovens e Adultos">Educação de Jovens e Adultos</option>
-                            <option value="Ensino Técnico">Ensino Técnico</option>
-                            <option value="Ensino Superior">Ensino Superior</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="quantidade_alunos" class="form-label">Quantidade de Alunos *</label>
-                    <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" max="{{ horario.vagas_disponiveis }}" required>
-                    <small class="text-muted">Máximo permitido: {{ horario.vagas_disponiveis }} alunos</small>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="responsavel_nome" class="form-label">Nome Completo do Responsável *</label>
-                        <input type="text" class="form-control" id="responsavel_nome" name="responsavel_nome" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="responsavel_cargo" class="form-label">Cargo/Função *</label>
-                        <input type="text" class="form-control" id="responsavel_cargo" name="responsavel_cargo" required>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="responsavel_whatsapp" class="form-label">WhatsApp *</label>
-                        <input type="text" class="form-control" id="responsavel_whatsapp" name="responsavel_whatsapp" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="responsavel_email" class="form-label">E-mail *</label>
-                        <input type="email" class="form-control" id="responsavel_email" name="responsavel_email" required>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="quantidade_acompanhantes" class="form-label">Quantidade de Acompanhantes</label>
-                        <input type="number" class="form-control" id="quantidade_acompanhantes" name="quantidade_acompanhantes" min="0">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="acompanhantes" class="form-label">Lista de Acompanhantes</label>
-                        <textarea class="form-control" id="acompanhantes" name="acompanhantes" rows="1"></textarea>
-                        <small class="text-muted">Separe os nomes por vírgula</small>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="necessita_transporte" class="form-label">Necessita de Transporte?</label>
-                        <select class="form-select" id="necessita_transporte" name="necessita_transporte">
-                            <option value="">Selecione...</option>
-                            <option value="sim">Sim</option>
-                            <option value="nao">Não</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="observacoes" class="form-label">Observações</label>
-                        <textarea class="form-control" id="observacoes" name="observacoes" rows="1"></textarea>
-                    </div>
-                </div>
-
-                {% if salas %}
                     <div class="mb-3">
-                        <label class="form-label">Salas de Interesse *</label>
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="row">
-                                    {% for sala in salas %}
-                                        <div class="col-md-6 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="salas_selecionadas" value="{{ sala.id }}" id="sala-{{ sala.id }}">
-                                                <label class="form-check-label" for="sala-{{ sala.id }}">
-                                                    {{ sala.nome }} ({{ sala.descricao }})
-                                                </label>
+                        <label for="quantidade_alunos" class="form-label">Quantidade de Alunos *</label>
+                        <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" max="{{ horario.vagas_disponiveis }}" required>
+                        <small class="text-muted">Máximo permitido: {{ horario.vagas_disponiveis }} alunos</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="responsavel_nome" class="form-label">Nome Completo do Responsável *</label>
+                            <input type="text" class="form-control" id="responsavel_nome" name="responsavel_nome" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="responsavel_cargo" class="form-label">Cargo/Função *</label>
+                            <input type="text" class="form-control" id="responsavel_cargo" name="responsavel_cargo" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="responsavel_whatsapp" class="form-label">WhatsApp *</label>
+                            <input type="text" class="form-control" id="responsavel_whatsapp" name="responsavel_whatsapp" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="responsavel_email" class="form-label">E-mail *</label>
+                            <input type="email" class="form-control" id="responsavel_email" name="responsavel_email" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="quantidade_acompanhantes" class="form-label">Quantidade de Acompanhantes</label>
+                            <input type="number" class="form-control" id="quantidade_acompanhantes" name="quantidade_acompanhantes" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="acompanhantes" class="form-label">Lista de Acompanhantes</label>
+                            <textarea class="form-control" id="acompanhantes" name="acompanhantes" rows="1"></textarea>
+                            <small class="text-muted">Separe os nomes por vírgula</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-step d-none">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="necessita_transporte" class="form-label">Necessita de Transporte?</label>
+                            <select class="form-select" id="necessita_transporte" name="necessita_transporte">
+                                <option value="">Selecione...</option>
+                                <option value="sim">Sim</option>
+                                <option value="nao">Não</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="observacoes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="1"></textarea>
+                        </div>
+                    </div>
+                    {% if salas %}
+                        <div class="mb-3">
+                            <label class="form-label">Salas de Interesse *</label>
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row">
+                                        {% for sala in salas %}
+                                            <div class="col-md-6 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="salas_selecionadas" value="{{ sala.id }}" id="sala-{{ sala.id }}">
+                                                    <label class="form-check-label" for="sala-{{ sala.id }}">
+                                                        {{ sala.nome }} ({{ sala.descricao }})
+                                                    </label>
+                                                </div>
                                             </div>
-                                        </div>
-                                    {% endfor %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <h5>Compromissos da Instituição</h5>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="compromisso1" name="compromisso1">
+                            <label class="form-check-label" for="compromisso1">Preservar as instalações e respeitar as orientações da equipe.</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="compromisso2" name="compromisso2">
+                            <label class="form-check-label" for="compromisso2">Garantir acompanhamento dos participantes durante toda a visita.</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="compromisso3" name="compromisso3">
+                            <label class="form-check-label" for="compromisso3">Cumprir os horários estabelecidos para a atividade.</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="compromisso4" name="compromisso4">
+                            <label class="form-check-label" for="compromisso4">Zelar pelo comportamento adequado dos participantes.</label>
+                        </div>
+                        <p class="mt-2">Ao marcar as opções acima, sua instituição confirma estar de acordo com os compromissos estabelecidos.</p>
                     </div>
-                {% endif %}
-
-                <div class="mb-3">
-                    <h5>Compromissos da Instituição</h5>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="compromisso1" name="compromisso1">
-                        <label class="form-check-label" for="compromisso1">Preservar as instalações e respeitar as orientações da equipe.</label>
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="declaro_ciente" name="declaro_ciente" required>
+                        <label class="form-check-label" for="declaro_ciente">Declaro que li e estou de acordo com as informações fornecidas.</label>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="compromisso2" name="compromisso2">
-                        <label class="form-check-label" for="compromisso2">Garantir acompanhamento dos participantes durante toda a visita.</label>
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle"></i> Após confirmar o agendamento, você poderá adicionar a lista de alunos participantes.
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="compromisso3" name="compromisso3">
-                        <label class="form-check-label" for="compromisso3">Cumprir os horários estabelecidos para a atividade.</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="compromisso4" name="compromisso4">
-                        <label class="form-check-label" for="compromisso4">Zelar pelo comportamento adequado dos participantes.</label>
-                    </div>
-                    <p class="mt-2">Ao marcar as opções acima, sua instituição confirma estar de acordo com os compromissos estabelecidos.</p>
                 </div>
 
-                <div class="form-check mb-4">
-                    <input class="form-check-input" type="checkbox" id="declaro_ciente" name="declaro_ciente" required>
-                    <label class="form-check-label" for="declaro_ciente">Declaro que li e estou de acordo com as informações fornecidas.</label>
-                </div>
-
-                <div class="alert alert-info mb-4">
-                    <i class="fas fa-info-circle"></i> Após confirmar o agendamento, você poderá adicionar a lista de alunos participantes.
-                </div>
-
-                <div class="d-grid gap-2 d-md-flex">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save"></i> Confirmar Agendamento
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary d-none" id="prevBtn">
+                        <i class="fas fa-arrow-left"></i> Voltar
                     </button>
-                    <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Cancelar
-                    </a>
+                    <div class="ms-auto">
+                        <button type="button" class="btn btn-primary" id="nextBtn">
+                            Próximo <i class="fas fa-arrow-right"></i>
+                        </button>
+                        <button type="submit" class="btn btn-success d-none" id="submitBtn">
+                            <i class="fas fa-save"></i> Confirmar Agendamento
+                        </button>
+                        <a href="{{ url_for('routes.horarios_disponiveis_participante', evento_id=evento.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const steps = document.querySelectorAll('.form-step');
+    const progress = document.getElementById('formProgress');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    let currentStep = 0;
+
+    function updateSteps() {
+        steps.forEach((step, idx) => {
+            step.classList.toggle('d-none', idx !== currentStep);
+        });
+        prevBtn.classList.toggle('d-none', currentStep === 0);
+        nextBtn.classList.toggle('d-none', currentStep === steps.length - 1);
+        submitBtn.classList.toggle('d-none', currentStep !== steps.length - 1);
+        const percent = ((currentStep + 1) / steps.length) * 100;
+        progress.style.width = `${percent}%`;
+        progress.setAttribute('aria-valuenow', percent);
+    }
+
+    nextBtn.addEventListener('click', function () {
+        if (currentStep < steps.length - 1) {
+            currentStep += 1;
+            updateSteps();
+        }
+    });
+
+    prevBtn.addEventListener('click', function () {
+        if (currentStep > 0) {
+            currentStep -= 1;
+            updateSteps();
+        }
+    });
+
+    updateSteps();
+});
+</script>
 {% endblock %}
