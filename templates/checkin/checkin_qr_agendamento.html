@@ -26,6 +26,8 @@ import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_s
 document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
+    const csrfToken = document
+        .querySelector('meta[name="csrf-token"]')?.content || '';
 
 
     async function handleScan(decodedText) {
@@ -43,7 +45,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch('/processar_qrcode_agendamento', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({ token })
             });
