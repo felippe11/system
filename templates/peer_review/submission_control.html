@@ -50,6 +50,8 @@
               data-max="{{ config.num_revisores_max if config else 2 }}">
         {% for r in reviewers %}
         <option value="{{ r.id }}">{{ r.nome }}</option>
+        {% else %}
+        <option disabled>Nenhum revisor aprovado</option>
         {% endfor %}
       </select>
       <small class="form-text text-muted">
