@@ -359,6 +359,11 @@ def relatorio_geral_agendamentos():
     else:
         data_fim = datetime.utcnow().date()
 
+    cliente_id = (
+        current_user.id if isinstance(current_user, Cliente)
+        else current_user.cliente_id
+    )
+
     # Buscar eventos do cliente com agendamentos no período selecionado
     eventos = (
         Evento.query.outerjoin(
@@ -368,7 +373,7 @@ def relatorio_geral_agendamentos():
             AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id
         )
         .filter(
-            Evento.cliente_id == current_user.id,
+            Evento.cliente_id == cliente_id,
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
         )
@@ -453,7 +458,7 @@ def relatorio_geral_agendamentos():
             AlunoVisitante.agendamento_id == AgendamentoVisita.id,
         )
         .filter(
-            Evento.cliente_id == current_user.id,
+            Evento.cliente_id == cliente_id,
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
         )
@@ -494,8 +499,8 @@ def relatorio_geral_agendamentos():
         .outerjoin(Evento, HorarioVisitacao.evento_id == Evento.id)
         .filter(
             or_(
-                AgendamentoVisita.cliente_id == current_user.id,
-                Evento.cliente_id == current_user.id,
+                AgendamentoVisita.cliente_id == cliente_id,
+                Evento.cliente_id == cliente_id,
             ),
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
@@ -519,7 +524,7 @@ def relatorio_geral_agendamentos():
         )
         .join(Evento, HorarioVisitacao.evento_id == Evento.id)
         .filter(
-            Evento.cliente_id == current_user.id,
+            Evento.cliente_id == cliente_id,
             AgendamentoVisita.status == 'confirmado',
             HorarioVisitacao.data >= data_inicio,
             HorarioVisitacao.data <= data_fim,
