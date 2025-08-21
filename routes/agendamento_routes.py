@@ -331,11 +331,17 @@ def eventos_agendamento():
 @agendamento_routes.route('/relatorio_geral_agendamentos')
 @login_required
 def relatorio_geral_agendamentos():
+    """Renderiza o relatório geral de agendamentos.
+
+    O relatório pode ser filtrado pela data da visita ou pela data em que o
+    agendamento foi criado, dependendo do parâmetro ``tipo_data`` recebido via
+    query string.
+    """
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
-    
+
     # Filtros de data
     data_inicio_raw = request.args.get('data_inicio')
     data_fim_raw = request.args.get('data_fim')
@@ -359,6 +365,17 @@ def relatorio_geral_agendamentos():
     else:
         data_fim = datetime.utcnow().date()
 
+    tipo_data = request.args.get('tipo_data', 'horario')
+    if tipo_data not in ('horario', 'agendamento'):
+        tipo_data = 'horario'
+
+    if tipo_data == 'agendamento':
+        coluna_data = func.date(AgendamentoVisita.data_agendamento)
+        order_col = AgendamentoVisita.data_agendamento
+    else:
+        coluna_data = HorarioVisitacao.data
+        order_col = HorarioVisitacao.data
+
     cliente_id = (
         current_user.id if isinstance(current_user, Cliente)
         else current_user.cliente_id
@@ -374,8 +391,8 @@ def relatorio_geral_agendamentos():
         )
         .filter(
             Evento.cliente_id == cliente_id,
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
         )
         .distinct()
         .all()
@@ -459,8 +476,8 @@ def relatorio_geral_agendamentos():
         )
         .filter(
             Evento.cliente_id == cliente_id,
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
         )
         .group_by(Evento.id)
         .all()
@@ -502,10 +519,10 @@ def relatorio_geral_agendamentos():
                 AgendamentoVisita.cliente_id == cliente_id,
                 Evento.cliente_id == cliente_id,
             ),
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
         )
-        .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+        .order_by(order_col, HorarioVisitacao.horario_inicio)
         .all()
     )
 
@@ -526,8 +543,8 @@ def relatorio_geral_agendamentos():
         .filter(
             Evento.cliente_id == cliente_id,
             AgendamentoVisita.status == 'confirmado',
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
         )
         .distinct()
         .all()
@@ -560,7 +577,8 @@ def relatorio_geral_agendamentos():
         professores_confirmados=professores_confirmados,
         filtros={
             'data_inicio': data_inicio,
-            'data_fim': data_fim
+            'data_fim': data_fim,
+            'tipo_data': tipo_data,
         }
     )
 
