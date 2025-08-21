@@ -113,7 +113,9 @@ def create_app():
 
     # Agendamento do reconciliador e rotas utilitárias são registrados aqui
     scheduler = BackgroundScheduler()
-    scheduler.add_job(reconciliar_pendentes, "cron", hour=3, minute=0)
+    scheduler.add_job(
+        reconciliar_pendentes, "cron", hour=3, minute=0, args=[app]
+    )
     scheduler.start()
 
     @socketio.on("join", namespace="/checkins")
@@ -131,7 +133,7 @@ def create_app():
 
 
 # Função para reconciliar pagamentos pendentes
-def reconciliar_pendentes():
+def reconciliar_pendentes(app: Flask) -> None:
     """Reconcile pending payments with Mercado Pago.
 
     Retrieves ``Inscricao`` records with status ``pending`` that are older than
@@ -140,7 +142,7 @@ def reconciliar_pendentes():
     initialized, the function exits without making changes.
 
     Args:
-        None
+        app (Flask): The Flask application instance.
 
     Returns:
         None: This function does not return a value.
@@ -149,28 +151,29 @@ def reconciliar_pendentes():
         Any database commit error is caught, the session is rolled back, and
         the error is logged.
     """
-    sdk = get_sdk()
-    if not sdk:
-        return
-    ontem = datetime.utcnow() - timedelta(hours=24)
-    pendentes = Inscricao.query.filter(
-        Inscricao.status_pagamento == "pending", Inscricao.created_at < ontem
-    ).all()
+    with app.app_context():
+        sdk = get_sdk()
+        if not sdk:
+            return
+        ontem = datetime.utcnow() - timedelta(hours=24)
+        pendentes = Inscricao.query.filter(
+            Inscricao.status_pagamento == "pending", Inscricao.created_at < ontem
+        ).all()
 
-    reconciled = []
-    for ins in pendentes:
-        resp = sdk.payment().get(ins.payment_id)
-        if resp["response"]["status"] == "approved":
-            ins.status_pagamento = "approved"
-            reconciled.append(ins)
+        reconciled = []
+        for ins in pendentes:
+            resp = sdk.payment().get(ins.payment_id)
+            if resp["response"]["status"] == "approved":
+                ins.status_pagamento = "approved"
+                reconciled.append(ins)
 
-    if reconciled:
-        try:
-            db.session.commit()
-            logging.info("Reconciled %d pending payments", len(reconciled))
-        except Exception:
-            db.session.rollback()
-            logging.exception("Failed to commit reconciled payments")
+        if reconciled:
+            try:
+                db.session.commit()
+                logging.info("Reconciled %d pending payments", len(reconciled))
+            except Exception:
+                db.session.rollback()
+                logging.exception("Failed to commit reconciled payments")
 
 
 # Execução da aplicação

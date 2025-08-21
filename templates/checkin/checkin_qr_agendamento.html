@@ -26,11 +26,15 @@ import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_s
 document.addEventListener('DOMContentLoaded', async () => {
     const statusElement = document.getElementById('scan-status');
     const scanResult = document.getElementById('scan-result');
+
     const csrfToken = document
         .querySelector('meta[name="csrf-token"]')?.content || '';
 
 
+
     async function handleScan(decodedText) {
+        if (isProcessing) return;
+        isProcessing = true;
         scanResult.innerHTML = `<div class="alert alert-success">QR Lido: ${decodedText}</div>`;
 
         let token;
@@ -53,8 +57,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (response.ok) {
                 const data = await response.json();
+                await stopScanner();
                 if (data.redirect) {
-                    window.location.href = '/confirmar_checkin_agendamento';
+
+                    window.location.href = data.redirect;
+
                 }
             }
         } catch (error) {

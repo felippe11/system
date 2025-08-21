@@ -3313,6 +3313,8 @@ def confirmar_checkin_agendamento(token):
     # Busca informações relacionadas
     evento = Evento.query.get(agendamento.horario.evento_id)
     horario = agendamento.horario
+
+    form_action = url_for('agendamento_routes.confirmar_checkin_agendamento', token=token)
     
     # Se for POST, realiza o check-in
     if request.method == 'POST':
@@ -3351,10 +3353,13 @@ def confirmar_checkin_agendamento(token):
             flash(f'Erro ao processar check-in: {str(e)}', 'danger')
     
     # Renderiza a página de confirmação
-    return render_template('checkin/confirmar_checkin.html',
-                          agendamento=agendamento,
-                          evento=evento,
-                          horario=horario)
+    return render_template(
+        'checkin/confirmar_checkin.html',
+        agendamento=agendamento,
+        evento=evento,
+        horario=horario,
+        form_action=form_action,
+    )
 
 
 @agendamento_routes.route('/checkin_qr_agendamento', methods=['GET'])
