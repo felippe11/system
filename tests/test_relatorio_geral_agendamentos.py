@@ -244,15 +244,26 @@ def test_counts_all_statuses(client, app):
     assert stats['total'] == 5
 
 
-def test_agendamento_created_outside_range_included(client, app):
+def test_filter_by_horario_date_includes_old(client, app):
     login(client)
     with captured_templates(app) as templates:
-        resp = client.get('/relatorio_geral_agendamentos')
+        resp = client.get('/relatorio_geral_agendamentos?tipo_data=horario')
     assert resp.status_code == 200
     template, context = templates[0]
     ags = context['agendamentos']
     assert len(ags) == 5
     assert any(a.escola_nome == 'E5' for a in ags)
+
+
+def test_filter_by_agendamento_date_excludes_old(client, app):
+    login(client)
+    with captured_templates(app) as templates:
+        resp = client.get('/relatorio_geral_agendamentos?tipo_data=agendamento')
+    assert resp.status_code == 200
+    template, context = templates[0]
+    ags = context['agendamentos']
+    assert len(ags) == 4
+    assert all(a.escola_nome != 'E5' for a in ags)
 
 
 def test_template_contains_new_columns(client):
