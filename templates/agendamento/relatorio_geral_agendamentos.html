@@ -53,7 +53,7 @@
                     {% set total_realizados = 0 %}
                     {% set total_cancelados = 0 %}
                     {% set total_pendentes = 0 %}
-                    {% set total_visitantes = 0 %}
+                    {% set total_visitantes_confirmados = 0 %}
                     {% set total_checkins = 0 %}
 
                     {% for stats in estatisticas.values() %}
@@ -62,7 +62,7 @@
                         {% set total_cancelados = total_cancelados + stats.cancelados %}
                         {% set total_pendentes = total_pendentes + stats.pendentes %}
                         {% set total_checkins = total_checkins + stats.checkins %}
-                        {% set total_visitantes = total_visitantes + stats.visitantes %}
+                        {% set total_visitantes_confirmados = total_visitantes_confirmados + stats.visitantes_confirmados %}
                     {% endfor %}
                     
                     <div class="list-group">
@@ -92,7 +92,7 @@
                         </div>
                         <div class="list-group-item d-flex justify-content-between align-items-center">
                             <span>Total de Visitantes</span>
-                            <span class="badge bg-warning text-dark rounded-pill">{{ total_visitantes }}</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ total_visitantes_confirmados }}</span>
                         </div>
                     </div>
                     
@@ -165,7 +165,7 @@
                                             <td class="text-center">{{ stats.cancelados }}</td>
                                             <td class="text-center">{{ stats.pendentes }}</td>
                                             <td class="text-center">{{ stats.checkins }}</td>
-                                            <td class="text-center">{{ stats.visitantes }}</td>
+                                            <td class="text-center">{{ stats.visitantes_confirmados }}</td>
                                             <td class="text-center">
                                                 {% if stats.confirmados + stats.realizados > 0 %}
                                                     {% set taxa = (stats.realizados / (stats.confirmados + stats.realizados)) * 100 %}
@@ -227,12 +227,13 @@
                         <td>{{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}</td>
                         <td>{{ agendamento.status }}</td>
                     </tr>
-                    {% if agendamento.alunos %}
+                    {% set presentes = agendamento.alunos|selectattr('presente')|list %}
+                    {% if presentes %}
                     <tr>
                         <td colspan="9">
                             <ul class="mb-0">
-                                {% for aluno in agendamento.alunos %}
-                                <li>{{ aluno.nome }} - {{ 'Presente' if aluno.presente else 'Ausente' }}</li>
+                                {% for aluno in presentes %}
+                                <li>{{ aluno.nome }}</li>
                                 {% endfor %}
                             </ul>
                         </td>
@@ -296,7 +297,7 @@
                                 <li>Implementar um sistema de lembretes mais eficiente para aumentar o comparecimento.</li>
                             {% endif %}
                             
-                            {% if total_visitantes < 100 %}
+                            {% if total_visitantes_confirmados < 100 %}
                                 <li>Divulgue mais seu evento entre escolas e professores para aumentar a quantidade de visitantes.</li>
                             {% endif %}
                         {% else %}
