@@ -130,7 +130,7 @@ def test_revisao_config_update_and_interface(client, app):
     assert b'"modelo_blind": "double"' in resp.data
 
 
-def test_importar_trabalhos_aparece_na_tabela(client, app):
+def test_importar_trabalhos_nao_mostra_tabela(client, app):
     login(client, 'cli@example.com', '123')
     df = pd.DataFrame({'title': ['Trabalho X']})
     buffer = io.BytesIO()
@@ -145,4 +145,4 @@ def test_importar_trabalhos_aparece_na_tabela(client, app):
     assert resp.status_code == 200
     resp = client.get('/config_submissao')
     assert resp.status_code == 200
-    assert b'Trabalho X' in resp.data
+    assert b'accordionDistribuicao' not in resp.data
