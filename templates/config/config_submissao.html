@@ -144,95 +144,10 @@
       </div>
     </div>
     </div>
-  <div class="accordion mt-4" id="accordionDistribuicao">
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingDistribuicao">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDistribuicao" aria-expanded="false" aria-controls="collapseDistribuicao">
-          Distribuição de Trabalhos
-        </button>
-      </h2>
-      <div id="collapseDistribuicao" class="accordion-collapse collapse" aria-labelledby="headingDistribuicao" data-bs-parent="#accordionDistribuicao">
-        <div class="accordion-body">
-          <form id="formImportarTrabalhos"
-                class="mb-3"
-                method="post"
-                enctype="multipart/form-data"
-                action="{{ url_for('importar_trabalhos_routes.importar_trabalhos') }}">
-            <div class="input-group">
-              <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
-              <button class="btn btn-primary" type="submit">Importar</button>
-            </div>
-          </form>
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Título</th>
-                <th>Localizador</th>
-                <th>Autor</th>
-                <th>Revisores</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for sub in submissions %}
-              <tr>
-                <td>{{ sub.title }}</td>
-                <td>{{ sub.locator }}</td>
-                <td>{{ sub.author.nome if sub.author else 'N/A' }}</td>
-                <td>
-                  <ul class="mb-0">
-                    {% for rev in sub.reviews %}
-                    <li>{{ rev.reviewer.nome if rev.reviewer else 'N/A' }} - {{ rev.access_code }}</li>
-                    {% else %}
-                    <li>Nenhum revisor atribuído</li>
-                    {% endfor %}
-                  </ul>
-                  <button class="btn btn-sm btn-secondary mt-1 gerar-codigos" data-locator="{{ sub.locator }}">Gerar Códigos</button>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-
-          <div class="mt-5">
-            <h4>Atribuir Revisores</h4>
-            <div class="mb-3">
-              <label for="submissionSelect" class="form-label">Submissão</label>
-              <select id="submissionSelect" class="form-select">
-                {% for sub in submissions %}
-                <option value="{{ sub.id }}">{{ sub.title }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="reviewerSelect" class="form-label">Revisores</label>
-              <select id="reviewerSelect" class="form-select" multiple
-                      data-min="{{ config_cliente.num_revisores_min if config_cliente else 1 }}"
-                      data-max="{{ config_cliente.num_revisores_max if config_cliente else 2 }}">
-                {% for r in reviewers %}
-                <option value="{{ r.id }}">{{ r.nome }}</option>
-                {% endfor %}
-              </select>
-              <small class="form-text text-muted">
-                Selecione entre {{ config_cliente.num_revisores_min if config_cliente else 1 }} e {{ config_cliente.num_revisores_max if config_cliente else 2 }} revisores.
-              </small>
-            </div>
-            <button id="assignManual" class="btn btn-primary me-2">Atribuir Manualmente</button>
-            <button id="assignAutomatic" class="btn btn-secondary me-2">Sorteio Automático</button>
-            <div class="input-group mt-2" style="max-width: 300px;">
-              <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" />
-              <button id="autoArea" class="btn btn-info">Auto por Área</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div id="mapearColunasModal"></div>
-  <script type="text/template" id="mapearColunasTemplate">
-    {% include 'trabalho/selecionar_colunas_trabalho.html' %}
-  </script>
-
-  </div>
+<div id="mapearColunasModal"></div>
+<script type="text/template" id="mapearColunasTemplate">
+  {% include 'trabalho/selecionar_colunas_trabalho.html' %}
+</script>
 {% endblock %}
 
 
