@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import pytest
 from extensions import db
-from models import WorkMetadata
+from models import WorkMetadata, Submission
 
 
 def make_excel():
@@ -52,14 +52,19 @@ def client(app):
 
 def test_upload_and_persist(client, app):
     excel, df = make_excel()
+    evento_id = 123
     resp = client.post(
         "/importar_trabalhos",
-        data={"arquivo": (excel, "dados.xlsx")},
+        data={"arquivo": (excel, "dados.xlsx"), "evento_id": evento_id},
         content_type="multipart/form-data",
     )
     assert resp.status_code == 200
     assert b"titulo" in resp.data
     assert b"categoria" in resp.data
+    with app.app_context():
+        subs = Submission.query.all()
+        assert len(subs) == 1
+        assert subs[0].evento_id == evento_id
 
     data_json = df.to_dict(orient="records")
     resp = client.post(
@@ -73,6 +78,7 @@ def test_upload_and_persist(client, app):
                 "pdf_url",
             ],
             "data": json.dumps(data_json),
+            "evento_id": evento_id,
         },
         follow_redirects=True,
     )
@@ -81,6 +87,7 @@ def test_upload_and_persist(client, app):
         rows = WorkMetadata.query.all()
         assert len(rows) == 1
         row = rows[0]
+        assert row.evento_id == evento_id
         assert row.titulo == "T1"
         assert row.categoria == "C1"
         assert row.rede_ensino == "Rede1"
