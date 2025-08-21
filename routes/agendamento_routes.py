@@ -3513,8 +3513,16 @@ def confirmar_checkin_agendamento(token):
                 flash('Check-in realizado com sucesso!', 'success')
             else:
                 flash('Este agendamento já teve check-in realizado anteriormente.', 'warning')
-            
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+            if current_user.tipo == 'professor':
+                return redirect(
+                    url_for('dashboard_professor.dashboard_professor')
+                )
+            if current_user.tipo == 'cliente':
+                return redirect(
+                    url_for('dashboard_routes.dashboard_cliente')
+                )
+            return redirect(url_for('dashboard_routes.dashboard'))
         
         except Exception as e:
             db.session.rollback()

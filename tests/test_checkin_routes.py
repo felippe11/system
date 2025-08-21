@@ -208,7 +208,7 @@ def test_unmarked_students_are_present(client, app):
     client.post(
         "/login",
         data={"email": "prof@test", "senha": "p123"},
-        follow_redirects=True,
+        follow_redirects=False,
     )
 
     resp = client.post(
@@ -232,4 +232,71 @@ def test_unmarked_students_are_present(client, app):
             palavra_chave="QR-AGENDAMENTO",
         ).first()
         assert chk is not None
+
+
+def test_confirmar_checkin_redirect_professor(client, app):
+    with app.app_context():
+        token = AgendamentoVisita.query.first().qr_code_token
+
+    client.post(
+        "/login",
+        data={"email": "prof@test", "senha": "p123"},
+        follow_redirects=False,
+    )
+
+    resp = client.post(
+        f"/confirmar_checkin_agendamento/{token}",
+        data={},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/dashboard_professor")
+
+
+def test_confirmar_checkin_redirect_cliente(client, app):
+    with app.app_context():
+        token = AgendamentoVisita.query.first().qr_code_token
+
+    client.post(
+        "/login",
+        data={"email": "cli@test", "senha": "123"},
+        follow_redirects=False,
+    )
+
+    resp = client.post(
+        f"/confirmar_checkin_agendamento/{token}",
+        data={},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/dashboard_cliente")
+
+
+def test_confirmar_checkin_redirect_outro_usuario(client, app):
+    with app.app_context():
+        token = AgendamentoVisita.query.first().qr_code_token
+        admin = Usuario(
+            nome="Admin",
+            cpf="0",
+            email="admin@test",
+            senha=generate_password_hash("123"),
+            formacao="X",
+            tipo="admin",
+        )
+        db.session.add(admin)
+        db.session.commit()
+
+    client.post(
+        "/login",
+        data={"email": "admin@test", "senha": "123"},
+        follow_redirects=False,
+    )
+
+    resp = client.post(
+        f"/confirmar_checkin_agendamento/{token}",
+        data={},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/dashboard")
 
