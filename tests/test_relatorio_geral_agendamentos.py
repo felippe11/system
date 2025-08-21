@@ -251,6 +251,7 @@ def test_agendamento_created_outside_range_included(client, app):
     assert resp.status_code == 200
     template, context = templates[0]
     ags = context['agendamentos']
+    assert len(ags) == 5
     assert any(a.escola_nome == 'E5' for a in ags)
 
 
@@ -263,6 +264,7 @@ def test_template_contains_new_columns(client):
     assert 'Aluno 1' in html
 
 
+
 def test_professores_confirmados_tab(client):
     login(client)
     resp = client.get('/relatorio_geral_agendamentos')
@@ -270,6 +272,7 @@ def test_professores_confirmados_tab(client):
     assert 'Professores Confirmados' in html
     assert 'prof@test' in html
     assert 'https://api.whatsapp.com/send?phone=55999999999' in html
+
 
 
 def test_generate_pdf_uses_service(client, monkeypatch):
