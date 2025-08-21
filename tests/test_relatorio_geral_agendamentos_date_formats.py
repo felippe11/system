@@ -1,5 +1,8 @@
 import os
 import pytest
+import contextlib
+from datetime import date
+from flask import template_rendered
 from werkzeug.security import generate_password_hash
 
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
@@ -11,9 +14,10 @@ from app import create_app
 from extensions import db
 from models.user import Cliente
 
-
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
-Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
+Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
+    Config.SQLALCHEMY_DATABASE_URI
+)
 
 
 @pytest.fixture
@@ -57,15 +61,49 @@ def login(client):
     return client.post('/login', data={'email': 'cli@test', 'senha': '123'})
 
 
-def test_invalid_start_date_defaults(client):
-    login(client)
-    resp = client.get('/relatorio_geral_agendamentos?data_inicio=bad-date', follow_redirects=True)
-    assert resp.status_code == 200
-    assert b'Data inicial inv' in resp.data
+@contextlib.contextmanager
+def captured_templates(app):
+    recorded = []
+
+    def record(sender, template, context, **extra):
+        recorded.append((template, context))
+
+    template_rendered.connect(record, app)
+    try:
+        yield recorded
+    finally:
+        template_rendered.disconnect(record, app)
 
 
-def test_invalid_end_date_defaults(client):
+def test_accepts_iso_format(client, app):
     login(client)
-    resp = client.get('/relatorio_geral_agendamentos?data_fim=bad-date', follow_redirects=True)
+    with captured_templates(app) as templates:
+        resp = client.get(
+            '/relatorio_geral_agendamentos?data_inicio=2024-01-01&data_fim=2024-12-31'
+        )
     assert resp.status_code == 200
-    assert b'Data final inv' in resp.data
+    template, context = templates[0]
+    assert context['filtros']['data_inicio'] == date(2024, 1, 1)
+    assert context['filtros']['data_fim'] == date(2024, 12, 31)
+
+
+def test_accepts_br_format(client, app):
+    login(client)
+    with captured_templates(app) as templates:
+        resp = client.get(
+            '/relatorio_geral_agendamentos?data_inicio=01/01/2024&data_fim=31/12/2024'
+        )
+    assert resp.status_code == 200
+    template, context = templates[0]
+    assert context['filtros']['data_inicio'] == date(2024, 1, 1)
+    assert context['filtros']['data_fim'] == date(2024, 12, 31)
+
+
+def test_invalid_date_shows_message(client):
+    login(client)
+    resp = client.get(
+        '/relatorio_geral_agendamentos?data_inicio=2024/01/01',
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert 'Formato de data inválido' in resp.get_data(as_text=True)
