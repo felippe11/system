@@ -77,10 +77,12 @@ def submission_control():
 def assign_reviews():
     """Assign reviewers to submissions via JSON.
 
-    The request body must map submission IDs to lists of reviewer IDs.
+    Only users of type ``revisor`` with an approved ``RevisorCandidatura``
+    are eligible. The request body must map submission IDs to lists of
+    reviewer IDs.
 
     Returns:
-        dict: JSON object with success flag.
+        dict: JSON object with success flag or error message.
     """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
@@ -93,14 +95,39 @@ def assign_reviews():
     if not data:
         return {"success": False}, 400
 
+    invalid_reviewers: list[int] = []
 
     for submission_id, reviewers in data.items():
         submission = Submission.query.get(submission_id)
         if not submission:
             continue
 
+        evento = Evento.query.get(submission.evento_id)
+        cliente_id = evento.cliente_id if evento else None
+
         for reviewer_id in reviewers:
-            # Cria Review + Assignment --------------------------------------
+            reviewer = Usuario.query.get(reviewer_id)
+            if not reviewer or reviewer.tipo != "revisor":
+                invalid_reviewers.append(reviewer_id)
+                continue
+
+            candidatura = (
+                RevisorCandidatura.query.join(
+                    RevisorProcess,
+                    RevisorCandidatura.process_id == RevisorProcess.id,
+                )
+                .filter(
+                    RevisorProcess.cliente_id == cliente_id,
+                    RevisorCandidatura.status == "aprovado",
+                    RevisorCandidatura.email == reviewer.email,
+                )
+                .first()
+            )
+            if not candidatura:
+                invalid_reviewers.append(reviewer_id)
+                continue
+
+            # Cria Review + Assignment ----------------------------------
             rev = Review(
                 submission_id=submission.id,
                 reviewer_id=reviewer_id,
@@ -108,8 +135,6 @@ def assign_reviews():
             )
             db.session.add(rev)
 
-            evento = Evento.query.get(submission.evento_id)
-            cliente_id = evento.cliente_id if evento else None
             config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
             prazo_dias = config.prazo_parecer_dias if config else 14
 
@@ -120,7 +145,7 @@ def assign_reviews():
             )
             db.session.add(assignment)
 
-            # Log -----------------------------------------------------------
+            # Log -------------------------------------------------------
             db.session.add(
                 AuditLog(
                     user_id=uid,
@@ -129,8 +154,14 @@ def assign_reviews():
                 )
             )
 
-
     db.session.commit()
+
+    if invalid_reviewers:
+        return {
+            "success": False,
+            "message": f"Revisores não aprovados: {invalid_reviewers}",
+        }, 400
+
     return {"success": True}
 
 
@@ -193,9 +224,7 @@ def assign_by_filters():
     if not reviewers:
         return {"success": False, "message": "Nenhum revisor encontrado"}, 400
 
-    submissions = Submission.query.filter(
-        Submission.evento_id.in_(evento_ids)
-    ).all()
+    submissions = Submission.query.filter(Submission.evento_id.in_(evento_ids)).all()
     elegiveis = [s for s in submissions if len(s.assignments) < max_por_sub]
     if not elegiveis:
         return {"success": False, "message": "Nenhuma submissão elegível"}, 400
@@ -271,7 +300,6 @@ def auto_assign(evento_id):
     if not config:
         return {"success": False, "message": "Configuração não encontrada"}, 400
 
-
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
     revisores = Usuario.query.filter_by(tipo="professor").all()
 
@@ -312,7 +340,6 @@ def auto_assign(evento_id):
                     event_type="assignment",
                 )
             )
-
 
     db.session.commit()
     return {"success": True}
@@ -376,10 +403,7 @@ def review_form(locator):
         Response: Rendered form or redirect after submission.
     """
     review = Review.query.filter_by(locator=locator).first_or_404()
-    barema = EventoBarema.query.filter_by(
-        evento_id=review.submission.evento_id
-    ).first()
-
+    barema = EventoBarema.query.filter_by(evento_id=review.submission.evento_id).first()
 
     if request.method == "GET" and review.started_at is None:
         review.started_at = datetime.utcnow()
@@ -452,15 +476,13 @@ def review_form(locator):
 
         return redirect(url_for("peer_review_routes.review_form", locator=locator))
 
-    return render_template(
-        "peer_review/review_form.html", review=review, barema=barema
-    )
-
+    return render_template("peer_review/review_form.html", review=review, barema=barema)
 
 
 # ---------------------------------------------------------------------------
 # Dashboards (autor | revisor | editor)
 # ---------------------------------------------------------------------------
+
 
 @peer_review_routes.route("/dashboard/author_reviews")
 @login_required
@@ -472,7 +494,6 @@ def author_reviews():
     """
     trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
     return render_template("peer_review/dashboard_author.html", trabalhos=trabalhos)
-
 
 
 @peer_review_routes.route("/dashboard/reviewer_reviews")
@@ -518,9 +539,9 @@ def client_reviews_panel():
         return redirect(url_for("dashboard_routes.dashboard"))
 
     submissions = (
-        Submission.query.join(Evento).filter(
-            Evento.cliente_id == getattr(current_user, "id", None)
-        ).all()
+        Submission.query.join(Evento)
+        .filter(Evento.cliente_id == getattr(current_user, "id", None))
+        .all()
     )
 
     items = []
@@ -548,7 +569,6 @@ def client_reviews_panel():
     return render_template("peer_review/dashboard_client.html", items=items)
 
 
-
 # ------------------------- ROTAS FLAT PARA SPAS ---------------------------
 @peer_review_routes.route("/peer-review/author")
 def author_dashboard():
@@ -570,9 +590,7 @@ def reviewer_dashboard():
         locator = request.form.get("locator")
         code = request.form.get("code")
         return redirect(
-            url_for(
-                "peer_review_routes.reviewer_dashboard", locator=locator, code=code
-            )
+            url_for("peer_review_routes.reviewer_dashboard", locator=locator, code=code)
         )
 
     # 2) Usuário autenticado ------------------------------------------------
