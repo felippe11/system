@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from extensions import db
 from models import WorkMetadata, Submission
+from sqlalchemy.exc import DataError
 
 
 def make_excel():
@@ -130,3 +131,33 @@ def test_upload_sem_titulo(client, app):
         assert row.titulo is None
         assert row.categoria == "C1"
         assert row.data == data_json[0]
+
+
+def test_oversize_field_returns_error(client, app, monkeypatch):
+    evento_id = 789
+    data_json = [{"titulo": "x" * 300}]
+
+    class MockOrig(Exception):
+        def __init__(self):
+            self.diag = type("Diag", (), {"column_name": "titulo"})()
+
+    def fake_commit():
+        raise DataError("stmt", {}, MockOrig())
+
+    called = {"rollback": False}
+
+    def fake_rollback():
+        called["rollback"] = True
+
+    monkeypatch.setattr(db.session, "commit", fake_commit)
+    monkeypatch.setattr(db.session, "rollback", fake_rollback)
+
+    resp = client.post(
+        "/importar_trabalhos",
+        data={"data": json.dumps(data_json), "evento_id": evento_id},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 400
+    body = json.loads(resp.data)
+    assert "titulo" in body["error"]
+    assert called["rollback"]

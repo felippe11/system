@@ -7,6 +7,7 @@ import pandas as pd
 from extensions import db
 from werkzeug.security import generate_password_hash
 from models import WorkMetadata, Submission
+from sqlalchemy.exc import DataError
 
 importar_trabalhos_routes = Blueprint(
     "importar_trabalhos_routes", __name__
@@ -62,7 +63,21 @@ def importar_trabalhos():
             imported += 1
 
         if imported:
-            db.session.commit()
+            try:
+                db.session.commit()
+            except DataError as err:
+                db.session.rollback()
+                column = getattr(
+                    getattr(getattr(err, "orig", None), "diag", None),
+                    "column_name",
+                    None,
+                )
+                msg = (
+                    f"Valor inválido para o campo '{column}'"
+                    if column
+                    else "Valor inválido para um dos campos"
+                )
+                return jsonify({"error": msg}), 400
 
         return jsonify(
             {
@@ -94,5 +109,19 @@ def importar_trabalhos():
             evento_id=evento_id,
         )
         db.session.add(wm)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except DataError as err:
+        db.session.rollback()
+        column = getattr(
+            getattr(getattr(err, "orig", None), "diag", None),
+            "column_name",
+            None,
+        )
+        msg = (
+            f"Valor inválido para o campo '{column}'"
+            if column
+            else "Valor inválido para um dos campos"
+        )
+        return jsonify({"error": msg}), 400
     return jsonify({"status": "ok", "message": "Importação concluída"})
