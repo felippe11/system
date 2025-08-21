@@ -1,26 +1,20 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container mt-4">
-  <h3>Mapear colunas da planilha</h3>
-  <form method="POST">
-    {% if csrf_token is defined %}
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {% endif %}
-    <input type="hidden" name="data" value="{{ data_json }}">
-    {% for field in fields %}
-      <div class="mb-3">
-        <label class="form-label" for="{{ field }}">
-          {{ field.replace('_', ' ')|title }}
-        </label>
-        <select class="form-select" name="{{ field }}" id="{{ field }}" required>
-          <option value="">Selecione</option>
-          {% for col in columns %}
-            <option value="{{ col }}">{{ col }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    {% endfor %}
-    <button class="btn btn-success" type="submit">Importar</button>
-  </form>
+<div class="modal fade" id="mapearColunasModalInner" tabindex="-1" aria-labelledby="mapearColunasLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapearColunasLabel">Mapear colunas da planilha</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formMapearColunas">
+                    <div id="mapearCampos"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmarMapeamento">Importar</button>
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %}
+
