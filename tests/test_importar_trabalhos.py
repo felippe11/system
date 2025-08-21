@@ -61,25 +61,16 @@ def test_upload_and_persist(client, app):
     assert resp.status_code == 200
     assert b"titulo" in resp.data
     assert b"categoria" in resp.data
+    data_json = df.to_dict(orient="records")
     with app.app_context():
         subs = Submission.query.all()
         assert len(subs) == 1
         assert subs[0].evento_id == evento_id
+        assert subs[0].attributes == data_json[0]
 
-    data_json = df.to_dict(orient="records")
     resp = client.post(
         "/importar_trabalhos",
-        data={
-            "columns": [
-                "titulo",
-                "categoria",
-                "rede_ensino",
-                "etapa_ensino",
-                "pdf_url",
-            ],
-            "data": json.dumps(data_json),
-            "evento_id": evento_id,
-        },
+        data={"data": json.dumps(data_json), "evento_id": evento_id},
         follow_redirects=True,
     )
     assert resp.status_code == 200
@@ -93,10 +84,4 @@ def test_upload_and_persist(client, app):
         assert row.rede_ensino == "Rede1"
         assert row.etapa_ensino == "Etapa1"
         assert row.pdf_url == "http://example.com/doc.pdf"
-        assert row.data == {
-            "titulo": "T1",
-            "categoria": "C1",
-            "rede_ensino": "Rede1",
-            "etapa_ensino": "Etapa1",
-            "pdf_url": "http://example.com/doc.pdf",
-        }
+        assert row.data == data_json[0]

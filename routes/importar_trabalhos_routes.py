@@ -34,13 +34,15 @@ def importar_trabalhos():
 
         imported = 0
         for _, row in df.iterrows():
-            title = row.get("title") or row.get("titulo")
+            row_dict = row.to_dict()
+            title = row_dict.get("title") or row_dict.get("titulo")
             if not title:
                 continue
             submission = Submission(
                 title=title,
                 code_hash=generate_password_hash(uuid.uuid4().hex),
                 evento_id=evento_id,
+                attributes=row_dict,
             )
             db.session.add(submission)
             imported += 1
@@ -63,6 +65,9 @@ def importar_trabalhos():
         return jsonify({"error": "missing data"}), 400
 
     rows = json.loads(data_json)
+    if not columns and rows:
+        columns = list(rows[0].keys())
+
     for row in rows:
         selected = {col: row.get(col) for col in columns}
         wm = WorkMetadata(
