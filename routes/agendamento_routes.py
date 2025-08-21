@@ -381,19 +381,54 @@ def relatorio_geral_agendamentos():
         db.session.query(
             Evento.id.label('evento_id'),
             func.count(
-                case((AgendamentoVisita.status == 'confirmado', 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.status == 'confirmado',
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('confirmados'),
             func.count(
-                case((AgendamentoVisita.status == 'realizado', 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.status == 'realizado',
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('realizados'),
             func.count(
-                case((AgendamentoVisita.status == 'cancelado', 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.status == 'cancelado',
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('cancelados'),
             func.count(
-                case((AgendamentoVisita.status == 'pendente', 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.status == 'pendente',
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('pendentes'),
             func.count(
-                case((AgendamentoVisita.checkin_realizado == True, 1))
+                func.distinct(
+                    case(
+                        (
+                            AgendamentoVisita.checkin_realizado == True,
+                            AgendamentoVisita.id,
+                        )
+                    )
+                )
             ).label('checkins'),
             func.sum(
                 case(
