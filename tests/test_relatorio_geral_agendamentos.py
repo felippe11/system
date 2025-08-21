@@ -2,7 +2,7 @@
 import os
 import sys
 import types
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timedelta
 
 import contextlib
 
@@ -118,6 +118,16 @@ def app():
         )
         db.session.add(horario)
         db.session.commit()
+        horario_fora = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today() + timedelta(days=60),
+            horario_inicio=time(9, 0),
+            horario_fim=time(10, 0),
+            capacidade_total=100,
+            vagas_disponiveis=100,
+        )
+        db.session.add(horario_fora)
+        db.session.commit()
         ags = [
             AgendamentoVisita(
                 horario_id=horario.id,
@@ -159,6 +169,18 @@ def app():
             ),
         ]
         db.session.add_all(ags)
+        db.session.commit()
+        ag_foras = AgendamentoVisita(
+            horario_id=horario_fora.id,
+            escola_nome='E5',
+            turma='T1',
+            nivel_ensino='1',
+            quantidade_alunos=10,
+            salas_selecionadas='1',
+            status='pendente',
+            data_agendamento=datetime.utcnow(),
+        )
+        db.session.add(ag_foras)
         db.session.commit()
 
         alunos = [
@@ -212,11 +234,21 @@ def test_counts_all_statuses(client, app):
     assert resp.status_code == 200
     template, context = templates[0]
     stats = context['estatisticas'][app.evento_id]
-    assert stats['pendentes'] == 1
+    assert stats['pendentes'] == 2
     assert stats['confirmados'] == 1
     assert stats['realizados'] == 1
     assert stats['cancelados'] == 1
-    assert stats['total'] == 4
+    assert stats['total'] == 5
+
+
+def test_agendamento_outside_horario_range_included(client, app):
+    login(client)
+    with captured_templates(app) as templates:
+        resp = client.get('/relatorio_geral_agendamentos')
+    assert resp.status_code == 200
+    template, context = templates[0]
+    ags = context['agendamentos']
+    assert any(a.escola_nome == 'E5' for a in ags)
 
 
 def test_template_contains_new_columns(client):

@@ -357,14 +357,22 @@ def relatorio_geral_agendamentos():
             data_fim = datetime.utcnow().date()
     else:
         data_fim = datetime.utcnow().date()
-    
-    # Buscar eventos do cliente com horários dentro do período selecionado
+
+    inicio_dt = datetime.combine(data_inicio, datetime.min.time())
+    fim_dt = datetime.combine(data_fim, datetime.max.time())
+
+    # Buscar eventos do cliente com agendamentos no período selecionado
     eventos = (
-        Evento.query.join(HorarioVisitacao)
+        Evento.query.outerjoin(
+            HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id
+        )
+        .outerjoin(
+            AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
         .filter(
             Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            AgendamentoVisita.data_agendamento >= inicio_dt,
+            AgendamentoVisita.data_agendamento <= fim_dt,
         )
         .distinct()
         .all()
@@ -399,12 +407,16 @@ def relatorio_geral_agendamentos():
                 )
             ).label('visitantes'),
         )
-        .join(HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id)
-        .join(AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .outerjoin(
+            HorarioVisitacao, HorarioVisitacao.evento_id == Evento.id
+        )
+        .outerjoin(
+            AgendamentoVisita, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        )
         .filter(
             Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            AgendamentoVisita.data_agendamento >= inicio_dt,
+            AgendamentoVisita.data_agendamento <= fim_dt,
         )
         .group_by(Evento.id)
         .all()
@@ -438,8 +450,8 @@ def relatorio_geral_agendamentos():
         .join(Evento)
         .filter(
             Evento.cliente_id == current_user.id,
-            HorarioVisitacao.data >= data_inicio,
-            HorarioVisitacao.data <= data_fim,
+            AgendamentoVisita.data_agendamento >= inicio_dt,
+            AgendamentoVisita.data_agendamento <= fim_dt,
         )
         .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
         .all()
