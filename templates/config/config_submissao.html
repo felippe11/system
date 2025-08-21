@@ -157,7 +157,7 @@
                 class="mb-3"
                 method="post"
                 enctype="multipart/form-data"
-                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+                action="{{ url_for('importar_trabalhos_routes.importar_trabalhos') }}">
             <div class="input-group">
               <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
               <button class="btn btn-primary" type="submit">Importar</button>
@@ -227,6 +227,10 @@
       </div>
     </div>
   </div>
+  <div id="mapearColunasModal"></div>
+  <script type="text/template" id="mapearColunasTemplate">
+    {% include 'trabalho/selecionar_colunas_trabalho.html' %}
+  </script>
 
   </div>
 {% endblock %}
