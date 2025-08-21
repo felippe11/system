@@ -57,7 +57,15 @@ def submission_control():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     submissions = Submission.query.all()
-    reviewers = Usuario.query.filter_by(tipo="professor").all()
+    reviewers = (
+        Usuario.query
+        .join(RevisorCandidatura, Usuario.email == RevisorCandidatura.email)
+        .filter(
+            Usuario.tipo == "revisor",
+            RevisorCandidatura.status == "aprovado",
+        )
+        .all()
+    )
     config = ConfiguracaoCliente.query.filter_by(
         cliente_id=getattr(current_user, "id", None)
     ).first()
