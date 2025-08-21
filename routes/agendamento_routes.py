@@ -340,22 +340,66 @@ def relatorio_geral_agendamentos():
     data_inicio_raw = request.args.get('data_inicio')
     data_fim_raw = request.args.get('data_fim')
 
+    def _parse_date(value: str):
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                return datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    class _RawDate(str):
+        def strftime(self, _fmt):
+            return self
+
     if data_inicio_raw:
-        try:
-            data_inicio = datetime.strptime(data_inicio_raw, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Data inicial inválida. Usando intervalo padrão.', 'danger')
-            data_inicio = datetime.utcnow().date() - timedelta(days=30)
+        data_inicio = _parse_date(data_inicio_raw)
+        if data_inicio is None:
+            flash(
+                'Formato de data inválido. Por favor, corrija os valores informados.',
+                'info',
+            )
+            return render_template(
+                'relatorio_geral_agendamentos.html',
+                eventos=[],
+                estatisticas={},
+                agendamentos=[],
+                professores_confirmados=[],
+                filtros={
+                    'data_inicio': _RawDate(data_inicio_raw)
+                    if data_inicio_raw
+                    else None,
+                    'data_fim': _RawDate(data_fim_raw)
+                    if data_fim_raw
+                    else None,
+                },
+            )
     else:
         # Padrão: último mês
         data_inicio = datetime.utcnow().date() - timedelta(days=30)
 
     if data_fim_raw:
-        try:
-            data_fim = datetime.strptime(data_fim_raw, '%Y-%m-%d').date()
-        except ValueError:
-            flash('Data final inválida. Usando a data atual.', 'danger')
-            data_fim = datetime.utcnow().date()
+        data_fim = _parse_date(data_fim_raw)
+        if data_fim is None:
+            flash(
+                'Formato de data inválido. Por favor, corrija os valores informados.',
+                'info',
+            )
+            return render_template(
+                'relatorio_geral_agendamentos.html',
+                eventos=[],
+                estatisticas={},
+                agendamentos=[],
+                professores_confirmados=[],
+                filtros={
+                    'data_inicio': _RawDate(data_inicio_raw)
+                    if data_inicio_raw
+                    else None,
+                    'data_fim': _RawDate(data_fim_raw)
+                    if data_fim_raw
+                    else None,
+                },
+            )
     else:
         data_fim = datetime.utcnow().date()
 
