@@ -1447,9 +1447,12 @@ def criar_agendamento():
             data = request.form.get('data')
             horario_id = request.form.get('horario_id')
             escola_nome = request.form.get('escola_nome')
-            nome_responsavel = request.form.get('nome_responsavel')
-            email_responsavel = request.form.get('email_responsavel')
-            telefone_escola = request.form.get('telefone_escola')
+            responsavel_nome = request.form.get('responsavel_nome')
+            responsavel_cargo = request.form.get('responsavel_cargo')
+            responsavel_email = request.form.get('responsavel_email')
+            responsavel_whatsapp = request.form.get('responsavel_whatsapp')
+            acompanhantes_qtd = request.form.get('acompanhantes_qtd', type=int)
+            acompanhantes_nomes = request.form.get('acompanhantes_nomes')
             turma = request.form.get('turma')
             quantidade_alunos = request.form.get('quantidade_alunos')
             faixa_etaria = request.form.get('faixa_etaria')
@@ -1519,21 +1522,18 @@ def criar_agendamento():
                             turma=turma,
                             nivel_ensino=faixa_etaria,
                             quantidade_alunos=quantidade,
+                            responsavel_nome=responsavel_nome,
+                            responsavel_cargo=responsavel_cargo,
+                            responsavel_email=responsavel_email,
+                            responsavel_whatsapp=responsavel_whatsapp,
+                            acompanhantes_nomes=acompanhantes_nomes,
+                            acompanhantes_qtd=acompanhantes_qtd,
+                            observacoes=observacoes,
+                            compromisso_1=True,
+                            compromisso_2=True,
+                            compromisso_3=True,
+                            compromisso_4=True,
                         )
-                        extra_campos = {
-                            'nome_responsavel': nome_responsavel,
-                            'email_responsavel': email_responsavel,
-                            'telefone_escola': telefone_escola,
-                            'observacoes': observacoes,
-                            'compromisso1': True,
-                            'compromisso2': True,
-                            'compromisso3': True,
-                            'compromisso4': True,
-                            'aceite_final': True,
-                        }
-                        for campo, valor in extra_campos.items():
-                            if valor and hasattr(AgendamentoVisita, campo):
-                                setattr(agendamento, campo, valor)
 
                         horario.vagas_disponiveis -= quantidade
                         db.session.add(agendamento)

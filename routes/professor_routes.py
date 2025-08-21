@@ -202,13 +202,20 @@ def criar_agendamento_professor(horario_id):
         # Validar campos obrigatórios
         escola_nome = request.form.get('escola_nome')
         escola_codigo_inep = request.form.get('escola_codigo_inep')
+        rede_ensino = request.form.get('rede_ensino')
+        municipio = request.form.get('municipio')
+        bairro = request.form.get('bairro')
         turma = request.form.get('turma')
         nivel_ensino = request.form.get('nivel_ensino')
         quantidade_alunos = request.form.get('quantidade_alunos', type=int)
         salas_selecionadas = request.form.getlist('salas_selecionadas')
-        nome_responsavel = request.form.get('nome_responsavel')
-        email_responsavel = request.form.get('email_responsavel')
-        telefone_escola = request.form.get('telefone_escola')
+        responsavel_nome = request.form.get('responsavel_nome')
+        responsavel_cargo = request.form.get('responsavel_cargo')
+        responsavel_whatsapp = request.form.get('responsavel_whatsapp')
+        responsavel_email = request.form.get('responsavel_email')
+        acompanhantes_qtd = request.form.get('acompanhantes_qtd', type=int)
+        acompanhantes_nomes = request.form.get('acompanhantes_nomes')
+        precisa_transporte = request.form.get('precisa_transporte')
         observacoes = request.form.get('observacoes')
 
         compromissos = [
@@ -241,28 +248,28 @@ def criar_agendamento_professor(horario_id):
                 cliente_id=current_user.cliente_id,
                 escola_nome=escola_nome,
                 escola_codigo_inep=escola_codigo_inep,
+                rede_ensino=rede_ensino,
+                municipio=municipio,
+                bairro=bairro,
                 turma=turma,
                 nivel_ensino=nivel_ensino,
                 quantidade_alunos=quantidade_alunos,
                 salas_selecionadas=','.join(salas_selecionadas)
                 if salas_selecionadas
                 else None,
+                responsavel_nome=responsavel_nome,
+                responsavel_cargo=responsavel_cargo,
+                responsavel_whatsapp=responsavel_whatsapp,
+                responsavel_email=responsavel_email,
+                acompanhantes_nomes=acompanhantes_nomes,
+                acompanhantes_qtd=acompanhantes_qtd,
+                precisa_transporte=precisa_transporte == 'sim',
+                observacoes=observacoes,
+                compromisso_1=True,
+                compromisso_2=True,
+                compromisso_3=True,
+                compromisso_4=True,
             )
-
-            extra_campos = {
-                'nome_responsavel': nome_responsavel,
-                'email_responsavel': email_responsavel,
-                'telefone_escola': telefone_escola,
-                'observacoes': observacoes,
-                'compromisso1': True,
-                'compromisso2': True,
-                'compromisso3': True,
-                'compromisso4': True,
-                'aceite_final': True,
-            }
-            for campo, valor in extra_campos.items():
-                if valor and hasattr(AgendamentoVisita, campo):
-                    setattr(agendamento, campo, valor)
 
             # Atualizar vagas disponíveis
             horario.vagas_disponiveis -= quantidade_alunos
@@ -871,13 +878,20 @@ def criar_agendamento_participante(horario_id):
         # Obter dados do formulário
         escola_nome = request.form.get('escola_nome')
         escola_codigo_inep = request.form.get('escola_codigo_inep')
+        rede_ensino = request.form.get('rede_ensino')
+        municipio = request.form.get('municipio')
+        bairro = request.form.get('bairro')
         turma = request.form.get('turma')
         nivel_ensino = request.form.get('nivel_ensino')
         quantidade_alunos = request.form.get('quantidade_alunos', type=int)
         salas_selecionadas = request.form.getlist('salas_selecionadas')
-        nome_responsavel = request.form.get('nome_responsavel')
-        email_responsavel = request.form.get('email_responsavel')
-        telefone_escola = request.form.get('telefone_escola')
+        responsavel_nome = request.form.get('responsavel_nome')
+        responsavel_cargo = request.form.get('responsavel_cargo')
+        responsavel_whatsapp = request.form.get('responsavel_whatsapp')
+        responsavel_email = request.form.get('responsavel_email')
+        acompanhantes_qtd = request.form.get('acompanhantes_qtd', type=int)
+        acompanhantes_nomes = request.form.get('acompanhantes_nomes')
+        precisa_transporte = request.form.get('precisa_transporte')
         observacoes = request.form.get('observacoes')
 
         compromissos = [
@@ -910,28 +924,28 @@ def criar_agendamento_participante(horario_id):
                 cliente_id=current_user.cliente_id,
                 escola_nome=escola_nome,
                 escola_codigo_inep=escola_codigo_inep,
+                rede_ensino=rede_ensino,
+                municipio=municipio,
+                bairro=bairro,
                 turma=turma,
                 nivel_ensino=nivel_ensino,
                 quantidade_alunos=quantidade_alunos,
                 salas_selecionadas=','.join(salas_selecionadas)
                 if salas_selecionadas
                 else None,
+                responsavel_nome=responsavel_nome,
+                responsavel_cargo=responsavel_cargo,
+                responsavel_whatsapp=responsavel_whatsapp,
+                responsavel_email=responsavel_email,
+                acompanhantes_nomes=acompanhantes_nomes,
+                acompanhantes_qtd=acompanhantes_qtd,
+                precisa_transporte=precisa_transporte == 'sim',
+                observacoes=observacoes,
+                compromisso_1=True,
+                compromisso_2=True,
+                compromisso_3=True,
+                compromisso_4=True,
             )
-
-            extra_campos = {
-                'nome_responsavel': nome_responsavel,
-                'email_responsavel': email_responsavel,
-                'telefone_escola': telefone_escola,
-                'observacoes': observacoes,
-                'compromisso1': True,
-                'compromisso2': True,
-                'compromisso3': True,
-                'compromisso4': True,
-                'aceite_final': True,
-            }
-            for campo, valor in extra_campos.items():
-                if valor and hasattr(AgendamentoVisita, campo):
-                    setattr(agendamento, campo, valor)
 
             horario.vagas_disponiveis -= quantidade_alunos
             db.session.add(agendamento)
