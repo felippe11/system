@@ -119,6 +119,7 @@ def config_revisor():
         update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
         recreate_criterios(processo, dados["criterios"])
+        db.session.commit()
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
 
