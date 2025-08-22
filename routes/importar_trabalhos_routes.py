@@ -24,7 +24,7 @@ def importar_trabalhos():
 
     1. Upload an Excel file via ``arquivo``. The spreadsheet is parsed and
        temporarily stored, returning available column names and a preview of the
-       data.
+       rows.
     2. Post ``temp_id`` and optionally ``columns`` to persist the stored data as
        ``Submission`` and ``WorkMetadata`` records.
     """
@@ -40,12 +40,11 @@ def importar_trabalhos():
         if not title_column or title_column not in df.columns:
             title_column = df.columns[0] if not df.columns.empty else None
 
-        records = df.to_dict(orient="records")
-        submissions = []
-        for idx, row_dict in enumerate(records, start=1):
+        raw_records = df.to_dict(orient="records")
+        records = []
+        for row_dict in raw_records:
             attributes = {}
             for key, value in row_dict.items():
-
                 if isinstance(value, pd.Timestamp):
                     value = value.isoformat()
                 elif pd.isna(value):
@@ -55,47 +54,21 @@ def importar_trabalhos():
                 if not isinstance(value, (str, int, float, bool, type(None))):
                     value = str(value)
                 attributes[key] = value
-            raw_title = attributes.get(title_column) if title_column else None
-            if raw_title is None or raw_title == "":
-                title = f"Trabalho {idx}"
-            else:
-                title = str(raw_title)
-            submission = Submission(
-                title=title,
-                code_hash=generate_password_hash(
-                    uuid.uuid4().hex, method="pbkdf2:sha256"
-                ),
-                evento_id=evento_id,
-                attributes=attributes,
-            )
-            submissions.append(submission)
-        imported = len(submissions)
-        if imported:
-            try:
-                db.session.bulk_save_objects(submissions)
-                db.session.commit()
-            except DataError as err:
-                db.session.rollback()
-                column = getattr(
-                    getattr(getattr(err, "orig", None), "diag", None),
-                    "column_name",
-                    None,
-                )
-                msg = (
-                    f"Valor inválido para o campo '{column}'"
-                    if column
-                    else "Valor inválido para um dos campos"
-                )
-                return jsonify({"error": msg}), 400
+            records.append(attributes)
 
+        temp_id = uuid.uuid4().hex
+        temp_path = os.path.join(
+            tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
+        )
+        with open(temp_path, "w", encoding="utf-8") as tmp:
+            json.dump(records, tmp)
 
         preview = records[:5]
         return jsonify(
             {
                 "columns": df.columns.tolist(),
-                "data": records,
-                "imported": imported,
-
+                "preview": preview,
+                "temp_id": temp_id,
             }
         )
 
