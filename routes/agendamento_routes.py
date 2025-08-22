@@ -3285,11 +3285,13 @@ def checkin_agendamento(qr_code_token):
     if agendamento.checkin_realizado:
         return jsonify({"erro": "Check-in já foi realizado para este agendamento"}), 409
     
-    # Verificar permissões: apenas o professor que criou ou um administrador pode realizar check-in
+    # Verificar permissões: professor, participante ou administrador pode realizar check-in
     if (
         agendamento.professor_id
         and current_user.id != agendamento.professor_id
         and not current_user.is_admin
+        and current_user.tipo != 'participante'
+        and current_user.tipo != 'cliente'
     ):
         return jsonify({"erro": "Você não tem permissão para realizar check-in neste agendamento"}), 403
     
@@ -3494,6 +3496,7 @@ def confirmar_checkin_agendamento(token):
                 agendamento.data_checkin = datetime.utcnow()
                 agendamento.status = 'realizado'
 
+                # Registra o checkin do professor ou participante
                 checkin = Checkin(
                     usuario_id=agendamento.professor_id,
                     evento_id=agendamento.horario.evento_id,
@@ -3502,10 +3505,10 @@ def confirmar_checkin_agendamento(token):
                 )
                 db.session.add(checkin)
 
-                # Processa os alunos ausentes
-                alunos_ausentes = request.form.getlist('alunos_ausentes')
+                # Processa os alunos presentes (mudança de lógica)
+                alunos_presentes = request.form.getlist('alunos_presentes')
                 for aluno in agendamento.alunos:
-                    aluno.presente = str(aluno.id) not in alunos_ausentes
+                    aluno.presente = str(aluno.id) in alunos_presentes
 
 
                 db.session.commit()
@@ -4374,10 +4377,10 @@ def qrcode_agendamento(agendamento_id):
     """
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    if current_user.id not in (
-        agendamento.professor_id,
-        agendamento.horario.evento.cliente_id,
-    ):
+    # Permitir acesso para professores, clientes, participantes e administradores
+    if (current_user.id != agendamento.professor_id and
+        current_user.id != agendamento.horario.evento.cliente_id and
+        current_user.tipo not in ['participante', 'admin']):
         abort(403)
 
     qr_data = url_for(

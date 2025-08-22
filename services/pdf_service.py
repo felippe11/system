@@ -2913,7 +2913,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
 
         status_txt = agendamento.status.capitalize()
         if agendamento.checkin_realizado:
-            status_txt += ' ✓'
+            status_txt += ' (OK)'
 
         pdf.cell(15, 8, status_txt, 1, 1, 'C')
 
