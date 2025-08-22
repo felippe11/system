@@ -42,10 +42,10 @@ def importar_trabalhos():
 
         records = df.to_dict(orient="records")
         submissions = []
+        sanitized = []
         for idx, row_dict in enumerate(records, start=1):
             attributes = {}
             for key, value in row_dict.items():
-
                 if isinstance(value, pd.Timestamp):
                     value = value.isoformat()
                 elif pd.isna(value):
@@ -55,6 +55,7 @@ def importar_trabalhos():
                 if not isinstance(value, (str, int, float, bool, type(None))):
                     value = str(value)
                 attributes[key] = value
+            sanitized.append(attributes)
             raw_title = attributes.get(title_column) if title_column else None
             if raw_title is None or raw_title == "":
                 title = f"Trabalho {idx}"
@@ -70,6 +71,12 @@ def importar_trabalhos():
             )
             submissions.append(submission)
         imported = len(submissions)
+        temp_id = uuid.uuid4().hex
+        temp_path = os.path.join(
+            tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
+        )
+        with open(temp_path, "w", encoding="utf-8") as tmp:
+            json.dump(sanitized, tmp)
         if imported:
             try:
                 db.session.bulk_save_objects(submissions)
@@ -88,14 +95,12 @@ def importar_trabalhos():
                 )
                 return jsonify({"error": msg}), 400
 
-
-        preview = records[:5]
         return jsonify(
             {
                 "columns": df.columns.tolist(),
-                "data": records,
+                "data": sanitized[:5],
                 "imported": imported,
-
+                "temp_id": temp_id,
             }
         )
 
