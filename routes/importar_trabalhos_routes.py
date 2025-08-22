@@ -24,7 +24,7 @@ def importar_trabalhos():
 
     1. Upload an Excel file via ``arquivo``. The spreadsheet is parsed and
        temporarily stored, returning available column names and a preview of the
-       data.
+       rows.
     2. Post ``temp_id`` and optionally ``columns`` to persist the stored data as
        ``Submission`` and ``WorkMetadata`` records.
     """
@@ -39,6 +39,7 @@ def importar_trabalhos():
         records = df.to_dict(orient="records")
         rows = []
         for row_dict in records:
+
             attributes = {}
             for key, value in row_dict.items():
                 if isinstance(value, pd.Timestamp):
@@ -51,6 +52,8 @@ def importar_trabalhos():
                     value = str(value)
                 attributes[key] = value
             rows.append(attributes)
+            rows.append(attributes)
+
 
         temp_id = uuid.uuid4().hex
         temp_path = os.path.join(
@@ -60,6 +63,7 @@ def importar_trabalhos():
             json.dump(rows, tmp)
 
         preview = rows[:5]
+
         return jsonify(
             {
                 "temp_id": temp_id,
