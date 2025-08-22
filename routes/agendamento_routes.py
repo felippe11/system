@@ -3591,7 +3591,7 @@ def cadastro_professor():
             nome=nome,
             email=email,
             cpf=cpf,
-            senha=generate_password_hash(senha),
+            senha=generate_password_hash(senha, method="pbkdf2:sha256"),
             formacao=formacao,
             tipo='professor'
         )
@@ -3760,7 +3760,7 @@ def adicionar_alunos():
                         nome=row['nome'],
                         cpf=cpf_str,
                         email=row['email'],
-                        senha=generate_password_hash(str(row['cpf'])),  # Senha inicial como CPF
+                        senha=generate_password_hash(str(row['cpf']), method="pbkdf2:sha256"),  # Senha inicial como CPF
                         formacao=row.get('formacao', 'Não informada'),
                         tipo='participante',
                         cliente_id=current_user.id  # Vincula ao cliente logado
@@ -3800,7 +3800,7 @@ def adicionar_alunos():
                     nome=nome,
                     cpf=cpf,
                     email=email,
-                    senha=generate_password_hash(cpf),  # Senha inicial como CPF
+                    senha=generate_password_hash(cpf, method="pbkdf2:sha256"),  # Senha inicial como CPF
                     formacao=formacao,
                     tipo='participante',
                     cliente_id=current_user.id,  # Vincula ao cliente logado
@@ -3905,7 +3905,7 @@ def importar_alunos():
                         nome=nome,
                         cpf=cpf,
                         email=email,
-                        senha=generate_password_hash(cpf),  # Senha inicial como CPF
+                        senha=generate_password_hash(cpf, method="pbkdf2:sha256"),  # Senha inicial como CPF
                         formacao=formacao,
                         tipo='participante',
                         cliente_id=current_user.id,  # Vincula ao cliente logado

@@ -49,7 +49,7 @@ def _setup_event(app):
         dia = OficinaDia(oficina_id=oficina.id, data=date.today(), horario_inicio='08:00', horario_fim='10:00')
         db.session.add(dia)
         db.session.commit()
-        user = Usuario(nome='U', cpf='1', email='u@test', senha=generate_password_hash('123'), formacao='x', tipo='participante', cliente_id=cliente.id, evento_id=evento.id, tipo_inscricao_id=tipo.id)
+        user = Usuario(nome='U', cpf='1', email='u@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='participante', cliente_id=cliente.id, evento_id=evento.id, tipo_inscricao_id=tipo.id)
         db.session.add(user)
         db.session.commit()
         return evento.id, link.token, user.email

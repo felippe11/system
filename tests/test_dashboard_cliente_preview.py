@@ -24,7 +24,7 @@ def app():
     with app.app_context():
         db.create_all()
         cliente = Cliente(
-            nome="Cli", email="cli@test", senha=generate_password_hash("123")
+            nome="Cli", email="cli@test", senha=generate_password_hash("123", method="pbkdf2:sha256")
         )
         db.session.add(cliente)
         db.session.commit()
@@ -35,7 +35,7 @@ def app():
             nome="CliUser",
             cpf="1",
             email="cli@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="cliente",
         )

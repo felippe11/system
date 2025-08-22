@@ -141,7 +141,7 @@ def criar_clientes(quantidade=5):
             cliente = Cliente(
                 nome=fake.company(),
                 email=email,
-                senha=generate_password_hash(fake.password()),
+                senha=generate_password_hash(fake.password(), method="pbkdf2:sha256"),
                 ativo=True,
                 habilita_pagamento=random.choice([True, False])
             )
@@ -456,7 +456,7 @@ def criar_ministrantes(clientes, quantidade=20):
             cidade=fake.city(),
             estado=random.choice(ESTADOS_BRASIL),
             email=gerar_email_unico(fake),
-            senha=generate_password_hash(fake.password()),
+            senha=generate_password_hash(fake.password(), method="pbkdf2:sha256"),
             cliente_id=cliente.id,
         )
 
@@ -632,7 +632,7 @@ def criar_usuarios(clientes, quantidade=150):
                 nome="Administrador do Sistema",
                 cpf=fake.unique.cpf(),
                 email="admin@sistema.com",
-                senha=generate_password_hash("admin123"),
+                senha=generate_password_hash("admin123", method="pbkdf2:sha256"),
                 formacao="Administrador de Sistemas",
                 tipo="superadmin"
             )
@@ -683,7 +683,7 @@ def criar_usuarios(clientes, quantidade=150):
                 nome=fake.name(),
                 cpf=cpf,
                 email=email,
-                senha=generate_password_hash(fake.password()),
+                senha=generate_password_hash(fake.password(), method="pbkdf2:sha256"),
                 formacao=random.choice(TIPOS_FORMACAO),
                 tipo=tipo,
                 estados=','.join(estados_usuario),
@@ -1123,7 +1123,7 @@ def criar_submissoes(eventos, usuarios, quantidade_por_evento=3):
         for _ in range(quantidade_por_evento):
             autor = random.choice(participantes)
             raw_code = fake.lexify(text="??????")
-            code_hash = generate_password_hash(raw_code)
+            code_hash = generate_password_hash(raw_code, method="pbkdf2:sha256")
             sub = Submission(
                 title=fake.sentence(nb_words=6),
                 abstract=fake.paragraph(),

@@ -1,5 +1,7 @@
 import os
+import io
 import pytest
+import pandas as pd
 from werkzeug.security import generate_password_hash
 
 os.environ.setdefault('SECRET_KEY', 'test')
@@ -30,14 +32,14 @@ def app():
             nome='Admin',
             cpf='1',
             email='admin@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='',
             tipo='admin',
         )
         cliente = Cliente(
             nome='Cli',
             email='cli@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
         )
         db.session.add_all([admin, cliente])
         db.session.flush()
@@ -50,7 +52,7 @@ def app():
                     nome='Aprovado',
                     cpf='2',
                     email='aprovado@test',
-                    senha=generate_password_hash('123'),
+                    senha=generate_password_hash('123', method="pbkdf2:sha256"),
                     formacao='',
                     tipo='revisor',
                 ),
@@ -58,7 +60,7 @@ def app():
                     nome='Pendente',
                     cpf='3',
                     email='pendente@test',
-                    senha=generate_password_hash('123'),
+                    senha=generate_password_hash('123', method="pbkdf2:sha256"),
                     formacao='',
                     tipo='revisor',
                 ),
@@ -111,3 +113,21 @@ def test_submission_control_shows_placeholder_when_no_approved(client, app):
     resp = client.get('/submissoes/controle')
     html = resp.get_data(as_text=True)
     assert 'Nenhum revisor aprovado' in html
+
+
+def test_importar_trabalhos_aparece_na_tabela(client, app):
+    login(client)
+    df = pd.DataFrame({'title': ['Trabalho Y']})
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False)
+    buffer.seek(0)
+    resp = client.post(
+        '/importar_trabalhos',
+        data={'arquivo': (buffer, 'dados.xlsx')},
+        content_type='multipart/form-data',
+    )
+    assert resp.status_code == 200
+    resp = client.get('/submissoes/controle')
+    assert resp.status_code == 200
+    assert b'Trabalho Y' in resp.data

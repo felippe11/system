@@ -35,11 +35,11 @@ def app():
         db.create_all()
         admin = Usuario(
             nome='Admin', cpf='1', email='admin@example.com',
-            senha=generate_password_hash('123'), formacao='x', tipo='admin'
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='admin'
         )
         db.session.add(admin)
         cliente = Cliente(
-            nome='Cli', email='cli@example.com', senha=generate_password_hash('456')
+            nome='Cli', email='cli@example.com', senha=generate_password_hash('456', method="pbkdf2:sha256")
         )
         db.session.add(cliente)
         db.session.commit()
@@ -75,7 +75,7 @@ def _setup_event_with_payment(app, cliente):
         db.session.add(tipo)
         usuario = Usuario(
             nome='Part', cpf='2', email='p@example.com',
-            senha=generate_password_hash('123'), formacao='x', tipo='participante',
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='participante',
             cliente_id=cliente.id
         )
         db.session.add(usuario)
@@ -134,7 +134,7 @@ def test_excluir_cliente_cleans_association(client, app):
         cliente = Cliente.query.first()
         user = Usuario(
             nome='User', cpf='99', email='u@example.com',
-            senha=generate_password_hash('123'), formacao='x', tipo='participante'
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='participante'
         )
         db.session.add(user)
         db.session.commit()
@@ -189,7 +189,7 @@ def test_excluir_cliente_remove_reset_tokens(client, app):
             nome="ResetUser",
             cpf="3",
             email="reset@example.com",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="participante",
             cliente_id=cliente.id,

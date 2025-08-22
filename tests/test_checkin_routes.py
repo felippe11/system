@@ -141,7 +141,7 @@ def app():
     with app.app_context():
         db.create_all()
         cliente = Cliente(
-            nome="Cli", email="cli@test", senha=generate_password_hash("123")
+            nome="Cli", email="cli@test", senha=generate_password_hash("123", method="pbkdf2:sha256")
         )
         db.session.add(cliente)
         db.session.flush()
@@ -167,7 +167,7 @@ def app():
             nome="Prof",
             cpf="111",
             email="prof@test",
-            senha=generate_password_hash("p123"),
+            senha=generate_password_hash("p123", method="pbkdf2:sha256"),
             formacao="F",
             tipo="professor",
         )
@@ -279,7 +279,7 @@ def test_confirmar_checkin_redirect_outro_usuario(client, app):
             nome="Admin",
             cpf="0",
             email="admin@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="X",
             tipo="admin",
         )

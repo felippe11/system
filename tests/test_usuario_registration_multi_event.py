@@ -21,7 +21,7 @@ def app():
     with app.app_context():
         db.create_all()
 
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
 
@@ -39,7 +39,7 @@ def app():
             nome='User',
             cpf='111',
             email='user@example.com',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='F',
             tipo='participante',
             cliente_id=cliente.id,

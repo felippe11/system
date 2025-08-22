@@ -1,14 +1,41 @@
 import io
 import json
 import os
+import tempfile
+
 import pandas as pd
 import pytest
 from extensions import db
-from models import WorkMetadata
+from models import WorkMetadata, Submission
+from sqlalchemy.exc import DataError
 
 
 def make_excel():
-    df = pd.DataFrame({"titulo": ["T1"], "resumo": ["R1"], "extra": ["E1"]})
+    df = pd.DataFrame(
+        {
+            "titulo": ["T1"],
+            "categoria": ["C1"],
+            "rede_ensino": ["Rede1"],
+            "etapa_ensino": ["Etapa1"],
+            "pdf_url": ["http://example.com/doc.pdf"],
+            "resumo": ["R1"],
+            "extra": ["E1"],
+        }
+    )
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    buffer.seek(0)
+    return buffer, df
+
+
+def make_excel_sem_titulo():
+    df = pd.DataFrame(
+        {
+            "categoria": ["C1"],
+            "resumo": ["R1"],
+        }
+    )
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False)
@@ -22,6 +49,7 @@ def app():
     os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
     os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
     os.environ.setdefault("DB_ONLINE", "sqlite:///:memory:")
+    os.environ.setdefault("DB_PASS", "test")
     from app import create_app
 
     app = create_app()
@@ -41,23 +69,130 @@ def client(app):
 
 def test_upload_and_persist(client, app):
     excel, df = make_excel()
+    evento_id = 123
     resp = client.post(
         "/importar_trabalhos",
-        data={"arquivo": (excel, "dados.xlsx")},
+        data={"arquivo": (excel, "dados.xlsx"), "evento_id": evento_id},
         content_type="multipart/form-data",
     )
     assert resp.status_code == 200
-    assert b"titulo" in resp.data
-    assert b"resumo" in resp.data
+    body = json.loads(resp.data)
+    temp_id = body["temp_id"]
+    assert "columns" in body
+    assert "data" in body
 
-    data_json = df.to_dict(orient="records")
+    with app.app_context():
+        assert Submission.query.count() == 0
+
+    columns = [
+        "titulo",
+        "categoria",
+        "rede_ensino",
+        "etapa_ensino",
+        "pdf_url",
+    ]
     resp = client.post(
         "/importar_trabalhos",
-        data={"columns": ["titulo", "resumo"], "data": json.dumps(data_json)},
+        data={
+            "temp_id": temp_id,
+            "evento_id": evento_id,
+            "title_column": "titulo",
+            "columns": columns,
+        },
         follow_redirects=True,
     )
     assert resp.status_code == 200
+    data_json = df.to_dict(orient="records")
     with app.app_context():
+        subs = Submission.query.all()
+        assert len(subs) == 1
+        assert subs[0].evento_id == evento_id
+        assert subs[0].attributes == data_json[0]
         rows = WorkMetadata.query.all()
         assert len(rows) == 1
-        assert rows[0].data == {"titulo": "T1", "resumo": "R1"}
+        row = rows[0]
+        assert row.evento_id == evento_id
+        assert row.titulo == "T1"
+        assert row.categoria == "C1"
+        assert row.rede_ensino == "Rede1"
+        assert row.etapa_ensino == "Etapa1"
+        assert row.pdf_url == "http://example.com/doc.pdf"
+        expected_data = {k: data_json[0][k] for k in columns}
+        assert row.data == expected_data
+
+
+def test_upload_sem_titulo(client, app):
+    excel, df = make_excel_sem_titulo()
+    evento_id = 456
+    resp = client.post(
+        "/importar_trabalhos",
+        data={"arquivo": (excel, "dados.xlsx"), "evento_id": evento_id},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    body = json.loads(resp.data)
+    temp_id = body["temp_id"]
+
+    with app.app_context():
+        assert Submission.query.count() == 0
+
+    resp = client.post(
+        "/importar_trabalhos",
+        data={
+            "temp_id": temp_id,
+            "evento_id": evento_id,
+            "title_column": "categoria",
+            "columns": ["categoria"],
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    data_json = df.to_dict(orient="records")
+    with app.app_context():
+        subs = Submission.query.all()
+        assert len(subs) == 1
+        assert subs[0].title == "C1"
+        assert subs[0].attributes == data_json[0]
+        rows = WorkMetadata.query.all()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row.titulo is None
+        assert row.categoria == "C1"
+        assert row.data == {"categoria": "C1"}
+
+
+def test_oversize_field_returns_error(client, app, monkeypatch):
+    evento_id = 789
+    data_json = [{"titulo": "x" * 300}]
+
+    class MockOrig(Exception):
+        def __init__(self):
+            self.diag = type("Diag", (), {"column_name": "titulo"})()
+
+    def fake_commit():
+        raise DataError("stmt", {}, MockOrig())
+
+    called = {"rollback": False}
+
+    def fake_rollback():
+        called["rollback"] = True
+
+    monkeypatch.setattr(db.session, "commit", fake_commit)
+    monkeypatch.setattr(db.session, "rollback", fake_rollback)
+
+    temp_id = "tmp" + os.urandom(4).hex()
+    temp_path = os.path.join(
+        tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
+    )
+    with open(temp_path, "w", encoding="utf-8") as tmp:
+        json.dump(data_json, tmp)
+
+    resp = client.post(
+        "/importar_trabalhos",
+        data={"temp_id": temp_id, "evento_id": evento_id, "title_column": "titulo"},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 400
+    body = json.loads(resp.data)
+    assert "titulo" in body["error"]
+    assert called["rollback"]

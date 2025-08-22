@@ -18,12 +18,14 @@ from models import (
     Evento,
     ConfiguracaoEvento,
     Formulario,
-    Submission,
-    Usuario,
 )
 
 from datetime import datetime
 import logging
+import uuid
+import secrets
+import pandas as pd
+from werkzeug.security import generate_password_hash
 
 config_cliente_routes = Blueprint("config_cliente_routes", __name__)
 
@@ -938,6 +940,8 @@ def toggle_configuracao_evento(evento_id, campo):
     return jsonify({"success": True, "value": getattr(config, campo)})
 
 
+
+
 @config_cliente_routes.route("/config_submissao")
 @login_required
 def config_submissao():
@@ -971,15 +975,18 @@ def config_submissao():
         ).all()
     }
 
-    submissions = Submission.query.all()
-    reviewers = Usuario.query.filter_by(tipo="professor").all()
-
     return render_template(
         "config/config_submissao.html",
         config_cliente=config_cliente,
         eventos=eventos,
         formularios=formularios,
         revisao_configs=revisao_configs,
-        submissions=submissions,
-        reviewers=reviewers,
     )
+
+
+@config_cliente_routes.route("/importar_trabalhos", methods=["POST"])
+def importar_trabalhos():
+    """Proxy endpoint to reuse the generic import logic."""
+    from .importar_trabalhos_routes import importar_trabalhos as handler
+
+    return handler()

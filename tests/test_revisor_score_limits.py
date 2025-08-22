@@ -40,7 +40,7 @@ def app():
         cliente = Cliente(
             nome="Cli",
             email="cli@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
         )
         db.session.add(cliente)
         db.session.flush()
@@ -48,7 +48,7 @@ def app():
             nome="Rev",
             cpf="1",
             email="rev@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="X",
             tipo="revisor",
         )
@@ -75,7 +75,7 @@ def app():
         evento_barema = EventoBarema(evento_id=evento.id, requisitos={"Qualidade": 5})
         submission = Submission(
             title="T",
-            code_hash=generate_password_hash("code"),
+            code_hash=generate_password_hash("code", method="pbkdf2:sha256"),
             evento_id=evento.id,
         )
         assignment = Assignment(submission=submission, reviewer=reviewer)

@@ -53,10 +53,10 @@ def app():
 
     with app.app_context():
         db.create_all()
-        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123'), formacao='x', tipo='admin')
-        user1 = Usuario(nome='User1', cpf='2', email='user@test', senha=generate_password_hash('123'), formacao='y')
-        user2 = Usuario(nome='User2', cpf='3', email='other@test', senha=generate_password_hash('123'), formacao='z')
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('456'))
+        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='admin')
+        user1 = Usuario(nome='User1', cpf='2', email='user@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='y')
+        user2 = Usuario(nome='User2', cpf='3', email='other@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='z')
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('456', method="pbkdf2:sha256"))
         db.session.add_all([admin, user1, user2, cliente])
         db.session.commit()
     yield app

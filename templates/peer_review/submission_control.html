@@ -3,6 +3,16 @@
 {% block content %}
 <div class="container mt-5">
   <h3 class="mb-4">Controle de Submissões</h3>
+  <form id="formImportarTrabalhos"
+        class="mb-3"
+        method="post"
+        enctype="multipart/form-data"
+        action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+    <div class="input-group">
+      <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
+      <button class="btn btn-primary" type="submit">Importar</button>
+    </div>
+  </form>
   <table class="table table-striped">
     <thead>
       <tr>
@@ -86,4 +96,5 @@
 {% block scripts %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
+<script src="{{ url_for('static', filename='js/submission_import.js') }}"></script>
 {% endblock %}
