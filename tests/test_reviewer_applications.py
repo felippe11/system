@@ -87,9 +87,9 @@ def app():
     app.config['WTF_CSRF_ENABLED'] = False
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
-        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123'), formacao='x', tipo='admin')
-        user = Usuario(nome='User', cpf='2', email='user@test', senha=generate_password_hash('123'), formacao='x')
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='admin')
+        user = Usuario(nome='User', cpf='2', email='user@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x')
         db.session.add_all([cliente, admin, user])
         db.session.commit()
         db.session.add(ReviewerApplication(usuario_id=user.id))
@@ -159,7 +159,7 @@ def test_submit_application_and_visibility(client, app):
     with app.app_context():
         new_user = Usuario(
             nome='Applicant', cpf='3', email='app@test',
-            senha=generate_password_hash('123'), formacao='x'
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x'
         )
         db.session.add(new_user)
         db.session.commit()
@@ -237,7 +237,7 @@ def test_approve_revisor_cpf_collision(client, app, monkeypatch):
             nome='Exist',
             cpf='12345678901',
             email='exist@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
         )
         db.session.add(existing)
@@ -284,7 +284,7 @@ def test_approve_revisor_cpf_collision_error(client, app, monkeypatch, caplog):
             nome='Exist',
             cpf='12345678901',
             email='exist@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
         )
         db.session.add(existing)

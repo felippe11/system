@@ -55,7 +55,7 @@ def importar_trabalhos():
                 title = str(raw_title)
             submission = Submission(
                 title=title,
-                code_hash=generate_password_hash(uuid.uuid4().hex),
+                code_hash=generate_password_hash(uuid.uuid4().hex, method="pbkdf2:sha256"),
                 evento_id=evento_id,
                 attributes=attributes,
             )

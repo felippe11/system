@@ -105,7 +105,7 @@ def test_criar_usuario_e_inscricao_errors(app_ctx):
         nome='Bob',
         cpf='222',
         email='bob@example.com',
-        senha=generate_password_hash('secret'),
+        senha=generate_password_hash('secret', method="pbkdf2:sha256"),
         formacao='F',
     )
     db.session.add(user)

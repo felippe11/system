@@ -52,7 +52,7 @@ def importar_usuarios():
                 if usuario_existente:
                     logger.warning("Usuário com CPF %s já existe. Pulando...", cpf_str)
                     continue
-                senha_hash = generate_password_hash(str(row["senha"]))
+                senha_hash = generate_password_hash(str(row["senha"]), method="pbkdf2:sha256")
                 novo_usuario = Usuario(
                     nome=row["nome"],
                     cpf=cpf_str,

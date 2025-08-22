@@ -36,7 +36,7 @@ def cadastro_ministrante():
         cidade = request.form.get('cidade')
         estado = request.form.get('estado')
         email = request.form.get('email')
-        senha = generate_password_hash(request.form.get('senha'))
+        senha = generate_password_hash(request.form.get('senha'), method="pbkdf2:sha256")
 
         # Se for admin, pega o cliente_id do form
         # Se for cliente, assume o id do current_user
@@ -123,7 +123,7 @@ def editar_ministrante(ministrante_id):
 
         nova_senha = request.form.get('senha')
         if nova_senha:
-            ministrante.senha = generate_password_hash(nova_senha)
+            ministrante.senha = generate_password_hash(nova_senha, method="pbkdf2:sha256")
 
         foto = request.files.get('foto')
         if foto and foto.filename:

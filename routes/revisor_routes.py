@@ -500,7 +500,7 @@ def approve(cand_id: int):
             reviewer = Usuario(
                 nome=cand.nome or cand.email,
                 email=cand.email,
-                senha=generate_password_hash("temp123"),
+                senha=generate_password_hash("temp123", method="pbkdf2:sha256"),
                 formacao="",
                 tipo="revisor",
             )

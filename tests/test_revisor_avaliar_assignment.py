@@ -26,12 +26,12 @@ def app():
     with app.app_context():
         db.create_all()
         reviewer = Usuario(
-            nome="Rev", cpf="1", email="rev@test", senha=generate_password_hash("123"),
+            nome="Rev", cpf="1", email="rev@test", senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="X", tipo="revisor"
         )
         submission = Submission(
             title="T",
-            code_hash=generate_password_hash("code"),
+            code_hash=generate_password_hash("code", method="pbkdf2:sha256"),
         )
         db.session.add_all([reviewer, submission])
         db.session.commit()
