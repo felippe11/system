@@ -36,16 +36,11 @@ def importar_trabalhos():
         except Exception:
             return jsonify({"message": "Erro ao ler o arquivo"}), 400
 
-        title_column = request.form.get("title_column")
-        if not title_column or title_column not in df.columns:
-            title_column = df.columns[0] if not df.columns.empty else None
-
         records = df.to_dict(orient="records")
-        submissions = []
-        for idx, row_dict in enumerate(records, start=1):
+        rows = []
+        for row_dict in records:
             attributes = {}
             for key, value in row_dict.items():
-
                 if isinstance(value, pd.Timestamp):
                     value = value.isoformat()
                 elif pd.isna(value):
@@ -55,47 +50,21 @@ def importar_trabalhos():
                 if not isinstance(value, (str, int, float, bool, type(None))):
                     value = str(value)
                 attributes[key] = value
-            raw_title = attributes.get(title_column) if title_column else None
-            if raw_title is None or raw_title == "":
-                title = f"Trabalho {idx}"
-            else:
-                title = str(raw_title)
-            submission = Submission(
-                title=title,
-                code_hash=generate_password_hash(
-                    uuid.uuid4().hex, method="pbkdf2:sha256"
-                ),
-                evento_id=evento_id,
-                attributes=attributes,
-            )
-            submissions.append(submission)
-        imported = len(submissions)
-        if imported:
-            try:
-                db.session.bulk_save_objects(submissions)
-                db.session.commit()
-            except DataError as err:
-                db.session.rollback()
-                column = getattr(
-                    getattr(getattr(err, "orig", None), "diag", None),
-                    "column_name",
-                    None,
-                )
-                msg = (
-                    f"Valor inválido para o campo '{column}'"
-                    if column
-                    else "Valor inválido para um dos campos"
-                )
-                return jsonify({"error": msg}), 400
+            rows.append(attributes)
 
+        temp_id = uuid.uuid4().hex
+        temp_path = os.path.join(
+            tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
+        )
+        with open(temp_path, "w", encoding="utf-8") as tmp:
+            json.dump(rows, tmp)
 
-        preview = records[:5]
+        preview = rows[:5]
         return jsonify(
             {
+                "temp_id": temp_id,
                 "columns": df.columns.tolist(),
-                "data": records,
-                "imported": imported,
-
+                "preview": preview,
             }
         )
 
