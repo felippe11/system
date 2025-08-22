@@ -21,9 +21,9 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
-        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123'), formacao='x', tipo='admin')
-        usuario = Usuario(nome='User', cpf='2', email='user@test', senha=generate_password_hash('123'), formacao='x')
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='admin')
+        usuario = Usuario(nome='User', cpf='2', email='user@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x')
         db.session.add_all([cliente, admin, usuario])
         db.session.commit()
         oficina = Oficina(titulo='Of', descricao='desc', ministrante_id=None, vagas=10, carga_horaria='8', estado='SP', cidade='SP', cliente_id=cliente.id)

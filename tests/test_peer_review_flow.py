@@ -79,13 +79,13 @@ def app():
     with app.app_context():
         db.create_all()
         cliente = Cliente(
-            nome="Cli", email="cli@test", senha=generate_password_hash("123")
+            nome="Cli", email="cli@test", senha=generate_password_hash("123", method="pbkdf2:sha256")
         )
         admin = Usuario(
             nome="Admin",
             cpf="1",
             email="admin@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="admin",
         )
@@ -93,7 +93,7 @@ def app():
             nome="Rev",
             cpf="2",
             email="rev@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="revisor",
         )
@@ -101,7 +101,7 @@ def app():
             nome="RevBad",
             cpf="4",
             email="revbad@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="revisor",
         )
@@ -109,7 +109,7 @@ def app():
             nome="Author",
             cpf="3",
             email="author@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="x",
             tipo="participante",
         )

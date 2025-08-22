@@ -30,7 +30,7 @@ def login(client, email, senha):
 
 def test_configuracao_evento_defaults(client, app):
     with app.app_context():
-        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')

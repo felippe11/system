@@ -35,7 +35,7 @@ def create_submission():
 
     locator = str(uuid.uuid4())
     raw_code = secrets.token_urlsafe(8)[:8]
-    code_hash = generate_password_hash(raw_code)
+    code_hash = generate_password_hash(raw_code, method="pbkdf2:sha256")
 
     submission = Submission(title=title, content=content,
                             locator=locator, code_hash=code_hash)

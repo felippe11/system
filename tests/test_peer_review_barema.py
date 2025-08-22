@@ -42,7 +42,7 @@ def app():
     app.register_blueprint(peer_review_routes)
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome="Cli", email="cli@test", senha=generate_password_hash("123"))
+        cliente = Cliente(nome="Cli", email="cli@test", senha=generate_password_hash("123", method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.flush()
         evento = Evento(cliente_id=cliente.id, nome="Evento", inscricao_gratuita=True)
@@ -50,14 +50,14 @@ def app():
             nome="Rev",
             cpf="1",
             email="rev@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="X",
             tipo="professor",
         )
         submission = Submission(
             title="T",
             content="Body",
-            code_hash=generate_password_hash("code"),
+            code_hash=generate_password_hash("code", method="pbkdf2:sha256"),
             evento_id=evento.id,
         )
         db.session.add_all([evento, reviewer, submission])

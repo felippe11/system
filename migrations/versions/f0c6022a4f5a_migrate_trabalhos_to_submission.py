@@ -59,7 +59,7 @@ def upgrade():
                 "status": row.status,
                 "author_id": row.usuario_id,
                 "evento_id": row.evento_id,
-                "code_hash": generate_password_hash(code),
+                "code_hash": generate_password_hash(code, method="pbkdf2:sha256"),
                 "attributes": attrs,
             },
         )

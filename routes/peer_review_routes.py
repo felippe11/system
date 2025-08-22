@@ -675,7 +675,7 @@ def reviewer_registration():
                 nome=nome,
                 cpf=cpf,
                 email=email,
-                senha=generate_password_hash(senha),
+                senha=generate_password_hash(senha, method="pbkdf2:sha256"),
                 formacao=formacao,
                 tipo="revisor",
             )

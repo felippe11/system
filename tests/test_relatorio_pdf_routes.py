@@ -29,8 +29,8 @@ def app():
     app.config['WTF_CSRF_ENABLED'] = False
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
-        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123'), formacao='x', tipo='admin')
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        admin = Usuario(nome='Admin', cpf='1', email='admin@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='admin')
         db.session.add_all([cliente, admin])
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='Evento')

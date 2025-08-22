@@ -54,7 +54,7 @@ def cadastrar_cliente():
         novo_cliente = Cliente(
             nome=nome,
             email=email,
-            senha=generate_password_hash(senha),
+            senha=generate_password_hash(senha, method="pbkdf2:sha256"),
             habilita_pagamento=True,
         )
 
@@ -80,7 +80,7 @@ def editar_cliente(cliente_id):
         cliente.email = request.form.get("email")
         nova_senha = request.form.get("senha")
         if nova_senha:  # Só atualiza a senha se fornecida
-            cliente.senha = generate_password_hash(nova_senha)
+            cliente.senha = generate_password_hash(nova_senha, method="pbkdf2:sha256")
 
         # Pagamento sempre habilitado para clientes
         cliente.habilita_pagamento = True

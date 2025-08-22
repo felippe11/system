@@ -29,7 +29,7 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV', submissao_aberta=True)
@@ -39,7 +39,7 @@ def app():
             nome='Part',
             cpf='1',
             email='part@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
             tipo='participante',
             cliente_id=cliente.id,
