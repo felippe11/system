@@ -4383,6 +4383,7 @@ def qrcode_agendamento(agendamento_id):
     qr_data = url_for(
         'agendamento_routes.checkin_qr_agendamento',
         token=agendamento.qr_code_token,
+        _external=True,
     )
 
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
