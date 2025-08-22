@@ -34,6 +34,7 @@
       </div>
       
       <form method="POST" action="{{ form_action }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card mb-4">
           <div class="card-header bg-success text-white">
             <i class="bi bi-person-check"></i> Lista de Presença
@@ -42,7 +43,7 @@
             {% if agendamento.alunos %}
               <div class="alert alert-info mb-3">
                 <i class="bi bi-info-circle"></i>
-                Marque os ausentes.
+                Marque os alunos presentes.
               </div>
 
               <div class="table-responsive">
@@ -51,7 +52,7 @@
                     <tr>
                       <th style="width: 50px">#</th>
                       <th>Nome</th>
-                      <th style="width: 120px">Ausente</th>
+                      <th style="width: 120px">Presente</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -63,11 +64,12 @@
                           <div class="form-check">
                             <input class="form-check-input aluno-checkbox"
                                    type="checkbox"
-                                   name="alunos_ausentes"
+                                   name="alunos_presentes"
                                    value="{{ aluno.id }}"
-                                   id="aluno-{{ aluno.id }}">
+                                   id="aluno-{{ aluno.id }}"
+                                   checked>
                             <label class="form-check-label" for="aluno-{{ aluno.id }}">
-                              Ausente
+                              Presente
                             </label>
                           </div>
                         </td>
