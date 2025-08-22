@@ -35,7 +35,7 @@ def app():
     with app.app_context():
         db.create_all()
         cliente = Cliente(
-            nome="C", email="c@test", senha=generate_password_hash("123")
+            nome="C", email="c@test", senha=generate_password_hash("123", method="pbkdf2:sha256")
         )
         db.session.add(cliente)
         db.session.flush()
@@ -45,13 +45,13 @@ def app():
             nome="Rev",
             cpf="1",
             email="rev@test",
-            senha=generate_password_hash("123"),
+            senha=generate_password_hash("123", method="pbkdf2:sha256"),
             formacao="X",
             tipo="revisor",
         )
         submission = Submission(
             title="T",
-            code_hash=generate_password_hash("code"),
+            code_hash=generate_password_hash("code", method="pbkdf2:sha256"),
             evento_id=evento.id,
         )
         db.session.add_all([evento, reviewer, submission])

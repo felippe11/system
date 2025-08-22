@@ -118,7 +118,7 @@ def app():
             nome='Admin',
             cpf='1',
             email='admin@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
             tipo='admin'
         )

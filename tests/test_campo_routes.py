@@ -34,11 +34,11 @@ def login(client, email, senha):
 
 def test_adicionar_campo_personalizado_unauthorized(client, app):
     with app.app_context():
-        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')
-        user = Usuario(nome='User', cpf='1', email='u@example.com', senha=generate_password_hash('123'), formacao='x')
+        user = Usuario(nome='User', cpf='1', email='u@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x')
         db.session.add_all([user, evento])
         db.session.commit()
 
@@ -52,12 +52,12 @@ def test_adicionar_campo_personalizado_unauthorized(client, app):
 
 def test_remover_campo_personalizado_unauthorized(client, app):
     with app.app_context():
-        cliente = Cliente(nome='Cli', email='c@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='c@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')
         campo = CampoPersonalizadoCadastro(cliente_id=cliente.id, evento_id=evento.id, nome='C', tipo='texto')
-        user = Usuario(nome='User', cpf='2', email='user2@example.com', senha=generate_password_hash('123'), formacao='y')
+        user = Usuario(nome='User', cpf='2', email='user2@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='y')
         db.session.add_all([evento, campo, user])
         db.session.commit()
         field_id = campo.id
@@ -72,7 +72,7 @@ def test_remover_campo_personalizado_unauthorized(client, app):
 
 def test_preview_certificado_logged_in(client, app):
     with app.app_context():
-        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         cid = cliente.id
@@ -102,7 +102,7 @@ import pytest
 def test_toggle_default_fields(client, app, route, field, default, event_based):
     with app.app_context():
         # Cria cliente e evento
-        cliente = Cliente(nome='Cli', email='toggler@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='toggler@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')
@@ -141,7 +141,7 @@ def test_toggle_default_fields(client, app, route, field, default, event_based):
 ])
 def test_toggle_event_isolated(client, app, route, field, default):
     with app.app_context():
-        cliente = Cliente(nome='Cli', email='iso@example.com', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='iso@example.com', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento1 = Evento(cliente_id=cliente.id, nome='EV1')

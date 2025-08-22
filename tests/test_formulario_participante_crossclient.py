@@ -18,8 +18,8 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     with app.app_context():
         db.create_all()
-        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123'))
-        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123'))
+        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add_all([c1, c2])
         db.session.commit()
         f1 = Formulario(nome='F1', cliente_id=c1.id)
@@ -29,8 +29,8 @@ def app():
         db.session.commit()
         ev.formularios.append(f2)
         db.session.commit()
-        p1 = Usuario(nome='Part1', cpf='1', email='p1@test', senha=generate_password_hash('123'), formacao='x', tipo='participante', cliente_id=c1.id, evento_id=ev.id)
-        p2 = Usuario(nome='Part2', cpf='2', email='p2@test', senha=generate_password_hash('123'), formacao='x', tipo='participante', cliente_id=c1.id)
+        p1 = Usuario(nome='Part1', cpf='1', email='p1@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='participante', cliente_id=c1.id, evento_id=ev.id)
+        p2 = Usuario(nome='Part2', cpf='2', email='p2@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='x', tipo='participante', cliente_id=c1.id)
         db.session.add_all([p1, p2])
         db.session.commit()
     yield app

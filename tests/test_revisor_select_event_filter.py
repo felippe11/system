@@ -48,7 +48,7 @@ def app():
     app.register_blueprint(evento_routes)
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome="C", email="c@test", senha=generate_password_hash("123"))
+        cliente = Cliente(nome="C", email="c@test", senha=generate_password_hash("123", method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         form = Formulario(nome="F", cliente_id=cliente.id)

@@ -32,14 +32,14 @@ def app():
             nome='Admin',
             cpf='1',
             email='admin@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='',
             tipo='admin',
         )
         cliente = Cliente(
             nome='Cli',
             email='cli@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
         )
         db.session.add_all([admin, cliente])
         db.session.flush()
@@ -52,7 +52,7 @@ def app():
                     nome='Aprovado',
                     cpf='2',
                     email='aprovado@test',
-                    senha=generate_password_hash('123'),
+                    senha=generate_password_hash('123', method="pbkdf2:sha256"),
                     formacao='',
                     tipo='revisor',
                 ),
@@ -60,7 +60,7 @@ def app():
                     nome='Pendente',
                     cpf='3',
                     email='pendente@test',
-                    senha=generate_password_hash('123'),
+                    senha=generate_password_hash('123', method="pbkdf2:sha256"),
                     formacao='',
                     tipo='revisor',
                 ),
