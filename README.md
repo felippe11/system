@@ -226,7 +226,7 @@ Run the application with Gunicorn using the WSGI entry point from `wsgi.py`. Use
 
 ```
 
-gunicorn app:app --worker-class eventlet --workers 4 --timeout 120 --bind 0.0.0.0:$PORT
+gunicorn app:app --worker-class eventlet --workers 4 --timeout 240 --bind 0.0.0.0:$PORT
 
 ```
 
