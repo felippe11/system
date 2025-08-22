@@ -54,7 +54,6 @@ def importar_trabalhos():
             rows.append(attributes)
             rows.append(attributes)
 
-
         temp_id = uuid.uuid4().hex
         temp_path = os.path.join(
             tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
@@ -63,6 +62,7 @@ def importar_trabalhos():
             json.dump(rows, tmp)
 
         preview = rows[:5]
+
 
         return jsonify(
             {
