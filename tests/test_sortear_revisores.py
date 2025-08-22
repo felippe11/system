@@ -35,7 +35,7 @@ def app():
         cliente = Cliente(
             nome='Cli',
             email='cli@example.com',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
         )
         db.session.add(cliente)
         db.session.commit()
@@ -74,7 +74,7 @@ def app():
                 nome='Rev1',
                 cpf='1',
                 email='rev1@example.com',
-                senha=generate_password_hash('123'),
+                senha=generate_password_hash('123', method="pbkdf2:sha256"),
                 formacao='',
                 tipo='revisor',
             )
@@ -84,7 +84,7 @@ def app():
                 nome='Rev2',
                 cpf='2',
                 email='rev2@example.com',
-                senha=generate_password_hash('123'),
+                senha=generate_password_hash('123', method="pbkdf2:sha256"),
                 formacao='',
                 tipo='revisor',
             )

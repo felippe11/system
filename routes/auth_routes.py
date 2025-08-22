@@ -263,7 +263,7 @@ def reset_senha_cpf():
             flash('As senhas não coincidem ou não atendem aos requisitos.', 'danger')
             return redirect(url_for('auth_routes.reset_senha_cpf', token=token_str))
 
-        usuario.senha = generate_password_hash(nova_senha)
+        usuario.senha = generate_password_hash(nova_senha, method="pbkdf2:sha256")
         token_obj.used = True
         db.session.commit()
         flash('Senha redefinida com sucesso! Faça login novamente.', 'success')
@@ -420,7 +420,7 @@ def cadastrar_cliente_publico():
             novo_cliente = Cliente(
                 nome=nome,
                 email=email,
-                senha=generate_password_hash(senha),
+                senha=generate_password_hash(senha, method="pbkdf2:sha256"),
                 habilita_pagamento=True,
             )
 

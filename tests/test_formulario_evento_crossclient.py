@@ -25,8 +25,8 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     with app.app_context():
         db.create_all()
-        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123'))
-        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123'))
+        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add_all([c1, c2])
         db.session.commit()
         e1 = Evento(cliente_id=c1.id, nome='E1', inscricao_gratuita=True, publico=True)

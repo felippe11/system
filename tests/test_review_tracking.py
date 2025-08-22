@@ -16,7 +16,7 @@ def app():
     with app.app_context():
         db.create_all()
         raw_code = 'secret'
-        sub = Submission(title='T', locator='loc1', code_hash=generate_password_hash(raw_code))
+        sub = Submission(title='T', locator='loc1', code_hash=generate_password_hash(raw_code, method="pbkdf2:sha256"))
         db.session.add(sub)
         db.session.commit()
         rev = Review(submission_id=sub.id, locator='revloc', access_code='revcode')

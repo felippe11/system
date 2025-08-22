@@ -26,11 +26,11 @@ def app():
         db.create_all()
         admin = Usuario(
             nome='Admin', cpf='admin', email='admin@test',
-            senha=generate_password_hash('123'), formacao='F', tipo='admin'
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='F', tipo='admin'
         )
         participante = Usuario(
             nome='User', cpf='123', email='user@test',
-            senha=generate_password_hash('123'), formacao='F', tipo='participante'
+            senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='F', tipo='participante'
         )
         db.session.add_all([admin, participante])
         db.session.commit()

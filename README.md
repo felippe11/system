@@ -40,6 +40,12 @@ A variável `DATABASE_URL`, quando definida, deve conter a URI completa do
 banco de dados e tem precedência sobre as variáveis `DB_USER`, `DB_PASS`,
 `DB_HOST`, `DB_PORT` e `DB_NAME`.
 
+## Hash de senhas
+
+As senhas são geradas com `generate_password_hash` utilizando o algoritmo
+`pbkdf2:sha256` e 1.000.000 iterações. O valor final tem 103 caracteres e segue
+o formato `<algoritmo>:<iterações>$<salt>$<hash>`.
+
 ## Banco de Dados
 
 Depois de clonar o repositório ou atualizar o código, instale as dependências
