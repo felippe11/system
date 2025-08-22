@@ -34,9 +34,9 @@ def importar_trabalhos():
         if not title_column or title_column not in df.columns:
             title_column = df.columns[0] if not df.columns.empty else None
 
-        imported = 0
-        for _, row in df.iterrows():
-            row_dict = row.to_dict()
+        records = df.to_dict(orient="records")
+        submissions = []
+        for idx, row_dict in enumerate(records, start=1):
             attributes = {}
             for key, value in row_dict.items():
                 if isinstance(value, pd.Timestamp):
@@ -50,20 +50,22 @@ def importar_trabalhos():
                 attributes[key] = value
             raw_title = attributes.get(title_column) if title_column else None
             if raw_title is None or raw_title == "":
-                title = f"Trabalho {imported + 1}"
+                title = f"Trabalho {idx}"
             else:
                 title = str(raw_title)
             submission = Submission(
                 title=title,
-                code_hash=generate_password_hash(uuid.uuid4().hex, method="pbkdf2:sha256"),
+                code_hash=generate_password_hash(
+                    uuid.uuid4().hex, method="pbkdf2:sha256"
+                ),
                 evento_id=evento_id,
                 attributes=attributes,
             )
-            db.session.add(submission)
-            imported += 1
-
+            submissions.append(submission)
+        imported = len(submissions)
         if imported:
             try:
+                db.session.bulk_save_objects(submissions)
                 db.session.commit()
             except DataError as err:
                 db.session.rollback()
@@ -82,7 +84,7 @@ def importar_trabalhos():
         return jsonify(
             {
                 "columns": df.columns.tolist(),
-                "data": df.to_dict(orient="records"),
+                "data": records,
                 "imported": imported,
             }
         )
