@@ -142,7 +142,7 @@ def submeter_trabalho():
             author_id=current_user.id,
             evento_id=evento_id,
             status="submitted",
-            code_hash=generate_password_hash(code),
+            code_hash=generate_password_hash(code, method="pbkdf2:sha256"),
 
         )
         db.session.add(submission)

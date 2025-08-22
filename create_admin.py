@@ -17,7 +17,7 @@ with app.app_context():  # ✅ Criando um contexto da aplicação Flask
             nome="Administrador",
             cpf="00000000001",
             email="admin@email.com",
-            senha=generate_password_hash("admin123"),
+            senha=generate_password_hash("admin123", method="pbkdf2:sha256"),
             formacao="Administrador",
             tipo="admin"
         )

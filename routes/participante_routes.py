@@ -65,7 +65,7 @@ def editar_participante_admin(participante_id):
     participante.email = email
     participante.formacao = formacao
     if nova_senha:
-        participante.senha = generate_password_hash(nova_senha)
+        participante.senha = generate_password_hash(nova_senha, method="pbkdf2:sha256")
 
     db.session.commit()
     flash('Participante atualizado com sucesso!', 'success')

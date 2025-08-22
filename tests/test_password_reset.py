@@ -25,7 +25,7 @@ def app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
     with app.app_context():
         db.create_all()
-        user = Usuario(nome='User', cpf='123', email='user@test', senha=generate_password_hash('123'), formacao='F')
+        user = Usuario(nome='User', cpf='123', email='user@test', senha=generate_password_hash('123', method="pbkdf2:sha256"), formacao='F')
         db.session.add(user)
         db.session.commit()
     yield app

@@ -72,8 +72,8 @@ def app():
 
     with app.app_context():
         db.create_all()
-        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('1'))
-        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('1'))
+        c1 = Cliente(nome='C1', email='c1@test', senha=generate_password_hash('1', method="pbkdf2:sha256"))
+        c2 = Cliente(nome='C2', email='c2@test', senha=generate_password_hash('1', method="pbkdf2:sha256"))
         db.session.add_all([c1, c2])
         db.session.commit()
         ev = Evento(cliente_id=c2.id, nome='Public Event', inscricao_gratuita=True, publico=True)
@@ -89,7 +89,7 @@ def app():
         dia = OficinaDia(oficina_id=ofi.id, data=date.today(), horario_inicio='08:00', horario_fim='10:00')
         db.session.add(dia)
         user = Usuario(
-            nome='U', cpf='1', email='p@test', senha=generate_password_hash('123'),
+            nome='U', cpf='1', email='p@test', senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x', tipo='participante', cliente_id=c1.id
         )
         db.session.add(user)

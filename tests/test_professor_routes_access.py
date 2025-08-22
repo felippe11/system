@@ -51,7 +51,7 @@ def app(monkeypatch):
         cliente = Cliente(
             nome='Cliente',
             email='cli@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
         )
         db.session.add(cliente)
 
@@ -59,7 +59,7 @@ def app(monkeypatch):
             nome='Prof',
             cpf='1',
             email='prof@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
             tipo='professor',
         )
@@ -67,7 +67,7 @@ def app(monkeypatch):
             nome='Part',
             cpf='2',
             email='part@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
             tipo='participante',
         )
@@ -75,7 +75,7 @@ def app(monkeypatch):
             nome='User',
             cpf='3',
             email='user@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='x',
             tipo='usuario',
         )

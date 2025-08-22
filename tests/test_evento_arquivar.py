@@ -19,7 +19,7 @@ def app():
 
     with app.app_context():
         db.create_all()
-        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123'))
+        cliente = Cliente(nome='Cli', email='cli@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
         db.session.add(cliente)
         db.session.commit()
         evento = Evento(cliente_id=cliente.id, nome='EV')

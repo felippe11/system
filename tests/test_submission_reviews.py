@@ -27,14 +27,14 @@ def app():
             nome='Reviewer',
             cpf='1',
             email='rev@test',
-            senha=generate_password_hash('123'),
+            senha=generate_password_hash('123', method="pbkdf2:sha256"),
             formacao='X',
             tipo='professor',
         )
         sub = Submission(
             title='T',
             locator='loc1',
-            code_hash=generate_password_hash('code'),
+            code_hash=generate_password_hash('code', method="pbkdf2:sha256"),
         )
         db.session.add_all([reviewer, sub])
         db.session.commit()

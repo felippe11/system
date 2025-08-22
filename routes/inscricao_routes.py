@@ -164,7 +164,7 @@ def _criar_usuario_e_inscricao(
             nome=nome,
             cpf=cpf,
             email=email,
-            senha=generate_password_hash(senha),
+            senha=generate_password_hash(senha, method="pbkdf2:sha256"),
             formacao=formacao,
             tipo="participante",
             cliente_id=cliente_id,
@@ -712,7 +712,7 @@ def editar_participante(usuario_id=None, oficina_id=None):
 
         nova_senha = sanitize_input(request.form.get('senha'))
         if nova_senha:
-            usuario.senha = generate_password_hash(nova_senha)
+            usuario.senha = generate_password_hash(nova_senha, method="pbkdf2:sha256")
 
         try:
             db.session.commit()
