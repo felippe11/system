@@ -497,10 +497,14 @@ function verAgendamentos(monitorId) {
 function toggleStatus(monitorId, ativo) {
     const acao = ativo ? 'desativar' : 'ativar';
     if (confirm(`Deseja ${acao} este monitor?`)) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        
         fetch(`/monitor/toggle-status/${monitorId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => response.json())
@@ -520,10 +524,14 @@ function toggleStatus(monitorId, ativo) {
 
 function excluirMonitor(monitorId) {
     if (confirm('Deseja realmente excluir este monitor? Esta ação não pode ser desfeita.')) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        
         fetch(`/monitor/excluir/${monitorId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => response.json())
@@ -543,10 +551,14 @@ function excluirMonitor(monitorId) {
 
 function distribuirAutomaticamente() {
     if (confirm('Deseja executar a distribuição automática de monitores? Isso pode alterar as atribuições existentes.')) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         document.querySelector('input[name="csrf_token"]')?.value;
+        
         fetch('/monitor/distribuir-automaticamente', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             }
         })
         .then(response => response.json())

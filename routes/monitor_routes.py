@@ -996,6 +996,24 @@ def processar_cadastro_multiplo():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro ao processar cadastros: {str(e)}'})
 
+@monitor_routes.route('/monitor/excluir/<int:monitor_id>', methods=['DELETE'])
+@login_required
+def excluir_monitor_route(monitor_id):
+    """Wrapper para excluir_monitor com prefixo /monitor/"""
+    return excluir_monitor(monitor_id)
+
+@monitor_routes.route('/monitor/atribuir-monitor', methods=['POST'])
+@login_required
+def atribuir_monitor_route():
+    """Wrapper para atribuir_monitor com prefixo /monitor/"""
+    return atribuir_monitor()
+
+@monitor_routes.route('/monitor/remover-atribuicao', methods=['POST'])
+@login_required
+def remover_atribuicao_route():
+    """Wrapper para remover_atribuicao com prefixo /monitor/"""
+    return remover_atribuicao()
+
 @monitor_routes.route('/monitor/distribuir-automaticamente', methods=['POST'])
 @login_required
 def distribuir_automaticamente_monitor():
