@@ -193,6 +193,43 @@ class PasswordResetToken(db.Model):
         return f"<PasswordResetToken usuario_id={self.usuario_id} token={self.token}>"
 
 
+class Monitor(db.Model, UserMixin):
+    __tablename__ = "monitor"
+    id = db.Column(db.Integer, primary_key=True)
+    nome_completo = db.Column(db.String(255), nullable=False)
+    curso = db.Column(db.String(255), nullable=False)
+    carga_horaria_disponibilidade = db.Column(db.Integer, nullable=False)  # Horas por semana
+    dias_disponibilidade = db.Column(db.String(255), nullable=False)  # Ex: "segunda,terça,quarta"
+    turnos_disponibilidade = db.Column(db.String(255), nullable=False)  # Ex: "manhã,tarde"
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    telefone_whatsapp = db.Column(db.String(20), nullable=False)
+    codigo_acesso = db.Column(db.String(10), unique=True, nullable=False)  # Código único para login
+    ativo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=True)
+    
+    # Relacionamentos
+    cliente = db.relationship("Cliente", backref="monitores")
+    
+    @property
+    def tipo(self):
+        return "monitor"
+    
+    def get_dias_lista(self):
+        """Retorna lista dos dias de disponibilidade"""
+        return self.dias_disponibilidade.split(',') if self.dias_disponibilidade else []
+    
+    def get_turnos_lista(self):
+        """Retorna lista dos turnos de disponibilidade"""
+        return self.turnos_disponibilidade.split(',') if self.turnos_disponibilidade else []
+    
+    def is_active(self):
+        return self.ativo
+    
+    def __repr__(self):
+        return f"<Monitor {self.nome_completo}>"
+
+
 class Ministrante(db.Model, UserMixin):
     __tablename__ = "ministrante"
     id = db.Column(db.Integer, primary_key=True)
