@@ -1289,3 +1289,26 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f"<AuditLog {self.user_id} {self.event_type} {self.submission_id}>"
+
+
+class ParticipanteEvento(db.Model):
+    """Modelo para associar participantes (usuários) a eventos."""
+    __tablename__ = "participante_evento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
+    data_inscricao = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default="ativo")  # ativo, inativo, cancelado
+
+    # Relacionamentos
+    usuario = db.relationship("Usuario", backref=db.backref("participacoes_eventos", lazy=True))
+    evento = db.relationship("Evento", backref=db.backref("participantes", lazy=True))
+
+    def __init__(self, usuario_id, evento_id, status="ativo"):
+        self.usuario_id = usuario_id
+        self.evento_id = evento_id
+        self.status = status
+
+    def __repr__(self):
+        return f"<ParticipanteEvento usuario_id={self.usuario_id} evento_id={self.evento_id}>"
