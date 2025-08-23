@@ -93,6 +93,9 @@
                     </div>
                 </div>
 
+                <!-- Token CSRF -->
+                <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+                
                 <!-- Formulários dos Monitores -->
                 <div id="monitoresContainer">
                     <!-- Os formulários serão adicionados aqui dinamicamente -->
@@ -278,9 +281,13 @@
             fetch('{{ url_for("monitor_routes.processar_cadastro_multiplo") }}', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.getElementById('csrf_token').value
                 },
-                body: JSON.stringify({ monitores: monitores })
+                body: JSON.stringify({ 
+                    monitores: monitores,
+                    csrf_token: document.getElementById('csrf_token').value
+                })
             })
             .then(response => response.json())
             .then(data => {

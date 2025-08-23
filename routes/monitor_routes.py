@@ -474,6 +474,12 @@ def cadastrar_monitor():
     
     return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
+@monitor_routes.route('/monitor/toggle-status/<int:monitor_id>', methods=['POST'])
+@login_required
+def toggle_status_monitor_route(monitor_id):
+    """Alterna o status ativo/inativo de um monitor (rota para monitores)"""
+    return toggle_status_monitor(monitor_id)
+
 @monitor_routes.route('/toggle-status/<int:monitor_id>', methods=['POST'])
 @login_required
 def toggle_status_monitor(monitor_id):
@@ -522,6 +528,12 @@ def excluir_monitor(monitor_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
+@monitor_routes.route('/monitor/editar/<int:monitor_id>')
+@login_required
+def editar_monitor_route(monitor_id):
+    """Página de edição de monitor (rota para monitores)"""
+    return editar_monitor(monitor_id)
+
 @monitor_routes.route('/editar/<int:monitor_id>')
 @login_required
 def editar_monitor(monitor_id):
@@ -529,7 +541,7 @@ def editar_monitor(monitor_id):
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('monitor_routes.gerenciar_monitores'))
     
     try:
         monitor = Monitor.query.get_or_404(monitor_id)
@@ -983,6 +995,12 @@ def processar_cadastro_multiplo():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro ao processar cadastros: {str(e)}'})
+
+@monitor_routes.route('/monitor/distribuir-automaticamente', methods=['POST'])
+@login_required
+def distribuir_automaticamente_monitor():
+    """Executa a distribuição automática de monitores (rota para monitores)"""
+    return distribuir_automaticamente()
 
 @monitor_routes.route('/distribuir-automaticamente', methods=['POST'])
 @login_required

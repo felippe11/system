@@ -23,6 +23,8 @@
                     {% endwith %}
                     
                     <form method="POST">
+                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="mb-3">
                             <label for="codigo_acesso" class="form-label">Código de Acesso</label>
                             <input type="text" class="form-control" id="codigo_acesso" name="codigo_acesso" required>

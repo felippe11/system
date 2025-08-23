@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Importação em Massa de Monitores{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-upload"></i> Importação em Massa de Monitores</h2>
+                <a href="{{ url_for('monitor_routes.gerenciar_monitores') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+
+            <!-- Área de Download do Template -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-download"></i> Template de Importação</h5>
+                </div>
+                <div class="card-body">
+                    <p>Baixe o template para preencher os dados dos monitores:</p>
+                    <a href="{{ url_for('monitor_routes.download_template') }}" class="btn btn-info">
+                        <i class="fas fa-file-excel"></i> Baixar Template XLSX
+                    </a>
+                </div>
+            </div>
+
+            <!-- Área de Upload -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-cloud-upload-alt"></i> Upload de Arquivo</h5>
+                </div>
+                <div class="card-body">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <h5>Arraste e solte seu arquivo aqui</h5>
+                                <p class="text-muted">ou clique para selecionar</p>
+                                <input type="file" id="fileInput" name="arquivo" accept=".xlsx,.xls,.csv" style="display: none;">
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-folder-open"></i> Selecionar Arquivo
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="fileInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <strong>Arquivo selecionado:</strong> <span id="fileName"></span><br>
+                                <strong>Tamanho:</strong> <span id="fileSize"></span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" id="uploadBtn" class="btn btn-success" disabled>
+                                <i class="fas fa-upload"></i> Processar Importação
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Barra de Progresso -->
+                    <div id="progressContainer" class="mt-3" style="display: none;">
+                        <div class="progress">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">Processando arquivo...</small>
+                    </div>
+
+                    <!-- Área de Resultados -->
+                    <div id="resultContainer" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-chart-bar"></i> Resultado da Importação</h6>
+                            </div>
+                            <div class="card-body" id="resultContent">
+                                <!-- Resultados serão inseridos aqui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.upload-area {
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    transition: border-color 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+}
+
+.upload-area.dragover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.upload-content {
+    pointer-events: none;
+}
+</style>
+
+<script>
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const uploadBtn = document.getElementById('uploadBtn');
+const uploadForm = document.getElementById('uploadForm');
+const progressContainer = document.getElementById('progressContainer');
+const progressBar = document.getElementById('progressBar');
+const resultContainer = document.getElementById('resultContainer');
+const resultContent = document.getElementById('resultContent');
+
+// Drag and drop functionality
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFileSelection(files[0]);
+    }
+});
+
+uploadArea.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleFileSelection(e.target.files[0]);
+    }
+});
+
+function handleFileSelection(file) {
+    // Validar tipo de arquivo
+    const allowedTypes = ['.xlsx', '.xls', '.csv'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedTypes.includes(fileExtension)) {
+        alert('Tipo de arquivo não suportado. Use apenas XLSX, XLS ou CSV.');
+        return;
+    }
+    
+    // Validar tamanho (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        alert('Arquivo muito grande. Tamanho máximo: 10MB.');
+        return;
+    }
+    
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    fileInfo.style.display = 'block';
+    uploadBtn.disabled = false;
+    
+    // Armazenar arquivo para upload
+    fileInput.files = e.dataTransfer ? e.dataTransfer.files : fileInput.files;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Form submission
+uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (!fileInput.files[0]) {
+        alert('Selecione um arquivo primeiro.');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('arquivo', fileInput.files[0]);
+    
+    // Mostrar progresso
+    progressContainer.style.display = 'block';
+    uploadBtn.disabled = true;
+    resultContainer.style.display = 'none';
+    
+    try {
+        const response = await fetch('{{ url_for("monitor_routes.processar_importacao") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            },
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        // Esconder progresso
+        progressContainer.style.display = 'none';
+        uploadBtn.disabled = false;
+        
+        // Mostrar resultados
+        showResults(result);
+        
+    } catch (error) {
+        console.error('Erro:', error);
+        progressContainer.style.display = 'none';
+        uploadBtn.disabled = false;
+        alert('Erro ao processar arquivo. Tente novamente.');
+    }
+});
+
+function showResults(result) {
+    let html = '';
+    
+    if (result.success) {
+        html += `
+            <div class="alert alert-success">
+                <h6><i class="fas fa-check-circle"></i> Importação Concluída com Sucesso!</h6>
+                <p><strong>Total processado:</strong> ${result.total_processados}</p>
+                <p><strong>Sucessos:</strong> ${result.sucessos}</p>
+                <p><strong>Erros:</strong> ${result.erros}</p>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-exclamation-triangle"></i> Erro na Importação</h6>
+                <p>${result.message}</p>
+            </div>
+        `;
+    }
+    
+    if (result.detalhes && result.detalhes.length > 0) {
+        html += '<h6>Detalhes:</h6><ul>';
+        result.detalhes.forEach(detalhe => {
+            html += `<li>${detalhe}</li>`;
+        });
+        html += '</ul>';
+    }
+    
+    resultContent.innerHTML = html;
+    resultContainer.style.display = 'block';
+}
+</script>
+{% endblock %}
