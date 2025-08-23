@@ -823,8 +823,7 @@ def processar_importacao():
                     dias_disponibilidade=str(dados['dias_disponibilidade']).strip(),
                     turnos_disponibilidade=str(dados['turnos_disponibilidade']).strip(),
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True,
-                    data_cadastro=datetime.now()
+                    ativo=True
                 )
                 
                 db.session.add(novo_monitor)
@@ -965,8 +964,7 @@ def processar_cadastro_multiplo():
                     dias_disponibilidade=dias_disponibilidade,
                     turnos_disponibilidade=turnos_disponibilidade,
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True,
-                    data_cadastro=datetime.now()
+                    ativo=True
                 )
                 
                 db.session.add(novo_monitor)
