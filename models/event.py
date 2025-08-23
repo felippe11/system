@@ -1312,3 +1312,58 @@ class ParticipanteEvento(db.Model):
 
     def __repr__(self):
         return f"<ParticipanteEvento usuario_id={self.usuario_id} evento_id={self.evento_id}>"
+
+
+class MonitorAgendamento(db.Model):
+    """Modelo para associar monitores a agendamentos de visitas."""
+    __tablename__ = "monitor_agendamento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    monitor_id = db.Column(db.Integer, db.ForeignKey("monitor.id"), nullable=False)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey("agendamento_visita.id"), nullable=False)
+    data_atribuicao = db.Column(db.DateTime, default=datetime.utcnow)
+    tipo_distribuicao = db.Column(db.String(20), default="manual")  # manual, automatica
+    status = db.Column(db.String(20), default="ativo")  # ativo, inativo, substituido
+    observacoes = db.Column(db.Text, nullable=True)
+
+    # Relacionamentos
+    monitor = db.relationship("Monitor", backref=db.backref("agendamentos_atribuidos", lazy=True))
+    agendamento = db.relationship("AgendamentoVisita", backref=db.backref("monitores_atribuidos", lazy=True))
+
+    def __init__(self, monitor_id, agendamento_id, tipo_distribuicao="manual", status="ativo"):
+        self.monitor_id = monitor_id
+        self.agendamento_id = agendamento_id
+        self.tipo_distribuicao = tipo_distribuicao
+        self.status = status
+
+    def __repr__(self):
+        return f"<MonitorAgendamento monitor_id={self.monitor_id} agendamento_id={self.agendamento_id}>"
+
+
+class PresencaAluno(db.Model):
+    """Modelo para registrar presença/ausência de alunos pelos monitores."""
+    __tablename__ = "presenca_aluno"
+
+    id = db.Column(db.Integer, primary_key=True)
+    aluno_id = db.Column(db.Integer, db.ForeignKey("aluno_visitante.id"), nullable=False)
+    monitor_id = db.Column(db.Integer, db.ForeignKey("monitor.id"), nullable=False)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey("agendamento_visita.id"), nullable=False)
+    presente = db.Column(db.Boolean, default=False)
+    data_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    metodo_confirmacao = db.Column(db.String(20), default="qr_code")  # qr_code, manual
+    observacoes = db.Column(db.Text, nullable=True)
+
+    # Relacionamentos
+    aluno = db.relationship("AlunoVisitante", backref=db.backref("registros_presenca", lazy=True))
+    monitor = db.relationship("Monitor", backref=db.backref("registros_presenca", lazy=True))
+    agendamento = db.relationship("AgendamentoVisita", backref=db.backref("registros_presenca", lazy=True))
+
+    def __init__(self, aluno_id, monitor_id, agendamento_id, presente=False, metodo_confirmacao="qr_code"):
+        self.aluno_id = aluno_id
+        self.monitor_id = monitor_id
+        self.agendamento_id = agendamento_id
+        self.presente = presente
+        self.metodo_confirmacao = metodo_confirmacao
+
+    def __repr__(self):
+        return f"<PresencaAluno aluno_id={self.aluno_id} presente={self.presente}>"
