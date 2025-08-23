@@ -1,13 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Controle de Submissões{% endblock %}
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-5" id="configSubmissao" 
+     data-url-config-cliente-atual="{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}"
+     data-min-rev="{{ config.num_revisores_min if config else 1 }}"
+     data-max-rev="{{ config.num_revisores_max if config else 2 }}">
   <h3 class="mb-4">Controle de Submissões</h3>
   <form id="formImportarTrabalhos"
         class="mb-3"
         method="post"
         enctype="multipart/form-data"
-        action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+        action="{{ url_for('config_cliente_routes.importar_trabalhos') }}"
+        data-context="submission-control">
     <div class="input-group">
       <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
       <button class="btn btn-primary" type="submit">Importar</button>

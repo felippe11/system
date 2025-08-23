@@ -2,6 +2,9 @@
 (function () {
   const form = document.getElementById('formImportarTrabalhos');
   if (!form) return;
+  
+  // Só controla o formulário se estiver no contexto correto (submission-control)
+  if (form.dataset.context !== 'submission-control') return;
 
   const csrfToken = document
     .querySelector('meta[name="csrf-token"]')
