@@ -364,51 +364,105 @@
 
 {% block scripts %}
 <script>
-// Debug script para verificar o funcionamento do modal
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM carregado');
     console.log('Bootstrap disponível:', typeof bootstrap !== 'undefined');
     
-    // Verificar se o botão existe
+    // Verificar se o botão e modal existem
     const btnNovoMonitor = document.querySelector('[data-bs-target="#modalCadastroMonitor"]');
-    console.log('Botão Novo Monitor encontrado:', btnNovoMonitor);
-    
-    if (btnNovoMonitor) {
-        btnNovoMonitor.addEventListener('click', function(e) {
-            console.log('Botão Novo Monitor clicado');
-            e.preventDefault();
-            
-            // Tentar abrir o modal manualmente
-            const modal = document.getElementById('modalCadastroMonitor');
-            if (modal && typeof bootstrap !== 'undefined') {
-                const bsModal = new bootstrap.Modal(modal);
-                bsModal.show();
-                console.log('Modal aberto manualmente');
-            } else {
-                console.error('Modal não encontrado ou Bootstrap não disponível');
-            }
-        });
-    }
-    
-    // Verificar se o modal existe
     const modal = document.getElementById('modalCadastroMonitor');
-    console.log('Modal encontrado:', modal);
     
-    if (modal) {
-        modal.addEventListener('show.bs.modal', function() {
-            console.log('Modal está sendo aberto');
+    console.log('Botão encontrado:', !!btnNovoMonitor);
+    console.log('Modal encontrado:', !!modal);
+    
+    // Se o Bootstrap não estiver funcionando automaticamente, forçar manualmente
+    if (btnNovoMonitor && modal) {
+        btnNovoMonitor.addEventListener('click', function() {
+            console.log('Clique detectado no botão');
+            
+            // Tentar usar Bootstrap se disponível
+            if (typeof bootstrap !== 'undefined') {
+                try {
+                    const bsModal = new bootstrap.Modal(modal);
+                    bsModal.show();
+                    console.log('Modal aberto via Bootstrap');
+                } catch (error) {
+                    console.error('Erro ao abrir modal via Bootstrap:', error);
+                    // Fallback: mostrar modal manualmente
+                     modal.style.display = 'block';
+                     modal.classList.add('show');
+                     document.body.classList.add('modal-open');
+                     
+                     // Adicionar backdrop
+                     const backdrop = document.createElement('div');
+                     backdrop.className = 'modal-backdrop fade show';
+                     backdrop.id = 'modal-backdrop-custom';
+                     document.body.appendChild(backdrop);
+                     
+                     console.log('Modal aberto manualmente com backdrop');
+                }
+            } else {
+                 // Fallback se Bootstrap não estiver disponível
+                 modal.style.display = 'block';
+                 modal.classList.add('show');
+                 document.body.classList.add('modal-open');
+                 
+                 // Adicionar backdrop
+                 const backdrop = document.createElement('div');
+                 backdrop.className = 'modal-backdrop fade show';
+                 backdrop.id = 'modal-backdrop-custom';
+                 document.body.appendChild(backdrop);
+                 
+                 console.log('Modal aberto sem Bootstrap');
+             }
         });
         
-        modal.addEventListener('shown.bs.modal', function() {
-            console.log('Modal foi aberto completamente');
-        });
-        
-        modal.addEventListener('hide.bs.modal', function() {
-            console.log('Modal está sendo fechado');
-        });
+        // Adicionar evento para fechar modal
+         const closeBtn = modal.querySelector('.btn-close');
+         if (closeBtn) {
+             closeBtn.addEventListener('click', function() {
+                 modal.style.display = 'none';
+                 modal.classList.remove('show');
+                 document.body.classList.remove('modal-open');
+                 
+                 // Remover backdrop customizado
+                 const backdrop = document.getElementById('modal-backdrop-custom');
+                 if (backdrop) {
+                     backdrop.remove();
+                 }
+             });
+         }
+         
+         // Fechar modal clicando no backdrop
+         modal.addEventListener('click', function(e) {
+             if (e.target === modal) {
+                 modal.style.display = 'none';
+                 modal.classList.remove('show');
+                 document.body.classList.remove('modal-open');
+                 
+                 const backdrop = document.getElementById('modal-backdrop-custom');
+                 if (backdrop) {
+                     backdrop.remove();
+                 }
+             }
+         });
+         
+         // Fechar modal com ESC
+         document.addEventListener('keydown', function(e) {
+             if (e.key === 'Escape' && modal.classList.contains('show')) {
+                 modal.style.display = 'none';
+                 modal.classList.remove('show');
+                 document.body.classList.remove('modal-open');
+                 
+                 const backdrop = document.getElementById('modal-backdrop-custom');
+                 if (backdrop) {
+                     backdrop.remove();
+                 }
+             }
+         })
     }
     
-    // Verificar se há erros de JavaScript
+    // Log de erros
     window.addEventListener('error', function(e) {
         console.error('Erro JavaScript:', e.error);
     });
