@@ -11,7 +11,7 @@ import io
 import base64
 from PIL import Image
 
-from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante
+from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
 from extensions import db
 
 monitor_routes = Blueprint(
@@ -377,20 +377,26 @@ def gerenciar_monitores():
     
     # Agendamentos de hoje
     hoje = datetime.now().date()
-    agendamentos_hoje = AgendamentoVisita.query.filter(
-        AgendamentoVisita.data_visita == hoje
+    agendamentos_hoje = db.session.query(AgendamentoVisita).join(
+        HorarioVisitacao
+    ).filter(
+        HorarioVisitacao.data == hoje
     ).count()
     
     # Agendamentos cobertos (com monitor atribuído)
     agendamentos_cobertos = db.session.query(AgendamentoVisita).join(
         MonitorAgendamento
+    ).join(
+        HorarioVisitacao
     ).filter(
-        AgendamentoVisita.data_visita >= hoje
+        HorarioVisitacao.data >= hoje
     ).count()
     
     # Agendamentos descobertos (sem monitor)
-    agendamentos_descobertos = AgendamentoVisita.query.filter(
-        AgendamentoVisita.data_visita >= hoje,
+    agendamentos_descobertos = db.session.query(AgendamentoVisita).join(
+        HorarioVisitacao
+    ).filter(
+        HorarioVisitacao.data >= hoje,
         ~AgendamentoVisita.id.in_(
             db.session.query(MonitorAgendamento.agendamento_id)
         )
@@ -526,13 +532,15 @@ def distribuir_automaticamente():
     try:
         # Obter agendamentos futuros sem monitor atribuído
         hoje = datetime.now().date()
-        agendamentos_sem_monitor = AgendamentoVisita.query.filter(
-            AgendamentoVisita.data_visita >= hoje,
+        agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
+            HorarioVisitacao
+        ).filter(
+            HorarioVisitacao.data >= hoje,
             AgendamentoVisita.status == 'confirmado',
             ~AgendamentoVisita.id.in_(
                 db.session.query(MonitorAgendamento.agendamento_id)
             )
-        ).order_by(AgendamentoVisita.data_visita, AgendamentoVisita.horario_inicio).all()
+        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         # Obter monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).all()
@@ -544,7 +552,7 @@ def distribuir_automaticamente():
         
         for agendamento in agendamentos_sem_monitor:
             # Determinar o turno do agendamento
-            hora_inicio = agendamento.horario_inicio.hour
+            hora_inicio = agendamento.horario.horario_inicio.hour
             if hora_inicio < 12:
                 turno_agendamento = 'manha'
             elif hora_inicio < 18:
@@ -554,7 +562,7 @@ def distribuir_automaticamente():
             
             # Determinar o dia da semana
             dias_semana = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
-            dia_agendamento = dias_semana[agendamento.data_visita.weekday()]
+            dia_agendamento = dias_semana[agendamento.horario.data.weekday()]
             
             # Encontrar monitores disponíveis para este agendamento
             monitores_disponiveis = []
