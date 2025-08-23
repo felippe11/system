@@ -417,7 +417,7 @@ def novo_monitor():
     """Página para cadastrar novo monitor"""
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
-        flash('Acesso negado.', 'error')
+        flash('Acesso negado. Apenas administradores e clientes podem acessar esta página.', 'error')
         return redirect(url_for('dashboard_routes.dashboard'))
     
     return render_template('monitor/novo_monitor.html')
