@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Monitor - {{ monitor.nome_completo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-user-edit text-primary me-2"></i>
+                        Editar Monitor
+                    </h2>
+                    <p class="text-muted mb-0">{{ monitor.nome_completo }} - {{ monitor.curso }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('monitor_routes.gerenciar_monitores') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_agendamentos }}</h4>
+                            <p class="mb-0">Total de Agendamentos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ agendamentos_hoje }}</h4>
+                            <p class="mb-0">Agendamentos Hoje</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-day fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ agendamentos_futuros }}</h4>
+                            <p class="mb-0">Agendamentos Futuros</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-plus fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-{{ 'success' if monitor.ativo else 'danger' }} text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ 'Ativo' if monitor.ativo else 'Inativo' }}</h4>
+                            <p class="mb-0">Status do Monitor</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-{{ 'check-circle' if monitor.ativo else 'times-circle' }} fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Formulário de Edição -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Dados do Monitor
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('monitor_routes.atualizar_monitor', monitor_id=monitor.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="nome_completo" class="form-label">Nome Completo *</label>
+                                <input type="text" class="form-control" id="nome_completo" name="nome_completo" 
+                                       value="{{ monitor.nome_completo }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="curso" class="form-label">Curso *</label>
+                                <select class="form-select" id="curso" name="curso" required>
+                                    <option value="">Selecione o curso</option>
+                                    <option value="Medicina" {{ 'selected' if monitor.curso == 'Medicina' }}>Medicina</option>
+                                    <option value="Enfermagem" {{ 'selected' if monitor.curso == 'Enfermagem' }}>Enfermagem</option>
+                                    <option value="Fisioterapia" {{ 'selected' if monitor.curso == 'Fisioterapia' }}>Fisioterapia</option>
+                                    <option value="Psicologia" {{ 'selected' if monitor.curso == 'Psicologia' }}>Psicologia</option>
+                                    <option value="Nutrição" {{ 'selected' if monitor.curso == 'Nutrição' }}>Nutrição</option>
+                                    <option value="Farmácia" {{ 'selected' if monitor.curso == 'Farmácia' }}>Farmácia</option>
+                                    <option value="Biomedicina" {{ 'selected' if monitor.curso == 'Biomedicina' }}>Biomedicina</option>
+                                    <option value="Odontologia" {{ 'selected' if monitor.curso == 'Odontologia' }}>Odontologia</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="carga_horaria_disponibilidade" class="form-label">Carga Horária (h/semana) *</label>
+                                <input type="number" class="form-control" id="carga_horaria_disponibilidade" 
+                                       name="carga_horaria_disponibilidade" min="1" max="40" 
+                                       value="{{ monitor.carga_horaria_disponibilidade }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">E-mail *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ monitor.email }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telefone_whatsapp" class="form-label">WhatsApp *</label>
+                                <input type="tel" class="form-control" id="telefone_whatsapp" name="telefone_whatsapp" 
+                                       value="{{ monitor.telefone_whatsapp }}" placeholder="(00) 00000-0000" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Dias de Disponibilidade *</label>
+                            <div class="row">
+                                {% set dias_lista = monitor.get_dias_lista() %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Segunda" id="segunda" {{ 'checked' if 'Segunda' in dias_lista }}>
+                                        <label class="form-check-label" for="segunda">Segunda-feira</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Terça" id="terca" {{ 'checked' if 'Terça' in dias_lista }}>
+                                        <label class="form-check-label" for="terca">Terça-feira</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Quarta" id="quarta" {{ 'checked' if 'Quarta' in dias_lista }}>
+                                        <label class="form-check-label" for="quarta">Quarta-feira</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Quinta" id="quinta" {{ 'checked' if 'Quinta' in dias_lista }}>
+                                        <label class="form-check-label" for="quinta">Quinta-feira</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Sexta" id="sexta" {{ 'checked' if 'Sexta' in dias_lista }}>
+                                        <label class="form-check-label" for="sexta">Sexta-feira</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Sábado" id="sabado" {{ 'checked' if 'Sábado' in dias_lista }}>
+                                        <label class="form-check-label" for="sabado">Sábado</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="dias_disponibilidade" 
+                                               value="Domingo" id="domingo" {{ 'checked' if 'Domingo' in dias_lista }}>
+                                        <label class="form-check-label" for="domingo">Domingo</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Turnos de Disponibilidade *</label>
+                            <div class="row">
+                                {% set turnos_lista = monitor.get_turnos_lista() %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="turnos_disponibilidade" 
+                                               value="Manhã" id="manha" {{ 'checked' if 'Manhã' in turnos_lista }}>
+                                        <label class="form-check-label" for="manha">Manhã</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="turnos_disponibilidade" 
+                                               value="Tarde" id="tarde" {{ 'checked' if 'Tarde' in turnos_lista }}>
+                                        <label class="form-check-label" for="tarde">Tarde</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="turnos_disponibilidade" 
+                                               value="Noite" id="noite" {{ 'checked' if 'Noite' in turnos_lista }}>
+                                        <label class="form-check-label" for="noite">Noite</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Lista de Agendamentos -->
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Agendamentos Associados
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if agendamentos %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Horário</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for monitor_agendamento, agendamento, horario in agendamentos %}
+                                    <tr>
+                                        <td>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}</td>
+                                        <td>
+                                            {% if agendamento.data_visita < moment().date() %}
+                                                <span class="badge bg-secondary">Concluído</span>
+                                            {% elif agendamento.data_visita == moment().date() %}
+                                                <span class="badge bg-warning">Hoje</span>
+                                            {% else %}
+                                                <span class="badge bg-primary">Agendado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
+                                               class="btn btn-sm btn-outline-primary" title="Ver Detalhes">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Nenhum agendamento associado a este monitor.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Informações Adicionais -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informações do Monitor
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <strong>Código de Acesso:</strong><br>
+                            <code class="fs-5">{{ monitor.codigo_acesso }}</code>
+                        </div>
+                        <div class="col-6">
+                            <strong>Data de Cadastro:</strong><br>
+                            {{ monitor.data_cadastro.strftime('%d/%m/%Y') if monitor.data_cadastro else 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Máscara para telefone
+document.getElementById('telefone_whatsapp').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+        value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        if (value.length < 14) {
+            value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+        }
+    }
+    e.target.value = value;
+});
+
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const diasSelecionados = document.querySelectorAll('input[name="dias_disponibilidade"]:checked');
+    const turnosSelecionados = document.querySelectorAll('input[name="turnos_disponibilidade"]:checked');
+    
+    if (diasSelecionados.length === 0) {
+        e.preventDefault();
+        alert('Selecione pelo menos um dia de disponibilidade.');
+        return;
+    }
+    
+    if (turnosSelecionados.length === 0) {
+        e.preventDefault();
+        alert('Selecione pelo menos um turno de disponibilidade.');
+        return;
+    }
+});
+</script>
+{% endblock %}

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # routes/monitor_routes.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
 import secrets
@@ -10,6 +10,7 @@ import qrcode
 import io
 import base64
 from PIL import Image
+import pandas as pd
 
 from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
 from extensions import db
@@ -520,6 +521,468 @@ def excluir_monitor(monitor_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
+
+@monitor_routes.route('/editar/<int:monitor_id>')
+@login_required
+def editar_monitor(monitor_id):
+    """Página de edição de monitor com visualização de agendamentos"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        monitor = Monitor.query.get_or_404(monitor_id)
+        
+        # Buscar agendamentos associados ao monitor
+        agendamentos = db.session.query(
+            MonitorAgendamento,
+            AgendamentoVisita,
+            HorarioVisitacao
+        ).join(
+            AgendamentoVisita, MonitorAgendamento.agendamento_id == AgendamentoVisita.id
+        ).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).filter(
+            MonitorAgendamento.monitor_id == monitor_id
+        ).order_by(AgendamentoVisita.data_visita.desc()).all()
+        
+        # Estatísticas do monitor
+        total_agendamentos = len(agendamentos)
+        agendamentos_hoje = sum(1 for ma, av, hv in agendamentos 
+                               if av.data_visita == datetime.now().date())
+        agendamentos_futuros = sum(1 for ma, av, hv in agendamentos 
+                                  if av.data_visita > datetime.now().date())
+        
+        return render_template('editar_monitor.html', 
+                             monitor=monitor,
+                             agendamentos=agendamentos,
+                             total_agendamentos=total_agendamentos,
+                             agendamentos_hoje=agendamentos_hoje,
+                             agendamentos_futuros=agendamentos_futuros)
+        
+    except Exception as e:
+        flash(f'Erro ao carregar dados do monitor: {str(e)}', 'error')
+        return redirect(url_for('monitor_routes.gerenciar_monitores'))
+
+@monitor_routes.route('/atualizar/<int:monitor_id>', methods=['POST'])
+@login_required
+def atualizar_monitor(monitor_id):
+    """Atualiza os dados de um monitor"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    try:
+        monitor = Monitor.query.get_or_404(monitor_id)
+        
+        # Atualizar dados básicos
+        monitor.nome_completo = request.form.get('nome_completo')
+        monitor.curso = request.form.get('curso')
+        monitor.email = request.form.get('email')
+        monitor.telefone_whatsapp = request.form.get('telefone_whatsapp')
+        monitor.carga_horaria_disponibilidade = int(request.form.get('carga_horaria_disponibilidade', 0))
+        
+        # Atualizar disponibilidade
+        dias_selecionados = request.form.getlist('dias_disponibilidade')
+        turnos_selecionados = request.form.getlist('turnos_disponibilidade')
+        
+        monitor.dias_disponibilidade = ','.join(dias_selecionados)
+        monitor.turnos_disponibilidade = ','.join(turnos_selecionados)
+        
+        db.session.commit()
+        
+        flash('Monitor atualizado com sucesso!', 'success')
+        return redirect(url_for('monitor_routes.editar_monitor', monitor_id=monitor_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar monitor: {str(e)}', 'error')
+        return redirect(url_for('monitor_routes.editar_monitor', monitor_id=monitor_id))
+
+@monitor_routes.route('/distribuicao-manual')
+@login_required
+def distribuicao_manual():
+    """Página para distribuição manual de monitores por agendamento"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        # Buscar agendamentos sem monitor atribuído
+        agendamentos_sem_monitor = db.session.query(
+            AgendamentoVisita,
+            HorarioVisitacao
+        ).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).outerjoin(
+            MonitorAgendamento, AgendamentoVisita.id == MonitorAgendamento.agendamento_id
+        ).filter(
+            MonitorAgendamento.id.is_(None),
+            AgendamentoVisita.data_visita >= datetime.now().date()
+        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+        
+        # Buscar monitores ativos
+        monitores_ativos = Monitor.query.filter_by(ativo=True).order_by(Monitor.nome_completo).all()
+        
+        # Buscar agendamentos já atribuídos (para referência)
+        agendamentos_atribuidos = db.session.query(
+            MonitorAgendamento,
+            AgendamentoVisita,
+            HorarioVisitacao,
+            Monitor
+        ).join(
+            AgendamentoVisita, MonitorAgendamento.agendamento_id == AgendamentoVisita.id
+        ).join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).join(
+            Monitor, MonitorAgendamento.monitor_id == Monitor.id
+        ).filter(
+            AgendamentoVisita.data_visita >= datetime.now().date()
+        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+        
+        return render_template('distribuicao_manual.html',
+                             agendamentos_sem_monitor=agendamentos_sem_monitor,
+                             monitores_ativos=monitores_ativos,
+                             agendamentos_atribuidos=agendamentos_atribuidos)
+        
+    except Exception as e:
+        flash(f'Erro ao carregar dados: {str(e)}', 'error')
+        return redirect(url_for('monitor_routes.gerenciar_monitores'))
+
+@monitor_routes.route('/atribuir-monitor', methods=['POST'])
+@login_required
+def atribuir_monitor():
+    """Atribui um monitor a um agendamento específico"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    try:
+        agendamento_id = request.form.get('agendamento_id')
+        monitor_id = request.form.get('monitor_id')
+        
+        if not agendamento_id or not monitor_id:
+            return jsonify({'success': False, 'message': 'Dados incompletos'})
+        
+        # Verificar se o agendamento existe e não tem monitor
+        agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+        monitor_existente = MonitorAgendamento.query.filter_by(agendamento_id=agendamento_id).first()
+        
+        if monitor_existente:
+            return jsonify({'success': False, 'message': 'Agendamento já possui monitor atribuído'})
+        
+        # Verificar se o monitor existe e está ativo
+        monitor = Monitor.query.get_or_404(monitor_id)
+        if not monitor.ativo:
+            return jsonify({'success': False, 'message': 'Monitor não está ativo'})
+        
+        # Criar a atribuição
+        nova_atribuicao = MonitorAgendamento(
+            monitor_id=monitor_id,
+            agendamento_id=agendamento_id,
+            data_atribuicao=datetime.now()
+        )
+        
+        db.session.add(nova_atribuicao)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Monitor {monitor.nome_completo} atribuído com sucesso!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@monitor_routes.route('/remover-atribuicao', methods=['POST'])
+@login_required
+def remover_atribuicao():
+    """Remove a atribuição de um monitor de um agendamento"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    try:
+        agendamento_id = request.form.get('agendamento_id')
+        
+        if not agendamento_id:
+            return jsonify({'success': False, 'message': 'ID do agendamento não fornecido'})
+        
+        # Buscar e remover a atribuição
+        atribuicao = MonitorAgendamento.query.filter_by(agendamento_id=agendamento_id).first()
+        
+        if not atribuicao:
+            return jsonify({'success': False, 'message': 'Atribuição não encontrada'})
+        
+        db.session.delete(atribuicao)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Atribuição removida com sucesso!'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@monitor_routes.route('/importacao-massa')
+@login_required
+def importacao_massa():
+    """Página para importação em massa de monitores"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+    
+    return render_template('importacao_massa.html')
+
+@monitor_routes.route('/processar-importacao', methods=['POST'])
+@login_required
+def processar_importacao():
+    """Processa a importação em massa de monitores"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    try:
+        # Verificar se foi enviado um arquivo
+        if 'arquivo' not in request.files:
+            return jsonify({'success': False, 'message': 'Nenhum arquivo foi enviado'})
+        
+        arquivo = request.files['arquivo']
+        if arquivo.filename == '':
+            return jsonify({'success': False, 'message': 'Nenhum arquivo selecionado'})
+        
+        # Verificar extensão do arquivo
+        extensoes_permitidas = ['.xlsx', '.xls', '.csv']
+        extensao = arquivo.filename.lower().split('.')[-1]
+        if f'.{extensao}' not in extensoes_permitidas:
+            return jsonify({
+                'success': False, 
+                'message': 'Formato de arquivo não suportado. Use XLSX, XLS ou CSV.'
+            })
+        
+        # Processar arquivo baseado na extensão
+        monitores_dados = []
+        
+        if extensao in ['xlsx', 'xls']:
+            # Processar arquivo Excel
+            import pandas as pd
+            df = pd.read_excel(arquivo)
+            monitores_dados = df.to_dict('records')
+        
+        elif extensao == 'csv':
+            # Processar arquivo CSV
+            import pandas as pd
+            df = pd.read_csv(arquivo)
+            monitores_dados = df.to_dict('records')
+        
+        # Validar e processar dados
+        monitores_criados = 0
+        erros = []
+        
+        for i, dados in enumerate(monitores_dados, 1):
+            try:
+                # Validar campos obrigatórios
+                campos_obrigatorios = ['nome_completo', 'curso', 'email', 'telefone_whatsapp', 
+                                     'carga_horaria_disponibilidade', 'dias_disponibilidade', 
+                                     'turnos_disponibilidade']
+                
+                for campo in campos_obrigatorios:
+                    if campo not in dados or pd.isna(dados[campo]) or str(dados[campo]).strip() == '':
+                        raise ValueError(f'Campo obrigatório "{campo}" não preenchido')
+                
+                # Verificar se o email já existe
+                monitor_existente = Monitor.query.filter_by(email=dados['email']).first()
+                if monitor_existente:
+                    raise ValueError(f'Email {dados["email"]} já está cadastrado')
+                
+                # Criar novo monitor
+                novo_monitor = Monitor(
+                    nome_completo=str(dados['nome_completo']).strip(),
+                    curso=str(dados['curso']).strip(),
+                    email=str(dados['email']).strip().lower(),
+                    telefone_whatsapp=str(dados['telefone_whatsapp']).strip(),
+                    carga_horaria_disponibilidade=int(dados['carga_horaria_disponibilidade']),
+                    dias_disponibilidade=str(dados['dias_disponibilidade']).strip(),
+                    turnos_disponibilidade=str(dados['turnos_disponibilidade']).strip(),
+                    codigo_acesso=gerar_codigo_acesso(),
+                    ativo=True,
+                    data_cadastro=datetime.now()
+                )
+                
+                db.session.add(novo_monitor)
+                monitores_criados += 1
+                
+            except Exception as e:
+                erros.append(f'Linha {i}: {str(e)}')
+                continue
+        
+        # Salvar no banco de dados
+        if monitores_criados > 0:
+            db.session.commit()
+        
+        # Preparar resposta
+        mensagem = f'{monitores_criados} monitores importados com sucesso.'
+        if erros:
+            mensagem += f' {len(erros)} erros encontrados.'
+        
+        return jsonify({
+            'success': True,
+            'message': mensagem,
+            'monitores_criados': monitores_criados,
+            'erros': erros[:10]  # Limitar a 10 erros para não sobrecarregar
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro ao processar arquivo: {str(e)}'})
+
+@monitor_routes.route('/download-template')
+@login_required
+def download_template():
+    """Download do template para importação em massa"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+    
+    try:
+        import pandas as pd
+        from flask import make_response
+        
+        # Criar dados de exemplo para o template
+        dados_exemplo = {
+            'nome_completo': ['João Silva Santos', 'Maria Oliveira Costa'],
+            'curso': ['Medicina', 'Enfermagem'],
+            'email': ['joao.silva@email.com', 'maria.oliveira@email.com'],
+            'telefone_whatsapp': ['(11) 99999-9999', '(11) 88888-8888'],
+            'carga_horaria_disponibilidade': [20, 15],
+            'dias_disponibilidade': ['Segunda,Terça,Quarta', 'Quinta,Sexta,Sábado'],
+            'turnos_disponibilidade': ['Manhã,Tarde', 'Tarde,Noite']
+        }
+        
+        df = pd.DataFrame(dados_exemplo)
+        
+        # Criar resposta com arquivo Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Monitores', index=False)
+        
+        output.seek(0)
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = 'attachment; filename=template_monitores.xlsx'
+        
+        return response
+        
+    except Exception as e:
+        flash(f'Erro ao gerar template: {str(e)}', 'error')
+        return redirect(url_for('monitor_routes.importacao_massa'))
+
+@monitor_routes.route('/cadastro-multiplo')
+@login_required
+def cadastro_multiplo():
+    """Página para cadastro simultâneo de múltiplos monitores"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+    
+    return render_template('cadastro_multiplo.html')
+
+@monitor_routes.route('/processar-cadastro-multiplo', methods=['POST'])
+@login_required
+def processar_cadastro_multiplo():
+    """Processa o cadastro simultâneo de múltiplos monitores"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+    
+    try:
+        # Obter dados do formulário
+        monitores_data = request.get_json()
+        
+        if not monitores_data or 'monitores' not in monitores_data:
+            return jsonify({'success': False, 'message': 'Dados inválidos'})
+        
+        monitores_criados = 0
+        erros = []
+        
+        for i, dados in enumerate(monitores_data['monitores'], 1):
+            try:
+                # Validar campos obrigatórios
+                campos_obrigatorios = ['nome_completo', 'curso', 'email', 'telefone_whatsapp', 
+                                     'carga_horaria_disponibilidade']
+                
+                for campo in campos_obrigatorios:
+                    if not dados.get(campo) or str(dados[campo]).strip() == '':
+                        raise ValueError(f'Campo obrigatório "{campo}" não preenchido')
+                
+                # Verificar se o email já existe
+                monitor_existente = Monitor.query.filter_by(email=dados['email']).first()
+                if monitor_existente:
+                    raise ValueError(f'Email {dados["email"]} já está cadastrado')
+                
+                # Processar dias de disponibilidade
+                dias_selecionados = dados.get('dias_disponibilidade', [])
+                if not dias_selecionados:
+                    raise ValueError('Pelo menos um dia de disponibilidade deve ser selecionado')
+                
+                dias_disponibilidade = ','.join(dias_selecionados)
+                
+                # Processar turnos de disponibilidade
+                turnos_selecionados = dados.get('turnos_disponibilidade', [])
+                if not turnos_selecionados:
+                    raise ValueError('Pelo menos um turno de disponibilidade deve ser selecionado')
+                
+                turnos_disponibilidade = ','.join(turnos_selecionados)
+                
+                # Criar novo monitor
+                novo_monitor = Monitor(
+                    nome_completo=str(dados['nome_completo']).strip(),
+                    curso=str(dados['curso']).strip(),
+                    email=str(dados['email']).strip().lower(),
+                    telefone_whatsapp=str(dados['telefone_whatsapp']).strip(),
+                    carga_horaria_disponibilidade=int(dados['carga_horaria_disponibilidade']),
+                    dias_disponibilidade=dias_disponibilidade,
+                    turnos_disponibilidade=turnos_disponibilidade,
+                    codigo_acesso=gerar_codigo_acesso(),
+                    ativo=True,
+                    data_cadastro=datetime.now()
+                )
+                
+                db.session.add(novo_monitor)
+                monitores_criados += 1
+                
+            except Exception as e:
+                erros.append(f'Monitor {i}: {str(e)}')
+                continue
+        
+        # Salvar no banco de dados
+        if monitores_criados > 0:
+            db.session.commit()
+        
+        # Preparar resposta
+        mensagem = f'{monitores_criados} monitores cadastrados com sucesso.'
+        if erros:
+            mensagem += f' {len(erros)} erros encontrados.'
+        
+        return jsonify({
+            'success': True,
+            'message': mensagem,
+            'monitores_criados': monitores_criados,
+            'erros': erros
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro ao processar cadastros: {str(e)}'})
 
 @monitor_routes.route('/distribuir-automaticamente', methods=['POST'])
 @login_required

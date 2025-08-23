@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação em Massa - Monitores</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .upload-area {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-area:hover {
+            border-color: #0056b3;
+            background-color: #e9ecef;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .file-info {
+            display: none;
+            margin-top: 15px;
+        }
+        .progress {
+            display: none;
+            margin-top: 15px;
+        }
+        .result-area {
+            display: none;
+            margin-top: 20px;
+        }
+        .error-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('monitor_routes.gerenciar_monitores') }}">
+                                <i class="fas fa-arrow-left"></i> Voltar para Monitores
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2"><i class="fas fa-upload"></i> Importação em Massa de Monitores</h1>
+                </div>
+
+                <!-- Instruções -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-info-circle"></i> Instruções</h5>
+                            </div>
+                            <div class="card-body">
+                                <ol>
+                                    <li>Baixe o template clicando no botão abaixo</li>
+                                    <li>Preencha os dados dos monitores no arquivo</li>
+                                    <li>Salve o arquivo em formato XLSX, XLS ou CSV</li>
+                                    <li>Faça o upload do arquivo preenchido</li>
+                                </ol>
+                                <div class="mt-3">
+                                    <a href="{{ url_for('monitor_routes.download_template') }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-download"></i> Baixar Template
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Área de Upload -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-cloud-upload-alt"></i> Upload do Arquivo</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="formImportacao" enctype="multipart/form-data">
+                                    <div class="upload-area" id="uploadArea">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                        <h5>Arraste e solte o arquivo aqui</h5>
+                                        <p class="text-muted">ou clique para selecionar</p>
+                                        <input type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls,.csv" style="display: none;">
+                                        <small class="text-muted">Formatos aceitos: XLSX, XLS, CSV</small>
+                                    </div>
+                                    
+                                    <div class="file-info" id="fileInfo">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-file"></i>
+                                            <span id="fileName"></span>
+                                            <span class="badge bg-secondary ms-2" id="fileSize"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="progress" id="progressBar">
+                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <button type="submit" class="btn btn-primary" id="btnImportar" disabled>
+                                            <i class="fas fa-upload"></i> Importar Monitores
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="btnLimpar" onclick="limparFormulario()">
+                                            <i class="fas fa-times"></i> Limpar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Área de Resultados -->
+                <div class="row result-area" id="resultArea">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-bar"></i> Resultado da Importação</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="resultContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('arquivo');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const btnImportar = document.getElementById('btnImportar');
+        const progressBar = document.getElementById('progressBar');
+        const resultArea = document.getElementById('resultArea');
+        const resultContent = document.getElementById('resultContent');
+
+        // Eventos de drag and drop
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        // Evento de seleção de arquivo
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                // Verificar extensão
+                const extensoesPermitidas = ['xlsx', 'xls', 'csv'];
+                const extensao = file.name.split('.').pop().toLowerCase();
+                
+                if (!extensoesPermitidas.includes(extensao)) {
+                    alert('Formato de arquivo não suportado. Use XLSX, XLS ou CSV.');
+                    limparFormulario();
+                    return;
+                }
+
+                // Mostrar informações do arquivo
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                fileInfo.style.display = 'block';
+                btnImportar.disabled = false;
+                resultArea.style.display = 'none';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function limparFormulario() {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            progressBar.style.display = 'none';
+            btnImportar.disabled = true;
+            resultArea.style.display = 'none';
+            uploadArea.classList.remove('dragover');
+        }
+
+        // Submissão do formulário
+        document.getElementById('formImportacao').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('arquivo', fileInput.files[0]);
+            
+            // Mostrar barra de progresso
+            progressBar.style.display = 'block';
+            btnImportar.disabled = true;
+            btnImportar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+            
+            fetch('{{ url_for("monitor_routes.processar_importacao") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Ocultar barra de progresso
+                progressBar.style.display = 'none';
+                btnImportar.disabled = false;
+                btnImportar.innerHTML = '<i class="fas fa-upload"></i> Importar Monitores';
+                
+                // Mostrar resultado
+                mostrarResultado(data);
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                progressBar.style.display = 'none';
+                btnImportar.disabled = false;
+                btnImportar.innerHTML = '<i class="fas fa-upload"></i> Importar Monitores';
+                
+                mostrarResultado({
+                    success: false,
+                    message: 'Erro ao processar arquivo. Tente novamente.'
+                });
+            });
+        });
+
+        function mostrarResultado(data) {
+            let html = '';
+            
+            if (data.success) {
+                html = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> Importação Concluída</h6>
+                        <p>${data.message}</p>
+                        <p><strong>Monitores criados:</strong> ${data.monitores_criados}</p>
+                    </div>
+                `;
+                
+                if (data.erros && data.erros.length > 0) {
+                    html += `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Erros Encontrados</h6>
+                            <div class="error-list">
+                                <ul class="mb-0">
+                    `;
+                    data.erros.forEach(erro => {
+                        html += `<li>${erro}</li>`;
+                    });
+                    html += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                html = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle"></i> Erro na Importação</h6>
+                        <p>${data.message}</p>
+                    </div>
+                `;
+            }
+            
+            resultContent.innerHTML = html;
+            resultArea.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
