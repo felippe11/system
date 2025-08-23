@@ -15,6 +15,15 @@
                     <button class="btn btn-success" onclick="distribuirAutomaticamente()">
                         <i class="fas fa-magic"></i> Distribuição Automática
                     </button>
+                    <a href="{{ url_for('monitor_routes.distribuicao_manual') }}" class="btn btn-info ms-2">
+                        <i class="fas fa-users-cog"></i> Distribuição Manual
+                    </a>
+                    <a href="{{ url_for('monitor_routes.importacao_massa') }}" class="btn btn-warning ms-2">
+                        <i class="fas fa-upload"></i> Importação em Massa
+                    </a>
+                    <a href="{{ url_for('monitor_routes.cadastro_multiplo') }}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-users-plus"></i> Cadastro Múltiplo
+                    </a>
                 </div>
             </div>
         </div>
@@ -326,6 +335,12 @@
                                     <label class="form-check-label" for="sabado">Sábado</label>
                                 </div>
                             </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="domingo" name="dias_disponibilidade" value="domingo">
+                                    <label class="form-check-label" for="domingo">Domingo</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -470,13 +485,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function editarMonitor(monitorId) {
-    // Implementar edição de monitor
-    alert('Funcionalidade de edição em desenvolvimento');
+    // Redirecionar para página de edição do monitor
+    window.location.href = `/monitor/editar/${monitorId}`;
 }
 
 function verAgendamentos(monitorId) {
-    // Redirecionar para página de agendamentos do monitor
-    window.location.href = `/monitor/agendamentos?monitor_id=${monitorId}`;
+    // Redirecionar para página de edição do monitor que contém os agendamentos
+    window.location.href = `/monitor/editar/${monitorId}`;
 }
 
 function toggleStatus(monitorId, ativo) {

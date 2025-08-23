@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro Múltiplo - Monitores</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .monitor-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .monitor-header {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        .remove-monitor {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        .result-area {
+            display: none;
+            margin-top: 20px;
+        }
+        .error-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('monitor_routes.gerenciar_monitores') }}">
+                                <i class="fas fa-arrow-left"></i> Voltar para Monitores
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2"><i class="fas fa-users-plus"></i> Cadastro Múltiplo de Monitores</h1>
+                    <div>
+                        <button type="button" class="btn btn-primary" onclick="adicionarMonitor()">
+                            <i class="fas fa-plus"></i> Adicionar Monitor
+                        </button>
+                        <button type="button" class="btn btn-success ms-2" onclick="salvarTodos()">
+                            <i class="fas fa-save"></i> Salvar Todos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Instruções -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Instruções</h6>
+                            <ul class="mb-0">
+                                <li>Preencha os dados de cada monitor nos formulários abaixo</li>
+                                <li>Use o botão "Adicionar Monitor" para incluir mais formulários</li>
+                                <li>Clique em "Salvar Todos" para cadastrar todos os monitores de uma vez</li>
+                                <li>Monitores com erros serão ignorados e os demais serão cadastrados normalmente</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulários dos Monitores -->
+                <div id="monitoresContainer">
+                    <!-- Os formulários serão adicionados aqui dinamicamente -->
+                </div>
+
+                <!-- Área de Resultados -->
+                <div class="row result-area" id="resultArea">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-bar"></i> Resultado do Cadastro</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="resultContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let monitorCount = 0;
+
+        function adicionarMonitor() {
+            monitorCount++;
+            const container = document.getElementById('monitoresContainer');
+            
+            const monitorHtml = `
+                <div class="monitor-card" id="monitor-${monitorCount}">
+                    <div class="monitor-header">
+                        <h5 class="mb-0"><i class="fas fa-user"></i> Monitor ${monitorCount}</h5>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-monitor" onclick="removerMonitor(${monitorCount})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nome Completo *</label>
+                                <input type="text" class="form-control" name="nome_completo_${monitorCount}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Curso *</label>
+                                <input type="text" class="form-control" name="curso_${monitorCount}" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">E-mail *</label>
+                                <input type="email" class="form-control" name="email_${monitorCount}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">WhatsApp *</label>
+                                <input type="tel" class="form-control" name="telefone_whatsapp_${monitorCount}" placeholder="(11) 99999-9999" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Carga Horária de Disponibilidade (horas/semana) *</label>
+                                <input type="number" class="form-control" name="carga_horaria_${monitorCount}" min="1" max="40" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Dias de Disponibilidade *</label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Segunda" id="segunda_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="segunda_${monitorCount}">Segunda</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Terça" id="terca_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="terca_${monitorCount}">Terça</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Quarta" id="quarta_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="quarta_${monitorCount}">Quarta</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Quinta" id="quinta_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="quinta_${monitorCount}">Quinta</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Sexta" id="sexta_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="sexta_${monitorCount}">Sexta</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Sábado" id="sabado_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="sabado_${monitorCount}">Sábado</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="dias_${monitorCount}" value="Domingo" id="domingo_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="domingo_${monitorCount}">Domingo</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Turnos de Disponibilidade *</label>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="turnos_${monitorCount}" value="Manhã" id="manha_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="manha_${monitorCount}">Manhã</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="turnos_${monitorCount}" value="Tarde" id="tarde_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="tarde_${monitorCount}">Tarde</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" class="form-check-input" name="turnos_${monitorCount}" value="Noite" id="noite_${monitorCount}">
+                                        <label class="form-check-label ms-1" for="noite_${monitorCount}">Noite</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', monitorHtml);
+            document.getElementById('resultArea').style.display = 'none';
+        }
+
+        function removerMonitor(id) {
+            const monitorElement = document.getElementById(`monitor-${id}`);
+            if (monitorElement) {
+                monitorElement.remove();
+            }
+        }
+
+        function coletarDadosMonitores() {
+            const monitores = [];
+            const monitorCards = document.querySelectorAll('.monitor-card');
+            
+            monitorCards.forEach((card, index) => {
+                const id = card.id.split('-')[1];
+                
+                // Coletar dados básicos
+                const nomeCompleto = card.querySelector(`input[name="nome_completo_${id}"]`)?.value;
+                const curso = card.querySelector(`input[name="curso_${id}"]`)?.value;
+                const email = card.querySelector(`input[name="email_${id}"]`)?.value;
+                const telefone = card.querySelector(`input[name="telefone_whatsapp_${id}"]`)?.value;
+                const cargaHoraria = card.querySelector(`input[name="carga_horaria_${id}"]`)?.value;
+                
+                // Coletar dias selecionados
+                const diasCheckboxes = card.querySelectorAll(`input[name="dias_${id}"]:checked`);
+                const diasSelecionados = Array.from(diasCheckboxes).map(cb => cb.value);
+                
+                // Coletar turnos selecionados
+                const turnosCheckboxes = card.querySelectorAll(`input[name="turnos_${id}"]:checked`);
+                const turnosSelecionados = Array.from(turnosCheckboxes).map(cb => cb.value);
+                
+                monitores.push({
+                    nome_completo: nomeCompleto,
+                    curso: curso,
+                    email: email,
+                    telefone_whatsapp: telefone,
+                    carga_horaria_disponibilidade: cargaHoraria,
+                    dias_disponibilidade: diasSelecionados,
+                    turnos_disponibilidade: turnosSelecionados
+                });
+            });
+            
+            return monitores;
+        }
+
+        function salvarTodos() {
+            const monitores = coletarDadosMonitores();
+            
+            if (monitores.length === 0) {
+                alert('Adicione pelo menos um monitor antes de salvar.');
+                return;
+            }
+            
+            // Mostrar loading
+            const btnSalvar = document.querySelector('button[onclick="salvarTodos()"]');
+            const originalText = btnSalvar.innerHTML;
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+            btnSalvar.disabled = true;
+            
+            fetch('{{ url_for("monitor_routes.processar_cadastro_multiplo") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ monitores: monitores })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Restaurar botão
+                btnSalvar.innerHTML = originalText;
+                btnSalvar.disabled = false;
+                
+                // Mostrar resultado
+                mostrarResultado(data);
+                
+                // Se sucesso, limpar formulários
+                if (data.success && data.monitores_criados > 0) {
+                    document.getElementById('monitoresContainer').innerHTML = '';
+                    monitorCount = 0;
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                btnSalvar.innerHTML = originalText;
+                btnSalvar.disabled = false;
+                
+                mostrarResultado({
+                    success: false,
+                    message: 'Erro ao processar cadastros. Tente novamente.'
+                });
+            });
+        }
+
+        function mostrarResultado(data) {
+            let html = '';
+            
+            if (data.success) {
+                html = `
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> Cadastro Concluído</h6>
+                        <p>${data.message}</p>
+                        <p><strong>Monitores criados:</strong> ${data.monitores_criados}</p>
+                    </div>
+                `;
+                
+                if (data.erros && data.erros.length > 0) {
+                    html += `
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Erros Encontrados</h6>
+                            <div class="error-list">
+                                <ul class="mb-0">
+                    `;
+                    data.erros.forEach(erro => {
+                        html += `<li>${erro}</li>`;
+                    });
+                    html += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                html = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times-circle"></i> Erro no Cadastro</h6>
+                        <p>${data.message}</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('resultContent').innerHTML = html;
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        // Adicionar primeiro monitor ao carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            adicionarMonitor();
+        });
+    </script>
+</body>
+</html>
