@@ -598,9 +598,9 @@ def distribuir_automaticamente():
              'atribuicoes': atribuicoes_realizadas
          })
          
-     except Exception as e:
-         db.session.rollback()
-         return jsonify({'success': False, 'message': str(e)})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
 
 @monitor_routes.route('/gerar-qrcode/<int:agendamento_id>')
 @login_required
