@@ -248,7 +248,7 @@
                 <h5 class="modal-title">Cadastrar Novo Monitor</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formMonitor" method="POST" action="{{ url_for('monitor_routes.cadastrar_monitor') }}">
+            <form id="formMonitor" method="POST" action="/cadastrar-monitor">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -364,6 +364,56 @@
 
 {% block scripts %}
 <script>
+// Debug script para verificar o funcionamento do modal
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado');
+    console.log('Bootstrap disponível:', typeof bootstrap !== 'undefined');
+    
+    // Verificar se o botão existe
+    const btnNovoMonitor = document.querySelector('[data-bs-target="#modalCadastroMonitor"]');
+    console.log('Botão Novo Monitor encontrado:', btnNovoMonitor);
+    
+    if (btnNovoMonitor) {
+        btnNovoMonitor.addEventListener('click', function(e) {
+            console.log('Botão Novo Monitor clicado');
+            e.preventDefault();
+            
+            // Tentar abrir o modal manualmente
+            const modal = document.getElementById('modalCadastroMonitor');
+            if (modal && typeof bootstrap !== 'undefined') {
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+                console.log('Modal aberto manualmente');
+            } else {
+                console.error('Modal não encontrado ou Bootstrap não disponível');
+            }
+        });
+    }
+    
+    // Verificar se o modal existe
+    const modal = document.getElementById('modalCadastroMonitor');
+    console.log('Modal encontrado:', modal);
+    
+    if (modal) {
+        modal.addEventListener('show.bs.modal', function() {
+            console.log('Modal está sendo aberto');
+        });
+        
+        modal.addEventListener('shown.bs.modal', function() {
+            console.log('Modal foi aberto completamente');
+        });
+        
+        modal.addEventListener('hide.bs.modal', function() {
+            console.log('Modal está sendo fechado');
+        });
+    }
+    
+    // Verificar se há erros de JavaScript
+    window.addEventListener('error', function(e) {
+        console.error('Erro JavaScript:', e.error);
+    });
+});
+
 function editarMonitor(monitorId) {
     // Implementar edição de monitor
     alert('Funcionalidade de edição em desenvolvimento');
