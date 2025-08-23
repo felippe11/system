@@ -344,10 +344,10 @@ def gerar_codigo_acesso():
 @monitor_routes.route('/gerenciar-monitores')
 @login_required
 def gerenciar_monitores():
-    """Página de gerenciamento de monitores (apenas para admins)"""
-    # Verificar se o usuário é admin
-    if not hasattr(current_user, 'tipo') or current_user.tipo != 'admin':
-        flash('Acesso negado. Apenas administradores podem acessar esta página.', 'error')
+    """Página de gerenciamento de monitores (para admins e clientes)"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado. Apenas administradores e clientes podem acessar esta página.', 'error')
         return redirect(url_for('dashboard_routes.dashboard'))
     
     # Filtros
@@ -408,8 +408,8 @@ def gerenciar_monitores():
 @login_required
 def cadastrar_monitor():
     """Cadastra um novo monitor"""
-    # Verificar se o usuário é admin
-    if not hasattr(current_user, 'tipo') or current_user.tipo != 'admin':
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado.', 'error')
         return redirect(url_for('dashboard_routes.dashboard'))
     
@@ -471,8 +471,8 @@ def cadastrar_monitor():
 @login_required
 def toggle_status_monitor(monitor_id):
     """Alterna o status ativo/inativo de um monitor"""
-    # Verificar se o usuário é admin
-    if not hasattr(current_user, 'tipo') or current_user.tipo != 'admin':
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
     try:
@@ -491,8 +491,8 @@ def toggle_status_monitor(monitor_id):
 @login_required
 def excluir_monitor(monitor_id):
     """Exclui um monitor"""
-    # Verificar se o usuário é admin
-    if not hasattr(current_user, 'tipo') or current_user.tipo != 'admin':
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
     try:
@@ -519,8 +519,8 @@ def excluir_monitor(monitor_id):
 @login_required
 def distribuir_automaticamente():
     """Executa a distribuição automática de monitores"""
-    # Verificar se o usuário é admin
-    if not hasattr(current_user, 'tipo') or current_user.tipo != 'admin':
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
     try:
@@ -606,9 +606,9 @@ def distribuir_automaticamente():
 @login_required
 def gerar_qrcode(agendamento_id):
     """Gera QR Code para um agendamento específico"""
-    # Verificar se o usuário é monitor ou admin
+    # Verificar se o usuário é monitor, admin ou cliente
     if not (hasattr(current_user, 'codigo_acesso') or 
-            (hasattr(current_user, 'tipo') and current_user.tipo == 'admin')):
+            (hasattr(current_user, 'tipo') and current_user.tipo in ['admin', 'cliente'])):
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
     try:
