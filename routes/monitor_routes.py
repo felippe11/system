@@ -411,6 +411,17 @@ def gerenciar_monitores():
                          agendamentos_descobertos=agendamentos_descobertos,
                          today=hoje)
 
+@monitor_routes.route('/novo-monitor')
+@login_required
+def novo_monitor():
+    """Página para cadastrar novo monitor"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    return render_template('monitor/novo_monitor.html')
+
 @monitor_routes.route('/cadastrar-monitor', methods=['POST'])
 @login_required
 def cadastrar_monitor():
@@ -1011,6 +1022,33 @@ def atribuir_monitor_route():
 def remover_atribuicao_route():
     """Wrapper para remover_atribuicao com prefixo /monitor/"""
     return remover_atribuicao()
+
+@monitor_routes.route('/distribuicao-automatica')
+@login_required
+def distribuicao_automatica():
+    """Página de distribuição automática de monitores"""
+    # Verificar se o usuário é admin ou cliente
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado.', 'error')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    # Obter estatísticas para exibir na página
+    hoje = datetime.now().date()
+    agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
+        HorarioVisitacao
+    ).filter(
+        HorarioVisitacao.data >= hoje,
+        AgendamentoVisita.status == 'confirmado',
+        ~AgendamentoVisita.id.in_(
+            db.session.query(MonitorAgendamento.agendamento_id)
+        )
+    ).count()
+    
+    monitores_ativos = Monitor.query.filter_by(ativo=True).count()
+    
+    return render_template('monitor/distribuicao_automatica.html',
+                         agendamentos_sem_monitor=agendamentos_sem_monitor,
+                         monitores_ativos=monitores_ativos)
 
 @monitor_routes.route('/monitor/distribuir-automaticamente', methods=['POST'])
 @login_required

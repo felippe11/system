@@ -9,12 +9,12 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Gerenciar Monitores</h2>
                 <div>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCadastroMonitor">
+                    <a href="{{ url_for('monitor_routes.novo_monitor') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Novo Monitor
-                    </button>
-                    <button class="btn btn-success" onclick="distribuirAutomaticamente()">
+                    </a>
+                    <a href="{{ url_for('monitor_routes.distribuicao_automatica') }}" class="btn btn-success">
                         <i class="fas fa-magic"></i> Distribuição Automática
-                    </button>
+                    </a>
                     <a href="{{ url_for('monitor_routes.distribuicao_manual') }}" class="btn btn-info ms-2">
                         <i class="fas fa-users-cog"></i> Distribuição Manual
                     </a>
@@ -249,240 +249,11 @@
     </div>
 </div>
 
-<!-- Modal Cadastro/Edição Monitor -->
-<div class="modal fade" id="modalCadastroMonitor" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Cadastrar Novo Monitor</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="formMonitor" method="POST" action="/cadastrar-monitor">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="nome_completo" class="form-label">Nome Completo *</label>
-                                <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="curso" class="form-label">Curso *</label>
-                                <input type="text" class="form-control" id="curso" name="curso" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email *</label>
-                                <input type="email" class="form-control" id="email" name="email" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="telefone_whatsapp" class="form-label">Telefone WhatsApp *</label>
-                                <input type="text" class="form-control" id="telefone_whatsapp" name="telefone_whatsapp" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="carga_horaria_disponibilidade" class="form-label">Carga Horária de Disponibilidade (horas/semana) *</label>
-                        <input type="number" class="form-control" id="carga_horaria_disponibilidade" 
-                               name="carga_horaria_disponibilidade" min="1" max="40" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Dias de Disponibilidade *</label>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="segunda" name="dias_disponibilidade" value="segunda">
-                                    <label class="form-check-label" for="segunda">Segunda-feira</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="terca" name="dias_disponibilidade" value="terca">
-                                    <label class="form-check-label" for="terca">Terça-feira</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="quarta" name="dias_disponibilidade" value="quarta">
-                                    <label class="form-check-label" for="quarta">Quarta-feira</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="quinta" name="dias_disponibilidade" value="quinta">
-                                    <label class="form-check-label" for="quinta">Quinta-feira</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sexta" name="dias_disponibilidade" value="sexta">
-                                    <label class="form-check-label" for="sexta">Sexta-feira</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="sabado" name="dias_disponibilidade" value="sabado">
-                                    <label class="form-check-label" for="sabado">Sábado</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="domingo" name="dias_disponibilidade" value="domingo">
-                                    <label class="form-check-label" for="domingo">Domingo</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Turnos de Disponibilidade *</label>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="manha" name="turnos_disponibilidade" value="manha">
-                                    <label class="form-check-label" for="manha">Manhã</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="tarde" name="turnos_disponibilidade" value="tarde">
-                                    <label class="form-check-label" for="tarde">Tarde</label>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="noite" name="turnos_disponibilidade" value="noite">
-                                    <label class="form-check-label" for="noite">Noite</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar Monitor</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado');
-    console.log('Bootstrap disponível:', typeof bootstrap !== 'undefined');
-    
-    // Verificar se o botão e modal existem
-    const btnNovoMonitor = document.querySelector('[data-bs-target="#modalCadastroMonitor"]');
-    const modal = document.getElementById('modalCadastroMonitor');
-    
-    console.log('Botão encontrado:', !!btnNovoMonitor);
-    console.log('Modal encontrado:', !!modal);
-    
-    // Se o Bootstrap não estiver funcionando automaticamente, forçar manualmente
-    if (btnNovoMonitor && modal) {
-        btnNovoMonitor.addEventListener('click', function() {
-            console.log('Clique detectado no botão');
-            
-            // Tentar usar Bootstrap se disponível
-            if (typeof bootstrap !== 'undefined') {
-                try {
-                    const bsModal = new bootstrap.Modal(modal);
-                    bsModal.show();
-                    console.log('Modal aberto via Bootstrap');
-                } catch (error) {
-                    console.error('Erro ao abrir modal via Bootstrap:', error);
-                    // Fallback: mostrar modal manualmente
-                     modal.style.display = 'block';
-                     modal.classList.add('show');
-                     document.body.classList.add('modal-open');
-                     
-                     // Adicionar backdrop
-                     const backdrop = document.createElement('div');
-                     backdrop.className = 'modal-backdrop fade show';
-                     backdrop.id = 'modal-backdrop-custom';
-                     document.body.appendChild(backdrop);
-                     
-                     console.log('Modal aberto manualmente com backdrop');
-                }
-            } else {
-                 // Fallback se Bootstrap não estiver disponível
-                 modal.style.display = 'block';
-                 modal.classList.add('show');
-                 document.body.classList.add('modal-open');
-                 
-                 // Adicionar backdrop
-                 const backdrop = document.createElement('div');
-                 backdrop.className = 'modal-backdrop fade show';
-                 backdrop.id = 'modal-backdrop-custom';
-                 document.body.appendChild(backdrop);
-                 
-                 console.log('Modal aberto sem Bootstrap');
-             }
-        });
-        
-        // Adicionar evento para fechar modal
-         const closeBtn = modal.querySelector('.btn-close');
-         if (closeBtn) {
-             closeBtn.addEventListener('click', function() {
-                 modal.style.display = 'none';
-                 modal.classList.remove('show');
-                 document.body.classList.remove('modal-open');
-                 
-                 // Remover backdrop customizado
-                 const backdrop = document.getElementById('modal-backdrop-custom');
-                 if (backdrop) {
-                     backdrop.remove();
-                 }
-             });
-         }
-         
-         // Fechar modal clicando no backdrop
-         modal.addEventListener('click', function(e) {
-             if (e.target === modal) {
-                 modal.style.display = 'none';
-                 modal.classList.remove('show');
-                 document.body.classList.remove('modal-open');
-                 
-                 const backdrop = document.getElementById('modal-backdrop-custom');
-                 if (backdrop) {
-                     backdrop.remove();
-                 }
-             }
-         });
-         
-         // Fechar modal com ESC
-         document.addEventListener('keydown', function(e) {
-             if (e.key === 'Escape' && modal.classList.contains('show')) {
-                 modal.style.display = 'none';
-                 modal.classList.remove('show');
-                 document.body.classList.remove('modal-open');
-                 
-                 const backdrop = document.getElementById('modal-backdrop-custom');
-                 if (backdrop) {
-                     backdrop.remove();
-                 }
-             }
-         })
-    }
-    
-    // Log de erros
-    window.addEventListener('error', function(e) {
-        console.error('Erro JavaScript:', e.error);
-    });
-});
 
 function editarMonitor(monitorId) {
     // Redirecionar para página de edição do monitor
@@ -549,32 +320,6 @@ function excluirMonitor(monitorId) {
     }
 }
 
-function distribuirAutomaticamente() {
-    if (confirm('Deseja executar a distribuição automática de monitores? Isso pode alterar as atribuições existentes.')) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
-                         document.querySelector('input[name="csrf_token"]')?.value;
-        
-        fetch('/monitor/distribuir-automaticamente', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(`Distribuição concluída! ${data.atribuicoes} agendamentos foram atribuídos.`);
-                location.reload();
-            } else {
-                alert('Erro na distribuição: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro na distribuição automática');
-        });
-    }
-}
+
 </script>
 {% endblock %}
