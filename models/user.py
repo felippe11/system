@@ -223,6 +223,14 @@ class Monitor(db.Model, UserMixin):
         """Retorna lista dos turnos de disponibilidade"""
         return self.turnos_disponibilidade.split(',') if self.turnos_disponibilidade else []
     
+    def get_dias_disponibilidade(self):
+        """Retorna lista dos dias de disponibilidade (alias para get_dias_lista)"""
+        return self.get_dias_lista()
+    
+    def get_turnos_disponibilidade(self):
+        """Retorna lista dos turnos de disponibilidade (alias para get_turnos_lista)"""
+        return self.get_turnos_lista()
+    
     def is_active(self):
         return self.ativo
     
