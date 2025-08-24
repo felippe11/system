@@ -130,7 +130,7 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                                <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
                                                    class="btn btn-sm btn-primary" title="Ver Detalhes">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
@@ -229,7 +229,7 @@ let agendamentoAtual = null;
 function abrirModalPresenca(agendamentoId) {
     agendamentoAtual = agendamentoId;
     document.getElementById('linkDetalhes').href = 
-        `{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=0) }}`.replace('0', agendamentoId);
+        `{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=0) }}`.replace('0', agendamentoId);
     
     const modal = new bootstrap.Modal(document.getElementById('modalPresenca'));
     modal.show();

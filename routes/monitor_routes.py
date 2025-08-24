@@ -13,7 +13,7 @@ from PIL import Image
 import pandas as pd
 
 from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
-from extensions import db
+from extensions import db, csrf
 
 monitor_routes = Blueprint(
     'monitor_routes',
@@ -25,6 +25,7 @@ monitor_routes = Blueprint(
 # Autenticação por Código de Acesso
 # =======================================
 @monitor_routes.route('/monitor/login', methods=['GET', 'POST'])
+@csrf.exempt
 def monitor_login():
     """Login exclusivo para monitores usando código de acesso"""
     if request.method == 'POST':
