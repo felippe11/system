@@ -2115,10 +2115,22 @@ def criar_evento_agendamento():
                             
                             for nome, preco in zip(nomes_tipos, precos):
                                 if nome and preco:
+                                    try:
+                                        preco_float = float(preco.strip())
+                                    except ValueError:
+                                        db.session.rollback()
+                                        form_erro = (
+                                            "Erro: o campo 'preço' deve conter apenas números."
+                                        )
+                                        flash(form_erro, 'danger')
+                                        return render_template(
+                                            'criar_evento_agendamento.html',
+                                            form_erro=form_erro,
+                                        )
                                     novo_tipo = EventoInscricaoTipo(
                                         evento_id=novo_evento.id,
                                         nome=nome,
-                                        preco=float(preco)
+                                        preco=preco_float,
                                     )
                                     db.session.add(novo_tipo)
                     
