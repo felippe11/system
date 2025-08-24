@@ -1437,6 +1437,7 @@ def criar_agendamento():
         else:
             eventos = Evento.query.all()
     except Exception as e:
+        db.session.rollback()
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
     # Processar o formulário quando enviado via POST
@@ -1661,6 +1662,7 @@ def configurar_horarios_agendamento():
                     } for h in horarios_existentes
                 ]
     except Exception as e:
+        db.session.rollback()
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
     # Processar o formulário quando enviado via POST
@@ -1955,6 +1957,7 @@ def importar_agendamentos():
     try:
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     except Exception as e:
+        db.session.rollback()
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
     # Processar o formulário quando enviado via POST
@@ -2353,6 +2356,7 @@ def criar_periodo_agendamento():
     try:
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     except Exception as e:
+        db.session.rollback()
         flash(f"Erro ao buscar eventos: {str(e)}", "danger")
     
     # Processar o formulário quando enviado via POST

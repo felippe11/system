@@ -33,8 +33,8 @@ def importar_trabalhos():
         file = request.files["arquivo"]
         try:
             df = pd.read_excel(file)
-        except Exception:
-            return jsonify({"message": "Erro ao ler o arquivo"}), 400
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Erro ao ler o arquivo: {str(e)}"}), 400
 
         records = df.to_dict(orient="records")
         rows = []
@@ -66,15 +66,17 @@ def importar_trabalhos():
 
         return jsonify(
             {
+                "success": True,
                 "temp_id": temp_id,
                 "columns": df.columns.tolist(),
-                "preview": preview,
+                "data": preview,
+                "message": "Arquivo processado com sucesso"
             }
         )
 
     temp_id = request.form.get("temp_id")
     if not temp_id:
-        return jsonify({"error": "missing temp_id"}), 400
+        return jsonify({"success": False, "message": "ID temporário não fornecido"}), 400
 
     temp_path = os.path.join(
         tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
@@ -83,7 +85,7 @@ def importar_trabalhos():
         with open(temp_path, "r", encoding="utf-8") as tmp:
             rows = json.load(tmp)
     except FileNotFoundError:
-        return jsonify({"error": "invalid temp_id"}), 400
+        return jsonify({"success": False, "message": "ID temporário inválido ou expirado"}), 400
 
     columns = request.form.getlist("columns")
     title_column = request.form.get("title_column")
@@ -129,11 +131,11 @@ def importar_trabalhos():
             if column
             else "Valor inválido para um dos campos"
         )
-        return jsonify({"error": msg}), 400
+        return jsonify({"success": False, "message": msg}), 400
 
     try:
         os.remove(temp_path)
     except OSError:
         pass
 
-    return jsonify({"status": "ok", "imported": imported})
+    return jsonify({"success": True, "status": "ok", "imported": imported, "message": f"Importação concluída! {imported} trabalhos importados."})

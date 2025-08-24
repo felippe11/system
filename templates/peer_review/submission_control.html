@@ -1,50 +1,20 @@
 {% extends 'base.html' %}
 {% block title %}Controle de Submissões{% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-  <!-- Header Section -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h2 class="mb-1"><i class="fas fa-clipboard-list text-primary"></i> Controle de Submissões</h2>
-          <p class="text-muted mb-0">Gerencie submissões e atribuições de revisores</p>
-        </div>
-        <div class="d-flex gap-2">
-          <span class="badge bg-info fs-6">{{ submissions|length }} Submissões</span>
-          <span class="badge bg-success fs-6">{{ reviewers|length }} Revisores</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Import Section -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-gradient-primary text-white">
-          <h5 class="mb-0"><i class="fas fa-upload"></i> Importar Trabalhos</h5>
-        </div>
-        <div class="card-body">
-          <form id="formImportarTrabalhos"
-                method="post"
-                enctype="multipart/form-data"
-                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
-            <div class="row align-items-end">
-              <div class="col-md-8">
-                <label for="arquivo" class="form-label">Arquivo de Submissões</label>
-                <input class="form-control" type="file" id="arquivo" name="arquivo" accept=".xls,.xlsx" required>
-                <div class="form-text">Formatos aceitos: .xls, .xlsx</div>
-              </div>
-              <div class="col-md-4">
-                <button class="btn btn-primary w-100" type="submit">
-                  <i class="fas fa-upload"></i> Importar Trabalhos
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
+<div class="container mt-5" id="configSubmissao" 
+     data-url-config-cliente-atual="{{ url_for('config_cliente_routes.configuracao_cliente_atual') }}"
+     data-min-rev="{{ config.num_revisores_min if config else 1 }}"
+     data-max-rev="{{ config.num_revisores_max if config else 2 }}">
+  <h3 class="mb-4">Controle de Submissões</h3>
+  <form id="formImportarTrabalhos"
+        class="mb-3"
+        method="post"
+        enctype="multipart/form-data"
+        action="{{ url_for('config_cliente_routes.importar_trabalhos') }}"
+        data-context="submission-control">
+    <div class="input-group">
+      <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
+      <button class="btn btn-primary" type="submit">Importar</button>
     </div>
   </div>
   <!-- Submissions Table -->
