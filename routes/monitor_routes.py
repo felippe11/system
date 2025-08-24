@@ -612,6 +612,7 @@ def editar_monitor(monitor_id):
                              agendamentos_futuros=agendamentos_futuros)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados do monitor: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -698,6 +699,7 @@ def distribuicao_manual():
                              agendamentos_atribuidos=agendamentos_atribuidos)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -1264,6 +1266,7 @@ def gerar_qrcode(agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
 @monitor_routes.route('/processar-qrcode', methods=['POST'])
@@ -1390,4 +1393,5 @@ def gerar_qrcode_aluno(aluno_id, agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
