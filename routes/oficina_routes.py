@@ -181,8 +181,13 @@ def criar_oficina():
             ids_extras = request.form.getlist('ministrantes_ids[]')  # array
             for mid in ids_extras:
                 m = Ministrante.query.get(int(mid))
-                if m:
-                    nova_oficina.ministrantes_associados.append(m)
+                if not m:
+                    continue
+                if current_user.tipo == 'cliente' and m.cliente_id != current_user.id:
+                    raise ValueError(
+                        'Ministrante não pertence ao cliente atual.'
+                    )
+                nova_oficina.ministrantes_associados.append(m)
 
             db.session.commit()
             flash('Atividade criada com sucesso!', 'success')
