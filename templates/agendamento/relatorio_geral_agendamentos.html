@@ -78,6 +78,66 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Segunda linha de filtros -->
+                <div class="row">
+                    <!-- Filtro por Escola -->
+                    <div class="col-md-3 mb-3">
+                        <label for="escola_nome" class="form-label">Escola:</label>
+                        <input type="text" 
+                               id="escola_nome" 
+                               name="escola_nome" 
+                               class="form-control" 
+                               placeholder="Nome da escola"
+                               value="{{ filtros.escola_nome if filtros.escola_nome else '' }}">
+                    </div>
+
+                    <!-- Filtro por Status -->
+                    <div class="col-md-2 mb-3">
+                        <label for="status" class="form-label">Status:</label>
+                        <select id="status" name="status" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="pendente" {% if filtros.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                            <option value="confirmado" {% if filtros.status == 'confirmado' %}selected{% endif %}>Confirmado</option>
+                            <option value="realizado" {% if filtros.status == 'realizado' %}selected{% endif %}>Realizado</option>
+                            <option value="cancelado" {% if filtros.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro por Professor/Responsável -->
+                    <div class="col-md-3 mb-3">
+                        <label for="professor_nome" class="form-label">Professor/Responsável:</label>
+                        <input type="text" 
+                               id="professor_nome" 
+                               name="professor_nome" 
+                               class="form-control" 
+                               placeholder="Nome do professor"
+                               value="{{ filtros.professor_nome if filtros.professor_nome else '' }}">
+                    </div>
+
+                    <!-- Filtro por Nível de Ensino -->
+                    <div class="col-md-2 mb-3">
+                        <label for="nivel_ensino" class="form-label">Nível de Ensino:</label>
+                        <select id="nivel_ensino" name="nivel_ensino" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="1" {% if filtros.nivel_ensino == '1' %}selected{% endif %}>Fundamental I</option>
+                            <option value="2" {% if filtros.nivel_ensino == '2' %}selected{% endif %}>Fundamental II</option>
+                            <option value="3" {% if filtros.nivel_ensino == '3' %}selected{% endif %}>Ensino Médio</option>
+                            <option value="4" {% if filtros.nivel_ensino == '4' %}selected{% endif %}>EJA</option>
+                            <option value="5" {% if filtros.nivel_ensino == '5' %}selected{% endif %}>Superior</option>
+                        </select>
+                    </div>
+
+                    <!-- Filtro por Alunos PCD/Neurodivergentes -->
+                    <div class="col-md-2 mb-3">
+                        <label for="tem_necessidades_especiais" class="form-label">Alunos PCD/ND:</label>
+                        <select id="tem_necessidades_especiais" name="tem_necessidades_especiais" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="sim" {% if filtros.tem_necessidades_especiais == 'sim' %}selected{% endif %}>Sim</option>
+                            <option value="nao" {% if filtros.tem_necessidades_especiais == 'nao' %}selected{% endif %}>Não</option>
+                        </select>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -190,6 +250,187 @@
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle"></i> 
                             Não há dados para o período selecionado.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Dados Agregados -->
+    <div class="row mb-4">
+        <!-- Estatísticas por Escola -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-school"></i> Top 10 Escolas por Agendamentos
+                </div>
+                <div class="card-body">
+                    {% if dados_agregados and dados_agregados.escolas %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Escola</th>
+                                        <th class="text-center">Agendamentos</th>
+                                        <th class="text-center">Alunos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for escola in dados_agregados.escolas[:10] %}
+                                        <tr>
+                                            <td>{{ escola.nome }}</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary">{{ escola.total_agendamentos }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-success">{{ escola.total_alunos }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Nenhum dado disponível.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas por Professor -->
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-chalkboard-teacher"></i> Top 10 Professores por Agendamentos
+                </div>
+                <div class="card-body">
+                    {% if dados_agregados and dados_agregados.professores %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Professor</th>
+                                        <th class="text-center">Agendamentos</th>
+                                        <th class="text-center">Alunos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for professor in dados_agregados.professores[:10] %}
+                                        <tr>
+                                            <td>{{ professor.nome }}</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-primary">{{ professor.total_agendamentos }}</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-success">{{ professor.total_alunos }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Nenhum dado disponível.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Estatísticas Especiais -->
+    <div class="row mb-4">
+        <!-- Alunos com Necessidades Especiais -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-purple text-white" style="background-color: #6f42c1 !important;">
+                    <i class="fas fa-universal-access"></i> Necessidades Especiais
+                </div>
+                <div class="card-body">
+                    {% if dados_agregados and dados_agregados.necessidades_especiais %}
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Total de Alunos PCD/ND</span>
+                                <span class="badge bg-purple rounded-pill" style="background-color: #6f42c1 !important;">{{ dados_agregados.necessidades_especiais.total }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>Agendamentos com PCD/ND</span>
+                                <span class="badge bg-info rounded-pill">{{ dados_agregados.necessidades_especiais.agendamentos }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>% do Total</span>
+                                <span class="badge bg-secondary rounded-pill">{{ dados_agregados.necessidades_especiais.percentual }}%</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Nenhum dado disponível.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Materiais de Apoio Mais Utilizados -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-dark text-white">
+                    <i class="fas fa-tools"></i> Materiais de Apoio
+                </div>
+                <div class="card-body">
+                    {% if dados_agregados and dados_agregados.materiais_apoio %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th class="text-center">Uso</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material in dados_agregados.materiais_apoio[:5] %}
+                                        <tr>
+                                            <td>{{ material.nome }}</td>
+                                            <td class="text-center">
+                                                <span class="badge bg-dark">{{ material.total_uso }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Nenhum dado disponível.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Distribuição por Nível de Ensino -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-graduation-cap"></i> Níveis de Ensino
+                </div>
+                <div class="card-body">
+                    {% if dados_agregados and dados_agregados.niveis_ensino %}
+                        <div class="list-group list-group-flush">
+                            {% for nivel in dados_agregados.niveis_ensino %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>{{ nivel.nome }}</span>
+                                    <span class="badge bg-secondary rounded-pill">{{ nivel.total }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle"></i> Nenhum dado disponível.
                         </div>
                     {% endif %}
                 </div>

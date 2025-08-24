@@ -501,6 +501,43 @@
                 </div>
               </div>
               
+              <!-- Materiais de Apoio -->
+              <div class="card shadow mt-4">
+                <div class="card-header bg-info text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-heart-pulse me-2"></i>Materiais de Apoio</h5>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted mb-3">Gerencie os materiais de apoio disponíveis para alunos PCD/Neurodivergentes.</p>
+                  
+                  <div class="table-responsive mb-3">
+                    <table class="table table-hover align-middle" id="materiaisTable">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Nome</th>
+                          <th>Descrição</th>
+                          <th>Status</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody id="materiaisTableBody">
+                        <!-- Conteúdo carregado via JavaScript -->
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <button type="button" class="btn btn-primary w-100 mb-3" data-bs-toggle="modal" data-bs-target="#modalMaterialApoio">
+                    <i class="bi bi-plus-circle me-2"></i> Adicionar Material de Apoio
+                  </button>
+                  
+                  <div class="card bg-light">
+                    <div class="card-body small">
+                      <p class="mb-1"><i class="bi bi-info-circle me-2"></i><strong>Dica:</strong></p>
+                      <p class="mb-0 text-muted">Configure materiais de apoio que podem ser solicitados durante o cadastro de alunos com necessidades especiais.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <!-- Manutenção -->
               <div class="card shadow mt-4">
                 <div class="card-header bg-danger text-white">
@@ -543,6 +580,42 @@
   </div><!-- /card shadow -->
 </div> <!-- /container-fluid -->
 
+<!-- Modal para Materiais de Apoio -->
+<div class="modal fade" id="modalMaterialApoio" tabindex="-1" aria-labelledby="modalMaterialApoioLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalMaterialApoioLabel">Adicionar Material de Apoio</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="formMaterialApoio">
+        <div class="modal-body">
+          <input type="hidden" id="materialId" name="id">
+          <div class="mb-3">
+            <label for="materialNome" class="form-label">Nome do Material</label>
+            <input type="text" class="form-control" id="materialNome" name="nome" required>
+          </div>
+          <div class="mb-3">
+            <label for="materialDescricao" class="form-label">Descrição</label>
+            <textarea class="form-control" id="materialDescricao" name="descricao" rows="3" required></textarea>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="materialAtivo" name="ativo" checked>
+              <label class="form-check-label" for="materialAtivo">
+                Material ativo
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- Estilos CSS -->
 <style>
@@ -654,7 +727,157 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
+  // Carregar materiais de apoio quando a aba de configurações for ativada
+  const configTab = document.getElementById('configuracoes-tab');
+  if (configTab) {
+    configTab.addEventListener('shown.bs.tab', function() {
+      carregarMateriaisApoio();
+    });
+  }
+
+  // Configurar formulário de material de apoio
+  const formMaterialApoio = document.getElementById('formMaterialApoio');
+  if (formMaterialApoio) {
+    formMaterialApoio.addEventListener('submit', function(e) {
+      e.preventDefault();
+      salvarMaterialApoio();
+    });
+  }
+
 });
+
+// Funções para gerenciar materiais de apoio
+function carregarMateriaisApoio() {
+  fetch('/api/materiais-apoio-admin')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        renderizarMateriaisApoio(data.materiais);
+      } else {
+        console.error('Erro ao carregar materiais:', data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Erro na requisição:', error);
+    });
+}
+
+function renderizarMateriaisApoio(materiais) {
+  const tbody = document.getElementById('materiaisTableBody');
+  if (!tbody) return;
+  
+  if (materiais.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum material de apoio cadastrado.</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = materiais.map(material => `
+    <tr>
+      <td>${material.nome}</td>
+      <td>${material.descricao}</td>
+      <td>
+        <span class="badge bg-${material.ativo ? 'success' : 'danger'}">
+          ${material.ativo ? 'Ativo' : 'Inativo'}
+        </span>
+      </td>
+      <td>
+        <div class="btn-group btn-group-sm">
+          <button type="button" class="btn btn-warning" onclick="editarMaterial(${material.id})">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button type="button" class="btn btn-${material.ativo ? 'danger' : 'success'}" onclick="toggleMaterialStatus(${material.id})">
+            <i class="bi bi-${material.ativo ? 'x-circle' : 'check-circle'}"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function salvarMaterialApoio() {
+  const form = document.getElementById('formMaterialApoio');
+  const formData = new FormData(form);
+  
+  const data = {
+    id: formData.get('id') || null,
+    nome: formData.get('nome'),
+    descricao: formData.get('descricao'),
+    ativo: formData.get('ativo') === 'on'
+  };
+  
+  const url = data.id ? `/api/materiais-apoio-admin/${data.id}` : '/api/materiais-apoio-admin';
+  const method = data.id ? 'PUT' : 'POST';
+  
+  fetch(url, {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken
+    },
+    body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      bootstrap.Modal.getInstance(document.getElementById('modalMaterialApoio')).hide();
+      carregarMateriaisApoio();
+      form.reset();
+      document.getElementById('materialId').value = '';
+      document.getElementById('modalMaterialApoioLabel').textContent = 'Adicionar Material de Apoio';
+    } else {
+      alert('Erro ao salvar material: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Erro na requisição:', error);
+    alert('Erro na requisição. Tente novamente.');
+  });
+}
+
+function editarMaterial(id) {
+  fetch(`/api/materiais-apoio-admin/${id}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const material = data.material;
+        document.getElementById('materialId').value = material.id;
+        document.getElementById('materialNome').value = material.nome;
+        document.getElementById('materialDescricao').value = material.descricao;
+        document.getElementById('materialAtivo').checked = material.ativo;
+        document.getElementById('modalMaterialApoioLabel').textContent = 'Editar Material de Apoio';
+        
+        new bootstrap.Modal(document.getElementById('modalMaterialApoio')).show();
+      } else {
+        alert('Erro ao carregar material: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Erro na requisição:', error);
+      alert('Erro na requisição. Tente novamente.');
+    });
+}
+
+function toggleMaterialStatus(id) {
+  fetch(`/api/materiais-apoio-admin/${id}/toggle`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      carregarMateriaisApoio();
+    } else {
+      alert('Erro ao alterar status: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Erro na requisição:', error);
+    alert('Erro na requisição. Tente novamente.');
+  });
+}
 
 // Funções auxiliares
 function atualizarBotao(btn, valorAtivo) {

@@ -192,6 +192,63 @@ class NotificacaoAgendamento:
             logger.exception("Erro ao enviar email de agendamento: %s", exc)
     
     @staticmethod
+    def notificar_monitor_alunos_pcd(agendamento):
+        """
+        Notifica o monitor sobre alunos PCD/Neurodivergentes no agendamento
+        
+        Args:
+            agendamento: Objeto AgendamentoVisita
+        """
+        from models import MonitorAgendamento, NecessidadeEspecial
+        
+        # Verificar se há monitor atribuído
+        monitor_agendamento = MonitorAgendamento.query.filter_by(
+            agendamento_id=agendamento.id,
+            status='ativo'
+        ).first()
+        
+        if not monitor_agendamento or not monitor_agendamento.monitor:
+            logger.warning(f"Nenhum monitor ativo encontrado para o agendamento {agendamento.id}")
+            return
+        
+        monitor = monitor_agendamento.monitor
+        
+        # Buscar alunos com necessidades especiais neste agendamento
+        alunos_pcd = db.session.query(AlunoVisitante, NecessidadeEspecial).join(
+            NecessidadeEspecial, AlunoVisitante.id == NecessidadeEspecial.aluno_id
+        ).filter(
+            AlunoVisitante.agendamento_id == agendamento.id
+        ).all()
+        
+        if not alunos_pcd:
+            logger.info(f"Nenhum aluno PCD/Neurodivergente encontrado no agendamento {agendamento.id}")
+            return
+        
+        horario = agendamento.horario
+        evento = horario.evento
+        
+        assunto = f"Alunos PCD/Neurodivergentes - {evento.nome}"
+        
+        # Preparar o corpo do email
+        corpo_html = render_template(
+            'emails/notificacao_monitor_pcd.html',
+            monitor=monitor,
+            agendamento=agendamento,
+            horario=horario,
+            evento=evento,
+            alunos_pcd=alunos_pcd
+        )
+        
+        # Enviar em um thread separado
+        thread = threading.Thread(
+            target=NotificacaoAgendamento._enviar_email_async,
+            args=[monitor.email, assunto, corpo_html]
+        )
+        thread.start()
+        
+        logger.info(f"Notificação enviada para monitor {monitor.nome_completo} sobre {len(alunos_pcd)} alunos PCD/ND")
+    
+    @staticmethod
     def processar_lembretes_diarios():
         """
         Tarefa agendada para enviar lembretes diários de visitas
@@ -630,6 +687,144 @@ def relatorio_geral_agendamentos():
         professores_query = professores_query.filter(Evento.id == evento_id)
     professores_confirmados = professores_query.distinct().all()
 
+    # Calcular dados agregados
+    dados_agregados = {}
+    
+    # Estatísticas por escola
+    escolas_stats = (
+        db.session.query(
+            AgendamentoVisita.escola_nome.label('nome'),
+            func.count(AgendamentoVisita.id).label('total_agendamentos'),
+            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos')
+        )
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
+            AgendamentoVisita.escola_nome.isnot(None)
+        )
+    )
+    if evento_id:
+        escolas_stats = escolas_stats.filter(Evento.id == evento_id)
+    escolas_stats = escolas_stats.group_by(AgendamentoVisita.escola_nome).order_by(func.count(AgendamentoVisita.id).desc()).all()
+    dados_agregados['escolas'] = escolas_stats
+    
+    # Estatísticas por professor
+    professores_stats = (
+        db.session.query(
+            Usuario.nome.label('nome'),
+            func.count(AgendamentoVisita.id).label('total_agendamentos'),
+            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos')
+        )
+        .join(AgendamentoVisita, AgendamentoVisita.professor_id == Usuario.id)
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim
+        )
+    )
+    if evento_id:
+        professores_stats = professores_stats.filter(Evento.id == evento_id)
+    professores_stats = professores_stats.group_by(Usuario.id, Usuario.nome).order_by(func.count(AgendamentoVisita.id).desc()).all()
+    dados_agregados['professores'] = professores_stats
+    
+    # Estatísticas de necessidades especiais
+    try:
+        from models import MaterialApoio
+        
+        total_alunos_pcd = (
+            db.session.query(func.count(AlunoVisitante.id))
+            .join(AgendamentoVisita, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
+            .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+            .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+            .filter(
+                Evento.cliente_id == cliente_id,
+                coluna_data >= data_inicio,
+                coluna_data <= data_fim,
+                or_(
+                    AlunoVisitante.pcd == True,
+                    AlunoVisitante.neurodivergente == True
+                )
+            )
+        )
+        if evento_id:
+            total_alunos_pcd = total_alunos_pcd.filter(Evento.id == evento_id)
+        total_alunos_pcd = total_alunos_pcd.scalar() or 0
+        
+        agendamentos_com_pcd = (
+            db.session.query(func.count(func.distinct(AgendamentoVisita.id)))
+            .join(AlunoVisitante, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
+            .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+            .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+            .filter(
+                Evento.cliente_id == cliente_id,
+                coluna_data >= data_inicio,
+                coluna_data <= data_fim,
+                or_(
+                    AlunoVisitante.pcd == True,
+                    AlunoVisitante.neurodivergente == True
+                )
+            )
+        )
+        if evento_id:
+            agendamentos_com_pcd = agendamentos_com_pcd.filter(Evento.id == evento_id)
+        agendamentos_com_pcd = agendamentos_com_pcd.scalar() or 0
+        
+        percentual_pcd = (agendamentos_com_pcd / total_agendamentos * 100) if total_agendamentos > 0 else 0
+        
+        dados_agregados['necessidades_especiais'] = {
+            'total': total_alunos_pcd,
+            'agendamentos': agendamentos_com_pcd,
+            'percentual': round(percentual_pcd, 1)
+        }
+        
+        # Materiais de apoio mais utilizados (simulado - seria necessário implementar a relação)
+        materiais_stats = (
+            db.session.query(
+                MaterialApoio.nome.label('nome'),
+                func.count(MaterialApoio.id).label('total_uso')
+            )
+            .filter(MaterialApoio.ativo == True)
+            .group_by(MaterialApoio.id, MaterialApoio.nome)
+            .order_by(func.count(MaterialApoio.id).desc())
+            .limit(5)
+            .all()
+        )
+        dados_agregados['materiais_apoio'] = materiais_stats
+        
+    except ImportError:
+        # Se o modelo MaterialApoio não existir, usar dados vazios
+        dados_agregados['necessidades_especiais'] = {
+            'total': 0,
+            'agendamentos': 0,
+            'percentual': 0
+        }
+        dados_agregados['materiais_apoio'] = []
+    
+    # Distribuição por nível de ensino
+    niveis_stats = (
+        db.session.query(
+            AgendamentoVisita.nivel_ensino.label('nome'),
+            func.count(AgendamentoVisita.id).label('total')
+        )
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+        .filter(
+            Evento.cliente_id == cliente_id,
+            coluna_data >= data_inicio,
+            coluna_data <= data_fim,
+            AgendamentoVisita.nivel_ensino.isnot(None)
+        )
+    )
+    if evento_id:
+        niveis_stats = niveis_stats.filter(Evento.id == evento_id)
+    niveis_stats = niveis_stats.group_by(AgendamentoVisita.nivel_ensino).order_by(func.count(AgendamentoVisita.id).desc()).all()
+    dados_agregados['niveis_ensino'] = niveis_stats
+
     # Gerar PDF com detalhes
     if request.args.get('gerar_pdf'):
         pdf_filename = (
@@ -657,6 +852,7 @@ def relatorio_geral_agendamentos():
         total_agendamentos=total_agendamentos,
         agendamentos=agendamentos,
         professores_confirmados=professores_confirmados,
+        dados_agregados=dados_agregados,
         filtros={
             'data_inicio': data_inicio,
             'data_fim': data_fim,
@@ -3228,6 +3424,8 @@ def atualizar_status_agendamento(agendamento_id):
 
         if enviar_confirmacao:
             NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
+            # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
+            NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
 
         if request.is_json or request.method == 'PUT':
             resposta = {
@@ -3251,6 +3449,15 @@ def atualizar_status_agendamento(agendamento_id):
             return jsonify(resposta), 200
 
         flash('Agendamento atualizado com sucesso', 'success')
+        
+        # Redirecionamento automático para cadastro de alunos após confirmação
+        if novo_status == 'confirmado' and current_user.tipo == 'professor':
+            # Verificar se já existem alunos cadastrados
+            alunos_existentes = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+            if alunos_existentes < agendamento.quantidade_alunos:
+                flash('Agendamento confirmado! Agora cadastre os alunos participantes.', 'info')
+                return redirect(url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id))
+        
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
     except Exception as e:
@@ -4598,6 +4805,246 @@ def importar_oficinas():
 
         flash(f"Foram importadas {total_oficinas_criadas} oficinas com sucesso, incluindo as datas!", "success")
     
+
+# API endpoint para materiais de apoio
+@agendamento_routes.route('/api/materiais-apoio', methods=['GET'])
+@login_required
+def api_materiais_apoio():
+    """API endpoint para buscar materiais de apoio disponíveis.
+    
+    Returns:
+        JSON: Lista de materiais de apoio com id, nome e descrição
+    """
+    try:
+        from models import MaterialApoio
+        
+        materiais = MaterialApoio.query.filter_by(ativo=True).order_by(MaterialApoio.nome).all()
+        
+        materiais_data = []
+        for material in materiais:
+            materiais_data.append({
+                'id': material.id,
+                'nome': material.nome,
+                'descricao': material.descricao
+            })
+        
+        return jsonify({
+            'success': True,
+            'materiais': materiais_data
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar materiais de apoio: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+# API endpoints para gerenciamento de materiais de apoio (admin)
+@agendamento_routes.route('/api/materiais-apoio-admin', methods=['GET'])
+@login_required
+def api_materiais_apoio_admin():
+    """API endpoint para listar todos os materiais de apoio (admin)"""
+    try:
+        from models import MaterialApoio
+        
+        materiais = MaterialApoio.query.order_by(MaterialApoio.nome).all()
+        materiais_data = [{
+            'id': material.id,
+            'nome': material.nome,
+            'descricao': material.descricao,
+            'ativo': material.ativo
+        } for material in materiais]
+        
+        return jsonify({
+            'success': True,
+            'materiais': materiais_data
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao listar materiais de apoio: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/api/materiais-apoio-admin/<int:material_id>', methods=['GET'])
+@login_required
+def api_material_apoio_detalhes(material_id):
+    """API endpoint para obter detalhes de um material específico"""
+    try:
+        from models import MaterialApoio
+        
+        material = MaterialApoio.query.get(material_id)
+        if not material:
+            return jsonify({
+                'success': False,
+                'error': 'Material não encontrado'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'material': {
+                'id': material.id,
+                'nome': material.nome,
+                'descricao': material.descricao,
+                'ativo': material.ativo
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar material {material_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/api/materiais-apoio-admin', methods=['POST'])
+@login_required
+def api_criar_material_apoio():
+    """API endpoint para criar um novo material de apoio"""
+    try:
+        from models import MaterialApoio
+        
+        data = request.get_json()
+        
+        # Validação
+        if not data or not data.get('nome'):
+            return jsonify({
+                'success': False,
+                'error': 'Nome é obrigatório'
+            }), 400
+        
+        # Verificar se já existe um material com o mesmo nome
+        material_existente = MaterialApoio.query.filter_by(nome=data['nome']).first()
+        if material_existente:
+            return jsonify({
+                'success': False,
+                'error': 'Já existe um material com este nome'
+            }), 400
+        
+        # Criar novo material
+        novo_material = MaterialApoio(
+            nome=data['nome'],
+            descricao=data.get('descricao', ''),
+            ativo=data.get('ativo', True)
+        )
+        
+        db.session.add(novo_material)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Material de apoio criado com sucesso',
+            'material': {
+                'id': novo_material.id,
+                'nome': novo_material.nome,
+                'descricao': novo_material.descricao,
+                'ativo': novo_material.ativo
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao criar material de apoio: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/api/materiais-apoio-admin/<int:material_id>', methods=['PUT'])
+@login_required
+def api_atualizar_material_apoio(material_id):
+    """API endpoint para atualizar um material de apoio"""
+    try:
+        from models import MaterialApoio
+        
+        material = MaterialApoio.query.get(material_id)
+        if not material:
+            return jsonify({
+                'success': False,
+                'error': 'Material não encontrado'
+            }), 404
+        
+        data = request.get_json()
+        
+        # Validação
+        if not data or not data.get('nome'):
+            return jsonify({
+                'success': False,
+                'error': 'Nome é obrigatório'
+            }), 400
+        
+        # Verificar se já existe outro material com o mesmo nome
+        material_existente = MaterialApoio.query.filter(
+            MaterialApoio.nome == data['nome'],
+            MaterialApoio.id != material_id
+        ).first()
+        if material_existente:
+            return jsonify({
+                'success': False,
+                'error': 'Já existe outro material com este nome'
+            }), 400
+        
+        # Atualizar material
+        material.nome = data['nome']
+        material.descricao = data.get('descricao', '')
+        material.ativo = data.get('ativo', True)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Material de apoio atualizado com sucesso',
+            'material': {
+                'id': material.id,
+                'nome': material.nome,
+                'descricao': material.descricao,
+                'ativo': material.ativo
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao atualizar material {material_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/api/materiais-apoio-admin/<int:material_id>/toggle', methods=['POST'])
+@login_required
+def api_toggle_material_apoio(material_id):
+    """API endpoint para alternar o status ativo/inativo de um material"""
+    try:
+        from models import MaterialApoio
+        
+        material = MaterialApoio.query.get(material_id)
+        if not material:
+            return jsonify({
+                'success': False,
+                'error': 'Material não encontrado'
+            }), 404
+        
+        # Alternar status
+        material.ativo = not material.ativo
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Material {"ativado" if material.ativo else "desativado"} com sucesso',
+            'ativo': material.ativo
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao alterar status do material {material_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
