@@ -1,93 +1,208 @@
 {% extends 'base.html' %}
 {% block title %}Controle de Submissões{% endblock %}
 {% block content %}
-<div class="container mt-5">
-  <h3 class="mb-4">Controle de Submissões</h3>
-  <form id="formImportarTrabalhos"
-        class="mb-3"
-        method="post"
-        enctype="multipart/form-data"
-        action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
-    <div class="input-group">
-      <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
-      <button class="btn btn-primary" type="submit">Importar</button>
+<div class="container-fluid mt-4">
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="mb-1"><i class="fas fa-clipboard-list text-primary"></i> Controle de Submissões</h2>
+          <p class="text-muted mb-0">Gerencie submissões e atribuições de revisores</p>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge bg-info fs-6">{{ submissions|length }} Submissões</span>
+          <span class="badge bg-success fs-6">{{ reviewers|length }} Revisores</span>
+        </div>
+      </div>
     </div>
-  </form>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Título</th>
-        <th>Localizador</th>
-        <th>Autor</th>
-        <th>Revisores</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for sub in submissions %}
-      <tr>
-        <td>{{ sub.title }}</td>
-        <td>{{ sub.locator }}</td>
-        <td>{{ sub.author.nome if sub.author else 'N/A' }}</td>
-        <td>
-          <ul class="mb-0">
-            {% for rev in sub.reviews %}
-            <li>{{ rev.reviewer.nome if rev.reviewer else 'N/A' }} - {{ rev.access_code }}</li>
-            {% else %}
-            <li>Nenhum revisor atribuído</li>
-            {% endfor %}
-          </ul>
-          <button class="btn btn-sm btn-secondary mt-1 gerar-codigos" data-locator="{{ sub.locator }}">Gerar Códigos</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  </div>
 
-  <div class="mt-5">
-    <h4>Atribuir Revisores</h4>
-    <div class="mb-3">
-      <label for="submissionSelect" class="form-label">Submissão</label>
-      <select id="submissionSelect" class="form-select">
-        {% for sub in submissions %}
-        <option value="{{ sub.id }}">{{ sub.title }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="mb-3">
-      <label for="reviewerSelect" class="form-label">Revisores</label>
-      <select id="reviewerSelect" class="form-select" multiple
-              data-min="{{ config.num_revisores_min if config else 1 }}"
-              data-max="{{ config.num_revisores_max if config else 2 }}">
-        {% for r in reviewers %}
-        <option value="{{ r.id }}">{{ r.nome }}</option>
-        {% else %}
-        <option disabled>Nenhum revisor aprovado</option>
-        {% endfor %}
-      </select>
-      <small class="form-text text-muted">
-        Selecione entre {{ config.num_revisores_min if config else 1 }} e {{ config.num_revisores_max if config else 2 }} revisores.
-      </small>
-    </div>
-    <div class="row g-3 mb-3">
-      <div class="col-md-4">
-        <label for="filterArea" class="form-label">Área</label>
-        <input type="text" id="filterArea" class="form-control" data-filter="area" placeholder="Ex.: Computação" />
-      </div>
-      <div class="col-md-4">
-        <label for="filterNivel" class="form-label">Nível</label>
-        <input type="text" id="filterNivel" class="form-control" data-filter="nivel" placeholder="Ex.: Doutorado" />
+  <!-- Import Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-gradient-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-upload"></i> Importar Trabalhos</h5>
+        </div>
+        <div class="card-body">
+          <form id="formImportarTrabalhos"
+                method="post"
+                enctype="multipart/form-data"
+                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+            <div class="row align-items-end">
+              <div class="col-md-8">
+                <label for="arquivo" class="form-label">Arquivo de Submissões</label>
+                <input class="form-control" type="file" id="arquivo" name="arquivo" accept=".xls,.xlsx" required>
+                <div class="form-text">Formatos aceitos: .xls, .xlsx</div>
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-primary w-100" type="submit">
+                  <i class="fas fa-upload"></i> Importar Trabalhos
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-    <small class="form-text text-muted mb-3">
-      Filtros disponíveis: área e nível. Deixe em branco para incluir todos os revisores.
-    </small>
-    <button id="assignManual" class="btn btn-primary me-2">Atribuir Manualmente</button>
-    <button id="assignAutomatic" class="btn btn-secondary me-2" data-bs-toggle="tooltip" title="Sorteia revisores usando os filtros preenchidos">
-      Sorteio Automático
-    </button>
-    <div class="input-group mt-2" style="max-width: 300px;">
-      <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" />
-      <button id="autoArea" class="btn btn-info">Auto por Área</button>
+  </div>
+  <!-- Submissions Table -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-light">
+          <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Lista de Submissões</h5>
+            <div class="input-group" style="max-width: 300px;">
+              <span class="input-group-text"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control" id="searchSubmissions" placeholder="Buscar submissões...">
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="submissionsTable">
+              <thead class="table-light">
+                <tr>
+                  <th class="border-0"><i class="fas fa-file-alt"></i> Título</th>
+                  <th class="border-0"><i class="fas fa-tag"></i> Localizador</th>
+                  <th class="border-0"><i class="fas fa-user"></i> Autor</th>
+                  <th class="border-0"><i class="fas fa-users"></i> Revisores</th>
+                  <th class="border-0 text-center"><i class="fas fa-cogs"></i> Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for sub in submissions %}
+                <tr>
+                  <td>
+                    <div class="fw-bold text-truncate" style="max-width: 200px;" title="{{ sub.title }}">
+                      {{ sub.title }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-secondary">{{ sub.locator }}</span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                        {{ (sub.author.nome if sub.author else 'N')[0] }}
+                      </div>
+                      {{ sub.author.nome if sub.author else 'N/A' }}
+                    </div>
+                  </td>
+                  <td>
+                    {% if sub.reviews %}
+                      <div class="reviewer-list">
+                        {% for rev in sub.reviews %}
+                        <div class="d-flex align-items-center mb-1">
+                          <span class="badge bg-success me-2">{{ rev.reviewer.nome if rev.reviewer else 'N/A' }}</span>
+                          <small class="text-muted">{{ rev.access_code }}</small>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <span class="text-muted"><i class="fas fa-exclamation-triangle"></i> Nenhum revisor atribuído</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary gerar-codigos" data-locator="{{ sub.locator }}" title="Gerar Códigos de Acesso">
+                      <i class="fas fa-key"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td colspan="5" class="text-center py-4">
+                    <div class="text-muted">
+                      <i class="fas fa-inbox fa-2x mb-2"></i>
+                      <p>Nenhuma submissão encontrada</p>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignment Section -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-gradient-success text-white">
+          <h5 class="mb-0"><i class="fas fa-user-plus"></i> Atribuir Revisores</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <!-- Manual Assignment -->
+            <div class="col-lg-6">
+              <h6 class="text-primary mb-3"><i class="fas fa-hand-pointer"></i> Atribuição Manual</h6>
+              <div class="mb-3">
+                <label for="submissionSelect" class="form-label">Submissão</label>
+                <select id="submissionSelect" class="form-select">
+                  <option value="">Selecione uma submissão...</option>
+                  {% for sub in submissions %}
+                  <option value="{{ sub.id }}">{{ sub.title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="reviewerSelect" class="form-label">Revisores</label>
+                <select id="reviewerSelect" class="form-select" multiple size="5"
+                        data-min="{{ config.num_revisores_min if config else 1 }}"
+                        data-max="{{ config.num_revisores_max if config else 2 }}">
+                  {% for r in reviewers %}
+                  <option value="{{ r.id }}" data-area="{{ r.formacao or '' }}" data-nivel="{{ r.nivel or '' }}">
+                    {{ r.nome }} - {{ r.formacao or 'Área não informada' }}
+                  </option>
+                  {% else %}
+                  <option disabled>Nenhum revisor aprovado</option>
+                  {% endfor %}
+                </select>
+                <div class="form-text">
+                  <i class="fas fa-info-circle"></i> Selecione entre {{ config.num_revisores_min if config else 1 }} e {{ config.num_revisores_max if config else 2 }} revisores.
+                </div>
+              </div>
+              <button id="assignManual" class="btn btn-primary w-100">
+                <i class="fas fa-user-check"></i> Atribuir Manualmente
+              </button>
+            </div>
+
+            <!-- Automatic Assignment -->
+            <div class="col-lg-6">
+              <h6 class="text-info mb-3"><i class="fas fa-magic"></i> Atribuição Automática</h6>
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label for="filterArea" class="form-label">Filtro por Área</label>
+                  <input type="text" id="filterArea" class="form-control" data-filter="area" placeholder="Ex.: Computação" />
+                </div>
+                <div class="col-md-6">
+                  <label for="filterNivel" class="form-label">Filtro por Nível</label>
+                  <input type="text" id="filterNivel" class="form-control" data-filter="nivel" placeholder="Ex.: Doutorado" />
+                </div>
+              </div>
+              <div class="alert alert-info">
+                <small><i class="fas fa-lightbulb"></i> Deixe os filtros em branco para incluir todos os revisores disponíveis.</small>
+              </div>
+              <div class="d-grid gap-2">
+                <button id="assignAutomatic" class="btn btn-info" data-bs-toggle="tooltip" title="Sorteia revisores usando os filtros preenchidos">
+                  <i class="fas fa-random"></i> Sorteio Automático
+                </button>
+                <div class="input-group">
+                  <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" min="1" />
+                  <button id="autoArea" class="btn btn-warning">
+                    <i class="fas fa-sitemap"></i> Auto por Área
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -97,4 +212,201 @@
 {{ super() }}
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/submission_import.js') }}"></script>
+<script>
+$(document).ready(function() {
+    // Search functionality
+    $('#searchSubmissions').on('keyup', function() {
+        const value = $(this).val().toLowerCase();
+        $('#submissionsTable tbody tr').filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+        });
+    });
+
+    // Filter reviewers based on area and level
+    $('#filterArea, #filterNivel').on('keyup', function() {
+        const areaFilter = $('#filterArea').val().toLowerCase();
+        const nivelFilter = $('#filterNivel').val().toLowerCase();
+        
+        $('#reviewerSelect option').each(function() {
+            const area = $(this).data('area') ? $(this).data('area').toLowerCase() : '';
+            const nivel = $(this).data('nivel') ? $(this).data('nivel').toLowerCase() : '';
+            
+            const areaMatch = !areaFilter || area.includes(areaFilter);
+            const nivelMatch = !nivelFilter || nivel.includes(nivelFilter);
+            
+            $(this).toggle(areaMatch && nivelMatch);
+        });
+    });
+
+    // Form validation for manual assignment
+    $('#assignManual').on('click', function(e) {
+        const submissionId = $('#submissionSelect').val();
+        const selectedReviewers = $('#reviewerSelect').val();
+        const minReviewers = parseInt($('#reviewerSelect').data('min'));
+        const maxReviewers = parseInt($('#reviewerSelect').data('max'));
+        
+        if (!submissionId) {
+            e.preventDefault();
+            showAlert('Por favor, selecione uma submissão.', 'warning');
+            return;
+        }
+        
+        if (!selectedReviewers || selectedReviewers.length < minReviewers) {
+            e.preventDefault();
+            showAlert(`Por favor, selecione pelo menos ${minReviewers} revisor(es).`, 'warning');
+            return;
+        }
+        
+        if (selectedReviewers.length > maxReviewers) {
+            e.preventDefault();
+            showAlert(`Por favor, selecione no máximo ${maxReviewers} revisor(es).`, 'warning');
+            return;
+        }
+    });
+
+    // Auto assignment validation
+    $('#autoArea').on('click', function(e) {
+        const eventoId = $('#eventoId').val();
+        
+        if (!eventoId) {
+            e.preventDefault();
+            showAlert('Por favor, informe o ID do evento.', 'warning');
+            return;
+        }
+    });
+
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+
+    // File upload validation
+    $('#arquivo').on('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const allowedTypes = ['.xls', '.xlsx'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!allowedTypes.includes(fileExtension)) {
+                showAlert('Por favor, selecione um arquivo .xls ou .xlsx válido.', 'danger');
+                $(this).val('');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showAlert('O arquivo deve ter no máximo 10MB.', 'danger');
+                $(this).val('');
+                return;
+            }
+        }
+    });
+
+    // Show alert function
+    function showAlert(message, type = 'info') {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${type === 'danger' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        // Remove existing alerts
+        $('.alert').remove();
+        
+        // Add new alert at the top
+        $('.container-fluid').prepend(alertHtml);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            $('.alert').fadeOut();
+        }, 5000);
+    }
+
+    // Enhanced table interactions
+    $('#submissionsTable tbody tr').on('click', function() {
+        if (!$(this).find('td').first().hasClass('text-center')) {
+            $(this).toggleClass('table-active');
+        }
+    });
+
+    // Loading states for buttons
+    $('button[type="submit"], #assignManual, #assignAutomatic, #autoArea').on('click', function() {
+        const $btn = $(this);
+        const originalText = $btn.html();
+        
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
+        
+        // Re-enable after 3 seconds (adjust based on actual processing time)
+        setTimeout(() => {
+            $btn.prop('disabled', false).html(originalText);
+        }, 3000);
+    });
+});
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.table-active {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.reviewer-list {
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0 15px;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+</style>
 {% endblock %}

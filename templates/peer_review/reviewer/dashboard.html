@@ -1,24 +1,147 @@
 {% extends "base.html" %}
-{% block title %}Tarefas de Revisão{% endblock %}
+{% from 'partials/card.html' import render_card %}
+{% block title %}Dashboard do Revisor{% endblock %}
 {% block content %}
-<div class="container py-5">
-  <h1 class="mb-4">Tarefas de Revisão</h1>
-  <p class="text-muted">Lista de trabalhos atribuídos para revisão.</p>
-  <table class="table table-striped">
-    <thead>
-      <tr><th>Título</th><th>Status</th><th>Prazo</th></tr>
-    </thead>
-    <tbody>
-      {% for task in tasks %}
-      <tr>
-        <td>{{ task.submission.title }}</td>
-        <td>{{ 'Concluída' if task.completed else 'Pendente' }}</td>
-        <td>{{ task.deadline.strftime('%d/%m/%Y') if task.deadline else '' }}</td>
-      </tr>
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h1 class="h3 mb-1">
+            <i class="bi bi-clipboard-check text-primary me-2"></i>
+            Dashboard do Revisor
+          </h1>
+          <p class="text-muted mb-0">Gerencie suas tarefas de revisão</p>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge bg-info fs-6">
+            <i class="bi bi-list-task me-1"></i>
+            {{ tasks|length }} tarefa(s)
+          </span>
+          {% set pending_count = tasks|selectattr('completed', 'equalto', false)|list|length %}
+          {% if pending_count > 0 %}
+          <span class="badge bg-warning fs-6">
+            <i class="bi bi-clock me-1"></i>
+            {{ pending_count }} pendente(s)
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      {% if tasks %}
+        {% for task in tasks %}
+        <div class="card mb-3 shadow-sm border-0">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <h5 class="card-title mb-2">
+                  <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                  {{ task.submission.title }}
+                </h5>
+                <div class="text-muted small">
+                  {% if task.submission.author %}
+                  <i class="bi bi-person me-1"></i>
+                  <strong>Autor:</strong> {{ task.submission.author }}
+                  {% endif %}
+                  {% if task.submission.created_at %}
+                  <span class="ms-3">
+                    <i class="bi bi-calendar me-1"></i>
+                    <strong>Submetido:</strong> {{ task.submission.created_at.strftime('%d/%m/%Y') }}
+                  </span>
+                  {% endif %}
+                </div>
+              </div>
+              
+              <div class="col-md-3 text-center">
+                {% if task.completed %}
+                  <span class="badge bg-success fs-6 px-3 py-2">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Concluída
+                  </span>
+                {% else %}
+                  <span class="badge bg-warning fs-6 px-3 py-2">
+                    <i class="bi bi-clock me-1"></i>
+                    Pendente
+                  </span>
+                {% endif %}
+                
+                {% if task.deadline %}
+                <div class="mt-2 small text-muted">
+                  <i class="bi bi-calendar-event me-1"></i>
+                  <strong>Prazo:</strong> {{ task.deadline.strftime('%d/%m/%Y') }}
+                  {% set days_left = (task.deadline.date() - now().date()).days %}
+                  {% if days_left < 0 %}
+                    <span class="text-danger">({{ -days_left }} dia(s) atrasado)</span>
+                  {% elif days_left == 0 %}
+                    <span class="text-warning">(Vence hoje)</span>
+                  {% elif days_left <= 3 %}
+                    <span class="text-warning">({{ days_left }} dia(s) restante(s))</span>
+                  {% else %}
+                    <span class="text-success">({{ days_left }} dia(s) restante(s))</span>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+              
+              <div class="col-md-3 text-end">
+                {% if not task.completed %}
+                  <a href="{{ url_for('peer_review_routes.review_form', locator=task.submission.locator) }}" 
+                     class="btn btn-primary">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Revisar
+                  </a>
+                {% else %}
+                  <a href="{{ url_for('peer_review_routes.review_form', locator=task.submission.locator) }}" 
+                     class="btn btn-outline-secondary">
+                    <i class="bi bi-eye me-1"></i>
+                    Visualizar
+                  </a>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
       {% else %}
-      <tr><td colspan="3" class="text-center">Nenhuma tarefa pendente.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        <div class="text-center py-5">
+          <div class="mb-4">
+            <i class="bi bi-clipboard-x text-muted" style="font-size: 4rem;"></i>
+          </div>
+          <h4 class="text-muted mb-3">Nenhuma tarefa de revisão</h4>
+          <p class="text-muted mb-4">
+            Você não possui tarefas de revisão atribuídas no momento.
+          </p>
+          <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-primary">
+            <i class="bi bi-house me-1"></i>
+            Voltar ao Início
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+
+<style>
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+.badge {
+  font-weight: 500;
+}
+
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+}
+</style>
 {% endblock %}

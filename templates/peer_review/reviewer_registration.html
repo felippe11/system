@@ -1,37 +1,349 @@
 {% extends "base.html" %}
+{% from 'partials/card.html' import render_card %}
 {% block title %}Cadastro de Revisor{% endblock %}
 {% block content %}
 <div class="container py-5">
-  <div class="card shadow-sm border-0 rounded-lg">
-    <div class="card-header bg-primary text-white">
-      <h2 class="mb-0 fs-4">Cadastro de Revisor</h2>
-    </div>
-    <div class="card-body">
-      <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="mb-3">
-          <label for="nome" class="form-label">Nome</label>
-          <input type="text" class="form-control" id="nome" name="nome" required>
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="text-center mb-5">
+        <div class="mb-4">
+          <i class="bi bi-person-plus-fill text-primary" style="font-size: 4rem;"></i>
         </div>
-        <div class="mb-3">
-          <label for="cpf" class="form-label">CPF</label>
-          <input type="text" class="form-control" id="cpf" name="cpf" required>
+        <h1 class="h2 mb-3">Cadastro de Revisor</h1>
+        <p class="text-muted lead">
+          Junte-se à nossa equipe de revisores e contribua para a avaliação de trabalhos acadêmicos
+        </p>
+      </div>
+      
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-primary text-white text-center py-4">
+          <h4 class="mb-0">
+            <i class="bi bi-clipboard-check me-2"></i>
+            Formulário de Candidatura
+          </h4>
         </div>
-        <div class="mb-3">
-          <label for="email" class="form-label">E-mail</label>
-          <input type="email" class="form-control" id="email" name="email" required>
+        
+        <div class="card-body p-5">
+          <form method="POST" id="reviewerForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- Dados Pessoais -->
+            <div class="mb-4">
+              <h5 class="text-primary mb-3">
+                <i class="bi bi-person me-2"></i>Dados Pessoais
+              </h5>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold">
+                  <i class="bi bi-person-fill text-muted me-2"></i>
+                  Nome Completo
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="nome" id="nome" class="form-control form-control-lg" 
+                       placeholder="Digite seu nome completo" required>
+                <div class="invalid-feedback">
+                  Por favor, informe seu nome completo.
+                </div>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="bi bi-card-text text-muted me-2"></i>
+                    CPF
+                    <span class="text-danger">*</span>
+                  </label>
+                  <input type="text" name="cpf" id="cpf" class="form-control form-control-lg" 
+                         placeholder="000.000.000-00" required maxlength="14">
+                  <div class="invalid-feedback">
+                    Por favor, informe um CPF válido.
+                  </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                  <label class="form-label fw-bold">
+                    <i class="bi bi-envelope-fill text-muted me-2"></i>
+                    E-mail
+                    <span class="text-danger">*</span>
+                  </label>
+                  <input type="email" name="email" id="email" class="form-control form-control-lg" 
+                         placeholder="seu@email.com" required>
+                  <div class="invalid-feedback">
+                    Por favor, informe um e-mail válido.
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Dados Acadêmicos -->
+            <div class="mb-4">
+              <h5 class="text-primary mb-3">
+                <i class="bi bi-mortarboard me-2"></i>Dados Acadêmicos
+              </h5>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold">
+                  <i class="bi bi-book text-muted me-2"></i>
+                  Formação Acadêmica
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="formacao" id="formacao" class="form-control form-control-lg" 
+                       placeholder="Ex: Doutorado em Ciência da Computação" required>
+                <div class="invalid-feedback">
+                  Por favor, informe sua formação acadêmica.
+                </div>
+                <small class="form-text text-muted">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Informe sua maior titulação e área de especialização
+                </small>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold">
+                  <i class="bi bi-building text-muted me-2"></i>
+                  Instituição (Opcional)
+                </label>
+                <input type="text" name="instituicao" id="instituicao" class="form-control form-control-lg" 
+                       placeholder="Ex: Universidade Federal do Brasil">
+                <small class="form-text text-muted">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Instituição onde atua ou estudou
+                </small>
+              </div>
+            </div>
+            
+            <!-- Dados de Acesso -->
+            <div class="mb-4">
+              <h5 class="text-primary mb-3">
+                <i class="bi bi-shield-lock me-2"></i>Dados de Acesso
+              </h5>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold">
+                  <i class="bi bi-key-fill text-muted me-2"></i>
+                  Senha
+                  <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                  <input type="password" name="senha" id="senha" class="form-control form-control-lg" 
+                         placeholder="Digite uma senha segura" required minlength="6">
+                  <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                    <i class="bi bi-eye" id="passwordIcon"></i>
+                  </button>
+                </div>
+                <div class="invalid-feedback">
+                  A senha deve ter pelo menos 6 caracteres.
+                </div>
+                <div class="password-strength mt-2">
+                  <div class="progress" style="height: 4px;">
+                    <div class="progress-bar" id="passwordStrength" role="progressbar" style="width: 0%"></div>
+                  </div>
+                  <small class="form-text text-muted" id="passwordHelp">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Use pelo menos 6 caracteres com letras e números
+                  </small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Termos e Condições -->
+            <div class="mb-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="termos" required>
+                <label class="form-check-label" for="termos">
+                  Aceito os <a href="#" class="text-primary">termos e condições</a> para atuar como revisor
+                  <span class="text-danger">*</span>
+                </label>
+                <div class="invalid-feedback">
+                  Você deve aceitar os termos e condições.
+                </div>
+              </div>
+            </div>
+            
+            <!-- Botões -->
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-person-plus me-2"></i>
+                Enviar Candidatura
+              </button>
+              <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>
+                Voltar ao Início
+              </a>
+            </div>
+          </form>
         </div>
-        <div class="mb-3">
-          <label for="formacao" class="form-label">Formação</label>
-          <input type="text" class="form-control" id="formacao" name="formacao" required>
+      </div>
+      
+      <!-- Informações Adicionais -->
+      <div class="row mt-5">
+        <div class="col-md-4 text-center mb-4">
+          <div class="card border-0 h-100">
+            <div class="card-body">
+              <i class="bi bi-clock text-primary mb-3" style="font-size: 2.5rem;"></i>
+              <h5>Processo Rápido</h5>
+              <p class="text-muted small">Candidatura analisada em até 48 horas</p>
+            </div>
+          </div>
         </div>
-        <div class="mb-3">
-          <label for="senha" class="form-label">Senha</label>
-          <input type="password" class="form-control" id="senha" name="senha" required>
+        
+        <div class="col-md-4 text-center mb-4">
+          <div class="card border-0 h-100">
+            <div class="card-body">
+              <i class="bi bi-award text-primary mb-3" style="font-size: 2.5rem;"></i>
+              <h5>Reconhecimento</h5>
+              <p class="text-muted small">Certificado de participação como revisor</p>
+            </div>
+          </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100">Registrar</button>
-      </form>
+        
+        <div class="col-md-4 text-center mb-4">
+          <div class="card border-0 h-100">
+            <div class="card-body">
+              <i class="bi bi-people text-primary mb-3" style="font-size: 2.5rem;"></i>
+              <h5>Comunidade</h5>
+              <p class="text-muted small">Faça parte da comunidade acadêmica</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('reviewerForm');
+  const cpfInput = document.getElementById('cpf');
+  const senhaInput = document.getElementById('senha');
+  const togglePassword = document.getElementById('togglePassword');
+  const passwordIcon = document.getElementById('passwordIcon');
+  const passwordStrength = document.getElementById('passwordStrength');
+  const passwordHelp = document.getElementById('passwordHelp');
+  
+  // Máscara para CPF
+  cpfInput.addEventListener('input', function() {
+    let value = this.value.replace(/\D/g, '');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    this.value = value;
+  });
+  
+  // Toggle senha
+  togglePassword.addEventListener('click', function() {
+    const type = senhaInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    senhaInput.setAttribute('type', type);
+    passwordIcon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+  });
+  
+  // Verificador de força da senha
+  senhaInput.addEventListener('input', function() {
+    const password = this.value;
+    let strength = 0;
+    let feedback = '';
+    
+    if (password.length >= 6) strength += 25;
+    if (password.match(/[a-z]/)) strength += 25;
+    if (password.match(/[A-Z]/)) strength += 25;
+    if (password.match(/[0-9]/)) strength += 25;
+    
+    passwordStrength.style.width = strength + '%';
+    
+    if (strength < 50) {
+      passwordStrength.className = 'progress-bar bg-danger';
+      feedback = 'Senha fraca';
+    } else if (strength < 75) {
+      passwordStrength.className = 'progress-bar bg-warning';
+      feedback = 'Senha média';
+    } else {
+      passwordStrength.className = 'progress-bar bg-success';
+      feedback = 'Senha forte';
+    }
+    
+    passwordHelp.innerHTML = `<i class="bi bi-info-circle me-1"></i>${feedback}`;
+  });
+  
+  // Validação do formulário
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    let isValid = true;
+    
+    // Validar campos obrigatórios
+    const requiredFields = ['nome', 'cpf', 'email', 'formacao', 'senha'];
+    requiredFields.forEach(fieldName => {
+      const field = document.getElementById(fieldName);
+      if (!field.value.trim()) {
+        field.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        field.classList.remove('is-invalid');
+        field.classList.add('is-valid');
+      }
+    });
+    
+    // Validar CPF
+    const cpf = cpfInput.value.replace(/\D/g, '');
+    if (cpf.length !== 11) {
+      cpfInput.classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(document.getElementById('email').value)) {
+      document.getElementById('email').classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    // Validar senha
+    if (senhaInput.value.length < 6) {
+      senhaInput.classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    // Validar termos
+    const termos = document.getElementById('termos');
+    if (!termos.checked) {
+      termos.classList.add('is-invalid');
+      isValid = false;
+    }
+    
+    if (isValid) {
+      this.submit();
+    } else {
+      // Scroll para o primeiro erro
+      const firstError = document.querySelector('.is-invalid');
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstError.focus();
+      }
+    }
+  });
+});
+</script>
+
+<style>
+.card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+.form-control:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.progress {
+  border-radius: 10px;
+}
+
+.progress-bar {
+  transition: width 0.3s ease;
+}
+</style>
 {% endblock %}
