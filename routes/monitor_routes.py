@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 # routes/monitor_routes.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, make_response
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    jsonify,
+    make_response,
+    current_app,
+)
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
 import secrets
@@ -1081,21 +1092,31 @@ def distribuir_automaticamente():
     try:
         # Obter agendamentos futuros sem monitor atribuído
         hoje = datetime.now().date()
+        current_app.logger.info(
+            "Iniciando distribuição automática de monitores"
+        )
         agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
             HorarioVisitacao
         ).filter(
             HorarioVisitacao.data >= hoje,
-            AgendamentoVisita.status == 'confirmado',
+            AgendamentoVisita.status.in_(['confirmado', 'pendente']),
             ~AgendamentoVisita.id.in_(
                 db.session.query(MonitorAgendamento.agendamento_id)
             )
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+        ).order_by(
+            HorarioVisitacao.data,
+            HorarioVisitacao.horario_inicio,
+        ).all()
         
         # Obter monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).all()
         
         if not monitores_ativos:
-            return jsonify({'success': False, 'message': 'Nenhum monitor ativo encontrado'})
+            current_app.logger.warning("Nenhum monitor ativo encontrado")
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum monitor ativo encontrado',
+            })
         
         atribuicoes_realizadas = 0
         
@@ -1132,28 +1153,56 @@ def distribuir_automaticamente():
             
             # Atribuir ao monitor com menor carga atual
             if monitores_disponiveis:
-                monitor_escolhido = min(monitores_disponiveis, 
-                                      key=lambda m: MonitorAgendamento.query.filter_by(monitor_id=m.id).count())
-                
+                monitor_escolhido = min(
+                    monitores_disponiveis,
+                    key=lambda m: MonitorAgendamento.query.filter_by(
+                        monitor_id=m.id
+                    ).count(),
+                )
+
                 # Criar atribuição
                 atribuicao = MonitorAgendamento(
                     monitor_id=monitor_escolhido.id,
                     agendamento_id=agendamento.id,
                     data_atribuicao=datetime.now(),
                     tipo_distribuicao='automatica',
-                    status='ativo'
+                    status='ativo',
                 )
-                
+
                 db.session.add(atribuicao)
                 atribuicoes_realizadas += 1
-        
+                current_app.logger.info(
+                    "Monitor %s atribuído ao agendamento %s",
+                    monitor_escolhido.id,
+                    agendamento.id,
+                )
+            else:
+                current_app.logger.warning(
+                    "Nenhum monitor disponível para o agendamento %s",
+                    agendamento.id,
+                )
+
+        if atribuicoes_realizadas == 0:
+            current_app.logger.warning(
+                "Nenhuma atribuição de monitor foi realizada"
+            )
+            return jsonify({
+                'success': False,
+                'message': 'Nenhuma atribuição realizada',
+                'atribuicoes': 0,
+            })
+
         db.session.commit()
-        
+        current_app.logger.info(
+            "Distribuição automática concluída com %s atribuições",
+            atribuicoes_realizadas,
+        )
+
         return jsonify({
-             'success': True, 
-             'message': 'Distribuição automática concluída',
-             'atribuicoes': atribuicoes_realizadas
-         })
+            'success': True,
+            'message': 'Distribuição automática concluída',
+            'atribuicoes': atribuicoes_realizadas,
+        })
          
     except Exception as e:
         db.session.rollback()
