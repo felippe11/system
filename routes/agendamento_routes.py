@@ -4805,6 +4805,16 @@ def importar_oficinas():
 
         flash(f"Foram importadas {total_oficinas_criadas} oficinas com sucesso, incluindo as datas!", "success")
     
+    except Exception as e:
+        current_app.logger.error(f"Erro ao processar arquivo Excel: {e}")
+        flash(f"Erro ao processar arquivo: {e}", "danger")
+    finally:
+        # Remove o arquivo temporário
+        if os.path.exists(filepath):
+            os.remove(filepath)
+    
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
 
 # API endpoint para materiais de apoio
 @agendamento_routes.route('/api/materiais-apoio', methods=['GET'])
@@ -5043,14 +5053,5 @@ def api_toggle_material_apoio(material_id):
             'success': False,
             'error': 'Erro interno do servidor'
         }), 500
-
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
-
-    # Remover o arquivo temporário e redirecionar de volta
-    os.remove(filepath)
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
