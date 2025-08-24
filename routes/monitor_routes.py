@@ -593,14 +593,16 @@ def editar_monitor(monitor_id):
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).filter(
             MonitorAgendamento.monitor_id == monitor_id
-        ).order_by(AgendamentoVisita.data_visita.desc()).all()
+        ).order_by(HorarioVisitacao.data.desc()).all()
         
         # Estatísticas do monitor
         total_agendamentos = len(agendamentos)
-        agendamentos_hoje = sum(1 for ma, av, hv in agendamentos 
-                               if av.data_visita == datetime.now().date())
-        agendamentos_futuros = sum(1 for ma, av, hv in agendamentos 
-                                  if av.data_visita > datetime.now().date())
+        agendamentos_hoje = sum(
+            1 for ma, av, hv in agendamentos if hv.data == datetime.now().date()
+        )
+        agendamentos_futuros = sum(
+            1 for ma, av, hv in agendamentos if hv.data > datetime.now().date()
+        )
         
         return render_template('editar_monitor.html', 
                              monitor=monitor,
@@ -668,8 +670,8 @@ def distribuicao_manual():
             MonitorAgendamento, AgendamentoVisita.id == MonitorAgendamento.agendamento_id
         ).filter(
             MonitorAgendamento.id.is_(None),
-            AgendamentoVisita.data_visita >= datetime.now().date()
-        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+            HorarioVisitacao.data >= datetime.now().date()
+        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         # Buscar monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).order_by(Monitor.nome_completo).all()
@@ -687,8 +689,8 @@ def distribuicao_manual():
         ).join(
             Monitor, MonitorAgendamento.monitor_id == Monitor.id
         ).filter(
-            AgendamentoVisita.data_visita >= datetime.now().date()
-        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+            HorarioVisitacao.data >= datetime.now().date()
+        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         return render_template('distribuicao_manual.html',
                              agendamentos_sem_monitor=agendamentos_sem_monitor,
