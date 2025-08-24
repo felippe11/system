@@ -561,7 +561,9 @@ def editar_monitor_route(monitor_id):
 def editar_monitor(monitor_id):
     """Página de edição de monitor com visualização de agendamentos"""
     # Verificar se o usuário é admin ou cliente
-    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+    user_type = getattr(current_user, 'tipo', None)
+    session_type = session.get('user_type')
+    if user_type not in ['admin', 'cliente'] and session_type not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
     
