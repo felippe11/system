@@ -1,43 +1,210 @@
 {% extends "base.html" %}
 {% from 'partials/card.html' import render_card %}
-{% block title %}Processo Seletivo{% endblock %}
+{% block title %}Processos Seletivos de Revisores{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <h1 class="h3 mb-4">Processo Seletivo de Revisores</h1>
+  <div class="text-center mb-5">
+    <h1 class="h2 text-primary mb-3">
+      <i class="bi bi-people-fill me-2"></i>Processos Seletivos de Revisores
+    </h1>
+    <p class="text-muted lead">Participe dos processos seletivos disponíveis e torne-se um revisor qualificado</p>
+  </div>
+  
   {% if eventos %}
-  <div class="row g-4">
-    {% for item in eventos %}
-    <div class="col-md-6">
-      {% set body %}
-        {% if item.evento %}
-        <p class="mb-1"><strong>Cliente:</strong> {{ item.evento.cliente.nome }}</p>
-        <p class="mb-1"><strong>Período:</strong>
-          {% if item.evento.data_inicio %}{{ item.evento.data_inicio.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %} a
-          {% if item.evento.data_fim %}{{ item.evento.data_fim.strftime('%d/%m/%Y') }}{% else %}Não informado{% endif %}
-        </p>
-        {% else %}
-        <p class="mb-1"><strong>Formulário:</strong> {{ item.processo.formulario.nome }}</p>
-        {% endif %}
-        <p class="mb-1"><strong>Status do processo:</strong> {{ item.status }}</p>
-      {% endset %}
-      {% set footer %}
-        <a href="{{ url_for('revisor_routes.submit_application', process_id=item.processo.id) }}"
-           class="btn btn-success w-100">Participar do processo seletivo</a>
-      {% endset %}
-      {{ render_card(
-          item.evento.nome if item.evento else item.processo.formulario.nome,
-          body,
-          footer,
-          'card h-100 shadow-sm'
-      ) }}
+    <!-- Estatísticas gerais -->
+    {% set total_processos = eventos|length %}
+    {% set processos_ativos = eventos|selectattr('status', 'equalto', 'Ativo')|list|length %}
+    
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card bg-primary text-white text-center">
+          <div class="card-body">
+            <i class="bi bi-list-check fs-1 mb-2"></i>
+            <h3 class="mb-0">{{ total_processos }}</h3>
+            <small>Total de Processos</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-success text-white text-center">
+          <div class="card-body">
+            <i class="bi bi-play-circle fs-1 mb-2"></i>
+            <h3 class="mb-0">{{ processos_ativos }}</h3>
+            <small>Processos Ativos</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-info text-white text-center">
+          <div class="card-body">
+            <i class="bi bi-clock fs-1 mb-2"></i>
+            <h3 class="mb-0">{{ total_processos - processos_ativos }}</h3>
+            <small>Outros Status</small>
+          </div>
+        </div>
+      </div>
     </div>
-    {% endfor %}
-  </div>
+    
+    <!-- Filtros -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control" id="searchInput" placeholder="Buscar por cliente ou evento...">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <select class="form-select" id="statusFilter">
+          <option value="">Todos os status</option>
+          <option value="Ativo">Ativo</option>
+          <option value="Encerrado">Encerrado</option>
+          <option value="Pendente">Pendente</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- Lista de processos -->
+    <div class="row g-4" id="processosList">
+      {% for item in eventos %}
+      <div class="col-lg-6 processo-item" 
+           data-cliente="{{ item.evento.cliente.nome if item.evento else 'N/A' }}" 
+           data-evento="{{ item.evento.nome if item.evento else item.processo.formulario.nome }}" 
+           data-status="{{ item.status }}">
+        <div class="card h-100 shadow-sm border-0 {{ 'border-start border-success border-4' if item.status == 'Ativo' else '' }}">
+          <div class="card-header bg-transparent border-0 pb-0">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-{{ 'calendar-event' if item.evento else 'file-text' }} text-primary fs-4 me-2"></i>
+                <div>
+                  <h5 class="mb-0">{{ item.evento.nome if item.evento else item.processo.formulario.nome }}</h5>
+                  <small class="text-muted">Processo #{{ item.processo.id }}</small>
+                </div>
+              </div>
+              {% set status_class = 'success' if item.status == 'Ativo' else 'secondary' %}
+              <span class="badge bg-{{ status_class }} fs-6">{{ item.status }}</span>
+            </div>
+          </div>
+          <div class="card-body">
+            {% if item.evento %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-building text-muted me-2"></i>
+                <strong class="small">{{ item.evento.cliente.nome }}</strong>
+              </div>
+              <div class="row g-3">
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-calendar-event text-muted me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Início</small>
+                      <strong class="small">{{ item.evento.data_inicio.strftime('%d/%m/%Y') if item.evento.data_inicio else 'Não informado' }}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-calendar-x text-muted me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Término</small>
+                      <strong class="small">{{ item.evento.data_fim.strftime('%d/%m/%Y') if item.evento.data_fim else 'Não informado' }}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% else %}
+            <div class="mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-file-text text-muted me-2"></i>
+                <div>
+                  <small class="text-muted d-block">Formulário</small>
+                  <strong class="small">{{ item.processo.formulario.nome }}</strong>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            
+            <div class="mb-3">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle text-muted me-2"></i>
+                <div>
+                  <small class="text-muted d-block">Status do Processo</small>
+                  <strong class="small">{{ item.status }}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer bg-transparent border-0">
+            {% if item.status == 'Ativo' %}
+              <a href="{{ url_for('revisor_routes.submit_application', process_id=item.processo.id) }}"
+                 class="btn btn-success w-100">
+                <i class="bi bi-person-plus me-1"></i>Participar do Processo Seletivo
+              </a>
+            {% else %}
+              <button class="btn btn-outline-secondary w-100" disabled>
+                <i class="bi bi-x-circle me-1"></i>Processo {{ item.status }}
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
   {% else %}
-  <div class="alert alert-info">
-    Nenhum processo seletivo de revisores disponível no momento.
-    <a href="{{ url_for('evento_routes.home') }}" class="alert-link">Voltar para a página inicial</a>.
-  </div>
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="text-center py-5">
+          <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+          <h3 class="mt-3 mb-2">Nenhum processo seletivo disponível</h3>
+          <p class="text-muted mb-4">No momento, não há processos seletivos de revisores abertos para participação.</p>
+          <div class="alert alert-info border-0">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Dica:</strong> Volte em breve para verificar novas oportunidades!
+          </div>
+          <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-primary">
+            <i class="bi bi-house me-1"></i>Voltar para a página inicial
+          </a>
+        </div>
+      </div>
+    </div>
   {% endif %}
 </div>
+
+<script>
+// Funcionalidade de busca e filtro
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const statusFilter = document.getElementById('statusFilter');
+  const processosList = document.getElementById('processosList');
+  
+  function filterProcessos() {
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const statusTerm = statusFilter ? statusFilter.value : '';
+    const items = processosList ? processosList.querySelectorAll('.processo-item') : [];
+    
+    items.forEach(item => {
+      const cliente = item.dataset.cliente.toLowerCase();
+      const evento = item.dataset.evento.toLowerCase();
+      const status = item.dataset.status;
+      
+      const matchesSearch = cliente.includes(searchTerm) || evento.includes(searchTerm);
+      const matchesStatus = !statusTerm || status === statusTerm;
+      
+      if (matchesSearch && matchesStatus) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', filterProcessos);
+  }
+  
+  if (statusFilter) {
+    statusFilter.addEventListener('change', filterProcessos);
+  }
+});
+</script>
 {% endblock %}

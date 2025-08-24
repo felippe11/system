@@ -1,20 +1,190 @@
 {% extends "base.html" %}
+{% from 'partials/card.html' import render_card %}
 {% block title %}Detalhes da Candidatura{% endblock %}
 {% block content %}
-<div class="container py-5">
-  <h1 class="mb-4">Detalhes da Candidatura</h1>
-  <p><strong>Nome:</strong> {{ candidatura.nome or candidatura.email }}</p>
-  <p><strong>Status:</strong> {{ candidatura.status }}</p>
-  <table class="table table-striped mt-4">
-    <thead>
-      <tr><th>Campo</th><th>Resposta</th></tr>
-    </thead>
-    <tbody>
-    {% for key, value in candidatura.respostas.items() %}
-      <tr><th>{{ key }}</th><td>{{ value }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-secondary mt-3">Voltar</a>
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="text-center mb-4">
+        <h1 class="h3 text-primary mb-2">
+          <i class="bi bi-person-badge me-2"></i>Detalhes da Candidatura
+        </h1>
+        <p class="text-muted">Informações completas do candidato</p>
+      </div>
+      
+      <!-- Informações principais -->
+      {% set info_principal %}
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="text-center">
+              <i class="bi bi-person-circle text-primary fs-1 mb-3"></i>
+              <h5 class="mb-1">{{ candidatura.nome or 'Nome não informado' }}</h5>
+              <p class="text-muted mb-0">{{ candidatura.email or 'Email não informado' }}</p>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-hash text-primary me-2"></i>
+                  <div>
+                    <small class="text-muted d-block">Código da Candidatura</small>
+                    <strong>{{ candidatura.codigo }}</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-info-circle text-primary me-2"></i>
+                  <div>
+                    <small class="text-muted d-block">Status</small>
+                    {% if candidatura.status == 'aprovado' %}
+                      <span class="badge bg-success fs-6">{{ candidatura.status|title }}</span>
+                    {% elif candidatura.status == 'rejeitado' %}
+                      <span class="badge bg-danger fs-6">{{ candidatura.status|title }}</span>
+                    {% elif candidatura.status == 'em_analise' %}
+                      <span class="badge bg-warning fs-6">Em Análise</span>
+                    {% else %}
+                      <span class="badge bg-secondary fs-6">{{ candidatura.status|title }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-calendar text-primary me-2"></i>
+                  <div>
+                    <small class="text-muted d-block">Data da Candidatura</small>
+                    <strong>{{ candidatura.created_at.strftime('%d/%m/%Y às %H:%M') if candidatura.created_at else 'Não informado' }}</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="col-sm-6">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-list-ol text-primary me-2"></i>
+                  <div>
+                    <small class="text-muted d-block">Etapa Atual</small>
+                    <strong>{{ candidatura.etapa_atual or 'Não definida' }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endset %}
+      {{ render_card('Informações do Candidato', info_principal, '', 'card shadow-sm border-0 mb-4') }}
+      
+      <!-- Respostas do formulário -->
+      {% set respostas_content %}
+        {% if candidatura.respostas %}
+          <div class="row g-3">
+            {% for key, value in candidatura.respostas.items() %}
+            <div class="col-md-6">
+              <div class="border rounded p-3 h-100">
+                <h6 class="text-primary mb-2">
+                  <i class="bi bi-question-circle me-1"></i>{{ key }}
+                </h6>
+                <div class="response-content">
+                  {% if value and value|string|length > 100 %}
+                    <div class="collapse" id="collapse{{ loop.index }}">
+                      {{ value }}
+                    </div>
+                    <div class="response-preview">
+                      {{ value|string|truncate(100) }}
+                      <button class="btn btn-link btn-sm p-0 ms-1" type="button" 
+                              data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" 
+                              aria-expanded="false">
+                        <small>Ver mais</small>
+                      </button>
+                    </div>
+                  {% elif value and (value|string).startswith('/') or (value|string).startswith('uploads/') %}
+                    <div class="d-flex align-items-center">
+                      <i class="bi bi-file-earmark text-muted me-2"></i>
+                      <div>
+                        <small class="text-muted">Arquivo anexado</small>
+                        <br>
+                        <a href="{{ url_for('static', filename=value) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                          <i class="bi bi-download me-1"></i>Baixar
+                        </a>
+                      </div>
+                    </div>
+                  {% else %}
+                    <p class="mb-0">{{ value or 'Não informado' }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-inbox text-muted fs-1 mb-3"></i>
+            <p class="text-muted">Nenhuma resposta registrada.</p>
+          </div>
+        {% endif %}
+      {% endset %}
+      {{ render_card('Respostas do Formulário', respostas_content, '', 'card shadow-sm border-0 mb-4') }}
+      
+      <!-- Ações administrativas -->
+      {% if current_user.tipo in ['cliente', 'admin', 'superadmin'] %}
+      {% set acoes_content %}
+        <div class="row g-2">
+          {% if candidatura.status != 'aprovado' %}
+          <div class="col-md-3">
+            <form method="POST" action="{{ url_for('revisor_routes.approve', cand_id=candidatura.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-success w-100" 
+                      onclick="return confirm('Tem certeza que deseja aprovar esta candidatura?')">
+                <i class="bi bi-check-circle me-1"></i>Aprovar
+              </button>
+            </form>
+          </div>
+          {% endif %}
+          {% if candidatura.status != 'rejeitado' %}
+          <div class="col-md-3">
+            <form method="POST" action="{{ url_for('revisor_routes.reject', cand_id=candidatura.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger w-100" 
+                      onclick="return confirm('Tem certeza que deseja rejeitar esta candidatura?')">
+                <i class="bi bi-x-circle me-1"></i>Rejeitar
+              </button>
+            </form>
+          </div>
+          {% endif %}
+          {% if candidatura.status == 'em_analise' %}
+          <div class="col-md-3">
+            <form method="POST" action="{{ url_for('revisor_routes.advance', cand_id=candidatura.id) }}" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-warning w-100" 
+                      onclick="return confirm('Tem certeza que deseja avançar esta candidatura para a próxima etapa?')">
+                <i class="bi bi-arrow-right-circle me-1"></i>Avançar Etapa
+              </button>
+            </form>
+          </div>
+          {% endif %}
+          <div class="col-md-3">
+            <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+          </div>
+        </div>
+      {% endset %}
+      {{ render_card('Ações Administrativas', acoes_content, '', 'card shadow-sm border-0') }}
+      {% else %}
+      <div class="text-center">
+        <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
 </div>
+
+<style>
+.response-content {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+</style>
 {% endblock %}
