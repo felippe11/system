@@ -272,6 +272,22 @@
                 return;
             }
             
+            // Validar se todos os monitores têm dados obrigatórios
+            let temErros = false;
+            monitores.forEach((monitor, index) => {
+                if (!monitor.nome_completo || !monitor.curso || !monitor.email || 
+                    !monitor.telefone_whatsapp || !monitor.carga_horaria_disponibilidade ||
+                    monitor.dias_disponibilidade.length === 0 || monitor.turnos_disponibilidade.length === 0) {
+                    alert(`Monitor ${index + 1}: Preencha todos os campos obrigatórios.`);
+                    temErros = true;
+                    return;
+                }
+            });
+            
+            if (temErros) {
+                return;
+            }
+            
             // Mostrar loading
             const btnSalvar = document.querySelector('button[onclick="salvarTodos()"]');
             const originalText = btnSalvar.innerHTML;
@@ -289,7 +305,12 @@
                     csrf_token: document.getElementById('csrf_token').value
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor');
+                }
+                return response.json();
+            })
             .then(data => {
                 // Restaurar botão
                 btnSalvar.innerHTML = originalText;
@@ -298,10 +319,13 @@
                 // Mostrar resultado
                 mostrarResultado(data);
                 
-                // Se sucesso, limpar formulários
+                // Se sucesso, limpar formulários após 3 segundos
                 if (data.success && data.monitores_criados > 0) {
-                    document.getElementById('monitoresContainer').innerHTML = '';
-                    monitorCount = 0;
+                    setTimeout(() => {
+                        document.getElementById('monitoresContainer').innerHTML = '';
+                        monitorCount = 0;
+                        adicionarMonitor(); // Adicionar um monitor em branco
+                    }, 3000);
                 }
             })
             .catch(error => {
@@ -311,7 +335,7 @@
                 
                 mostrarResultado({
                     success: false,
-                    message: 'Erro ao processar cadastros. Tente novamente.'
+                    message: 'Erro ao processar cadastros. Verifique os dados e tente novamente.'
                 });
             });
         }
