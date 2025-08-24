@@ -208,26 +208,38 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <div class="btn-group" role="group">
-                                                <button class="btn btn-sm btn-primary" 
+                                            <div class="btn-group btn-group-sm" role="group" aria-label="Ações do Monitor">
+                                                <button class="btn btn-outline-primary" 
                                                         onclick="editarMonitor({{ monitor.id }})" 
-                                                        title="Editar">
-                                                    <i class="fas fa-edit"></i>
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top" 
+                                                        title="Editar informações do monitor">
+                                                    <i class="fas fa-edit me-1"></i>
+                                                    <span class="d-none d-md-inline">Editar</span>
                                                 </button>
-                                                <button class="btn btn-sm btn-info" 
+                                                <button class="btn btn-outline-info" 
                                                         onclick="verAgendamentos({{ monitor.id }})" 
-                                                        title="Ver Agendamentos">
-                                                    <i class="fas fa-calendar"></i>
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top" 
+                                                        title="Visualizar agendamentos do monitor">
+                                                    <i class="fas fa-calendar-alt me-1"></i>
+                                                    <span class="d-none d-md-inline">Agendamentos</span>
                                                 </button>
-                                                <button class="btn btn-sm {{ 'btn-warning' if monitor.ativo else 'btn-success' }}" 
+                                                <button class="btn btn-outline-{{ 'warning' if monitor.ativo else 'success' }}" 
                                                         onclick="toggleStatus({{ monitor.id }}, {{ monitor.ativo|lower }})" 
-                                                        title="{{ 'Desativar' if monitor.ativo else 'Ativar' }}">
-                                                    <i class="fas {{ 'fa-pause' if monitor.ativo else 'fa-play' }}"></i>
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top" 
+                                                        title="{{ 'Desativar monitor' if monitor.ativo else 'Ativar monitor' }}">
+                                                    <i class="fas {{ 'fa-pause' if monitor.ativo else 'fa-play' }} me-1"></i>
+                                                    <span class="d-none d-lg-inline">{{ 'Desativar' if monitor.ativo else 'Ativar' }}</span>
                                                 </button>
-                                                <button class="btn btn-sm btn-danger" 
+                                                <button class="btn btn-outline-danger" 
                                                         onclick="excluirMonitor({{ monitor.id }})" 
-                                                        title="Excluir">
-                                                    <i class="fas fa-trash"></i>
+                                                        data-bs-toggle="tooltip" 
+                                                        data-bs-placement="top" 
+                                                        title="Excluir monitor permanentemente">
+                                                    <i class="fas fa-trash-alt me-1"></i>
+                                                    <span class="d-none d-lg-inline">Excluir</span>
                                                 </button>
                                             </div>
                                         </td>
@@ -254,15 +266,22 @@
 
 {% block scripts %}
 <script>
+// Inicializar tooltips do Bootstrap
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
 
 function editarMonitor(monitorId) {
     // Redirecionar para página de edição do monitor
-    window.location.href = `/monitor/editar/${monitorId}`;
+    window.location.href = `{{ url_for('monitor_routes.editar_monitor_route', monitor_id=0) }}`.replace('0', monitorId);
 }
 
 function verAgendamentos(monitorId) {
-    // Redirecionar para página de edição do monitor que contém os agendamentos
-    window.location.href = `/monitor/editar/${monitorId}`;
+    // Redirecionar para página de agendamentos do monitor
+    window.location.href = `{{ url_for('monitor_routes.listar_agendamentos') }}?monitor_id=${monitorId}`;
 }
 
 function toggleStatus(monitorId, ativo) {
@@ -271,7 +290,7 @@ function toggleStatus(monitorId, ativo) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="csrf_token"]')?.value;
         
-        fetch(`/monitor/toggle-status/${monitorId}`, {
+        fetch(`{{ url_for('monitor_routes.toggle_status_monitor', monitor_id=0) }}`.replace('0', monitorId), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -298,7 +317,7 @@ function excluirMonitor(monitorId) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
                          document.querySelector('input[name="csrf_token"]')?.value;
         
-        fetch(`/monitor/excluir/${monitorId}`, {
+        fetch(`{{ url_for('monitor_routes.excluir_monitor', monitor_id=0) }}`.replace('0', monitorId), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
