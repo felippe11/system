@@ -612,6 +612,7 @@ def editar_monitor(monitor_id):
                              agendamentos_futuros=agendamentos_futuros)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados do monitor: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -698,6 +699,7 @@ def distribuicao_manual():
                              agendamentos_atribuidos=agendamentos_atribuidos)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -1120,7 +1122,7 @@ def distribuir_automaticamente():
                 'message': 'Nenhum monitor ativo encontrado',
             })
         
-        atribuicoes_realizadas = 0
+        atribuicoes = 0
         
         for agendamento in agendamentos_sem_monitor:
             # Determinar o turno do agendamento
@@ -1172,7 +1174,7 @@ def distribuir_automaticamente():
                 )
 
                 db.session.add(atribuicao)
-                atribuicoes_realizadas += 1
+                atribuicoes += 1
                 current_app.logger.info(
                     "Monitor %s atribuído ao agendamento %s",
                     monitor_escolhido.id,
@@ -1184,7 +1186,7 @@ def distribuir_automaticamente():
                     agendamento.id,
                 )
 
-        if atribuicoes_realizadas == 0:
+        if atribuicoes == 0:
             current_app.logger.warning(
                 "Nenhuma atribuição de monitor foi realizada"
             )
@@ -1197,13 +1199,13 @@ def distribuir_automaticamente():
         db.session.commit()
         current_app.logger.info(
             "Distribuição automática concluída com %s atribuições",
-            atribuicoes_realizadas,
+            atribuicoes,
         )
 
         return jsonify({
             'success': True,
             'message': 'Distribuição automática concluída',
-            'atribuicoes': atribuicoes_realizadas,
+            'atribuicoes': atribuicoes,
         })
          
     except Exception as e:
@@ -1264,6 +1266,7 @@ def gerar_qrcode(agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
 @monitor_routes.route('/processar-qrcode', methods=['POST'])
@@ -1390,4 +1393,5 @@ def gerar_qrcode_aluno(aluno_id, agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})

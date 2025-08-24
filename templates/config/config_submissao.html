@@ -157,7 +157,8 @@
                 class="mb-3"
                 method="post"
                 enctype="multipart/form-data"
-                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}">
+                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}"
+                data-context="config-submissao">
             <div class="input-group">
               <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
               <button class="btn btn-primary" type="submit">Importar</button>
