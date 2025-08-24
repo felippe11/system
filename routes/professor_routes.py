@@ -319,20 +319,51 @@ def adicionar_alunos_professor(agendamento_id):
     if request.method == 'POST':
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
+        tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
+        tipo_necessidade = request.form.get('tipo_necessidade')
+        descricao_necessidade = request.form.get('descricao_necessidade')
+        materiais_apoio_ids = request.form.getlist('materiais_apoio')
 
         if nome:
             if cpf and len(cpf.replace('.', '').replace('-', '')) != 11:
                 flash('CPF inválido. Digite apenas os números ou deixe em branco.', 'danger')
             else:
-                aluno = AlunoVisitante(
-                    agendamento_id=agendamento.id,
-                    nome=nome,
-                    cpf=cpf,
-                )
-                db.session.add(aluno)
+                # Validação para alunos PCD/Neurodivergentes
+                if tem_necessidade_especial:
+                    if not tipo_necessidade or not descricao_necessidade:
+                        flash('Para alunos PCD/Neurodivergentes, é obrigatório informar o tipo e descrição da necessidade especial.', 'danger')
+                        return redirect(url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id))
+                
                 try:
+                    # Criar o aluno
+                    aluno = AlunoVisitante(
+                        agendamento_id=agendamento.id,
+                        nome=nome,
+                        cpf=cpf,
+                    )
+                    db.session.add(aluno)
+                    db.session.flush()  # Para obter o ID do aluno
+                    
+                    # Se tem necessidade especial, criar o registro
+                    if tem_necessidade_especial:
+                        from models import NecessidadeEspecial, MaterialApoio
+                        
+                        necessidade = NecessidadeEspecial(
+                            aluno_id=aluno.id,
+                            tipo=tipo_necessidade,
+                            descricao=descricao_necessidade
+                        )
+                        db.session.add(necessidade)
+                        db.session.flush()  # Para obter o ID da necessidade
+                        
+                        # Associar materiais de apoio
+                        if materiais_apoio_ids:
+                            materiais = MaterialApoio.query.filter(MaterialApoio.id.in_(materiais_apoio_ids)).all()
+                            necessidade.materiais_apoio = materiais
+                    
                     db.session.commit()
                     flash('Aluno adicionado com sucesso!', 'success')
+                    
                     total = AlunoVisitante.query.filter_by(
                         agendamento_id=agendamento.id
                     ).count()
@@ -383,20 +414,51 @@ def adicionar_alunos_participante(agendamento_id):
     if request.method == 'POST':
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
+        tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
+        tipo_necessidade = request.form.get('tipo_necessidade')
+        descricao_necessidade = request.form.get('descricao_necessidade')
+        materiais_apoio_ids = request.form.getlist('materiais_apoio')
 
         if nome:
             if cpf and len(cpf.replace('.', '').replace('-', '')) != 11:
                 flash('CPF inválido. Digite apenas os números ou deixe em branco.', 'danger')
             else:
-                aluno = AlunoVisitante(
-                    agendamento_id=agendamento.id,
-                    nome=nome,
-                    cpf=cpf,
-                )
-                db.session.add(aluno)
+                # Validação para alunos PCD/Neurodivergentes
+                if tem_necessidade_especial:
+                    if not tipo_necessidade or not descricao_necessidade:
+                        flash('Para alunos PCD/Neurodivergentes, é obrigatório informar o tipo e descrição da necessidade especial.', 'danger')
+                        return redirect(url_for('routes.adicionar_alunos_participante', agendamento_id=agendamento.id))
+                
                 try:
+                    # Criar o aluno
+                    aluno = AlunoVisitante(
+                        agendamento_id=agendamento.id,
+                        nome=nome,
+                        cpf=cpf,
+                    )
+                    db.session.add(aluno)
+                    db.session.flush()  # Para obter o ID do aluno
+                    
+                    # Se tem necessidade especial, criar o registro
+                    if tem_necessidade_especial:
+                        from models import NecessidadeEspecial, MaterialApoio
+                        
+                        necessidade = NecessidadeEspecial(
+                            aluno_id=aluno.id,
+                            tipo=tipo_necessidade,
+                            descricao=descricao_necessidade
+                        )
+                        db.session.add(necessidade)
+                        db.session.flush()  # Para obter o ID da necessidade
+                        
+                        # Associar materiais de apoio
+                        if materiais_apoio_ids:
+                            materiais = MaterialApoio.query.filter(MaterialApoio.id.in_(materiais_apoio_ids)).all()
+                            necessidade.materiais_apoio = materiais
+                    
                     db.session.commit()
                     flash('Aluno adicionado com sucesso!', 'success')
+                    
                     total = AlunoVisitante.query.filter_by(
                         agendamento_id=agendamento.id
                     ).count()
@@ -444,6 +506,12 @@ def remover_aluno_professor(aluno_id):
         return redirect(url_for('agendamento_routes.meus_agendamentos'))
 
     try:
+        # Remover necessidades especiais associadas, se existirem
+        from models import NecessidadeEspecial
+        necessidade = NecessidadeEspecial.query.filter_by(aluno_id=aluno.id).first()
+        if necessidade:
+            db.session.delete(necessidade)
+        
         db.session.delete(aluno)
         db.session.commit()
         flash('Aluno removido com sucesso!', 'success')
@@ -474,6 +542,12 @@ def remover_aluno_participante(aluno_id):
         )
 
     try:
+        # Remover necessidades especiais associadas, se existirem
+        from models import NecessidadeEspecial
+        necessidade = NecessidadeEspecial.query.filter_by(aluno_id=aluno.id).first()
+        if necessidade:
+            db.session.delete(necessidade)
+        
         db.session.delete(aluno)
         db.session.commit()
         flash('Aluno removido com sucesso!', 'success')
