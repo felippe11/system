@@ -106,11 +106,22 @@ def dashboard():
 @login_required
 def listar_agendamentos():
     """Lista todos os agendamentos atribuídos ao monitor"""
-    if session.get('user_type') != 'monitor':
-        flash('Acesso negado.', 'danger')
-        return redirect(url_for('auth_routes.login'))
+    # Verificar se o usuário é admin, cliente ou monitor
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente', 'monitor']:
+        if session.get('user_type') != 'monitor':
+            flash('Acesso negado.', 'danger')
+            return redirect(url_for('auth_routes.login'))
     
-    monitor_id = session.get('monitor_id')
+    # Se for um monitor logado via sessão, usar o monitor_id da sessão
+    if session.get('user_type') == 'monitor':
+        monitor_id = session.get('monitor_id')
+    else:
+        # Se for admin ou cliente, permitir filtrar por monitor_id via parâmetro
+        monitor_id = request.args.get('monitor_id')
+        if not monitor_id:
+            flash('ID do monitor é obrigatório.', 'warning')
+            return redirect(url_for('monitor_routes.gerenciar_monitores'))
+        monitor_id = int(monitor_id)
     
     # Filtros
     data_filtro = request.args.get('data')
