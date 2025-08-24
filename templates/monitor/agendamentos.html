@@ -238,7 +238,7 @@ function abrirModalPresenca(agendamentoId) {
 function registrarPresencaLote(presente) {
     if (!agendamentoAtual) return;
     
-    fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+    fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

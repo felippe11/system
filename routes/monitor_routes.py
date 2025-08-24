@@ -564,7 +564,7 @@ def editar_monitor(monitor_id):
     # Verificar se o usuário é admin ou cliente
     user_type = getattr(current_user, 'tipo', None)
     session_type = session.get('user_type')
-    if user_type not in ['admin', 'cliente'] and session_type not in ['admin', 'cliente']:
+    if user_type not in ['admin', 'cliente'] or session_type not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
     
