@@ -23,6 +23,8 @@ from models import (
 from models.user import Ministrante, Cliente
 from extensions import db
 import logging
+logger = logging.getLogger(__name__)
+
 from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
 from sqlalchemy import text
