@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Distribuição Manual de Monitores{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-user-cog"></i> Distribuição Manual de Monitores</h2>
+                <a href="{{ url_for('monitor_routes.gerenciar_monitores') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+
+            <!-- Agendamentos sem Monitor -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-exclamation-triangle text-warning"></i> Agendamentos sem Monitor Atribuído</h5>
+                </div>
+                <div class="card-body">
+                    {% if agendamentos_sem_monitor %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Horário</th>
+                                        <th>Visitantes</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento in agendamentos_sem_monitor %}
+                                    <tr>
+                                        <td>{{ agendamento.horario.data_visita.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ agendamento.horario.hora_inicio.strftime('%H:%M') }} - {{ agendamento.horario.hora_fim.strftime('%H:%M') }}</td>
+                                        <td>{{ agendamento.visitantes|length }} visitante(s)</td>
+                                        <td>
+                                            <span class="badge bg-warning">Sem Monitor</span>
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm" onclick="abrirModalAtribuicao({{ agendamento.id }})">
+                                                <i class="fas fa-user-plus"></i> Atribuir Monitor
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Todos os agendamentos futuros possuem monitores atribuídos!
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Agendamentos com Monitor -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-check-circle text-success"></i> Agendamentos com Monitor Atribuído</h5>
+                </div>
+                <div class="card-body">
+                    {% if agendamentos_com_monitor %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Horário</th>
+                                        <th>Monitor</th>
+                                        <th>Visitantes</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento in agendamentos_com_monitor %}
+                                    <tr>
+                                        <td>{{ agendamento.horario.data_visita.strftime('%d/%m/%Y') }}</td>
+                                        <td>{{ agendamento.horario.hora_inicio.strftime('%H:%M') }} - {{ agendamento.horario.hora_fim.strftime('%H:%M') }}</td>
+                                        <td>
+                                            {% if agendamento.monitor_agendamento %}
+                                                <span class="badge bg-info">{{ agendamento.monitor_agendamento[0].monitor.nome_completo }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Sem Monitor</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ agendamento.visitantes|length }} visitante(s)</td>
+                                        <td>
+                                            <span class="badge bg-success">Com Monitor</span>
+                                        </td>
+                                        <td>
+                                            {% if agendamento.monitor_agendamento %}
+                                                <button class="btn btn-danger btn-sm" onclick="removerAtribuicao({{ agendamento.id }})">
+                                                    <i class="fas fa-user-minus"></i> Remover
+                                                </button>
+                                                <button class="btn btn-warning btn-sm" onclick="abrirModalAtribuicao({{ agendamento.id }})">
+                                                    <i class="fas fa-exchange-alt"></i> Trocar
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Nenhum agendamento com monitor atribuído encontrado.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atribuir Monitor -->
+<div class="modal fade" id="modalAtribuicao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atribuir Monitor ao Agendamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAtribuicao">
+                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" id="agendamento_id" name="agendamento_id">
+                    
+                    <div class="mb-3">
+                        <label for="monitor_id" class="form-label">Selecione o Monitor:</label>
+                        <select class="form-select" id="monitor_id" name="monitor_id" required>
+                            <option value="">Escolha um monitor...</option>
+                            {% for monitor in monitores_ativos %}
+                                <option value="{{ monitor.id }}">{{ monitor.nome_completo }} - {{ monitor.curso }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div id="detalhesAgendamento" class="alert alert-info" style="display: none;">
+                        <!-- Detalhes do agendamento serão inseridos aqui -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarAtribuicao()">Confirmar Atribuição</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalAtribuicao(agendamentoId) {
+    document.getElementById('agendamento_id').value = agendamentoId;
+    
+    // Limpar seleção anterior
+    document.getElementById('monitor_id').value = '';
+    
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalAtribuicao'));
+    modal.show();
+}
+
+function confirmarAtribuicao() {
+    const agendamentoId = document.getElementById('agendamento_id').value;
+    const monitorId = document.getElementById('monitor_id').value;
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    if (!monitorId) {
+        alert('Por favor, selecione um monitor.');
+        return;
+    }
+    
+    // Enviar requisição
+    fetch('{{ url_for("monitor_routes.atribuir_monitor") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            agendamento_id: agendamentoId,
+            monitor_id: monitorId,
+            csrf_token: csrfToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Monitor atribuído com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao atribuir monitor. Tente novamente.');
+    });
+    
+    // Fechar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalAtribuicao'));
+    modal.hide();
+}
+
+function removerAtribuicao(agendamentoId) {
+    if (!confirm('Tem certeza que deseja remover a atribuição deste monitor?')) {
+        return;
+    }
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    
+    fetch('{{ url_for("monitor_routes.remover_atribuicao") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            agendamento_id: agendamentoId,
+            csrf_token: csrfToken
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Atribuição removida com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao remover atribuição. Tente novamente.');
+    });
+}
+</script>
+{% endblock %}

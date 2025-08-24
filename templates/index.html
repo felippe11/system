@@ -32,6 +32,42 @@
         </div>
     </section>
 
+    <!-- Acesso Monitor -->
+    <section class="monitor-access-section py-4 bg-light">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-6 col-md-8">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="fas fa-user-shield fa-3x text-primary"></i>
+                            </div>
+                            <h4 class="card-title mb-3">Acesso para Monitores</h4>
+                            <p class="text-muted mb-4">Insira seu código de acesso para acessar o painel do monitor</p>
+                            <form action="{{ url_for('monitor_routes.monitor_login') }}" method="POST" class="d-flex gap-2">
+                                <input type="text" 
+                                       class="form-control" 
+                                       name="codigo_acesso" 
+                                       placeholder="Digite seu código de acesso" 
+                                       maxlength="10" 
+                                       style="text-transform: uppercase;"
+                                       required>
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fas fa-sign-in-alt me-1"></i>
+                                    Entrar
+                                </button>
+                            </form>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Apenas monitores autorizados podem acessar
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Eventos em Destaque com Carrossel Horizontal -->
     <section id="eventos" class="events-section">
         <div class="container">

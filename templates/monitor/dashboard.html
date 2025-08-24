@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Monitor - IAFAP{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Dashboard Monitor</h2>
+                <div>
+                    <span class="badge bg-success me-2">{{ current_user.nome_completo }}</span>
+                    <a href="{{ url_for('monitor_routes.logout') }}" class="btn btn-outline-danger btn-sm">Sair</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ agendamentos_hoje|length }}</h4>
+                            <p class="mb-0">Agendamentos Hoje</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-calendar-day fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ total_alunos_hoje }}</h4>
+                            <p class="mb-0">Alunos Hoje</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ presencas_registradas }}</h4>
+                            <p class="mb-0">Presenças Registradas</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ agendamentos_proximos|length }}</h4>
+                            <p class="mb-0">Próximos Agendamentos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Agendamentos de Hoje -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Agendamentos de Hoje</h5>
+                </div>
+                <div class="card-body">
+                    {% if agendamentos_hoje %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Horário</th>
+                                        <th>Evento</th>
+                                        <th>Responsável</th>
+                                        <th>Alunos</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento in agendamentos_hoje %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ agendamento.horario_inicio.strftime('%H:%M') }}</strong>
+                                            <small class="text-muted d-block">{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</small>
+                                        </td>
+                                        <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
+                                        <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
+                                        </td>
+                                        <td>
+                                            {% if agendamento.status == 'confirmado' %}
+                                                <span class="badge bg-success">Confirmado</span>
+                                            {% elif agendamento.status == 'pendente' %}
+                                                <span class="badge bg-warning">Pendente</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ agendamento.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                               class="btn btn-sm btn-primary">Ver Detalhes</a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Nenhum agendamento para hoje.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Próximos Agendamentos -->
+    {% if agendamentos_proximos %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Próximos Agendamentos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Data/Horário</th>
+                                    <th>Evento</th>
+                                    <th>Responsável</th>
+                                    <th>Alunos</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for agendamento in agendamentos_proximos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</strong>
+                                        <small class="text-muted d-block">{{ agendamento.horario_inicio.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
+                                    <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">Ver Detalhes</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh da página a cada 5 minutos
+    setTimeout(function() {
+        location.reload();
+    }, 300000);
+</script>
+{% endblock %}

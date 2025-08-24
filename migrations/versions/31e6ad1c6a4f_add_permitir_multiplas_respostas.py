@@ -44,3 +44,4 @@ def downgrade() -> None:
     if "permitir_multiplas_respostas" in cols:
         with op.batch_alter_table("formularios") as batch_op:
             batch_op.drop_column("permitir_multiplas_respostas")
+

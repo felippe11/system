@@ -20,6 +20,7 @@ from models import (
     ConfiguracaoAgendamento,
     Oficina,
     Inscricao,
+    ParticipanteEvento,
 )
 from services.pdf_service import gerar_pdf_comprovante_agendamento
 from . import routes
@@ -780,8 +781,16 @@ def qrcode_agendamento_participante(agendamento_id):
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
-    if agendamento.professor_id != current_user.id:
-        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+    # Verificar se o participante está associado ao agendamento
+    # Um participante pode acessar o QR code se estiver associado ao evento
+    evento_id = agendamento.horario.evento_id
+    participante = ParticipanteEvento.query.filter_by(
+        usuario_id=current_user.id,
+        evento_id=evento_id
+    ).first()
+    
+    if not participante:
+        flash('Acesso negado! Você não está associado a este evento.', 'danger')
         return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
 
     if agendamento.status != 'confirmado':
