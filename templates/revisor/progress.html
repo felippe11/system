@@ -1,22 +1,120 @@
 {% extends "base.html" %}
-{% block title %}Acompanhamento{% endblock %}
+{% from 'partials/card.html' import render_card %}
+{% block title %}Acompanhamento da Candidatura{% endblock %}
 {% block content %}
-<div class="container py-5">
-  <h1 class="mb-4">Acompanhamento da Candidatura</h1>
-  <p><strong>Código da candidatura:</strong> {{ candidatura.codigo }}</p>
-  <p><strong>Status geral:</strong> {{ candidatura.status }}</p>
-  <table class="table table-striped">
-    <thead>
-      <tr><th>Etapa</th><th>Status</th></tr>
-    </thead>
-    <tbody>
-      {% for est in candidatura.etapas_status %}
-      <tr><td>{{ est.etapa.nome }}</td><td>{{ est.status }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% if pdf_url %}
-  <a class="btn btn-primary" href="{{ pdf_url }}" target="_blank">Baixar PDF</a>
-  {% endif %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="text-center mb-4">
+        <h1 class="h3 text-primary mb-2">
+          <i class="bi bi-clipboard-check me-2"></i>Acompanhamento da Candidatura
+        </h1>
+        <p class="text-muted">Acompanhe o status da sua candidatura ao processo seletivo</p>
+      </div>
+      
+      <!-- Card com informações da candidatura -->
+      {% set candidatura_info %}
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-hash text-primary me-2"></i>
+              <div>
+                <small class="text-muted d-block">Código da Candidatura</small>
+                <strong class="fs-5">{{ candidatura.codigo }}</strong>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-info-circle text-primary me-2"></i>
+              <div>
+                <small class="text-muted d-block">Status Geral</small>
+                {% if candidatura.status == 'aprovado' %}
+                  <span class="badge bg-success fs-6">{{ candidatura.status|title }}</span>
+                {% elif candidatura.status == 'rejeitado' %}
+                  <span class="badge bg-danger fs-6">{{ candidatura.status|title }}</span>
+                {% elif candidatura.status == 'em_analise' %}
+                  <span class="badge bg-warning fs-6">Em Análise</span>
+                {% else %}
+                  <span class="badge bg-secondary fs-6">{{ candidatura.status|title }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endset %}
+      {{ render_card('Informações da Candidatura', candidatura_info, '', 'card shadow-sm border-0 mb-4') }}
+      
+      <!-- Card com progresso das etapas -->
+      {% set etapas_content %}
+        {% if candidatura.etapas_status %}
+          <div class="timeline">
+            {% for est in candidatura.etapas_status %}
+            <div class="timeline-item d-flex align-items-center mb-3">
+              <div class="timeline-marker me-3">
+                {% if est.status == 'concluido' %}
+                  <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                {% elif est.status == 'em_andamento' %}
+                  <i class="bi bi-clock-fill text-warning fs-4"></i>
+                {% else %}
+                  <i class="bi bi-circle text-muted fs-4"></i>
+                {% endif %}
+              </div>
+              <div class="timeline-content flex-grow-1">
+                <h6 class="mb-1">{{ est.etapa.nome }}</h6>
+                <small class="text-muted">
+                  Status: 
+                  {% if est.status == 'concluido' %}
+                    <span class="text-success">Concluído</span>
+                  {% elif est.status == 'em_andamento' %}
+                    <span class="text-warning">Em Andamento</span>
+                  {% else %}
+                    <span class="text-muted">Pendente</span>
+                  {% endif %}
+                </small>
+                {% if est.observacoes %}
+                  <p class="mb-0 mt-1 text-muted small">{{ est.observacoes }}</p>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4">
+            <i class="bi bi-info-circle text-muted fs-1 mb-3"></i>
+            <p class="text-muted">Nenhuma etapa registrada ainda.</p>
+          </div>
+        {% endif %}
+      {% endset %}
+      {{ render_card('Progresso das Etapas', etapas_content, '', 'card shadow-sm border-0 mb-4') }}
+      
+      <!-- Ações -->
+      <div class="d-flex gap-2 justify-content-center">
+        <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Voltar ao Início
+        </a>
+        {% if pdf_url %}
+        <a href="{{ pdf_url }}" target="_blank" class="btn btn-primary">
+          <i class="bi bi-file-earmark-pdf me-1"></i>Baixar Comprovante PDF
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 </div>
+
+<style>
+.timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: 2.5rem;
+  width: 2px;
+  height: calc(100% - 1rem);
+  background-color: #dee2e6;
+}
+.timeline {
+  position: relative;
+}
+</style>
 {% endblock %}
