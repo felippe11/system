@@ -126,7 +126,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                            <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
                                                class="btn btn-sm btn-primary">Ver Detalhes</a>
                                         </td>
                                     </tr>
@@ -178,7 +178,7 @@
                                         <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                        <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
                                            class="btn btn-sm btn-outline-primary">Ver Detalhes</a>
                                     </td>
                                 </tr>
