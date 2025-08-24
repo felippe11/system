@@ -7,6 +7,7 @@
 <div class="container mt-4">
     <h2>Relatório Geral de Agendamentos</h2>
     
+    <!-- Seção de Filtros -->
     <div class="card mb-4">
         <div class="card-header bg-primary text-white">
             <i class="fas fa-filter"></i> Filtros
@@ -14,40 +15,61 @@
         <div class="card-body">
             <form method="GET" action="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}">
                 <div class="row">
+                    <!-- Data Inicial -->
                     <div class="col-md-2 mb-3">
                         <label for="data_inicio" class="form-label">Data Inicial:</label>
-                        <input type="date" id="data_inicio" name="data_inicio" class="form-control" value="{{ filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '' }}">
+                        <input type="date" 
+                               id="data_inicio" 
+                               name="data_inicio" 
+                               class="form-control" 
+                               value="{{ filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '' }}">
                     </div>
 
+                    <!-- Data Final -->
                     <div class="col-md-2 mb-3">
                         <label for="data_fim" class="form-label">Data Final:</label>
-                        <input type="date" id="data_fim" name="data_fim" class="form-control" value="{{ filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '' }}">
+                        <input type="date" 
+                               id="data_fim" 
+                               name="data_fim" 
+                               class="form-control" 
+                               value="{{ filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '' }}">
                     </div>
 
+                    <!-- Tipo de Data -->
                     <div class="col-md-2 mb-3">
                         <label for="tipo_data" class="form-label">Tipo de Data:</label>
                         <select id="tipo_data" name="tipo_data" class="form-select">
-                            <option value="horario" {% if filtros.tipo_data == 'horario' %}selected{% endif %}>Data da Visita</option>
-                            <option value="agendamento" {% if filtros.tipo_data == 'agendamento' %}selected{% endif %}>Data do Agendamento</option>
+                            <option value="horario" {% if filtros.tipo_data == 'horario' %}selected{% endif %}>
+                                Data da Visita
+                            </option>
+                            <option value="agendamento" {% if filtros.tipo_data == 'agendamento' %}selected{% endif %}>
+                                Data do Agendamento
+                            </option>
                         </select>
                     </div>
 
+                    <!-- Evento -->
                     <div class="col-md-3 mb-3">
                         <label for="evento_id" class="form-label">Evento:</label>
                         <select id="evento_id" name="evento_id" class="form-select">
                             <option value="">Todos</option>
                             {% for evento in eventos %}
-                                <option value="{{ evento.id }}" {% if filtros.evento_id == evento.id %}selected{% endif %}>{{ evento.nome }}</option>
+                                <option value="{{ evento.id }}" 
+                                        {% if filtros.evento_id == evento.id %}selected{% endif %}>
+                                    {{ evento.nome }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
 
+                    <!-- Botões de Ação -->
                     <div class="col-md-3 mb-3 d-flex align-items-end">
                         <div class="d-grid gap-2 d-md-flex w-100">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> Filtrar
                             </button>
-                            <a href="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}" class="btn btn-outline-secondary">
+                            <a href="{{ url_for('agendamento_routes.relatorio_geral_agendamentos') }}" 
+                               class="btn btn-outline-secondary">
                                 <i class="fas fa-times"></i> Limpar
                             </a>
                             <button type="submit" name="gerar_pdf" value="1" class="btn btn-danger">
@@ -60,81 +82,101 @@
         </div>
     </div>
     
+    <!-- Seção de Estatísticas -->
     <div class="row mb-4">
+        <!-- Totais por Status -->
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-header bg-primary text-white">
                     <i class="fas fa-calendar-check"></i> Totais por Status
                 </div>
+                <div class="card-body">
+                    <!-- Lista de Status -->
+                    <div class="list-group">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Confirmados</span>
+                            <span class="badge bg-primary rounded-pill">{{ totais.confirmados }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Realizados</span>
+                            <span class="badge bg-success rounded-pill">{{ totais.realizados }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Cancelados</span>
+                            <span class="badge bg-danger rounded-pill">{{ totais.cancelados }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Pendentes</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ totais.pendentes }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Check-ins</span>
+                            <span class="badge bg-secondary rounded-pill">{{ totais.checkins }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Total de Agendamentos</span>
+                            <span class="badge bg-info rounded-pill">{{ total_agendamentos }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Total de Visitantes</span>
+                            <span class="badge bg-warning text-dark rounded-pill">{{ totais.visitantes_confirmados }}</span>
+                        </div>
+                    </div>
 
-        <div class="card-body">
-            <div class="list-group">
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Confirmados</span>
-                    <span class="badge bg-primary rounded-pill">{{ totais.confirmados }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Realizados</span>
-                    <span class="badge bg-success rounded-pill">{{ totais.realizados }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Cancelados</span>
-                    <span class="badge bg-danger rounded-pill">{{ totais.cancelados }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Pendentes</span>
-                    <span class="badge bg-warning text-dark rounded-pill">{{ totais.pendentes }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Check-ins</span>
-                    <span class="badge bg-secondary rounded-pill">{{ totais.checkins }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Total de Agendamentos</span>
-                    <span class="badge bg-info rounded-pill">{{ total_agendamentos }}</span>
-                </div>
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <span>Total de Visitantes</span>
-                    <span class="badge bg-warning text-dark rounded-pill">{{ totais.visitantes_confirmados }}</span>
-                </div>
-            </div>
+                    <!-- Gráfico de Distribuição -->
+                    <div class="mt-3">
+                        <h6>Distribuição de Status</h6>
+                        <div class="progress" style="height: 25px;">
+                            {% if total_agendamentos > 0 %}
+                                {% set porcentagem_confirmados = (totais.confirmados / total_agendamentos) * 100 %}
+                                {% set porcentagem_realizados = (totais.realizados / total_agendamentos) * 100 %}
+                                {% set porcentagem_cancelados = (totais.cancelados / total_agendamentos) * 100 %}
+                                {% set porcentagem_pendentes = (totais.pendentes / total_agendamentos) * 100 %}
 
-            <div class="mt-3">
-                <h6>Distribuição de Status</h6>
-                <div class="progress" style="height: 25px;">
-                    {% if total_agendamentos > 0 %}
-                        {% set porcentagem_confirmados = (totais.confirmados / total_agendamentos) * 100 %}
-                        {% set porcentagem_realizados = (totais.realizados / total_agendamentos) * 100 %}
-                        {% set porcentagem_cancelados = (totais.cancelados / total_agendamentos) * 100 %}
-                        {% set porcentagem_pendentes = (totais.pendentes / total_agendamentos) * 100 %}
-
-                        <div class="progress-bar bg-primary" role="progressbar" style="width: {{ porcentagem_confirmados }}%;" title="Confirmados: {{ totais.confirmados }}">
-                            {{ porcentagem_confirmados|round }}%
+                                <div class="progress-bar bg-primary" 
+                                     role="progressbar" 
+                                     style="width: {{ porcentagem_confirmados }}%;" 
+                                     title="Confirmados: {{ totais.confirmados }}">
+                                    {{ porcentagem_confirmados|round }}%
+                                </div>
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: {{ porcentagem_realizados }}%;" 
+                                     title="Realizados: {{ totais.realizados }}">
+                                    {{ porcentagem_realizados|round }}%
+                                </div>
+                                <div class="progress-bar bg-danger" 
+                                     role="progressbar" 
+                                     style="width: {{ porcentagem_cancelados }}%;" 
+                                     title="Cancelados: {{ totais.cancelados }}">
+                                    {{ porcentagem_cancelados|round }}%
+                                </div>
+                                <div class="progress-bar bg-warning text-dark" 
+                                     role="progressbar" 
+                                     style="width: {{ porcentagem_pendentes }}%;" 
+                                     title="Pendentes: {{ totais.pendentes }}">
+                                    {{ porcentagem_pendentes|round }}%
+                                </div>
+                            {% else %}
+                                <div class="progress-bar" role="progressbar" style="width: 0%;">
+                                    Sem dados
+                                </div>
+                            {% endif %}
                         </div>
-                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ porcentagem_realizados }}%;" title="Realizados: {{ totais.realizados }}">
-                            {{ porcentagem_realizados|round }}%
+                        
+                        <!-- Legenda do Gráfico -->
+                        <div class="d-flex justify-content-between mt-1 small flex-wrap">
+                            <span class="text-primary">Confirmados</span>
+                            <span class="text-success">Realizados</span>
+                            <span class="text-danger">Cancelados</span>
+                            <span class="text-warning">Pendentes</span>
                         </div>
-                        <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentagem_cancelados }}%;" title="Cancelados: {{ totais.cancelados }}">
-                            {{ porcentagem_cancelados|round }}%
-                        </div>
-                        <div class="progress-bar bg-warning text-dark" role="progressbar" style="width: {{ porcentagem_pendentes }}%;" title="Pendentes: {{ totais.pendentes }}">
-                            {{ porcentagem_pendentes|round }}%
-                        </div>
-                    {% else %}
-                        <div class="progress-bar" role="progressbar" style="width: 0%;">
-                            Sem dados
-                        </div>
-                    {% endif %}
-                </div>
-                <div class="d-flex justify-content-between mt-1 small flex-wrap">
-                    <span class="text-primary">Confirmados</span>
-                    <span class="text-success">Realizados</span>
-                    <span class="text-danger">Cancelados</span>
-                    <span class="text-warning">Pendentes</span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- Dados por Evento -->
         <div class="col-md-8">
             <div class="card h-100">
                 <div class="card-header bg-success text-white">
@@ -142,13 +184,12 @@
                 </div>
                 <div class="card-body">
                     {% if estatisticas %}
-
                         {% set estatisticas_ordenadas = estatisticas.values()|sort(attribute='nome') %}
                         {% include 'partials/relatorio_evento_table.html' %}
-
                     {% else %}
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle"></i> Não há dados para o período selecionado.
+                            <i class="fas fa-info-circle"></i> 
+                            Não há dados para o período selecionado.
                         </div>
                     {% endif %}
                 </div>
@@ -156,123 +197,136 @@
         </div>
     </div>
 
+    <!-- Seção de Listas Detalhadas -->
     <div class="card mb-4">
         <div class="card-header bg-secondary text-white">
             <i class="fas fa-table"></i> Listas
         </div>
         <div class="card-body">
+            <!-- Navegação por Tabs -->
             <ul class="nav nav-tabs" id="relatorioTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="agendamentos-tab"
-                            data-bs-toggle="tab" data-bs-target="#agendamentos"
-                            type="button" role="tab">
+                    <button class="nav-link active" 
+                            id="agendamentos-tab"
+                            data-bs-toggle="tab" 
+                            data-bs-target="#agendamentos"
+                            type="button" 
+                            role="tab">
                         Agendamentos
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="professores-tab"
-                            data-bs-toggle="tab" data-bs-target="#professores"
-                            type="button" role="tab">
+                    <button class="nav-link" 
+                            id="professores-tab"
+                            data-bs-toggle="tab" 
+                            data-bs-target="#professores"
+                            type="button" 
+                            role="tab">
                         Professores Confirmados
                     </button>
                 </li>
             </ul>
+
+            <!-- Conteúdo das Tabs -->
             <div class="tab-content pt-3">
-                <div class="tab-pane fade show active" id="agendamentos"
-                     role="tabpanel" aria-labelledby="agendamentos-tab">
+                <!-- Tab Agendamentos -->
+                <div class="tab-pane fade show active" 
+                     id="agendamentos"
+                     role="tabpanel" 
+                     aria-labelledby="agendamentos-tab">
                     <div class="table-responsive">
                         {% if agendamentos %}
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Data</th>
-                                    <th>Horário</th>
-                                    <th>Escola</th>
-                                    <th>Professor</th>
-                                    <th>Alunos</th>
-                                    <th>Presentes</th>
-                                    <th>Check-in</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for agendamento in agendamentos %}
-                                <tr>
-                                    <td>{{ agendamento.id }}</td>
-                                    <td>
-                                        {{ agendamento.horario.data.strftime('%d/%m/%Y') }}
-                                    </td>
-                                    <td>
-                                        {{ agendamento.horario.horario_inicio.strftime('%H:%M') }}
-                                    </td>
-                                    <td>{{ agendamento.escola_nome }}</td>
-                                    <td>
-                                        {{ agendamento.professor.nome if agendamento.professor else '-' }}
-                                    </td>
-                                    <td>{{ agendamento.quantidade_alunos }}</td>
-                                    <td>
-                                        {{ 'Prof' if agendamento.checkin_realizado else '-' }} +
-                                        {{ agendamento.alunos|selectattr('presente')|list|length }}
-                                    </td>
-                                    <td>
-                                        {{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}
-                                    </td>
-                                    <td>{{ agendamento.status }}</td>
-                                </tr>
-                                {% set presentes = agendamento.alunos|selectattr('presente')|list %}
-                                {% if presentes %}
-                                <tr>
-                                    <td colspan="9">
-                                        <ul class="mb-0">
-                                            {% for aluno in presentes %}
-                                            <li>{{ aluno.nome }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Data</th>
+                                        <th>Horário</th>
+                                        <th>Escola</th>
+                                        <th>Professor</th>
+                                        <th>Alunos</th>
+                                        <th>Presentes</th>
+                                        <th>Check-in</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento in agendamentos %}
+                                        <tr>
+                                            <td>{{ agendamento.id }}</td>
+                                            <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
+                                            <td>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</td>
+                                            <td>{{ agendamento.escola_nome }}</td>
+                                            <td>{{ agendamento.professor.nome if agendamento.professor else '-' }}</td>
+                                            <td>{{ agendamento.quantidade_alunos }}</td>
+                                            <td>
+                                                {{ 'Prof' if agendamento.checkin_realizado else '-' }} +
+                                                {{ agendamento.alunos|selectattr('presente')|list|length }}
+                                            </td>
+                                            <td>
+                                                {{ agendamento.data_checkin.strftime('%d/%m/%Y %H:%M') if agendamento.data_checkin else '-' }}
+                                            </td>
+                                            <td>{{ agendamento.status }}</td>
+                                        </tr>
+                                        
+                                        <!-- Lista de Alunos Presentes -->
+                                        {% set presentes = agendamento.alunos|selectattr('presente')|list %}
+                                        {% if presentes %}
+                                            <tr>
+                                                <td colspan="9">
+                                                    <ul class="mb-0">
+                                                        {% for aluno in presentes %}
+                                                            <li>{{ aluno.nome }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         {% else %}
-                        <div class="alert alert-info mb-0">
-                            Nenhum agendamento no período.
-                        </div>
+                            <div class="alert alert-info mb-0">
+                                Nenhum agendamento no período.
+                            </div>
                         {% endif %}
                     </div>
                 </div>
-                <div class="tab-pane fade" id="professores"
-                     role="tabpanel" aria-labelledby="professores-tab">
+
+                <!-- Tab Professores -->
+                <div class="tab-pane fade" 
+                     id="professores"
+                     role="tabpanel" 
+                     aria-labelledby="professores-tab">
                     <div class="table-responsive">
                         {% if professores_confirmados %}
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>WhatsApp</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for prof in professores_confirmados %}
-                                <tr>
-                                    <td>{{ prof.nome }}</td>
-                                    <td>{{ prof.email }}</td>
-                                    <td>
-                                        <a href="https://api.whatsapp.com/send?phone={{ prof.responsavel_whatsapp }}"
-                                           target="_blank">
-                                            {{ prof.responsavel_whatsapp }}
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Email</th>
+                                        <th>WhatsApp</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for prof in professores_confirmados %}
+                                        <tr>
+                                            <td>{{ prof.nome }}</td>
+                                            <td>{{ prof.email }}</td>
+                                            <td>
+                                                <a href="https://api.whatsapp.com/send?phone={{ prof.responsavel_whatsapp }}"
+                                                   target="_blank">
+                                                    {{ prof.responsavel_whatsapp }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         {% else %}
-                        <div class="alert alert-info mb-0">
-                            Nenhum professor com agendamento confirmado.
-                        </div>
+                            <div class="alert alert-info mb-0">
+                                Nenhum professor com agendamento confirmado.
+                            </div>
                         {% endif %}
                     </div>
                 </div>
@@ -280,12 +334,14 @@
         </div>
     </div>
 
+    <!-- Seção de Insights e Recomendações -->
     <div class="card mb-4">
         <div class="card-header bg-warning text-dark">
             <i class="fas fa-lightbulb"></i> Insights e Recomendações
         </div>
         <div class="card-body">
             <div class="row">
+                <!-- Análise Geral -->
                 <div class="col-md-6">
                     <h5>Análise Geral</h5>
                     <ul>
@@ -294,9 +350,13 @@
                             <li>
                                 <strong>Taxa de Cancelamento:</strong> {{ taxa_cancelamento|round(1) }}%
                                 {% if taxa_cancelamento > 30 %}
-                                    <span class="text-danger">Taxa elevada! Considere revisar suas políticas de cancelamento.</span>
+                                    <span class="text-danger">
+                                        Taxa elevada! Considere revisar suas políticas de cancelamento.
+                                    </span>
                                 {% elif taxa_cancelamento < 10 %}
-                                    <span class="text-success">Taxa baixa! Suas políticas estão funcionando bem.</span>
+                                    <span class="text-success">
+                                        Taxa baixa! Suas políticas estão funcionando bem.
+                                    </span>
                                 {% endif %}
                             </li>
                         {% endif %}
@@ -306,49 +366,73 @@
                             <li>
                                 <strong>Taxa de Conclusão:</strong> {{ taxa_conclusao|round(1) }}%
                                 {% if taxa_conclusao < 50 %}
-                                    <span class="text-danger">Taxa baixa! Muitos agendamentos pendentes ou não realizados.</span>
+                                    <span class="text-danger">
+                                        Taxa baixa! Muitos agendamentos pendentes ou não realizados.
+                                    </span>
                                 {% elif taxa_conclusao > 80 %}
-                                    <span class="text-success">Taxa excelente! Boa conversão de agendamentos.</span>
+                                    <span class="text-success">
+                                        Taxa excelente! Boa conversão de agendamentos.
+                                    </span>
                                 {% endif %}
                             </li>
                         {% endif %}
                     </ul>
                 </div>
                 
+                <!-- Recomendações -->
                 <div class="col-md-6">
                     <h5>Recomendações</h5>
                     <ul>
                         {% if total_agendamentos > 0 %}
                             {% if taxa_cancelamento > 30 %}
-                                <li>Considere revisar suas políticas de cancelamento para reduzir a taxa de desistência.</li>
-                                <li>Envie lembretes com mais frequência para professores com agendamentos confirmados.</li>
+                                <li>
+                                    Considere revisar suas políticas de cancelamento para reduzir a taxa de desistência.
+                                </li>
+                                <li>
+                                    Envie lembretes com mais frequência para professores com agendamentos confirmados.
+                                </li>
                             {% endif %}
 
                             {% if totais.realizados < totais.confirmados %}
-                                <li>Implementar um sistema de lembretes mais eficiente para aumentar o comparecimento.</li>
+                                <li>
+                                    Implementar um sistema de lembretes mais eficiente para aumentar o comparecimento.
+                                </li>
                             {% endif %}
 
                             {% if totais.visitantes_confirmados < 100 %}
-                                <li>Divulgue mais seu evento entre escolas e professores para aumentar a quantidade de visitantes.</li>
+                                <li>
+                                    Divulgue mais seu evento entre escolas e professores para aumentar a quantidade de visitantes.
+                                </li>
                             {% endif %}
                         {% else %}
-                            <li>Ainda não há dados suficientes para recomendações personalizadas.</li>
+                            <li>
+                                Ainda não há dados suficientes para recomendações personalizadas.
+                            </li>
                         {% endif %}
                         
-                        <li>Continue monitorando os agendamentos e ajustando a capacidade disponível conforme necessário.</li>
+                        <li>
+                            Continue monitorando os agendamentos e ajustando a capacidade disponível conforme necessário.
+                        </li>
                     </ul>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="mt-4">
-        <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}" class="btn btn-secondary">
+    <!-- Botões de Navegação -->
+    <div class="mt-4 d-flex gap-2">
+        <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}" 
+           class="btn btn-secondary">
             <i class="fas fa-chevron-left"></i> Voltar
         </a>
-        <button type="button" class="btn btn-danger" onclick="window.location.href='{{ url_for('agendamento_routes.relatorio_geral_agendamentos', data_inicio=filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '', data_fim=filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '', tipo_data=filtros.tipo_data, gerar_pdf=1) }}'">
+        <a href="{{ url_for('agendamento_routes.relatorio_geral_agendamentos', 
+                           data_inicio=filtros.data_inicio.strftime('%Y-%m-%d') if filtros.data_inicio else '', 
+                           data_fim=filtros.data_fim.strftime('%Y-%m-%d') if filtros.data_fim else '', 
+                           tipo_data=filtros.tipo_data, 
+                           gerar_pdf=1) }}" 
+           class="btn btn-danger">
             <i class="fas fa-file-pdf"></i> Gerar PDF
-        </button>
+        </a>
     </div>
 </div>
 {% endblock %}

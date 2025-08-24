@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Agendamentos - Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Meus Agendamentos</h2>
+                <div>
+                    <a href="{{ url_for('monitor_routes.dashboard') }}" class="btn btn-secondary">Dashboard</a>
+                    <a href="{{ url_for('monitor_routes.logout') }}" class="btn btn-outline-danger">Sair</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="data_inicio" class="form-label">Data Início</label>
+                            <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                                   value="{{ request.args.get('data_inicio', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="data_fim" class="form-label">Data Fim</label>
+                            <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                                   value="{{ request.args.get('data_fim', '') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">Todos</option>
+                                <option value="confirmado" {{ 'selected' if request.args.get('status') == 'confirmado' }}>Confirmado</option>
+                                <option value="pendente" {{ 'selected' if request.args.get('status') == 'pendente' }}>Pendente</option>
+                                <option value="cancelado" {{ 'selected' if request.args.get('status') == 'cancelado' }}>Cancelado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+                            <a href="{{ url_for('monitor_routes.agendamentos') }}" class="btn btn-outline-secondary">Limpar</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista de Agendamentos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Agendamentos ({{ agendamentos|length }} encontrados)</h5>
+                </div>
+                <div class="card-body">
+                    {% if agendamentos %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Horário</th>
+                                        <th>Evento</th>
+                                        <th>Responsável</th>
+                                        <th>Alunos</th>
+                                        <th>Presença</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for agendamento in agendamentos %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</strong>
+                                            <small class="text-muted d-block">
+                                                {{ agendamento.horario_inicio.strftime('%H:%M') }} - 
+                                                {{ agendamento.horario_fim.strftime('%H:%M') }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {{ agendamento.evento.nome if agendamento.evento else 'N/A' }}
+                                            {% if agendamento.evento and agendamento.evento.descricao %}
+                                                <small class="text-muted d-block">{{ agendamento.evento.descricao[:50] }}...</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}
+                                            {% if agendamento.usuario and agendamento.usuario.email %}
+                                                <small class="text-muted d-block">{{ agendamento.usuario.email }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ agendamento.alunos|length }} alunos</span>
+                                        </td>
+                                        <td>
+                                            {% set presencas = agendamento.presencas_alunos %}
+                                            {% set total_presentes = presencas|selectattr('presente')|list|length %}
+                                            {% set total_alunos = agendamento.alunos|length %}
+                                            
+                                            {% if total_alunos > 0 %}
+                                                <div class="d-flex align-items-center">
+                                                    <span class="badge bg-success me-1">{{ total_presentes }}</span>
+                                                    <span class="text-muted">/</span>
+                                                    <span class="badge bg-secondary ms-1">{{ total_alunos }}</span>
+                                                </div>
+                                                <div class="progress mt-1" style="height: 4px;">
+                                                    <div class="progress-bar bg-success" 
+                                                         style="width: {{ (total_presentes / total_alunos * 100) }}%"></div>
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if agendamento.status == 'confirmado' %}
+                                                <span class="badge bg-success">Confirmado</span>
+                                            {% elif agendamento.status == 'pendente' %}
+                                                <span class="badge bg-warning">Pendente</span>
+                                            {% elif agendamento.status == 'cancelado' %}
+                                                <span class="badge bg-danger">Cancelado</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ agendamento.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                                   class="btn btn-sm btn-primary" title="Ver Detalhes">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                {% if agendamento.status == 'confirmado' %}
+                                                    <button class="btn btn-sm btn-success" 
+                                                            onclick="abrirModalPresenca({{ agendamento.id }})" 
+                                                            title="Registrar Presença">
+                                                        <i class="fas fa-check-circle"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Paginação (se necessário) -->
+                        {% if agendamentos.pages > 1 %}
+                        <nav aria-label="Navegação de páginas">
+                            <ul class="pagination justify-content-center">
+                                {% if agendamentos.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('monitor_routes.agendamentos', page=agendamentos.prev_num, **request.args) }}">Anterior</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in agendamentos.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != agendamentos.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('monitor_routes.agendamentos', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if agendamentos.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('monitor_routes.agendamentos', page=agendamentos.next_num, **request.args) }}">Próximo</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhum agendamento encontrado</h5>
+                            <p class="text-muted">Não há agendamentos que correspondam aos filtros selecionados.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Registro Rápido de Presença -->
+<div class="modal fade" id="modalPresenca" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registro Rápido de Presença</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Deseja registrar presença para todos os alunos deste agendamento?</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="registrarPresencaLote(true)">Marcar Todos Presentes</button>
+                    <button class="btn btn-danger" onclick="registrarPresencaLote(false)">Marcar Todos Ausentes</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="linkDetalhes" href="#" class="btn btn-primary">Ver Detalhes</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let agendamentoAtual = null;
+
+function abrirModalPresenca(agendamentoId) {
+    agendamentoAtual = agendamentoId;
+    document.getElementById('linkDetalhes').href = 
+        `{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=0) }}`.replace('0', agendamentoId);
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalPresenca'));
+    modal.show();
+}
+
+function registrarPresencaLote(presente) {
+    if (!agendamentoAtual) return;
+    
+    fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            agendamento_id: agendamentoAtual,
+            presente: presente
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalPresenca'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Erro ao registrar presenças: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao registrar presenças');
+    });
+}
+</script>
+{% endblock %}

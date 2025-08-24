@@ -35,6 +35,9 @@ def load_user(user_id):
         return db.session.get(Usuario, int(user_id))
     elif user_type == 'cliente':
         return db.session.get(Cliente, int(user_id))
+    elif user_type == 'monitor':
+        from models.user import Monitor
+        return db.session.get(Monitor, int(user_id))
 
     # Fallback
     return db.session.get(Usuario, int(user_id)) or db.session.get(Ministrante, int(user_id))

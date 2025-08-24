@@ -131,6 +131,7 @@ class Config:
     RECAPTCHA_DATA_ATTRS = {"theme": "light", "size": "normal"}
     # Para Flask-WTF 1.2+
     WTF_CSRF_TIME_LIMIT = 3600  # Tempo em segundos (1 hora)
+    WTF_CSRF_HEADERS = ['X-CSRFToken', 'X-CSRF-Token']  # Aceitar tokens CSRF via cabeçalhos
 
     # ------------------------------------------------------------------ #
     #  Cache de arquivos estáticos                                       #

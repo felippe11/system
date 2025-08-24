@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Agendamento - Monitor{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Detalhes do Agendamento</h2>
+                <div>
+                    <a href="{{ url_for('monitor_routes.dashboard') }}" class="btn btn-secondary">Voltar ao Dashboard</a>
+                    <a href="{{ url_for('monitor_routes.logout') }}" class="btn btn-outline-danger">Sair</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações do Agendamento -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Agendamento</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Data:</strong> {{ agendamento.data_visita.strftime('%d/%m/%Y') }}</p>
+                            <p><strong>Horário:</strong> {{ agendamento.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario_fim.strftime('%H:%M') }}</p>
+                            <p><strong>Evento:</strong> {{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Responsável:</strong> {{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</p>
+                            <p><strong>Status:</strong> 
+                                {% if agendamento.status == 'confirmado' %}
+                                    <span class="badge bg-success">Confirmado</span>
+                                {% elif agendamento.status == 'pendente' %}
+                                    <span class="badge bg-warning">Pendente</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ agendamento.status|title }}</span>
+                                {% endif %}
+                            </p>
+                            <p><strong>Total de Alunos:</strong> {{ agendamento.alunos|length }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Resumo de Presença</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="row">
+                        <div class="col-6">
+                            <h3 class="text-success">{{ presencas_confirmadas }}</h3>
+                            <small class="text-muted">Presentes</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-danger">{{ total_alunos - presencas_confirmadas }}</h3>
+                            <small class="text-muted">Ausentes</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-3">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ (presencas_confirmadas / total_alunos * 100) if total_alunos > 0 else 0 }}%">
+                            {{ "%.1f"|format((presencas_confirmadas / total_alunos * 100) if total_alunos > 0 else 0) }}%
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary btn-lg" onclick="iniciarScanner({{ agendamento.id }})">
+                            <i class="fas fa-camera"></i> Iniciar Scanner
+                        </button>
+                        <p class="mt-2 text-muted">Use o scanner para confirmar presença automaticamente</p>
+                        <div id="scanner-status" class="scanner-status mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scanner QR Code -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Scanner QR Code</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div id="qr-reader" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6>Como usar o Scanner:</h6>
+                                <ol>
+                                    <li>Clique em "Iniciar Scanner"</li>
+                                    <li>Aponte a câmera para o QR Code do aluno</li>
+                                    <li>A presença será registrada automaticamente</li>
+                                </ol>
+                            </div>
+                            <button id="start-scan" class="btn btn-primary">Iniciar Scanner</button>
+                            <button id="stop-scan" class="btn btn-secondary" style="display: none;">Parar Scanner</button>
+                            <div id="scan-result" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Lista de Alunos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Lista de Alunos</h5>
+                    <div>
+                        <button class="btn btn-success btn-sm" onclick="marcarTodosPresentes()">Marcar Todos Presentes</button>
+                        <button class="btn btn-warning btn-sm" onclick="marcarTodosAusentes()">Marcar Todos Ausentes</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if agendamento.alunos %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Turma</th>
+                                        <th>Status</th>
+                                        <th>Horário Registro</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for aluno in agendamento.alunos %}
+                                    <tr id="aluno-{{ aluno.id }}">
+                                        <td>{{ aluno.nome }}</td>
+                                        <td>{{ aluno.turma if aluno.turma else 'N/A' }}</td>
+                                        <td>
+                                            {% set presenca = presencas_dict.get(aluno.id) %}
+                                            {% if presenca and presenca.presente %}
+                                                <span class="badge bg-success">Presente</span>
+                                            {% elif presenca and not presenca.presente %}
+                                                <span class="badge bg-danger">Ausente</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Não Registrado</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if presenca %}
+                                                {{ presenca.data_registro.strftime('%H:%M:%S') }}
+                                                <small class="text-muted d-block">{{ presenca.metodo_confirmacao|title }}</small>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-success" 
+                                                        onclick="registrarPresenca({{ aluno.id }}, true)"
+                                                        {% if presenca and presenca.presente %}disabled{% endif %}>
+                                                    <i class="fas fa-check"></i> Presente
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" 
+                                                        onclick="registrarPresenca({{ aluno.id }}, false)"
+                                                        {% if presenca and not presenca.presente %}disabled{% endif %}>
+                                                    <i class="fas fa-times"></i> Ausente
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Nenhum aluno cadastrado para este agendamento.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Scanner QR Code -->
+<div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrScannerModalLabel">
+                    <i class="fas fa-qrcode"></i> Scanner QR Code
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="scanner-container">
+                    <video id="qr-video" class="w-100" style="max-height: 400px; border-radius: 8px;"></video>
+                    <div id="scanner-status" class="scanner-status mt-3">Inicializando scanner...</div>
+                </div>
+                <div class="mt-3">
+                    <button type="button" class="btn btn-secondary" onclick="pararScanner()" data-bs-dismiss="modal">
+                        <i class="fas fa-stop"></i> Parar Scanner
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.scanner-status {
+    padding: 10px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.scanner-status.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.scanner-status.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.scanner-status.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+#qr-video {
+    background-color: #000;
+}
+
+.status-badge {
+    font-size: 0.8em;
+}
+
+.btn-presenca {
+    font-size: 0.8em;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="{{ url_for('static', filename='js/qr_scanner_monitor.js') }}"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+let html5QrcodeScanner;
+const agendamentoId = {{ agendamento.id }};
+
+// Função para registrar presença
+function registrarPresenca(alunoId, presente) {
+    fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            aluno_id: alunoId,
+            agendamento_id: agendamentoId,
+            presente: presente,
+            metodo: 'manual'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro ao registrar presença: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao registrar presença');
+    });
+}
+
+// Função para marcar todos como presentes
+function marcarTodosPresentes() {
+    if (confirm('Deseja marcar todos os alunos como presentes?')) {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agendamento_id: agendamentoId,
+                presente: true
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao registrar presenças: ' + data.message);
+            }
+        });
+    }
+}
+
+// Função para marcar todos como ausentes
+function marcarTodosAusentes() {
+    if (confirm('Deseja marcar todos os alunos como ausentes?')) {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agendamento_id: agendamentoId,
+                presente: false
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao registrar presenças: ' + data.message);
+            }
+        });
+    }
+}
+
+// Scanner QR Code
+document.getElementById('start-scan').addEventListener('click', function() {
+    html5QrcodeScanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: {width: 250, height: 250} },
+        false
+    );
+    
+    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+    
+    document.getElementById('start-scan').style.display = 'none';
+    document.getElementById('stop-scan').style.display = 'inline-block';
+});
+
+document.getElementById('stop-scan').addEventListener('click', function() {
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear();
+    }
+    
+    document.getElementById('start-scan').style.display = 'inline-block';
+    document.getElementById('stop-scan').style.display = 'none';
+    document.getElementById('scan-result').innerHTML = '';
+});
+
+function onScanSuccess(decodedText, decodedResult) {
+    // Processar o QR Code escaneado
+    fetch(`{{ url_for('monitor_routes.processar_qr_code') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            qr_code: decodedText,
+            agendamento_id: agendamentoId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('scan-result').innerHTML = 
+                `<div class="alert alert-success">Presença registrada para: ${data.aluno_nome}</div>`;
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            document.getElementById('scan-result').innerHTML = 
+                `<div class="alert alert-danger">Erro: ${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        document.getElementById('scan-result').innerHTML = 
+            `<div class="alert alert-danger">Erro ao processar QR Code</div>`;
+    });
+}
+
+function onScanFailure(error) {
+    // Ignorar erros de scan (muito verboso)
+}
+
+// Função para marcar presença em lote
+function marcarPresencaLote() {
+    const checkboxes = document.querySelectorAll('input[name="alunos_selecionados"]:checked');
+    const alunosIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (alunosIds.length === 0) {
+        alert('Selecione pelo menos um aluno');
+        return;
+    }
+    
+    // Implementar lógica de marcação em lote
+    console.log('Marcar presença para alunos:', alunosIds);
+}
+
+// Adicionar data attributes aos elementos da lista de alunos
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar contadores iniciais
+    if (typeof qrScanner !== 'undefined' && qrScanner) {
+        qrScanner.updateContadores();
+    }
+});
+</script>
+{% endblock %}

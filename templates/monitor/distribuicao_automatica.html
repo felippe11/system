@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Distribuição Automática - IAFAP{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Distribuição Automática de Monitores</h2>
+                <a href="{{ url_for('monitor_routes.gerenciar_monitores') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ agendamentos_sem_monitor }}</h4>
+                            <p class="mb-0">Agendamentos sem Monitor</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ monitores_ativos }}</h4>
+                            <p class="mb-0">Monitores Ativos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações sobre a Distribuição Automática -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Como funciona a Distribuição Automática</h5>
+                </div>
+                <div class="card-body">
+                    <p>A distribuição automática atribui monitores aos agendamentos seguindo os seguintes critérios:</p>
+                    <ul>
+                        <li>Considera apenas agendamentos futuros confirmados sem monitor atribuído</li>
+                        <li>Verifica a disponibilidade dos monitores por dia da semana e turno</li>
+                        <li>Distribui de forma equilibrada entre os monitores disponíveis</li>
+                        <li>Respeita a carga horária máxima de cada monitor</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botão de Execução -->
+    <div class="row">
+        <div class="col-12 text-center">
+            <button class="btn btn-success btn-lg" onclick="executarDistribuicaoAutomatica()" id="btnDistribuir">
+                <i class="fas fa-magic"></i> Executar Distribuição Automática
+            </button>
+        </div>
+    </div>
+    
+    <!-- Área de Resultados -->
+    <div class="row mt-4" id="resultadoDistribuicao" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Resultado da Distribuição</h5>
+                </div>
+                <div class="card-body" id="conteudoResultado">
+                    <!-- Resultado será inserido aqui via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+<script>
+function executarDistribuicaoAutomatica() {
+    const btnDistribuir = document.getElementById('btnDistribuir');
+    const resultadoDiv = document.getElementById('resultadoDistribuicao');
+    const conteudoDiv = document.getElementById('conteudoResultado');
+    
+    // Desabilitar botão e mostrar loading
+    btnDistribuir.disabled = true;
+    btnDistribuir.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    
+    // Obter token CSRF
+    const csrfToken = document.getElementById('csrf_token').value;
+    
+    fetch('/distribuir-automaticamente', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Reabilitar botão
+        btnDistribuir.disabled = false;
+        btnDistribuir.innerHTML = '<i class="fas fa-magic"></i> Executar Distribuição Automática';
+        
+        // Mostrar resultado
+        resultadoDiv.style.display = 'block';
+        
+        if (data.success) {
+            conteudoDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h6>Distribuição realizada com sucesso!</h6>
+                    <p><strong>Atribuições realizadas:</strong> ${data.atribuicoes_realizadas}</p>
+                    <p><strong>Mensagem:</strong> ${data.message}</p>
+                </div>
+            `;
+            
+            // Recarregar página após 3 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        } else {
+            conteudoDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h6>Erro na distribuição</h6>
+                    <p>${data.message}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        
+        // Reabilitar botão
+        btnDistribuir.disabled = false;
+        btnDistribuir.innerHTML = '<i class="fas fa-magic"></i> Executar Distribuição Automática';
+        
+        // Mostrar erro
+        resultadoDiv.style.display = 'block';
+        conteudoDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h6>Erro de conexão</h6>
+                <p>Não foi possível executar a distribuição automática. Tente novamente.</p>
+            </div>
+        `;
+    });
+}
+</script>
+{% endblock %}
