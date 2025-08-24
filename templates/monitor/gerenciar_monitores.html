@@ -6,24 +6,58 @@
 <div class="container-fluid mt-4">
     <div class="row">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Gerenciar Monitores</h2>
-                <div>
-                    <a href="{{ url_for('monitor_routes.novo_monitor') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Novo Monitor
-                    </a>
-                    <a href="{{ url_for('monitor_routes.distribuicao_automatica') }}" class="btn btn-success">
-                        <i class="fas fa-magic"></i> Distribuição Automática
-                    </a>
-                    <a href="{{ url_for('monitor_routes.distribuicao_manual') }}" class="btn btn-info ms-2">
-                        <i class="fas fa-users-cog"></i> Distribuição Manual
-                    </a>
-                    <a href="{{ url_for('monitor_routes.importacao_massa') }}" class="btn btn-warning ms-2">
-                        <i class="fas fa-upload"></i> Importação em Massa
-                    </a>
-                    <a href="{{ url_for('monitor_routes.cadastro_multiplo') }}" class="btn btn-secondary ms-2">
-                        <i class="fas fa-users-plus"></i> Cadastro Múltiplo
-                    </a>
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-4">
+                <h2 class="mb-3 mb-lg-0">Gerenciar Monitores</h2>
+                
+                <!-- Grupo de Botões Organizados -->
+                <div class="d-flex flex-column flex-md-row gap-2">
+                    <!-- Grupo 1: Cadastro -->
+                    <div class="btn-group" role="group" aria-label="Cadastro de Monitores">
+                        <a href="{{ url_for('monitor_routes.novo_monitor') }}" 
+                           class="btn btn-primary" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Cadastrar um novo monitor">
+                            <i class="fas fa-plus"></i>
+                            <span class="d-none d-sm-inline ms-1">Novo Monitor</span>
+                        </a>
+                        <a href="{{ url_for('monitor_routes.cadastro_multiplo') }}" 
+                           class="btn btn-outline-primary" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Cadastrar múltiplos monitores">
+                            <i class="fas fa-users-plus"></i>
+                            <span class="d-none d-sm-inline ms-1">Cadastro Múltiplo</span>
+                        </a>
+                        <a href="{{ url_for('monitor_routes.importacao_massa') }}" 
+                           class="btn btn-outline-primary" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Importar monitores via planilha">
+                            <i class="fas fa-upload"></i>
+                            <span class="d-none d-sm-inline ms-1">Importação</span>
+                        </a>
+                    </div>
+                    
+                    <!-- Grupo 2: Distribuição -->
+                    <div class="btn-group" role="group" aria-label="Distribuição de Monitores">
+                        <a href="{{ url_for('monitor_routes.distribuicao_automatica') }}" 
+                           class="btn btn-success" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Distribuir monitores automaticamente">
+                            <i class="fas fa-magic"></i>
+                            <span class="d-none d-sm-inline ms-1">Automática</span>
+                        </a>
+                        <a href="{{ url_for('monitor_routes.distribuicao_manual') }}" 
+                           class="btn btn-outline-success" 
+                           data-bs-toggle="tooltip" 
+                           data-bs-placement="top" 
+                           title="Distribuir monitores manualmente">
+                            <i class="fas fa-users-cog"></i>
+                            <span class="d-none d-sm-inline ms-1">Manual</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
