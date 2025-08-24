@@ -81,16 +81,24 @@
   const maxRev = parseInt(container.dataset.maxRev || '2', 10);
 
   attachOnce(document.getElementById('assignManual'), 'click', () => {
+    console.log('Botão Atribuir Manualmente clicado');
     const subId = document.getElementById('submissionSelect').value;
     const selected = Array.from(
       document.getElementById('reviewerSelect').selectedOptions,
     ).map((o) => o.value);
+    console.log('Submissão selecionada:', subId);
+    console.log('Revisores selecionados:', selected);
+    console.log('Limites min/max:', minRev, maxRev);
+    
     if (selected.length < minRev || selected.length > maxRev) {
       alert(`Selecione entre ${minRev} e ${maxRev} revisores.`);
       return;
     }
     const payload = {};
     payload[subId] = selected;
+    console.log('Payload para envio:', payload);
+    console.log('CSRF Token:', csrfToken);
+    
     fetch('/assign_reviews', {
       method: 'POST',
       headers: {
@@ -99,23 +107,35 @@
       },
       body: JSON.stringify(payload),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        console.log('Resposta recebida:', r.status, r.statusText);
+        return r.json();
+      })
       .then((data) => {
+        console.log('Dados da resposta:', data);
         if (data.success) {
           alert('Revisores atribuídos com sucesso');
           location.reload();
         } else {
-          alert('Falha ao atribuir revisores');
+          alert('Falha ao atribuir revisores: ' + (data.message || 'Erro desconhecido'));
         }
+      })
+      .catch((error) => {
+        console.error('Erro na requisição:', error);
+        alert('Erro de rede ao atribuir revisores');
       });
   });
 
   attachOnce(document.getElementById('assignAutomatic'), 'click', () => {
+    console.log('Botão Sorteio Automático clicado');
     const filters = {};
     document.querySelectorAll('[data-filter]').forEach((el) => {
       const valor = el.value.trim();
       if (valor) filters[el.dataset.filter] = valor;
     });
+    console.log('Filtros aplicados:', filters);
+    console.log('CSRF Token:', csrfToken);
+    
     fetch('/assign_by_filters', {
       method: 'POST',
       headers: {
@@ -124,35 +144,56 @@
       },
       body: JSON.stringify({ filters }),
     })
-      .then((r) => r.json())
+      .then((r) => {
+        console.log('Resposta do sorteio:', r.status, r.statusText);
+        return r.json();
+      })
       .then((data) => {
+        console.log('Dados do sorteio:', data);
         if (data.success) {
           alert('Sorteio realizado');
           location.reload();
         } else {
           alert(data.message || 'Falha no sorteio');
         }
+      })
+      .catch((error) => {
+        console.error('Erro no sorteio:', error);
+        alert('Erro de rede no sorteio');
       });
   });
 
   attachOnce(document.getElementById('autoArea'), 'click', () => {
+    console.log('Botão Auto por Área clicado');
     const eventoId = document.getElementById('eventoId').value;
+    console.log('ID do evento:', eventoId);
+    
     if (!eventoId) {
       alert('Informe o ID do evento');
       return;
     }
+    console.log('CSRF Token:', csrfToken);
+    
     fetch(`/auto_assign/${eventoId}`, {
       method: 'POST',
       headers: { 'X-CSRFToken': csrfToken },
     })
-      .then((r) => r.json())
+      .then((r) => {
+        console.log('Resposta auto área:', r.status, r.statusText);
+        return r.json();
+      })
       .then((data) => {
+        console.log('Dados auto área:', data);
         if (data.success) {
           alert('Atribuições criadas');
           location.reload();
         } else {
           alert(data.message || 'Erro na atribuição automática');
         }
+      })
+      .catch((error) => {
+        console.error('Erro na atribuição por área:', error);
+        alert('Erro de rede na atribuição por área');
       });
   });
 })();
