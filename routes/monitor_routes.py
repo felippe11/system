@@ -1120,7 +1120,7 @@ def distribuir_automaticamente():
                 'message': 'Nenhum monitor ativo encontrado',
             })
         
-        atribuicoes_realizadas = 0
+        atribuicoes = 0
         
         for agendamento in agendamentos_sem_monitor:
             # Determinar o turno do agendamento
@@ -1172,7 +1172,7 @@ def distribuir_automaticamente():
                 )
 
                 db.session.add(atribuicao)
-                atribuicoes_realizadas += 1
+                atribuicoes += 1
                 current_app.logger.info(
                     "Monitor %s atribuído ao agendamento %s",
                     monitor_escolhido.id,
@@ -1184,7 +1184,7 @@ def distribuir_automaticamente():
                     agendamento.id,
                 )
 
-        if atribuicoes_realizadas == 0:
+        if atribuicoes == 0:
             current_app.logger.warning(
                 "Nenhuma atribuição de monitor foi realizada"
             )
@@ -1197,13 +1197,13 @@ def distribuir_automaticamente():
         db.session.commit()
         current_app.logger.info(
             "Distribuição automática concluída com %s atribuições",
-            atribuicoes_realizadas,
+            atribuicoes,
         )
 
         return jsonify({
             'success': True,
             'message': 'Distribuição automática concluída',
-            'atribuicoes': atribuicoes_realizadas,
+            'atribuicoes': atribuicoes,
         })
          
     except Exception as e:
