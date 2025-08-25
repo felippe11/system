@@ -11,7 +11,7 @@ class AIService:
     """
     
     def __init__(self):
-        self.hf_api_key = os.getenv('HUGGINGFACE_API_KEY', '<REMOVED>')
+        self.hf_api_key = os.getenv('HUGGINGFACE_API_KEY', '')
         self.base_url = "https://api-inference.huggingface.co/models"
         self.headers = {
             "Authorization": f"Bearer {self.hf_api_key}" if self.hf_api_key else "",
