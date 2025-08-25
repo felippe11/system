@@ -1,14 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
-from flask_login import login_required, current_user
+from flask_login import current_user
 from werkzeug.utils import secure_filename
 from extensions import db
 from models import Oficina, CertificadoTemplate
 from models.user import Cliente
+from models.event import CertificadoTemplateAvancado, VariavelDinamica, ConfiguracaoCertificadoAvancada, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
+from utils.auth import login_required, require_permission, require_resource_access, role_required
 
 import os
 from datetime import datetime
 import logging
+import json
 
 certificado_routes = Blueprint(
     'certificado_routes',
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
 @login_required
+@require_permission('templates.view')
 def templates_certificado():
     if request.method == 'POST':
         titulo = request.form['titulo']
@@ -35,6 +39,8 @@ def templates_certificado():
 
 @certificado_routes.route('/set_template_ativo/<int:template_id>', methods=['POST'])
 @login_required
+@require_permission('templates.activate')
+@require_resource_access('template', 'template_id', 'edit')
 def set_template_ativo(template_id):
     CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
     template = CertificadoTemplate.query.get(template_id)
@@ -45,6 +51,7 @@ def set_template_ativo(template_id):
 
 @certificado_routes.route('/gerar_certificado_evento', methods=['POST'])
 @login_required
+@require_permission('certificados.generate')
 def gerar_certificado_evento():
     texto_personalizado = request.form.get('texto_personalizado', '')
     oficinas_ids = request.form.getlist('oficinas_selecionadas')
@@ -63,6 +70,7 @@ def gerar_certificado_evento():
 
 @certificado_routes.route('/salvar_personalizacao_certificado', methods=['POST'])
 @login_required
+@require_permission('certificados.edit')
 def salvar_personalizacao_certificado():
     cliente = Cliente.query.get(current_user.id)
 
@@ -82,6 +90,8 @@ def salvar_personalizacao_certificado():
 
 @certificado_routes.route('/ativar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+@require_permission('templates.activate')
+@require_resource_access('template', 'template_id', 'edit')
 def ativar_template_certificado(template_id):
     CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
     template = CertificadoTemplate.query.get_or_404(template_id)
@@ -94,6 +104,8 @@ def ativar_template_certificado(template_id):
 
 @certificado_routes.route('/editar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+@require_permission('templates.edit')
+@require_resource_access('template', 'template_id', 'edit')
 def editar_template_certificado(template_id):
     template = CertificadoTemplate.query.get_or_404(template_id)
 
@@ -117,6 +129,8 @@ def editar_template_certificado(template_id):
 
 @certificado_routes.route('/desativar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+@require_permission('templates.deactivate')
+@require_resource_access('template', 'template_id', 'edit')
 def desativar_template_certificado(template_id):
     template = CertificadoTemplate.query.get_or_404(template_id)
 
@@ -131,6 +145,7 @@ def desativar_template_certificado(template_id):
 
 @certificado_routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
+@require_permission('certificados.create')
 def upload_personalizacao_certificado():
     
     cliente = Cliente.query.get(current_user.id)
@@ -173,6 +188,7 @@ def upload_personalizacao_certificado():
 
 @certificado_routes.route('/preview_certificado', methods=['GET', 'POST'])
 @login_required
+@require_permission('certificados.view')
 def preview_certificado():
     """Gera um PDF de exemplo para visualizar o certificado."""
 
@@ -238,5 +254,1722 @@ def preview_certificado():
                 logger.exception("Erro ao remover arquivo temporário %s", f)
         return response
 
+
+# Rotas para Editor Avançado de Certificados
+
+@certificado_routes.route('/editor_avancado')
+@login_required
+@require_permission('templates.create')
+def editor_avancado():
+    """Página do editor avançado de certificados."""
+    template_id = request.args.get('template_id')
+    template = None
+    
+    if template_id:
+        template = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id, cliente_id=current_user.id
+        ).first()
+    
+    return render_template('certificado/editor_avancado.html', template=template)
+
+
+@certificado_routes.route('/salvar_template_avancado', methods=['POST'])
+@login_required
+@require_permission('templates.create')
+def salvar_template_avancado():
+    """Salvar template avançado criado no editor."""
+    try:
+        data = request.get_json()
+        
+        titulo = data.get('titulo')
+        orientacao = data.get('orientacao', 'landscape')
+        elements = data.get('elements', [])
+        html = data.get('html', '')
+        
+        if not titulo:
+            return {'success': False, 'message': 'Título é obrigatório'}
+        
+        # Criar ou atualizar template
+        template_id = data.get('template_id')
+        if template_id:
+            template = CertificadoTemplateAvancado.query.filter_by(
+                id=template_id, cliente_id=current_user.id
+            ).first()
+            if not template:
+                return {'success': False, 'message': 'Template não encontrado'}
+        else:
+            template = CertificadoTemplateAvancado(cliente_id=current_user.id)
+        
+        template.titulo = titulo
+        template.orientacao = orientacao
+        template.conteudo = html
+        template.layout_config = {
+            'elements': elements,
+            'canvas_html': html
+        }
+        
+        if not template_id:
+            db.session.add(template)
+        
+        db.session.commit()
+        
+        return {'success': True, 'template_id': template.id}
+        
+    except Exception as e:
+        logger.exception("Erro ao salvar template avançado")
+        return {'success': False, 'message': str(e)}
+
+
+@certificado_routes.route('/salvar_variavel', methods=['POST'])
+@login_required
+@require_permission('templates.edit')
+def salvar_variavel():
+    """Salvar nova variável dinâmica."""
+    try:
+        data = request.get_json()
+        
+        nome = data.get('nome', '').upper().strip()
+        descricao = data.get('descricao', '')
+        valor_padrao = data.get('valor_padrao', '')
+        tipo = data.get('tipo', 'texto')
+        
+        if not nome:
+            return {'success': False, 'message': 'Nome da variável é obrigatório'}
+        
+        # Verificar se já existe
+        existing = VariavelDinamica.query.filter_by(
+            cliente_id=current_user.id, nome=nome
+        ).first()
+        
+        if existing:
+            return {'success': False, 'message': 'Variável já existe'}
+        
+        variavel = VariavelDinamica(
+            cliente_id=current_user.id,
+            nome=nome,
+            descricao=descricao,
+            valor_padrao=valor_padrao,
+            tipo=tipo
+        )
+        
+        db.session.add(variavel)
+        db.session.commit()
+        
+        return {'success': True, 'variavel_id': variavel.id}
+        
+    except Exception as e:
+        logger.exception("Erro ao salvar variável")
+        return {'success': False, 'message': str(e)}
+
+
+@certificado_routes.route('/variaveis_dinamicas', methods=['GET', 'POST'])
+@login_required
+@require_permission('templates.view')
+def variaveis_dinamicas():
+    """Gerenciar variáveis dinâmicas do cliente."""
+    if request.method == 'POST':
+        # Criar nova variável
+        try:
+            data = request.get_json() if request.is_json else request.form
+            
+            nome = data.get('nome', '').upper().strip()
+            descricao = data.get('descricao', '')
+            valor_padrao = data.get('valor_padrao', '')
+            tipo = data.get('tipo', 'texto')
+            opcoes = data.get('opcoes', [])
+            
+            if not nome:
+                return {'success': False, 'message': 'Nome da variável é obrigatório'}
+            
+            # Verificar se já existe
+            existing = VariavelDinamica.query.filter_by(
+                cliente_id=current_user.id, nome=nome
+            ).first()
+            
+            if existing:
+                return {'success': False, 'message': 'Variável já existe'}
+            
+            variavel = VariavelDinamica(
+                cliente_id=current_user.id,
+                nome=nome,
+                descricao=descricao,
+                valor_padrao=valor_padrao,
+                tipo=tipo,
+                opcoes=opcoes if tipo == 'lista' else None
+            )
+            
+            db.session.add(variavel)
+            db.session.commit()
+            
+            if request.is_json:
+                return {'success': True, 'variavel_id': variavel.id}
+            else:
+                flash('Variável criada com sucesso!', 'success')
+                return redirect(url_for('certificado_routes.variaveis_dinamicas'))
+                
+        except Exception as e:
+            logger.exception("Erro ao criar variável")
+            if request.is_json:
+                return {'success': False, 'message': str(e)}
+            else:
+                flash(f'Erro ao criar variável: {str(e)}', 'error')
+                return redirect(url_for('certificado_routes.variaveis_dinamicas'))
+    
+    # GET - Listar variáveis
+    variaveis = VariavelDinamica.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).order_by(VariavelDinamica.data_criacao.desc()).all()
+    
+    if request.headers.get('Accept') == 'application/json':
+        return {
+            'variaveis': [{
+                'id': v.id,
+                'nome': v.nome,
+                'descricao': v.descricao,
+                'valor_padrao': v.valor_padrao,
+                'tipo': v.tipo,
+                'opcoes': v.opcoes
+            } for v in variaveis]
+        }
+    
+    return render_template('certificado/variaveis_dinamicas.html', variaveis=variaveis)
+
+
+@certificado_routes.route('/variaveis_dinamicas/<int:variavel_id>', methods=['PUT', 'DELETE'])
+@login_required
+@require_permission('templates.edit')
+@require_resource_access('variavel', 'variavel_id', 'edit')
+def gerenciar_variavel_dinamica(variavel_id):
+    """Editar ou excluir variável dinâmica."""
+    variavel = VariavelDinamica.query.filter_by(
+        id=variavel_id, cliente_id=current_user.id
+    ).first_or_404()
+    
+    if request.method == 'PUT':
+        try:
+            data = request.get_json()
+            
+            variavel.nome = data.get('nome', variavel.nome).upper().strip()
+            variavel.descricao = data.get('descricao', variavel.descricao)
+            variavel.valor_padrao = data.get('valor_padrao', variavel.valor_padrao)
+            variavel.tipo = data.get('tipo', variavel.tipo)
+            variavel.opcoes = data.get('opcoes') if data.get('tipo') == 'lista' else None
+            
+            db.session.commit()
+            
+            return {'success': True, 'message': 'Variável atualizada com sucesso'}
+            
+        except Exception as e:
+            logger.exception("Erro ao atualizar variável")
+            return {'success': False, 'message': str(e)}
+    
+    elif request.method == 'DELETE':
+        try:
+            variavel.ativo = False
+            db.session.commit()
+            
+            return {'success': True, 'message': 'Variável excluída com sucesso'}
+            
+        except Exception as e:
+            logger.exception("Erro ao excluir variável")
+            return {'success': False, 'message': str(e)}
+
+
+@certificado_routes.route('/templates_avancados')
+@login_required
+@require_permission('templates.view')
+def templates_avancados():
+    """Listar templates avançados do cliente."""
+    templates = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id
+    ).order_by(CertificadoTemplateAvancado.data_criacao.desc()).all()
+    
+    return render_template('certificado/templates_avancados.html', templates=templates)
+
+@certificado_routes.route('/templates_personalizaveis')
+@login_required
+@require_permission('templates.view')
+def templates_personalizaveis():
+    """Lista todos os templates personalizáveis com suas variáveis dinâmicas"""
+    templates = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id,
+        ativo=True
+    ).all()
+    
+    variaveis = VariavelDinamica.query.filter_by(
+        cliente_id=current_user.id,
+        ativo=True
+    ).all()
+    
+    return render_template('certificado/templates_personalizaveis.html', 
+                         templates=templates, variaveis=variaveis)
+
+@certificado_routes.route('/criar_template_personalizado', methods=['GET', 'POST'])
+@login_required
+@require_permission('templates.create')
+def criar_template_personalizado():
+    """Cria um novo template personalizado com variáveis dinâmicas"""
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form.to_dict()
+            
+            # Validação básica
+            if not data.get('titulo') or not data.get('conteudo'):
+                return {'success': False, 'message': 'Título e conteúdo são obrigatórios'}, 400
+            
+            # Criar novo template
+            template = CertificadoTemplateAvancado(
+                cliente_id=current_user.id,
+                titulo=data['titulo'],
+                conteudo=data['conteudo'],
+                layout_config=json.dumps(data.get('layout_config', {})),
+                elementos_visuais=json.dumps(data.get('elementos_visuais', {})),
+                variaveis_dinamicas=json.dumps(data.get('variaveis_selecionadas', [])),
+                orientacao=data.get('orientacao', 'landscape'),
+                tamanho_pagina=data.get('tamanho_pagina', 'A4'),
+                margem_config=json.dumps(data.get('margem_config', {
+                    'top': 20, 'bottom': 20, 'left': 20, 'right': 20
+                })),
+                data_criacao=datetime.now(),
+                ativo=True
+            )
+            
+            db.session.add(template)
+            db.session.commit()
+            
+            if request.is_json:
+                return {'success': True, 'message': 'Template criado com sucesso!', 'template_id': template.id}
+            else:
+                flash('Template personalizado criado com sucesso!', 'success')
+                return redirect(url_for('certificado_routes.templates_personalizaveis'))
+                
+        except Exception as e:
+            logger.error(f"Erro ao criar template personalizado: {str(e)}")
+            db.session.rollback()
+            if request.is_json:
+                return {'success': False, 'message': 'Erro interno do servidor'}, 500
+            else:
+                flash('Erro ao criar template personalizado', 'error')
+                return redirect(url_for('certificado_routes.templates_personalizaveis'))
+    
+    # GET - Mostrar formulário
+    variaveis = VariavelDinamica.query.filter_by(
+        cliente_id=current_user.id,
+        ativo=True
+    ).all()
+    
+    return render_template('certificado/criar_template_personalizado.html', variaveis=variaveis)
+
+@certificado_routes.route('/editar_template_personalizado/<int:template_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission('templates.edit')
+@require_resource_access('template', 'template_id', 'edit')
+def editar_template_personalizado(template_id):
+    """Edita um template personalizado existente"""
+    template = CertificadoTemplateAvancado.query.filter_by(
+        id=template_id,
+        cliente_id=current_user.id
+    ).first_or_404()
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form.to_dict()
+            
+            # Atualizar template
+            template.titulo = data.get('titulo', template.titulo)
+            template.conteudo = data.get('conteudo', template.conteudo)
+            template.layout_config = json.dumps(data.get('layout_config', json.loads(template.layout_config or '{}')))
+            template.elementos_visuais = json.dumps(data.get('elementos_visuais', json.loads(template.elementos_visuais or '{}')))
+            template.variaveis_dinamicas = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_dinamicas or '[]')))
+            template.orientacao = data.get('orientacao', template.orientacao)
+            template.tamanho_pagina = data.get('tamanho_pagina', template.tamanho_pagina)
+            template.margem_config = json.dumps(data.get('margem_config', json.loads(template.margem_config or '{}')))
+            
+            db.session.commit()
+            
+            if request.is_json:
+                return {'success': True, 'message': 'Template atualizado com sucesso!'}
+            else:
+                flash('Template personalizado atualizado com sucesso!', 'success')
+                return redirect(url_for('certificado_routes.templates_personalizaveis'))
+                
+        except Exception as e:
+            logger.error(f"Erro ao editar template personalizado: {str(e)}")
+            db.session.rollback()
+            if request.is_json:
+                return {'success': False, 'message': 'Erro interno do servidor'}, 500
+            else:
+                flash('Erro ao editar template personalizado', 'error')
+                return redirect(url_for('certificado_routes.templates_personalizaveis'))
+    
+    # GET - Mostrar formulário de edição
+    variaveis = VariavelDinamica.query.filter_by(
+        cliente_id=current_user.id,
+        ativo=True
+    ).all()
+    
+    # Converter JSON strings para objetos Python
+    template_data = {
+        'id': template.id,
+        'titulo': template.titulo,
+        'conteudo': template.conteudo,
+        'layout_config': json.loads(template.layout_config or '{}'),
+        'elementos_visuais': json.loads(template.elementos_visuais or '{}'),
+        'variaveis_selecionadas': json.loads(template.variaveis_dinamicas or '[]'),
+        'orientacao': template.orientacao,
+        'tamanho_pagina': template.tamanho_pagina,
+        'margem_config': json.loads(template.margem_config or '{}')
+    }
+    
+    return render_template('certificado/editar_template_personalizado.html', 
+                         template=template_data, variaveis=variaveis)
+
+@certificado_routes.route('/aplicar_variaveis_template', methods=['POST'])
+@login_required
+@require_permission('templates.edit')
+def aplicar_variaveis_template():
+    """Aplica variáveis dinâmicas a um template e retorna o conteúdo processado"""
+    try:
+        data = request.get_json()
+        template_id = data.get('template_id')
+        valores_variaveis = data.get('valores_variaveis', {})
+        
+        if not template_id:
+            return {'success': False, 'message': 'ID do template é obrigatório'}, 400
+        
+        template = CertificadoTemplateAvancado.query.filter_by(
+            id=template_id,
+            cliente_id=current_user.id
+        ).first_or_404()
+        
+        # Processar conteúdo com variáveis
+        conteudo_processado = template.conteudo
+        
+        # Substituir variáveis no conteúdo
+        for nome_variavel, valor in valores_variaveis.items():
+            placeholder = f"{{{nome_variavel}}}"
+            conteudo_processado = conteudo_processado.replace(placeholder, str(valor))
+        
+        # Buscar variáveis não preenchidas
+        variaveis_template = json.loads(template.variaveis_dinamicas or '[]')
+        variaveis_nao_preenchidas = []
+        
+        for var_id in variaveis_template:
+            variavel = VariavelDinamica.query.get(var_id)
+            if variavel and f"{{{variavel.nome}}}" in conteudo_processado:
+                if variavel.nome not in valores_variaveis:
+                    # Usar valor padrão se disponível
+                    if variavel.valor_padrao:
+                        conteudo_processado = conteudo_processado.replace(
+                            f"{{{variavel.nome}}}", 
+                            str(variavel.valor_padrao)
+                        )
+                    else:
+                        variaveis_nao_preenchidas.append(variavel.nome)
+        
+        return {
+            'success': True,
+            'conteudo_processado': conteudo_processado,
+            'variaveis_nao_preenchidas': variaveis_nao_preenchidas
+        }
+        
+    except Exception as e:
+        logger.error(f"Erro ao aplicar variáveis ao template: {str(e)}")
+        return {'success': False, 'message': 'Erro interno do servidor'}, 500
+
+
+@certificado_routes.route('/excluir_template_avancado/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.delete')
+@require_resource_access('template', 'template_id', 'delete')
+def excluir_template_avancado(template_id):
+    """Excluir template avançado."""
+    template = CertificadoTemplateAvancado.query.filter_by(
+        id=template_id, cliente_id=current_user.id
+    ).first()
+    
+    if not template:
+        flash('Template não encontrado', 'error')
+        return redirect(url_for('certificado_routes.templates_avancados'))
+    
+    db.session.delete(template)
+    db.session.commit()
+    
+    flash('Template excluído com sucesso', 'success')
+    return redirect(url_for('certificado_routes.templates_avancados'))
+
+
+@certificado_routes.route('/ativar_template_avancado/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('templates.activate')
+@require_resource_access('template', 'template_id', 'edit')
+def ativar_template_avancado(template_id):
+    """Ativar template avançado."""
+    # Desativar todos os templates
+    CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id
+    ).update({'ativo': False})
+    
+    # Ativar o selecionado
+    template = CertificadoTemplateAvancado.query.filter_by(
+        id=template_id, cliente_id=current_user.id
+    ).first()
+    
+    if template:
+        template.ativo = True
+        db.session.commit()
+        flash('Template ativado com sucesso', 'success')
+    else:
+        flash('Template não encontrado', 'error')
+    
+    return redirect(url_for('certificado_routes.templates_avancados'))
+
+
+@certificado_routes.route('/configurar_certificados/<int:evento_id>')
+@login_required
+@require_permission('configuracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def configurar_certificados(evento_id):
+    """Configurar opções avançadas de certificados para um evento."""
+    from models.event import Evento
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash('Evento não encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    config = ConfiguracaoCertificadoAvancada.query.filter_by(
+        evento_id=evento_id, cliente_id=current_user.id
+    ).first()
+    
+    templates = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id
+    ).all()
+    
+    return render_template('certificado/configurar_certificados.html', 
+                         evento=evento, config=config, templates=templates)
+
+
+@certificado_routes.route('/salvar_configuracao_certificados', methods=['POST'])
+@login_required
+@require_permission('configuracoes.edit')
+def salvar_configuracao_certificados():
+    """Salvar configurações avançadas de certificados."""
+    try:
+        evento_id = request.form.get('evento_id')
+        
+        config = ConfiguracaoCertificadoAvancada.query.filter_by(
+            evento_id=evento_id, cliente_id=current_user.id
+        ).first()
+        
+        if not config:
+            config = ConfiguracaoCertificadoAvancada(
+                evento_id=evento_id, cliente_id=current_user.id
+            )
+            db.session.add(config)
+        
+        # Atualizar configurações básicas
+        config.liberacao_individual = 'liberacao_individual' in request.form
+        config.liberacao_geral = 'liberacao_geral' in request.form
+        config.liberacao_simultanea = 'liberacao_simultanea' in request.form
+        config.incluir_atividades_sem_inscricao = 'incluir_atividades_sem_inscricao' in request.form
+        config.carga_horaria_minima = int(request.form.get('carga_horaria_minima', 0))
+        config.percentual_presenca_minimo = int(request.form.get('percentual_presenca_minimo', 0))
+        config.acesso_participante = 'acesso_participante' in request.form
+        config.acesso_admin = 'acesso_admin' in request.form
+        config.acesso_cliente = 'acesso_cliente' in request.form
+        
+        # Novas configurações do sistema flexível
+        config.liberacao_automatica = 'liberacao_automatica' in request.form
+        config.permitir_solicitacao_manual = 'permitir_solicitacao_manual' in request.form
+        config.notificar_liberacao = 'notificar_liberacao' in request.form
+        config.exigir_checkin_minimo = 'exigir_checkin_minimo' in request.form
+        config.validar_oficinas_obrigatorias = 'validar_oficinas_obrigatorias' in request.form
+        config.min_checkins = int(request.form.get('min_checkins', 1))
+        config.min_oficinas_participadas = int(request.form.get('min_oficinas_participadas', 0))
+        config.exigir_atividades_obrigatorias = 'exigir_atividades_obrigatorias' in request.form
+        config.requer_aprovacao_manual = 'requer_aprovacao_manual' in request.form
+        config.aprovacao_automatica_criterios = 'aprovacao_automatica_criterios' in request.form
+        
+        # Prazos
+        prazo_liberacao_automatica = request.form.get('prazo_liberacao_automatica')
+        prazo_solicitacao_manual = request.form.get('prazo_solicitacao_manual')
+        
+        if prazo_liberacao_automatica:
+            config.prazo_liberacao_automatica = datetime.strptime(prazo_liberacao_automatica, '%Y-%m-%dT%H:%M')
+        else:
+            config.prazo_liberacao_automatica = None
+            
+        if prazo_solicitacao_manual:
+            config.prazo_solicitacao_manual = datetime.strptime(prazo_solicitacao_manual, '%Y-%m-%dT%H:%M')
+        else:
+            config.prazo_solicitacao_manual = None
+        
+        # Templates
+        template_individual_id = request.form.get('template_individual_id')
+        template_geral_id = request.form.get('template_geral_id')
+        
+        config.template_individual_id = template_individual_id if template_individual_id else None
+        config.template_geral_id = template_geral_id if template_geral_id else None
+        
+        db.session.commit()
+        
+        flash('Configurações salvas com sucesso', 'success')
+        return redirect(url_for('certificado_routes.configurar_certificados', evento_id=evento_id))
+        
+    except Exception as e:
+        logger.exception("Erro ao salvar configurações")
+        flash('Erro ao salvar configurações', 'error')
+        return redirect(url_for('certificado_routes.configurar_certificados', evento_id=evento_id))
+
     return send_file(pdf_path, mimetype="application/pdf")
+
+
+@certificado_routes.route('/gerar_certificado_geral_evento/<int:evento_id>', methods=['GET'])
+@login_required
+@require_permission('certificados.generate')
+@require_resource_access('evento', 'evento_id', 'view')
+def gerar_certificado_geral_evento(evento_id):
+    """Gera certificado geral do evento com cálculo automático de carga horária."""
+    from models.event import Evento
+    from models import Checkin
+    from services.certificado_service import verificar_criterios_certificado
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash('Evento não encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Verificar se há configuração específica para este evento
+    config = ConfiguracaoCertificadoAvancada.query.filter_by(
+        evento_id=evento_id, cliente_id=current_user.id
+    ).first()
+    
+    if not config or not config.liberacao_geral:
+        flash('Certificado geral não está habilitado para este evento', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Buscar participantes que fizeram check-in no evento
+    participantes_query = db.session.query(
+        Checkin.usuario_id
+    ).filter(
+        Checkin.evento_id == evento_id
+    ).distinct()
+    
+    participantes_ids = [p.usuario_id for p in participantes_query.all()]
+    
+    if not participantes_ids:
+        flash('Nenhum participante encontrado para este evento', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Gerar certificados para todos os participantes elegíveis
+    certificados_gerados = []
+    
+    for usuario_id in participantes_ids:
+        # Verificar critérios de certificado
+        ok, pendencias = verificar_criterios_certificado(usuario_id, evento_id)
+        
+        if ok:
+            # Calcular atividades participadas
+            atividades_participadas = calcular_atividades_participadas(usuario_id, evento_id, config)
+            
+            if atividades_participadas['total_horas'] >= (config.carga_horaria_minima or 0):
+                # Gerar certificado
+                from models.user import Usuario
+                usuario = Usuario.query.get(usuario_id)
+                
+                template = None
+                if config.template_geral_id:
+                    template = CertificadoTemplateAvancado.query.get(config.template_geral_id)
+                
+                if not template:
+                    template = CertificadoTemplate.query.filter_by(
+                        cliente_id=current_user.id, ativo=True
+                    ).first()
+                
+                if template:
+                    pdf_path = gerar_certificado_geral_personalizado(
+                        usuario, evento, atividades_participadas, template, current_user
+                    )
+                    certificados_gerados.append({
+                        'usuario': usuario.nome,
+                        'path': pdf_path
+                    })
+    
+    if certificados_gerados:
+        # Criar ZIP com todos os certificados
+        import zipfile
+        import tempfile
+        
+        zip_path = os.path.join(tempfile.gettempdir(), f'certificados_evento_{evento_id}.zip')
+        
+        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+            for cert in certificados_gerados:
+                if os.path.exists(cert['path']):
+                    zip_file.write(cert['path'], f"certificado_{cert['usuario']}.pdf")
+        
+        flash(f'{len(certificados_gerados)} certificados gerados com sucesso', 'success')
+        return send_file(zip_path, as_attachment=True, download_name=f'certificados_{evento.nome}.zip')
+    else:
+        flash('Nenhum participante atende aos critérios para certificado', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+
+@certificado_routes.route('/preview_certificado_geral/<int:evento_id>')
+@login_required
+@require_permission('certificados.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def preview_certificado_geral(evento_id):
+    """Visualizar preview do certificado geral do evento."""
+    from models.event import Evento
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash('Evento não encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    config = ConfiguracaoCertificadoAvancada.query.filter_by(
+        evento_id=evento_id, cliente_id=current_user.id
+    ).first()
+    
+    # Criar dados de exemplo
+    class UsuarioExemplo:
+        id = 0
+        nome = "Participante Exemplo"
+    
+    atividades_exemplo = {
+        'oficinas': [
+            {'titulo': 'Oficina Exemplo 1', 'carga_horaria': 4, 'datas': ['01/01/2024']},
+            {'titulo': 'Oficina Exemplo 2', 'carga_horaria': 6, 'datas': ['02/01/2024']}
+        ],
+        'atividades_sem_inscricao': [
+            {'titulo': 'Palestra Exemplo', 'carga_horaria': 2, 'datas': ['03/01/2024']}
+        ],
+        'total_horas': 12,
+        'total_atividades': 3
+    }
+    
+    template = None
+    if config and config.template_geral_id:
+        template = CertificadoTemplateAvancado.query.get(config.template_geral_id)
+    
+    if not template:
+        template = CertificadoTemplate.query.filter_by(
+            cliente_id=current_user.id, ativo=True
+        ).first()
+    
+    if template:
+        pdf_path = gerar_certificado_geral_personalizado(
+            UsuarioExemplo(), evento, atividades_exemplo, template, current_user
+        )
+        return send_file(pdf_path, mimetype="application/pdf")
+    else:
+        flash('Nenhum template encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+
+@certificado_routes.route('/configuracoes_evento/<int:evento_id>')
+@login_required
+@require_permission('configuracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def configuracoes_evento(evento_id):
+    """Retorna as configurações de certificado para um evento específico."""
+    from models.event import Evento
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        return {'success': False, 'message': 'Evento não encontrado'}
+    
+    config = ConfiguracaoCertificadoAvancada.query.filter_by(
+        evento_id=evento_id, cliente_id=current_user.id
+    ).first()
+    
+    # Gerar HTML das configurações
+    liberacao_html = render_template('certificado/config_liberacao.html', config=config)
+    criterios_html = render_template('certificado/config_criterios.html', config=config)
+    geral_html = render_template('certificado/config_geral.html', config=config, evento=evento)
+    
+    return {
+        'success': True,
+        'liberacao_html': liberacao_html,
+        'criterios_html': criterios_html,
+        'geral_html': geral_html
+    }
+
+
+@certificado_routes.route('/historico_emissoes', methods=['POST'])
+@login_required
+@require_permission('relatorios.view')
+def historico_emissoes():
+    """Retorna o histórico de emissões de certificados e declarações."""
+    filtros = request.get_json()
+    
+    # Implementar consulta do histórico baseado nos filtros
+    # Por enquanto, retornar dados de exemplo
+    historico_html = render_template('certificado/historico_table.html', historico=[])
+    
+    return {
+        'success': True,
+        'html': historico_html
+    }
+
+
+def calcular_atividades_participadas(usuario_id, evento_id, config=None):
+    """Calcula todas as atividades que o usuário participou no evento."""
+    from models import Checkin
+    
+    # Oficinas com inscrição
+    oficinas_participadas = db.session.query(
+        Oficina.id, Oficina.titulo, Oficina.carga_horaria
+    ).join(
+        Checkin, Checkin.oficina_id == Oficina.id
+    ).filter(
+        Checkin.usuario_id == usuario_id,
+        Oficina.evento_id == evento_id
+    ).all()
+    
+    atividades = {
+        'oficinas': [],
+        'atividades_sem_inscricao': [],
+        'total_horas': 0,
+        'total_atividades': 0
+    }
+    
+    # Processar oficinas com inscrição
+    for oficina in oficinas_participadas:
+        atividades['oficinas'].append({
+            'id': oficina.id,
+            'titulo': oficina.titulo,
+            'carga_horaria': int(oficina.carga_horaria),
+            'tipo': 'oficina'
+        })
+        atividades['total_horas'] += int(oficina.carga_horaria)
+    
+    # Se configurado, incluir atividades sem inscrição
+    if config and config.incluir_atividades_sem_inscricao:
+        # Buscar check-ins em atividades sem inscrição formal
+        checkins_extras = db.session.query(
+            Checkin
+        ).filter(
+            Checkin.usuario_id == usuario_id,
+            Checkin.evento_id == evento_id,
+            Checkin.oficina_id.is_(None)  # Check-ins gerais do evento
+        ).all()
+        
+        for checkin in checkins_extras:
+            if checkin.palavra_chave and 'ATIVIDADE' in checkin.palavra_chave:
+                # Extrair informações da atividade do check-in
+                atividades['atividades_sem_inscricao'].append({
+                    'titulo': checkin.palavra_chave.replace('ATIVIDADE-', ''),
+                    'carga_horaria': 2,  # Valor padrão
+                    'tipo': 'atividade_extra'
+                })
+                atividades['total_horas'] += 2
+    
+    atividades['total_atividades'] = len(atividades['oficinas']) + len(atividades['atividades_sem_inscricao'])
+    
+    return atividades
+
+
+def gerar_certificado_geral_personalizado(usuario, evento, atividades, template, cliente):
+    """Gera certificado geral personalizado com todas as atividades do evento."""
+    import os
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    
+    # Configuração do arquivo de saída
+    pdf_filename = f"certificado_geral_{usuario.id}_{evento.id}.pdf"
+    pdf_path = os.path.join("static/certificados", pdf_filename)
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+    
+    # Criação do canvas
+    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
+    width, height = landscape(A4)
+    
+    # Determinar conteúdo do certificado
+    if hasattr(template, 'conteudo') and template.conteudo:
+        conteudo_final = template.conteudo
+    elif hasattr(template, 'design_json') and template.design_json:
+        # Template avançado - usar design JSON
+        conteudo_final = gerar_conteudo_template_avancado(template.design_json, usuario, evento, atividades)
+    else:
+        conteudo_final = (
+            "Certificamos que {NOME_PARTICIPANTE} participou do evento {NOME_EVENTO}, "
+            "realizando {TOTAL_ATIVIDADES} atividades com carga horária total de {CARGA_HORARIA} horas. "
+            "Atividades realizadas: {LISTA_ATIVIDADES}."
+        )
+    
+    # Substituir variáveis
+    lista_atividades = ', '.join([
+        ativ['titulo'] for ativ in atividades['oficinas'] + atividades['atividades_sem_inscricao']
+    ])
+    
+    conteudo_final = conteudo_final.replace("{NOME_PARTICIPANTE}", usuario.nome)\
+                                   .replace("{NOME_EVENTO}", evento.nome)\
+                                   .replace("{CARGA_HORARIA}", str(atividades['total_horas']))\
+                                   .replace("{TOTAL_ATIVIDADES}", str(atividades['total_atividades']))\
+                                   .replace("{LISTA_ATIVIDADES}", lista_atividades)\
+                                   .replace("{DATA_EVENTO}", evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else '')
+    
+    # Renderizar certificado
+    # 1. Fundo
+    if hasattr(cliente, 'fundo_certificado') and cliente.fundo_certificado:
+        fundo_path = os.path.join('static', cliente.fundo_certificado)
+        if os.path.exists(fundo_path):
+            fundo = ImageReader(fundo_path)
+            c.drawImage(fundo, 0, 0, width=width, height=height)
+    
+    # 2. Título
+    c.setFont("Helvetica-Bold", 24)
+    titulo = "CERTIFICADO DE PARTICIPAÇÃO"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 24)
+    c.drawString((width - titulo_largura) / 2, height * 0.75, titulo)
+    
+    # 3. Conteúdo
+    styles = getSampleStyleSheet()
+    style = ParagraphStyle(
+        'CertificadoStyle',
+        parent=styles['Normal'],
+        fontSize=14,
+        leading=20,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    
+    # Criar frame para o texto
+    frame = Frame(width * 0.1, height * 0.3, width * 0.8, height * 0.3, 
+                  leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0)
+    
+    # Criar parágrafo
+    para = Paragraph(conteudo_final, style)
+    frame.addFromList([para], c)
+    
+    # 4. Logo (se disponível)
+    if hasattr(cliente, 'logo_certificado') and cliente.logo_certificado:
+        logo_path = os.path.join('static', cliente.logo_certificado)
+        if os.path.exists(logo_path):
+            logo = ImageReader(logo_path)
+            c.drawImage(logo, width * 0.05, height * 0.05, width=100, height=100, preserveAspectRatio=True)
+    
+    # 5. Data de emissão
+    c.setFont("Helvetica", 10)
+    data_emissao = f"Emitido em: {datetime.now().strftime('%d/%m/%Y')}"
+    c.drawString(width * 0.7, height * 0.1, data_emissao)
+    
+    c.save()
+    return pdf_path
+
+
+# ===== SISTEMA FLEXÍVEL DE LIBERAÇÃO DE CERTIFICADOS =====
+
+@certificado_routes.route('/regras_certificado/<int:evento_id>')
+@login_required
+@require_permission('configuracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def gerenciar_regras_certificado(evento_id):
+    """Gerenciar regras de liberação de certificados."""
+    from models.event import Evento
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    if not evento:
+        flash('Evento não encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    regras = RegraCertificado.query.filter_by(
+        evento_id=evento_id, cliente_id=current_user.id
+    ).order_by(RegraCertificado.prioridade.asc()).all()
+    
+    templates = CertificadoTemplateAvancado.query.filter_by(
+        cliente_id=current_user.id, ativo=True
+    ).all()
+    
+    return render_template('regras_certificado.html', 
+                         evento=evento, regras=regras, templates=templates)
+
+
+@certificado_routes.route('/criar_regra_certificado', methods=['POST'])
+@login_required
+@require_permission('configuracoes.edit')
+def criar_regra_certificado():
+    """Criar nova regra de certificado."""
+    try:
+        data = request.get_json()
+        
+        regra = RegraCertificado(
+            cliente_id=current_user.id,
+            evento_id=data['evento_id'],
+            nome=data['nome'],
+            descricao=data.get('descricao', ''),
+            condicoes=data['condicoes'],
+            operador_logico=data.get('operador_logico', 'AND'),
+            acao=data['acao'],
+            template_especifico_id=data.get('template_especifico_id'),
+            prioridade=data.get('prioridade', 0)
+        )
+        
+        db.session.add(regra)
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': 'Regra criada com sucesso',
+            'regra_id': regra.id
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao criar regra: {str(e)}")
+        return {'success': False, 'message': 'Erro ao criar regra'}, 500
+
+
+@certificado_routes.route('/editar_regra_certificado/<int:regra_id>', methods=['PUT'])
+@login_required
+@require_permission('configuracoes.edit')
+@require_resource_access('regra', 'regra_id', 'edit')
+def editar_regra_certificado(regra_id):
+    """Editar regra de certificado."""
+    try:
+        regra = RegraCertificado.query.filter_by(
+            id=regra_id, cliente_id=current_user.id
+        ).first()
+        
+        if not regra:
+            return {'success': False, 'message': 'Regra não encontrada'}, 404
+        
+        data = request.get_json()
+        
+        regra.nome = data.get('nome', regra.nome)
+        regra.descricao = data.get('descricao', regra.descricao)
+        regra.condicoes = data.get('condicoes', regra.condicoes)
+        regra.operador_logico = data.get('operador_logico', regra.operador_logico)
+        regra.acao = data.get('acao', regra.acao)
+        regra.template_especifico_id = data.get('template_especifico_id', regra.template_especifico_id)
+        regra.prioridade = data.get('prioridade', regra.prioridade)
+        regra.ativo = data.get('ativo', regra.ativo)
+        
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': 'Regra atualizada com sucesso'
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao editar regra: {str(e)}")
+        return {'success': False, 'message': 'Erro ao editar regra'}, 500
+
+
+@certificado_routes.route('/excluir_regra_certificado/<int:regra_id>', methods=['DELETE'])
+@login_required
+@require_permission('configuracoes.delete')
+@require_resource_access('regra', 'regra_id', 'delete')
+def excluir_regra_certificado(regra_id):
+    """Excluir regra de certificado."""
+    try:
+        regra = RegraCertificado.query.filter_by(
+            id=regra_id, cliente_id=current_user.id
+        ).first()
+        
+        if not regra:
+            return {'success': False, 'message': 'Regra não encontrada'}, 404
+        
+        db.session.delete(regra)
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'message': 'Regra excluída com sucesso'
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao excluir regra: {str(e)}")
+        return {'success': False, 'message': 'Erro ao excluir regra'}, 500
+
+
+@certificado_routes.route('/solicitar_certificado', methods=['POST'])
+@login_required
+def solicitar_certificado():
+    """Solicitar certificado para aprovação manual."""
+    try:
+        data = request.get_json()
+        
+        # Verificar se já existe solicitação pendente
+        solicitacao_existente = SolicitacaoCertificado.query.filter_by(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            oficina_id=data.get('oficina_id'),
+            tipo_certificado=data['tipo_certificado'],
+            status='pendente'
+        ).first()
+        
+        if solicitacao_existente:
+            return {
+                'success': False, 
+                'message': 'Já existe uma solicitação pendente para este certificado'
+            }
+        
+        # Coletar dados de participação
+        dados_participacao = calcular_atividades_participadas(
+            current_user.id, data['evento_id']
+        )
+        
+        solicitacao = SolicitacaoCertificado(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            oficina_id=data.get('oficina_id'),
+            tipo_certificado=data['tipo_certificado'],
+            justificativa=data.get('justificativa', ''),
+            dados_participacao=dados_participacao
+        )
+        
+        db.session.add(solicitacao)
+        db.session.commit()
+        
+        # Criar notificação para administradores
+        criar_notificacao_solicitacao(solicitacao)
+        
+        return {
+            'success': True,
+            'message': 'Solicitação enviada com sucesso',
+            'solicitacao_id': solicitacao.id
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao solicitar certificado: {str(e)}")
+        return {'success': False, 'message': 'Erro ao enviar solicitação'}, 500
+
+
+@certificado_routes.route('/aprovar_solicitacao/<int:solicitacao_id>', methods=['POST'])
+@login_required
+@require_permission('certificados.approve')
+def aprovar_solicitacao(solicitacao_id):
+    """Aprovar solicitação de certificado."""
+    try:
+        solicitacao = SolicitacaoCertificado.query.get(solicitacao_id)
+        
+        if not solicitacao:
+            return {'success': False, 'message': 'Solicitação não encontrada'}, 404
+        
+        data = request.get_json()
+        
+        solicitacao.status = 'aprovada'
+        solicitacao.aprovado_por = current_user.id
+        solicitacao.data_aprovacao = datetime.utcnow()
+        solicitacao.observacoes_aprovacao = data.get('observacoes', '')
+        
+        db.session.commit()
+        
+        # Gerar certificado automaticamente
+        if data.get('gerar_automaticamente', True):
+            gerar_certificado_aprovado(solicitacao)
+        
+        # Criar notificação para o usuário
+        criar_notificacao_aprovacao(solicitacao)
+        
+        return {
+            'success': True,
+            'message': 'Solicitação aprovada com sucesso'
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao aprovar solicitação: {str(e)}")
+        return {'success': False, 'message': 'Erro ao aprovar solicitação'}, 500
+
+
+@certificado_routes.route('/rejeitar_solicitacao/<int:solicitacao_id>', methods=['POST'])
+@login_required
+@require_permission('certificados.approve')
+def rejeitar_solicitacao(solicitacao_id):
+    """Rejeitar solicitação de certificado."""
+    try:
+        solicitacao = SolicitacaoCertificado.query.get(solicitacao_id)
+        
+        if not solicitacao:
+            return {'success': False, 'message': 'Solicitação não encontrada'}, 404
+        
+        data = request.get_json()
+        
+        solicitacao.status = 'rejeitada'
+        solicitacao.aprovado_por = current_user.id
+        solicitacao.data_aprovacao = datetime.utcnow()
+        solicitacao.observacoes_aprovacao = data.get('motivo', '')
+        
+        db.session.commit()
+        
+        # Criar notificação para o usuário
+        criar_notificacao_rejeicao(solicitacao)
+        
+        return {
+            'success': True,
+            'message': 'Solicitação rejeitada'
+        }
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao rejeitar solicitação: {str(e)}")
+        return {'success': False, 'message': 'Erro ao rejeitar solicitação'}, 500
+
+
+@certificado_routes.route('/solicitacoes_pendentes')
+@login_required
+@require_permission('certificados.approve')
+def listar_solicitacoes_pendentes():
+    """Listar solicitações pendentes de aprovação."""
+    from models.event import Evento
+    
+    solicitacoes = SolicitacaoCertificado.query.filter_by(
+        status='pendente'
+    ).join(SolicitacaoCertificado.evento).filter(
+        Evento.cliente_id == current_user.id
+    ).order_by(SolicitacaoCertificado.data_solicitacao.desc()).all()
+    
+    return render_template('solicitacoes_pendentes.html', solicitacoes=solicitacoes)
+
+
+@certificado_routes.route('/notificacoes_certificado')
+@login_required
+def listar_notificacoes():
+    """Listar notificações de certificados do usuário."""
+    notificacoes = NotificacaoCertificado.query.filter_by(
+        usuario_id=current_user.id
+    ).order_by(NotificacaoCertificado.data_criacao.desc()).limit(50).all()
+    
+    return render_template('notificacoes_certificado.html', notificacoes=notificacoes)
+
+
+@certificado_routes.route('/marcar_notificacao_lida/<int:notificacao_id>', methods=['POST'])
+@login_required
+def marcar_notificacao_lida(notificacao_id):
+    """Marcar notificação como lida."""
+    try:
+        notificacao = NotificacaoCertificado.query.filter_by(
+            id=notificacao_id, usuario_id=current_user.id
+        ).first()
+        
+        if not notificacao:
+            return {'success': False, 'message': 'Notificação não encontrada'}, 404
+        
+        notificacao.lida = True
+        db.session.commit()
+        
+        return {'success': True, 'message': 'Notificação marcada como lida'}
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao marcar notificação: {str(e)}")
+        return {'success': False, 'message': 'Erro ao marcar notificação'}, 500
+
+
+# ===== FUNÇÕES AUXILIARES =====
+
+def avaliar_regras_certificado(usuario_id, evento_id, tipo_certificado='geral'):
+    """Avaliar regras de liberação de certificados para um usuário."""
+    regras = RegraCertificado.query.filter_by(
+        evento_id=evento_id, ativo=True
+    ).order_by(RegraCertificado.prioridade.asc()).all()
+    
+    dados_participacao = calcular_atividades_participadas(usuario_id, evento_id)
+    
+    for regra in regras:
+        if avaliar_condicoes_regra(regra, dados_participacao):
+            return {
+                'acao': regra.acao,
+                'template_id': regra.template_especifico_id,
+                'regra': regra.nome
+            }
+    
+    return {'acao': 'liberar', 'template_id': None, 'regra': 'Padrão'}
+
+
+def avaliar_condicoes_regra(regra, dados_participacao):
+    """Avaliar se as condições de uma regra são atendidas."""
+    condicoes = regra.condicoes
+    resultados = []
+    
+    for condicao in condicoes:
+        campo = condicao['campo']
+        operador = condicao['operador']
+        valor = condicao['valor']
+        
+        valor_atual = dados_participacao.get(campo, 0)
+        
+        if operador == 'maior_que':
+            resultado = valor_atual > valor
+        elif operador == 'menor_que':
+            resultado = valor_atual < valor
+        elif operador == 'igual':
+            resultado = valor_atual == valor
+        elif operador == 'maior_igual':
+            resultado = valor_atual >= valor
+        elif operador == 'menor_igual':
+            resultado = valor_atual <= valor
+        else:
+            resultado = False
+        
+        resultados.append(resultado)
+    
+    if regra.operador_logico == 'AND':
+        return all(resultados)
+    else:  # OR
+        return any(resultados)
+
+
+def criar_notificacao_solicitacao(solicitacao):
+    """Criar notificação para administradores sobre nova solicitação."""
+    from models.user import Usuario
+    
+    # Buscar administradores do cliente
+    admins = Usuario.query.filter_by(
+        cliente_id=solicitacao.evento.cliente_id,
+        role='admin'
+    ).all()
+    
+    for admin in admins:
+        notificacao = NotificacaoCertificado(
+            usuario_id=admin.id,
+            evento_id=solicitacao.evento_id,
+            tipo='pendente',
+            titulo='Nova Solicitação de Certificado',
+            mensagem=f'Nova solicitação de certificado {solicitacao.tipo_certificado} de {solicitacao.usuario.nome}',
+            solicitacao_id=solicitacao.id
+        )
+        db.session.add(notificacao)
+    
+    db.session.commit()
+
+
+def criar_notificacao_aprovacao(solicitacao):
+    """Criar notificação de aprovação para o usuário."""
+    notificacao = NotificacaoCertificado(
+        usuario_id=solicitacao.usuario_id,
+        evento_id=solicitacao.evento_id,
+        tipo='liberado',
+        titulo='Certificado Aprovado',
+        mensagem=f'Sua solicitação de certificado {solicitacao.tipo_certificado} foi aprovada',
+        solicitacao_id=solicitacao.id
+    )
+    db.session.add(notificacao)
+    db.session.commit()
+
+
+def criar_notificacao_rejeicao(solicitacao):
+    """Criar notificação de rejeição para o usuário."""
+    notificacao = NotificacaoCertificado(
+        usuario_id=solicitacao.usuario_id,
+        evento_id=solicitacao.evento_id,
+        tipo='rejeitado',
+        titulo='Certificado Rejeitado',
+        mensagem=f'Sua solicitação de certificado {solicitacao.tipo_certificado} foi rejeitada: {solicitacao.observacoes_aprovacao}',
+        solicitacao_id=solicitacao.id
+    )
+    db.session.add(notificacao)
+    db.session.commit()
+
+
+def gerar_certificado_aprovado(solicitacao):
+    """Gerar certificado após aprovação."""
+    try:
+        if solicitacao.tipo_certificado == 'geral':
+            # Gerar certificado geral
+            atividades = calcular_atividades_participadas(
+                solicitacao.usuario_id, solicitacao.evento_id
+            )
+            
+            config = ConfiguracaoCertificadoAvancada.query.filter_by(
+                evento_id=solicitacao.evento_id
+            ).first()
+            
+            template = None
+            if config and config.template_geral_id:
+                template = CertificadoTemplateAvancado.query.get(config.template_geral_id)
+            
+            if template:
+                pdf_path = gerar_certificado_geral_personalizado(
+                    solicitacao.usuario, solicitacao.evento, atividades, template, solicitacao.evento.cliente
+                )
+                
+                # Registrar no histórico
+                from models.event import HistoricoCertificado
+                historico = HistoricoCertificado(
+                    usuario_id=solicitacao.usuario_id,
+                    evento_id=solicitacao.evento_id,
+                    tipo_certificado='geral',
+                    template_usado=template.nome,
+                    caminho_arquivo=pdf_path,
+                    data_emissao=datetime.utcnow()
+                )
+                db.session.add(historico)
+                db.session.commit()
+        
+    except Exception as e:
+        logger.error(f"Erro ao gerar certificado aprovado: {str(e)}")
+        raise
+
+
+def gerar_conteudo_template_avancado(design_json, usuario, evento, atividades):
+    """Gera conteúdo baseado no design JSON do template avançado."""
+    try:
+        design = json.loads(design_json)
+        conteudo_parts = []
+        
+        for elemento in design.get('elementos', []):
+            if elemento.get('tipo') == 'texto':
+                texto = elemento.get('conteudo', '')
+                # Substituir variáveis no texto
+                texto = texto.replace("{NOME_PARTICIPANTE}", usuario.nome)\
+                            .replace("{NOME_EVENTO}", evento.nome)\
+                            .replace("{CARGA_HORARIA}", str(atividades['total_horas']))\
+                            .replace("{TOTAL_ATIVIDADES}", str(atividades['total_atividades']))
+                conteudo_parts.append(texto)
+        
+        return ' '.join(conteudo_parts)
+    except:
+        return (
+            "Certificamos que {NOME_PARTICIPANTE} participou do evento {NOME_EVENTO}, "
+            "realizando {TOTAL_ATIVIDADES} atividades com carga horária total de {CARGA_HORARIA} horas."
+         )
+
+
+# ==================== ROTAS PARA DECLARAÇÕES DE COMPARECIMENTO ====================
+
+@certificado_routes.route('/declaracoes')
+@login_required
+@require_permission('declaracoes.view')
+def gerenciar_declaracoes():
+    """Página para gerenciar templates de declarações de comparecimento."""
+    templates = DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('certificado/declaracoes.html', templates=templates)
+
+
+@certificado_routes.route('/declaracoes/criar', methods=['GET', 'POST'])
+@login_required
+@require_permission('declaracoes.create')
+def criar_declaracao_template():
+    """Criar novo template de declaração de comparecimento."""
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        template = DeclaracaoTemplate(
+            nome=data['nome'],
+            conteudo=data['conteudo'],
+            tipo=data.get('tipo', 'comparecimento'),
+            ativo=data.get('ativo', True),
+            cliente_id=current_user.id
+        )
+        
+        db.session.add(template)
+        db.session.commit()
+        
+        return {'success': True, 'message': 'Template de declaração criado com sucesso'}
+    
+    return render_template('certificado/criar_declaracao.html')
+
+
+@certificado_routes.route('/declaracoes/editar/<int:template_id>', methods=['GET', 'POST'])
+@login_required
+@require_permission('declaracoes.edit')
+@require_resource_access('template', 'template_id', 'edit')
+def editar_declaracao_template(template_id):
+    """Editar template de declaração existente."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id, cliente_id=current_user.id
+    ).first_or_404()
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        
+        template.nome = data['nome']
+        template.conteudo = data['conteudo']
+        template.tipo = data.get('tipo', template.tipo)
+        template.ativo = data.get('ativo', template.ativo)
+        
+        db.session.commit()
+        
+        return {'success': True, 'message': 'Template atualizado com sucesso'}
+    
+    return render_template('certificado/editar_declaracao.html', template=template)
+
+
+@certificado_routes.route('/declaracoes/deletar/<int:template_id>', methods=['DELETE'])
+@login_required
+@require_permission('declaracoes.delete')
+@require_resource_access('template', 'template_id', 'delete')
+def deletar_declaracao_template(template_id):
+    """Deletar template de declaração."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id, cliente_id=current_user.id
+    ).first_or_404()
+    
+    db.session.delete(template)
+    db.session.commit()
+    
+    return {'success': True, 'message': 'Template deletado com sucesso'}
+
+
+@certificado_routes.route('/declaracoes/gerar_individual/<int:evento_id>/<int:usuario_id>')
+@login_required
+@require_permission('declaracoes.generate')
+@require_resource_access('evento', 'evento_id', 'view')
+def gerar_declaracao_individual(evento_id, usuario_id):
+    """Gerar declaração individual de comparecimento."""
+    from models.event import Evento
+    from models.user import Usuario
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    usuario = Usuario.query.get_or_404(usuario_id)
+    
+    # Verificar se o usuário participou do evento
+    participacao = verificar_participacao_evento(usuario_id, evento_id)
+    
+    if not participacao['participou']:
+        flash('Usuário não participou deste evento', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Buscar template ativo
+    template = DeclaracaoTemplate.query.filter_by(
+        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+    ).first()
+    
+    if not template:
+        flash('Nenhum template de declaração encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Gerar declaração
+    pdf_path = gerar_declaracao_personalizada(usuario, evento, participacao, template, current_user)
+    
+    return send_file(pdf_path, mimetype="application/pdf")
+
+
+@certificado_routes.route('/declaracoes/gerar_lote/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.bulk_generate')
+@require_resource_access('evento', 'evento_id', 'view')
+def gerar_declaracoes_lote(evento_id):
+    """Gerar declarações em lote para um evento."""
+    from models.event import Evento
+    from models import Checkin
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    
+    # Buscar todos os participantes do evento
+    participantes_query = db.session.query(
+        Checkin.usuario_id
+    ).filter(
+        Checkin.evento_id == evento_id
+    ).distinct()
+    
+    participantes_ids = [p.usuario_id for p in participantes_query.all()]
+    
+    if not participantes_ids:
+        flash('Nenhum participante encontrado para este evento', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Buscar template ativo
+    template = DeclaracaoTemplate.query.filter_by(
+        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+    ).first()
+    
+    if not template:
+        flash('Nenhum template de declaração encontrado', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Gerar declarações
+    declaracoes_geradas = []
+    
+    for usuario_id in participantes_ids:
+        from models.user import Usuario
+        usuario = Usuario.query.get(usuario_id)
+        
+        if usuario:
+            participacao = verificar_participacao_evento(usuario_id, evento_id)
+            
+            if participacao['participou']:
+                pdf_path = gerar_declaracao_personalizada(
+                    usuario, evento, participacao, template, current_user
+                )
+                declaracoes_geradas.append({
+                    'usuario': usuario.nome,
+                    'path': pdf_path
+                })
+    
+    if declaracoes_geradas:
+        # Criar ZIP com todas as declarações
+        import zipfile
+        import tempfile
+        
+        zip_path = os.path.join(tempfile.gettempdir(), f'declaracoes_evento_{evento_id}.zip')
+        
+        with zipfile.ZipFile(zip_path, 'w') as zip_file:
+            for decl in declaracoes_geradas:
+                if os.path.exists(decl['path']):
+                    zip_file.write(decl['path'], f"declaracao_{decl['usuario']}.pdf")
+        
+        flash(f'{len(declaracoes_geradas)} declarações geradas com sucesso', 'success')
+        return send_file(zip_path, as_attachment=True, download_name=f'declaracoes_{evento.nome}.zip')
+    else:
+        flash('Nenhuma declaração pôde ser gerada', 'warning')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+
+@certificado_routes.route('/declaracoes/preview/<int:template_id>/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('template', 'template_id', 'view')
+def preview_declaracao(template_id, evento_id):
+    """Visualizar preview de declaração."""
+    from models.event import Evento
+    
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id, cliente_id=current_user.id
+    ).first_or_404()
+    
+    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    
+    # Criar dados de exemplo
+    class UsuarioExemplo:
+        id = 0
+        nome = "Participante Exemplo"
+        email = "exemplo@email.com"
+    
+    participacao_exemplo = {
+        'participou': True,
+        'total_checkins': 5,
+        'atividades': [
+            {'nome': 'Oficina Exemplo 1', 'data': '01/01/2024'},
+            {'nome': 'Oficina Exemplo 2', 'data': '02/01/2024'}
+        ],
+        'carga_horaria_total': 10
+    }
+    
+    pdf_path = gerar_declaracao_personalizada(
+        UsuarioExemplo(), evento, participacao_exemplo, template, current_user
+    )
+    
+    return send_file(pdf_path, mimetype="application/pdf")
+
+
+def verificar_participacao_evento(usuario_id, evento_id):
+    """Verifica a participação de um usuário em um evento."""
+    from models import Checkin
+    
+    # Buscar check-ins do usuário no evento
+    checkins = db.session.query(Checkin).filter(
+        Checkin.usuario_id == usuario_id,
+        Checkin.evento_id == evento_id
+    ).all()
+    
+    if not checkins:
+        return {
+            'participou': False,
+            'total_checkins': 0,
+            'atividades': [],
+            'carga_horaria_total': 0
+        }
+    
+    # Calcular atividades participadas
+    atividades = []
+    carga_horaria_total = 0
+    
+    for checkin in checkins:
+        if checkin.oficina:
+            atividades.append({
+                'nome': checkin.oficina.titulo,
+                'data': checkin.data_checkin.strftime('%d/%m/%Y') if checkin.data_checkin else '',
+                'carga_horaria': checkin.oficina.carga_horaria
+            })
+            carga_horaria_total += int(checkin.oficina.carga_horaria or 0)
+    
+    return {
+        'participou': True,
+        'total_checkins': len(checkins),
+        'atividades': atividades,
+        'carga_horaria_total': carga_horaria_total
+    }
+
+
+def gerar_declaracao_personalizada(usuario, evento, participacao, template, cliente):
+    """Gera declaração personalizada de comparecimento."""
+    import os
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.utils import ImageReader
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+    
+    # Configuração do arquivo de saída
+    pdf_filename = f"declaracao_{usuario.id}_{evento.id}.pdf"
+    pdf_path = os.path.join("static/declaracoes", pdf_filename)
+    os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
+    
+    # Criação do canvas
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    width, height = A4
+    
+    # Substituir variáveis no conteúdo
+    conteudo_final = template.conteudo
+    
+    lista_atividades = ', '.join([ativ['nome'] for ativ in participacao['atividades']])
+    
+    conteudo_final = conteudo_final.replace("{NOME_PARTICIPANTE}", usuario.nome)\
+                                   .replace("{NOME_EVENTO}", evento.nome)\
+                                   .replace("{TOTAL_CHECKINS}", str(participacao['total_checkins']))\
+                                   .replace("{CARGA_HORARIA_TOTAL}", str(participacao['carga_horaria_total']))\
+                                   .replace("{LISTA_ATIVIDADES}", lista_atividades)\
+                                   .replace("{DATA_EVENTO}", evento.data_inicio.strftime('%d/%m/%Y') if evento.data_inicio else '')\
+                                   .replace("{EMAIL_PARTICIPANTE}", getattr(usuario, 'email', ''))
+    
+    # Renderizar declaração
+    # 1. Cabeçalho
+    c.setFont("Helvetica-Bold", 20)
+    titulo = "DECLARAÇÃO DE COMPARECIMENTO"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 20)
+    c.drawString((width - titulo_largura) / 2, height * 0.85, titulo)
+    
+    # 2. Conteúdo
+    styles = getSampleStyleSheet()
+    style = ParagraphStyle(
+        'DeclaracaoStyle',
+        parent=styles['Normal'],
+        fontSize=12,
+        leading=18,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12
+    )
+    
+    # Criar frame para o texto
+    frame = Frame(width * 0.1, height * 0.3, width * 0.8, height * 0.4, 
+                  leftPadding=0, bottomPadding=0, rightPadding=0, topPadding=0)
+    
+    # Criar parágrafo
+    para = Paragraph(conteudo_final, style)
+    frame.addFromList([para], c)
+    
+    # 3. Logo (se disponível)
+    if hasattr(cliente, 'logo_certificado') and cliente.logo_certificado:
+        logo_path = os.path.join('static', cliente.logo_certificado)
+        if os.path.exists(logo_path):
+            logo = ImageReader(logo_path)
+            c.drawImage(logo, width * 0.05, height * 0.05, width=80, height=80, preserveAspectRatio=True)
+    
+    # 4. Data de emissão
+    c.setFont("Helvetica", 10)
+    data_emissao = f"Emitido em: {datetime.now().strftime('%d/%m/%Y')}"
+    c.drawString(width * 0.7, height * 0.1, data_emissao)
+    
+    # 5. Assinatura (espaço)
+    c.setFont("Helvetica", 12)
+    c.drawString(width * 0.6, height * 0.2, "_" * 30)
+    c.drawString(width * 0.65, height * 0.17, "Assinatura")
+    
+    c.save()
+    return pdf_path
 

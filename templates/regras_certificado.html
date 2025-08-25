@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regras de Certificado - {{ evento.nome }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .regra-card {
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .regra-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .regra-inativa {
+            border-left-color: #6c757d;
+            opacity: 0.7;
+        }
+        .condicao-badge {
+            font-size: 0.8em;
+            margin: 2px;
+        }
+        .prioridade-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-cogs me-2"></i>Regras de Certificado</h2>
+                        <p class="text-muted mb-0">Evento: {{ evento.nome }}</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaRegra">
+                            <i class="fas fa-plus me-2"></i>Nova Regra
+                        </button>
+                        <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regras Existentes -->
+        <div class="row">
+            <div class="col-12">
+                {% if regras %}
+                    <div class="row">
+                        {% for regra in regras %}
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card regra-card {{ 'regra-inativa' if not regra.ativo else '' }} position-relative">
+                                <div class="card-body">
+                                    <span class="badge bg-info prioridade-badge">Prioridade {{ regra.prioridade }}</span>
+                                    
+                                    <h5 class="card-title">{{ regra.nome }}</h5>
+                                    <p class="card-text text-muted">{{ regra.descricao or 'Sem descrição' }}</p>
+                                    
+                                    <!-- Condições -->
+                                    <div class="mb-3">
+                                        <small class="text-muted">Condições ({{ regra.operador_logico }}):</small>
+                                        <div class="mt-1">
+                                            {% for condicao in regra.condicoes %}
+                                            <span class="badge bg-light text-dark condicao-badge">
+                                                {{ condicao.campo }} {{ condicao.operador }} {{ condicao.valor }}
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Ação -->
+                                    <div class="mb-3">
+                                        <small class="text-muted">Ação:</small>
+                                        <div>
+                                            {% if regra.acao == 'liberar' %}
+                                                <span class="badge bg-success">Liberar Automaticamente</span>
+                                            {% elif regra.acao == 'bloquear' %}
+                                                <span class="badge bg-danger">Bloquear</span>
+                                            {% elif regra.acao == 'aprovar' %}
+                                                <span class="badge bg-warning">Requer Aprovação</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Template Específico -->
+                                    {% if regra.template_especifico %}
+                                    <div class="mb-3">
+                                        <small class="text-muted">Template:</small>
+                                        <div>
+                                            <span class="badge bg-info">{{ regra.template_especifico.nome }}</span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Status -->
+                                    <div class="mb-3">
+                                        <span class="badge {{ 'bg-success' if regra.ativo else 'bg-secondary' }}">
+                                            {{ 'Ativa' if regra.ativo else 'Inativa' }}
+                                        </span>
+                                    </div>
+                                    
+                                    <!-- Ações -->
+                                    <div class="btn-group w-100" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editarRegra({{ regra.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-{{ 'secondary' if regra.ativo else 'success' }}" 
+                                                onclick="toggleRegra({{ regra.id }}, {{ regra.ativo|lower }})">
+                                            <i class="fas fa-{{ 'pause' if regra.ativo else 'play' }}"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="excluirRegra({{ regra.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhuma regra configurada</h4>
+                        <p class="text-muted">Crie sua primeira regra de liberação de certificados</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaRegra">
+                            <i class="fas fa-plus me-2"></i>Criar Primeira Regra
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Regra -->
+    <div class="modal fade" id="modalNovaRegra" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nova Regra de Certificado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formNovaRegra">
+                        <input type="hidden" name="evento_id" value="{{ evento.id }}">
+                        
+                        <!-- Informações Básicas -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Nome da Regra *</label>
+                                <input type="text" class="form-control" name="nome" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prioridade</label>
+                                <input type="number" class="form-control" name="prioridade" value="0" min="0">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Descrição</label>
+                            <textarea class="form-control" name="descricao" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Condições -->
+                        <div class="mb-3">
+                            <label class="form-label">Condições *</label>
+                            <div class="border rounded p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span>Operador Lógico:</span>
+                                    <div class="btn-group" role="group">
+                                        <input type="radio" class="btn-check" name="operador_logico" id="and" value="AND" checked>
+                                        <label class="btn btn-outline-primary" for="and">E (AND)</label>
+                                        
+                                        <input type="radio" class="btn-check" name="operador_logico" id="or" value="OR">
+                                        <label class="btn btn-outline-primary" for="or">OU (OR)</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="condicoes-container">
+                                    <!-- Condições serão adicionadas aqui -->
+                                </div>
+                                
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarCondicao()">
+                                    <i class="fas fa-plus me-2"></i>Adicionar Condição
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Ação -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Ação *</label>
+                                <select class="form-select" name="acao" required onchange="toggleTemplateSelect(this.value)">
+                                    <option value="">Selecione uma ação</option>
+                                    <option value="liberar">Liberar Automaticamente</option>
+                                    <option value="bloquear">Bloquear</option>
+                                    <option value="aprovar">Requer Aprovação</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="template-select-container" style="display: none;">
+                                <label class="form-label">Template Específico</label>
+                                <select class="form-select" name="template_especifico_id">
+                                    <option value="">Template padrão</option>
+                                    {% for template in templates %}
+                                    <option value="{{ template.id }}">{{ template.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarRegra()">Salvar Regra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Regra -->
+    <div class="modal fade" id="modalEditarRegra" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Regra de Certificado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarRegra">
+                        <!-- Conteúdo será preenchido dinamicamente -->
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="atualizarRegra()">Atualizar Regra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let contadorCondicoes = 0;
+        let regraEditandoId = null;
+        
+        const camposDisponiveis = {
+            'total_checkins': 'Total de Check-ins',
+            'carga_horaria_total': 'Carga Horária Total',
+            'percentual_presenca': 'Percentual de Presença',
+            'oficinas_participadas': 'Oficinas Participadas',
+            'atividades_obrigatorias': 'Atividades Obrigatórias'
+        };
+        
+        const operadoresDisponiveis = {
+            'maior_que': 'Maior que',
+            'menor_que': 'Menor que',
+            'igual': 'Igual a',
+            'maior_igual': 'Maior ou igual a',
+            'menor_igual': 'Menor ou igual a'
+        };
+        
+        function adicionarCondicao() {
+            const container = document.getElementById('condicoes-container');
+            const condicaoId = `condicao_${contadorCondicoes++}`;
+            
+            const condicaoHtml = `
+                <div class="row mb-2 condicao-item" id="${condicaoId}">
+                    <div class="col-md-4">
+                        <select class="form-select" name="condicoes[${condicaoId}][campo]" required>
+                            <option value="">Selecione o campo</option>
+                            ${Object.entries(camposDisponiveis).map(([key, value]) => 
+                                `<option value="${key}">${value}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" name="condicoes[${condicaoId}][operador]" required>
+                            <option value="">Operador</option>
+                            ${Object.entries(operadoresDisponiveis).map(([key, value]) => 
+                                `<option value="${key}">${value}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" name="condicoes[${condicaoId}][valor]" 
+                               placeholder="Valor" required step="0.01">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                onclick="removerCondicao('${condicaoId}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', condicaoHtml);
+        }
+        
+        function removerCondicao(condicaoId) {
+            document.getElementById(condicaoId).remove();
+        }
+        
+        function toggleTemplateSelect(acao) {
+            const container = document.getElementById('template-select-container');
+            container.style.display = acao === 'liberar' ? 'block' : 'none';
+        }
+        
+        function salvarRegra() {
+            const form = document.getElementById('formNovaRegra');
+            const formData = new FormData(form);
+            
+            // Processar condições
+            const condicoes = [];
+            const condicoesItems = document.querySelectorAll('.condicao-item');
+            
+            condicoesItems.forEach(item => {
+                const campo = item.querySelector('[name*="[campo]"]').value;
+                const operador = item.querySelector('[name*="[operador]"]').value;
+                const valor = parseFloat(item.querySelector('[name*="[valor]"]').value);
+                
+                if (campo && operador && !isNaN(valor)) {
+                    condicoes.push({ campo, operador, valor });
+                }
+            });
+            
+            if (condicoes.length === 0) {
+                alert('Adicione pelo menos uma condição válida');
+                return;
+            }
+            
+            const data = {
+                evento_id: parseInt(formData.get('evento_id')),
+                nome: formData.get('nome'),
+                descricao: formData.get('descricao'),
+                condicoes: condicoes,
+                operador_logico: formData.get('operador_logico'),
+                acao: formData.get('acao'),
+                template_especifico_id: formData.get('template_especifico_id') || null,
+                prioridade: parseInt(formData.get('prioridade')) || 0
+            };
+            
+            fetch('/certificados/criar_regra_certificado', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao salvar regra');
+            });
+        }
+        
+        function editarRegra(regraId) {
+            // Implementar carregamento dos dados da regra
+            regraEditandoId = regraId;
+            // Por simplicidade, vamos apenas mostrar um alert
+            alert('Funcionalidade de edição será implementada');
+        }
+        
+        function toggleRegra(regraId, ativo) {
+            const novoStatus = !ativo;
+            
+            fetch(`/certificados/editar_regra_certificado/${regraId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ ativo: novoStatus })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao alterar status da regra');
+            });
+        }
+        
+        function excluirRegra(regraId) {
+            if (confirm('Tem certeza que deseja excluir esta regra?')) {
+                fetch(`/certificados/excluir_regra_certificado/${regraId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao excluir regra');
+                });
+            }
+        }
+        
+        // Adicionar primeira condição ao abrir o modal
+        document.getElementById('modalNovaRegra').addEventListener('shown.bs.modal', function () {
+            if (document.querySelectorAll('.condicao-item').length === 0) {
+                adicionarCondicao();
+            }
+        });
+        
+        // Limpar formulário ao fechar modal
+        document.getElementById('modalNovaRegra').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('formNovaRegra').reset();
+            document.getElementById('condicoes-container').innerHTML = '';
+            contadorCondicoes = 0;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!-- Configurações de Liberação de Certificados -->
+<div class="config-section">
+    <h5><i class="fas fa-unlock-alt"></i> Opções de Liberação</h5>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="liberacao_individual" 
+                   {% if config and config.liberacao_individual %}checked{% endif %}>
+            <label class="custom-control-label" for="liberacao_individual">
+                <strong>Liberação Individual por Oficina</strong>
+                <small class="text-muted d-block">Permite gerar certificados específicos para cada oficina</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="liberacao_geral" 
+                   {% if config and config.liberacao_geral %}checked{% endif %}>
+            <label class="custom-control-label" for="liberacao_geral">
+                <strong>Certificado Geral do Evento</strong>
+                <small class="text-muted d-block">Gera certificado único com todas as atividades do evento</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="liberacao_automatica" 
+                   {% if config and config.liberacao_automatica %}checked{% endif %}>
+            <label class="custom-control-label" for="liberacao_automatica">
+                <strong>Liberação Automática</strong>
+                <small class="text-muted d-block">Libera certificados automaticamente quando critérios são atendidos</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="permitir_solicitacao_manual" 
+                   {% if config and config.permitir_solicitacao_manual %}checked{% endif %}>
+            <label class="custom-control-label" for="permitir_solicitacao_manual">
+                <strong>Permitir Solicitação Manual</strong>
+                <small class="text-muted d-block">Participantes podem solicitar certificados para aprovação manual</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="notificar_liberacao" 
+                   {% if config and config.notificar_liberacao %}checked{% endif %}>
+            <label class="custom-control-label" for="notificar_liberacao">
+                <strong>Notificar Participantes</strong>
+                <small class="text-muted d-block">Enviar notificações quando certificados forem liberados</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="incluir_atividades_sem_inscricao" 
+                   {% if config and config.incluir_atividades_sem_inscricao %}checked{% endif %}>
+            <label class="custom-control-label" for="incluir_atividades_sem_inscricao">
+                <strong>Incluir Atividades sem Inscrição</strong>
+                <small class="text-muted d-block">Considera check-ins em atividades extras no cálculo da carga horária</small>
+            </label>
+        </div>
+    </div>
+    
+    <!-- Seção de Regras Avançadas -->
+    <div class="form-group mt-4">
+        <h6><i class="fas fa-cogs"></i> Regras Avançadas</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <a href="{{ url_for('certificado_routes.gerenciar_regras_certificado', evento_id=evento.id) }}" 
+                   class="btn btn-outline-primary btn-block">
+                    <i class="fas fa-cogs me-2"></i>Gerenciar Regras
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="{{ url_for('certificado_routes.listar_solicitacoes_pendentes') }}" 
+                   class="btn btn-outline-warning btn-block">
+                    <i class="fas fa-clock me-2"></i>Solicitações Pendentes
+                    {% if solicitacoes_pendentes_count > 0 %}
+                        <span class="badge badge-warning ml-2">{{ solicitacoes_pendentes_count }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Seção de Prazos -->
+    <div class="form-group mt-4">
+        <h6><i class="fas fa-calendar-alt"></i> Prazos de Liberação</h6>
+        <div class="row">
+            <div class="col-md-6">
+                <label for="prazo_liberacao_automatica" class="form-label">Prazo para liberação automática</label>
+                <input type="datetime-local" class="form-control" id="prazo_liberacao_automatica" 
+                       name="prazo_liberacao_automatica" 
+                       value="{{ config.prazo_liberacao_automatica.strftime('%Y-%m-%dT%H:%M') if config and config.prazo_liberacao_automatica else '' }}">
+                <small class="form-text text-muted">Data limite para liberação automática</small>
+            </div>
+            <div class="col-md-6">
+                <label for="prazo_solicitacao_manual" class="form-label">Prazo para solicitação manual</label>
+                <input type="datetime-local" class="form-control" id="prazo_solicitacao_manual" 
+                       name="prazo_solicitacao_manual" 
+                       value="{{ config.prazo_solicitacao_manual.strftime('%Y-%m-%dT%H:%M') if config and config.prazo_solicitacao_manual else '' }}">
+                <small class="form-text text-muted">Data limite para solicitações manuais</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="alert alert-info mt-3">
+        <i class="fas fa-info-circle"></i>
+        <strong>Dica:</strong> As regras avançadas permitem criar condições específicas baseadas em check-ins, carga horária, presença e participação em oficinas obrigatórias.
+    </div>
+</div>

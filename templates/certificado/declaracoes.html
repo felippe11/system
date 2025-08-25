@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Declarações de Comparecimento{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-text"></i> Gerenciar Declarações de Comparecimento
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Botões de Ação -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <button class="btn btn-success" onclick="criarNovaDeclaracao()">
+                                <i class="fas fa-plus"></i> Nova Declaração
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="importarTemplate()">
+                                <i class="fas fa-upload"></i> Importar Template
+                            </button>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <div class="input-group" style="max-width: 300px; margin-left: auto;">
+                                <input type="text" class="form-control" id="searchTemplates" placeholder="Buscar templates...">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Templates -->
+                    <div class="row" id="templatesContainer">
+                        {% if templates %}
+                            {% for template in templates %}
+                            <div class="col-md-6 col-lg-4 mb-4 template-card" data-template-id="{{ template.id }}">
+                                <div class="card h-100 {% if template.ativo %}border-success{% else %}border-secondary{% endif %}">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 text-truncate" title="{{ template.nome }}">
+                                            <i class="fas fa-file-text"></i> {{ template.nome }}
+                                        </h6>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-right">
+                                                <a class="dropdown-item" href="#" onclick="editarTemplate({{ template.id }})">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </a>
+                                                <a class="dropdown-item" href="#" onclick="duplicarTemplate({{ template.id }})">
+                                                    <i class="fas fa-copy"></i> Duplicar
+                                                </a>
+                                                <a class="dropdown-item" href="#" onclick="previewTemplate({{ template.id }})">
+                                                    <i class="fas fa-eye"></i> Visualizar
+                                                </a>
+                                                <div class="dropdown-divider"></div>
+                                                <a class="dropdown-item text-danger" href="#" onclick="deletarTemplate({{ template.id }})">
+                                                    <i class="fas fa-trash"></i> Excluir
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <span class="badge {% if template.ativo %}badge-success{% else %}badge-secondary{% endif %}">
+                                                {% if template.ativo %}Ativo{% else %}Inativo{% endif %}
+                                            </span>
+                                            <span class="badge badge-info">{{ template.tipo|title }}</span>
+                                        </div>
+                                        <p class="card-text text-muted small">
+                                            {{ template.conteudo[:100] }}{% if template.conteudo|length > 100 %}...{% endif %}
+                                        </p>
+                                        <div class="text-muted small">
+                                            <i class="fas fa-calendar"></i> 
+                                            Criado em: {{ template.data_criacao.strftime('%d/%m/%Y') if template.data_criacao else 'N/A' }}
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <button class="btn btn-outline-primary" onclick="editarTemplate({{ template.id }})">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </button>
+                                            <button class="btn btn-outline-success" onclick="previewTemplate({{ template.id }})">
+                                                <i class="fas fa-eye"></i> Preview
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="toggleAtivo({{ template.id }}, {{ template.ativo|lower }})">
+                                                <i class="fas fa-{% if template.ativo %}pause{% else %}play{% endif %}"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="col-12">
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-text fa-5x text-muted mb-3"></i>
+                                    <h4 class="text-muted">Nenhum template encontrado</h4>
+                                    <p class="text-muted">Crie seu primeiro template de declaração para começar.</p>
+                                    <button class="btn btn-success btn-lg" onclick="criarNovaDeclaracao()">
+                                        <i class="fas fa-plus"></i> Criar Primeiro Template
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Criar/Editar Declaração -->
+<div class="modal fade" id="modalDeclaracao" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-text"></i> <span id="modalTitle">Nova Declaração</span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formDeclaracao">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="form-group">
+                                <label for="nomeTemplate">
+                                    <i class="fas fa-tag"></i> Nome do Template
+                                </label>
+                                <input type="text" class="form-control" id="nomeTemplate" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="tipoTemplate">
+                                    <i class="fas fa-list"></i> Tipo
+                                </label>
+                                <select class="form-control" id="tipoTemplate">
+                                    <option value="comparecimento">Comparecimento</option>
+                                    <option value="participacao">Participação</option>
+                                    <option value="presenca">Presença</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="conteudoTemplate">
+                            <i class="fas fa-align-left"></i> Conteúdo da Declaração
+                        </label>
+                        <textarea class="form-control" id="conteudoTemplate" rows="8" required placeholder="Digite o conteúdo da declaração aqui..."></textarea>
+                        <small class="form-text text-muted">
+                            Use as variáveis: {NOME_PARTICIPANTE}, {NOME_EVENTO}, {DATA_EVENTO}, {TOTAL_CHECKINS}, {CARGA_HORARIA_TOTAL}, {LISTA_ATIVIDADES}, {EMAIL_PARTICIPANTE}
+                        </small>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="ativoTemplate" checked>
+                                    <label class="custom-control-label" for="ativoTemplate">
+                                        <strong>Template Ativo</strong>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <button type="button" class="btn btn-outline-info" onclick="inserirVariavel()">
+                                <i class="fas fa-plus"></i> Inserir Variável
+                            </button>
+                            <button type="button" class="btn btn-outline-success" onclick="previewConteudo()">
+                                <i class="fas fa-eye"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="salvarDeclaracao()">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Inserir Variáveis -->
+<div class="modal fade" id="modalVariaveis" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-code"></i> Variáveis Disponíveis
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{NOME_PARTICIPANTE}')">
+                        <strong>{NOME_PARTICIPANTE}</strong>
+                        <small class="text-muted d-block">Nome completo do participante</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{NOME_EVENTO}')">
+                        <strong>{NOME_EVENTO}</strong>
+                        <small class="text-muted d-block">Nome do evento</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{DATA_EVENTO}')">
+                        <strong>{DATA_EVENTO}</strong>
+                        <small class="text-muted d-block">Data de início do evento</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{TOTAL_CHECKINS}')">
+                        <strong>{TOTAL_CHECKINS}</strong>
+                        <small class="text-muted d-block">Número total de check-ins</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{CARGA_HORARIA_TOTAL}')">
+                        <strong>{CARGA_HORARIA_TOTAL}</strong>
+                        <small class="text-muted d-block">Carga horária total participada</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{LISTA_ATIVIDADES}')">
+                        <strong>{LISTA_ATIVIDADES}</strong>
+                        <small class="text-muted d-block">Lista das atividades participadas</small>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" onclick="inserirVariavelTexto('{EMAIL_PARTICIPANTE}')">
+                        <strong>{EMAIL_PARTICIPANTE}</strong>
+                        <small class="text-muted d-block">E-mail do participante</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let templateEditandoId = null;
+
+function criarNovaDeclaracao() {
+    templateEditandoId = null;
+    $('#modalTitle').text('Nova Declaração');
+    $('#formDeclaracao')[0].reset();
+    $('#ativoTemplate').prop('checked', true);
+    $('#modalDeclaracao').modal('show');
+}
+
+function editarTemplate(id) {
+    templateEditandoId = id;
+    $('#modalTitle').text('Editar Declaração');
+    
+    // Buscar dados do template
+    $.get(`/certificado/declaracoes/editar/${id}`, function(data) {
+        if (data.template) {
+            $('#nomeTemplate').val(data.template.nome);
+            $('#tipoTemplate').val(data.template.tipo);
+            $('#conteudoTemplate').val(data.template.conteudo);
+            $('#ativoTemplate').prop('checked', data.template.ativo);
+            $('#modalDeclaracao').modal('show');
+        }
+    });
+}
+
+function salvarDeclaracao() {
+    const dados = {
+        nome: $('#nomeTemplate').val(),
+        tipo: $('#tipoTemplate').val(),
+        conteudo: $('#conteudoTemplate').val(),
+        ativo: $('#ativoTemplate').is(':checked')
+    };
+    
+    if (!dados.nome || !dados.conteudo) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
+    const url = templateEditandoId ? 
+        `/certificado/declaracoes/editar/${templateEditandoId}` : 
+        '/certificado/declaracoes/criar';
+    
+    $.ajax({
+        url: url,
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(dados),
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+                $('#modalDeclaracao').modal('hide');
+                location.reload();
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar template');
+        }
+    });
+}
+
+function deletarTemplate(id) {
+    if (confirm('Tem certeza que deseja excluir este template?')) {
+        $.ajax({
+            url: `/certificado/declaracoes/deletar/${id}`,
+            method: 'DELETE',
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Erro: ' + (response.message || 'Erro desconhecido'));
+                }
+            },
+            error: function() {
+                alert('Erro ao excluir template');
+            }
+        });
+    }
+}
+
+function previewTemplate(id) {
+    // Implementar preview - por enquanto, abrir em nova aba
+    window.open(`/certificado/declaracoes/preview/${id}/1`, '_blank');
+}
+
+function duplicarTemplate(id) {
+    // Implementar duplicação
+    alert('Funcionalidade de duplicação em desenvolvimento');
+}
+
+function toggleAtivo(id, ativo) {
+    // Implementar toggle de status ativo
+    alert('Funcionalidade de ativar/desativar em desenvolvimento');
+}
+
+function inserirVariavel() {
+    $('#modalVariaveis').modal('show');
+}
+
+function inserirVariavelTexto(variavel) {
+    const textarea = $('#conteudoTemplate')[0];
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    
+    textarea.value = text.substring(0, start) + variavel + text.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + variavel.length;
+    textarea.focus();
+    
+    $('#modalVariaveis').modal('hide');
+}
+
+function previewConteudo() {
+    const conteudo = $('#conteudoTemplate').val();
+    if (!conteudo) {
+        alert('Digite algum conteúdo primeiro');
+        return;
+    }
+    
+    // Substituir variáveis por valores de exemplo
+    let preview = conteudo
+        .replace(/{NOME_PARTICIPANTE}/g, 'João da Silva')
+        .replace(/{NOME_EVENTO}/g, 'Evento Exemplo')
+        .replace(/{DATA_EVENTO}/g, '01/01/2024')
+        .replace(/{TOTAL_CHECKINS}/g, '5')
+        .replace(/{CARGA_HORARIA_TOTAL}/g, '20')
+        .replace(/{LISTA_ATIVIDADES}/g, 'Oficina 1, Oficina 2, Palestra 3')
+        .replace(/{EMAIL_PARTICIPANTE}/g, 'joao@email.com');
+    
+    alert('Preview do conteúdo:\n\n' + preview);
+}
+
+function importarTemplate() {
+    alert('Funcionalidade de importação em desenvolvimento');
+}
+
+// Busca de templates
+$('#searchTemplates').on('input', function() {
+    const termo = $(this).val().toLowerCase();
+    $('.template-card').each(function() {
+        const nome = $(this).find('h6').text().toLowerCase();
+        const conteudo = $(this).find('.card-text').text().toLowerCase();
+        
+        if (nome.includes(termo) || conteudo.includes(termo)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+});
+</script>
+{% endblock %}

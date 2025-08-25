@@ -1,0 +1,204 @@
+<!-- Tabela de Histórico de Emissões -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th><i class="fas fa-calendar"></i> Data</th>
+                <th><i class="fas fa-certificate"></i> Tipo</th>
+                <th><i class="fas fa-event"></i> Evento</th>
+                <th><i class="fas fa-user"></i> Participante</th>
+                <th><i class="fas fa-file-alt"></i> Template</th>
+                <th><i class="fas fa-check-circle"></i> Status</th>
+                <th><i class="fas fa-cogs"></i> Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if historico and historico|length > 0 %}
+                {% for item in historico %}
+                <tr>
+                    <td>
+                        <span class="text-muted">{{ item.data_emissao.strftime('%d/%m/%Y %H:%M') if item.data_emissao else '-' }}</span>
+                    </td>
+                    <td>
+                        {% if item.tipo == 'certificado' %}
+                            <span class="badge badge-primary">
+                                <i class="fas fa-certificate"></i> Certificado
+                            </span>
+                        {% elif item.tipo == 'declaracao' %}
+                            <span class="badge badge-info">
+                                <i class="fas fa-file-text"></i> Declaração
+                            </span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ item.tipo|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>{{ item.evento_nome or '-' }}</strong>
+                        {% if item.oficina_nome %}
+                            <br><small class="text-muted">{{ item.oficina_nome }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ item.participante_nome or '-' }}
+                        {% if item.participante_email %}
+                            <br><small class="text-muted">{{ item.participante_email }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="text-info">{{ item.template_nome or 'Template Padrão' }}</span>
+                    </td>
+                    <td>
+                        {% if item.status == 'emitido' %}
+                            <span class="badge badge-success">
+                                <i class="fas fa-check"></i> Emitido
+                            </span>
+                        {% elif item.status == 'pendente' %}
+                            <span class="badge badge-warning">
+                                <i class="fas fa-clock"></i> Pendente
+                            </span>
+                        {% elif item.status == 'erro' %}
+                            <span class="badge badge-danger">
+                                <i class="fas fa-exclamation-triangle"></i> Erro
+                            </span>
+                        {% else %}
+                            <span class="badge badge-secondary">{{ item.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm" role="group">
+                            {% if item.arquivo_path and item.status == 'emitido' %}
+                                <a href="{{ item.arquivo_path }}" class="btn btn-outline-primary" target="_blank" title="Visualizar">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ item.arquivo_path }}" class="btn btn-outline-success" download title="Download">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            {% endif %}
+                            
+                            {% if item.status == 'erro' %}
+                                <button class="btn btn-outline-warning" onclick="reemitirCertificado({{ item.id }})" title="Reemitir">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            {% endif %}
+                            
+                            <button class="btn btn-outline-info" onclick="verDetalhes({{ item.id }})" title="Detalhes">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7" class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h5>Nenhum registro encontrado</h5>
+                            <p>Não há emissões de certificados ou declarações com os filtros aplicados.</p>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if historico and historico|length > 0 %}
+<!-- Paginação -->
+<nav aria-label="Navegação do histórico">
+    <ul class="pagination justify-content-center">
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="carregarPagina(1)">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="carregarPaginaAnterior()">
+                <i class="fas fa-angle-left"></i>
+            </a>
+        </li>
+        <li class="page-item active">
+            <span class="page-link">1</span>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="carregarProximaPagina()">
+                <i class="fas fa-angle-right"></i>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#" onclick="carregarUltimaPagina()">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<!-- Resumo -->
+<div class="row mt-3">
+    <div class="col-md-6">
+        <small class="text-muted">
+            Mostrando {{ historico|length }} de {{ total_registros or historico|length }} registros
+        </small>
+    </div>
+    <div class="col-md-6 text-right">
+        <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-secondary" onclick="exportarHistorico('csv')">
+                <i class="fas fa-file-csv"></i> CSV
+            </button>
+            <button class="btn btn-outline-secondary" onclick="exportarHistorico('excel')">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="btn btn-outline-secondary" onclick="exportarHistorico('pdf')">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function reemitirCertificado(id) {
+    if (confirm('Deseja reemitir este certificado?')) {
+        $.post('/certificado/reemitir', {
+            id: id
+        }, function(data) {
+            if (data.success) {
+                alert('Certificado reemitido com sucesso!');
+                aplicarFiltros(); // Recarregar a tabela
+            } else {
+                alert('Erro ao reemitir certificado: ' + (data.message || 'Erro desconhecido'));
+            }
+        });
+    }
+}
+
+function verDetalhes(id) {
+    // Implementar modal de detalhes
+    alert('Detalhes do registro ID: ' + id);
+}
+
+function carregarPagina(pagina) {
+    // Implementar navegação de páginas
+    console.log('Carregar página:', pagina);
+}
+
+function carregarPaginaAnterior() {
+    // Implementar navegação anterior
+    console.log('Página anterior');
+}
+
+function carregarProximaPagina() {
+    // Implementar próxima página
+    console.log('Próxima página');
+}
+
+function carregarUltimaPagina() {
+    // Implementar última página
+    console.log('Última página');
+}
+
+function exportarHistorico(formato) {
+    // Implementar exportação
+    alert('Exportar histórico em formato: ' + formato.toUpperCase());
+}
+</script>

@@ -1,0 +1,347 @@
+<div class="card">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+            <i class="fas fa-cogs"></i> Configurar Regras de Liberação
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="formRegrasDeclaracoes">
+            <!-- Seleção de Evento -->
+            <div class="form-group">
+                <label for="eventoDeclaracoes">
+                    <i class="fas fa-calendar"></i> Selecionar Evento
+                </label>
+                <select class="form-control" id="eventoDeclaracoes" onchange="carregarConfiguracoesDeclaracoes()">
+                    <option value="">Selecione um evento...</option>
+                    <!-- Eventos serão carregados via JavaScript -->
+                </select>
+            </div>
+
+            <div id="configuracoesDeclaracoes" style="display: none;">
+                <!-- Template Padrão -->
+                <div class="form-group">
+                    <label for="templatePadraoDeclaracao">
+                        <i class="fas fa-file-text"></i> Template Padrão para Declarações
+                    </label>
+                    <select class="form-control" id="templatePadraoDeclaracao">
+                        <option value="">Selecione um template...</option>
+                        <!-- Templates serão carregados via JavaScript -->
+                    </select>
+                    <small class="form-text text-muted">
+                        Template que será usado por padrão para gerar declarações deste evento.
+                    </small>
+                </div>
+
+                <!-- Critérios de Liberação -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-check-circle"></i> Critérios de Liberação
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="minCheckinsDeclaracao">
+                                        <i class="fas fa-check"></i> Mínimo de Check-ins
+                                    </label>
+                                    <input type="number" class="form-control" id="minCheckinsDeclaracao" min="0" value="1">
+                                    <small class="form-text text-muted">
+                                        Número mínimo de check-ins para liberar declaração.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="minCargaHorariaDeclaracao">
+                                        <i class="fas fa-clock"></i> Carga Horária Mínima (horas)
+                                    </label>
+                                    <input type="number" class="form-control" id="minCargaHorariaDeclaracao" min="0" step="0.5" value="0">
+                                    <small class="form-text text-muted">
+                                        Carga horária mínima participada para liberar declaração.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="percentualPresencaDeclaracao">
+                                        <i class="fas fa-percentage"></i> Percentual Mínimo de Presença (%)
+                                    </label>
+                                    <input type="number" class="form-control" id="percentualPresencaDeclaracao" min="0" max="100" value="0">
+                                    <small class="form-text text-muted">
+                                        Percentual mínimo de presença nas atividades do evento.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch mt-4">
+                                        <input type="checkbox" class="custom-control-input" id="exigirAtividadesObrigatorias">
+                                        <label class="custom-control-label" for="exigirAtividadesObrigatorias">
+                                            <strong>Exigir Participação em Atividades Obrigatórias</strong>
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Se ativado, o participante deve ter participado de todas as atividades marcadas como obrigatórias.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configurações de Liberação -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-unlock"></i> Configurações de Liberação
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="liberacaoAutomaticaDeclaracao">
+                                        <label class="custom-control-label" for="liberacaoAutomaticaDeclaracao">
+                                            <strong>Liberação Automática</strong>
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Se ativado, declarações serão liberadas automaticamente quando os critérios forem atendidos.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="permitirDownloadMultiplo">
+                                        <label class="custom-control-label" for="permitirDownloadMultiplo">
+                                            <strong>Permitir Download Múltiplo</strong>
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Permite que o participante baixe a declaração múltiplas vezes.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="dataLiberacaoDeclaracao">
+                                        <i class="fas fa-calendar-alt"></i> Data de Liberação
+                                    </label>
+                                    <input type="datetime-local" class="form-control" id="dataLiberacaoDeclaracao">
+                                    <small class="form-text text-muted">
+                                        Data a partir da qual as declarações estarão disponíveis. Deixe em branco para liberação imediata.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="dataExpiracaoDeclaracao">
+                                        <i class="fas fa-calendar-times"></i> Data de Expiração
+                                    </label>
+                                    <input type="datetime-local" class="form-control" id="dataExpiracaoDeclaracao">
+                                    <small class="form-text text-muted">
+                                        Data até a qual as declarações estarão disponíveis. Deixe em branco para não expirar.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configurações de Notificação -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-bell"></i> Notificações
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="notificarLiberacaoDeclaracao">
+                                        <label class="custom-control-label" for="notificarLiberacaoDeclaracao">
+                                            <strong>Notificar por E-mail</strong>
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Enviar e-mail quando a declaração estiver disponível.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch">
+                                        <input type="checkbox" class="custom-control-input" id="anexarDeclaracaoEmail">
+                                        <label class="custom-control-label" for="anexarDeclaracaoEmail">
+                                            <strong>Anexar Declaração ao E-mail</strong>
+                                        </label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Anexar o PDF da declaração diretamente no e-mail de notificação.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="assuntoEmailDeclaracao">
+                                <i class="fas fa-envelope"></i> Assunto do E-mail
+                            </label>
+                            <input type="text" class="form-control" id="assuntoEmailDeclaracao" placeholder="Sua declaração de comparecimento está disponível">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="mensagemEmailDeclaracao">
+                                <i class="fas fa-comment"></i> Mensagem do E-mail
+                            </label>
+                            <textarea class="form-control" id="mensagemEmailDeclaracao" rows="3" placeholder="Olá {NOME_PARTICIPANTE}, sua declaração de comparecimento do evento {NOME_EVENTO} está disponível para download."></textarea>
+                            <small class="form-text text-muted">
+                                Use as variáveis: {NOME_PARTICIPANTE}, {NOME_EVENTO}, {DATA_EVENTO}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="text-right">
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetarConfiguracoesDeclaracoes()">
+                        <i class="fas fa-undo"></i> Resetar
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="salvarRegrasDeclaracoes()">
+                        <i class="fas fa-save"></i> Salvar Configurações
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function carregarEventosDeclaracoes() {
+    $.get('/api/eventos/listar', function(data) {
+        const select = $('#eventoDeclaracoes');
+        select.empty().append('<option value="">Selecione um evento...</option>');
+        
+        if (data.eventos) {
+            data.eventos.forEach(evento => {
+                select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+            });
+        }
+    });
+}
+
+function carregarTemplatesDeclaracoes() {
+    $.get('/certificado/declaracoes', function(data) {
+        const select = $('#templatePadraoDeclaracao');
+        select.empty().append('<option value="">Selecione um template...</option>');
+        
+        if (data.templates) {
+            data.templates.forEach(template => {
+                if (template.ativo) {
+                    select.append(`<option value="${template.id}">${template.nome}</option>`);
+                }
+            });
+        }
+    });
+}
+
+function carregarConfiguracoesDeclaracoes() {
+    const eventoId = $('#eventoDeclaracoes').val();
+    
+    if (!eventoId) {
+        $('#configuracoesDeclaracoes').hide();
+        return;
+    }
+    
+    $('#configuracoesDeclaracoes').show();
+    
+    // Carregar configurações existentes do evento
+    $.get(`/certificado/declaracoes/configuracoes/${eventoId}`, function(data) {
+        if (data.configuracoes) {
+            const config = data.configuracoes;
+            
+            $('#templatePadraoDeclaracao').val(config.template_padrao_id || '');
+            $('#minCheckinsDeclaracao').val(config.min_checkins || 1);
+            $('#minCargaHorariaDeclaracao').val(config.min_carga_horaria || 0);
+            $('#percentualPresencaDeclaracao').val(config.percentual_presenca || 0);
+            $('#exigirAtividadesObrigatorias').prop('checked', config.exigir_atividades_obrigatorias || false);
+            $('#liberacaoAutomaticaDeclaracao').prop('checked', config.liberacao_automatica || false);
+            $('#permitirDownloadMultiplo').prop('checked', config.permitir_download_multiplo || true);
+            $('#dataLiberacaoDeclaracao').val(config.data_liberacao || '');
+            $('#dataExpiracaoDeclaracao').val(config.data_expiracao || '');
+            $('#notificarLiberacaoDeclaracao').prop('checked', config.notificar_liberacao || false);
+            $('#anexarDeclaracaoEmail').prop('checked', config.anexar_declaracao_email || false);
+            $('#assuntoEmailDeclaracao').val(config.assunto_email || 'Sua declaração de comparecimento está disponível');
+            $('#mensagemEmailDeclaracao').val(config.mensagem_email || 'Olá {NOME_PARTICIPANTE}, sua declaração de comparecimento do evento {NOME_EVENTO} está disponível para download.');
+        }
+    });
+}
+
+function salvarRegrasDeclaracoes() {
+    const eventoId = $('#eventoDeclaracoes').val();
+    
+    if (!eventoId) {
+        alert('Por favor, selecione um evento.');
+        return;
+    }
+    
+    const configuracoes = {
+        evento_id: eventoId,
+        template_padrao_id: $('#templatePadraoDeclaracao').val() || null,
+        min_checkins: parseInt($('#minCheckinsDeclaracao').val()) || 1,
+        min_carga_horaria: parseFloat($('#minCargaHorariaDeclaracao').val()) || 0,
+        percentual_presenca: parseInt($('#percentualPresencaDeclaracao').val()) || 0,
+        exigir_atividades_obrigatorias: $('#exigirAtividadesObrigatorias').is(':checked'),
+        liberacao_automatica: $('#liberacaoAutomaticaDeclaracao').is(':checked'),
+        permitir_download_multiplo: $('#permitirDownloadMultiplo').is(':checked'),
+        data_liberacao: $('#dataLiberacaoDeclaracao').val() || null,
+        data_expiracao: $('#dataExpiracaoDeclaracao').val() || null,
+        notificar_liberacao: $('#notificarLiberacaoDeclaracao').is(':checked'),
+        anexar_declaracao_email: $('#anexarDeclaracaoEmail').is(':checked'),
+        assunto_email: $('#assuntoEmailDeclaracao').val(),
+        mensagem_email: $('#mensagemEmailDeclaracao').val()
+    };
+    
+    $.ajax({
+        url: '/certificado/declaracoes/configuracoes/salvar',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(configuracoes),
+        success: function(response) {
+            if (response.success) {
+                alert('Configurações salvas com sucesso!');
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar configurações');
+        }
+    });
+}
+
+function resetarConfiguracoesDeclaracoes() {
+    if (confirm('Tem certeza que deseja resetar todas as configurações?')) {
+        $('#formRegrasDeclaracoes')[0].reset();
+        $('#configuracoesDeclaracoes').hide();
+    }
+}
+
+// Carregar dados iniciais
+$(document).ready(function() {
+    carregarEventosDeclaracoes();
+    carregarTemplatesDeclaracoes();
+});
+</script>

@@ -1,0 +1,667 @@
+{% extends 'base.html' %}
+{% block title %}Editar Template Personalizado{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<style>
+  .editor-container {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+  }
+  
+  .ql-editor {
+    min-height: 300px;
+    font-family: 'Times New Roman', serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  
+  .variable-selector {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .variable-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .variable-item:hover {
+    background-color: #e3f2fd;
+  }
+  
+  .variable-item.selected {
+    background-color: #bbdefb;
+    border-left: 4px solid #1976d2;
+  }
+  
+  .variable-item:last-child {
+    border-bottom: none;
+  }
+  
+  .variable-placeholder {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+  
+  .variable-type-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+  
+  .layout-option {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .layout-option:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+  }
+  
+  .layout-option.selected {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+  }
+  
+  .layout-preview {
+    width: 60px;
+    height: 40px;
+    background: #dee2e6;
+    border-radius: 4px;
+    margin: 0 auto 0.5rem;
+    position: relative;
+  }
+  
+  .layout-preview.landscape {
+    width: 60px;
+    height: 40px;
+  }
+  
+  .layout-preview.portrait {
+    width: 40px;
+    height: 60px;
+  }
+  
+  .layout-preview::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 60%;
+    background: white;
+    border-radius: 2px;
+  }
+  
+  .preview-area {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 2rem;
+    min-height: 400px;
+    font-family: 'Times New Roman', serif;
+    line-height: 1.6;
+  }
+  
+  .template-info {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  
+  .version-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-primary mb-1">
+        <i class="bi bi-pencil-square me-2"></i>Editar Template Personalizado
+      </h2>
+      <p class="text-muted mb-0">Modifique as configurações e conteúdo do template</p>
+    </div>
+    <div>
+      <a href="{{ url_for('certificado_routes.templates_personalizaveis') }}" class="btn btn-outline-secondary me-2">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+      </a>
+      <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#previewModal">
+        <i class="bi bi-eye me-2"></i>Preview
+      </button>
+    </div>
+  </div>
+
+  <!-- Informações do Template -->
+  <div class="template-info mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h5 class="mb-1">{{ template.titulo }}</h5>
+        <p class="text-muted mb-0">{{ template.descricao or 'Sem descrição' }}</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <span class="version-badge">Versão {{ template.versao or '1.0' }}</span>
+        <br>
+        <small class="text-muted">Criado em {{ template.data_criacao.strftime('%d/%m/%Y') if template.data_criacao else 'N/A' }}</small>
+      </div>
+    </div>
+  </div>
+
+  <form id="formEditTemplate">
+    <div class="row g-4">
+      <!-- Coluna Principal -->
+      <div class="col-lg-8">
+        <!-- Informações Básicas -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações Básicas</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-8">
+                <div class="form-floating">
+                  <input type="text" class="form-control" id="titulo" name="titulo" value="{{ template.titulo }}" required>
+                  <label for="titulo">Título do Template</label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-floating">
+                  <select class="form-select" id="categoria" name="categoria">
+                    <option value="certificado" {{ 'selected' if template.categoria == 'certificado' else '' }}>Certificado</option>
+                    <option value="declaracao" {{ 'selected' if template.categoria == 'declaracao' else '' }}>Declaração</option>
+                    <option value="diploma" {{ 'selected' if template.categoria == 'diploma' else '' }}>Diploma</option>
+                    <option value="outro" {{ 'selected' if template.categoria == 'outro' else '' }}>Outro</option>
+                  </select>
+                  <label for="categoria">Categoria</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-floating">
+                  <textarea class="form-control" id="descricao" name="descricao" style="height: 100px">{{ template.descricao or '' }}</textarea>
+                  <label for="descricao">Descrição (opcional)</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Editor de Conteúdo -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Conteúdo do Template</h5>
+          </div>
+          <div class="card-body">
+            <div class="editor-container">
+              <div id="editor"></div>
+            </div>
+            <input type="hidden" id="conteudo" name="conteudo" value="{{ template.conteudo }}">
+          </div>
+        </div>
+
+        <!-- Configurações de Layout -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-layout-text-window me-2"></i>Configurações de Layout</h5>
+          </div>
+          <div class="card-body">
+            <div class="row g-4">
+              <!-- Orientação -->
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Orientação da Página</label>
+                <div class="row g-2">
+                  <div class="col-6">
+                    <div class="layout-option {{ 'selected' if template.orientacao == 'landscape' else '' }}" data-orientacao="landscape">
+                      <div class="layout-preview landscape"></div>
+                      <small>Paisagem</small>
+                    </div>
+                    <input type="radio" name="orientacao" value="landscape" class="d-none" {{ 'checked' if template.orientacao == 'landscape' else '' }}>
+                  </div>
+                  <div class="col-6">
+                    <div class="layout-option {{ 'selected' if template.orientacao == 'portrait' else '' }}" data-orientacao="portrait">
+                      <div class="layout-preview portrait"></div>
+                      <small>Retrato</small>
+                    </div>
+                    <input type="radio" name="orientacao" value="portrait" class="d-none" {{ 'checked' if template.orientacao == 'portrait' else '' }}>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tamanho da Página -->
+              <div class="col-md-6">
+                <div class="form-floating">
+                  <select class="form-select" id="tamanho_pagina" name="tamanho_pagina">
+                    <option value="A4" {{ 'selected' if template.tamanho_pagina == 'A4' else '' }}>A4 (210 x 297 mm)</option>
+                    <option value="A3" {{ 'selected' if template.tamanho_pagina == 'A3' else '' }}>A3 (297 x 420 mm)</option>
+                    <option value="A5" {{ 'selected' if template.tamanho_pagina == 'A5' else '' }}>A5 (148 x 210 mm)</option>
+                    <option value="Letter" {{ 'selected' if template.tamanho_pagina == 'Letter' else '' }}>Letter (216 x 279 mm)</option>
+                    <option value="Legal" {{ 'selected' if template.tamanho_pagina == 'Legal' else '' }}>Legal (216 x 356 mm)</option>
+                  </select>
+                  <label for="tamanho_pagina">Tamanho da Página</label>
+                </div>
+              </div>
+              
+              <!-- Margens -->
+              <div class="col-12">
+                <label class="form-label fw-bold">Margens (em mm)</label>
+                <div class="row g-2">
+                  {% set margem_config = template.margem_config or {} %}
+                  <div class="col-3">
+                    <div class="form-floating">
+                      <input type="number" class="form-control" id="margem_top" name="margem_top" value="{{ margem_config.get('top', 20) }}" min="0" max="50">
+                      <label for="margem_top">Superior</label>
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="form-floating">
+                      <input type="number" class="form-control" id="margem_right" name="margem_right" value="{{ margem_config.get('right', 20) }}" min="0" max="50">
+                      <label for="margem_right">Direita</label>
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="form-floating">
+                      <input type="number" class="form-control" id="margem_bottom" name="margem_bottom" value="{{ margem_config.get('bottom', 20) }}" min="0" max="50">
+                      <label for="margem_bottom">Inferior</label>
+                    </div>
+                  </div>
+                  <div class="col-3">
+                    <div class="form-floating">
+                      <input type="number" class="form-control" id="margem_left" name="margem_left" value="{{ margem_config.get('left', 20) }}" min="0" max="50">
+                      <label for="margem_left">Esquerda</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="col-lg-4">
+        <!-- Variáveis Disponíveis -->
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-success text-white">
+            <h6 class="mb-0"><i class="bi bi-braces me-2"></i>Variáveis Disponíveis</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="variable-selector">
+              {% if variaveis %}
+                {% for variavel in variaveis %}
+                <div class="variable-item" data-variavel="{{ variavel.nome }}">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div class="variable-placeholder">{{'{'}}{{ variavel.nome }}{{'}'}}}</div>
+                      <small class="text-muted d-block mt-1">{{ variavel.descricao or 'Sem descrição' }}</small>
+                    </div>
+                    <span class="badge variable-type-badge bg-{{ 'primary' if variavel.tipo == 'texto' else 'success' if variavel.tipo == 'data' else 'warning' if variavel.tipo == 'numero' else 'info' }}">
+                      {{ variavel.tipo.title() }}
+                    </span>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+              <div class="text-center p-3 text-muted">
+                <i class="bi bi-info-circle mb-2 d-block"></i>
+                <small>Nenhuma variável disponível</small>
+                <br>
+                <a href="{{ url_for('certificado_routes.variaveis_dinamicas') }}" class="btn btn-sm btn-outline-primary mt-2">
+                  Criar Variáveis
+                </a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Variáveis Selecionadas -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-warning text-dark">
+            <h6 class="mb-0"><i class="bi bi-check2-square me-2"></i>Variáveis do Template</h6>
+          </div>
+          <div class="card-body">
+            {% if variaveis %}
+              {% for variavel in variaveis %}
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="var_{{ variavel.id }}" 
+                       name="variaveis_selecionadas" value="{{ variavel.id }}"
+                       {{ 'checked' if variavel.id in (template.variaveis_dinamicas or []) else '' }}>
+                <label class="form-check-label" for="var_{{ variavel.id }}">
+                  <small>
+                    <span class="variable-placeholder">{{'{'}}{{ variavel.nome }}{{'}'}}}</span>
+                    <span class="badge variable-type-badge bg-{{ 'primary' if variavel.tipo == 'texto' else 'success' if variavel.tipo == 'data' else 'warning' if variavel.tipo == 'numero' else 'info' }}">
+                      {{ variavel.tipo.title() }}
+                    </span>
+                  </small>
+                </label>
+              </div>
+              {% endfor %}
+            {% else %}
+            <div class="text-center text-muted">
+              <small>Nenhuma variável disponível</small>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="d-flex justify-content-between mt-4">
+      <div>
+        <button type="button" class="btn btn-outline-danger" id="btnExcluir">
+          <i class="bi bi-trash me-2"></i>Excluir Template
+        </button>
+      </div>
+      
+      <div>
+        <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelar">
+          <i class="bi bi-x-circle me-2"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-outline-primary me-2" id="btnSalvarRascunho">
+          <i class="bi bi-save me-2"></i>Salvar Rascunho
+        </button>
+        <button type="submit" class="btn btn-success" id="btnSalvar">
+          <i class="bi bi-check-circle me-2"></i>Salvar Alterações
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Preview do Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-area" id="previewArea">
+          <!-- Preview será gerado aqui -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-primary" id="btnGerarPDF">
+          <i class="bi bi-file-pdf me-2"></i>Gerar PDF
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir este template?</p>
+        <p class="text-muted"><strong>Esta ação não pode ser desfeita.</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">
+          <i class="bi bi-trash me-2"></i>Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script>
+// Variáveis globais
+let quill;
+let templateId = {{ template.id }};
+let variaveis = {{ variaveis | tojson | safe }};
+
+// Inicialização
+$(document).ready(function() {
+  initializeEditor();
+  setupEventListeners();
+});
+
+function initializeEditor() {
+  quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ 'align': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link'],
+        ['clean']
+      ]
+    },
+    placeholder: 'Digite o conteúdo do seu template aqui...'
+  });
+  
+  // Carregar conteúdo existente
+  const conteudoExistente = $('#conteudo').val();
+  if (conteudoExistente) {
+    quill.root.innerHTML = conteudoExistente;
+  }
+  
+  // Atualizar campo hidden quando o conteúdo mudar
+  quill.on('text-change', function() {
+    $('#conteudo').val(quill.root.innerHTML);
+  });
+}
+
+function setupEventListeners() {
+  // Inserir variáveis no editor
+  $('.variable-item').on('click', function() {
+    const variavel = $(this).data('variavel');
+    const range = quill.getSelection();
+    if (range) {
+      quill.insertText(range.index, `{${variavel}}`);
+    } else {
+      quill.insertText(quill.getLength(), `{${variavel}}`);
+    }
+  });
+  
+  // Seleção de layout
+  $('.layout-option').on('click', function() {
+    const orientacao = $(this).data('orientacao');
+    $('.layout-option').removeClass('selected');
+    $(this).addClass('selected');
+    $(`input[name="orientacao"][value="${orientacao}"]`).prop('checked', true);
+  });
+  
+  // Submissão do formulário
+  $('#formEditTemplate').on('submit', function(e) {
+    e.preventDefault();
+    salvarTemplate();
+  });
+  
+  // Botões de ação
+  $('#btnCancelar').on('click', function() {
+    window.location.href = '{{ url_for("certificado_routes.templates_personalizaveis") }}';
+  });
+  
+  $('#btnExcluir').on('click', function() {
+    $('#deleteModal').modal('show');
+  });
+  
+  $('#btnConfirmarExclusao').on('click', function() {
+    excluirTemplate();
+  });
+  
+  // Preview
+  $('#previewModal').on('show.bs.modal', function() {
+    gerarPreview();
+  });
+  
+  $('#btnGerarPDF').on('click', function() {
+    gerarPDF();
+  });
+}
+
+function salvarTemplate() {
+  const formData = {
+    titulo: $('#titulo').val(),
+    categoria: $('#categoria').val(),
+    descricao: $('#descricao').val(),
+    conteudo: quill.root.innerHTML,
+    variaveis_selecionadas: $('input[name="variaveis_selecionadas"]:checked').map(function() {
+      return parseInt(this.value);
+    }).get(),
+    orientacao: $('input[name="orientacao"]:checked').val(),
+    tamanho_pagina: $('#tamanho_pagina').val(),
+    margem_config: {
+      top: parseInt($('#margem_top').val()),
+      right: parseInt($('#margem_right').val()),
+      bottom: parseInt($('#margem_bottom').val()),
+      left: parseInt($('#margem_left').val())
+    }
+  };
+  
+  $.ajax({
+    url: `{{ url_for('certificado_routes.editar_template_personalizado', template_id=0) }}`.replace('0', templateId),
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(formData),
+    success: function(response) {
+      if (response.success) {
+        showToast('Template atualizado com sucesso!', 'success');
+        setTimeout(() => {
+          window.location.href = '{{ url_for("certificado_routes.templates_personalizaveis") }}';
+        }, 1500);
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao atualizar template', 'error');
+    }
+  });
+}
+
+function excluirTemplate() {
+  $.ajax({
+    url: `{{ url_for('certificado_routes.editar_template_personalizado', template_id=0) }}`.replace('0', templateId),
+    method: 'DELETE',
+    success: function(response) {
+      if (response.success) {
+        showToast('Template excluído com sucesso!', 'success');
+        $('#deleteModal').modal('hide');
+        setTimeout(() => {
+          window.location.href = '{{ url_for("certificado_routes.templates_personalizaveis") }}';
+        }, 1500);
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao excluir template', 'error');
+    }
+  });
+}
+
+function gerarPreview() {
+  const conteudo = quill.root.innerHTML;
+  $('#previewArea').html(conteudo);
+}
+
+function gerarPDF() {
+  const formData = {
+    template_id: templateId,
+    variaveis: {}
+  };
+  
+  // Adicionar valores de exemplo para as variáveis
+  $('input[name="variaveis_selecionadas"]:checked').each(function() {
+    const variavelId = parseInt(this.value);
+    const variavel = variaveis.find(v => v.id === variavelId);
+    if (variavel) {
+      formData.variaveis[variavel.nome] = getExampleValue(variavel.tipo);
+    }
+  });
+  
+  $.ajax({
+    url: '{{ url_for("certificado_routes.aplicar_variaveis_template") }}',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(formData),
+    success: function(response) {
+      if (response.success) {
+        // Abrir PDF em nova aba
+        window.open(response.pdf_url, '_blank');
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao gerar PDF', 'error');
+    }
+  });
+}
+
+function getExampleValue(tipo) {
+  switch (tipo) {
+    case 'texto':
+      return 'Exemplo de Texto';
+    case 'data':
+      return new Date().toLocaleDateString('pt-BR');
+    case 'numero':
+      return '123';
+    default:
+      return 'Valor de Exemplo';
+  }
+}
+
+function showToast(message, type = 'info') {
+  const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+  const toast = `
+    <div class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `;
+  
+  if (!$('#toastContainer').length) {
+    $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+  }
+  
+  const $toast = $(toast);
+  $('#toastContainer').append($toast);
+  new bootstrap.Toast($toast[0]).show();
+}
+</script>
+{% endblock %}

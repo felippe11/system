@@ -92,6 +92,10 @@ def create_app():
     from routes import register_routes
     register_routes(app)
     
+    # Registro do contexto de autorização para templates
+    from utils.template_context import register_template_context
+    register_template_context(app)
+    
     # Registro de rotas de diagnóstico (opcional em desenvolvimento)
     enable_debug_routes = Config.DEBUG or os.getenv("ENABLE_DIAGNOSTIC_ROUTES") == "1"
 

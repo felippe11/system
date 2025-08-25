@@ -1,0 +1,971 @@
+{% extends 'base.html' %}
+{% block title %}Editor Avançado de Certificados{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+  .editor-container {
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .toolbar {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .editor-workspace {
+    display: flex;
+    height: calc(100vh - 120px);
+  }
+  
+  .sidebar {
+    width: 300px;
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+  }
+  
+  .canvas-container {
+    flex: 1;
+    background: #e9ecef;
+    position: relative;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  
+  .certificate-canvas {
+    background: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    position: relative;
+    min-height: 600px;
+    width: 800px;
+    border: 1px solid #ccc;
+  }
+  
+  .properties-panel {
+    width: 300px;
+    background: #f8f9fa;
+    border-left: 1px solid #dee2e6;
+    overflow-y: auto;
+  }
+  
+  .draggable-element {
+    position: absolute;
+    cursor: move;
+    border: 2px dashed transparent;
+    min-width: 100px;
+    min-height: 30px;
+    padding: 5px;
+  }
+  
+  .draggable-element:hover {
+    border-color: #007bff;
+  }
+  
+  .draggable-element.selected {
+    border-color: #28a745;
+    border-style: solid;
+  }
+  
+  .element-controls {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    display: none;
+    gap: 2px;
+  }
+  
+  .draggable-element.selected .element-controls {
+    display: flex;
+  }
+  
+  .resize-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #007bff;
+    border: 1px solid white;
+    display: none;
+  }
+  
+  .draggable-element.selected .resize-handle {
+    display: block;
+  }
+  
+  .resize-handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+  .resize-handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+  .resize-handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+  .resize-handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+  
+  .element-library {
+    padding: 15px;
+  }
+  
+  .element-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .element-item:hover {
+    background: #e9ecef;
+    border-color: #007bff;
+  }
+  
+  .properties-content {
+    padding: 15px;
+  }
+  
+  .form-group {
+    margin-bottom: 15px;
+  }
+  
+  .color-picker {
+    width: 40px;
+    height: 30px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .font-preview {
+    padding: 5px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-top: 5px;
+  }
+  
+  .template-actions {
+    padding: 15px;
+    border-top: 1px solid #dee2e6;
+    background: white;
+  }
+  
+  .preview-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 1000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .preview-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+  }
+  
+  .variable-tag {
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  
+  .ai-suggestions {
+    background: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-container">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="btn btn-primary btn-sm" id="saveTemplate">
+      <i class="fas fa-save"></i> Salvar
+    </button>
+    <button class="btn btn-success btn-sm" id="previewTemplate">
+      <i class="fas fa-eye"></i> Pré-visualizar
+    </button>
+    <button class="btn btn-info btn-sm" id="exportTemplate">
+      <i class="fas fa-download"></i> Exportar
+    </button>
+    <div class="vr"></div>
+    <button class="btn btn-outline-secondary btn-sm" id="undoAction">
+      <i class="fas fa-undo"></i>
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" id="redoAction">
+      <i class="fas fa-redo"></i>
+    </button>
+    <div class="vr"></div>
+    <select class="form-select form-select-sm" id="zoomLevel" style="width: auto;">
+      <option value="0.5">50%</option>
+      <option value="0.75">75%</option>
+      <option value="1" selected>100%</option>
+      <option value="1.25">125%</option>
+      <option value="1.5">150%</option>
+    </select>
+    <div class="vr"></div>
+    <span class="text-muted">Template: <strong id="templateName">{{ template.titulo if template else 'Novo Template' }}</strong></span>
+  </div>
+
+  <!-- Workspace -->
+  <div class="editor-workspace">
+    <!-- Sidebar - Biblioteca de Elementos -->
+    <div class="sidebar">
+      <div class="element-library">
+        <h6 class="fw-bold mb-3">Elementos</h6>
+        
+        <div class="element-item" data-type="text">
+          <i class="fas fa-font me-2"></i>
+          <strong>Texto</strong>
+          <small class="d-block text-muted">Adicionar texto personalizado</small>
+        </div>
+        
+        <div class="element-item" data-type="title">
+          <i class="fas fa-heading me-2"></i>
+          <strong>Título</strong>
+          <small class="d-block text-muted">Título principal do certificado</small>
+        </div>
+        
+        <div class="element-item" data-type="participant-name">
+          <i class="fas fa-user me-2"></i>
+          <strong>Nome do Participante</strong>
+          <small class="d-block text-muted">{NOME_PARTICIPANTE}</small>
+        </div>
+        
+        <div class="element-item" data-type="workload">
+          <i class="fas fa-clock me-2"></i>
+          <strong>Carga Horária</strong>
+          <small class="d-block text-muted">{CARGA_HORARIA}</small>
+        </div>
+        
+        <div class="element-item" data-type="activities">
+          <i class="fas fa-list me-2"></i>
+          <strong>Lista de Atividades</strong>
+          <small class="d-block text-muted">{LISTA_OFICINAS}</small>
+        </div>
+        
+        <div class="element-item" data-type="date">
+          <i class="fas fa-calendar me-2"></i>
+          <strong>Data</strong>
+          <small class="d-block text-muted">{DATA_EMISSAO}</small>
+        </div>
+        
+        <div class="element-item" data-type="signature">
+          <i class="fas fa-signature me-2"></i>
+          <strong>Assinatura</strong>
+          <small class="d-block text-muted">Linha para assinatura</small>
+        </div>
+        
+        <div class="element-item" data-type="logo">
+          <i class="fas fa-image me-2"></i>
+          <strong>Logo/Imagem</strong>
+          <small class="d-block text-muted">Inserir logotipo</small>
+        </div>
+        
+        <div class="element-item" data-type="border">
+          <i class="fas fa-border-style me-2"></i>
+          <strong>Borda Decorativa</strong>
+          <small class="d-block text-muted">Adicionar bordas</small>
+        </div>
+        
+        <h6 class="fw-bold mb-3 mt-4">Variáveis Dinâmicas</h6>
+        <div id="dynamicVariables">
+          <!-- Variáveis serão carregadas dinamicamente -->
+        </div>
+        
+        <button class="btn btn-outline-primary btn-sm w-100 mt-2" id="addVariable">
+          <i class="fas fa-plus"></i> Nova Variável
+        </button>
+      </div>
+    </div>
+
+    <!-- Canvas Principal -->
+    <div class="canvas-container">
+      <div class="certificate-canvas" id="certificateCanvas">
+        <!-- Elementos do certificado serão adicionados aqui -->
+      </div>
+    </div>
+
+    <!-- Painel de Propriedades -->
+    <div class="properties-panel">
+      <div class="properties-content">
+        <h6 class="fw-bold mb-3">Propriedades</h6>
+        <div id="elementProperties">
+          <p class="text-muted">Selecione um elemento para editar suas propriedades.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ações do Template -->
+  <div class="template-actions">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>Nome do Template</label>
+          <input type="text" class="form-control" id="templateTitle" value="{{ template.titulo if template else '' }}" placeholder="Digite o nome do template">
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-group">
+          <label>Orientação</label>
+          <select class="form-select" id="pageOrientation">
+            <option value="landscape">Paisagem</option>
+            <option value="portrait">Retrato</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Pré-visualização -->
+<div class="preview-mode" id="previewMode">
+  <div class="preview-content">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5>Pré-visualização do Certificado</h5>
+      <button class="btn btn-outline-secondary" id="closePreview">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="previewCanvas">
+      <!-- Pré-visualização será renderizada aqui -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Nova Variável -->
+<div class="modal fade" id="newVariableModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Variável Dinâmica</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label>Nome da Variável</label>
+          <input type="text" class="form-control" id="variableName" placeholder="Ex: NOME_INSTITUICAO">
+        </div>
+        <div class="form-group mb-3">
+          <label>Descrição</label>
+          <input type="text" class="form-control" id="variableDescription" placeholder="Descrição da variável">
+        </div>
+        <div class="form-group mb-3">
+          <label>Valor Padrão</label>
+          <input type="text" class="form-control" id="variableDefault" placeholder="Valor padrão">
+        </div>
+        <div class="form-group">
+          <label>Tipo</label>
+          <select class="form-select" id="variableType">
+            <option value="texto">Texto</option>
+            <option value="data">Data</option>
+            <option value="numero">Número</option>
+            <option value="lista">Lista</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="saveVariable">Salvar Variável</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+<script>
+// Editor Avançado de Certificados
+class CertificateEditor {
+  constructor() {
+    this.canvas = document.getElementById('certificateCanvas');
+    this.selectedElement = null;
+    this.elements = [];
+    this.history = [];
+    this.historyIndex = -1;
+    this.nextElementId = 1;
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.setupDragAndDrop();
+    this.loadTemplate();
+  }
+  
+  setupEventListeners() {
+    // Biblioteca de elementos
+    document.querySelectorAll('.element-item').forEach(item => {
+      item.addEventListener('click', () => {
+        this.addElement(item.dataset.type);
+      });
+    });
+    
+    // Toolbar
+    document.getElementById('saveTemplate').addEventListener('click', () => this.saveTemplate());
+    document.getElementById('previewTemplate').addEventListener('click', () => this.previewTemplate());
+    document.getElementById('exportTemplate').addEventListener('click', () => this.exportTemplate());
+    document.getElementById('undoAction').addEventListener('click', () => this.undo());
+    document.getElementById('redoAction').addEventListener('click', () => this.redo());
+    
+    // Zoom
+    document.getElementById('zoomLevel').addEventListener('change', (e) => {
+      this.setZoom(parseFloat(e.target.value));
+    });
+    
+    // Preview
+    document.getElementById('closePreview').addEventListener('click', () => {
+      document.getElementById('previewMode').style.display = 'none';
+    });
+    
+    // Nova variável
+    document.getElementById('addVariable').addEventListener('click', () => {
+      new bootstrap.Modal(document.getElementById('newVariableModal')).show();
+    });
+    
+    document.getElementById('saveVariable').addEventListener('click', () => this.saveNewVariable());
+    
+    // Canvas click
+    this.canvas.addEventListener('click', (e) => {
+      if (e.target === this.canvas) {
+        this.deselectElement();
+      }
+    });
+  }
+  
+  setupDragAndDrop() {
+    // Configurar interact.js para elementos arrastáveis
+    interact('.draggable-element')
+      .draggable({
+        listeners: {
+          move: (event) => {
+            const target = event.target;
+            const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+            const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+            
+            target.style.transform = `translate(${x}px, ${y}px)`;
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+            
+            this.updateElementPosition(target.id, x, y);
+          }
+        }
+      })
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          move: (event) => {
+            const target = event.target;
+            let x = (parseFloat(target.getAttribute('data-x')) || 0);
+            let y = (parseFloat(target.getAttribute('data-y')) || 0);
+            
+            target.style.width = event.rect.width + 'px';
+            target.style.height = event.rect.height + 'px';
+            
+            x += event.deltaRect.left;
+            y += event.deltaRect.top;
+            
+            target.style.transform = `translate(${x}px, ${y}px)`;
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+            
+            this.updateElementSize(target.id, event.rect.width, event.rect.height);
+            this.updateElementPosition(target.id, x, y);
+          }
+        }
+      });
+  }
+  
+  addElement(type) {
+    const elementId = `element_${this.nextElementId++}`;
+    const element = this.createElement(type, elementId);
+    
+    this.canvas.appendChild(element);
+    this.elements.push({
+      id: elementId,
+      type: type,
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 40,
+      properties: this.getDefaultProperties(type)
+    });
+    
+    this.selectElement(element);
+    this.saveState();
+  }
+  
+  createElement(type, id) {
+    const element = document.createElement('div');
+    element.id = id;
+    element.className = 'draggable-element';
+    element.style.left = '50px';
+    element.style.top = '50px';
+    element.style.width = '200px';
+    element.style.height = '40px';
+    
+    // Conteúdo baseado no tipo
+    switch(type) {
+      case 'text':
+        element.innerHTML = 'Texto personalizado';
+        break;
+      case 'title':
+        element.innerHTML = '<h3>CERTIFICADO</h3>';
+        element.style.textAlign = 'center';
+        break;
+      case 'participant-name':
+        element.innerHTML = '<strong>{NOME_PARTICIPANTE}</strong>';
+        element.style.textAlign = 'center';
+        break;
+      case 'workload':
+        element.innerHTML = 'Carga horária: {CARGA_HORARIA} horas';
+        break;
+      case 'activities':
+        element.innerHTML = '{LISTA_OFICINAS}';
+        break;
+      case 'date':
+        element.innerHTML = 'Data: {DATA_EMISSAO}';
+        break;
+      case 'signature':
+        element.innerHTML = '<div style="border-top: 1px solid #000; margin-top: 20px; text-align: center;">Assinatura</div>';
+        break;
+      case 'logo':
+        element.innerHTML = '<div style="border: 2px dashed #ccc; text-align: center; padding: 20px;">Logo</div>';
+        break;
+      case 'border':
+        element.innerHTML = '';
+        element.style.border = '3px solid #000';
+        element.style.background = 'transparent';
+        break;
+    }
+    
+    // Controles do elemento
+    const controls = document.createElement('div');
+    controls.className = 'element-controls';
+    controls.innerHTML = `
+      <button class="btn btn-sm btn-outline-primary" onclick="editor.editElement('${id}')">
+        <i class="fas fa-edit"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-danger" onclick="editor.deleteElement('${id}')">
+        <i class="fas fa-trash"></i>
+      </button>
+    `;
+    element.appendChild(controls);
+    
+    // Handles de redimensionamento
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle ${pos}`;
+      element.appendChild(handle);
+    });
+    
+    element.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectElement(element);
+    });
+    
+    return element;
+  }
+  
+  getDefaultProperties(type) {
+    const defaults = {
+      fontSize: '16px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#000000',
+      backgroundColor: 'transparent',
+      textAlign: 'left',
+      fontWeight: 'normal',
+      fontStyle: 'normal'
+    };
+    
+    switch(type) {
+      case 'title':
+        defaults.fontSize = '24px';
+        defaults.fontWeight = 'bold';
+        defaults.textAlign = 'center';
+        break;
+      case 'participant-name':
+        defaults.fontSize = '20px';
+        defaults.fontWeight = 'bold';
+        defaults.textAlign = 'center';
+        break;
+    }
+    
+    return defaults;
+  }
+  
+  selectElement(element) {
+    // Deselecionar elemento anterior
+    if (this.selectedElement) {
+      this.selectedElement.classList.remove('selected');
+    }
+    
+    // Selecionar novo elemento
+    this.selectedElement = element;
+    element.classList.add('selected');
+    
+    // Atualizar painel de propriedades
+    this.updatePropertiesPanel();
+  }
+  
+  deselectElement() {
+    if (this.selectedElement) {
+      this.selectedElement.classList.remove('selected');
+      this.selectedElement = null;
+    }
+    
+    document.getElementById('elementProperties').innerHTML = 
+      '<p class="text-muted">Selecione um elemento para editar suas propriedades.</p>';
+  }
+  
+  updatePropertiesPanel() {
+    if (!this.selectedElement) return;
+    
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    if (!elementData) return;
+    
+    const properties = elementData.properties;
+    
+    document.getElementById('elementProperties').innerHTML = `
+      <div class="form-group">
+        <label>Texto</label>
+        <textarea class="form-control" id="elementText" rows="3">${this.selectedElement.innerHTML.replace(/<[^>]*>/g, '')}</textarea>
+      </div>
+      
+      <div class="form-group">
+        <label>Fonte</label>
+        <select class="form-select" id="fontFamily">
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Times New Roman, serif">Times New Roman</option>
+          <option value="Helvetica, sans-serif">Helvetica</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+        </select>
+      </div>
+      
+      <div class="row">
+        <div class="col-6">
+          <div class="form-group">
+            <label>Tamanho</label>
+            <input type="number" class="form-control" id="fontSize" value="${parseInt(properties.fontSize)}" min="8" max="72">
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="form-group">
+            <label>Cor</label>
+            <input type="color" class="form-control color-picker" id="textColor" value="${properties.color}">
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Alinhamento</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="textAlign" id="alignLeft" value="left" ${properties.textAlign === 'left' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignLeft"><i class="fas fa-align-left"></i></label>
+          
+          <input type="radio" class="btn-check" name="textAlign" id="alignCenter" value="center" ${properties.textAlign === 'center' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignCenter"><i class="fas fa-align-center"></i></label>
+          
+          <input type="radio" class="btn-check" name="textAlign" id="alignRight" value="right" ${properties.textAlign === 'right' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignRight"><i class="fas fa-align-right"></i></label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="fontBold" ${properties.fontWeight === 'bold' ? 'checked' : ''}>
+          <label class="form-check-label" for="fontBold">Negrito</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="fontItalic" ${properties.fontStyle === 'italic' ? 'checked' : ''}>
+          <label class="form-check-label" for="fontItalic">Itálico</label>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Cor de Fundo</label>
+        <input type="color" class="form-control color-picker" id="backgroundColor" value="${properties.backgroundColor === 'transparent' ? '#ffffff' : properties.backgroundColor}">
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="transparentBg" ${properties.backgroundColor === 'transparent' ? 'checked' : ''}>
+          <label class="form-check-label" for="transparentBg">Fundo transparente</label>
+        </div>
+      </div>
+      
+      <button class="btn btn-primary w-100 mt-3" onclick="editor.applyProperties()">Aplicar Alterações</button>
+    `;
+    
+    // Definir valores selecionados
+    document.getElementById('fontFamily').value = properties.fontFamily;
+  }
+  
+  applyProperties() {
+    if (!this.selectedElement) return;
+    
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    if (!elementData) return;
+    
+    // Coletar valores
+    const text = document.getElementById('elementText').value;
+    const fontFamily = document.getElementById('fontFamily').value;
+    const fontSize = document.getElementById('fontSize').value + 'px';
+    const textColor = document.getElementById('textColor').value;
+    const textAlign = document.querySelector('input[name="textAlign"]:checked').value;
+    const fontWeight = document.getElementById('fontBold').checked ? 'bold' : 'normal';
+    const fontStyle = document.getElementById('fontItalic').checked ? 'italic' : 'normal';
+    const transparentBg = document.getElementById('transparentBg').checked;
+    const backgroundColor = transparentBg ? 'transparent' : document.getElementById('backgroundColor').value;
+    
+    // Aplicar estilos
+    this.selectedElement.style.fontFamily = fontFamily;
+    this.selectedElement.style.fontSize = fontSize;
+    this.selectedElement.style.color = textColor;
+    this.selectedElement.style.textAlign = textAlign;
+    this.selectedElement.style.fontWeight = fontWeight;
+    this.selectedElement.style.fontStyle = fontStyle;
+    this.selectedElement.style.backgroundColor = backgroundColor;
+    
+    // Atualizar texto (preservando HTML se necessário)
+    if (elementData.type === 'text') {
+      this.selectedElement.innerHTML = text;
+    }
+    
+    // Salvar propriedades
+    elementData.properties = {
+      fontSize, fontFamily, color: textColor, textAlign,
+      fontWeight, fontStyle, backgroundColor
+    };
+    
+    this.saveState();
+  }
+  
+  deleteElement(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.remove();
+      this.elements = this.elements.filter(el => el.id !== elementId);
+      
+      if (this.selectedElement && this.selectedElement.id === elementId) {
+        this.deselectElement();
+      }
+      
+      this.saveState();
+    }
+  }
+  
+  updateElementPosition(elementId, x, y) {
+    const elementData = this.elements.find(el => el.id === elementId);
+    if (elementData) {
+      elementData.x = x;
+      elementData.y = y;
+    }
+  }
+  
+  updateElementSize(elementId, width, height) {
+    const elementData = this.elements.find(el => el.id === elementId);
+    if (elementData) {
+      elementData.width = width;
+      elementData.height = height;
+    }
+  }
+  
+  setZoom(level) {
+    this.canvas.style.transform = `scale(${level})`;
+    this.canvas.style.transformOrigin = 'top left';
+  }
+  
+  saveState() {
+    const state = {
+      elements: JSON.parse(JSON.stringify(this.elements)),
+      html: this.canvas.innerHTML
+    };
+    
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(state);
+    this.historyIndex++;
+    
+    // Limitar histórico
+    if (this.history.length > 50) {
+      this.history.shift();
+      this.historyIndex--;
+    }
+  }
+  
+  undo() {
+    if (this.historyIndex > 0) {
+      this.historyIndex--;
+      this.restoreState(this.history[this.historyIndex]);
+    }
+  }
+  
+  redo() {
+    if (this.historyIndex < this.history.length - 1) {
+      this.historyIndex++;
+      this.restoreState(this.history[this.historyIndex]);
+    }
+  }
+  
+  restoreState(state) {
+    this.elements = JSON.parse(JSON.stringify(state.elements));
+    this.canvas.innerHTML = state.html;
+    this.deselectElement();
+    this.setupDragAndDrop();
+  }
+  
+  saveTemplate() {
+    const templateData = {
+      titulo: document.getElementById('templateTitle').value,
+      orientacao: document.getElementById('pageOrientation').value,
+      elements: this.elements,
+      html: this.canvas.innerHTML
+    };
+    
+    // Enviar para o servidor
+    fetch('/certificado/salvar_template_avancado', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(templateData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Template salvo com sucesso!');
+      } else {
+        alert('Erro ao salvar template: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao salvar template.');
+    });
+  }
+  
+  previewTemplate() {
+    const previewCanvas = document.getElementById('previewCanvas');
+    previewCanvas.innerHTML = this.canvas.innerHTML;
+    
+    // Remover controles de edição da pré-visualização
+    previewCanvas.querySelectorAll('.element-controls, .resize-handle').forEach(el => el.remove());
+    previewCanvas.querySelectorAll('.draggable-element').forEach(el => {
+      el.classList.remove('draggable-element', 'selected');
+      el.style.border = 'none';
+    });
+    
+    document.getElementById('previewMode').style.display = 'flex';
+  }
+  
+  exportTemplate() {
+    // Implementar exportação para PDF
+    alert('Funcionalidade de exportação será implementada.');
+  }
+  
+  loadTemplate() {
+    // Carregar template existente se houver
+    {% if template %}
+    // Implementar carregamento do template
+    {% endif %}
+  }
+  
+  saveNewVariable() {
+    const variableData = {
+      nome: document.getElementById('variableName').value,
+      descricao: document.getElementById('variableDescription').value,
+      valor_padrao: document.getElementById('variableDefault').value,
+      tipo: document.getElementById('variableType').value
+    };
+    
+    fetch('/certificado/salvar_variavel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(variableData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('newVariableModal')).hide();
+        this.loadDynamicVariables();
+      } else {
+        alert('Erro ao salvar variável: ' + data.message);
+      }
+    });
+  }
+  
+  loadDynamicVariables() {
+    fetch('/certificado/variaveis_dinamicas')
+    .then(response => response.json())
+    .then(data => {
+      const container = document.getElementById('dynamicVariables');
+      container.innerHTML = '';
+      
+      data.variaveis.forEach(variavel => {
+        const item = document.createElement('div');
+        item.className = 'element-item';
+        item.innerHTML = `
+          <i class="fas fa-tag me-2"></i>
+          <strong>{${variavel.nome}}</strong>
+          <small class="d-block text-muted">${variavel.descricao}</small>
+        `;
+        item.addEventListener('click', () => {
+          this.addVariableElement(variavel);
+        });
+        container.appendChild(item);
+      });
+    });
+  }
+  
+  addVariableElement(variavel) {
+    const elementId = `element_${this.nextElementId++}`;
+    const element = this.createElement('text', elementId);
+    element.innerHTML = `{${variavel.nome}}`;
+    
+    this.canvas.appendChild(element);
+    this.elements.push({
+      id: elementId,
+      type: 'variable',
+      variavel: variavel.nome,
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 40,
+      properties: this.getDefaultProperties('text')
+    });
+    
+    this.selectElement(element);
+    this.saveState();
+  }
+}
+
+// Inicializar editor
+let editor;
+document.addEventListener('DOMContentLoaded', function() {
+  editor = new CertificateEditor();
+});
+</script>
+{% endblock %}

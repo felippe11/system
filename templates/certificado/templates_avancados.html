@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% block title %}Templates Avançados de Certificados{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-primary">
+      <i class="bi bi-file-earmark-richtext me-2"></i>Templates Avançados de Certificados
+    </h2>
+    <div>
+      <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i>Novo Template Avançado
+      </a>
+      <a href="{{ url_for('certificado_routes.templates_certificado') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-file-earmark-text me-1"></i>Templates Simples
+      </a>
+    </div>
+  </div>
+
+  <!-- Lista de Templates Avançados -->
+  <div class="card shadow">
+    <div class="card-body">
+      {% if templates %}
+        <div class="row">
+          {% for template in templates %}
+          <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold">{{ template.titulo }}</h6>
+                {% if template.ativo %}
+                  <span class="badge bg-success">Ativo</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inativo</span>
+                {% endif %}
+              </div>
+              
+              <div class="card-body">
+                <div class="mb-3">
+                  <small class="text-muted">
+                    <i class="bi bi-calendar me-1"></i>
+                    Criado em {{ template.data_criacao.strftime('%d/%m/%Y às %H:%M') }}
+                  </small>
+                </div>
+                
+                <div class="mb-3">
+                  <small class="text-muted">
+                    <i class="bi bi-aspect-ratio me-1"></i>
+                    Orientação: {{ 'Paisagem' if template.orientacao == 'landscape' else 'Retrato' }}
+                  </small>
+                </div>
+                
+                <div class="mb-3">
+                  <small class="text-muted">
+                    <i class="bi bi-file-earmark me-1"></i>
+                    Tamanho: {{ template.tamanho_pagina or 'A4' }}
+                  </small>
+                </div>
+                
+                <!-- Preview Miniatura -->
+                <div class="preview-thumbnail mb-3">
+                  <div class="border rounded p-2" style="height: 120px; overflow: hidden; background: #f8f9fa;">
+                    {% if template.layout_config and template.layout_config.get('canvas_html') %}
+                      <div style="transform: scale(0.2); transform-origin: top left; width: 500%; height: 500%;">
+                        {{ template.layout_config.get('canvas_html')|safe }}
+                      </div>
+                    {% else %}
+                      <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                        <i class="bi bi-file-earmark-text" style="font-size: 2rem;"></i>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card-footer bg-transparent">
+                <div class="btn-group w-100" role="group">
+                  <a href="{{ url_for('certificado_routes.editor_avancado', template_id=template.id) }}" 
+                     class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-pencil-square"></i> Editar
+                  </a>
+                  
+                  {% if not template.ativo %}
+                  <form action="{{ url_for('certificado_routes.ativar_template_avancado', template_id=template.id) }}" 
+                        method="post" class="d-inline">
+                    <button class="btn btn-outline-success btn-sm" type="submit">
+                      <i class="bi bi-check-circle"></i> Ativar
+                    </button>
+                  </form>
+                  {% endif %}
+                  
+                  <button class="btn btn-outline-info btn-sm" 
+                          onclick="previewTemplate({{ template.id }})">
+                    <i class="bi bi-eye"></i> Preview
+                  </button>
+                  
+                  <button class="btn btn-outline-danger btn-sm" 
+                          onclick="confirmDelete({{ template.id }}, '{{ template.titulo }}')">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        
+        <!-- Paginação se necessário -->
+        {% if templates|length > 12 %}
+        <nav aria-label="Navegação de templates">
+          <ul class="pagination justify-content-center">
+            <!-- Implementar paginação se necessário -->
+          </ul>
+        </nav>
+        {% endif %}
+        
+      {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-file-earmark-text text-muted" style="font-size: 4rem;"></i>
+          <h5 class="text-muted mt-3">Nenhum template avançado criado ainda</h5>
+          <p class="text-muted">Crie seu primeiro template usando o editor avançado com recursos de arrastar e soltar.</p>
+          <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Criar Primeiro Template
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  
+  <!-- Informações sobre Templates -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card border-info">
+        <div class="card-header bg-info text-white">
+          <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Templates Simples vs Avançados</h6>
+        </div>
+        <div class="card-body">
+          <p class="mb-2"><strong>Templates Simples:</strong></p>
+          <ul class="small mb-3">
+            <li>Editor de texto básico</li>
+            <li>Placeholders predefinidos</li>
+            <li>Configuração rápida</li>
+          </ul>
+          
+          <p class="mb-2"><strong>Templates Avançados:</strong></p>
+          <ul class="small mb-0">
+            <li>Editor visual drag-and-drop</li>
+            <li>Controle total de layout</li>
+            <li>Elementos visuais personalizados</li>
+            <li>Variáveis dinâmicas</li>
+            <li>Pré-visualização em tempo real</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-6">
+      <div class="card border-success">
+        <div class="card-header bg-success text-white">
+          <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Dicas de Uso</h6>
+        </div>
+        <div class="card-body">
+          <ul class="small mb-0">
+            <li>Use templates avançados para certificados com design personalizado</li>
+            <li>Apenas um template pode estar ativo por vez</li>
+            <li>Templates inativos ficam salvos para uso futuro</li>
+            <li>O editor permite posicionamento preciso de elementos</li>
+            <li>Variáveis dinâmicas podem ser reutilizadas em múltiplos templates</li>
+            <li>A pré-visualização mostra como ficará o certificado final</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Tem certeza que deseja excluir o template <strong id="templateNameToDelete"></strong>?</p>
+        <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteForm" method="post" class="d-inline">
+          <button type="submit" class="btn btn-danger">Excluir Template</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Pré-visualização do Template</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="previewContent" class="text-center">
+          <!-- Conteúdo da pré-visualização será carregado aqui -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(templateId, templateName) {
+  document.getElementById('templateNameToDelete').textContent = templateName;
+  document.getElementById('deleteForm').action = 
+    `{{ url_for('certificado_routes.excluir_template_avancado', template_id=0) }}`.replace('0', templateId);
+  
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function previewTemplate(templateId) {
+  const previewContent = document.getElementById('previewContent');
+  previewContent.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Carregando...</span></div>';
+  
+  // Buscar dados do template
+  fetch(`/certificado/preview_template_avancado/${templateId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        previewContent.innerHTML = `
+          <div class="border rounded p-3" style="background: white; display: inline-block;">
+            ${data.html}
+          </div>
+        `;
+        
+        // Remover controles de edição da pré-visualização
+        previewContent.querySelectorAll('.element-controls, .resize-handle').forEach(el => el.remove());
+        previewContent.querySelectorAll('.draggable-element').forEach(el => {
+          el.classList.remove('draggable-element', 'selected');
+          el.style.border = 'none';
+          el.style.cursor = 'default';
+        });
+      } else {
+        previewContent.innerHTML = '<p class="text-danger">Erro ao carregar pré-visualização</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      previewContent.innerHTML = '<p class="text-danger">Erro ao carregar pré-visualização</p>';
+    });
+  
+  new bootstrap.Modal(document.getElementById('previewModal')).show();
+}
+
+// Adicionar rota de preview se não existir
+if (!window.previewRouteExists) {
+  // Simular preview com dados do template
+  function previewTemplate(templateId) {
+    const previewContent = document.getElementById('previewContent');
+    previewContent.innerHTML = '<p class="text-info">Pré-visualização será implementada com os dados do template.</p>';
+    new bootstrap.Modal(document.getElementById('previewModal')).show();
+  }
+}
+</script>
+{% endblock %}

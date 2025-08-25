@@ -1,0 +1,544 @@
+{% extends 'base.html' %}
+{% block title %}Templates Personalizáveis{% endblock %}
+
+{% block extra_css %}
+<style>
+  .template-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #28a745;
+  }
+  
+  .template-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  }
+  
+  .template-preview {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    font-size: 0.875rem;
+    max-height: 120px;
+    overflow: hidden;
+    position: relative;
+  }
+  
+  .template-preview::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, #f8f9fa);
+  }
+  
+  .variable-tag {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    border-radius: 12px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    margin: 0.125rem;
+    display: inline-block;
+  }
+  
+  .template-stats {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.75rem;
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .stat-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6c757d;
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-success mb-1">
+        <i class="bi bi-file-earmark-text me-2"></i>Templates Personalizáveis
+      </h2>
+      <p class="text-muted mb-0">Gerencie templates com variáveis dinâmicas para certificados personalizados</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('certificado_routes.variaveis_dinamicas') }}" class="btn btn-outline-primary">
+        <i class="bi bi-braces me-2"></i>Gerenciar Variáveis
+      </a>
+      <a href="{{ url_for('certificado_routes.criar_template_personalizado') }}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-2"></i>Novo Template
+      </a>
+    </div>
+  </div>
+
+  <!-- Estatísticas -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="template-stats">
+        <div class="stat-item">
+          <div class="stat-number">{{ templates|length }}</div>
+          <div class="stat-label">Templates</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="template-stats">
+        <div class="stat-item">
+          <div class="stat-number">{{ variaveis|length }}</div>
+          <div class="stat-label">Variáveis</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="template-stats">
+        <div class="stat-item">
+          <div class="stat-number">{{ templates|selectattr('ativo')|list|length }}</div>
+          <div class="stat-label">Ativos</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="template-stats">
+        <div class="stat-item">
+          <div class="stat-number">0</div>
+          <div class="stat-label">Utilizações</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchTemplates" placeholder="Buscar templates...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select" id="filterStatus">
+            <option value="">Todos os status</option>
+            <option value="ativo">Ativos</option>
+            <option value="inativo">Inativos</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select" id="filterOrientacao">
+            <option value="">Todas orientações</option>
+            <option value="landscape">Paisagem</option>
+            <option value="portrait">Retrato</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de Templates -->
+  <div class="row" id="templatesContainer">
+    {% if templates %}
+      {% for template in templates %}
+      <div class="col-lg-6 col-xl-4 mb-4 template-item" 
+           data-status="{{ 'ativo' if template.ativo else 'inativo' }}"
+           data-orientacao="{{ template.orientacao }}">
+        <div class="card template-card h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <h6 class="mb-0 fw-bold">{{ template.titulo }}</h6>
+              {% if template.ativo %}
+              <span class="badge bg-success ms-2">Ativo</span>
+              {% else %}
+              <span class="badge bg-secondary ms-2">Inativo</span>
+              {% endif %}
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('certificado_routes.editar_template_personalizado', template_id=template.id) }}">
+                  <i class="bi bi-pencil me-2"></i>Editar
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="duplicarTemplate({{ template.id }})">
+                  <i class="bi bi-files me-2"></i>Duplicar
+                </a></li>
+                <li><a class="dropdown-item" href="#" onclick="previewTemplate({{ template.id }})">
+                  <i class="bi bi-eye me-2"></i>Visualizar
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% if template.ativo %}
+                <li><a class="dropdown-item" href="#" onclick="toggleTemplate({{ template.id }}, false)">
+                  <i class="bi bi-pause me-2"></i>Desativar
+                </a></li>
+                {% else %}
+                <li><a class="dropdown-item" href="#" onclick="toggleTemplate({{ template.id }}, true)">
+                  <i class="bi bi-play me-2"></i>Ativar
+                </a></li>
+                {% endif %}
+                <li><a class="dropdown-item text-danger" href="#" onclick="excluirTemplate({{ template.id }})">
+                  <i class="bi bi-trash me-2"></i>Excluir
+                </a></li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <!-- Preview do conteúdo -->
+            <div class="template-preview mb-3">
+              {{ template.conteudo[:200] }}{% if template.conteudo|length > 200 %}...{% endif %}
+            </div>
+            
+            <!-- Variáveis utilizadas -->
+            {% if template.variaveis_dinamicas %}
+            <div class="mb-3">
+              <small class="text-muted d-block mb-2">Variáveis utilizadas:</small>
+              <div class="d-flex flex-wrap">
+                {% set variaveis_ids = template.variaveis_dinamicas | from_json %}
+                {% for var_id in variaveis_ids[:5] %}
+                  {% set variavel = variaveis | selectattr('id', 'equalto', var_id) | first %}
+                  {% if variavel %}
+                  <span class="variable-tag">{{'{'}}{{ variavel.nome }}{{'}'}}}</span>
+                  {% endif %}
+                {% endfor %}
+                {% if variaveis_ids|length > 5 %}
+                <span class="variable-tag">+{{ variaveis_ids|length - 5 }}</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+            
+            <!-- Configurações -->
+            <div class="row text-center">
+              <div class="col-4">
+                <small class="text-muted d-block">Orientação</small>
+                <strong class="small">{{ template.orientacao.title() }}</strong>
+              </div>
+              <div class="col-4">
+                <small class="text-muted d-block">Tamanho</small>
+                <strong class="small">{{ template.tamanho_pagina }}</strong>
+              </div>
+              <div class="col-4">
+                <small class="text-muted d-block">Criado</small>
+                <strong class="small">{{ template.data_criacao.strftime('%d/%m/%Y') }}</strong>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card-footer bg-transparent">
+            <div class="action-buttons">
+              <button class="btn btn-outline-primary btn-sm" onclick="testarTemplate({{ template.id }})">
+                <i class="bi bi-play-circle me-1"></i>Testar
+              </button>
+              <button class="btn btn-outline-success btn-sm" onclick="aplicarVariaveis({{ template.id }})">
+                <i class="bi bi-gear me-1"></i>Configurar
+              </button>
+              <a href="{{ url_for('certificado_routes.editar_template_personalizado', template_id=template.id) }}" 
+                 class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-pencil me-1"></i>Editar
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="col-12">
+      <div class="empty-state">
+        <i class="bi bi-file-earmark-text display-1 text-muted mb-3"></i>
+        <h4 class="text-muted">Nenhum template personalizado</h4>
+        <p class="text-muted mb-4">Crie seu primeiro template personalizado com variáveis dinâmicas</p>
+        <a href="{{ url_for('certificado_routes.criar_template_personalizado') }}" class="btn btn-success">
+          <i class="bi bi-plus-lg me-2"></i>Criar Primeiro Template
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Configurar Variáveis -->
+<div class="modal fade" id="modalConfigurarVariaveis" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-gear me-2"></i>Configurar Variáveis
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="variaveisForm">
+          <!-- Formulário será carregado dinamicamente -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-success" onclick="aplicarConfiguracoes()">
+          <i class="bi bi-check-circle me-1"></i>Aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Preview -->
+<div class="modal fade" id="modalPreview" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-eye me-2"></i>Preview do Template
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="previewContent" class="border rounded p-4" style="min-height: 400px; background: white;">
+          <!-- Preview será carregado aqui -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variáveis globais
+let templates = {{ templates | tojson | safe }};
+let variaveis = {{ variaveis | tojson | safe }};
+let templateAtual = null;
+
+// Inicialização
+$(document).ready(function() {
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // Filtros
+  $('#searchTemplates').on('input', filtrarTemplates);
+  $('#filterStatus').on('change', filtrarTemplates);
+  $('#filterOrientacao').on('change', filtrarTemplates);
+}
+
+function filtrarTemplates() {
+  const busca = $('#searchTemplates').val().toLowerCase();
+  const status = $('#filterStatus').val();
+  const orientacao = $('#filterOrientacao').val();
+  
+  $('.template-item').each(function() {
+    const $item = $(this);
+    const titulo = $item.find('.fw-bold').text().toLowerCase();
+    const statusItem = $item.data('status');
+    const orientacaoItem = $item.data('orientacao');
+    
+    const matchBusca = !busca || titulo.includes(busca);
+    const matchStatus = !status || statusItem === status;
+    const matchOrientacao = !orientacao || orientacaoItem === orientacao;
+    
+    $item.toggle(matchBusca && matchStatus && matchOrientacao);
+  });
+}
+
+function aplicarVariaveis(templateId) {
+  templateAtual = templates.find(t => t.id === templateId);
+  if (!templateAtual) return;
+  
+  // Buscar variáveis do template
+  const variaveisTemplate = JSON.parse(templateAtual.variaveis_dinamicas || '[]');
+  const variaveisDisponiveis = variaveis.filter(v => variaveisTemplate.includes(v.id));
+  
+  if (variaveisDisponiveis.length === 0) {
+    showToast('Este template não possui variáveis configuradas', 'info');
+    return;
+  }
+  
+  // Gerar formulário
+  let formHtml = '<form id="formVariaveis">';
+  
+  variaveisDisponiveis.forEach(variavel => {
+    formHtml += `
+      <div class="mb-3">
+        <label class="form-label fw-bold">{${variavel.nome}}</label>
+        <small class="text-muted d-block mb-2">${variavel.descricao || 'Sem descrição'}</small>
+    `;
+    
+    if (variavel.tipo === 'lista' && variavel.opcoes) {
+      formHtml += `
+        <select class="form-select" name="${variavel.nome}" required>
+          <option value="">Selecione uma opção</option>
+      `;
+      variavel.opcoes.forEach(opcao => {
+        const selected = opcao === variavel.valor_padrao ? 'selected' : '';
+        formHtml += `<option value="${opcao}" ${selected}>${opcao}</option>`;
+      });
+      formHtml += '</select>';
+    } else {
+      const tipo = variavel.tipo === 'numero' ? 'number' : variavel.tipo === 'data' ? 'date' : 'text';
+      formHtml += `
+        <input type="${tipo}" class="form-control" name="${variavel.nome}" 
+               value="${variavel.valor_padrao || ''}" required>
+      `;
+    }
+    
+    formHtml += '</div>';
+  });
+  
+  formHtml += '</form>';
+  
+  $('#variaveisForm').html(formHtml);
+  $('#modalConfigurarVariaveis').modal('show');
+}
+
+function aplicarConfiguracoes() {
+  if (!templateAtual) return;
+  
+  const formData = new FormData(document.getElementById('formVariaveis'));
+  const valores = Object.fromEntries(formData.entries());
+  
+  $.ajax({
+    url: '{{ url_for("certificado_routes.aplicar_variaveis_template") }}',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      template_id: templateAtual.id,
+      valores_variaveis: valores
+    }),
+    success: function(response) {
+      if (response.success) {
+        $('#modalConfigurarVariaveis').modal('hide');
+        
+        // Mostrar preview
+        $('#previewContent').html(`
+          <div class="alert alert-success mb-3">
+            <i class="bi bi-check-circle me-2"></i>
+            Variáveis aplicadas com sucesso!
+          </div>
+          <div style="white-space: pre-wrap; font-family: 'Times New Roman', serif; line-height: 1.6;">
+            ${response.conteudo_processado}
+          </div>
+        `);
+        
+        if (response.variaveis_nao_preenchidas.length > 0) {
+          $('#previewContent').prepend(`
+            <div class="alert alert-warning mb-3">
+              <i class="bi bi-exclamation-triangle me-2"></i>
+              Variáveis não preenchidas: ${response.variaveis_nao_preenchidas.join(', ')}
+            </div>
+          `);
+        }
+        
+        $('#modalPreview').modal('show');
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao aplicar variáveis', 'error');
+    }
+  });
+}
+
+function previewTemplate(templateId) {
+  const template = templates.find(t => t.id === templateId);
+  if (!template) return;
+  
+  $('#previewContent').html(`
+    <div style="white-space: pre-wrap; font-family: 'Times New Roman', serif; line-height: 1.6;">
+      ${template.conteudo}
+    </div>
+  `);
+  
+  $('#modalPreview').modal('show');
+}
+
+function testarTemplate(templateId) {
+  // Implementar teste do template
+  showToast('Funcionalidade de teste em desenvolvimento', 'info');
+}
+
+function duplicarTemplate(templateId) {
+  if (!confirm('Deseja duplicar este template?')) return;
+  
+  // Implementar duplicação
+  showToast('Funcionalidade de duplicação em desenvolvimento', 'info');
+}
+
+function toggleTemplate(templateId, ativar) {
+  const acao = ativar ? 'ativar' : 'desativar';
+  if (!confirm(`Deseja ${acao} este template?`)) return;
+  
+  // Implementar toggle
+  showToast(`Funcionalidade de ${acao} em desenvolvimento`, 'info');
+}
+
+function excluirTemplate(templateId) {
+  if (!confirm('Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.')) return;
+  
+  // Implementar exclusão
+  showToast('Funcionalidade de exclusão em desenvolvimento', 'info');
+}
+
+function showToast(message, type = 'info') {
+  const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+  const toast = `
+    <div class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `;
+  
+  if (!$('#toastContainer').length) {
+    $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+  }
+  
+  const $toast = $(toast);
+  $('#toastContainer').append($toast);
+  new bootstrap.Toast($toast[0]).show();
+}
+</script>
+{% endblock %}
