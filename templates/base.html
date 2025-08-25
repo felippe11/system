@@ -11,6 +11,8 @@
     <meta name="theme-color" content="#2A2D72">
     <meta name="color-scheme" content="light dark">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="index, follow">
+    <meta name="format-detection" content="telephone=no">
 
     {% block styles %}
     <!-- CSS Libraries -->
@@ -40,28 +42,45 @@
             /* Paleta de cores principal */
             --primary-color: #2A2D72;
             --primary-color-light: #3C40A0;
+            --primary-color-dark: #1E2157;
             --primary-color-rgb: 42, 45, 114;
             --secondary-color: #FF6B6B;
             --accent-color: #4ECDC4;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
             --text-light: rgba(255, 255, 255, 0.95);
             --text-dark: #212529;
+            --text-muted: #6c757d;
             
             /* Sombras */
+            --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.05);
             --shadow-sm: 0 2px 15px rgba(0, 0, 0, 0.1);
             --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.2);
             
             /* Espaçamentos */
             --navbar-height: 80px;
             --container-padding: 1rem;
+            --border-radius: 0.5rem;
+            --border-radius-lg: 1rem;
             
             /* Transições */
+            --transition-fast: all 0.15s ease;
             --transition-normal: all 0.3s ease;
-        }        /* Modo escuro */
+            --transition-slow: all 0.5s ease;
+        }
+        
+        /* Modo escuro */
         [data-bs-theme="dark"] {
             --primary-color: #8F94FB;
             --primary-color-light: #a5a9ff;
+            --primary-color-dark: #7B80E8;
+            --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.2);
             --shadow-sm: 0 2px 15px rgba(0, 0, 0, 0.3);
             --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.5);
             color-scheme: dark;
         }
         
@@ -137,17 +156,46 @@
             padding-bottom: 2rem;
         }
 
-        /* Cards com animação hover */
+        /* Cards com animação hover aprimorados */
         .card {
             border: none;
             box-shadow: var(--shadow-sm);
             transition: var(--transition-normal);
             overflow: hidden;
+            border-radius: var(--border-radius);
+            background-color: var(--bs-body-bg);
         }
         
         .card:hover {
             box-shadow: var(--shadow-md);
-            transform: translateY(-5px);
+            transform: translateY(-3px);
+        }
+        
+        .card-header {
+            background-color: rgba(var(--primary-color-rgb), 0.05);
+            border-bottom: 1px solid rgba(var(--primary-color-rgb), 0.1);
+        }
+        
+        /* Botões aprimorados */
+        .btn {
+            border-radius: var(--border-radius);
+            transition: var(--transition-fast);
+            font-weight: 500;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-color-dark);
+            border-color: var(--primary-color-dark);
+            box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.3);
         }
 
         /* Melhorias para footer */
@@ -210,11 +258,96 @@
             transform: rotate(15deg);
         }
 
+        /* Formulários e inputs aprimorados */
+        .form-control,
+        .form-select {
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+            transition: var(--transition-fast);
+        }
+        
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        [data-bs-theme="dark"] .form-label {
+            color: var(--text-light);
+        }
+        
         /* Mensagens Flash e Toasts aprimorados */
-        .alert,
-        .toast {
-            border-radius: 10px;
+        .alert {
+            border-radius: var(--border-radius);
             box-shadow: var(--shadow-sm);
+            border: none;
+        }
+        
+        /* Skip link para acessibilidade */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: var(--primary-color);
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            z-index: 1060;
+            transition: var(--transition-fast);
+        }
+        
+        .skip-link:focus {
+            top: 6px;
+            color: white;
+        }
+        
+        /* Melhorias de acessibilidade */
+        .visually-hidden-focusable:not(:focus):not(:focus-within) {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+        
+        /* Indicadores de foco melhorados */
+        *:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(var(--primary-color-rgb), 0.5);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(var(--primary-color-rgb), 0.7);
+        }
+        
+        /* Modo escuro para scrollbar */
+        [data-bs-theme="dark"] ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
         }
 
     </style>
@@ -244,7 +377,7 @@
             <div class="row g-4">
                 <div class="col-lg-4 mb-4">
                     <div class="mb-4">
-                        <h5 class="fw-bold"></i>AppFiber</h5>
+                        <h5 class="fw-bold"><i class="bi bi-gear-fill me-2 text-primary"></i>AppFiber</h5>
                         <p class="small opacity-75 mt-3">
                             Transformando a gestão educacional com tecnologia inovadora desde 2023.
                             Nossa plataforma conecta alunos, professores e instituições em um ambiente digital integrado.

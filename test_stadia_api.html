@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste API Stadia Maps</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <h1>Teste da API Stadia Maps</h1>
+    <div>
+        <input type="text" id="search-input" placeholder="Digite um lugar para pesquisar..." style="width: 300px; padding: 8px;">
+        <button onclick="testSearch()" style="padding: 8px 16px;">Buscar</button>
+    </div>
+    <div id="results" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; min-height: 100px;"></div>
+    <div id="map" style="height: 400px; margin-top: 20px;"></div>
+
+    <script>
+        let map;
+        let marker;
+        
+        // Inicializar mapa
+        function initMap() {
+            map = L.map('map').setView([-15.7942, -47.8822], 10); // Brasília
+            
+            // Tentar usar Stadia Maps primeiro
+            const stadiaLayer = L.tileLayer('https://tiles.stadiamaps.com/tiles/stay22/{z}/{x}/{y}{r}.png?api_key=5b05060b-8e26-4d1c-bcaa-306d76157824', {
+                maxZoom: 20,
+                attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Fallback para OpenStreetMap em caso de erro
+            stadiaLayer.on('tileerror', function() {
+                console.log('Erro ao carregar tiles do Stadia Maps, usando OpenStreetMap');
+                map.removeLayer(stadiaLayer);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+            });
+        }
+        
+        // Testar busca
+        function testSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (query.length < 3) {
+                resultsDiv.innerHTML = '<p style="color: red;">Digite pelo menos 3 caracteres</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<p>Buscando...</p>';
+            
+            const apiUrl = `https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`;
+            
+            console.log('URL da API:', apiUrl);
+            
+            fetch(apiUrl)
+                .then(response => {
+                    console.log('Status da resposta:', response.status);
+                    console.log('Headers da resposta:', response.headers);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Dados recebidos:', data);
+                    
+                    if (data.features && data.features.length > 0) {
+                        let html = '<h3>Resultados encontrados:</h3>';
+                        
+                        data.features.forEach((feature, index) => {
+                            const coords = feature.geometry.coordinates;
+                            const label = feature.properties.label;
+                            
+                            html += `<div style="margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">`;
+                            html += `<strong>${label}</strong><br>`;
+                            html += `Coordenadas: ${coords[1]}, ${coords[0]}<br>`;
+                            html += `<button onclick="showOnMap(${coords[1]}, ${coords[0]}, '${label.replace(/'/g, "\\'")}')">Mostrar no Mapa</button>`;
+                            html += `</div>`;
+                        });
+                        
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = '<p style="color: orange;">Nenhum resultado encontrado</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na busca:', error);
+                    resultsDiv.innerHTML = `<p style="color: red;">Erro: ${error.message}</p>`;
+                });
+        }
+        
+        // Mostrar no mapa
+        function showOnMap(lat, lng, label) {
+            map.setView([lat, lng], 15);
+            
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+            
+            marker.bindPopup(label).openPopup();
+        }
+        
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', initMap);
+        
+        // Permitir busca com Enter
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testSearch();
+            }
+        });
+    </script>
+</body>
+</html>

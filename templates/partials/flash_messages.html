@@ -1,28 +1,141 @@
 {% with msgs = get_flashed_messages(with_categories=true) %}
   {% if msgs %}
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <!-- Toast Container com melhor posicionamento -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
       {% for category, message in msgs %}
         {% set toast_class = "info" if category == "message" else category %}
-        <div class="toast align-items-center text-bg-{{ toast_class }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
-          <div class="d-flex">
-            <div class="toast-body">
-              <i class="bi
-                {% if toast_class == 'success' %}bi-check-circle
-                {% elif toast_class == 'danger' %}bi-exclamation-circle
-                {% elif toast_class == 'warning' %}bi-exclamation-triangle
-                {% else %}bi-info-circle{% endif %} me-2"></i>
-              {{ message }}
+        {% set toast_icon = {
+          'success': 'bi-check-circle-fill',
+          'danger': 'bi-x-circle-fill', 
+          'warning': 'bi-exclamation-triangle-fill',
+          'info': 'bi-info-circle-fill'
+        }[toast_class] or 'bi-info-circle-fill' %}
+        
+        <div class="toast align-items-center border-0 mb-2 shadow-lg" 
+             role="alert" aria-live="assertive" aria-atomic="true"
+             data-bs-delay="6000"
+             style="border-radius: 0.75rem; backdrop-filter: blur(10px);">
+          <div class="d-flex align-items-center">
+            <!-- Ícone colorido -->
+            <div class="toast-icon p-3">
+              <i class="bi {{ toast_icon }} fs-4
+                {% if toast_class == 'success' %}text-success
+                {% elif toast_class == 'danger' %}text-danger
+                {% elif toast_class == 'warning' %}text-warning
+                {% else %}text-info{% endif %}"></i>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            
+            <!-- Conteúdo da mensagem -->
+            <div class="toast-body flex-grow-1 pe-2">
+              <div class="fw-semibold mb-1">
+                {% if toast_class == 'success' %}Sucesso!
+                {% elif toast_class == 'danger' %}Erro!
+                {% elif toast_class == 'warning' %}Atenção!
+                {% else %}Informação{% endif %}
+              </div>
+              <div class="text-muted small">{{ message }}</div>
+            </div>
+            
+            <!-- Botão de fechar -->
+            <button type="button" class="btn-close me-3" 
+                    data-bs-dismiss="toast" aria-label="Fechar"
+                    style="font-size: 0.8rem;"></button>
           </div>
+          
+          <!-- Barra de progresso -->
+          <div class="toast-progress-bar position-absolute bottom-0 start-0 h-1 
+                      {% if toast_class == 'success' %}bg-success
+                      {% elif toast_class == 'danger' %}bg-danger
+                      {% elif toast_class == 'warning' %}bg-warning
+                      {% else %}bg-info{% endif %}"
+               style="width: 100%; border-radius: 0 0 0.75rem 0.75rem; animation: toast-progress 6s linear;"></div>
         </div>
       {% endfor %}
     </div>
+    
+    <!-- Estilos CSS para os toasts -->
+    <style>
+      .toast {
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        min-width: 350px;
+        max-width: 400px;
+      }
+      
+      [data-bs-theme="dark"] .toast {
+        background-color: rgba(33, 37, 41, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      
+      [data-bs-theme="dark"] .toast .text-muted {
+        color: rgba(255, 255, 255, 0.7) !important;
+      }
+      
+      .toast-icon {
+        border-radius: 0.75rem 0 0 0.75rem;
+      }
+      
+      @keyframes toast-progress {
+        from { width: 100%; }
+        to { width: 0%; }
+      }
+      
+      .toast-progress-bar {
+        height: 3px;
+      }
+      
+      /* Animação de entrada */
+      .toast {
+        animation: slideInRight 0.3s ease-out;
+      }
+      
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+    </style>
+    
+    <!-- Script aprimorado para toasts -->
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.toast').forEach(function(toastEl) {
-          const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-          toast.show();
+        // Inicializar todos os toasts
+        const toastElements = document.querySelectorAll('.toast');
+        
+        toastElements.forEach(function(toastEl, index) {
+          // Delay escalonado para múltiplos toasts
+          setTimeout(() => {
+            const toast = new bootstrap.Toast(toastEl, {
+              delay: 6000,
+              autohide: true
+            });
+            
+            // Mostrar o toast
+            toast.show();
+            
+            // Pausar animação no hover
+            toastEl.addEventListener('mouseenter', function() {
+              const progressBar = this.querySelector('.toast-progress-bar');
+              if (progressBar) {
+                progressBar.style.animationPlayState = 'paused';
+              }
+            });
+            
+            // Retomar animação quando sair do hover
+            toastEl.addEventListener('mouseleave', function() {
+              const progressBar = this.querySelector('.toast-progress-bar');
+              if (progressBar) {
+                progressBar.style.animationPlayState = 'running';
+              }
+            });
+            
+          }, index * 200); // 200ms de delay entre cada toast
         });
       });
     </script>

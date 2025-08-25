@@ -1487,6 +1487,25 @@ function updateProgressBar(step) {
      });
    }
    
+   // Geocoding reverso usando Nominatim como fallback
+   function reverseGeocodeWithNominatim(lat, lng) {
+     console.log('Usando Nominatim para geocoding reverso:', lat, lng);
+     const nominatimReverseUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`;
+     console.log('URL do Nominatim reverso:', nominatimReverseUrl);
+     
+     return fetch(nominatimReverseUrl)
+       .then(response => {
+         if (!response.ok) {
+           throw new Error(`Nominatim reverso HTTP ${response.status}: ${response.statusText}`);
+         }
+         return response.json();
+       })
+       .then(data => {
+         console.log('Dados do Nominatim reverso:', data);
+         return data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+       });
+   }
+   
    // Mostrar detalhes do local selecionado
    function showLocationDetails(lat, lng) {
      document.getElementById('endereco-detalhes').classList.remove('d-none');
@@ -1494,22 +1513,79 @@ function updateProgressBar(step) {
      document.getElementById('info-longitude').textContent = lng.toFixed(6);
      
      // Fazer geocoding reverso para obter o endereço
-      fetch(`https://api.stadiamaps.com/geocoding/v1/reverse?point.lat=${lat}&point.lon=${lng}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
-        .then(response => response.json())
+     console.log('Fazendo geocoding reverso para:', lat, lng);
+     const reverseUrl = `https://api.stadiamaps.com/geocoding/v1/reverse?point.lat=${lat}&point.lon=${lng}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`;
+     console.log('URL do geocoding reverso:', reverseUrl);
+     
+      fetch(reverseUrl)
+        .then(response => {
+          console.log('Status do geocoding reverso:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
         .then(data => {
+          console.log('Dados do geocoding reverso:', data);
           if (data && data.features && data.features.length > 0) {
-            const label = data.features[0].properties.label;
-            document.getElementById('endereco-completo').textContent = label;
-            currentLocation = {
-              lat: lat,
-              lng: lng,
-              address: label
-            };
+            return data.features[0].properties.label;
+          } else {
+            throw new Error('Nenhum resultado encontrado');
           }
         })
+        .catch(error => {
+          console.warn('Erro na API Stadia Maps para geocoding reverso, tentando Nominatim:', error);
+          return reverseGeocodeWithNominatim(lat, lng);
+        })
+        .then(address => {
+          document.getElementById('endereco-completo').textContent = address;
+          currentLocation = {
+            lat: lat,
+            lng: lng,
+            address: address
+          };
+        })
        .catch(error => {
-         console.error('Erro ao obter endereço:', error);
-         document.getElementById('endereco-completo').textContent = 'Endereço não disponível';
+         console.error('Erro em ambas as APIs de geocoding reverso:', error);
+         const fallbackAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+         document.getElementById('endereco-completo').textContent = fallbackAddress;
+         currentLocation = {
+           lat: lat,
+           lng: lng,
+           address: fallbackAddress
+         };
+       });
+   }
+   
+   // Buscar locais usando Nominatim (OpenStreetMap) como fallback
+   function searchWithNominatim(query, modalSearch = false) {
+     console.log('Usando Nominatim como fallback para:', query);
+     const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+     console.log('URL do Nominatim:', nominatimUrl);
+     
+     return fetch(nominatimUrl)
+       .then(response => {
+         if (!response.ok) {
+           throw new Error(`Nominatim HTTP ${response.status}: ${response.statusText}`);
+         }
+         return response.json();
+       })
+       .then(data => {
+         console.log('Dados do Nominatim:', data);
+         
+         // Converter formato do Nominatim para o formato esperado
+         const convertedData = {
+           features: data.map(item => ({
+             geometry: {
+               coordinates: [parseFloat(item.lon), parseFloat(item.lat)]
+             },
+             properties: {
+               label: item.display_name
+             }
+           }))
+         };
+         
+         return convertedData;
        });
    }
    
@@ -1519,8 +1595,26 @@ function updateProgressBar(step) {
      
      if (query.length < 3) return;
      
-      fetch(`https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`)
-        .then(response => response.json())
+     console.log('Iniciando busca para:', query);
+     const apiUrl = `https://api.stadiamaps.com/geocoding/v1/search?text=${encodeURIComponent(query)}&apikey=5b05060b-8e26-4d1c-bcaa-306d76157824`;
+     console.log('URL da API:', apiUrl);
+     
+      fetch(apiUrl)
+        .then(response => {
+          console.log('Status da resposta:', response.status);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Dados recebidos:', data);
+          return data;
+        })
+        .catch(error => {
+          console.warn('Erro na API Stadia Maps, tentando Nominatim:', error);
+          return searchWithNominatim(query, modalSearch);
+        })
         .then(data => {
          if (modalSearch) {
            // Se for busca no modal, centraliza o primeiro resultado no mapa
