@@ -128,19 +128,32 @@ def dashboard_participante():
         eventos_disponiveis_ids = [e.id for e in eventos]
         logger.debug(f"DEBUG [23] -> Total de eventos após adicionar ausentes: {len(eventos)}")
 
-    # Ordenar eventos por data_inicio de forma decrescente
-    eventos_sorted = sorted(
-        eventos,
-        key=lambda e: (e.data_inicio or datetime.min),
-        reverse=True
-    )
-    logger.debug(f"DEBUG [23b] -> Ordem final dos eventos: {[e.id for e in eventos_sorted]}")
-
-    # Selecionar evento via parâmetro ou usar o mais recente
     evento_id_param = request.args.get('evento_id', type=int)
     if evento_id_param:
         session['evento_id'] = evento_id_param
     selected_event_id = evento_id_param or session.get('evento_id')
+
+    if selected_event_id and selected_event_id not in evento_ids:
+        evento_ids.add(selected_event_id)
+
+    if selected_event_id and selected_event_id not in eventos_disponiveis_ids:
+        evento_param = Evento.query.get(selected_event_id)
+        if evento_param:
+            evento_param.configuracao_evento = ConfiguracaoEvento.query.filter_by(
+                evento_id=evento_param.id
+            ).first()
+            eventos.append(evento_param)
+            eventos_disponiveis_ids.append(evento_param.id)
+
+    eventos_sorted = sorted(
+        eventos,
+        key=lambda e: (e.data_inicio or datetime.min),
+        reverse=True,
+    )
+    logger.debug(
+        f"DEBUG [23b] -> Ordem final dos eventos: {[e.id for e in eventos_sorted]}"
+    )
+
     evento = next((e for e in eventos_sorted if e.id == selected_event_id), None)
     if not evento and eventos_sorted:
         evento = eventos_sorted[0]
@@ -187,7 +200,11 @@ def dashboard_participante():
 
     # Combinar todos os IDs de eventos (disponíveis + inscritos) e remover duplicatas
     todos_eventos_ids = list(set(eventos_disponiveis_ids + eventos_inscritos))
-    logger.debug(f"DEBUG [24] -> IDs de todos os eventos (disponíveis + inscritos): {todos_eventos_ids}")
+    if selected_event_id and selected_event_id not in todos_eventos_ids:
+        todos_eventos_ids.append(selected_event_id)
+    logger.debug(
+        f"DEBUG [24] -> IDs de todos os eventos (disponíveis + inscritos): {todos_eventos_ids}"
+    )
     
     # Buscar detalhes de todos os eventos e verificar se já ocorreram
     eventos_info = {}
