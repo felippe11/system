@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Emissões{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Histórico de Emissões
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label for="filtro_tipo" class="form-label">Tipo</label>
+                            <select class="form-select" id="filtro_tipo">
+                                <option value="">Todos</option>
+                                <option value="certificado">Certificados</option>
+                                <option value="declaracao">Declarações</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro_evento" class="form-label">Evento</label>
+                            <select class="form-select" id="filtro_evento">
+                                <option value="">Todos os eventos</option>
+                                <!-- Eventos serão carregados dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro_data_inicio" class="form-label">Data Início</label>
+                            <input type="date" class="form-control" id="filtro_data_inicio">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filtro_data_fim" class="form-label">Data Fim</label>
+                            <input type="date" class="form-control" id="filtro_data_fim">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary" onclick="aplicarFiltros()">
+                                <i class="bi bi-search me-1"></i>Filtrar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" onclick="limparFiltros()">
+                                <i class="bi bi-x-circle me-1"></i>Limpar
+                            </button>
+                            <button type="button" class="btn btn-success ms-2" onclick="exportarHistorico()">
+                                <i class="bi bi-download me-1"></i>Exportar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Histórico -->
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Evento</th>
+                                    <th>Participante</th>
+                                    <th>Template</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historico-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-search fs-1 d-block mb-2"></i>
+                                        Use os filtros acima para buscar o histórico de emissões
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    <nav aria-label="Paginação do histórico" id="paginacao-container" style="display: none;">
+                        <ul class="pagination justify-content-center">
+                            <!-- Paginação será gerada dinamicamente -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function aplicarFiltros() {
+    const filtros = {
+        tipo: document.getElementById('filtro_tipo').value,
+        evento: document.getElementById('filtro_evento').value,
+        data_inicio: document.getElementById('filtro_data_inicio').value,
+        data_fim: document.getElementById('filtro_data_fim').value
+    };
+
+    fetch('{{ url_for("certificado_routes.historico_emissoes") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(filtros)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('historico-tbody').innerHTML = data.html;
+            document.getElementById('paginacao-container').style.display = 'block';
+        } else {
+            alert('Erro ao carregar histórico: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao carregar histórico');
+    });
+}
+
+function limparFiltros() {
+    document.getElementById('filtro_tipo').value = '';
+    document.getElementById('filtro_evento').value = '';
+    document.getElementById('filtro_data_inicio').value = '';
+    document.getElementById('filtro_data_fim').value = '';
+    
+    // Limpar tabela
+    document.getElementById('historico-tbody').innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+                <i class="bi bi-search fs-1 d-block mb-2"></i>
+                Use os filtros acima para buscar o histórico de emissões
+            </td>
+        </tr>
+    `;
+    document.getElementById('paginacao-container').style.display = 'none';
+}
+
+function exportarHistorico() {
+    // Implementar exportação
+    alert('Funcionalidade de exportação será implementada em breve');
+}
+
+// Carregar eventos ao inicializar a página
+document.addEventListener('DOMContentLoaded', function() {
+    // Carregar lista de eventos para o filtro
+    // Esta funcionalidade pode ser implementada posteriormente
+});
+</script>
+{% endblock %}

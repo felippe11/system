@@ -1060,11 +1060,16 @@ def configuracoes_evento(evento_id):
     }
 
 
-@certificado_routes.route('/historico_emissoes', methods=['POST'])
+@certificado_routes.route('/historico_emissoes', methods=['GET', 'POST'])
 @login_required
 @require_permission('relatorios.view')
 def historico_emissoes():
     """Retorna o histórico de emissões de certificados e declarações."""
+    if request.method == 'GET':
+        # Renderizar página de histórico
+        return render_template('certificado/historico_emissoes.html')
+    
+    # POST - retornar dados filtrados
     filtros = request.get_json()
     
     # Implementar consulta do histórico baseado nos filtros
