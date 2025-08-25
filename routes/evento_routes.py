@@ -204,6 +204,14 @@ def configurar_evento():
             config_certificado = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento.id).first()
             oficinas = Oficina.query.filter_by(evento_id=evento.id).order_by(Oficina.titulo).all()
 
+    template_args = {
+        'eventos': eventos,
+        'evento': evento,
+        'habilita_pagamento': True,
+        'config_certificado': config_certificado,
+        'oficinas': oficinas,
+    }
+
     if request.method == 'POST':
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
@@ -319,7 +327,21 @@ def configurar_evento():
                     if nome_tipo:  # Só adicionar se o nome for preenchido
                         # Se o preço estiver vazio, trata como 0
                         preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
-                        preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
+                        try:
+                            preco_efetivo = (
+                                0.0
+                                if inscricao_gratuita or preco_tipo_str == ''
+                                else float(preco_tipo_str)
+                            )
+                        except ValueError:
+                            flash(
+                                "Erro: o campo 'preço' deve conter apenas números.",
+                                'danger',
+                            )
+                            return render_template(
+                                'evento/configurar_evento.html',
+                                **template_args,
+                            )
                         flag = idx < len(submission_flags) and submission_flags[idx] in ['on', '1', 'true']
                         
                         # Verificar se já existe um tipo com este nome
@@ -442,15 +464,28 @@ def configurar_evento():
 
                                 if preco_valor is not None:
                                     preco_valor = preco_valor.strip()
-                                    # Se o valor estiver vazio ou for gratuito, usar 0
-                                    preco_final = 0.0 if inscricao_gratuita or preco_valor == '' else float(preco_valor)
-                                    
+                                    try:
+                                        preco_final = (
+                                            0.0
+                                            if inscricao_gratuita or preco_valor == ''
+                                            else float(preco_valor)
+                                        )
+                                    except ValueError:
+                                        flash(
+                                            "Erro: o campo 'preço' deve conter apenas números.",
+                                            'danger',
+                                        )
+                                        return render_template(
+                                            'evento/configurar_evento.html',
+                                            **template_args,
+                                        )
+
                                     # Verificar se já existe um registro de preço para este lote e tipo
                                     lote_tipo = LoteTipoInscricao.query.filter_by(
-                                        lote_id=lote.id, 
+                                        lote_id=lote.id,
                                         tipo_inscricao_id=tipo.id
                                     ).first()
-                                    
+
                                     if lote_tipo:
                                         # Atualizar preço existente
                                         lote_tipo.preco = preco_final
@@ -488,7 +523,21 @@ def configurar_evento():
                     if nome_tipo:  # Só adicionar se o nome for preenchido
                         # Se o preço estiver vazio, trata como 0
                         preco_tipo_str = preco_tipo.strip() if preco_tipo else ''
-                        preco_efetivo = 0.0 if inscricao_gratuita or preco_tipo_str == '' else float(preco_tipo_str)
+                        try:
+                            preco_efetivo = (
+                                0.0
+                                if inscricao_gratuita or preco_tipo_str == ''
+                                else float(preco_tipo_str)
+                            )
+                        except ValueError:
+                            flash(
+                                "Erro: o campo 'preço' deve conter apenas números.",
+                                'danger',
+                            )
+                            return render_template(
+                                'evento/configurar_evento.html',
+                                **template_args,
+                            )
                         flag = idx < len(submission_flags) and submission_flags[idx] in ['on', '1', 'true']
 
                         tipo = EventoInscricaoTipo(
@@ -561,9 +610,22 @@ def configurar_evento():
 
                                 if preco_valor is not None:
                                     preco_valor = preco_valor.strip()
-                                    # Se o valor estiver vazio ou for gratuito, usar 0
-                                    preco_final = 0.0 if inscricao_gratuita or preco_valor == '' else float(preco_valor)
-                                    
+                                    try:
+                                        preco_final = (
+                                            0.0
+                                            if inscricao_gratuita or preco_valor == ''
+                                            else float(preco_valor)
+                                        )
+                                    except ValueError:
+                                        flash(
+                                            "Erro: o campo 'preço' deve conter apenas números.",
+                                            'danger',
+                                        )
+                                        return render_template(
+                                            'evento/configurar_evento.html',
+                                            **template_args,
+                                        )
+
                                     novo_lote_tipo = LoteTipoInscricao(
                                         lote_id=lote.id,
                                         tipo_inscricao_id=tipo.id,
