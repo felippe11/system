@@ -1429,6 +1429,21 @@ class NecessidadeEspecial(db.Model):
         self.tipo = tipo
         self.descricao = descricao
     
+    def get_tipo_display(self):
+        """Retorna a descrição legível do tipo de necessidade especial."""
+        tipos_display = {
+            'pcd_fisica': 'PCD Física',
+            'pcd_visual': 'PCD Visual',
+            'pcd_auditiva': 'PCD Auditiva',
+            'pcd_intelectual': 'PCD Intelectual',
+            'neurodivergente_autismo': 'Neurodivergente - Autismo',
+            'neurodivergente_tdah': 'Neurodivergente - TDAH',
+            'neurodivergente_dislexia': 'Neurodivergente - Dislexia',
+            'neurodivergente_outros': 'Neurodivergente - Outros',
+            'outros': 'Outros'
+        }
+        return tipos_display.get(self.tipo, self.tipo.title())
+    
     def __repr__(self):
         return f"<NecessidadeEspecial {self.tipo} - Aluno {self.aluno_id}>"
 
