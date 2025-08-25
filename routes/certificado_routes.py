@@ -278,6 +278,12 @@ def preview_certificado():
             except OSError as exc:
                 logger.exception("Erro ao remover arquivo temporário %s", f)
         return response
+    
+    if pdf_path:
+        return send_file(pdf_path, as_attachment=True, download_name="preview_certificado.pdf")
+    else:
+        flash('Erro ao gerar preview do certificado', 'error')
+        return redirect(url_for('certificado_routes.templates_certificado'))
 
 
 # Rotas para Editor Avançado de Certificados
@@ -583,17 +589,11 @@ def criar_template_personalizado():
             # Criar novo template
             template = CertificadoTemplateAvancado(
                 cliente_id=current_user.id,
-                titulo=data['titulo'],
-                conteudo=data['conteudo'],
-                layout_config=json.dumps(data.get('layout_config', {})),
-                elementos_visuais=json.dumps(data.get('elementos_visuais', {})),
-                variaveis_dinamicas=json.dumps(data.get('variaveis_selecionadas', [])),
-                orientacao=data.get('orientacao', 'landscape'),
-                tamanho_pagina=data.get('tamanho_pagina', 'A4'),
-                margem_config=json.dumps(data.get('margem_config', {
-                    'top': 20, 'bottom': 20, 'left': 20, 'right': 20
-                })),
-                data_criacao=datetime.now(),
+                nome=data['titulo'],
+                descricao=data.get('descricao', ''),
+                tipo=data.get('categoria', 'certificado'),
+                conteudo_html=data['conteudo'],
+                variaveis_disponiveis=json.dumps(data.get('variaveis_selecionadas', [])),
                 ativo=True
             )
             
@@ -639,14 +639,12 @@ def editar_template_personalizado(template_id):
             data = request.get_json() if request.is_json else request.form.to_dict()
             
             # Atualizar template
-            template.titulo = data.get('titulo', template.titulo)
-            template.conteudo = data.get('conteudo', template.conteudo)
-            template.layout_config = json.dumps(data.get('layout_config', json.loads(template.layout_config or '{}')))
-            template.elementos_visuais = json.dumps(data.get('elementos_visuais', json.loads(template.elementos_visuais or '{}')))
-            template.variaveis_dinamicas = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_dinamicas or '[]')))
-            template.orientacao = data.get('orientacao', template.orientacao)
-            template.tamanho_pagina = data.get('tamanho_pagina', template.tamanho_pagina)
-            template.margem_config = json.dumps(data.get('margem_config', json.loads(template.margem_config or '{}')))
+            template.nome = data.get('titulo', template.nome)
+            template.descricao = data.get('descricao', template.descricao)
+            template.tipo = data.get('categoria', template.tipo)
+            template.conteudo_html = data.get('conteudo', template.conteudo_html)
+            template.variaveis_disponiveis = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_disponiveis or '[]')))
+            template.data_atualizacao = datetime.utcnow()
             
             db.session.commit()
             

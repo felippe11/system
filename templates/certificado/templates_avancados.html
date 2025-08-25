@@ -4,12 +4,18 @@
 {% block content %}
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold text-primary">
-      <i class="bi bi-file-earmark-richtext me-2"></i>Templates Avançados de Certificados
-    </h2>
     <div>
-      <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-success">
-        <i class="bi bi-plus-lg me-1"></i>Novo Template Avançado
+      <h2 class="fw-bold text-primary mb-0">
+        <i class="bi bi-file-earmark-richtext me-2"></i>Templates Avançados de Certificados
+      </h2>
+      <p class="text-muted mb-0">Gerencie templates com editor visual e variáveis dinâmicas</p>
+    </div>
+    <div class="btn-group">
+      <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Criar Novo Template
+      </a>
+      <a href="{{ url_for('certificado_routes.variaveis_dinamicas') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-code me-1"></i>Gerenciar Variáveis
       </a>
       <a href="{{ url_for('certificado_routes.templates_certificado') }}" class="btn btn-outline-secondary">
         <i class="bi bi-file-earmark-text me-1"></i>Templates Simples
@@ -36,9 +42,43 @@
               
               <div class="card-body">
                 <div class="mb-3">
+                  <p class="card-text text-muted">{{ template.descricao or 'Template avançado com editor visual' }}</p>
+                </div>
+                
+                <!-- Informações sobre elementos do template -->
+                {% if template.configuracoes and template.configuracoes.elementos_suportados %}
+                <div class="mb-3">
+                  <small class="text-muted d-block mb-1">Elementos incluídos:</small>
+                  <div class="d-flex flex-wrap gap-1">
+                    {% for elemento in template.configuracoes.elementos_suportados[:4] %}
+                      <span class="badge bg-light text-dark border">
+                        {% if elemento == 'qr-code' %}
+                          <i class="fas fa-qrcode me-1"></i>QR Code
+                        {% elif elemento == 'custom-variable' %}
+                          <i class="fas fa-code me-1"></i>Variável
+                        {% elif elemento == 'signature' %}
+                          <i class="fas fa-signature me-1"></i>Assinatura
+                        {% elif elemento == 'logo' %}
+                          <i class="fas fa-image me-1"></i>Logo
+                        {% else %}
+                          {{ elemento|title }}
+                        {% endif %}
+                      </span>
+                    {% endfor %}
+                    {% if template.configuracoes.elementos_suportados|length > 4 %}
+                      <span class="badge bg-secondary">+{{ template.configuracoes.elementos_suportados|length - 4 }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
                   <small class="text-muted">
                     <i class="bi bi-calendar me-1"></i>
                     Criado em {{ template.data_criacao.strftime('%d/%m/%Y às %H:%M') }}
+                    {% if template.configuracoes and template.configuracoes.versao %}
+                      <span class="ms-2 badge bg-info">v{{ template.configuracoes.versao }}</span>
+                    {% endif %}
                   </small>
                 </div>
                 
