@@ -1132,14 +1132,14 @@ def distribuir_automaticamente():
             # Determinar o turno do agendamento
             hora_inicio = agendamento.horario.horario_inicio.hour
             if hora_inicio < 12:
-                turno_agendamento = 'manha'
+                turno_agendamento = 'manhã'  # Corrigido para usar acento
             elif hora_inicio < 18:
                 turno_agendamento = 'tarde'
             else:
                 turno_agendamento = 'noite'
             
             # Determinar o dia da semana
-            dias_semana = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
+            dias_semana = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo']  # Corrigido para usar acentos
             dia_agendamento = dias_semana[agendamento.horario.data.weekday()]
             
             # Encontrar monitores disponíveis para este agendamento
@@ -1149,9 +1149,10 @@ def distribuir_automaticamente():
                 if dia_agendamento in monitor.get_dias_disponibilidade():
                     # Verificar disponibilidade de turno
                     if turno_agendamento in monitor.get_turnos_disponibilidade():
-                        # Verificar carga horária (simplificado)
+                        # Verificar carga horária (apenas agendamentos ativos)
                         agendamentos_monitor = MonitorAgendamento.query.filter_by(
-                            monitor_id=monitor.id
+                            monitor_id=monitor.id,
+                            status='ativo'
                         ).count()
                         
                         # Assumindo 4 horas por agendamento em média
@@ -1159,12 +1160,13 @@ def distribuir_automaticamente():
                         if horas_utilizadas < monitor.carga_horaria_disponibilidade:
                             monitores_disponiveis.append(monitor)
             
-            # Atribuir ao monitor com menor carga atual
+            # Atribuir ao monitor com menor carga atual (apenas agendamentos ativos)
             if monitores_disponiveis:
                 monitor_escolhido = min(
                     monitores_disponiveis,
                     key=lambda m: MonitorAgendamento.query.filter_by(
-                        monitor_id=m.id
+                        monitor_id=m.id,
+                        status='ativo'
                     ).count(),
                 )
 

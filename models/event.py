@@ -960,7 +960,6 @@ class AgendamentoVisita(db.Model):
     responsavel_email = db.Column(db.String(120), nullable=True)
     acompanhantes_nomes = db.Column(db.String(255), nullable=True)
     acompanhantes_qtd = db.Column(db.Integer, nullable=True)
-    precisa_transporte = db.Column(db.Boolean, default=False)
     observacoes = db.Column(db.Text, nullable=True)
     compromisso_1 = db.Column(db.Boolean, default=False)
     compromisso_2 = db.Column(db.Boolean, default=False)

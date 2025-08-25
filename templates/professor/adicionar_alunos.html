@@ -58,22 +58,28 @@
                     <i class="fas fa-user-plus"></i> Adicionar Aluno
                 </div>
                 <div class="card-body">
+                    {% if total_adicionados >= agendamento.quantidade_alunos %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            <strong>Limite atingido!</strong> Você já adicionou todos os {{ agendamento.quantidade_alunos }} alunos permitidos para este agendamento.
+                        </div>
+                    {% endif %}
                     <form method="POST" action="{{ url_for(add_route, agendamento_id=agendamento.id) }}" id="formAdicionarAluno">
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Aluno *</label>
-                            <input type="text" class="form-control" id="nome" name="nome" required>
+                            <input type="text" class="form-control" id="nome" name="nome" required {% if total_adicionados >= agendamento.quantidade_alunos %}disabled{% endif %}>
                         </div>
                         
                         <div class="mb-3">
                             <label for="cpf" class="form-label">CPF (opcional)</label>
-                            <input type="text" class="form-control" id="cpf" name="cpf" placeholder="Apenas números">
+                            <input type="text" class="form-control" id="cpf" name="cpf" placeholder="Apenas números" {% if total_adicionados >= agendamento.quantidade_alunos %}disabled{% endif %}>
                             <small class="text-muted">Opcional para menores de idade</small>
                         </div>
                         
                         <!-- Necessidades Especiais -->
                         <div class="mb-3">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="tem_necessidade_especial" name="tem_necessidade_especial" onchange="toggleNecessidadeEspecial()">
+                                <input class="form-check-input" type="checkbox" id="tem_necessidade_especial" name="tem_necessidade_especial" onchange="toggleNecessidadeEspecial()" {% if total_adicionados >= agendamento.quantidade_alunos %}disabled{% endif %}>
                                 <label class="form-check-label" for="tem_necessidade_especial">
                                     <strong>Aluno PCD (Pessoa com Deficiência) ou Neurodivergente</strong>
                                 </label>
@@ -115,7 +121,7 @@
                         </div>
                         
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-success">
+                            <button type="submit" class="btn btn-success" {% if total_adicionados >= agendamento.quantidade_alunos %}disabled{% endif %}>
                                 <i class="fas fa-plus-circle"></i> Adicionar Aluno
                             </button>
                         </div>
