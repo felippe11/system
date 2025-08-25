@@ -105,6 +105,22 @@ def criar_oficina():
                 horarios_fim=request.form.getlist('horario_fim[]')
             )
 
+        evento = Evento.query.get(evento_id)
+        if current_user.tipo == 'cliente' and (
+            not evento or evento.cliente_id != current_user.id
+        ):
+            flash('Você não tem permissão para criar uma atividade neste evento.', 'danger')
+            return render_template(
+                'criar_oficina.html',
+                estados=estados,
+                ministrantes=ministrantes_disponiveis,
+                clientes=clientes_disponiveis,
+                eventos=eventos_disponiveis,
+                datas=request.form.getlist('data[]'),
+                horarios_inicio=request.form.getlist('horario_inicio[]'),
+                horarios_fim=request.form.getlist('horario_fim[]')
+            )
+
         # Definir o cliente da oficina
         cliente_id = (
             request.form.get('cliente_id') if current_user.tipo == 'admin' else current_user.id
