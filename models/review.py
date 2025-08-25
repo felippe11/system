@@ -152,8 +152,8 @@ class RevisorCandidatura(db.Model):
         db.Integer, db.ForeignKey("revisor_process.id"), nullable=False
     )
     respostas = db.Column(db.JSON, nullable=True)
-    nome = db.Column(db.String(255), nullable=True)
-    email = db.Column(db.String(255), nullable=True)
+    nome = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
     codigo = db.Column(db.String(8), unique=True, default=lambda: str(uuid.uuid4())[:8])
     etapa_atual = db.Column(db.Integer, default=1)
     status = db.Column(db.String(50), default="pendente")
