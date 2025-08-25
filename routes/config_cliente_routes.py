@@ -984,9 +984,62 @@ def config_submissao():
     )
 
 
-@config_cliente_routes.route("/importar_trabalhos", methods=["POST"])
-def importar_trabalhos():
-    """Proxy endpoint to reuse the generic import logic."""
-    from .importar_trabalhos_routes import importar_trabalhos as handler
+@config_cliente_routes.route("/get_eventos_cliente", methods=["GET"])
+@login_required
+def get_eventos_cliente():
+    """Buscar eventos para seleção na importação. Admin vê todos, cliente vê apenas os seus."""
+    print(f"[DEBUG] get_eventos_cliente chamada - current_user: {current_user}")
+    print(f"[DEBUG] current_user.id: {current_user.id}")
+    print(f"[DEBUG] current_user.tipo: {current_user.tipo}")
+    print(f"[DEBUG] current_user.email: {current_user.email}")
+    
+    # Permitir acesso para admin e cliente
+    if current_user.tipo not in ["cliente", "admin"]:
+        print(f"[DEBUG] Acesso negado - tipo de usuário: {current_user.tipo}")
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    
+    # Admin vê todos os eventos, cliente vê apenas os seus
+    if current_user.tipo == "admin":
+        eventos = Evento.query.all()
+        print(f"[DEBUG] Admin - Todos os eventos encontrados: {len(eventos)}")
+    else:
+        # Usar diretamente current_user.id já que current_user é um Cliente
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+        print(f"[DEBUG] Cliente - Eventos encontrados: {len(eventos)}")
+    
+    for evento in eventos:
+        print(f"[DEBUG] Evento: ID={evento.id}, Nome={evento.nome}, Cliente_ID={evento.cliente_id}")
+    
+    eventos_data = [{
+        "id": evento.id,
+        "nome": evento.nome,
+        "descricao": evento.descricao
+    } for evento in eventos]
+    
+    print(f"[DEBUG] Retornando dados: {eventos_data}")
+    return jsonify({"success": True, "eventos": eventos_data})
 
+
+@config_cliente_routes.route("/importar_trabalhos", methods=["POST"])
+@login_required
+def importar_trabalhos():
+    """Proxy endpoint to reuse the generic import logic. Admin pode importar para qualquer evento."""
+    if current_user.tipo not in ["cliente", "admin"]:
+        return jsonify({"success": False, "message": "Acesso negado"}), 403
+    
+    # Validar se o evento_id foi fornecido
+    evento_id = request.form.get("evento_id", type=int)
+    if not evento_id:
+        return jsonify({"success": False, "message": "Evento deve ser selecionado"}), 400
+    
+    # Admin pode acessar qualquer evento, cliente apenas os seus
+    if current_user.tipo == "admin":
+        evento = Evento.query.filter_by(id=evento_id).first()
+    else:
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+    
+    if not evento:
+        return jsonify({"success": False, "message": "Evento não encontrado ou acesso negado"}), 403
+    
+    from .importar_trabalhos_routes import importar_trabalhos as handler
     return handler()

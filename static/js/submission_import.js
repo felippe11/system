@@ -47,11 +47,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const formData = new FormData(this);
-                const eventoIdInput = document.getElementById('eventoId');
+                const eventoIdInput = document.getElementById('evento_id');
                 console.log('🔍 DEBUG: eventoIdInput encontrado:', eventoIdInput);
                 
                 if (!eventoIdInput) {
-                    console.error('❌ DEBUG: Elemento eventoId não encontrado!');
+                    console.error('❌ DEBUG: Elemento evento_id não encontrado!');
                     alert('Erro: ID do evento não encontrado na página.');
                     return;
                 }
@@ -177,7 +177,26 @@ document.addEventListener('DOMContentLoaded', function() {
             <i class="fas fa-check-circle me-2"></i>${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.container-fluid').firstChild);
+        
+        // Tentar encontrar um container adequado
+        let container = document.querySelector('.container-fluid');
+        if (!container) {
+            container = document.querySelector('.container');
+        }
+        if (!container) {
+            container = document.querySelector('main');
+        }
+        if (!container) {
+            container = document.body;
+        }
+        
+        if (container && container.firstChild) {
+            container.insertBefore(alert, container.firstChild);
+        } else if (container) {
+            container.appendChild(alert);
+        } else {
+            console.error('❌ Erro: Não foi possível encontrar um container para exibir a mensagem de sucesso');
+        }
     }
     
     function showErrorMessage(message) {
@@ -187,7 +206,26 @@ document.addEventListener('DOMContentLoaded', function() {
             <i class="fas fa-exclamation-circle me-2"></i>${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
-        document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.container-fluid').firstChild);
+        
+        // Tentar encontrar um container adequado
+        let container = document.querySelector('.container-fluid');
+        if (!container) {
+            container = document.querySelector('.container');
+        }
+        if (!container) {
+            container = document.querySelector('main');
+        }
+        if (!container) {
+            container = document.body;
+        }
+        
+        if (container && container.firstChild) {
+            container.insertBefore(alert, container.firstChild);
+        } else if (container) {
+            container.appendChild(alert);
+        } else {
+            console.error('❌ Erro: Não foi possível encontrar um container para exibir a mensagem de erro');
+        }
     }
     
     function mostrarModalMapeamento(tempId, columns, preview, eventoId) {
@@ -197,11 +235,11 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🔍 DEBUG: eventoId:', eventoId);
         
         // Buscar evento_id
-        const eventoIdInput = document.getElementById('eventoId');
+        const eventoIdInput = document.getElementById('evento_id');
         console.log('🔍 DEBUG: eventoIdInput encontrado:', eventoIdInput);
         
         if (!eventoIdInput) {
-            console.error('❌ DEBUG: Elemento eventoId não encontrado na função mostrarModalMapeamento!');
+            console.error('❌ DEBUG: Elemento evento_id não encontrado na função mostrarModalMapeamento!');
             alert('Erro: ID do evento não encontrado na página.');
             return;
         }
@@ -430,9 +468,9 @@ document.addEventListener('DOMContentLoaded', function() {
             formData.append('temp_id', mappingData.tempId);
             
             // Obter evento_id do contexto da página
-            const eventoIdInput = document.getElementById('eventoId');
-            const eventoId = eventoIdInput ? eventoIdInput.value : '1';
-            formData.append('evento_id', eventoId);
+            const eventoIdInput = document.getElementById('evento_id');
+        const eventoId = eventoIdInput ? eventoIdInput.value : '1';
+        formData.append('evento_id', eventoId);
             
             // Log dos dados do formulário
             console.log('🔍 DEBUG: Dados do formulário de mapeamento:');
@@ -453,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showAlert('Processando mapeamento...', 'info');
             
             // Segunda etapa: confirmar mapeamento e importar
-            fetch('/config_cliente/importar_trabalhos', {
+            fetch('/importar_trabalhos', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -462,6 +500,24 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 console.log('🔍 DEBUG: Resposta da confirmação:', response.status, response.statusText);
+                
+                // Verificar se a resposta é JSON válida
+                const contentType = response.headers.get('content-type');
+                console.log('🔍 DEBUG: Content-Type da resposta:', contentType);
+                
+                if (!response.ok) {
+                    console.error('❌ DEBUG: Resposta não OK:', response.status, response.statusText);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Se não for JSON, capturar o texto da resposta para debug
+                    return response.text().then(text => {
+                        console.error('❌ DEBUG: Resposta não é JSON. Conteúdo:', text.substring(0, 500));
+                        throw new Error('Servidor retornou HTML em vez de JSON. Verifique se há erro no servidor.');
+                    });
+                }
+                
                 return response.json();
             })
             .then(data => {
@@ -838,20 +894,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Função para controlar o checkbox de confirmação
     function toggleConfirmButton() {
-    const confirmCheckbox = document.getElementById('confirmarExclusao');
-    const btnConfirmar = document.getElementById('btnConfirmarDescarte');
-    
-    console.log('toggleConfirmButton chamada');
-    console.log('Checkbox:', confirmCheckbox, 'Checked:', confirmCheckbox ? confirmCheckbox.checked : 'N/A');
-    console.log('Botão:', btnConfirmar);
-    
-    if (confirmCheckbox && btnConfirmar) {
-        btnConfirmar.disabled = !confirmCheckbox.checked;
-        console.log('Botão disabled:', btnConfirmar.disabled);
-    } else {
-        console.error('Elementos não encontrados em toggleConfirmButton');
+        const confirmCheckbox = document.getElementById('confirmarExclusao');
+        const btnConfirmar = document.getElementById('btnConfirmarDescarte');
+        
+        console.log('toggleConfirmButton chamada');
+        console.log('Checkbox:', confirmCheckbox, 'Checked:', confirmCheckbox ? confirmCheckbox.checked : 'N/A');
+        console.log('Botão:', btnConfirmar);
+        
+        if (confirmCheckbox && btnConfirmar) {
+            btnConfirmar.disabled = !confirmCheckbox.checked;
+            console.log('Botão disabled:', btnConfirmar.disabled);
+            
+            // Adicionar/remover classes visuais para feedback
+            if (confirmCheckbox.checked) {
+                btnConfirmar.classList.remove('disabled');
+                btnConfirmar.classList.add('btn-danger');
+            } else {
+                btnConfirmar.classList.add('disabled');
+            }
+        } else {
+            console.error('Elementos não encontrados em toggleConfirmButton');
+        }
     }
-}
     
     // Função para obter CSRF token
     function getCsrfToken() {
@@ -872,15 +936,47 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Botão encontrado:', btnConfirmar);
         
         if (confirmCheckbox && btnConfirmar) {
-            // Remover listeners existentes para evitar duplicação
-            confirmCheckbox.removeEventListener('change', toggleConfirmButton);
-            btnConfirmar.removeEventListener('click', descartarTodosTrabalhos);
+            // Verificar se os listeners já foram anexados
+            if (confirmCheckbox.hasAttribute('data-listeners-attached')) {
+                console.log('Listeners já anexados, pulando inicialização');
+                toggleConfirmButton(); // Apenas atualizar o estado
+                return;
+            }
             
-            // Adicionar novos listeners
-            confirmCheckbox.addEventListener('change', toggleConfirmButton);
-            btnConfirmar.addEventListener('click', descartarTodosTrabalhos);
+            // Limpar listeners existentes usando cloneNode para garantir remoção completa
+            const newCheckbox = confirmCheckbox.cloneNode(true);
+            const newButton = btnConfirmar.cloneNode(true);
             
-            console.log('Listeners adicionados com sucesso');
+            confirmCheckbox.parentNode.replaceChild(newCheckbox, confirmCheckbox);
+            btnConfirmar.parentNode.replaceChild(newButton, btnConfirmar);
+            
+            // Referenciar os novos elementos
+            const freshCheckbox = document.getElementById('confirmarExclusao');
+            const freshButton = document.getElementById('btnConfirmarDescarte');
+            
+            // Adicionar listeners aos elementos limpos
+            freshCheckbox.addEventListener('change', function() {
+                console.log('Checkbox change event triggered');
+                toggleConfirmButton();
+            });
+            
+            freshCheckbox.addEventListener('click', function() {
+                console.log('Checkbox click event triggered');
+                // Pequeno delay para garantir que o estado seja atualizado
+                setTimeout(toggleConfirmButton, 10);
+            });
+            
+            freshButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Button click event triggered');
+                descartarTodosTrabalhos();
+            });
+            
+            // Marcar que os listeners foram anexados
+            freshCheckbox.setAttribute('data-listeners-attached', 'true');
+            freshButton.setAttribute('data-listeners-attached', 'true');
+            
+            console.log('Listeners adicionados com sucesso aos elementos limpos');
             
             // Inicializar estado do botão
             toggleConfirmButton();
@@ -889,13 +985,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Função para garantir inicialização segura
+    function safeInitialization() {
+        // Aguardar um pouco para garantir que o DOM esteja completamente carregado
+        setTimeout(function() {
+            console.log('Inicialização segura executada');
+            initModalEventListeners();
+        }, 100);
+    }
+    
     // Event listeners para o modal de descarte
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM carregado, inicializando listeners...');
+        safeInitialization();
+        
         // Inicializar listeners quando o modal for mostrado
         const modal = document.getElementById('modalConfirmarDescarte');
         if (modal) {
             modal.addEventListener('shown.bs.modal', function() {
-                initModalEventListeners();
+                console.log('Modal mostrado, reinicializando listeners...');
+                safeInitialization();
+            });
+            
+            // Adicionar listener para quando o modal for aberto
+            modal.addEventListener('show.bs.modal', function() {
+                console.log('Modal sendo aberto, preparando listeners...');
+                // Reset do checkbox quando o modal abre
+                const checkbox = document.getElementById('confirmarExclusao');
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                safeInitialization();
             });
             
             modal.addEventListener('hidden.bs.modal', function() {
@@ -910,20 +1030,79 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Tentar inicializar imediatamente também
-        initModalEventListeners();
-        
         // Adicionar listener direto no botão de descarte
         const btnDescartarTodos = document.getElementById('btnDescartarTodos');
         if (btnDescartarTodos) {
             btnDescartarTodos.addEventListener('click', function() {
                 // Aguardar um pouco para o modal carregar completamente
                 setTimeout(function() {
-                    initModalEventListeners();
+                    safeInitialization();
                 }, 100);
             });
         }
     });
+    
+    // Fallback: tentar inicializar após um delay se ainda não foi feito
+    setTimeout(function() {
+        const checkbox = document.getElementById('confirmarExclusao');
+        const button = document.getElementById('btnConfirmarDescarte');
+        
+        if (checkbox && button && !checkbox.hasAttribute('data-listeners-attached')) {
+            console.log('Fallback: inicializando listeners após delay');
+            safeInitialization();
+        }
+    }, 1000);
+    
+    // Função para avançar da etapa 3 para etapa 4
+    function avancarParaEtapa4() {
+        console.log('🚀 FUNÇÃO avancarParaEtapa4() CHAMADA!');
+        console.log('📍 Timestamp:', new Date().toISOString());
+        console.log('🔍 Verificando elementos do DOM...');
+        
+        // Verificar se há trabalhos importados
+        const tabelaTrabalhos = document.querySelector('#step-view tbody');
+        console.log('📊 Tabela de trabalhos encontrada:', tabelaTrabalhos);
+        console.log('📊 Número de trabalhos:', tabelaTrabalhos ? tabelaTrabalhos.children.length : 0);
+        
+        if (!tabelaTrabalhos || tabelaTrabalhos.children.length === 0) {
+            console.log('❌ Nenhum trabalho importado encontrado');
+            showErrorMessage('Não há trabalhos importados para atribuir revisores. Importe trabalhos primeiro.');
+            return;
+        }
+        
+        console.log('✅ Trabalhos encontrados, prosseguindo...');
+        
+        // Atualizar progresso para etapa 4
+        console.log('🔄 Chamando updateStepProgress(4)...');
+        updateStepProgress(4);
+        console.log('✅ updateStepProgress(4) executado');
+        
+        // Mostrar a etapa 4
+        console.log('🔄 Chamando showStep(4)...');
+        showStep(4);
+        console.log('✅ showStep(4) executado');
+        
+        // Scroll suave para a seção de atribuição
+        const stepAssign = document.getElementById('step-assign');
+        console.log('🎯 Elemento step-assign encontrado:', stepAssign);
+        
+        if (stepAssign) {
+            console.log('📜 Executando scroll para step-assign...');
+            stepAssign.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+            console.log('✅ Scroll executado');
+        } else {
+            console.log('❌ Elemento step-assign não encontrado!');
+        }
+        
+        // Mostrar mensagem de sucesso
+        console.log('💬 Mostrando mensagem de sucesso...');
+        showSuccessMessage('Avançado para Etapa 4: Atribuição de Revisores');
+        
+        console.log('🎉 Navegação para Etapa 4 concluída com sucesso!');
+    }
     
     // Tornar funções globais
     window.updateStepProgress = updateStepProgress;
@@ -936,4 +1115,25 @@ document.addEventListener('DOMContentLoaded', function() {
     window.descartarTodosTrabalhos = descartarTodosTrabalhos;
     window.toggleConfirmButton = toggleConfirmButton;
     window.initModalEventListeners = initModalEventListeners;
+    window.downloadTemplate = downloadTemplate;
+    window.showStep = showStep;
+    window.avancarParaEtapa4 = avancarParaEtapa4;
+    
+    // Log para verificar se a função foi registrada globalmente
+    console.log('🌍 Função avancarParaEtapa4 registrada globalmente:', typeof window.avancarParaEtapa4);
+    console.log('🌍 Todas as funções globais registradas:', Object.keys(window).filter(key => key.includes('avancar')));
+    
+    // Adicionar event listener adicional ao botão como backup
+    const btnAvancarEtapa4 = document.getElementById('btnAvancarEtapa4');
+    if (btnAvancarEtapa4) {
+        console.log('🎯 Botão btnAvancarEtapa4 encontrado, adicionando event listener...');
+        btnAvancarEtapa4.addEventListener('click', function(e) {
+            console.log('🖱️ Event listener do botão acionado!');
+            e.preventDefault();
+            avancarParaEtapa4();
+        });
+        console.log('✅ Event listener adicionado ao botão');
+    } else {
+        console.log('❌ Botão btnAvancarEtapa4 não encontrado no DOM');
+    }
 });

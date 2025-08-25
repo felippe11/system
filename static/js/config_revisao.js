@@ -67,12 +67,36 @@
   document.querySelectorAll('.gerar-codigos').forEach((btn) => {
     attachOnce(btn, 'click', () => {
       const loc = btn.dataset.locator;
-      fetch(`/submissions/${loc}/codes`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.reviews) {
-            alert(data.reviews.map((r) => r.access_code).join('\n'));
+      const code = btn.dataset.code; // Código da submissão se disponível
+      
+      // Construir URL com código se disponível
+      let url = `/submissions/${loc}/codes`;
+      if (code) {
+        url += `?code=${encodeURIComponent(code)}`;
+      }
+      
+      console.log('Fazendo requisição para:', url);
+      
+      fetch(url)
+        .then((r) => {
+          console.log('Status da resposta:', r.status);
+          if (!r.ok) {
+            throw new Error(`HTTP ${r.status}: ${r.statusText}`);
           }
+          return r.json();
+        })
+        .then((data) => {
+          console.log('Dados recebidos:', data);
+          if (data.reviews && data.reviews.length > 0) {
+            const codes = data.reviews.map((r) => `Revisor: ${r.reviewer_name || 'N/A'} - Código: ${r.access_code}`).join('\n');
+            alert(`Códigos de Acesso dos Revisores:\n\n${codes}`);
+          } else {
+            alert('Nenhum código de revisor encontrado para esta submissão.');
+          }
+        })
+        .catch((error) => {
+          console.error('Erro na requisição:', error);
+          alert(`Erro ao obter códigos: ${error.message}`);
         });
     });
   });
@@ -194,6 +218,54 @@
       .catch((error) => {
         console.error('Erro na atribuição por área:', error);
         alert('Erro de rede na atribuição por área');
+      });
+  });
+
+  attachOnce(document.getElementById('assignByCategory'), 'click', () => {
+    console.log('Botão Distribuir por Categoria clicado');
+    
+    // Confirmar ação com o usuário
+    if (!confirm('Deseja distribuir automaticamente os trabalhos para revisores baseado na categoria? Esta ação irá criar atribuições para todos os trabalhos compatíveis.')) {
+      return;
+    }
+    
+    console.log('CSRF Token:', csrfToken);
+    
+    // Desabilitar botão durante processamento
+    const btn = document.getElementById('assignByCategory');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+    
+    fetch('/assign_by_category', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken,
+      },
+      body: JSON.stringify({})
+    })
+      .then((r) => {
+        console.log('Resposta distribuição por categoria:', r.status, r.statusText);
+        return r.json();
+      })
+      .then((data) => {
+        console.log('Dados distribuição por categoria:', data);
+        if (data.success) {
+          alert(`Distribuição concluída com sucesso!\n\nResumo:\n- ${data.assignments_created || 0} atribuições criadas\n- ${data.works_assigned || 0} trabalhos atribuídos\n- ${data.reviewers_used || 0} revisores utilizados`);
+          location.reload();
+        } else {
+          alert(data.message || 'Erro na distribuição por categoria');
+        }
+      })
+      .catch((error) => {
+        console.error('Erro na distribuição por categoria:', error);
+        alert('Erro de rede na distribuição por categoria');
+      })
+      .finally(() => {
+        // Reabilitar botão
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       });
   });
 })();

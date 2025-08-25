@@ -142,6 +142,24 @@ def create_app():
     def debug_modal():
         from flask import render_template
         return render_template('debug_modal.html')
+    
+    # Rota de debug temporária para testar formulário
+    @app.route("/debug-form")
+    def debug_form():
+        from flask import render_template
+        return render_template('test_form_debug.html')
+    
+    # Rota de debug temporária para testar botão gerar-codigos
+    @app.route("/debug-gerar-codigos")
+    def debug_gerar_codigos():
+        from flask import render_template
+        return render_template('test_gerar_codigos.html')
+    
+    # Rota de debug temporária para testar função avancarParaEtapa4
+    @app.route("/debug-avancar")
+    def debug_avancar():
+        from flask import render_template
+        return render_template('debug_test.html')
 
     return app
 

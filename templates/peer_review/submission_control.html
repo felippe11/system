@@ -75,16 +75,27 @@
                 action="{{ url_for('config_cliente_routes.importar_trabalhos') }}"
                 data-context="submission-control">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" id="eventoIdHidden" name="evento_id" value="{{ evento.id if evento else '1' }}">
+            
+            <div class="mb-3">
+              <label for="evento_id" class="form-label fw-bold">
+                <i class="fas fa-calendar me-2"></i>Selecionar Evento
+              </label>
+              <select class="form-select form-select-lg" id="evento_id" name="evento_id" required>
+                <option value="">Selecione um evento...</option>
+              </select>
+              <div class="form-text">
+                Os trabalhos serão associados ao evento selecionado
+              </div>
+            </div>
             
             <div class="mb-3">
               <label for="arquivo" class="form-label fw-bold">
                 <i class="fas fa-file-excel me-2"></i>Arquivo Excel
               </label>
               <input type="file" class="form-control form-control-lg" id="arquivo" name="arquivo" 
-                     accept=".xlsx,.xls" required>
+                     accept=".xlsx,.xls" required disabled>
               <div class="form-text">
-                Formatos aceitos: .xlsx, .xls (máximo 10MB)
+                Formatos aceitos: .xlsx, .xls (máximo 10MB). Primeiro selecione um evento.
               </div>
             </div>
             
@@ -254,6 +265,13 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Botão para avançar para próxima etapa -->
+        <div class="text-center mt-4">
+          <button class="btn btn-success btn-lg" id="btnAvancarEtapa4" onclick="avancarParaEtapa4()">
+            <i class="fas fa-arrow-right me-2"></i>Avançar para Etapa 4 - Atribuir Revisores
+          </button>
+        </div>
       {% else %}
         <div class="text-center py-5">
           <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
@@ -382,6 +400,15 @@
                   Auto por Área
                 </button>
                 <small class="text-muted d-block mt-2">Atribui automaticamente por área de conhecimento</small>
+              </div>
+            </div>
+            <div class="row g-3 mt-3">
+              <div class="col-md-6 mx-auto">
+                <button id="assignByCategory" class="btn btn-success btn-lg w-100">
+                  <i class="fas fa-tags me-2"></i>
+                  Distribuir por Categoria
+                </button>
+                <small class="text-muted d-block mt-2">Distribui automaticamente trabalhos para revisores baseado na categoria</small>
               </div>
             </div>
           </div>
@@ -535,8 +562,18 @@ $(document).ready(function() {
         }
     });
 
-    // Botões com estado de processamento
-    $('button[type="submit"], #assignManual, #assignAutomatic, #autoArea').on('click', function() {
+    // Botões com estado de processamento (exceto o formulário de importação)
+    $('#assignManual, #assignAutomatic, #autoArea, #assignByCategory').on('click', function() {
+        const $btn = $(this);
+        const originalText = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
+        setTimeout(() => {
+            $btn.prop('disabled', false).html(originalText);
+        }, 3000);
+    });
+    
+    // Botões de submit específicos (exceto formulário de importação)
+    $('button[type="submit"]').not('#formImportarTrabalhos button[type="submit"]').on('click', function() {
         const $btn = $(this);
         const originalText = $btn.html();
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
@@ -560,6 +597,104 @@ $(document).ready(function() {
             $('#alertContainer .alert').fadeOut();
         }, 5000);
     }
+
+    // Carregar eventos do cliente para seleção
+    function carregarEventos() {
+        console.log('Iniciando carregamento de eventos...');
+        $.ajax({
+            url: '{{ url_for("config_cliente_routes.get_eventos_cliente") }}',
+            method: 'GET',
+            success: function(response) {
+                console.log('Resposta recebida:', response);
+                if (response.success) {
+                    const $select = $('#evento_id');
+                    $select.empty().append('<option value="">Selecione um evento...</option>');
+                    
+                    if (response.eventos.length === 0) {
+                        $select.append('<option value="" disabled>Nenhum evento encontrado</option>');
+                        showAlert('Nenhum evento encontrado. Crie um evento antes de importar trabalhos.', 'warning');
+                    } else {
+                        response.eventos.forEach(function(evento) {
+                            $select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+                        });
+                        console.log('Eventos carregados com sucesso:', response.eventos.length);
+                    }
+                } else {
+                    console.error('Erro na resposta:', response.message);
+                    showAlert('Erro ao carregar eventos: ' + response.message, 'danger');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Erro AJAX:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    error: error
+                });
+                
+                if (xhr.status === 401 || xhr.status === 403) {
+                    showAlert('Sessão expirada. Por favor, faça login novamente.', 'warning');
+                    // Opcional: redirecionar para login
+                    // window.location.href = '/login';
+                } else if (xhr.status === 404) {
+                    showAlert('Rota não encontrada. Verifique a configuração do sistema.', 'danger');
+                } else {
+                    showAlert('Erro ao carregar eventos. Tente novamente.', 'danger');
+                }
+            }
+        });
+    }
+
+    // Controlar habilitação do campo de arquivo baseado na seleção do evento
+    $('#evento_id').on('change', function() {
+        const eventoSelecionado = $(this).val();
+        const $arquivo = $('#arquivo');
+        
+        if (eventoSelecionado) {
+            $arquivo.prop('disabled', false);
+            $arquivo.siblings('.form-text').text('Formatos aceitos: .xlsx, .xls (máximo 10MB)');
+        } else {
+            $arquivo.prop('disabled', true).val('');
+            $arquivo.siblings('.form-text').text('Formatos aceitos: .xlsx, .xls (máximo 10MB). Primeiro selecione um evento.');
+        }
+    });
+
+    // Validação do formulário de importação
+    $('#formImportarTrabalhos').on('submit', function(e) {
+        const eventoId = $('#evento_id').val();
+        const arquivo = $('#arquivo')[0].files[0];
+        
+        if (!eventoId) {
+            e.preventDefault();
+            showAlert('Por favor, selecione um evento antes de fazer o upload.', 'warning');
+            $('#evento_id').focus();
+            return false;
+        }
+        
+        if (!arquivo) {
+            e.preventDefault();
+            showAlert('Por favor, selecione um arquivo Excel para importar.', 'warning');
+            $('#arquivo').focus();
+            return false;
+        }
+        
+        // Mostrar indicador de progresso
+        const $btn = $(this).find('button[type="submit"]');
+        const originalText = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Importando...');
+        
+        // Mostrar barra de progresso
+        $('#uploadProgress').show();
+        
+        // Restaurar botão em caso de erro (será sobrescrito se sucesso)
+        setTimeout(() => {
+            $btn.prop('disabled', false).html(originalText);
+            $('#uploadProgress').hide();
+        }, 30000); // 30 segundos timeout
+    });
+
+    // Carregar eventos ao inicializar a página
+    carregarEventos();
 });
 </script>
 
@@ -629,4 +764,7 @@ $(document).ready(function() {
     }
 }
 </style>
+{% endblock %}
+
+{% block scripts_extra %}
 {% endblock %}

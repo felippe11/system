@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Debug - Botão Avançar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Teste de Debug - Função avancarParaEtapa4()</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Esta página é para testar se a função avancarParaEtapa4() está funcionando corretamente.</p>
+                        
+                        <!-- Simular tabela de trabalhos -->
+                        <div id="step-view" style="display: none;">
+                            <tbody>
+                                <tr><td>Trabalho teste</td></tr>
+                            </tbody>
+                        </div>
+                        
+                        <!-- Simular seção de atribuição -->
+                        <div id="step-assign" class="mt-4">
+                            <h5>Seção de Atribuição (step-assign)</h5>
+                            <p>Esta é a seção para onde o scroll deve ir.</p>
+                        </div>
+                        
+                        <!-- Botão de teste -->
+                        <div class="text-center mt-4">
+                            <button class="btn btn-success btn-lg" id="btnAvancarEtapa4" onclick="avancarParaEtapa4()">
+                                <i class="fas fa-arrow-right me-2"></i>Avançar para Etapa 4 - Teste
+                            </button>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Console de Debug:</h5>
+                            <div id="debug-console" class="border p-3 bg-light" style="height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                                <!-- Logs aparecerão aqui -->
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button class="btn btn-secondary" onclick="clearDebugConsole()">Limpar Console</button>
+                            <button class="btn btn-info" onclick="testFunction()">Testar Função Diretamente</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/submission_import.js') }}"></script>
+    
+    <script>
+        // Interceptar console.log para mostrar na página
+        const originalLog = console.log;
+        const debugConsole = document.getElementById('debug-console');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            if (debugConsole) {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = args.join(' ');
+                logEntry.style.marginBottom = '2px';
+                debugConsole.appendChild(logEntry);
+                debugConsole.scrollTop = debugConsole.scrollHeight;
+            }
+        };
+        
+        function clearDebugConsole() {
+            if (debugConsole) {
+                debugConsole.innerHTML = '';
+            }
+        }
+        
+        function testFunction() {
+            console.log('🧪 Testando função diretamente...');
+            if (typeof window.avancarParaEtapa4 === 'function') {
+                console.log('✅ Função encontrada, chamando...');
+                window.avancarParaEtapa4();
+            } else {
+                console.log('❌ Função não encontrada no escopo global');
+                console.log('🔍 Funções disponíveis:', Object.keys(window).filter(key => typeof window[key] === 'function' && key.includes('avancar')));
+            }
+        }
+        
+        // Funções mock para evitar erros
+        function updateStepProgress(step) {
+            console.log('📊 updateStepProgress chamada com step:', step);
+        }
+        
+        function showSuccessMessage(message) {
+            console.log('✅ showSuccessMessage:', message);
+            alert('Sucesso: ' + message);
+        }
+        
+        function showErrorMessage(message) {
+            console.log('❌ showErrorMessage:', message);
+            alert('Erro: ' + message);
+        }
+        
+        // Tornar funções globais
+        window.updateStepProgress = updateStepProgress;
+        window.showSuccessMessage = showSuccessMessage;
+        window.showErrorMessage = showErrorMessage;
+        
+        console.log('🚀 Página de teste carregada!');
+        console.log('🔍 Verificando se avancarParaEtapa4 existe:', typeof window.avancarParaEtapa4);
+    </script>
+</body>
+</html>
