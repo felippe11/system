@@ -68,6 +68,24 @@
             
             <div class="row mb-3">
               <div class="col-md-6">
+                <label for="intervalo_entrada" class="form-label">Tolerância para Entrada (minutos)</label>
+                <select class="form-select" id="intervalo_entrada" name="intervalo_entrada" required>
+                  <option value="5" {% if config and config.intervalo_entrada == 5 %}selected{% endif %}>5 minutos</option>
+                  <option value="10" {% if config and config.intervalo_entrada == 10 %}selected{% endif %}>10 minutos</option>
+                  <option value="15" {% if not config or config.intervalo_entrada == 15 %}selected{% endif %}>15 minutos</option>
+                  <option value="20" {% if config and config.intervalo_entrada == 20 %}selected{% endif %}>20 minutos</option>
+                  <option value="30" {% if config and config.intervalo_entrada == 30 %}selected{% endif %}>30 minutos</option>
+                </select>
+                <div class="form-text">Tempo máximo de tolerância para entrada após o horário agendado.</div>
+              </div>
+              
+              <div class="col-md-6">
+                <!-- Espaço reservado para futuras configurações -->
+              </div>
+            </div>
+            
+            <div class="row mb-3">
+              <div class="col-md-6">
                 <label for="horario_inicio" class="form-label">Horário de Início</label>
                 <input type="time" class="form-control" id="horario_inicio" name="horario_inicio" value="{% if config and config.horario_inicio %}{{ config.horario_inicio.strftime('%H:%M') }}{% else %}08:00{% endif %}" required>
                 <div class="form-text">Horário de início das visitações.</div>
