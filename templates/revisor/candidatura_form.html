@@ -1,57 +1,413 @@
 {% extends "base.html" %}
 {% from 'partials/card.html' import render_card %}
-{% block title %}Processo Seletivo{% endblock %}
+{% block title %}{{ formulario.nome }} - Processo Seletivo{% endblock %}
 {% block content %}
 <div class="container py-4">
-  {% set body %}
-    <div class="alert alert-info mb-4">
-      <i class="bi bi-info-circle me-2"></i>{{ formulario.descricao }}
-    </div>
-    <form method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      {% for campo in formulario.campos %}
-      <div class="mb-4">
-        <label class="form-label fw-bold" for="campo-{{ campo.id }}">
-          {{ campo.nome }}{% if campo.obrigatorio %}<span class="text-danger">*</span>{% endif %}
-        </label>
-        <div class="form-field-container">
-          {% if campo.tipo == 'text' %}
-          <input type="text" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
-                 {% if campo.obrigatorio %}required{% endif %}>
-          {% elif campo.tipo == 'textarea' %}
-          <textarea id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control" rows="4"
-                    {% if campo.obrigatorio %}required{% endif %}></textarea>
-          {% elif campo.tipo == 'number' %}
-          <input type="number" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
-                 {% if campo.obrigatorio %}required{% endif %}>
-          {% elif campo.tipo == 'file' %}
-          <input type="file" id="campo-{{ campo.id }}" name="file_{{ campo.id }}" class="form-control"
-                 {% if campo.obrigatorio %}required{% endif %}>
-          {% elif campo.tipo == 'date' %}
-          <input type="date" id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-control"
-                 {% if campo.obrigatorio %}required{% endif %}>
-          {% elif campo.tipo == 'dropdown' %}
-          <select id="campo-{{ campo.id }}" name="{{ campo.id }}" class="form-select"
-                  {% if campo.obrigatorio %}required{% endif %}>
-            <option value="" disabled selected>Selecione uma opção</option>
-            {% for opcao in campo.opcoes.split(',') %}
-            <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
-            {% endfor %}
-          </select>
-          {% endif %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="text-center mb-4">
+        <h1 class="h2 text-primary mb-3">
+          <i class="bi bi-file-earmark-text me-2"></i>{{ formulario.nome }}
+        </h1>
+        <p class="text-muted lead">Preencha todos os campos obrigatórios para submeter sua candidatura</p>
+      </div>
+      
+      <!-- Informações do processo -->
+      {% if formulario.descricao %}
+      {% set info_processo %}
+        <div class="d-flex align-items-start">
+          <i class="bi bi-info-circle text-primary fs-4 me-3 mt-1"></i>
+          <div>
+            <h6 class="mb-2">Sobre este processo seletivo:</h6>
+            <p class="mb-0">{{ formulario.descricao }}</p>
+          </div>
         </div>
-      </div>
-      {% endfor %}
-      <div class="d-grid gap-2 d-md-flex mt-5">
-        <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
-          <i class="bi bi-arrow-left me-1"></i>Voltar
-        </a>
-        <button type="submit" class="btn btn-primary ms-auto">
-          <i class="bi bi-check-circle me-1"></i>Enviar Formulário
-        </button>
-      </div>
-    </form>
-  {% endset %}
-  {{ render_card(formulario.nome, body, '', 'card shadow-sm border-0 rounded-lg') }}
+      {% endset %}
+      {{ render_card('Informações Importantes', info_processo, '', 'card shadow-sm border-0 mb-4 bg-light') }}
+      {% endif %}
+      
+      <!-- Formulário de candidatura -->
+      {% set form_content %}
+        <form method="POST" enctype="multipart/form-data" id="candidaturaForm" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Progresso do formulário -->
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <small class="text-muted">Progresso do formulário</small>
+              <small class="text-muted"><span id="progressText">0</span> de {{ formulario.campos|length }} campos preenchidos</small>
+            </div>
+            <div class="progress" style="height: 6px;">
+              <div class="progress-bar bg-success" id="progressBar" style="width: 0%"></div>
+            </div>
+          </div>
+          
+          {% for campo in formulario.campos %}
+          <div class="mb-4 campo-container" data-campo-id="{{ campo.id }}">
+            <label class="form-label fw-bold d-flex align-items-center" for="campo-{{ campo.id }}">
+              {% if campo.tipo == 'text' %}
+                <i class="bi bi-type text-muted me-2"></i>
+              {% elif campo.tipo == 'textarea' %}
+                <i class="bi bi-textarea-t text-muted me-2"></i>
+              {% elif campo.tipo == 'number' %}
+                <i class="bi bi-123 text-muted me-2"></i>
+              {% elif campo.tipo == 'file' %}
+                <i class="bi bi-file-earmark-arrow-up text-muted me-2"></i>
+              {% elif campo.tipo == 'date' %}
+                <i class="bi bi-calendar-date text-muted me-2"></i>
+              {% elif campo.tipo == 'dropdown' %}
+                <i class="bi bi-list text-muted me-2"></i>
+              {% endif %}
+              {{ campo.nome }}
+              {% if campo.obrigatorio %}
+                <span class="text-danger ms-1" title="Campo obrigatório">*</span>
+              {% endif %}
+            </label>
+            
+            {% if campo.descricao %}
+            <small class="text-muted d-block mb-2">{{ campo.descricao }}</small>
+            {% endif %}
+            
+            <div class="form-field-container">
+              {% if campo.tipo == 'text' %}
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-type"></i></span>
+                <input type="text" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                       class="form-control campo-input" 
+                       placeholder="Digite {{ campo.nome.lower() }}"
+                       {% if campo.obrigatorio %}required{% endif %}>
+              </div>
+              
+              {% elif campo.tipo == 'textarea' %}
+              <div class="position-relative">
+                <textarea id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                          class="form-control campo-input" rows="4"
+                          placeholder="Digite {{ campo.nome.lower() }}"
+                          {% if campo.obrigatorio %}required{% endif %}></textarea>
+                <small class="text-muted position-absolute bottom-0 end-0 me-2 mb-1">
+                  <span id="charCount-{{ campo.id }}">0</span> caracteres
+                </small>
+              </div>
+              
+              {% elif campo.tipo == 'number' %}
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-123"></i></span>
+                <input type="number" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                       class="form-control campo-input" 
+                       placeholder="Digite um número"
+                       {% if campo.obrigatorio %}required{% endif %}>
+              </div>
+              
+              {% elif campo.tipo == 'file' %}
+              <div class="file-upload-container">
+                <input type="file" id="campo-{{ campo.id }}" name="file_{{ campo.id }}" 
+                       class="form-control campo-input file-input" 
+                       {% if campo.obrigatorio %}required{% endif %}
+                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                <div class="file-upload-info mt-2">
+                  <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Formatos aceitos: PDF, DOC, DOCX, JPG, PNG (máx. 10MB)
+                  </small>
+                  <div class="file-preview mt-2" id="preview-{{ campo.id }}" style="display: none;">
+                    <div class="alert alert-success py-2">
+                      <i class="bi bi-check-circle me-2"></i>
+                      <span class="file-name"></span>
+                      <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-file">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {% elif campo.tipo == 'date' %}
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar-date"></i></span>
+                <input type="date" id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                       class="form-control campo-input" 
+                       {% if campo.obrigatorio %}required{% endif %}>
+              </div>
+              
+              {% elif campo.tipo == 'dropdown' %}
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-list"></i></span>
+                <select id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                        class="form-select campo-input"
+                        {% if campo.obrigatorio %}required{% endif %}>
+                  <option value="" disabled selected>Selecione uma opção</option>
+                  {% for opcao in campo.opcoes.split(',') %}
+                  <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+              
+              <!-- Feedback de validação -->
+              <div class="invalid-feedback"></div>
+              <div class="valid-feedback">
+                <i class="bi bi-check-circle me-1"></i>Campo preenchido corretamente
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          
+          <!-- Resumo antes do envio -->
+          <div class="card bg-light border-0 mb-4" id="resumoCard" style="display: none;">
+            <div class="card-body">
+              <h6 class="text-primary mb-3">
+                <i class="bi bi-clipboard-check me-2"></i>Resumo da Candidatura
+              </h6>
+              <div id="resumoContent"></div>
+            </div>
+          </div>
+          
+          <!-- Botões de ação -->
+          <div class="d-flex flex-column flex-md-row gap-3 mt-5">
+            <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+            <button type="button" class="btn btn-info" id="previewBtn" disabled>
+              <i class="bi bi-eye me-1"></i>Visualizar Resumo
+            </button>
+            <button type="submit" class="btn btn-primary ms-auto" id="submitBtn" disabled>
+              <i class="bi bi-send me-1"></i>Enviar Candidatura
+            </button>
+          </div>
+        </form>
+      {% endset %}
+      {{ render_card('Formulário de Candidatura', form_content, '', 'card shadow-sm border-0') }}
+    </div>
+  </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('candidaturaForm');
+  const campos = document.querySelectorAll('.campo-input');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  const previewBtn = document.getElementById('previewBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const resumoCard = document.getElementById('resumoCard');
+  const resumoContent = document.getElementById('resumoContent');
+  
+  // Atualizar progresso
+  function updateProgress() {
+    let preenchidos = 0;
+    let total = campos.length;
+    
+    campos.forEach(campo => {
+      if (campo.type === 'file') {
+        if (campo.files && campo.files.length > 0) preenchidos++;
+      } else if (campo.value.trim() !== '') {
+        preenchidos++;
+      }
+    });
+    
+    const percentage = (preenchidos / total) * 100;
+    progressBar.style.width = percentage + '%';
+    progressText.textContent = preenchidos;
+    
+    // Habilitar botões baseado no progresso
+    const allRequired = document.querySelectorAll('.campo-input[required]');
+    let allRequiredFilled = true;
+    
+    allRequired.forEach(campo => {
+      if (campo.type === 'file') {
+        if (!campo.files || campo.files.length === 0) allRequiredFilled = false;
+      } else if (campo.value.trim() === '') {
+        allRequiredFilled = false;
+      }
+    });
+    
+    previewBtn.disabled = !allRequiredFilled;
+    submitBtn.disabled = !allRequiredFilled;
+  }
+  
+  // Validação em tempo real
+  campos.forEach(campo => {
+    campo.addEventListener('input', function() {
+      validateField(this);
+      updateProgress();
+    });
+    
+    campo.addEventListener('change', function() {
+      validateField(this);
+      updateProgress();
+      
+      // Preview de arquivo
+      if (this.type === 'file' && this.files.length > 0) {
+        showFilePreview(this);
+      }
+    });
+  });
+  
+  // Validação de campo
+  function validateField(field) {
+    const isValid = field.checkValidity();
+    
+    if (isValid) {
+      field.classList.remove('is-invalid');
+      field.classList.add('is-valid');
+    } else {
+      field.classList.remove('is-valid');
+      field.classList.add('is-invalid');
+      
+      const feedback = field.parentNode.querySelector('.invalid-feedback');
+      if (feedback) {
+        if (field.validity.valueMissing) {
+          feedback.textContent = 'Este campo é obrigatório.';
+        } else if (field.validity.typeMismatch) {
+          feedback.textContent = 'Por favor, insira um valor válido.';
+        } else {
+          feedback.textContent = 'Valor inválido.';
+        }
+      }
+    }
+  }
+  
+  // Preview de arquivo
+  function showFilePreview(input) {
+    const file = input.files[0];
+    const preview = document.getElementById('preview-' + input.id.split('-')[1]);
+    const fileName = preview.querySelector('.file-name');
+    const removeBtn = preview.querySelector('.remove-file');
+    
+    if (file) {
+      fileName.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+      preview.style.display = 'block';
+      
+      removeBtn.onclick = function() {
+        input.value = '';
+        preview.style.display = 'none';
+        input.classList.remove('is-valid');
+        updateProgress();
+      };
+    }
+  }
+  
+  // Formatar tamanho do arquivo
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  // Contador de caracteres para textarea
+  document.querySelectorAll('textarea.campo-input').forEach(textarea => {
+    const counter = document.getElementById('charCount-' + textarea.id.split('-')[1]);
+    if (counter) {
+      textarea.addEventListener('input', function() {
+        counter.textContent = this.value.length;
+      });
+    }
+  });
+  
+  // Visualizar resumo
+  previewBtn.addEventListener('click', function() {
+    generateResumo();
+    resumoCard.style.display = 'block';
+    resumoCard.scrollIntoView({ behavior: 'smooth' });
+  });
+  
+  // Gerar resumo
+  function generateResumo() {
+    let html = '<div class="row g-3">';
+    
+    campos.forEach(campo => {
+      const label = document.querySelector('label[for="' + campo.id + '"]');
+      const labelText = label ? label.textContent.replace('*', '').trim() : campo.name;
+      let value = '';
+      
+      if (campo.type === 'file' && campo.files.length > 0) {
+        value = campo.files[0].name;
+      } else {
+        value = campo.value || 'Não informado';
+      }
+      
+      html += `
+        <div class="col-md-6">
+          <div class="border rounded p-2">
+            <small class="text-muted d-block">${labelText}</small>
+            <strong class="small">${value}</strong>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    resumoContent.innerHTML = html;
+  }
+  
+  // Validação do formulário antes do envio
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    let isValid = true;
+    campos.forEach(campo => {
+      validateField(campo);
+      if (!campo.checkValidity()) {
+        isValid = false;
+      }
+    });
+    
+    if (isValid) {
+      if (confirm('Tem certeza que deseja enviar sua candidatura? Após o envio, não será possível fazer alterações.')) {
+        this.submit();
+      }
+    } else {
+      alert('Por favor, corrija os erros no formulário antes de enviar.');
+    }
+  });
+  
+  // Inicializar progresso
+  updateProgress();
+});
+</script>
+
+<style>
+.campo-container {
+  transition: all 0.3s ease;
+}
+
+.campo-container:hover {
+  transform: translateY(-2px);
+}
+
+.file-upload-container {
+  position: relative;
+}
+
+.file-input:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.progress {
+  transition: all 0.3s ease;
+}
+
+.form-control.is-valid,
+.form-select.is-valid {
+  border-color: #198754;
+  background-image: none;
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: #dc3545;
+  background-image: none;
+}
+
+.valid-feedback {
+  display: none;
+}
+
+.form-control.is-valid ~ .valid-feedback,
+.form-select.is-valid ~ .valid-feedback {
+  display: block;
+}
+</style>
 {% endblock %}

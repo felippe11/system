@@ -1,7 +1,18 @@
 # -*- coding: utf-8 -*-
 # routes/monitor_routes.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, make_response
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    jsonify,
+    make_response,
+    current_app,
+)
 from flask_login import login_user, logout_user, login_required, current_user
 from datetime import datetime, timedelta
 import secrets
@@ -13,7 +24,7 @@ from PIL import Image
 import pandas as pd
 
 from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
-from extensions import db
+from extensions import db, csrf
 
 monitor_routes = Blueprint(
     'monitor_routes',
@@ -25,6 +36,7 @@ monitor_routes = Blueprint(
 # Autenticação por Código de Acesso
 # =======================================
 @monitor_routes.route('/monitor/login', methods=['GET', 'POST'])
+@csrf.exempt
 def monitor_login():
     """Login exclusivo para monitores usando código de acesso"""
     if request.method == 'POST':
@@ -106,11 +118,22 @@ def dashboard():
 @login_required
 def listar_agendamentos():
     """Lista todos os agendamentos atribuídos ao monitor"""
-    if session.get('user_type') != 'monitor':
-        flash('Acesso negado.', 'danger')
-        return redirect(url_for('auth_routes.login'))
+    # Verificar se o usuário é admin, cliente ou monitor
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente', 'monitor']:
+        if session.get('user_type') != 'monitor':
+            flash('Acesso negado.', 'danger')
+            return redirect(url_for('auth_routes.login'))
     
-    monitor_id = session.get('monitor_id')
+    # Se for um monitor logado via sessão, usar o monitor_id da sessão
+    if session.get('user_type') == 'monitor':
+        monitor_id = session.get('monitor_id')
+    else:
+        # Se for admin ou cliente, permitir filtrar por monitor_id via parâmetro
+        monitor_id = request.args.get('monitor_id')
+        if not monitor_id:
+            flash('ID do monitor é obrigatório.', 'warning')
+            return redirect(url_for('monitor_routes.gerenciar_monitores'))
+        monitor_id = int(monitor_id)
     
     # Filtros
     data_filtro = request.args.get('data')
@@ -550,7 +573,9 @@ def editar_monitor_route(monitor_id):
 def editar_monitor(monitor_id):
     """Página de edição de monitor com visualização de agendamentos"""
     # Verificar se o usuário é admin ou cliente
-    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+    user_type = getattr(current_user, 'tipo', None)
+    session_type = session.get('user_type')
+    if user_type not in ['admin', 'cliente'] and session_type not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
     
@@ -568,14 +593,16 @@ def editar_monitor(monitor_id):
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).filter(
             MonitorAgendamento.monitor_id == monitor_id
-        ).order_by(AgendamentoVisita.data_visita.desc()).all()
+        ).order_by(HorarioVisitacao.data.desc()).all()
         
         # Estatísticas do monitor
         total_agendamentos = len(agendamentos)
-        agendamentos_hoje = sum(1 for ma, av, hv in agendamentos 
-                               if av.data_visita == datetime.now().date())
-        agendamentos_futuros = sum(1 for ma, av, hv in agendamentos 
-                                  if av.data_visita > datetime.now().date())
+        agendamentos_hoje = sum(
+            1 for ma, av, hv in agendamentos if hv.data == datetime.now().date()
+        )
+        agendamentos_futuros = sum(
+            1 for ma, av, hv in agendamentos if hv.data > datetime.now().date()
+        )
         
         return render_template('editar_monitor.html', 
                              monitor=monitor,
@@ -585,6 +612,7 @@ def editar_monitor(monitor_id):
                              agendamentos_futuros=agendamentos_futuros)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados do monitor: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -643,8 +671,8 @@ def distribuicao_manual():
             MonitorAgendamento, AgendamentoVisita.id == MonitorAgendamento.agendamento_id
         ).filter(
             MonitorAgendamento.id.is_(None),
-            AgendamentoVisita.data_visita >= datetime.now().date()
-        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+            HorarioVisitacao.data >= datetime.now().date()
+        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         # Buscar monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).order_by(Monitor.nome_completo).all()
@@ -662,8 +690,8 @@ def distribuicao_manual():
         ).join(
             Monitor, MonitorAgendamento.monitor_id == Monitor.id
         ).filter(
-            AgendamentoVisita.data_visita >= datetime.now().date()
-        ).order_by(AgendamentoVisita.data_visita, HorarioVisitacao.horario_inicio).all()
+            HorarioVisitacao.data >= datetime.now().date()
+        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         return render_template('distribuicao_manual.html',
                              agendamentos_sem_monitor=agendamentos_sem_monitor,
@@ -671,6 +699,7 @@ def distribuicao_manual():
                              agendamentos_atribuidos=agendamentos_atribuidos)
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao carregar dados: {str(e)}', 'error')
         return redirect(url_for('monitor_routes.gerenciar_monitores'))
 
@@ -710,6 +739,10 @@ def atribuir_monitor():
         
         db.session.add(nova_atribuicao)
         db.session.commit()
+        
+        # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
+        from routes.agendamento_routes import NotificacaoAgendamento
+        NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
         
         return jsonify({
             'success': True, 
@@ -1067,23 +1100,33 @@ def distribuir_automaticamente():
     try:
         # Obter agendamentos futuros sem monitor atribuído
         hoje = datetime.now().date()
+        current_app.logger.info(
+            "Iniciando distribuição automática de monitores"
+        )
         agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
             HorarioVisitacao
         ).filter(
             HorarioVisitacao.data >= hoje,
-            AgendamentoVisita.status == 'confirmado',
+            AgendamentoVisita.status.in_(['confirmado', 'pendente']),
             ~AgendamentoVisita.id.in_(
                 db.session.query(MonitorAgendamento.agendamento_id)
             )
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+        ).order_by(
+            HorarioVisitacao.data,
+            HorarioVisitacao.horario_inicio,
+        ).all()
         
         # Obter monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).all()
         
         if not monitores_ativos:
-            return jsonify({'success': False, 'message': 'Nenhum monitor ativo encontrado'})
+            current_app.logger.warning("Nenhum monitor ativo encontrado")
+            return jsonify({
+                'success': False,
+                'message': 'Nenhum monitor ativo encontrado',
+            })
         
-        atribuicoes_realizadas = 0
+        atribuicoes = 0
         
         for agendamento in agendamentos_sem_monitor:
             # Determinar o turno do agendamento
@@ -1118,28 +1161,60 @@ def distribuir_automaticamente():
             
             # Atribuir ao monitor com menor carga atual
             if monitores_disponiveis:
-                monitor_escolhido = min(monitores_disponiveis, 
-                                      key=lambda m: MonitorAgendamento.query.filter_by(monitor_id=m.id).count())
-                
+                monitor_escolhido = min(
+                    monitores_disponiveis,
+                    key=lambda m: MonitorAgendamento.query.filter_by(
+                        monitor_id=m.id
+                    ).count(),
+                )
+
                 # Criar atribuição
                 atribuicao = MonitorAgendamento(
                     monitor_id=monitor_escolhido.id,
                     agendamento_id=agendamento.id,
                     data_atribuicao=datetime.now(),
                     tipo_distribuicao='automatica',
-                    status='ativo'
+                    status='ativo',
+                )
+
+                db.session.add(atribuicao)
+                atribuicoes += 1
+                current_app.logger.info(
+                    "Monitor %s atribuído ao agendamento %s",
+                    monitor_escolhido.id,
+                    agendamento.id,
                 )
                 
-                db.session.add(atribuicao)
-                atribuicoes_realizadas += 1
-        
+                # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
+                from routes.agendamento_routes import NotificacaoAgendamento
+                NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+            else:
+                current_app.logger.warning(
+                    "Nenhum monitor disponível para o agendamento %s",
+                    agendamento.id,
+                )
+
+        if atribuicoes == 0:
+            current_app.logger.warning(
+                "Nenhuma atribuição de monitor foi realizada"
+            )
+            return jsonify({
+                'success': False,
+                'message': 'Nenhuma atribuição realizada',
+                'atribuicoes': 0,
+            })
+
         db.session.commit()
-        
+        current_app.logger.info(
+            "Distribuição automática concluída com %s atribuições",
+            atribuicoes,
+        )
+
         return jsonify({
-             'success': True, 
-             'message': 'Distribuição automática concluída',
-             'atribuicoes': atribuicoes_realizadas
-         })
+            'success': True,
+            'message': 'Distribuição automática concluída',
+            'atribuicoes': atribuicoes,
+        })
          
     except Exception as e:
         db.session.rollback()
@@ -1199,6 +1274,7 @@ def gerar_qrcode(agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
 @monitor_routes.route('/processar-qrcode', methods=['POST'])
@@ -1325,4 +1401,5 @@ def gerar_qrcode_aluno(aluno_id, agendamento_id):
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})

@@ -10,7 +10,7 @@
                 <h2>Detalhes do Agendamento</h2>
                 <div>
                     <a href="{{ url_for('monitor_routes.dashboard') }}" class="btn btn-secondary">Voltar ao Dashboard</a>
-                    <a href="{{ url_for('monitor_routes.logout') }}" class="btn btn-outline-danger">Sair</a>
+                    <a href="{{ url_for('monitor_routes.monitor_logout') }}" class="btn btn-outline-danger">Sair</a>
                 </div>
             </div>
         </div>
@@ -294,7 +294,7 @@ function registrarPresenca(alunoId, presente) {
 // Função para marcar todos como presentes
 function marcarTodosPresentes() {
     if (confirm('Deseja marcar todos os alunos como presentes?')) {
-        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -318,7 +318,7 @@ function marcarTodosPresentes() {
 // Função para marcar todos como ausentes
 function marcarTodosAusentes() {
     if (confirm('Deseja marcar todos os alunos como ausentes?')) {
-        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

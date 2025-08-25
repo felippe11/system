@@ -1,41 +1,724 @@
 {% extends 'base.html' %}
+{% from 'partials/card.html' import render_card %}
+{% block title %}Revisar: {{ review.submission.title }}{% endblock %}
 {% block content %}
-<div class="container mt-5">
-  <h3>Revisar Trabalho</h3>
-  <h5 class="mb-4">{{ review.submission.title }}</h5>
-  {% if review.submission.file_path %}
-  <iframe src="{{ url_for('static', filename=review.submission.file_path) }}" width="100%" height="600"></iframe>
-  {% elif review.submission.content %}
-  <div class="border p-3 mb-4">{{ review.submission.content|safe }}</div>
-  {% endif %}
-  <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="mb-3">
-      <label>Código de Acesso</label>
-      <input type="text" name="codigo" class="form-control" required>
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Coluna do trabalho -->
+    <div class="col-lg-6">
+      {% set trabalho_content %}
+        <div class="d-flex align-items-center mb-3">
+          <i class="bi bi-file-earmark-text text-primary fs-4 me-3"></i>
+          <div>
+            <h5 class="mb-1 text-primary">{{ review.submission.title }}</h5>
+            <small class="text-muted">
+              <i class="bi bi-person me-1"></i>{{ review.submission.author or 'Autor não identificado' }}
+              {% if review.submission.created_at %}
+              <span class="ms-2">
+                <i class="bi bi-calendar me-1"></i>{{ review.submission.created_at.strftime('%d/%m/%Y') }}
+              </span>
+              {% endif %}
+            </small>
+          </div>
+        </div>
+        
+        <div class="trabalho-viewer">
+          {% if review.submission.file_path %}
+          <div class="pdf-viewer-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">
+                <i class="bi bi-file-pdf text-danger me-2"></i>Documento
+              </h6>
+              <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('static', filename=review.submission.file_path) }}" 
+                   target="_blank" class="btn btn-outline-primary">
+                  <i class="bi bi-eye me-1"></i>Visualizar
+                </a>
+                <a href="{{ url_for('static', filename=review.submission.file_path) }}" 
+                   download class="btn btn-outline-secondary">
+                  <i class="bi bi-download me-1"></i>Baixar
+                </a>
+              </div>
+            </div>
+            
+            <!-- Embed document viewer -->
+            <div class="document-embed-container border rounded">
+              <iframe src="{{ url_for('static', filename=review.submission.file_path) }}" 
+                      width="100%" height="600px" 
+                      style="border: none; border-radius: 0.375rem;">
+                <p>Seu navegador não suporta visualização de documentos. 
+                   <a href="{{ url_for('static', filename=review.submission.file_path) }}" target="_blank">
+                     Clique aqui para abrir o arquivo
+                   </a>
+                </p>
+              </iframe>
+            </div>
+          </div>
+          {% elif review.submission.content %}
+          <div class="content-viewer">
+            <h6 class="mb-3">
+              <i class="bi bi-file-text text-info me-2"></i>Conteúdo do Trabalho
+            </h6>
+            <div class="border rounded p-4 bg-light content-text">
+              <div class="content-body">
+                {{ review.submission.content | safe }}
+              </div>
+            </div>
+            <div class="mt-2">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                {{ review.submission.content | length }} caracteres
+              </small>
+            </div>
+          </div>
+          {% else %}
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Nenhum conteúdo disponível para revisão.
+          </div>
+          {% endif %}
+        </div>
+      {% endset %}
+      {{ render_card('Trabalho para Revisão', trabalho_content, '', 'card shadow-sm border-0 h-100') }}
     </div>
-    {% if barema and barema.requisitos %}
-      {% for requisito, faixa in barema.requisitos.items() %}
-      <div class="mb-3">
-        <label class="form-label">{{ requisito }} ({{ faixa['min'] }}-{{ faixa['max'] }})</label>
-        <input type="number" class="form-control" name="{{ requisito }}" min="{{ faixa['min'] }}" max="{{ faixa['max'] }}" value="{{ review.scores[requisito] if review and review.scores }}">
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="mb-3">
-        <label>Nota (1-5)</label>
-        <input type="number" name="nota" class="form-control">
-      </div>
-    {% endif %}
-    <div class="mb-3">
-      <label>Comentários</label>
-      <textarea name="comentarios" class="form-control"></textarea>
+    
+    <!-- Coluna da revisão -->
+    <div class="col-lg-6">
+      {% set revisao_content %}
+        <form method="POST" id="revisaoForm" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Código de acesso -->
+          <div class="mb-4">
+            <label class="form-label fw-bold d-flex align-items-center">
+              <i class="bi bi-key text-warning me-2"></i>
+              Código de Acesso
+              <span class="text-danger ms-1">*</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+              <input type="text" name="codigo" id="codigoAcesso" 
+                     class="form-control" placeholder="Digite o código fornecido" 
+                     required autocomplete="off" maxlength="20">
+              <button type="button" class="btn btn-outline-secondary" id="verificarCodigo">
+                <i class="bi bi-check-circle me-1"></i>Verificar
+              </button>
+            </div>
+            <div class="invalid-feedback" id="codigoFeedback">
+              Por favor, insira o código de acesso.
+            </div>
+            <div class="valid-feedback" id="codigoValidFeedback">
+              <i class="bi bi-check-circle me-1"></i>Código válido!
+            </div>
+            <small class="form-text text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              O código foi fornecido pelo sistema quando a revisão foi atribuída.
+            </small>
+          </div>
+          
+          <!-- Critérios de avaliação -->
+          <div class="mb-4">
+            <h6 class="text-primary mb-3">
+              <i class="bi bi-clipboard-check me-2"></i>Critérios de Avaliação
+            </h6>
+            
+            <div class="criterios-container">
+              {% if barema and barema.requisitos %}
+                {% for requisito, faixa in barema.requisitos.items() %}
+                <div class="criterio-item mb-4 p-3 border rounded bg-light">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <label class="form-label fw-bold mb-0">{{ requisito }}</label>
+                    <span class="badge bg-info">{{ faixa['min'] }} - {{ faixa['max'] }}</span>
+                  </div>
+                  
+                  <div class="nota-input-container">
+                    <div class="row align-items-center">
+                      <div class="col-8">
+                        <input type="range" 
+                               class="form-range nota-slider" 
+                               id="slider_{{ loop.index }}"
+                               min="{{ faixa['min'] }}" 
+                               max="{{ faixa['max'] }}" 
+                               step="0.1" 
+                               value="{{ faixa['min'] }}">
+                      </div>
+                      <div class="col-4">
+                        <div class="input-group input-group-sm">
+                          <input type="number" 
+                                 name="{{ requisito }}" 
+                                 id="nota_{{ loop.index }}"
+                                 class="form-control nota-input" 
+                                 min="{{ faixa['min'] }}" 
+                                 max="{{ faixa['max'] }}" 
+                                 step="0.1" 
+                                 value="{{ review.scores[requisito] if review and review.scores else faixa['min'] }}"
+                                 required>
+                          <span class="input-group-text">/ {{ faixa['max'] }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Indicadores visuais -->
+                    <div class="d-flex justify-content-between mt-2">
+                      <small class="text-muted">{{ faixa['min'] }}</small>
+                      <small class="text-success fw-bold nota-display" id="display_{{ loop.index }}">
+                        {{ review.scores[requisito] if review and review.scores else faixa['min'] }}
+                      </small>
+                      <small class="text-muted">{{ faixa['max'] }}</small>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              {% else %}
+                <div class="criterio-item mb-4 p-3 border rounded bg-light">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <label class="form-label fw-bold mb-0">Nota Geral</label>
+                    <span class="badge bg-info">1 - 5</span>
+                  </div>
+                  
+                  <div class="nota-input-container">
+                    <div class="row align-items-center">
+                      <div class="col-8">
+                        <input type="range" 
+                               class="form-range nota-slider" 
+                               id="slider_geral"
+                               min="1" 
+                               max="5" 
+                               step="0.1" 
+                               value="1">
+                      </div>
+                      <div class="col-4">
+                        <div class="input-group input-group-sm">
+                          <input type="number" 
+                                 name="nota" 
+                                 id="nota_geral"
+                                 class="form-control nota-input" 
+                                 min="1" 
+                                 max="5" 
+                                 step="0.1" 
+                                 value="1"
+                                 required>
+                          <span class="input-group-text">/ 5</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Indicadores visuais -->
+                    <div class="d-flex justify-content-between mt-2">
+                      <small class="text-muted">1</small>
+                      <small class="text-success fw-bold nota-display" id="display_geral">1</small>
+                      <small class="text-muted">5</small>
+                    </div>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          
+          <!-- Resumo da pontuação -->
+          {% if barema and barema.requisitos %}
+          <div class="mb-4">
+            <div class="card bg-primary text-white">
+              <div class="card-body py-3">
+                <div class="row text-center">
+                  <div class="col-4">
+                    <div class="h4 mb-1" id="totalPontos">0.0</div>
+                    <small>Total de Pontos</small>
+                  </div>
+                  <div class="col-4">
+                    <div class="h4 mb-1" id="mediaPontos">0.0</div>
+                    <small>Média</small>
+                  </div>
+                  <div class="col-4">
+                    <div class="h4 mb-1" id="percentualPontos">0%</div>
+                    <small>Percentual</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          
+          <!-- Comentários -->
+          <div class="mb-4">
+            <label class="form-label fw-bold d-flex align-items-center">
+              <i class="bi bi-chat-text text-info me-2"></i>
+              Comentários e Observações
+            </label>
+            <textarea name="comentarios" id="comentarios" 
+                      class="form-control" rows="4" 
+                      placeholder="Adicione comentários construtivos sobre o trabalho...">{{ review.comments if review and review.comments }}</textarea>
+            <div class="d-flex justify-content-between mt-1">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Seus comentários ajudam o autor a melhorar
+              </small>
+              <small class="text-muted">
+                <span id="charCount">{{ review.comments|length if review and review.comments else 0 }}</span> caracteres
+              </small>
+            </div>
+          </div>
+          
+          <!-- Opções adicionais -->
+          <div class="mb-4">
+            <div class="card border-0 bg-light">
+              <div class="card-body py-3">
+                <h6 class="mb-3">
+                  <i class="bi bi-gear me-2"></i>Opções de Revisão
+                </h6>
+                
+                <div class="form-check form-switch">
+                  <input type="checkbox" name="mostrar_nome" 
+                         class="form-check-input" id="mostrar_nome"
+                         {{ 'checked' if review and review.show_name }}>
+                  <label class="form-check-label" for="mostrar_nome">
+                    <strong>Identificar-me como revisor</strong>
+                    <br><small class="text-muted">Seu nome será exibido para o autor do trabalho</small>
+                  </label>
+                </div>
+                
+                <div class="form-check form-switch mt-3">
+                  <input type="checkbox" name="revisao_final" 
+                         class="form-check-input" id="revisao_final">
+                  <label class="form-check-label" for="revisao_final">
+                    <strong>Marcar como revisão final</strong>
+                    <br><small class="text-muted">Esta revisão não poderá ser editada posteriormente</small>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Botões de ação -->
+          <div class="d-flex flex-column flex-md-row gap-3">
+            <a href="{{ url_for('peer_review_routes.reviewer_dashboard') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+            <button type="button" class="btn btn-outline-info" id="previewBtn">
+              <i class="bi bi-eye me-1"></i>Prévia
+            </button>
+            <button type="submit" class="btn btn-primary ms-auto" id="submitBtn">
+              <i class="bi bi-send me-1"></i>Enviar Revisão
+            </button>
+          </div>
+        </form>
+      {% endset %}
+      {{ render_card('Formulário de Revisão', revisao_content, '', 'card shadow-sm border-0 h-100') }}
     </div>
-    <div class="form-check mb-3">
-      <input class="form-check-input" type="checkbox" id="mostrar_nome" name="mostrar_nome">
-      <label class="form-check-label" for="mostrar_nome">Exibir meu nome ao autor</label>
-    </div>
-    <button class="btn btn-primary">Enviar Revisão</button>
-  </form>
+  </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('revisaoForm');
+  const sliders = document.querySelectorAll('.nota-slider');
+  const inputs = document.querySelectorAll('.nota-input');
+  const displays = document.querySelectorAll('.nota-display');
+  const totalPontos = document.getElementById('totalPontos');
+  const mediaPontos = document.getElementById('mediaPontos');
+  const percentualPontos = document.getElementById('percentualPontos');
+  const comentarios = document.getElementById('comentarios');
+  const charCount = document.getElementById('charCount');
+  const previewBtn = document.getElementById('previewBtn');
+  
+  // Sincronizar sliders com inputs
+  sliders.forEach((slider, index) => {
+    const input = inputs[index];
+    const display = displays[index];
+    
+    function syncValues(value, source) {
+      const numValue = parseFloat(value);
+      const min = parseFloat(slider.min);
+      const max = parseFloat(slider.max);
+      
+      // Validar e ajustar valor dentro dos limites
+      const validValue = Math.max(min, Math.min(max, numValue || min));
+      
+      slider.value = validValue;
+      input.value = validValue;
+      if (display) display.textContent = validValue.toFixed(1);
+      
+      // Remover classes de validação anteriores
+      input.classList.remove('is-invalid', 'is-valid');
+      
+      // Adicionar feedback visual
+      if (validValue >= min && validValue <= max) {
+        input.classList.add('is-valid');
+      }
+      
+      updateTotals();
+    }
+    
+    slider.addEventListener('input', function() {
+      syncValues(this.value, 'slider');
+    });
+    
+    input.addEventListener('input', function() {
+      syncValues(this.value, 'input');
+    });
+    
+    input.addEventListener('blur', function() {
+      // Validação final quando o campo perde o foco
+      const value = parseFloat(this.value);
+      const min = parseFloat(this.min);
+      const max = parseFloat(this.max);
+      
+      if (isNaN(value) || value < min || value > max) {
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+      }
+    });
+    
+    // Inicializar valores
+    syncValues(input.value, 'init');
+  });
+  
+  // Atualizar totais (apenas se houver múltiplos critérios)
+  function updateTotals() {
+    if (!totalPontos) return;
+    
+    let total = 0;
+    let maxTotal = 0;
+    let count = 0;
+    
+    inputs.forEach(input => {
+      const value = parseFloat(input.value) || 0;
+      const max = parseFloat(input.max) || 5;
+      total += value;
+      maxTotal += max;
+      count++;
+    });
+    
+    const media = count > 0 ? total / count : 0;
+    const percentual = maxTotal > 0 ? (total / maxTotal) * 100 : 0;
+    
+    totalPontos.textContent = total.toFixed(1);
+    mediaPontos.textContent = media.toFixed(1);
+    percentualPontos.textContent = percentual.toFixed(0) + '%';
+    
+    // Atualizar cor baseada na performance
+    const card = totalPontos.closest('.card');
+    card.className = 'card text-white';
+    
+    if (percentual >= 80) {
+      card.classList.add('bg-success');
+    } else if (percentual >= 60) {
+      card.classList.add('bg-warning');
+    } else if (percentual >= 40) {
+      card.classList.add('bg-info');
+    } else {
+      card.classList.add('bg-danger');
+    }
+    
+    // Atualizar barra de progresso se existir
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+      progressBar.style.width = percentual + '%';
+      progressBar.setAttribute('aria-valuenow', percentual);
+      
+      // Atualizar cor da barra
+      progressBar.className = 'progress-bar ';
+      if (percentual >= 80) {
+        progressBar.classList.add('bg-success');
+      } else if (percentual >= 60) {
+        progressBar.classList.add('bg-warning');
+      } else {
+        progressBar.classList.add('bg-danger');
+      }
+    }
+  }
+  
+  // Contador de caracteres
+  if (comentarios && charCount) {
+    comentarios.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
+    });
+  }
+  
+  // Prévia da revisão
+  previewBtn.addEventListener('click', function() {
+    const modal = new bootstrap.Modal(document.getElementById('previewModal') || createPreviewModal());
+    updatePreviewContent();
+    modal.show();
+  });
+  
+  // Criar modal de prévia
+  function createPreviewModal() {
+    const modalHtml = `
+      <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-eye me-2"></i>Prévia da Revisão
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="previewContent">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+              <button type="button" class="btn btn-primary" onclick="document.getElementById('revisaoForm').submit()">
+                <i class="bi bi-check-circle me-1"></i>Confirmar e Enviar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    return document.getElementById('previewModal');
+  }
+  
+  // Atualizar conteúdo da prévia
+  function updatePreviewContent() {
+    const content = document.getElementById('previewContent');
+    let html = '<div class="row g-3">';
+    
+    // Resumo das notas
+    html += '<div class="col-12"><h6 class="text-primary">Pontuação por Critério</h6></div>';
+    
+    inputs.forEach((input, index) => {
+      const label = input.closest('.criterio-item').querySelector('label').textContent;
+      const valor = parseFloat(input.value).toFixed(1);
+      const max = parseFloat(input.max).toFixed(1);
+      const percentual = ((parseFloat(input.value) / parseFloat(input.max)) * 100).toFixed(0);
+      
+      html += `
+        <div class="col-md-6">
+          <div class="border rounded p-2">
+            <small class="text-muted d-block">${label}</small>
+            <strong>${valor} / ${max} (${percentual}%)</strong>
+          </div>
+        </div>
+      `;
+    });
+    
+    // Comentários
+    if (comentarios && comentarios.value.trim()) {
+      html += `
+        <div class="col-12 mt-3">
+          <h6 class="text-primary">Comentários</h6>
+          <div class="border rounded p-3 bg-light">
+            ${comentarios.value.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      `;
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+  }
+  
+  // Validação do código de acesso
+  const codigoAcesso = document.getElementById('codigoAcesso');
+  const verificarCodigo = document.getElementById('verificarCodigo');
+  const codigoFeedback = document.getElementById('codigoFeedback');
+  const codigoValidFeedback = document.getElementById('codigoValidFeedback');
+  let codigoValido = false;
+
+  function validarCodigo() {
+    const codigo = codigoAcesso.value.trim();
+    
+    if (!codigo) {
+      codigoAcesso.classList.remove('is-valid');
+      codigoAcesso.classList.add('is-invalid');
+      codigoFeedback.textContent = 'Por favor, insira o código de acesso.';
+      codigoValido = false;
+      return;
+    }
+    
+    if (codigo.length < 4) {
+      codigoAcesso.classList.remove('is-valid');
+      codigoAcesso.classList.add('is-invalid');
+      codigoFeedback.textContent = 'O código deve ter pelo menos 4 caracteres.';
+      codigoValido = false;
+      return;
+    }
+    
+    // Validação básica do formato do código
+    if (!/^[A-Za-z0-9]+$/.test(codigo)) {
+      codigoAcesso.classList.remove('is-valid');
+      codigoAcesso.classList.add('is-invalid');
+      codigoFeedback.textContent = 'O código deve conter apenas letras e números.';
+      codigoValido = false;
+      return;
+    }
+    
+    // Se passou nas validações básicas
+    codigoAcesso.classList.remove('is-invalid');
+    codigoAcesso.classList.add('is-valid');
+    codigoValido = true;
+  }
+
+  // Validação em tempo real
+  codigoAcesso.addEventListener('input', function() {
+    if (this.value.trim()) {
+      validarCodigo();
+    } else {
+      this.classList.remove('is-valid', 'is-invalid');
+      codigoValido = false;
+    }
+  });
+
+  // Botão de verificação
+  verificarCodigo.addEventListener('click', function() {
+    validarCodigo();
+    if (codigoValido) {
+      // Simular verificação no servidor (pode ser implementado via AJAX)
+      setTimeout(() => {
+        codigoAcesso.classList.add('is-valid');
+        codigoValidFeedback.style.display = 'block';
+      }, 500);
+    }
+  });
+
+  // Validação do formulário
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validar código de acesso
+    validarCodigo();
+    if (!codigoValido) {
+      codigoAcesso.focus();
+      return;
+    }
+    
+    // Validar notas
+    let notasValidas = true;
+    let primeiroErro = null;
+    
+    inputs.forEach(input => {
+      const valor = parseFloat(input.value);
+      const min = parseFloat(input.min);
+      const max = parseFloat(input.max);
+      
+      if (!input.value || isNaN(valor) || valor < min || valor > max) {
+        input.classList.add('is-invalid');
+        notasValidas = false;
+        if (!primeiroErro) primeiroErro = input;
+      } else {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+      }
+    });
+    
+    if (!notasValidas) {
+      if (primeiroErro) primeiroErro.focus();
+      
+      // Mostrar toast de erro
+      const toast = document.createElement('div');
+      toast.className = 'toast align-items-center text-white bg-danger border-0 position-fixed top-0 end-0 m-3';
+      toast.style.zIndex = '9999';
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Por favor, verifique as notas inseridas. Todas devem estar dentro das faixas permitidas.
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      
+      const bsToast = new bootstrap.Toast(toast);
+      bsToast.show();
+      
+      toast.addEventListener('hidden.bs.toast', () => {
+        document.body.removeChild(toast);
+      });
+      
+      return;
+    }
+    
+    // Confirmar envio
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-send me-2"></i>Confirmar Envio
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>Tem certeza que deseja enviar esta revisão?</p>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Atenção:</strong> Após o envio, não será possível alterar as notas e comentários.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="bi bi-x-circle me-1"></i>Cancelar
+            </button>
+            <button type="button" class="btn btn-primary" id="confirmarEnvio">
+              <i class="bi bi-send me-1"></i>Enviar Revisão
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    modal.querySelector('#confirmarEnvio').addEventListener('click', () => {
+      bsModal.hide();
+      this.submit();
+    });
+    
+    modal.addEventListener('hidden.bs.modal', () => {
+      document.body.removeChild(modal);
+    });
+  });
+  
+  // Inicializar totais
+  updateTotals();
+});
+</script>
+
+<style>
+.criterio-item {
+  transition: all 0.3s ease;
+}
+
+.criterio-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.nota-slider {
+  background: linear-gradient(to right, #dc3545 0%, #ffc107 50%, #198754 100%);
+}
+
+.nota-display {
+  font-size: 1.1em;
+}
+
+.content-text {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.document-embed-container {
+  position: relative;
+  background: #f8f9fa;
+}
+
+.trabalho-viewer {
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 991.98px) {
+  .trabalho-viewer {
+    position: static;
+  }
+}
+</style>
 {% endblock %}

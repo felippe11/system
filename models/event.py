@@ -1029,6 +1029,14 @@ class AlunoVisitante(db.Model):
     agendamento = db.relationship(
         "AgendamentoVisita", backref=db.backref("alunos", lazy=True)
     )
+    
+    # Relação many-to-many com materiais de apoio
+    materiais_apoio = db.relationship(
+        "MaterialApoio",
+        secondary="aluno_material_apoio_association",
+        backref=db.backref("alunos_atendidos", lazy=True),
+        lazy="dynamic"
+    )
 
     def __repr__(self):
         return f"<AlunoVisitante {self.nome} - Agendamento {self.agendamento_id}>"
@@ -1367,3 +1375,58 @@ class PresencaAluno(db.Model):
 
     def __repr__(self):
         return f"<PresencaAluno aluno_id={self.aluno_id} presente={self.presente}>"
+
+
+class MaterialApoio(db.Model):
+    """Materiais de apoio para alunos com necessidades especiais."""
+    
+    __tablename__ = "material_apoio"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    ativo = db.Column(db.Boolean, default=True)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relações
+    cliente = db.relationship("Cliente", backref=db.backref("materiais_apoio", lazy=True))
+    
+    def __init__(self, nome, descricao, cliente_id):
+        self.nome = nome
+        self.descricao = descricao
+        self.cliente_id = cliente_id
+    
+    def __repr__(self):
+        return f"<MaterialApoio {self.nome} - Cliente {self.cliente_id}>"
+
+
+# Tabela de associação para materiais de apoio selecionados por aluno
+aluno_material_apoio_association = db.Table(
+    "aluno_material_apoio_association",
+    db.Column("aluno_id", db.Integer, db.ForeignKey("aluno_visitante.id"), primary_key=True),
+    db.Column("material_id", db.Integer, db.ForeignKey("material_apoio.id"), primary_key=True),
+)
+
+
+class NecessidadeEspecial(db.Model):
+    """Registro de necessidades especiais dos alunos visitantes."""
+    
+    __tablename__ = "necessidade_especial"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    aluno_id = db.Column(db.Integer, db.ForeignKey("aluno_visitante.id"), nullable=False, unique=True)
+    tipo = db.Column(db.String(50), nullable=False)  # 'PCD' ou 'Neurodivergente'
+    descricao = db.Column(db.Text, nullable=False)
+    data_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relações
+    aluno = db.relationship("AlunoVisitante", backref=db.backref("necessidade_especial", uselist=False, lazy=True))
+    
+    def __init__(self, aluno_id, tipo, descricao):
+        self.aluno_id = aluno_id
+        self.tipo = tipo
+        self.descricao = descricao
+    
+    def __repr__(self):
+        return f"<NecessidadeEspecial {self.tipo} - Aluno {self.aluno_id}>"

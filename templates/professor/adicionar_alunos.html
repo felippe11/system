@@ -58,7 +58,7 @@
                     <i class="fas fa-user-plus"></i> Adicionar Aluno
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for(add_route, agendamento_id=agendamento.id) }}">
+                    <form method="POST" action="{{ url_for(add_route, agendamento_id=agendamento.id) }}" id="formAdicionarAluno">
                         <div class="mb-3">
                             <label for="nome" class="form-label">Nome do Aluno *</label>
                             <input type="text" class="form-control" id="nome" name="nome" required>
@@ -68,6 +68,50 @@
                             <label for="cpf" class="form-label">CPF (opcional)</label>
                             <input type="text" class="form-control" id="cpf" name="cpf" placeholder="Apenas números">
                             <small class="text-muted">Opcional para menores de idade</small>
+                        </div>
+                        
+                        <!-- Necessidades Especiais -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="tem_necessidade_especial" name="tem_necessidade_especial" onchange="toggleNecessidadeEspecial()">
+                                <label class="form-check-label" for="tem_necessidade_especial">
+                                    <strong>Aluno PCD (Pessoa com Deficiência) ou Neurodivergente</strong>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Campos condicionais para necessidades especiais -->
+                        <div id="camposNecessidadeEspecial" style="display: none;">
+                            <div class="mb-3">
+                                <label for="tipo_necessidade" class="form-label">Tipo de Necessidade *</label>
+                                <select class="form-select" id="tipo_necessidade" name="tipo_necessidade">
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="pcd_fisica">PCD Física</option>
+                                    <option value="pcd_visual">PCD Visual</option>
+                                    <option value="pcd_auditiva">PCD Auditiva</option>
+                                    <option value="pcd_intelectual">PCD Intelectual</option>
+                                    <option value="neurodivergente_autismo">Neurodivergente - Autismo</option>
+                                    <option value="neurodivergente_tdah">Neurodivergente - TDAH</option>
+                                    <option value="neurodivergente_dislexia">Neurodivergente - Dislexia</option>
+                                    <option value="neurodivergente_outros">Neurodivergente - Outros</option>
+                                    <option value="outros">Outros</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="descricao_necessidade" class="form-label">Descrição Detalhada da Condição *</label>
+                                <textarea class="form-control" id="descricao_necessidade" name="descricao_necessidade" rows="3" placeholder="Descreva as necessidades específicas do aluno, adaptações necessárias, etc."></textarea>
+                                <small class="text-muted">Informações importantes para os monitores prepararem o atendimento adequado</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Materiais de Apoio Necessários *</label>
+                                <div id="materiaisApoio" class="border rounded p-3">
+                                    <!-- Materiais serão carregados via JavaScript -->
+                                    <div class="text-muted">Carregando materiais disponíveis...</div>
+                                </div>
+                                <small class="text-muted">Selecione pelo menos um material de apoio</small>
+                            </div>
                         </div>
                         
                         <div class="d-grid">
@@ -116,14 +160,38 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>CPF</th>
+                                <th>Necessidades Especiais</th>
                                 <th class="text-end">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for aluno in alunos %}
                                 <tr>
-                                    <td>{{ aluno.nome }}</td>
+                                    <td>
+                                        {{ aluno.nome }}
+                                        {% if aluno.necessidade_especial %}
+                                            <span class="badge bg-warning text-dark ms-2">
+                                                <i class="fas fa-universal-access"></i> PCD/Neurodivergente
+                                            </span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ aluno.cpf or '-' }}</td>
+                                    <td>
+                                        {% if aluno.necessidade_especial %}
+                                            <div class="small">
+                                                <strong>Tipo:</strong> {{ aluno.necessidade_especial.get_tipo_display() }}<br>
+                                                <strong>Descrição:</strong> {{ aluno.necessidade_especial.descricao[:50] }}{% if aluno.necessidade_especial.descricao|length > 50 %}...{% endif %}<br>
+                                                {% if aluno.materiais_apoio.count() > 0 %}
+                                                    <strong>Materiais:</strong> 
+                                                    {% for material in aluno.materiais_apoio %}
+                                                        <span class="badge bg-info text-dark">{{ material.nome }}</span>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
                                     <td class="text-end">
                                         <form method="POST" action="{{ url_for(remove_route, aluno_id=aluno.id) }}" class="d-inline">
                                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja remover este aluno?')">
@@ -168,4 +236,93 @@
         </a>
     </div>
 </div>
+
+<script>
+function toggleNecessidadeEspecial() {
+    const checkbox = document.getElementById('tem_necessidade_especial');
+    const campos = document.getElementById('camposNecessidadeEspecial');
+    const tipoSelect = document.getElementById('tipo_necessidade');
+    const descricaoTextarea = document.getElementById('descricao_necessidade');
+    
+    if (checkbox.checked) {
+        campos.style.display = 'block';
+        tipoSelect.required = true;
+        descricaoTextarea.required = true;
+        carregarMateriaisApoio();
+    } else {
+        campos.style.display = 'none';
+        tipoSelect.required = false;
+        descricaoTextarea.required = false;
+        tipoSelect.value = '';
+        descricaoTextarea.value = '';
+        limparMateriaisApoio();
+    }
+}
+
+function carregarMateriaisApoio() {
+    const container = document.getElementById('materiaisApoio');
+    
+    // Fazer requisição para buscar materiais de apoio
+    fetch('/api/materiais-apoio')
+        .then(response => response.json())
+        .then(data => {
+            if (data.materiais && data.materiais.length > 0) {
+                let html = '';
+                data.materiais.forEach(material => {
+                    html += `
+                        <div class="form-check">
+                            <input class="form-check-input material-apoio-checkbox" type="checkbox" 
+                                   id="material_${material.id}" name="materiais_apoio" value="${material.id}">
+                            <label class="form-check-label" for="material_${material.id}">
+                                <strong>${material.nome}</strong>
+                                ${material.descricao ? `<br><small class="text-muted">${material.descricao}</small>` : ''}
+                            </label>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="alert alert-warning">Nenhum material de apoio cadastrado. Entre em contato com a administração.</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar materiais de apoio:', error);
+            container.innerHTML = '<div class="alert alert-danger">Erro ao carregar materiais de apoio. Tente novamente.</div>';
+        });
+}
+
+function limparMateriaisApoio() {
+    const container = document.getElementById('materiaisApoio');
+    container.innerHTML = '<div class="text-muted">Carregando materiais disponíveis...</div>';
+}
+
+// Validação do formulário
+document.getElementById('formAdicionarAluno').addEventListener('submit', function(e) {
+    const temNecessidade = document.getElementById('tem_necessidade_especial').checked;
+    
+    if (temNecessidade) {
+        const tipoSelecionado = document.getElementById('tipo_necessidade').value;
+        const descricao = document.getElementById('descricao_necessidade').value.trim();
+        const materiaisSelecionados = document.querySelectorAll('.material-apoio-checkbox:checked');
+        
+        if (!tipoSelecionado) {
+            e.preventDefault();
+            alert('Por favor, selecione o tipo de necessidade especial.');
+            return;
+        }
+        
+        if (!descricao) {
+            e.preventDefault();
+            alert('Por favor, forneça uma descrição detalhada da condição do aluno.');
+            return;
+        }
+        
+        if (materiaisSelecionados.length === 0) {
+            e.preventDefault();
+            alert('Por favor, selecione pelo menos um material de apoio.');
+            return;
+        }
+    }
+});
+</script>
 {% endblock %}

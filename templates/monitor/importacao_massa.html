@@ -225,6 +225,12 @@
         document.getElementById('formImportacao').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // Verificar se há arquivo selecionado
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Por favor, selecione um arquivo antes de importar.');
+                return;
+            }
+            
             const formData = new FormData();
             formData.append('arquivo', fileInput.files[0]);
             
@@ -237,7 +243,12 @@
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na resposta do servidor');
+                }
+                return response.json();
+            })
             .then(data => {
                 // Ocultar barra de progresso
                 progressBar.style.display = 'none';
@@ -246,6 +257,13 @@
                 
                 // Mostrar resultado
                 mostrarResultado(data);
+                
+                // Se sucesso, limpar formulário após 3 segundos
+                if (data.success) {
+                    setTimeout(() => {
+                        limparFormulario();
+                    }, 3000);
+                }
             })
             .catch(error => {
                 console.error('Erro:', error);
@@ -255,7 +273,7 @@
                 
                 mostrarResultado({
                     success: false,
-                    message: 'Erro ao processar arquivo. Tente novamente.'
+                    message: 'Erro ao processar arquivo. Verifique se o arquivo está no formato correto e tente novamente.'
                 });
             });
         });

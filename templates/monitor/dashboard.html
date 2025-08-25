@@ -10,7 +10,7 @@
                 <h2>Dashboard Monitor</h2>
                 <div>
                     <span class="badge bg-success me-2">{{ current_user.nome_completo }}</span>
-                    <a href="{{ url_for('monitor_routes.logout') }}" class="btn btn-outline-danger btn-sm">Sair</a>
+                    <a href="{{ url_for('monitor_routes.monitor_logout') }}" class="btn btn-outline-danger btn-sm">Sair</a>
                 </div>
             </div>
         </div>
@@ -126,7 +126,7 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                            <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
                                                class="btn btn-sm btn-primary">Ver Detalhes</a>
                                         </td>
                                     </tr>
@@ -178,7 +178,7 @@
                                         <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
                                     </td>
                                     <td>
-                                        <a href="{{ url_for('monitor_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" 
+                                        <a href="{{ url_for('monitor_routes.detalhe_agendamento', agendamento_id=agendamento.id) }}" 
                                            class="btn btn-sm btn-outline-primary">Ver Detalhes</a>
                                     </td>
                                 </tr>
