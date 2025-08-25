@@ -203,10 +203,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h5 class="mb-0">Total de trabalhos: <span class="badge bg-primary">{{ submissions|length }}</span></h5>
           <div>
-            <button class="btn btn-outline-primary btn-sm me-2">
-              <i class="fas fa-download me-1"></i>Exportar Lista
-            </button>
-            <button class="btn btn-outline-secondary btn-sm me-2">
+            <button id="btnAtualizar" class="btn btn-outline-secondary btn-sm me-2">
               <i class="fas fa-sync me-1"></i>Atualizar
             </button>
             <button class="btn btn-outline-danger btn-sm" id="btnDescartarTodos" data-bs-toggle="modal" data-bs-target="#modalConfirmarDescarte">
@@ -362,8 +359,10 @@
                 <input type="text" id="filterNivel" class="form-control" data-filter="nivel" placeholder="Ex.: Doutorado" />
               </div>
               <div class="col-md-4">
-                <label for="eventoId" class="form-label">ID do Evento (Auto por Área)</label>
-                <input type="number" id="eventoId" class="form-control" placeholder="Digite o ID do evento" />
+                <label for="eventoId" class="form-label">Evento (Auto por Área)</label>
+                <select id="eventoId" class="form-control">
+                  <option value="">Selecione um evento...</option>
+                </select>
               </div>
             </div>
             <small class="form-text text-muted">
@@ -492,6 +491,12 @@
 <script src="{{ url_for('static', filename='js/submission_import.js') }}"></script>
 <script>
 $(document).ready(function() {
+    
+    // Event listener para o botão Atualizar
+    $('#btnAtualizar').on('click', function() {
+        window.location.reload();
+    });
+    
     // Filtro de revisores por área e nível (presentes no HEAD)
     $('#filterArea, #filterNivel').on('keyup', function() {
         const areaFilter = $('#filterArea').val().toLowerCase();
@@ -607,17 +612,33 @@ $(document).ready(function() {
             success: function(response) {
                 console.log('Resposta recebida:', response);
                 if (response.success) {
-                    const $select = $('#evento_id');
-                    $select.empty().append('<option value="">Selecione um evento...</option>');
+                    // Carregar eventos em ambos os seletores
+                    const $selectEventoId = $('#evento_id');
+                    const $selectEventoIdCamelCase = $('#eventoId');
+                    
+                    // Limpar e adicionar opção padrão para ambos os seletores
+                    [$selectEventoId, $selectEventoIdCamelCase].forEach(function($select) {
+                        if ($select.length > 0) {
+                            $select.empty().append('<option value="">Selecione um evento...</option>');
+                        }
+                    });
                     
                     if (response.eventos.length === 0) {
-                        $select.append('<option value="" disabled>Nenhum evento encontrado</option>');
+                        [$selectEventoId, $selectEventoIdCamelCase].forEach(function($select) {
+                            if ($select.length > 0) {
+                                $select.append('<option value="" disabled>Nenhum evento encontrado</option>');
+                            }
+                        });
                         showAlert('Nenhum evento encontrado. Crie um evento antes de importar trabalhos.', 'warning');
                     } else {
                         response.eventos.forEach(function(evento) {
-                            $select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+                            [$selectEventoId, $selectEventoIdCamelCase].forEach(function($select) {
+                                if ($select.length > 0) {
+                                    $select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+                                }
+                            });
                         });
-                        console.log('Eventos carregados com sucesso:', response.eventos.length);
+                        console.log('Eventos carregados com sucesso em ambos os seletores:', response.eventos.length);
                     }
                 } else {
                     console.error('Erro na resposta:', response.message);
