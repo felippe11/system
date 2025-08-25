@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block title %}Assistente de Texto com IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot"></i> Assistente de Texto com IA
+                        <small class="float-right">
+                            <span class="badge badge-light" id="statusIA">Verificando...</span>
+                        </small>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Abas de Navegação -->
+                    <ul class="nav nav-tabs mb-4" id="assistenteTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="gerar-tab" data-toggle="tab" href="#gerar" role="tab">
+                                <i class="fas fa-magic"></i> Gerar Texto
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="melhorar-tab" data-toggle="tab" href="#melhorar" role="tab">
+                                <i class="fas fa-edit"></i> Melhorar Texto
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="variaveis-tab" data-toggle="tab" href="#variaveis" role="tab">
+                                <i class="fas fa-code"></i> Variáveis Dinâmicas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="templates-tab" data-toggle="tab" href="#templates" role="tab">
+                                <i class="fas fa-file-alt"></i> Templates Sugeridos
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="assistenteTabContent">
+                        <!-- Gerar Texto -->
+                        <div class="tab-pane fade show active" id="gerar" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-cogs"></i> Configurações
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <form id="formGerarTexto">
+                                                <div class="form-group">
+                                                    <label for="tipoEvento">
+                                                        <i class="fas fa-tag"></i> Tipo de Evento
+                                                    </label>
+                                                    <select class="form-control" id="tipoEvento">
+                                                        <option value="workshop">Workshop</option>
+                                                        <option value="curso">Curso</option>
+                                                        <option value="palestra">Palestra</option>
+                                                        <option value="seminario">Seminário</option>
+                                                        <option value="congresso">Congresso</option>
+                                                        <option value="treinamento">Treinamento</option>
+                                                        <option value="conferencia">Conferência</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label for="nomeEvento">
+                                                        <i class="fas fa-calendar"></i> Nome do Evento
+                                                    </label>
+                                                    <input type="text" class="form-control" id="nomeEvento" placeholder="Ex: Workshop de Python Avançado">
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label for="contextoEvento">
+                                                        <i class="fas fa-info-circle"></i> Contexto Adicional
+                                                    </label>
+                                                    <textarea class="form-control" id="contextoEvento" rows="3" placeholder="Descreva brevemente o evento, objetivos, público-alvo..."></textarea>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label for="tomTexto">
+                                                        <i class="fas fa-palette"></i> Tom do Texto
+                                                    </label>
+                                                    <select class="form-control" id="tomTexto">
+                                                        <option value="formal">Formal</option>
+                                                        <option value="academico">Acadêmico</option>
+                                                        <option value="profissional">Profissional</option>
+                                                        <option value="informal">Informal</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <button type="button" class="btn btn-primary btn-block" onclick="gerarTextoIA()">
+                                                    <i class="fas fa-magic"></i> Gerar Texto com IA
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-file-text"></i> Texto Gerado
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="copiarTexto('textoGerado')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-info" onclick="verificarQualidade('textoGerado')">
+                                                    <i class="fas fa-check-circle"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="loadingGerar" class="text-center" style="display: none;">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="sr-only">Gerando...</span>
+                                                </div>
+                                                <p class="mt-2">Gerando texto com IA...</p>
+                                            </div>
+                                            
+                                            <textarea class="form-control" id="textoGerado" rows="10" placeholder="O texto gerado aparecerá aqui..."></textarea>
+                                            
+                                            <div id="sugestoesGerar" class="mt-3" style="display: none;">
+                                                <h6><i class="fas fa-lightbulb"></i> Sugestões:</h6>
+                                                <ul id="listaSugestoesGerar"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Melhorar Texto -->
+                        <div class="tab-pane fade" id="melhorar" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-edit"></i> Texto Original
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <textarea class="form-control" id="textoOriginal" rows="8" placeholder="Cole aqui o texto que deseja melhorar..."></textarea>
+                                            
+                                            <div class="form-group mt-3">
+                                                <label for="objetivoMelhoria">
+                                                    <i class="fas fa-target"></i> Objetivo da Melhoria
+                                                </label>
+                                                <select class="form-control" id="objetivoMelhoria">
+                                                    <option value="melhorar">Melhorar em geral</option>
+                                                    <option value="formalizar">Tornar mais formal</option>
+                                                    <option value="simplificar">Simplificar linguagem</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <button type="button" class="btn btn-success btn-block" onclick="melhorarTextoIA()">
+                                                <i class="fas fa-magic"></i> Melhorar com IA
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-star"></i> Texto Melhorado
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="copiarTexto('textoMelhorado')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning" onclick="compararTextos()">
+                                                    <i class="fas fa-exchange-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="loadingMelhorar" class="text-center" style="display: none;">
+                                                <div class="spinner-border text-success" role="status">
+                                                    <span class="sr-only">Melhorando...</span>
+                                                </div>
+                                                <p class="mt-2">Melhorando texto com IA...</p>
+                                            </div>
+                                            
+                                            <textarea class="form-control" id="textoMelhorado" rows="8" placeholder="O texto melhorado aparecerá aqui..."></textarea>
+                                            
+                                            <div id="melhorias" class="mt-3" style="display: none;">
+                                                <h6><i class="fas fa-check"></i> Melhorias Aplicadas:</h6>
+                                                <ul id="listaMelhorias"></ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Variáveis Dinâmicas -->
+                        <div class="tab-pane fade" id="variaveis" role="tabpanel">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-search"></i> Gerar Sugestões
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="form-group">
+                                                <label for="contextoVariaveis">
+                                                    <i class="fas fa-info-circle"></i> Contexto do Evento
+                                                </label>
+                                                <textarea class="form-control" id="contextoVariaveis" rows="4" placeholder="Descreva o tipo de evento e informações relevantes..."></textarea>
+                                            </div>
+                                            
+                                            <button type="button" class="btn btn-info btn-block" onclick="gerarSugestoesVariaveis()">
+                                                <i class="fas fa-lightbulb"></i> Gerar Sugestões
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mt-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-list"></i> Variáveis Padrão
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="list-group list-group-flush">
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <strong>{NOME_PARTICIPANTE}</strong>
+                                                        <small class="text-muted d-block">Nome completo do participante</small>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarVariavel('{NOME_PARTICIPANTE}')">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <strong>{NOME_EVENTO}</strong>
+                                                        <small class="text-muted d-block">Nome do evento</small>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarVariavel('{NOME_EVENTO}')">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <strong>{CARGA_HORARIA_TOTAL}</strong>
+                                                        <small class="text-muted d-block">Carga horária total</small>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarVariavel('{CARGA_HORARIA_TOTAL}')">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <strong>{DATA_EVENTO}</strong>
+                                                        <small class="text-muted d-block">Data do evento</small>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarVariavel('{DATA_EVENTO}')">
+                                                        <i class="fas fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-magic"></i> Sugestões Personalizadas
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="loadingVariaveis" class="text-center" style="display: none;">
+                                                <div class="spinner-border text-info" role="status">
+                                                    <span class="sr-only">Gerando sugestões...</span>
+                                                </div>
+                                                <p class="mt-2">Gerando sugestões personalizadas...</p>
+                                            </div>
+                                            
+                                            <div id="sugestoesPersonalizadas">
+                                                <p class="text-muted text-center">Digite um contexto e clique em "Gerar Sugestões" para ver variáveis personalizadas.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Templates Sugeridos -->
+                        <div class="tab-pane fade" id="templates" role="tabpanel">
+                            <div class="row" id="templatesContainer">
+                                <!-- Templates serão carregados via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Comparação -->
+<div class="modal fade" id="modalComparacao" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exchange-alt"></i> Comparação de Textos
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-file"></i> Texto Original</h6>
+                        <div class="border p-3" id="textoOriginalComparacao" style="height: 300px; overflow-y: auto;"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-star"></i> Texto Melhorado</h6>
+                        <div class="border p-3" id="textoMelhoradoComparacao" style="height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Qualidade -->
+<div class="modal fade" id="modalQualidade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle"></i> Análise de Qualidade
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="analiseQualidade"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Verificar status da IA ao carregar a página
+$(document).ready(function() {
+    verificarStatusIA();
+    carregarTemplatesSugeridos();
+});
+
+function verificarStatusIA() {
+    $.get('/ai/status', function(data) {
+        if (data.success) {
+            const hfStatus = data.status.huggingface;
+            if (hfStatus.configurado) {
+                $('#statusIA').removeClass('badge-light').addClass('badge-success').text('IA Ativa');
+            } else {
+                $('#statusIA').removeClass('badge-light').addClass('badge-warning').text('Modo Básico');
+            }
+        } else {
+            $('#statusIA').removeClass('badge-light').addClass('badge-danger').text('Indisponível');
+        }
+    }).fail(function() {
+        $('#statusIA').removeClass('badge-light').addClass('badge-danger').text('Erro');
+    });
+}
+
+function gerarTextoIA() {
+    const tipoEvento = $('#tipoEvento').val();
+    const nomeEvento = $('#nomeEvento').val();
+    const contexto = $('#contextoEvento').val();
+    
+    if (!nomeEvento) {
+        alert('Por favor, informe o nome do evento.');
+        return;
+    }
+    
+    $('#loadingGerar').show();
+    $('#textoGerado').val('');
+    $('#sugestoesGerar').hide();
+    
+    $.ajax({
+        url: '/ai/gerar-texto-certificado',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            tipo_evento: tipoEvento,
+            nome_evento: nomeEvento,
+            contexto: contexto
+        }),
+        success: function(response) {
+            $('#loadingGerar').hide();
+            
+            if (response.success) {
+                $('#textoGerado').val(response.texto);
+                
+                if (response.sugestoes && response.sugestoes.length > 0) {
+                    const listaSugestoes = $('#listaSugestoesGerar');
+                    listaSugestoes.empty();
+                    
+                    response.sugestoes.forEach(sugestao => {
+                        listaSugestoes.append(`<li>${sugestao}</li>`);
+                    });
+                    
+                    $('#sugestoesGerar').show();
+                }
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            $('#loadingGerar').hide();
+            alert('Erro ao gerar texto');
+        }
+    });
+}
+
+function melhorarTextoIA() {
+    const textoOriginal = $('#textoOriginal').val();
+    const objetivo = $('#objetivoMelhoria').val();
+    
+    if (!textoOriginal) {
+        alert('Por favor, informe o texto a ser melhorado.');
+        return;
+    }
+    
+    $('#loadingMelhorar').show();
+    $('#textoMelhorado').val('');
+    $('#melhorias').hide();
+    
+    $.ajax({
+        url: '/ai/melhorar-texto',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            texto_original: textoOriginal,
+            objetivo: objetivo
+        }),
+        success: function(response) {
+            $('#loadingMelhorar').hide();
+            
+            if (response.success) {
+                $('#textoMelhorado').val(response.texto_melhorado);
+                
+                if (response.melhorias_aplicadas && response.melhorias_aplicadas.length > 0) {
+                    const listaMelhorias = $('#listaMelhorias');
+                    listaMelhorias.empty();
+                    
+                    response.melhorias_aplicadas.forEach(melhoria => {
+                        listaMelhorias.append(`<li>${melhoria}</li>`);
+                    });
+                    
+                    $('#melhorias').show();
+                }
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            $('#loadingMelhorar').hide();
+            alert('Erro ao melhorar texto');
+        }
+    });
+}
+
+function gerarSugestoesVariaveis() {
+    const contexto = $('#contextoVariaveis').val();
+    
+    $('#loadingVariaveis').show();
+    $('#sugestoesPersonalizadas').html('');
+    
+    $.ajax({
+        url: '/ai/sugestoes-variaveis',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            contexto: contexto
+        }),
+        success: function(response) {
+            $('#loadingVariaveis').hide();
+            
+            if (response.success && response.sugestoes) {
+                let html = '<div class="list-group list-group-flush">';
+                
+                response.sugestoes.forEach(sugestao => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${sugestao.variavel}</strong>
+                                <small class="text-muted d-block">${sugestao.descricao}</small>
+                                <small class="text-info d-block">Exemplo: ${sugestao.exemplo}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="copiarVariavel('${sugestao.variavel}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                $('#sugestoesPersonalizadas').html(html);
+            } else {
+                $('#sugestoesPersonalizadas').html('<p class="text-muted text-center">Nenhuma sugestão encontrada.</p>');
+            }
+        },
+        error: function() {
+            $('#loadingVariaveis').hide();
+            $('#sugestoesPersonalizadas').html('<p class="text-danger text-center">Erro ao gerar sugestões.</p>');
+        }
+    });
+}
+
+function carregarTemplatesSugeridos() {
+    $.get('/ai/templates-sugeridos', function(data) {
+        if (data.success) {
+            let html = '';
+            
+            Object.keys(data.templates).forEach(tipo => {
+                const template = data.templates[tipo];
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-file-alt"></i> ${template.titulo}
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text small">${template.texto}</p>
+                                <div class="mt-2">
+                                    <small class="text-muted">Variáveis recomendadas:</small>
+                                    <div class="mt-1">
+                                        ${template.variaveis_recomendadas.map(v => `<span class="badge badge-secondary mr-1">${v}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn btn-sm btn-primary" onclick="usarTemplate('${tipo}')">
+                                    <i class="fas fa-plus"></i> Usar Template
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copiarTexto('template-${tipo}')">
+                                    <i class="fas fa-copy"></i> Copiar
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="template-${tipo}" style="display: none;">${template.texto}</textarea>
+                    </div>
+                `;
+            });
+            
+            $('#templatesContainer').html(html);
+        }
+    });
+}
+
+function usarTemplate(tipo) {
+    const texto = $(`#template-${tipo}`).val();
+    $('#textoGerado').val(texto);
+    $('#gerar-tab').tab('show');
+}
+
+function copiarTexto(elementId) {
+    const elemento = document.getElementById(elementId);
+    elemento.select();
+    document.execCommand('copy');
+    
+    // Feedback visual
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+    btn.classList.add('btn-success');
+    
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove('btn-success');
+    }, 2000);
+}
+
+function copiarVariavel(variavel) {
+    navigator.clipboard.writeText(variavel).then(() => {
+        // Feedback visual
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+        }, 1500);
+    });
+}
+
+function compararTextos() {
+    const original = $('#textoOriginal').val();
+    const melhorado = $('#textoMelhorado').val();
+    
+    if (!original || !melhorado) {
+        alert('É necessário ter ambos os textos para comparar.');
+        return;
+    }
+    
+    $('#textoOriginalComparacao').text(original);
+    $('#textoMelhoradoComparacao').text(melhorado);
+    $('#modalComparacao').modal('show');
+}
+
+function verificarQualidade(elementId) {
+    const texto = $(`#${elementId}`).val();
+    
+    if (!texto) {
+        alert('Não há texto para analisar.');
+        return;
+    }
+    
+    $.ajax({
+        url: '/ai/verificar-qualidade',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ texto: texto }),
+        success: function(response) {
+            if (response.success) {
+                const analise = response.analise;
+                
+                let html = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Pontuação de Qualidade</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar ${analise.pontuacao_qualidade >= 80 ? 'bg-success' : analise.pontuacao_qualidade >= 60 ? 'bg-warning' : 'bg-danger'}" 
+                                     style="width: ${analise.pontuacao_qualidade}%">
+                                    ${analise.pontuacao_qualidade}%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Métricas</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Palavras:</strong> ${analise.metricas.palavras}</li>
+                                <li><strong>Caracteres:</strong> ${analise.metricas.caracteres}</li>
+                                <li><strong>Frases:</strong> ${analise.metricas.frases}</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                if (analise.problemas_encontrados.length > 0) {
+                    html += `
+                        <h6 class="mt-3">Problemas Encontrados</h6>
+                        <ul class="list-group list-group-flush">
+                            ${analise.problemas_encontrados.map(p => `<li class="list-group-item text-danger"><i class="fas fa-exclamation-triangle"></i> ${p}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+                
+                if (analise.sugestoes_melhoria.length > 0) {
+                    html += `
+                        <h6 class="mt-3">Sugestões de Melhoria</h6>
+                        <ul class="list-group list-group-flush">
+                            ${analise.sugestoes_melhoria.map(s => `<li class="list-group-item text-info"><i class="fas fa-lightbulb"></i> ${s}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+                
+                $('#analiseQualidade').html(html);
+                $('#modalQualidade').modal('show');
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            alert('Erro ao verificar qualidade');
+        }
+    });
+}
+</script>
+{% endblock %}

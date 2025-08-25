@@ -102,15 +102,29 @@
           <ul class="nav nav-tabs nav-justified" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="clientes-tab" data-bs-toggle="tab"
-                      data-bs-target="#clientes" type="button">Clientes</button>
+
+                      data-bs-target="#clientes" type="button">
+                <i class="bi bi-people me-1"></i>Clientes
+              </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="propostas-tab" data-bs-toggle="tab"
-                      data-bs-target="#propostas" type="button">Propostas</button>
+                      data-bs-target="#propostas" type="button">
+                <i class="bi bi-envelope me-1"></i>Propostas
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="certificados-tab" data-bs-toggle="tab"
+                      data-bs-target="#certificados" type="button">
+                <i class="bi bi-award me-1"></i>Certificados
+              </button>
             </li>
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab"
-                      data-bs-target="#financeiro" type="button">Financeiro</button>
+                      data-bs-target="#financeiro" type="button">
+                <i class="bi bi-graph-up me-1"></i>Financeiro
+              </button>
+
             </li>
           </ul>
 
@@ -252,6 +266,202 @@
                 </div>
               </div>
             </div>
+
+
+            <!-- Certificados Tab -->
+            <div class="tab-pane fade" id="certificados">
+              <div class="row g-4">
+                <!-- Estatísticas de Certificados -->
+                <div class="col-12">
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                      <div class="card bg-primary text-white">
+                        <div class="card-body">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 class="card-subtitle mb-1">Templates Ativos</h6>
+                              <h4 class="card-title mb-0" id="totalTemplates">-</h4>
+                            </div>
+                            <i class="bi bi-file-earmark-text fs-2 opacity-50"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="card bg-success text-white">
+                        <div class="card-body">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 class="card-subtitle mb-1">Certificados Emitidos</h6>
+                              <h4 class="card-title mb-0" id="totalCertificados">-</h4>
+                            </div>
+                            <i class="bi bi-award fs-2 opacity-50"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="card bg-info text-white">
+                        <div class="card-body">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 class="card-subtitle mb-1">Declarações Emitidas</h6>
+                              <h4 class="card-title mb-0" id="totalDeclaracoes">-</h4>
+                            </div>
+                            <i class="bi bi-file-text fs-2 opacity-50"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="card bg-warning text-white">
+                        <div class="card-body">
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              <h6 class="card-subtitle mb-1">Eventos Ativos</h6>
+                              <h4 class="card-title mb-0" id="totalEventosAtivos">-</h4>
+                            </div>
+                            <i class="bi bi-calendar-event fs-2 opacity-50"></i>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Menu de Funcionalidades -->
+                <div class="col-12">
+                  <div class="row g-3">
+                    <!-- Templates de Certificados -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-primary">
+                        <div class="card-header bg-primary text-white">
+                          <h6 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Templates de Certificados</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Gerencie templates simples e avançados para certificados de eventos.</p>
+                          <div class="d-grid gap-2">
+                            <a href="{{ url_for('certificado_routes.templates_simples') }}" class="btn btn-outline-primary btn-sm">
+                              <i class="bi bi-file-text me-1"></i>Templates Simples
+                            </a>
+                            <a href="{{ url_for('certificado_routes.templates_avancados') }}" class="btn btn-outline-primary btn-sm">
+                              <i class="bi bi-palette me-1"></i>Templates Avançados
+                            </a>
+                            <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-primary btn-sm">
+                              <i class="bi bi-plus-lg me-1"></i>Criar Template
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Configurações de Certificados -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-success">
+                        <div class="card-header bg-success text-white">
+                          <h6 class="mb-0"><i class="bi bi-gear me-2"></i>Configurações</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Configure critérios e regras para emissão de certificados.</p>
+                          <div class="d-grid gap-2">
+                            <a href="{{ url_for('certificado_routes.config_criterios') }}" class="btn btn-outline-success btn-sm">
+                              <i class="bi bi-list-check me-1"></i>Critérios de Emissão
+                            </a>
+                            <a href="{{ url_for('certificado_routes.config_geral') }}" class="btn btn-outline-success btn-sm">
+                              <i class="bi bi-sliders me-1"></i>Configuração Geral
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Declarações de Comparecimento -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-info">
+                        <div class="card-header bg-info text-white">
+                          <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Declarações</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Gerencie templates e emissão de declarações de comparecimento.</p>
+                          <div class="d-grid gap-2">
+                            <a href="{{ url_for('certificado_routes.declaracoes') }}" class="btn btn-outline-info btn-sm">
+                              <i class="bi bi-file-earmark me-1"></i>Templates de Declarações
+                            </a>
+                            <a href="{{ url_for('certificado_routes.config_regras_declaracoes') }}" class="btn btn-outline-info btn-sm">
+                              <i class="bi bi-gear me-1"></i>Regras de Liberação
+                            </a>
+                            <a href="{{ url_for('certificado_routes.emissao_declaracoes') }}" class="btn btn-info btn-sm">
+                              <i class="bi bi-send me-1"></i>Emitir Declarações
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Assistente de IA -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                          <h6 class="mb-0"><i class="bi bi-robot me-2"></i>Assistente de IA</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Use IA para gerar e melhorar textos de certificados e declarações.</p>
+                          <div class="d-grid gap-2">
+                            <a href="{{ url_for('ai_routes.assistente_texto') }}" class="btn btn-outline-warning btn-sm">
+                              <i class="bi bi-magic me-1"></i>Assistente de Texto
+                            </a>
+                            <a href="{{ url_for('ai_routes.configuracoes') }}" class="btn btn-outline-warning btn-sm">
+                              <i class="bi bi-gear me-1"></i>Configurações de IA
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Histórico e Relatórios -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-secondary">
+                        <div class="card-header bg-secondary text-white">
+                          <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Visualize histórico de emissões e gere relatórios.</p>
+                          <div class="d-grid gap-2">
+                            <a href="{{ url_for('certificado_routes.historico') }}" class="btn btn-outline-secondary btn-sm">
+                              <i class="bi bi-list me-1"></i>Histórico de Emissões
+                            </a>
+                            <a href="{{ url_for('certificado_routes.relatorios') }}" class="btn btn-outline-secondary btn-sm">
+                              <i class="bi bi-graph-up me-1"></i>Relatórios
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Ações Rápidas -->
+                    <div class="col-md-6 col-lg-4">
+                      <div class="card h-100 border-dark">
+                        <div class="card-header bg-dark text-white">
+                          <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Ações Rápidas</h6>
+                        </div>
+                        <div class="card-body">
+                          <p class="card-text small">Acesso rápido às funcionalidades mais utilizadas.</p>
+                          <div class="d-grid gap-2">
+                            <button class="btn btn-outline-dark btn-sm" onclick="gerarCertificadosLote()">
+                              <i class="bi bi-award me-1"></i>Gerar Certificados em Lote
+                            </button>
+                            <button class="btn btn-outline-dark btn-sm" onclick="exportarHistorico()">
+                              <i class="bi bi-download me-1"></i>Exportar Histórico
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
 
             <!-- Financeiro Tab -->
             <div class="tab-pane fade" id="financeiro">
@@ -428,6 +638,152 @@
     }
     
     // Validação para garantir que a taxa diferenciada seja menor que a geral
+
+    
+    // Carregar estatísticas de certificados quando a aba for ativada
+    document.getElementById('certificados-tab').addEventListener('click', function() {
+      carregarEstatisticasCertificados();
+    });
+    
+    function carregarEstatisticasCertificados() {
+      // Carregar templates ativos
+      fetch('/certificado/api/estatisticas/templates')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('totalTemplates').textContent = data.total || '0';
+        })
+        .catch(() => {
+          document.getElementById('totalTemplates').textContent = '0';
+        });
+      
+      // Carregar certificados emitidos
+      fetch('/certificado/api/estatisticas/certificados')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('totalCertificados').textContent = data.total || '0';
+        })
+        .catch(() => {
+          document.getElementById('totalCertificados').textContent = '0';
+        });
+      
+      // Carregar declarações emitidas
+      fetch('/certificado/api/estatisticas/declaracoes')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('totalDeclaracoes').textContent = data.total || '0';
+        })
+        .catch(() => {
+          document.getElementById('totalDeclaracoes').textContent = '0';
+        });
+      
+      // Carregar eventos ativos
+      fetch('/api/eventos/ativos')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('totalEventosAtivos').textContent = data.total || '0';
+        })
+        .catch(() => {
+          document.getElementById('totalEventosAtivos').textContent = '0';
+        });
+    }
+    
+    // Funções das ações rápidas
+    window.gerarCertificadosLote = function() {
+      // Abrir modal para seleção de evento e configurações
+      const modal = new bootstrap.Modal(document.getElementById('modalGerarLote') || criarModalGerarLote());
+      modal.show();
+    };
+    
+    window.exportarHistorico = function() {
+      // Redirecionar para página de histórico com parâmetro de exportação
+      window.open('/certificado/historico?export=true', '_blank');
+    };
+    
+    function criarModalGerarLote() {
+      const modalHtml = `
+        <div class="modal fade" id="modalGerarLote" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Gerar Certificados em Lote</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="formGerarLote">
+                  <div class="mb-3">
+                    <label class="form-label">Selecione o Evento</label>
+                    <select class="form-select" id="eventoLote" required>
+                      <option value="">Carregando eventos...</option>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Template</label>
+                    <select class="form-select" id="templateLote" required>
+                      <option value="">Selecione um evento primeiro</option>
+                    </select>
+                  </div>
+                </form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="executarGeracaoLote()">Gerar Certificados</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Carregar eventos
+      fetch('/api/eventos/listar')
+        .then(response => response.json())
+        .then(data => {
+          const select = document.getElementById('eventoLote');
+          select.innerHTML = '<option value="">Selecione um evento</option>';
+          data.forEach(evento => {
+            select.innerHTML += `<option value="${evento.id}">${evento.nome}</option>`;
+          });
+        });
+      
+      // Carregar templates quando evento for selecionado
+      document.getElementById('eventoLote').addEventListener('change', function() {
+        const eventoId = this.value;
+        const templateSelect = document.getElementById('templateLote');
+        
+        if (eventoId) {
+          fetch(`/certificado/templates_avancados/listar?evento_id=${eventoId}`)
+            .then(response => response.json())
+            .then(data => {
+              templateSelect.innerHTML = '<option value="">Selecione um template</option>';
+              data.forEach(template => {
+                templateSelect.innerHTML += `<option value="${template.id}">${template.nome}</option>`;
+              });
+            });
+        } else {
+          templateSelect.innerHTML = '<option value="">Selecione um evento primeiro</option>';
+        }
+      });
+      
+      return document.getElementById('modalGerarLote');
+    }
+    
+    window.executarGeracaoLote = function() {
+      const eventoId = document.getElementById('eventoLote').value;
+      const templateId = document.getElementById('templateLote').value;
+      
+      if (!eventoId || !templateId) {
+        alert('Por favor, selecione um evento e um template.');
+        return;
+      }
+      
+      // Redirecionar para a página de geração em lote
+      window.open(`/certificado/gerar_lote/${eventoId}?template_id=${templateId}`, '_blank');
+      
+      // Fechar modal
+      bootstrap.Modal.getInstance(document.getElementById('modalGerarLote')).hide();
+    };
+
     taxaDiferenciada.addEventListener('input', validateTaxa);
     taxaGeral.addEventListener('input', validateTaxa);
     

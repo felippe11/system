@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificações de Certificados</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .notificacao-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #dee2e6;
+        }
+        .notificacao-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .notificacao-nao-lida {
+            border-left-color: #007bff;
+            background-color: #f8f9ff;
+        }
+        .notificacao-liberado {
+            border-left-color: #28a745;
+        }
+        .notificacao-rejeitado {
+            border-left-color: #dc3545;
+        }
+        .notificacao-pendente {
+            border-left-color: #ffc107;
+        }
+        .notificacao-lida {
+            opacity: 0.8;
+        }
+        .badge-tipo {
+            font-size: 0.75em;
+        }
+        .data-notificacao {
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+        .filtros-container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .contador-notificacoes {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-bell me-2"></i>Notificações de Certificados</h2>
+                        <p class="text-muted mb-0">Acompanhe o status dos seus certificados</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary" onclick="marcarTodasLidas()">
+                            <i class="fas fa-check-double me-2"></i>Marcar Todas como Lidas
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="location.reload()">
+                            <i class="fas fa-sync-alt me-2"></i>Atualizar
+                        </button>
+                        <a href="{{ url_for('dashboard_routes.dashboard_cliente') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="contador-notificacoes">
+                    <h3 class="mb-1">{{ notificacoes|selectattr('lida', 'equalto', false)|list|length }}</h3>
+                    <small>Não Lidas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-success mb-1">{{ notificacoes|selectattr('tipo', 'equalto', 'liberado')|list|length }}</h3>
+                        <small class="text-muted">Liberados</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-warning mb-1">{{ notificacoes|selectattr('tipo', 'equalto', 'pendente')|list|length }}</h3>
+                        <small class="text-muted">Pendentes</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="text-danger mb-1">{{ notificacoes|selectattr('tipo', 'equalto', 'rejeitado')|list|length }}</h3>
+                        <small class="text-muted">Rejeitados</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filtros-container">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Status de Leitura</label>
+                    <select class="form-select" id="filtroLeitura" onchange="filtrarNotificacoes()">
+                        <option value="">Todas</option>
+                        <option value="nao_lida">Não Lidas</option>
+                        <option value="lida">Lidas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" id="filtroTipo" onchange="filtrarNotificacoes()">
+                        <option value="">Todos os tipos</option>
+                        <option value="liberado">Liberado</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="rejeitado">Rejeitado</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Período</label>
+                    <select class="form-select" id="filtroPeriodo" onchange="filtrarPorPeriodo()">
+                        <option value="">Todos</option>
+                        <option value="hoje">Hoje</option>
+                        <option value="semana">Última Semana</option>
+                        <option value="mes">Último Mês</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="limparFiltros()">
+                        <i class="fas fa-times me-2"></i>Limpar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notificações -->
+        <div class="row" id="notificacoes-container">
+            {% if notificacoes %}
+                {% for notificacao in notificacoes %}
+                <div class="col-12 mb-3 notificacao-item"
+                     data-lida="{{ notificacao.lida|lower }}"
+                     data-tipo="{{ notificacao.tipo }}"
+                     data-data="{{ notificacao.data_criacao.isoformat() }}">
+                    <div class="card notificacao-card notificacao-{{ notificacao.tipo }} {{ 'notificacao-nao-lida' if not notificacao.lida else 'notificacao-lida' }}">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <!-- Ícone e Status -->
+                                <div class="col-md-1 text-center">
+                                    {% if notificacao.tipo == 'liberado' %}
+                                        <i class="fas fa-check-circle fa-2x text-success"></i>
+                                    {% elif notificacao.tipo == 'rejeitado' %}
+                                        <i class="fas fa-times-circle fa-2x text-danger"></i>
+                                    {% elif notificacao.tipo == 'pendente' %}
+                                        <i class="fas fa-clock fa-2x text-warning"></i>
+                                    {% else %}
+                                        <i class="fas fa-bell fa-2x text-info"></i>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Conteúdo -->
+                                <div class="col-md-8">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title mb-0">{{ notificacao.titulo }}</h5>
+                                        <div>
+                                            <span class="badge badge-tipo 
+                                                {% if notificacao.tipo == 'liberado' %}bg-success
+                                                {% elif notificacao.tipo == 'rejeitado' %}bg-danger
+                                                {% elif notificacao.tipo == 'pendente' %}bg-warning text-dark
+                                                {% else %}bg-info{% endif %}">
+                                                {{ notificacao.tipo.title() }}
+                                            </span>
+                                            {% if not notificacao.lida %}
+                                                <span class="badge bg-primary badge-tipo ms-1">Nova</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="card-text mb-2">{{ notificacao.mensagem }}</p>
+                                    
+                                    {% if notificacao.evento %}
+                                    <p class="text-muted mb-1">
+                                        <i class="fas fa-calendar me-2"></i>{{ notificacao.evento.nome }}
+                                    </p>
+                                    {% endif %}
+                                    
+                                    <p class="data-notificacao mb-0">
+                                        <i class="fas fa-clock me-2"></i>
+                                        {{ notificacao.data_criacao.strftime('%d/%m/%Y às %H:%M') }}
+                                    </p>
+                                </div>
+                                
+                                <!-- Ações -->
+                                <div class="col-md-3">
+                                    <div class="d-grid gap-2">
+                                        {% if not notificacao.lida %}
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="marcarComoLida({{ notificacao.id }})">
+                                            <i class="fas fa-check me-2"></i>Marcar como Lida
+                                        </button>
+                                        {% endif %}
+                                        
+                                        {% if notificacao.tipo == 'liberado' and notificacao.solicitacao %}
+                                        <button class="btn btn-sm btn-success" 
+                                                onclick="baixarCertificado({{ notificacao.solicitacao.id }})">
+                                            <i class="fas fa-download me-2"></i>Baixar Certificado
+                                        </button>
+                                        {% endif %}
+                                        
+                                        {% if notificacao.solicitacao %}
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="verDetalhes({{ notificacao.solicitacao.id }})">
+                                            <i class="fas fa-eye me-2"></i>Ver Detalhes
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">Nenhuma notificação</h4>
+                        <p class="text-muted">Você não possui notificações de certificados</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Paginação (se necessário) -->
+        {% if notificacoes|length >= 50 %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="text-center">
+                    <button class="btn btn-outline-primary" onclick="carregarMais()">
+                        <i class="fas fa-plus me-2"></i>Carregar Mais Notificações
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal Detalhes -->
+    <div class="modal fade" id="modalDetalhes" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalhes da Solicitação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detalhesContent">
+                    <!-- Conteúdo será preenchido dinamicamente -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function marcarComoLida(notificacaoId) {
+            fetch(`/certificados/marcar_notificacao_lida/${notificacaoId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao marcar notificação como lida');
+            });
+        }
+        
+        function marcarTodasLidas() {
+            const notificacoesNaoLidas = document.querySelectorAll('[data-lida="false"]');
+            
+            if (notificacoesNaoLidas.length === 0) {
+                alert('Não há notificações não lidas');
+                return;
+            }
+            
+            if (confirm(`Marcar ${notificacoesNaoLidas.length} notificações como lidas?`)) {
+                // Implementar endpoint para marcar todas como lidas
+                alert('Funcionalidade será implementada');
+            }
+        }
+        
+        function baixarCertificado(solicitacaoId) {
+            // Implementar download do certificado
+            alert('Funcionalidade de download será implementada');
+        }
+        
+        function verDetalhes(solicitacaoId) {
+            // Implementar visualização de detalhes
+            alert('Funcionalidade de detalhes será implementada');
+        }
+        
+        function filtrarNotificacoes() {
+            const filtroLeitura = document.getElementById('filtroLeitura').value;
+            const filtroTipo = document.getElementById('filtroTipo').value;
+            const notificacoes = document.querySelectorAll('.notificacao-item');
+            
+            notificacoes.forEach(item => {
+                const lida = item.dataset.lida;
+                const tipo = item.dataset.tipo;
+                
+                let mostrarLeitura = true;
+                if (filtroLeitura === 'lida') {
+                    mostrarLeitura = lida === 'true';
+                } else if (filtroLeitura === 'nao_lida') {
+                    mostrarLeitura = lida === 'false';
+                }
+                
+                const mostrarTipo = !filtroTipo || tipo === filtroTipo;
+                
+                if (mostrarLeitura && mostrarTipo) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        function filtrarPorPeriodo() {
+            const periodo = document.getElementById('filtroPeriodo').value;
+            const notificacoes = document.querySelectorAll('.notificacao-item');
+            const agora = new Date();
+            
+            notificacoes.forEach(item => {
+                const dataNotificacao = new Date(item.dataset.data);
+                let mostrar = true;
+                
+                switch (periodo) {
+                    case 'hoje':
+                        const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+                        mostrar = dataNotificacao >= hoje;
+                        break;
+                    case 'semana':
+                        const semanaAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        mostrar = dataNotificacao >= semanaAtras;
+                        break;
+                    case 'mes':
+                        const mesAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        mostrar = dataNotificacao >= mesAtras;
+                        break;
+                }
+                
+                if (mostrar) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+        
+        function limparFiltros() {
+            document.getElementById('filtroLeitura').value = '';
+            document.getElementById('filtroTipo').value = '';
+            document.getElementById('filtroPeriodo').value = '';
+            
+            const notificacoes = document.querySelectorAll('.notificacao-item');
+            notificacoes.forEach(item => {
+                item.style.display = 'block';
+            });
+        }
+        
+        function carregarMais() {
+            // Implementar carregamento de mais notificações
+            alert('Funcionalidade de carregamento será implementada');
+        }
+        
+        // Auto-refresh a cada 30 segundos para notificações novas
+        setInterval(() => {
+            // Verificar se há novas notificações sem recarregar a página
+            // Implementar se necessário
+        }, 30000);
+    </script>
+</body>
+</html>

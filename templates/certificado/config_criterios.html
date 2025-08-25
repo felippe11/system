@@ -1,0 +1,161 @@
+<!-- Configurações de Critérios de Certificado -->
+<div class="config-section">
+    <h5><i class="fas fa-check-circle"></i> Critérios de Emissão</h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="carga_horaria_minima">
+                    <i class="fas fa-clock"></i> Carga Horária Mínima (horas)
+                </label>
+                <input type="number" class="form-control" id="carga_horaria_minima" 
+                       value="{% if config %}{{ config.carga_horaria_minima or 0 }}{% else %}0{% endif %}" 
+                       min="0" step="1">
+                <small class="text-muted">Mínimo de horas necessárias para emitir o certificado</small>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="percentual_presenca_minimo">
+                    <i class="fas fa-percentage"></i> Percentual de Presença Mínimo (%)
+                </label>
+                <input type="number" class="form-control" id="percentual_presenca_minimo" 
+                       value="{% if config %}{{ config.percentual_presenca_minimo or 0 }}{% else %}0{% endif %}" 
+                       min="0" max="100" step="1">
+                <small class="text-muted">Percentual mínimo de presença nas atividades</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="exigir_checkin_minimo" 
+                   {% if config and config.exigir_checkin_minimo %}checked{% endif %}>
+            <label class="custom-control-label" for="exigir_checkin_minimo">
+                <strong>Exigir Check-in Mínimo</strong>
+                <small class="text-muted d-block">Participante deve ter feito check-in em pelo menos uma atividade</small>
+            </label>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="validar_oficinas_obrigatorias" 
+                   {% if config and config.validar_oficinas_obrigatorias %}checked{% endif %}>
+            <label class="custom-control-label" for="validar_oficinas_obrigatorias">
+                <strong>Validar Oficinas Obrigatórias</strong>
+                <small class="text-muted d-block">Verifica se participante completou oficinas marcadas como obrigatórias</small>
+            </label>
+        </div>
+    </div>
+    
+    <!-- Critérios Avançados -->
+    <div class="form-group mt-4">
+        <h6><i class="fas fa-sliders-h"></i> Critérios Avançados</h6>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="min_checkins">Mínimo de Check-ins</label>
+                    <input type="number" class="form-control" id="min_checkins" 
+                           value="{% if config %}{{ config.min_checkins or 1 }}{% else %}1{% endif %}" 
+                           min="1" step="1">
+                    <small class="text-muted">Número mínimo de check-ins necessários</small>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="min_oficinas_participadas">Mínimo de Oficinas</label>
+                    <input type="number" class="form-control" id="min_oficinas_participadas" 
+                           value="{% if config %}{{ config.min_oficinas_participadas or 0 }}{% else %}0{% endif %}" 
+                           min="0" step="1">
+                    <small class="text-muted">Número mínimo de oficinas participadas</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="exigir_atividades_obrigatorias" 
+                       {% if config and config.exigir_atividades_obrigatorias %}checked{% endif %}>
+                <label class="custom-control-label" for="exigir_atividades_obrigatorias">
+                    <strong>Exigir Participação em Atividades Obrigatórias</strong>
+                    <small class="text-muted d-block">Participante deve ter participado de todas as atividades marcadas como obrigatórias</small>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="template_geral_id">
+            <i class="fas fa-file-alt"></i> Template para Certificado Geral
+        </label>
+        <select class="form-control" id="template_geral_id">
+            <option value="">Usar template padrão</option>
+            <!-- Templates serão carregados via JavaScript -->
+        </select>
+        <small class="text-muted">Template específico para certificados gerais do evento</small>
+    </div>
+    
+    <!-- Configurações de Aprovação -->
+    <div class="form-group mt-4">
+        <h6><i class="fas fa-user-check"></i> Configurações de Aprovação</h6>
+        
+        <div class="form-group">
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="requer_aprovacao_manual" 
+                       {% if config and config.requer_aprovacao_manual %}checked{% endif %}>
+                <label class="custom-control-label" for="requer_aprovacao_manual">
+                    <strong>Requer Aprovação Manual</strong>
+                    <small class="text-muted d-block">Todos os certificados precisam ser aprovados manualmente</small>
+                </label>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <div class="custom-control custom-switch">
+                <input type="checkbox" class="custom-control-input" id="aprovacao_automatica_criterios" 
+                       {% if config and config.aprovacao_automatica_criterios %}checked{% endif %}>
+                <label class="custom-control-label" for="aprovacao_automatica_criterios">
+                    <strong>Aprovação Automática se Critérios Atendidos</strong>
+                    <small class="text-muted d-block">Aprova automaticamente se todos os critérios forem atendidos</small>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="alert alert-warning mt-3">
+        <i class="fas fa-exclamation-triangle"></i>
+        <strong>Atenção:</strong> Critérios muito restritivos podem impedir a emissão de certificados. Configure com cuidado.
+    </div>
+    
+    <div class="alert alert-info mt-3">
+        <i class="fas fa-lightbulb"></i>
+        <strong>Dica:</strong> Use as regras avançadas para criar condições mais complexas e flexíveis de liberação de certificados.
+    </div>
+</div>
+
+<script>
+// Carregar templates disponíveis
+$(document).ready(function() {
+    $.get('/certificado/templates_avancados/listar', function(data) {
+        if (data.success) {
+            const select = $('#template_geral_id');
+            data.templates.forEach(function(template) {
+                const option = $('<option></option>')
+                    .attr('value', template.id)
+                    .text(template.nome);
+                
+                {% if config and config.template_geral_id %}
+                if (template.id == {{ config.template_geral_id }}) {
+                    option.attr('selected', true);
+                }
+                {% endif %}
+                
+                select.append(option);
+            });
+        }
+    });
+});
+</script>

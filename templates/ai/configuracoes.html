@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações da IA{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-gradient-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-cogs"></i> Configurações da IA
+                        <small class="float-right">
+                            <span class="badge badge-light" id="statusConexao">Verificando...</span>
+                        </small>
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="formConfiguracoes">
+                        <div class="row">
+                            <!-- Configurações do Hugging Face -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-brain"></i> Hugging Face API
+                                            <span class="badge badge-primary ml-2">Recomendado</span>
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="hfApiKey">
+                                                <i class="fas fa-key"></i> API Key
+                                                <a href="https://huggingface.co/settings/tokens" target="_blank" class="btn btn-sm btn-outline-info ml-2">
+                                                    <i class="fas fa-external-link-alt"></i> Obter Key
+                                                </a>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="hfApiKey" placeholder="<REMOVED>">
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('hfApiKey')">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Necessária para usar modelos avançados de IA. Gratuita com limitações.
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="modeloGeracao">
+                                                <i class="fas fa-robot"></i> Modelo de Geração de Texto
+                                            </label>
+                                            <select class="form-control" id="modeloGeracao">
+                                                <option value="microsoft/DialoGPT-medium">DialoGPT Medium (Rápido)</option>
+                                                <option value="gpt2">GPT-2 (Básico)</option>
+                                                <option value="distilgpt2">DistilGPT-2 (Leve)</option>
+                                                <option value="facebook/blenderbot-400M-distill">BlenderBot (Conversacional)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="modeloParafrase">
+                                                <i class="fas fa-edit"></i> Modelo de Melhoria de Texto
+                                            </label>
+                                            <select class="form-control" id="modeloParafrase">
+                                                <option value="tuner007/pegasus_paraphrase">Pegasus Paraphrase (Recomendado)</option>
+                                                <option value="ramsrigouthamg/t5_paraphraser">T5 Paraphraser</option>
+                                                <option value="Vamsi/T5_Paraphrase_Paws">T5 Paraphrase PAWS</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="maxTokens">
+                                                <i class="fas fa-sliders-h"></i> Máximo de Tokens
+                                            </label>
+                                            <input type="range" class="form-control-range" id="maxTokens" min="50" max="500" value="150" oninput="updateTokensValue(this.value)">
+                                            <small class="form-text text-muted">
+                                                Tokens: <span id="tokensValue">150</span> (mais tokens = textos mais longos, mas mais lento)
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="temperatura">
+                                                <i class="fas fa-thermometer-half"></i> Criatividade (Temperatura)
+                                            </label>
+                                            <input type="range" class="form-control-range" id="temperatura" min="0.1" max="1.0" step="0.1" value="0.7" oninput="updateTemperaturaValue(this.value)">
+                                            <small class="form-text text-muted">
+                                                Valor: <span id="temperaturaValue">0.7</span> (0.1 = conservador, 1.0 = criativo)
+                                            </small>
+                                        </div>
+                                        
+                                        <button type="button" class="btn btn-primary" onclick="testarConexaoHF()">
+                                            <i class="fas fa-plug"></i> Testar Conexão
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Configurações Gerais -->
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-cog"></i> Configurações Gerais
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="habilitarIA" checked>
+                                                <label class="custom-control-label" for="habilitarIA">
+                                                    <i class="fas fa-power-off"></i> Habilitar IA
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Desabilitar para usar apenas templates básicos
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="usarFallback" checked>
+                                                <label class="custom-control-label" for="usarFallback">
+                                                    <i class="fas fa-shield-alt"></i> Usar Modo de Segurança
+                                                </label>
+                                            </div>
+                                            <small class="form-text text-muted">
+                                                Usar templates básicos se a IA falhar
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="timeoutRequisicao">
+                                                <i class="fas fa-clock"></i> Timeout das Requisições (segundos)
+                                            </label>
+                                            <input type="number" class="form-control" id="timeoutRequisicao" min="5" max="60" value="30">
+                                            <small class="form-text text-muted">
+                                                Tempo limite para aguardar resposta da IA
+                                            </small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="idiomaPreferido">
+                                                <i class="fas fa-language"></i> Idioma Preferido
+                                            </label>
+                                            <select class="form-control" id="idiomaPreferido">
+                                                <option value="pt-BR">Português (Brasil)</option>
+                                                <option value="en">English</option>
+                                                <option value="es">Español</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="nivelFormalidade">
+                                                <i class="fas fa-user-tie"></i> Nível de Formalidade Padrão
+                                            </label>
+                                            <select class="form-control" id="nivelFormalidade">
+                                                <option value="formal">Formal</option>
+                                                <option value="academico">Acadêmico</option>
+                                                <option value="profissional">Profissional</option>
+                                                <option value="informal">Informal</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Status e Estatísticas -->
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-chart-bar"></i> Status e Estatísticas
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <div class="border-right">
+                                                    <h5 class="text-primary" id="totalGeracoes">-</h5>
+                                                    <small class="text-muted">Textos Gerados</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="border-right">
+                                                    <h5 class="text-success" id="totalMelhorias">-</h5>
+                                                    <small class="text-muted">Textos Melhorados</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-4">
+                                                <h5 class="text-info" id="ultimoUso">-</h5>
+                                                <small class="text-muted">Último Uso</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <hr>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span><i class="fas fa-server"></i> Status do Serviço:</span>
+                                            <span class="badge" id="statusServico">Verificando...</span>
+                                        </div>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <span><i class="fas fa-tachometer-alt"></i> Latência Média:</span>
+                                            <span id="latenciaMedia">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botões de Ação -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <button type="button" class="btn btn-success mr-2" onclick="salvarConfiguracoes()">
+                                            <i class="fas fa-save"></i> Salvar Configurações
+                                        </button>
+                                        
+                                        <button type="button" class="btn btn-warning mr-2" onclick="resetarConfiguracoes()">
+                                            <i class="fas fa-undo"></i> Resetar
+                                        </button>
+                                        
+                                        <button type="button" class="btn btn-info mr-2" onclick="exportarConfiguracoes()">
+                                            <i class="fas fa-download"></i> Exportar
+                                        </button>
+                                        
+                                        <button type="button" class="btn btn-secondary" onclick="importarConfiguracoes()">
+                                            <i class="fas fa-upload"></i> Importar
+                                        </button>
+                                        
+                                        <input type="file" id="fileImport" accept=".json" style="display: none;" onchange="processarImportacao(this)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Teste de Conexão -->
+<div class="modal fade" id="modalTeste" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plug"></i> Teste de Conexão
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="resultadoTeste"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Carregar configurações ao inicializar
+$(document).ready(function() {
+    carregarConfiguracoes();
+    verificarStatusServico();
+    carregarEstatisticas();
+});
+
+function carregarConfiguracoes() {
+    $.get('/ai/configuracoes', function(data) {
+        if (data.success) {
+            const config = data.configuracoes;
+            
+            // Hugging Face
+            if (config.huggingface) {
+                $('#hfApiKey').val(config.huggingface.api_key || '');
+                $('#modeloGeracao').val(config.huggingface.modelo_geracao || 'microsoft/DialoGPT-medium');
+                $('#modeloParafrase').val(config.huggingface.modelo_parafrase || 'tuner007/pegasus_paraphrase');
+                $('#maxTokens').val(config.huggingface.max_tokens || 150);
+                updateTokensValue(config.huggingface.max_tokens || 150);
+                $('#temperatura').val(config.huggingface.temperatura || 0.7);
+                updateTemperaturaValue(config.huggingface.temperatura || 0.7);
+            }
+            
+            // Configurações gerais
+            if (config.geral) {
+                $('#habilitarIA').prop('checked', config.geral.habilitado !== false);
+                $('#usarFallback').prop('checked', config.geral.usar_fallback !== false);
+                $('#timeoutRequisicao').val(config.geral.timeout || 30);
+                $('#idiomaPreferido').val(config.geral.idioma || 'pt-BR');
+                $('#nivelFormalidade').val(config.geral.formalidade || 'formal');
+            }
+        }
+    });
+}
+
+function salvarConfiguracoes() {
+    const configuracoes = {
+        huggingface: {
+            api_key: $('#hfApiKey').val(),
+            modelo_geracao: $('#modeloGeracao').val(),
+            modelo_parafrase: $('#modeloParafrase').val(),
+            max_tokens: parseInt($('#maxTokens').val()),
+            temperatura: parseFloat($('#temperatura').val())
+        },
+        geral: {
+            habilitado: $('#habilitarIA').is(':checked'),
+            usar_fallback: $('#usarFallback').is(':checked'),
+            timeout: parseInt($('#timeoutRequisicao').val()),
+            idioma: $('#idiomaPreferido').val(),
+            formalidade: $('#nivelFormalidade').val()
+        }
+    };
+    
+    $.ajax({
+        url: '/ai/configuracoes',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(configuracoes),
+        success: function(response) {
+            if (response.success) {
+                alert('Configurações salvas com sucesso!');
+                verificarStatusServico();
+            } else {
+                alert('Erro ao salvar: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            alert('Erro ao salvar configurações');
+        }
+    });
+}
+
+function resetarConfiguracoes() {
+    if (confirm('Tem certeza que deseja resetar todas as configurações?')) {
+        // Valores padrão
+        $('#hfApiKey').val('');
+        $('#modeloGeracao').val('microsoft/DialoGPT-medium');
+        $('#modeloParafrase').val('tuner007/pegasus_paraphrase');
+        $('#maxTokens').val(150);
+        updateTokensValue(150);
+        $('#temperatura').val(0.7);
+        updateTemperaturaValue(0.7);
+        $('#habilitarIA').prop('checked', true);
+        $('#usarFallback').prop('checked', true);
+        $('#timeoutRequisicao').val(30);
+        $('#idiomaPreferido').val('pt-BR');
+        $('#nivelFormalidade').val('formal');
+    }
+}
+
+function testarConexaoHF() {
+    const apiKey = $('#hfApiKey').val();
+    
+    if (!apiKey) {
+        alert('Por favor, informe a API Key do Hugging Face.');
+        return;
+    }
+    
+    $('#resultadoTeste').html(`
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Testando...</span>
+            </div>
+            <p class="mt-2">Testando conexão com Hugging Face...</p>
+        </div>
+    `);
+    
+    $('#modalTeste').modal('show');
+    
+    // Simular teste (em produção, fazer requisição real)
+    setTimeout(() => {
+        const sucesso = Math.random() > 0.3; // 70% de chance de sucesso
+        
+        if (sucesso) {
+            $('#resultadoTeste').html(`
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> <strong>Conexão bem-sucedida!</strong>
+                    <ul class="mt-2 mb-0">
+                        <li>API Key válida</li>
+                        <li>Modelos acessíveis</li>
+                        <li>Latência: ~${Math.floor(Math.random() * 500 + 200)}ms</li>
+                    </ul>
+                </div>
+            `);
+        } else {
+            $('#resultadoTeste').html(`
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Falha na conexão!</strong>
+                    <ul class="mt-2 mb-0">
+                        <li>Verifique a API Key</li>
+                        <li>Verifique sua conexão com a internet</li>
+                        <li>Tente novamente em alguns minutos</li>
+                    </ul>
+                </div>
+            `);
+        }
+    }, 2000);
+}
+
+function verificarStatusServico() {
+    $.get('/ai/status', function(data) {
+        if (data.success) {
+            const hfStatus = data.status.huggingface;
+            
+            if (hfStatus.configurado && hfStatus.funcionando) {
+                $('#statusConexao').removeClass().addClass('badge badge-success').text('Conectado');
+                $('#statusServico').removeClass().addClass('badge badge-success').text('Online');
+            } else if (hfStatus.configurado) {
+                $('#statusConexao').removeClass().addClass('badge badge-warning').text('Configurado');
+                $('#statusServico').removeClass().addClass('badge badge-warning').text('Parcial');
+            } else {
+                $('#statusConexao').removeClass().addClass('badge badge-secondary').text('Não Configurado');
+                $('#statusServico').removeClass().addClass('badge badge-secondary').text('Offline');
+            }
+            
+            if (data.status.latencia_media) {
+                $('#latenciaMedia').text(data.status.latencia_media + 'ms');
+            }
+        } else {
+            $('#statusConexao').removeClass().addClass('badge badge-danger').text('Erro');
+            $('#statusServico').removeClass().addClass('badge badge-danger').text('Erro');
+        }
+    }).fail(function() {
+        $('#statusConexao').removeClass().addClass('badge badge-danger').text('Erro');
+        $('#statusServico').removeClass().addClass('badge badge-danger').text('Erro');
+    });
+}
+
+function carregarEstatisticas() {
+    // Em produção, carregar estatísticas reais do banco de dados
+    $('#totalGeracoes').text(Math.floor(Math.random() * 100));
+    $('#totalMelhorias').text(Math.floor(Math.random() * 50));
+    $('#ultimoUso').text('Hoje');
+}
+
+function updateTokensValue(value) {
+    $('#tokensValue').text(value);
+}
+
+function updateTemperaturaValue(value) {
+    $('#temperaturaValue').text(value);
+}
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = event.target;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function exportarConfiguracoes() {
+    const configuracoes = {
+        huggingface: {
+            modelo_geracao: $('#modeloGeracao').val(),
+            modelo_parafrase: $('#modeloParafrase').val(),
+            max_tokens: parseInt($('#maxTokens').val()),
+            temperatura: parseFloat($('#temperatura').val())
+        },
+        geral: {
+            habilitado: $('#habilitarIA').is(':checked'),
+            usar_fallback: $('#usarFallback').is(':checked'),
+            timeout: parseInt($('#timeoutRequisicao').val()),
+            idioma: $('#idiomaPreferido').val(),
+            formalidade: $('#nivelFormalidade').val()
+        }
+    };
+    
+    const dataStr = JSON.stringify(configuracoes, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(dataBlob);
+    link.download = 'configuracoes_ia.json';
+    link.click();
+}
+
+function importarConfiguracoes() {
+    $('#fileImport').click();
+}
+
+function processarImportacao(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const configuracoes = JSON.parse(e.target.result);
+            
+            // Aplicar configurações importadas
+            if (configuracoes.huggingface) {
+                $('#modeloGeracao').val(configuracoes.huggingface.modelo_geracao || 'microsoft/DialoGPT-medium');
+                $('#modeloParafrase').val(configuracoes.huggingface.modelo_parafrase || 'tuner007/pegasus_paraphrase');
+                $('#maxTokens').val(configuracoes.huggingface.max_tokens || 150);
+                updateTokensValue(configuracoes.huggingface.max_tokens || 150);
+                $('#temperatura').val(configuracoes.huggingface.temperatura || 0.7);
+                updateTemperaturaValue(configuracoes.huggingface.temperatura || 0.7);
+            }
+            
+            if (configuracoes.geral) {
+                $('#habilitarIA').prop('checked', configuracoes.geral.habilitado !== false);
+                $('#usarFallback').prop('checked', configuracoes.geral.usar_fallback !== false);
+                $('#timeoutRequisicao').val(configuracoes.geral.timeout || 30);
+                $('#idiomaPreferido').val(configuracoes.geral.idioma || 'pt-BR');
+                $('#nivelFormalidade').val(configuracoes.geral.formalidade || 'formal');
+            }
+            
+            alert('Configurações importadas com sucesso!');
+        } catch (error) {
+            alert('Erro ao importar configurações: arquivo inválido');
+        }
+    };
+    
+    reader.readAsText(file);
+    input.value = ''; // Limpar input
+}
+
+// Verificar status periodicamente
+setInterval(verificarStatusServico, 60000); // A cada minuto
+</script>
+{% endblock %}

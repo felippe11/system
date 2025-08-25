@@ -71,6 +71,14 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
+
+          <button class="nav-link" id="certificados-tab" data-bs-toggle="tab"
+                  data-bs-target="#certificados" type="button">
+            <i class="bi bi-award me-1"></i> Certificados
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+
           <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab"
                   data-bs-target="#configuracoes" type="button">
             <i class="bi bi-gear-fill me-1"></i> Configurações
@@ -881,7 +889,351 @@
 
 <!-- /ABA 3: CRIAR NOVO -->
 
+
+  <!-- ABA 4: CERTIFICADOS -->
+  <div class="tab-pane fade" id="certificados" role="tabpanel">
+    <!-- Menu de navegação para categorias de certificados -->
+    <div class="bg-light p-2 rounded-3 mb-4 shadow-sm">
+      <div class="nav nav-pills nav-fill config-nav">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-cert-templates" type="button">
+          <i class="bi bi-file-earmark-richtext"></i> Templates
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-cert-config" type="button">
+          <i class="bi bi-gear"></i> Configurações
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-cert-declaracoes" type="button">
+          <i class="bi bi-file-earmark-text"></i> Declarações
+        </button>
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-cert-historico" type="button">
+          <i class="bi bi-clock-history"></i> Histórico
+        </button>
+      </div>
+    </div>
+
+    <div class="tab-content">
+      <!-- TAB: Templates de Certificados -->
+      <div class="tab-pane fade show active" id="tab-cert-templates">
+        <div class="row g-4">
+          <!-- Templates Simples -->
+          <div class="col-md-6">
+            <div class="card border-primary border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-primary text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-file-earmark-text me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Templates Simples</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Editor básico com placeholders predefinidos para criação rápida de certificados.</p>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('certificado_routes.templates_certificado') }}" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-text me-2"></i>Gerenciar Templates Simples
+                  </a>
+                  <a href="{{ url_for('certificado_routes.criar_template') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-plus-lg me-2"></i>Novo Template Simples
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Templates Avançados -->
+          <div class="col-md-6">
+            <div class="card border-success border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-success text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-file-earmark-richtext me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Templates Avançados</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Editor visual drag-and-drop com controle total de layout e elementos personalizados.</p>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('certificado_routes.listar_templates_avancados') }}" class="btn btn-success">
+                    <i class="bi bi-file-earmark-richtext me-2"></i>Gerenciar Templates Avançados
+                  </a>
+                  <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-outline-success">
+                    <i class="bi bi-plus-lg me-2"></i>Novo Template Avançado
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variáveis Dinâmicas -->
+          <div class="col-md-6">
+            <div class="card border-info border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-info text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-braces me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Variáveis Dinâmicas</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Crie variáveis personalizadas para inserção automática de dados nos certificados.</p>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-info" onclick="gerenciarVariaveis()">
+                    <i class="bi bi-braces me-2"></i>Gerenciar Variáveis
+                  </button>
+                  <button class="btn btn-outline-info" onclick="criarVariavel()">
+                    <i class="bi bi-plus-lg me-2"></i>Nova Variável
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Personalização Visual -->
+          <div class="col-md-6">
+            <div class="card border-warning border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-warning text-white">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-palette me-2 fs-5"></i>
+                  <h5 class="fw-bold mb-0">Personalização Visual</h5>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Upload de fundos, logos e elementos visuais para personalizar seus certificados.</p>
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('certificado_routes.upload_personalizacao_certificado') }}" class="btn btn-warning">
+                    <i class="bi bi-palette me-2"></i>Personalizar Aparência
+                  </a>
+                  <button class="btn btn-outline-warning" onclick="gerenciarAssets()">
+                    <i class="bi bi-images me-2"></i>Gerenciar Assets
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Configurações de Certificados -->
+      <div class="tab-pane fade" id="tab-cert-config">
+        <div class="row g-4">
+          <!-- Seletor de Evento -->
+          <div class="col-12">
+            <div class="card border-primary border-top border-4 shadow-sm">
+              <div class="card-header bg-primary text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-calendar-event me-2"></i>Selecionar Evento</h5>
+              </div>
+              <div class="card-body">
+                <div class="row align-items-end">
+                  <div class="col-md-8">
+                    <label for="selectEventoCertificado" class="form-label">Evento para Configuração</label>
+                    <select id="selectEventoCertificado" class="form-select">
+                      <option value="">-- Selecione um evento --</option>
+                      {% for evento in eventos %}
+                        <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <button class="btn btn-primary w-100" onclick="carregarConfiguracoesCertificado()">
+                      <i class="bi bi-gear me-2"></i>Carregar Configurações
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Configurações de Liberação -->
+          <div class="col-md-6">
+            <div class="card border-success border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-success text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-unlock me-2"></i>Liberação de Certificados</h5>
+              </div>
+              <div class="card-body">
+                <div id="configLiberacao">
+                  <p class="text-muted">Selecione um evento para configurar as opções de liberação.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Critérios de Emissão -->
+          <div class="col-md-6">
+            <div class="card border-warning border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-warning text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-check-circle me-2"></i>Critérios de Emissão</h5>
+              </div>
+              <div class="card-body">
+                <div id="configCriterios">
+                  <p class="text-muted">Selecione um evento para configurar os critérios de emissão.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Certificado Geral do Evento -->
+          <div class="col-12">
+            <div class="card border-info border-top border-4 shadow-sm">
+              <div class="card-header bg-info text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-award me-2"></i>Certificado Geral do Evento</h5>
+              </div>
+              <div class="card-body">
+                <div id="configCertificadoGeral">
+                  <p class="text-muted">Selecione um evento para configurar o certificado geral.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Declarações de Comparecimento -->
+      <div class="tab-pane fade" id="tab-cert-declaracoes">
+        <div class="row g-4">
+          <!-- Templates de Declaração -->
+          <div class="col-md-6">
+            <div class="card border-primary border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-primary text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2"></i>Templates de Declaração</h5>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Gerencie templates para declarações de comparecimento.</p>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary" onclick="gerenciarTemplatesDeclaracao()">
+                    <i class="bi bi-file-earmark-text me-2"></i>Gerenciar Templates
+                  </button>
+                  <button class="btn btn-outline-primary" onclick="criarTemplateDeclaracao()">
+                    <i class="bi bi-plus-lg me-2"></i>Novo Template
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Configurações de Declaração -->
+          <div class="col-md-6">
+            <div class="card border-success border-top border-4 shadow-sm h-100">
+              <div class="card-header bg-success text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-gear me-2"></i>Configurações de Liberação</h5>
+              </div>
+              <div class="card-body">
+                <p class="text-muted mb-3">Configure regras para emissão de declarações.</p>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-success" onclick="configurarDeclaracoes()">
+                    <i class="bi bi-gear me-2"></i>Configurar Regras
+                  </button>
+                  <button class="btn btn-outline-success" onclick="gerenciarPermissoes()">
+                    <i class="bi bi-shield-check me-2"></i>Gerenciar Permissões
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Emissão de Declarações -->
+          <div class="col-12">
+            <div class="card border-info border-top border-4 shadow-sm">
+              <div class="card-header bg-info text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-check me-2"></i>Emissão de Declarações</h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-4">
+                    <div class="d-grid">
+                      <button class="btn btn-info" onclick="emitirDeclaracaoIndividual()">
+                        <i class="bi bi-person me-2"></i>Emissão Individual
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-grid">
+                      <button class="btn btn-outline-info" onclick="emitirDeclaracaoLote()">
+                        <i class="bi bi-people me-2"></i>Emissão em Lote
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="d-grid">
+                      <button class="btn btn-outline-info" onclick="liberarDeclaracaoParticipantes()">
+                        <i class="bi bi-unlock me-2"></i>Liberar para Participantes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Histórico -->
+      <div class="tab-pane fade" id="tab-cert-historico">
+        <div class="row g-4">
+          <!-- Filtros -->
+          <div class="col-12">
+            <div class="card border-secondary border-top border-4 shadow-sm">
+              <div class="card-header bg-secondary text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" id="filtroTipo">
+                      <option value="">Todos</option>
+                      <option value="certificado">Certificados</option>
+                      <option value="declaracao">Declarações</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Evento</label>
+                    <select class="form-select" id="filtroEvento">
+                      <option value="">Todos os Eventos</option>
+                      {% for evento in eventos %}
+                        <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Data Inicial</label>
+                    <input type="date" class="form-control" id="filtroDataInicial">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Data Final</label>
+                    <input type="date" class="form-control" id="filtroDataFinal">
+                  </div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-12">
+                    <button class="btn btn-primary" onclick="aplicarFiltrosHistorico()">
+                      <i class="bi bi-search me-2"></i>Aplicar Filtros
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="limparFiltrosHistorico()">
+                      <i class="bi bi-x-circle me-2"></i>Limpar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Histórico -->
+          <div class="col-12">
+            <div class="card border-primary border-top border-4 shadow-sm">
+              <div class="card-header bg-primary text-white">
+                <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de Emissões</h5>
+              </div>
+              <div class="card-body">
+                <div id="tabelaHistorico">
+                  <p class="text-muted text-center py-4">Carregando histórico...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA 5: CONFIGURAÇÕES -->
+
   <!-- ABA 4: CONFIGURAÇÕES -->
+
   <div class="tab-pane fade" id="configuracoes" role="tabpanel">
     <!-- CSS para padronização dos botões -->
     
@@ -1627,5 +1979,153 @@
       });
     });
   }
+
+
+  // Funcionalidades da Aba de Certificados
+  function carregarConfiguracoesCertificado() {
+    const eventoId = document.getElementById('selectEventoCertificado').value;
+    if (!eventoId) {
+      alert('Selecione um evento primeiro.');
+      return;
+    }
+    
+    // Carregar configurações de liberação
+    fetch(`/certificado/configuracoes_evento/${eventoId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('configLiberacao').innerHTML = data.liberacao_html;
+          document.getElementById('configCriterios').innerHTML = data.criterios_html;
+          document.getElementById('configCertificadoGeral').innerHTML = data.geral_html;
+        } else {
+          alert('Erro ao carregar configurações: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao carregar configurações.');
+      });
+  }
+
+  function gerenciarVariaveis() {
+    // Abrir modal ou página para gerenciar variáveis dinâmicas
+    window.open('/certificado/variaveis_dinamicas', '_blank');
+  }
+
+  function criarVariavel() {
+    const nome = prompt('Nome da variável (sem chaves):');
+    if (!nome) return;
+    
+    const descricao = prompt('Descrição da variável:');
+    if (!descricao) return;
+    
+    const valor = prompt('Valor padrão (opcional):') || '';
+    
+    fetch('/certificado/salvar_variavel_dinamica', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        nome: nome,
+        descricao: descricao,
+        valor_padrao: valor
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Variável criada com sucesso!');
+      } else {
+        alert('Erro ao criar variável: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao criar variável.');
+    });
+  }
+
+  function gerenciarAssets() {
+    window.open('/certificado/upload_personalizacao_certificado', '_blank');
+  }
+
+  function gerenciarTemplatesDeclaracao() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function criarTemplateDeclaracao() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function configurarDeclaracoes() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function gerenciarPermissoes() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function emitirDeclaracaoIndividual() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function emitirDeclaracaoLote() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function liberarDeclaracaoParticipantes() {
+    // Implementar quando as rotas de declaração estiverem prontas
+    alert('Funcionalidade em desenvolvimento.');
+  }
+
+  function aplicarFiltrosHistorico() {
+    const filtros = {
+      tipo: document.getElementById('filtroTipo').value,
+      evento: document.getElementById('filtroEvento').value,
+      data_inicial: document.getElementById('filtroDataInicial').value,
+      data_final: document.getElementById('filtroDataFinal').value
+    };
+    
+    fetch('/certificado/historico_emissoes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(filtros)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('tabelaHistorico').innerHTML = data.html;
+      } else {
+        alert('Erro ao carregar histórico: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao carregar histórico.');
+    });
+  }
+
+  function limparFiltrosHistorico() {
+    document.getElementById('filtroTipo').value = '';
+    document.getElementById('filtroEvento').value = '';
+    document.getElementById('filtroDataInicial').value = '';
+    document.getElementById('filtroDataFinal').value = '';
+    document.getElementById('tabelaHistorico').innerHTML = '<p class="text-muted text-center py-4">Carregando histórico...</p>';
+  }
+
+  // Carregar histórico inicial quando a aba for ativada
+  document.getElementById('tab-cert-historico').addEventListener('shown.bs.tab', function() {
+    aplicarFiltrosHistorico();
+  });
+
 </script>
 {% endblock %}{% endblock %}

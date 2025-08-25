@@ -1,0 +1,565 @@
+<div class="card">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-file-export"></i> Emissão de Declarações
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Abas de Navegação -->
+        <ul class="nav nav-tabs mb-4" id="emissaoTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="individual-tab" data-toggle="tab" href="#individual" role="tab">
+                    <i class="fas fa-user"></i> Emissão Individual
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="lote-tab" data-toggle="tab" href="#lote" role="tab">
+                    <i class="fas fa-users"></i> Emissão em Lote
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="liberacao-tab" data-toggle="tab" href="#liberacao" role="tab">
+                    <i class="fas fa-unlock"></i> Liberação para Participantes
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="emissaoTabContent">
+            <!-- Emissão Individual -->
+            <div class="tab-pane fade show active" id="individual" role="tabpanel">
+                <form id="formEmissaoIndividual">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="eventoIndividual">
+                                    <i class="fas fa-calendar"></i> Evento
+                                </label>
+                                <select class="form-control" id="eventoIndividual" onchange="carregarParticipantesEvento()">
+                                    <option value="">Selecione um evento...</option>
+                                    <!-- Eventos serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="templateIndividual">
+                                    <i class="fas fa-file-text"></i> Template
+                                </label>
+                                <select class="form-control" id="templateIndividual">
+                                    <option value="">Selecione um template...</option>
+                                    <!-- Templates serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="participanteIndividual">
+                            <i class="fas fa-user"></i> Participante
+                        </label>
+                        <select class="form-control" id="participanteIndividual">
+                            <option value="">Primeiro selecione um evento...</option>
+                        </select>
+                    </div>
+
+                    <div id="infoParticipante" class="alert alert-info" style="display: none;">
+                        <h6><i class="fas fa-info-circle"></i> Informações do Participante</h6>
+                        <div id="dadosParticipante"></div>
+                    </div>
+
+                    <div class="text-right">
+                        <button type="button" class="btn btn-outline-info" onclick="previewDeclaracaoIndividual()">
+                            <i class="fas fa-eye"></i> Visualizar
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="gerarDeclaracaoIndividual()">
+                            <i class="fas fa-download"></i> Gerar Declaração
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Emissão em Lote -->
+            <div class="tab-pane fade" id="lote" role="tabpanel">
+                <form id="formEmissaoLote">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="eventoLote">
+                                    <i class="fas fa-calendar"></i> Evento
+                                </label>
+                                <select class="form-control" id="eventoLote" onchange="carregarEstatisticasLote()">
+                                    <option value="">Selecione um evento...</option>
+                                    <!-- Eventos serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="templateLote">
+                                    <i class="fas fa-file-text"></i> Template
+                                </label>
+                                <select class="form-control" id="templateLote">
+                                    <option value="">Selecione um template...</option>
+                                    <!-- Templates serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="estatisticasLote" class="row" style="display: none;">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="totalParticipantes">0</h4>
+                                    <small>Total de Participantes</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="participantesElegiveis">0</h4>
+                                    <small>Elegíveis para Declaração</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="declaracoesJaEmitidas">0</h4>
+                                    <small>Declarações Já Emitidas</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h4 id="novasDeclaracoes">0</h4>
+                                    <small>Novas Declarações</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="filtrosLote" class="card mt-3" style="display: none;">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-filter"></i> Filtros de Participantes
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="apenasElegiveis" checked>
+                                            <label class="custom-control-label" for="apenasElegiveis">
+                                                Apenas participantes elegíveis
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="excluirJaEmitidas">
+                                            <label class="custom-control-label" for="excluirJaEmitidas">
+                                                Excluir declarações já emitidas
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="incluirEmailNotificacao">
+                                            <label class="custom-control-label" for="incluirEmailNotificacao">
+                                                Enviar por e-mail
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right mt-3">
+                        <button type="button" class="btn btn-outline-info" onclick="previewLoteDeclaracoes()">
+                            <i class="fas fa-eye"></i> Visualizar Lista
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="gerarLoteDeclaracoes()">
+                            <i class="fas fa-download"></i> Gerar Lote de Declarações
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Liberação para Participantes -->
+            <div class="tab-pane fade" id="liberacao" role="tabpanel">
+                <form id="formLiberacao">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="eventoLiberacao">
+                                    <i class="fas fa-calendar"></i> Evento
+                                </label>
+                                <select class="form-control" id="eventoLiberacao" onchange="carregarStatusLiberacao()">
+                                    <option value="">Selecione um evento...</option>
+                                    <!-- Eventos serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="templateLiberacao">
+                                    <i class="fas fa-file-text"></i> Template
+                                </label>
+                                <select class="form-control" id="templateLiberacao">
+                                    <option value="">Usar template padrão do evento</option>
+                                    <!-- Templates serão carregados via JavaScript -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="statusLiberacao" class="alert alert-info" style="display: none;">
+                        <h6><i class="fas fa-info-circle"></i> Status da Liberação</h6>
+                        <div id="infoLiberacao"></div>
+                    </div>
+
+                    <div id="configLiberacao" class="card" style="display: none;">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-cogs"></i> Configurações de Liberação
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="dataInicioLiberacao">
+                                            <i class="fas fa-calendar-alt"></i> Data de Início
+                                        </label>
+                                        <input type="datetime-local" class="form-control" id="dataInicioLiberacao">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="dataFimLiberacao">
+                                            <i class="fas fa-calendar-times"></i> Data de Fim
+                                        </label>
+                                        <input type="datetime-local" class="form-control" id="dataFimLiberacao">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="notificarParticipantes">
+                                            <label class="custom-control-label" for="notificarParticipantes">
+                                                <strong>Notificar participantes por e-mail</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" class="custom-control-input" id="anexarDeclaracaoLiberacao">
+                                            <label class="custom-control-label" for="anexarDeclaracaoLiberacao">
+                                                <strong>Anexar declaração ao e-mail</strong>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right mt-3">
+                        <button type="button" class="btn btn-outline-warning" onclick="desabilitarLiberacao()">
+                            <i class="fas fa-lock"></i> Desabilitar Liberação
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="habilitarLiberacao()">
+                            <i class="fas fa-unlock"></i> Habilitar Liberação
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Preview -->
+<div class="modal fade" id="modalPreview" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye"></i> <span id="previewTitle">Visualização</span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="previewContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Carregar dados iniciais
+$(document).ready(function() {
+    carregarEventosEmissao();
+    carregarTemplatesEmissao();
+});
+
+function carregarEventosEmissao() {
+    $.get('/api/eventos/listar', function(data) {
+        const selects = ['#eventoIndividual', '#eventoLote', '#eventoLiberacao'];
+        
+        selects.forEach(selector => {
+            const select = $(selector);
+            select.empty().append('<option value="">Selecione um evento...</option>');
+            
+            if (data.eventos) {
+                data.eventos.forEach(evento => {
+                    select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+                });
+            }
+        });
+    });
+}
+
+function carregarTemplatesEmissao() {
+    $.get('/certificado/declaracoes', function(data) {
+        const selects = ['#templateIndividual', '#templateLote', '#templateLiberacao'];
+        
+        selects.forEach(selector => {
+            const select = $(selector);
+            select.empty();
+            
+            if (selector === '#templateLiberacao') {
+                select.append('<option value="">Usar template padrão do evento</option>');
+            } else {
+                select.append('<option value="">Selecione um template...</option>');
+            }
+            
+            if (data.templates) {
+                data.templates.forEach(template => {
+                    if (template.ativo) {
+                        select.append(`<option value="${template.id}">${template.nome}</option>`);
+                    }
+                });
+            }
+        });
+    });
+}
+
+function carregarParticipantesEvento() {
+    const eventoId = $('#eventoIndividual').val();
+    const select = $('#participanteIndividual');
+    
+    if (!eventoId) {
+        select.empty().append('<option value="">Primeiro selecione um evento...</option>');
+        $('#infoParticipante').hide();
+        return;
+    }
+    
+    select.empty().append('<option value="">Carregando...</option>');
+    
+    $.get(`/api/eventos/${eventoId}/participantes`, function(data) {
+        select.empty().append('<option value="">Selecione um participante...</option>');
+        
+        if (data.participantes) {
+            data.participantes.forEach(participante => {
+                select.append(`<option value="${participante.id}">${participante.nome} (${participante.email})</option>`);
+            });
+        }
+    });
+}
+
+function carregarEstatisticasLote() {
+    const eventoId = $('#eventoLote').val();
+    
+    if (!eventoId) {
+        $('#estatisticasLote, #filtrosLote').hide();
+        return;
+    }
+    
+    $.get(`/certificado/declaracoes/estatisticas/${eventoId}`, function(data) {
+        if (data.estatisticas) {
+            const stats = data.estatisticas;
+            $('#totalParticipantes').text(stats.total_participantes || 0);
+            $('#participantesElegiveis').text(stats.participantes_elegiveis || 0);
+            $('#declaracoesJaEmitidas').text(stats.declaracoes_ja_emitidas || 0);
+            $('#novasDeclaracoes').text(stats.novas_declaracoes || 0);
+            
+            $('#estatisticasLote, #filtrosLote').show();
+        }
+    });
+}
+
+function carregarStatusLiberacao() {
+    const eventoId = $('#eventoLiberacao').val();
+    
+    if (!eventoId) {
+        $('#statusLiberacao, #configLiberacao').hide();
+        return;
+    }
+    
+    $.get(`/certificado/declaracoes/status-liberacao/${eventoId}`, function(data) {
+        if (data.status) {
+            const status = data.status;
+            let statusHtml = `
+                <p><strong>Status:</strong> ${status.liberado ? 'Liberado' : 'Não liberado'}</p>
+                <p><strong>Participantes elegíveis:</strong> ${status.participantes_elegiveis}</p>
+                <p><strong>Declarações disponíveis:</strong> ${status.declaracoes_disponiveis}</p>
+            `;
+            
+            if (status.data_liberacao) {
+                statusHtml += `<p><strong>Data de liberação:</strong> ${status.data_liberacao}</p>`;
+            }
+            
+            $('#infoLiberacao').html(statusHtml);
+            $('#statusLiberacao, #configLiberacao').show();
+        }
+    });
+}
+
+function gerarDeclaracaoIndividual() {
+    const eventoId = $('#eventoIndividual').val();
+    const participanteId = $('#participanteIndividual').val();
+    const templateId = $('#templateIndividual').val();
+    
+    if (!eventoId || !participanteId) {
+        alert('Por favor, selecione um evento e um participante.');
+        return;
+    }
+    
+    const url = `/certificado/declaracoes/gerar_individual/${eventoId}/${participanteId}`;
+    const params = templateId ? `?template_id=${templateId}` : '';
+    
+    window.open(url + params, '_blank');
+}
+
+function gerarLoteDeclaracoes() {
+    const eventoId = $('#eventoLote').val();
+    const templateId = $('#templateLote').val();
+    
+    if (!eventoId) {
+        alert('Por favor, selecione um evento.');
+        return;
+    }
+    
+    const filtros = {
+        apenas_elegiveis: $('#apenasElegiveis').is(':checked'),
+        excluir_ja_emitidas: $('#excluirJaEmitidas').is(':checked'),
+        incluir_email_notificacao: $('#incluirEmailNotificacao').is(':checked'),
+        template_id: templateId || null
+    };
+    
+    const params = new URLSearchParams(filtros).toString();
+    const url = `/certificado/declaracoes/gerar_lote/${eventoId}?${params}`;
+    
+    window.open(url, '_blank');
+}
+
+function habilitarLiberacao() {
+    const eventoId = $('#eventoLiberacao').val();
+    
+    if (!eventoId) {
+        alert('Por favor, selecione um evento.');
+        return;
+    }
+    
+    const configuracoes = {
+        evento_id: eventoId,
+        template_id: $('#templateLiberacao').val() || null,
+        data_inicio: $('#dataInicioLiberacao').val() || null,
+        data_fim: $('#dataFimLiberacao').val() || null,
+        notificar_participantes: $('#notificarParticipantes').is(':checked'),
+        anexar_declaracao: $('#anexarDeclaracaoLiberacao').is(':checked')
+    };
+    
+    $.ajax({
+        url: '/certificado/declaracoes/habilitar-liberacao',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(configuracoes),
+        success: function(response) {
+            if (response.success) {
+                alert('Liberação habilitada com sucesso!');
+                carregarStatusLiberacao();
+            } else {
+                alert('Erro: ' + (response.message || 'Erro desconhecido'));
+            }
+        },
+        error: function() {
+            alert('Erro ao habilitar liberação');
+        }
+    });
+}
+
+function desabilitarLiberacao() {
+    const eventoId = $('#eventoLiberacao').val();
+    
+    if (!eventoId) {
+        alert('Por favor, selecione um evento.');
+        return;
+    }
+    
+    if (confirm('Tem certeza que deseja desabilitar a liberação de declarações?')) {
+        $.ajax({
+            url: `/certificado/declaracoes/desabilitar-liberacao/${eventoId}`,
+            method: 'POST',
+            success: function(response) {
+                if (response.success) {
+                    alert('Liberação desabilitada com sucesso!');
+                    carregarStatusLiberacao();
+                } else {
+                    alert('Erro: ' + (response.message || 'Erro desconhecido'));
+                }
+            },
+            error: function() {
+                alert('Erro ao desabilitar liberação');
+            }
+        });
+    }
+}
+
+function previewDeclaracaoIndividual() {
+    const eventoId = $('#eventoIndividual').val();
+    const participanteId = $('#participanteIndividual').val();
+    const templateId = $('#templateIndividual').val();
+    
+    if (!eventoId || !participanteId) {
+        alert('Por favor, selecione um evento e um participante.');
+        return;
+    }
+    
+    const url = `/certificado/declaracoes/preview/${templateId || 'default'}/${eventoId}?participante_id=${participanteId}`;
+    window.open(url, '_blank');
+}
+
+function previewLoteDeclaracoes() {
+    const eventoId = $('#eventoLote').val();
+    
+    if (!eventoId) {
+        alert('Por favor, selecione um evento.');
+        return;
+    }
+    
+    // Implementar preview da lista de participantes
+    alert('Preview da lista de participantes em desenvolvimento');
+}
+</script>

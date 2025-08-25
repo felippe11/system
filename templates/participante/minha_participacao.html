@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Participação - {{ evento.nome }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .activity-card {
+            transition: transform 0.2s;
+            border-left: 4px solid #007bff;
+        }
+        .activity-card:hover {
+            transform: translateY(-2px);
+        }
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .criteria-item {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .criteria-met {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .criteria-pending {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .criteria-failed {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+        }
+        .progress-ring circle {
+            fill: transparent;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+        .progress-ring .background {
+            stroke: #e9ecef;
+        }
+        .progress-ring .progress {
+            stroke: #007bff;
+            stroke-dasharray: 0 100;
+            transition: stroke-dasharray 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="fas fa-user-check text-primary"></i> Minha Participação</h2>
+                        <p class="text-muted mb-0">{{ evento.nome }}</p>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('participante_routes.meus_certificados_evento', evento_id=evento.id) }}" 
+                           class="btn btn-primary">
+                            <i class="fas fa-certificate"></i> Ver Certificados
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Resumo da Participação -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie"></i> Resumo Geral
+                        </h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <!-- Progress Ring -->
+                        <div class="progress-ring mx-auto mb-3">
+                            <svg width="120" height="120">
+                                <circle class="background" cx="60" cy="60" r="50"></circle>
+                                <circle class="progress" cx="60" cy="60" r="50" 
+                                        style="stroke-dasharray: {{ dados_participacao.percentual_presenca or 0 }} 100"></circle>
+                                <text x="60" y="65" text-anchor="middle" font-size="18" font-weight="bold" fill="#007bff">
+                                    {{ dados_participacao.percentual_presenca or 0 }}%
+                                </text>
+                            </svg>
+                        </div>
+                        <h6>Percentual de Presença</h6>
+                        
+                        <div class="row mt-4">
+                            <div class="col-6">
+                                <div class="status-icon bg-success mx-auto mb-2">
+                                    {{ dados_participacao.total_checkins or 0 }}
+                                </div>
+                                <small>Check-ins</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="status-icon bg-info mx-auto mb-2">
+                                    {{ "%.1f"|format(dados_participacao.total_horas or 0) }}h
+                                </div>
+                                <small>Carga Horária</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status dos Critérios -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-tasks"></i> Status dos Critérios
+                            {% if criterios_ok %}
+                                <span class="badge bg-success ms-2">Atendidos</span>
+                            {% else %}
+                                <span class="badge bg-warning ms-2">Pendentes</span>
+                            {% endif %}
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if config %}
+                            <!-- Carga Horária Mínima -->
+                            {% if config.carga_horaria_minima %}
+                                <div class="criteria-item {{ 'criteria-met' if (dados_participacao.total_horas or 0) >= config.carga_horaria_minima else 'criteria-pending' }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="fw-bold">Carga Horária Mínima</small>
+                                            <div class="small text-muted">
+                                                {{ "%.1f"|format(dados_participacao.total_horas or 0) }}h / {{ config.carga_horaria_minima }}h
+                                            </div>
+                                        </div>
+                                        <i class="fas {{ 'fa-check text-success' if (dados_participacao.total_horas or 0) >= config.carga_horaria_minima else 'fa-clock text-warning' }}"></i>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Percentual de Presença -->
+                            {% if config.percentual_presenca_minimo %}
+                                <div class="criteria-item {{ 'criteria-met' if (dados_participacao.percentual_presenca or 0) >= config.percentual_presenca_minimo else 'criteria-pending' }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="fw-bold">Presença Mínima</small>
+                                            <div class="small text-muted">
+                                                {{ dados_participacao.percentual_presenca or 0 }}% / {{ config.percentual_presenca_minimo }}%
+                                            </div>
+                                        </div>
+                                        <i class="fas {{ 'fa-check text-success' if (dados_participacao.percentual_presenca or 0) >= config.percentual_presenca_minimo else 'fa-clock text-warning' }}"></i>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Check-ins Mínimos -->
+                            {% if config.checkins_minimos %}
+                                <div class="criteria-item {{ 'criteria-met' if (dados_participacao.total_checkins or 0) >= config.checkins_minimos else 'criteria-pending' }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="fw-bold">Check-ins Mínimos</small>
+                                            <div class="small text-muted">
+                                                {{ dados_participacao.total_checkins or 0 }} / {{ config.checkins_minimos }}
+                                            </div>
+                                        </div>
+                                        <i class="fas {{ 'fa-check text-success' if (dados_participacao.total_checkins or 0) >= config.checkins_minimos else 'fa-clock text-warning' }}"></i>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="text-center py-3">
+                                <i class="fas fa-info-circle text-muted"></i>
+                                <p class="text-muted mb-0 small">Nenhum critério configurado</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalhes das Atividades -->
+            <div class="col-lg-8">
+                <!-- Oficinas Participadas -->
+                {% if dados_participacao.oficinas %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chalkboard-teacher"></i> Oficinas Participadas
+                                <span class="badge bg-primary ms-2">{{ dados_participacao.oficinas|length }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for oficina in dados_participacao.oficinas %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="activity-card card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title">{{ oficina.titulo }}</h6>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="badge bg-info">
+                                                        <i class="fas fa-clock"></i> {{ oficina.carga_horaria }}h
+                                                    </span>
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Participou
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i> 
+                                                    {% for data in oficina.datas %}
+                                                        {{ data }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Atividades Sem Inscrição -->
+                {% if dados_participacao.atividades_sem_inscricao %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users"></i> Outras Atividades
+                                <span class="badge bg-secondary ms-2">{{ dados_participacao.atividades_sem_inscricao|length }}</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for atividade in dados_participacao.atividades_sem_inscricao %}
+                                    <div class="col-md-6 mb-3">
+                                        <div class="activity-card card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title">{{ atividade.titulo }}</h6>
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <span class="badge bg-info">
+                                                        <i class="fas fa-clock"></i> {{ atividade.carga_horaria }}h
+                                                    </span>
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Presente
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar"></i> 
+                                                    {% for data in atividade.datas %}
+                                                        {{ data }}{% if not loop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Histórico de Check-ins -->
+                {% if dados_participacao.checkins_detalhados %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history"></i> Histórico de Check-ins
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Data/Hora</th>
+                                            <th>Atividade</th>
+                                            <th>Tipo</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for checkin in dados_participacao.checkins_detalhados %}
+                                            <tr>
+                                                <td>
+                                                    <small>{{ checkin.data_hora.strftime('%d/%m/%Y %H:%M') }}</small>
+                                                </td>
+                                                <td>{{ checkin.atividade_nome }}</td>
+                                                <td>
+                                                    <span class="badge bg-{{ 'success' if checkin.tipo == 'entrada' else 'danger' }}">
+                                                        {{ checkin.tipo.title() }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Confirmado
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Pendências -->
+                {% if pendencias %}
+                    <div class="card mt-3">
+                        <div class="card-header bg-warning">
+                            <h5 class="mb-0 text-dark">
+                                <i class="fas fa-exclamation-triangle"></i> Pendências
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                {% for pendencia in pendencias %}
+                                    <li class="mb-2">
+                                        <i class="fas fa-arrow-right text-warning me-2"></i>
+                                        {{ pendencia }}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

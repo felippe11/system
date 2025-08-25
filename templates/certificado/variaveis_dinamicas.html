@@ -1,0 +1,622 @@
+{% extends 'base.html' %}
+{% block title %}Variáveis Dinâmicas{% endblock %}
+
+{% block extra_css %}
+<style>
+  .variable-card {
+    transition: all 0.3s ease;
+    border-left: 4px solid #007bff;
+  }
+  
+  .variable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  
+  .variable-type-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .variable-placeholder {
+    background: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    color: #495057;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+  }
+  
+  .form-floating .form-select {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold text-primary mb-1">
+        <i class="bi bi-braces me-2"></i>Variáveis Dinâmicas
+      </h2>
+      <p class="text-muted mb-0">Crie e gerencie variáveis personalizadas para seus templates de certificados</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaVariavel">
+      <i class="bi bi-plus-lg me-2"></i>Nova Variável
+    </button>
+  </div>
+
+  <!-- Filtros e Busca -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body py-3">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="searchVariaveis" placeholder="Buscar variáveis...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <select class="form-select" id="filterTipo">
+            <option value="">Todos os tipos</option>
+            <option value="texto">Texto</option>
+            <option value="data">Data</option>
+            <option value="numero">Número</option>
+            <option value="lista">Lista</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportarVariaveis()">
+              <i class="bi bi-download me-1"></i>Exportar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="importarVariaveis()">
+              <i class="bi bi-upload me-1"></i>Importar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista de Variáveis -->
+  <div class="row" id="variaveisContainer">
+    {% if variaveis %}
+      {% for variavel in variaveis %}
+      <div class="col-lg-6 col-xl-4 mb-4 variavel-item" data-tipo="{{ variavel.tipo }}">
+        <div class="card variable-card h-100">
+          <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+              <span class="variable-placeholder me-2">{{'{'}}{{ variavel.nome }}{{'}'}}}</span>
+              <span class="badge variable-type-badge bg-{{ 'primary' if variavel.tipo == 'texto' else 'success' if variavel.tipo == 'data' else 'warning' if variavel.tipo == 'numero' else 'info' }}">
+                {{ variavel.tipo.title() }}
+              </span>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="editarVariavel({{ variavel.id }})"><i class="bi bi-pencil me-2"></i>Editar</a></li>
+                <li><a class="dropdown-item" href="#" onclick="duplicarVariavel({{ variavel.id }})"><i class="bi bi-files me-2"></i>Duplicar</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" onclick="excluirVariavel({{ variavel.id }})"><i class="bi bi-trash me-2"></i>Excluir</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="card-body">
+            <h6 class="card-title mb-2">{{ variavel.nome }}</h6>
+            <p class="card-text text-muted small mb-3">{{ variavel.descricao or 'Sem descrição' }}</p>
+            
+            {% if variavel.valor_padrao %}
+            <div class="mb-2">
+              <small class="text-muted d-block">Valor padrão:</small>
+              <code class="small">{{ variavel.valor_padrao }}</code>
+            </div>
+            {% endif %}
+            
+            {% if variavel.opcoes and variavel.tipo == 'lista' %}
+            <div class="mb-2">
+              <small class="text-muted d-block">Opções:</small>
+              <div class="d-flex flex-wrap gap-1">
+                {% for opcao in variavel.opcoes[:3] %}
+                <span class="badge bg-light text-dark">{{ opcao }}</span>
+                {% endfor %}
+                {% if variavel.opcoes|length > 3 %}
+                <span class="badge bg-secondary">+{{ variavel.opcoes|length - 3 }}</span>
+                {% endif %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+          <div class="card-footer bg-transparent">
+            <small class="text-muted">
+              <i class="bi bi-calendar3 me-1"></i>
+              Criada em {{ variavel.data_criacao.strftime('%d/%m/%Y') }}
+            </small>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <div class="col-12">
+      <div class="empty-state">
+        <i class="bi bi-braces display-1 text-muted mb-3"></i>
+        <h4 class="text-muted">Nenhuma variável criada</h4>
+        <p class="text-muted mb-4">Crie sua primeira variável dinâmica para personalizar seus certificados</p>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovaVariavel">
+          <i class="bi bi-plus-lg me-2"></i>Criar Primeira Variável
+        </button>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Nova Variável -->
+<div class="modal fade" id="modalNovaVariavel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-plus-circle me-2"></i>Nova Variável Dinâmica
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formNovaVariavel">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input type="text" class="form-control" id="nomeVariavel" name="nome" required>
+                <label for="nomeVariavel">Nome da Variável</label>
+              </div>
+              <small class="text-muted">Será convertido para maiúsculas automaticamente</small>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <select class="form-select" id="tipoVariavel" name="tipo" required>
+                  <option value="texto">Texto</option>
+                  <option value="data">Data</option>
+                  <option value="numero">Número</option>
+                  <option value="lista">Lista de Opções</option>
+                </select>
+                <label for="tipoVariavel">Tipo</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <textarea class="form-control" id="descricaoVariavel" name="descricao" style="height: 80px"></textarea>
+                <label for="descricaoVariavel">Descrição (opcional)</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <input type="text" class="form-control" id="valorPadraoVariavel" name="valor_padrao">
+                <label for="valorPadraoVariavel">Valor Padrão (opcional)</label>
+              </div>
+            </div>
+            <div class="col-12" id="opcoesContainer" style="display: none;">
+              <label class="form-label">Opções da Lista</label>
+              <div id="opcoesLista">
+                <div class="input-group mb-2">
+                  <input type="text" class="form-control opcao-input" placeholder="Digite uma opção">
+                  <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarOpcao()">
+                <i class="bi bi-plus me-1"></i>Adicionar Opção
+              </button>
+            </div>
+          </div>
+          
+          <!-- Preview -->
+          <div class="mt-4">
+            <h6 class="text-muted">Preview:</h6>
+            <div class="p-3 bg-light rounded">
+              <span class="variable-placeholder" id="previewVariavel">{NOME_VARIAVEL}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save me-1"></i>Salvar Variável
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar Variável -->
+<div class="modal fade" id="modalEditarVariavel" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title">
+          <i class="bi bi-pencil me-2"></i>Editar Variável
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formEditarVariavel">
+        <input type="hidden" id="editVariavelId">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-floating">
+                <input type="text" class="form-control" id="editNomeVariavel" name="nome" required>
+                <label for="editNomeVariavel">Nome da Variável</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating">
+                <select class="form-select" id="editTipoVariavel" name="tipo" required>
+                  <option value="texto">Texto</option>
+                  <option value="data">Data</option>
+                  <option value="numero">Número</option>
+                  <option value="lista">Lista de Opções</option>
+                </select>
+                <label for="editTipoVariavel">Tipo</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <textarea class="form-control" id="editDescricaoVariavel" name="descricao" style="height: 80px"></textarea>
+                <label for="editDescricaoVariavel">Descrição</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-floating">
+                <input type="text" class="form-control" id="editValorPadraoVariavel" name="valor_padrao">
+                <label for="editValorPadraoVariavel">Valor Padrão</label>
+              </div>
+            </div>
+            <div class="col-12" id="editOpcoesContainer" style="display: none;">
+              <label class="form-label">Opções da Lista</label>
+              <div id="editOpcoesLista"></div>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarOpcaoEdit()">
+                <i class="bi bi-plus me-1"></i>Adicionar Opção
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Cancelar
+          </button>
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-save me-1"></i>Salvar Alterações
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variáveis globais
+let variaveis = {{ variaveis | tojson | safe }};
+
+// Inicialização
+$(document).ready(function() {
+  setupEventListeners();
+  updatePreview();
+});
+
+function setupEventListeners() {
+  // Busca
+  $('#searchVariaveis').on('input', filtrarVariaveis);
+  $('#filterTipo').on('change', filtrarVariaveis);
+  
+  // Formulário nova variável
+  $('#formNovaVariavel').on('submit', salvarNovaVariavel);
+  $('#formEditarVariavel').on('submit', salvarEdicaoVariavel);
+  
+  // Mudança de tipo
+  $('#tipoVariavel').on('change', function() {
+    toggleOpcoesContainer(this.value === 'lista');
+    updatePreview();
+  });
+  
+  $('#editTipoVariavel').on('change', function() {
+    toggleEditOpcoesContainer(this.value === 'lista');
+  });
+  
+  // Preview em tempo real
+  $('#nomeVariavel').on('input', updatePreview);
+}
+
+function filtrarVariaveis() {
+  const busca = $('#searchVariaveis').val().toLowerCase();
+  const tipo = $('#filterTipo').val();
+  
+  $('.variavel-item').each(function() {
+    const $item = $(this);
+    const nome = $item.find('.card-title').text().toLowerCase();
+    const descricao = $item.find('.card-text').text().toLowerCase();
+    const tipoItem = $item.data('tipo');
+    
+    const matchBusca = !busca || nome.includes(busca) || descricao.includes(busca);
+    const matchTipo = !tipo || tipoItem === tipo;
+    
+    $item.toggle(matchBusca && matchTipo);
+  });
+}
+
+function updatePreview() {
+  const nome = $('#nomeVariavel').val().toUpperCase() || 'NOME_VARIAVEL';
+  $('#previewVariavel').text(`{${nome}}`);
+}
+
+function toggleOpcoesContainer(show) {
+  $('#opcoesContainer').toggle(show);
+}
+
+function toggleEditOpcoesContainer(show) {
+  $('#editOpcoesContainer').toggle(show);
+}
+
+function adicionarOpcao() {
+  const html = `
+    <div class="input-group mb-2">
+      <input type="text" class="form-control opcao-input" placeholder="Digite uma opção">
+      <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  `;
+  $('#opcoesLista').append(html);
+}
+
+function adicionarOpcaoEdit() {
+  const html = `
+    <div class="input-group mb-2">
+      <input type="text" class="form-control opcao-input" placeholder="Digite uma opção">
+      <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>
+  `;
+  $('#editOpcoesLista').append(html);
+}
+
+function removerOpcao(btn) {
+  $(btn).closest('.input-group').remove();
+}
+
+function salvarNovaVariavel(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+  
+  // Coletar opções se for tipo lista
+  if (data.tipo === 'lista') {
+    const opcoes = [];
+    $('#opcoesLista .opcao-input').each(function() {
+      const valor = $(this).val().trim();
+      if (valor) opcoes.push(valor);
+    });
+    data.opcoes = opcoes;
+  }
+  
+  $.ajax({
+    url: '{{ url_for("certificado_routes.variaveis_dinamicas") }}',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(data),
+    success: function(response) {
+      if (response.success) {
+        showToast('Variável criada com sucesso!', 'success');
+        $('#modalNovaVariavel').modal('hide');
+        location.reload();
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao criar variável', 'error');
+    }
+  });
+}
+
+function editarVariavel(id) {
+  const variavel = variaveis.find(v => v.id === id);
+  if (!variavel) return;
+  
+  $('#editVariavelId').val(id);
+  $('#editNomeVariavel').val(variavel.nome);
+  $('#editTipoVariavel').val(variavel.tipo);
+  $('#editDescricaoVariavel').val(variavel.descricao || '');
+  $('#editValorPadraoVariavel').val(variavel.valor_padrao || '');
+  
+  // Carregar opções se for lista
+  $('#editOpcoesLista').empty();
+  if (variavel.tipo === 'lista' && variavel.opcoes) {
+    variavel.opcoes.forEach(opcao => {
+      const html = `
+        <div class="input-group mb-2">
+          <input type="text" class="form-control opcao-input" value="${opcao}">
+          <button type="button" class="btn btn-outline-danger" onclick="removerOpcao(this)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      `;
+      $('#editOpcoesLista').append(html);
+    });
+  }
+  
+  toggleEditOpcoesContainer(variavel.tipo === 'lista');
+  $('#modalEditarVariavel').modal('show');
+}
+
+function salvarEdicaoVariavel(e) {
+  e.preventDefault();
+  
+  const id = $('#editVariavelId').val();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+  
+  // Coletar opções se for tipo lista
+  if (data.tipo === 'lista') {
+    const opcoes = [];
+    $('#editOpcoesLista .opcao-input').each(function() {
+      const valor = $(this).val().trim();
+      if (valor) opcoes.push(valor);
+    });
+    data.opcoes = opcoes;
+  }
+  
+  $.ajax({
+    url: `{{ url_for("certificado_routes.gerenciar_variavel_dinamica", variavel_id=0) }}`.replace('0', id),
+    method: 'PUT',
+    contentType: 'application/json',
+    data: JSON.stringify(data),
+    success: function(response) {
+      if (response.success) {
+        showToast('Variável atualizada com sucesso!', 'success');
+        $('#modalEditarVariavel').modal('hide');
+        location.reload();
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao atualizar variável', 'error');
+    }
+  });
+}
+
+function duplicarVariavel(id) {
+  const variavel = variaveis.find(v => v.id === id);
+  if (!variavel) return;
+  
+  const data = {
+    nome: variavel.nome + '_COPIA',
+    descricao: variavel.descricao,
+    valor_padrao: variavel.valor_padrao,
+    tipo: variavel.tipo,
+    opcoes: variavel.opcoes
+  };
+  
+  $.ajax({
+    url: '{{ url_for("certificado_routes.variaveis_dinamicas") }}',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(data),
+    success: function(response) {
+      if (response.success) {
+        showToast('Variável duplicada com sucesso!', 'success');
+        location.reload();
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao duplicar variável', 'error');
+    }
+  });
+}
+
+function excluirVariavel(id) {
+  if (!confirm('Tem certeza que deseja excluir esta variável?')) return;
+  
+  $.ajax({
+    url: `{{ url_for("certificado_routes.gerenciar_variavel_dinamica", variavel_id=0) }}`.replace('0', id),
+    method: 'DELETE',
+    success: function(response) {
+      if (response.success) {
+        showToast('Variável excluída com sucesso!', 'success');
+        location.reload();
+      } else {
+        showToast(response.message, 'error');
+      }
+    },
+    error: function() {
+      showToast('Erro ao excluir variável', 'error');
+    }
+  });
+}
+
+function exportarVariaveis() {
+  const data = {
+    variaveis: variaveis,
+    exportado_em: new Date().toISOString(),
+    cliente_id: {{ current_user.id }}
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `variaveis_dinamicas_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importarVariaveis() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.variaveis && Array.isArray(data.variaveis)) {
+          // Implementar importação
+          showToast('Funcionalidade de importação em desenvolvimento', 'info');
+        } else {
+          showToast('Arquivo inválido', 'error');
+        }
+      } catch (error) {
+        showToast('Erro ao ler arquivo', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function showToast(message, type = 'info') {
+  const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+  const toast = `
+    <div class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `;
+  
+  if (!$('#toastContainer').length) {
+    $('body').append('<div id="toastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+  }
+  
+  const $toast = $(toast);
+  $('#toastContainer').append($toast);
+  new bootstrap.Toast($toast[0]).show();
+}
+</script>
+{% endblock %}
