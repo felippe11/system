@@ -444,25 +444,27 @@
     <!-- Agrupa oficinas por evento -->
     {% set eventos = {} %}
     {% for oficina in oficinas %}
-      {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
-        {% if oficina.evento_id not in eventos %}
-          {% set _ = eventos.update({
-            oficina.evento_id: {
-              'nome': oficina.evento_nome,
-              'data_inicio': oficina.evento_data_inicio,
-              'data_fim': oficina.evento_data_fim,
-              'oficinas': []
-            }
-          }) %}
-        {% else %}
-          {% if not eventos[oficina.evento_id].get('data_inicio') and oficina.evento_data_inicio %}
-            {% set _ = eventos[oficina.evento_id].update({'data_inicio': oficina.evento_data_inicio}) %}
+      {% if not evento or oficina.evento_id == evento.id or oficina.evento_id is none %}
+        {% if oficina.tipo_inscricao == 'com_inscricao_sem_limite' or oficina.tipo_inscricao == 'com_inscricao_com_limite' %}
+          {% if oficina.evento_id not in eventos %}
+            {% set _ = eventos.update({
+              oficina.evento_id: {
+                'nome': oficina.evento_nome,
+                'data_inicio': oficina.evento_data_inicio,
+                'data_fim': oficina.evento_data_fim,
+                'oficinas': []
+              }
+            }) %}
+          {% else %}
+            {% if not eventos[oficina.evento_id].get('data_inicio') and oficina.evento_data_inicio %}
+              {% set _ = eventos[oficina.evento_id].update({'data_inicio': oficina.evento_data_inicio}) %}
+            {% endif %}
+            {% if not eventos[oficina.evento_id].get('data_fim') and oficina.evento_data_fim %}
+              {% set _ = eventos[oficina.evento_id].update({'data_fim': oficina.evento_data_fim}) %}
+            {% endif %}
           {% endif %}
-          {% if not eventos[oficina.evento_id].get('data_fim') and oficina.evento_data_fim %}
-            {% set _ = eventos[oficina.evento_id].update({'data_fim': oficina.evento_data_fim}) %}
-          {% endif %}
+          {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
         {% endif %}
-        {% if eventos[oficina.evento_id]['oficinas'].append(oficina) %}{% endif %}
       {% endif %}
     {% endfor %}
     

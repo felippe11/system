@@ -294,6 +294,17 @@ def dashboard_participante():
     
     logger.debug(f"DEBUG [49] -> Total de oficinas encontradas: {len(oficinas)}")
 
+    # Filtra oficinas pelo evento selecionado (inclui atividades gerais)
+    if selected_event_id is not None:
+        oficinas = [
+            o for o in oficinas if o.evento_id == selected_event_id or o.evento_id is None
+        ]
+        logger.debug(
+            "DEBUG [49A] -> Oficinas após filtro por evento %s: %s",
+            selected_event_id,
+            len(oficinas),
+        )
+
     if current_user.tipo_inscricao and getattr(current_user.tipo_inscricao, 'submission_only', False):
         oficinas = []
 

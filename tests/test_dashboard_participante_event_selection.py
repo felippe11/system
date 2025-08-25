@@ -6,7 +6,7 @@ from unittest.mock import patch
 from config import Config
 from flask import Flask, Blueprint
 from extensions import db, login_manager, csrf
-from models import Evento, Inscricao
+from models import Evento, Inscricao, Oficina
 from models.user import Cliente, Usuario
 
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
@@ -123,3 +123,49 @@ def test_dashboard_respects_evento_id_param(app):
             ctx = dashboard_participante()
         logout_user()
     assert ctx['evento'].id == app.ev1_id
+
+
+def test_dashboard_filters_oficinas_by_selected_event(app):
+    from flask_login import login_user, logout_user
+
+    with app.app_context():
+        ev1 = Evento.query.get(app.ev1_id)
+        ev2 = Evento.query.get(app.ev2_id)
+        o1 = Oficina(
+            titulo='O1',
+            descricao='d',
+            ministrante_id=None,
+            vagas=10,
+            carga_horaria='1h',
+            estado='SP',
+            cidade='Sao Paulo',
+            cliente_id=ev1.cliente_id,
+            evento_id=ev1.id,
+        )
+        o2 = Oficina(
+            titulo='O2',
+            descricao='d',
+            ministrante_id=None,
+            vagas=10,
+            carga_horaria='1h',
+            estado='SP',
+            cidade='Sao Paulo',
+            cliente_id=ev2.cliente_id,
+            evento_id=ev2.id,
+        )
+        db.session.add_all([o1, o2])
+        db.session.commit()
+
+    with app.test_request_context(
+        '/dashboard_participante', query_string={'evento_id': app.ev2_id}
+    ):
+        user = Usuario.query.get(app.user_id)
+        login_user(user)
+        with patch('routes.dashboard_participante.render_template') as rt:
+            rt.side_effect = lambda tpl, **ctx: ctx
+            ctx = dashboard_participante()
+        logout_user()
+
+    titles = [o['titulo'] for o in ctx['oficinas']]
+    assert 'O2' in titles
+    assert 'O1' not in titles
