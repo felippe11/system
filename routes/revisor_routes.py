@@ -356,6 +356,15 @@ def submit_application(process_id: int):
             elif low == "email":
                 email = valor  # type: ignore[assignment]
 
+        # Validação obrigatória para nome e email
+        if not nome:
+            flash("O campo Nome é obrigatório.", "danger")
+            return redirect(request.url)
+        
+        if not email:
+            flash("O campo E-mail é obrigatório.", "danger")
+            return redirect(request.url)
+
         if email and RevisorCandidatura.query.filter_by(
             process_id=process_id, email=email
         ).first():
