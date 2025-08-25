@@ -1433,33 +1433,7 @@ class NecessidadeEspecial(db.Model):
 
 
 
-class CertificadoTemplateAvancado(db.Model):
-    """Template avançado para certificados com configurações de layout e elementos visuais."""
-    __tablename__ = "certificado_template_avancado"
 
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    titulo = db.Column(db.String(100), nullable=False)
-    conteudo = db.Column(db.Text, nullable=False)  # HTML ou texto estruturado
-    ativo = db.Column(db.Boolean, default=False)
-    
-    # Configurações de layout
-    layout_config = db.Column(db.JSON, nullable=True)  # Posições, fontes, cores, etc.
-    elementos_visuais = db.Column(db.JSON, nullable=True)  # Logos, assinaturas, fundos
-    variaveis_dinamicas = db.Column(db.JSON, nullable=True)  # Placeholders personalizados
-    
-    # Configurações de geração
-    orientacao = db.Column(db.String(20), default="landscape")  # landscape, portrait
-    tamanho_pagina = db.Column(db.String(10), default="A4")  # A4, A3, Letter
-    margem_config = db.Column(db.JSON, nullable=True)  # Margens personalizadas
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    cliente = db.relationship("Cliente", backref="certificados_templates_avancados")
-
-    def __repr__(self):
-        return f"<CertificadoTemplateAvancado {self.titulo}>"
 
 
 class DeclaracaoComparecimento(db.Model):
