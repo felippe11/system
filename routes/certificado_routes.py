@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 
 from werkzeug.utils import secure_filename
 from extensions import db
-from models import Oficina, CertificadoTemplate
+from models import Oficina, CertificadoTemplate, Evento
 from models.user import Cliente
 
 from models.certificado import CertificadoTemplateAvancado, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado, DeclaracaoTemplate, CertificadoConfig, CertificadoParticipante
@@ -529,6 +529,25 @@ def config_criterios():
     """Configurar critérios de certificados."""
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
     return render_template('certificado/config_criterios.html', eventos=eventos)
+
+
+@certificado_routes.route('/config_geral')
+@login_required
+@cliente_required
+def config_geral():
+    """Configuração geral de certificados."""
+    try:
+        templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.cliente_id).all()
+        templates_avancados = CertificadoTemplateAvancado.query.filter_by(cliente_id=current_user.cliente_id).all()
+        eventos = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
+        
+        return render_template('certificado/config_geral.html', 
+                             templates=templates, 
+                             templates_avancados=templates_avancados,
+                             eventos=eventos)
+    except Exception as e:
+        flash(f'Erro ao carregar configurações: {str(e)}', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 @certificado_routes.route('/templates_personalizaveis')
 @login_required

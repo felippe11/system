@@ -1,153 +1,204 @@
-<!-- Configurações Gerais do Certificado do Evento -->
-<div class="config-section">
-    <h5><i class="fas fa-cog"></i> Configurações Gerais</h5>
-    
+{% extends 'base.html' %}
+
+{% block title %}Configuração Geral de Certificados{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
     <div class="row">
-        <div class="col-md-12">
-            <div class="form-group">
-                <label for="evento_selecionado">
-                    <i class="fas fa-calendar-alt"></i> Evento Selecionado
-                </label>
-                <input type="text" class="form-control" id="evento_selecionado" 
-                       value="{% if evento %}{{ evento.nome }}{% endif %}" readonly>
-                <small class="text-muted">Evento para o qual as configurações serão aplicadas</small>
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-sliders me-2"></i>Configuração Geral de Certificados</h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard_cliente') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Configuração Geral</li>
+                    </ol>
+                </nav>
             </div>
         </div>
     </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="data_inicio_evento">
-                    <i class="fas fa-calendar-check"></i> Data de Início
-                </label>
-                <input type="text" class="form-control" id="data_inicio_evento" 
-                       value="{% if evento and evento.data_inicio %}{{ evento.data_inicio.strftime('%d/%m/%Y') }}{% endif %}" readonly>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="form-group">
-                <label for="data_fim_evento">
-                    <i class="fas fa-calendar-times"></i> Data de Término
-                </label>
-                <input type="text" class="form-control" id="data_fim_evento" 
-                       value="{% if evento and evento.data_fim %}{{ evento.data_fim.strftime('%d/%m/%Y') }}{% endif %}" readonly>
-            </div>
-        </div>
-    </div>
-    
-    <div class="form-group">
-        <label for="descricao_evento">
-            <i class="fas fa-align-left"></i> Descrição do Evento
-        </label>
-        <textarea class="form-control" id="descricao_evento" rows="3" readonly>{% if evento %}{{ evento.descricao or 'Sem descrição disponível' }}{% endif %}</textarea>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Estatísticas do Evento</h6>
+
+    <!-- Configurações Globais -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Configurações Globais</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <h4 class="text-primary" id="total_participantes">-</h4>
-                            <small>Participantes</small>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-file-earmark-text me-2"></i>Templates Disponíveis</h6>
+                            <div class="list-group">
+                                {% for template in templates %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ template.nome }}</strong>
+                                        <br><small class="text-muted">Criado em: {{ template.data_criacao.strftime('%d/%m/%Y') if template.data_criacao else 'N/A' }}</small>
+                                    </div>
+                                    <span class="badge bg-{{ 'success' if template.ativo else 'secondary' }}">{{ 'Ativo' if template.ativo else 'Inativo' }}</span>
+                                </div>
+                                {% endfor %}
+                                {% if not templates %}
+                                <div class="list-group-item text-center text-muted">
+                                    <i class="bi bi-inbox"></i> Nenhum template encontrado
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <h4 class="text-success" id="total_oficinas">-</h4>
-                            <small>Oficinas</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card border-success">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0"><i class="fas fa-certificate"></i> Certificados</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <h4 class="text-warning" id="certificados_emitidos">-</h4>
-                            <small>Emitidos</small>
-                        </div>
-                        <div class="col-6">
-                            <h4 class="text-info" id="certificados_pendentes">-</h4>
-                            <small>Pendentes</small>
+                        
+                        <div class="col-md-6">
+                            <h6><i class="bi bi-palette me-2"></i>Templates Avançados</h6>
+                            <div class="list-group">
+                                {% for template in templates_avancados %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ template.nome }}</strong>
+                                        <br><small class="text-muted">Criado em: {{ template.data_criacao.strftime('%d/%m/%Y') if template.data_criacao else 'N/A' }}</small>
+                                    </div>
+                                    <span class="badge bg-{{ 'primary' if template.ativo else 'secondary' }}">{{ 'Ativo' if template.ativo else 'Inativo' }}</span>
+                                </div>
+                                {% endfor %}
+                                {% if not templates_avancados %}
+                                <div class="list-group-item text-center text-muted">
+                                    <i class="bi bi-inbox"></i> Nenhum template avançado encontrado
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <div class="mt-3">
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-primary" onclick="previewCertificadoGeral()">
-                <i class="fas fa-eye"></i> Visualizar Preview
-            </button>
-            <button type="button" class="btn btn-outline-success" onclick="gerarCertificadosGeral()">
-                <i class="fas fa-download"></i> Gerar Certificados
-            </button>
-            <button type="button" class="btn btn-outline-info" onclick="exportarConfiguracoes()">
-                <i class="fas fa-file-export"></i> Exportar Configurações
-            </button>
+
+    <!-- Eventos e Configurações -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Eventos e Configurações</h5>
+                </div>
+                <div class="card-body">
+                    {% if eventos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Evento</th>
+                                    <th>Data</th>
+                                    <th>Status</th>
+                                    <th>Certificados</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for evento in eventos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ evento.nome }}</strong>
+                                        <br><small class="text-muted">{{ evento.descricao[:50] + '...' if evento.descricao and evento.descricao|length > 50 else evento.descricao or 'Sem descrição' }}</small>
+                                    </td>
+                                    <td>
+                                        {% if evento.data_inicio %}
+                                        {{ evento.data_inicio.strftime('%d/%m/%Y') }}
+                                        {% if evento.data_fim and evento.data_fim != evento.data_inicio %}
+                                        <br>até {{ evento.data_fim.strftime('%d/%m/%Y') }}
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">Não definida</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                         {% if evento.data_inicio and evento.data_fim %}
+                                             {% set now = moment() if moment else None %}
+                                             {% if now %}
+                                                 {% if now < evento.data_inicio %}
+                                                     <span class="badge bg-info">Futuro</span>
+                                                 {% elif now > evento.data_fim %}
+                                                     <span class="badge bg-secondary">Finalizado</span>
+                                                 {% else %}
+                                                     <span class="badge bg-success">Em andamento</span>
+                                                 {% endif %}
+                                             {% else %}
+                                                 <span class="badge bg-primary">Agendado</span>
+                                             {% endif %}
+                                         {% else %}
+                                             <span class="badge bg-warning">Sem data</span>
+                                         {% endif %}
+                                     </td>
+                                    <td>
+                                        <small class="text-muted">Configurar certificados</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('certificado_routes.configurar_certificados', evento_id=evento.id) }}" 
+                                               class="btn btn-outline-primary" title="Configurar Certificados">
+                                                <i class="bi bi-gear"></i>
+                                            </a>
+                                            <a href="{{ url_for('certificado_routes.preview_certificado_geral', evento_id=evento.id) }}" 
+                                               class="btn btn-outline-info" title="Preview" target="_blank">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('certificado_routes.gerar_certificado_geral_evento', evento_id=evento.id) }}" 
+                                               class="btn btn-outline-success" title="Gerar Certificados">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-calendar-x display-1 text-muted"></i>
+                        <h5 class="mt-3 text-muted">Nenhum evento encontrado</h5>
+                        <p class="text-muted">Crie um evento para começar a configurar certificados.</p>
+                        <a href="{{ url_for('evento_routes.criar_evento') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i>Criar Evento
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
-    
-    <div class="alert alert-success mt-3">
-        <i class="fas fa-lightbulb"></i>
-        <strong>Dica:</strong> Use o preview para verificar como o certificado ficará antes de gerar em lote para todos os participantes.
+
+    <!-- Ações Rápidas -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Ações Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('certificado_routes.templates_certificado') }}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="bi bi-file-earmark-plus me-2"></i>Criar Template
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('certificado_routes.editor_avancado') }}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="bi bi-palette me-2"></i>Editor Avançado
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('certificado_routes.variaveis_dinamicas') }}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="bi bi-code-square me-2"></i>Variáveis Dinâmicas
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('certificado_routes.declaracoes') }}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="bi bi-file-text me-2"></i>Declarações
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
-<script>
-// Carregar estatísticas do evento
-$(document).ready(function() {
-    {% if evento %}
-    carregarEstatisticasEvento({{ evento.id }});
-    {% endif %}
-});
-
-function carregarEstatisticasEvento(eventoId) {
-    $.get(`/evento/${eventoId}/estatisticas`, function(data) {
-        if (data.success) {
-            $('#total_participantes').text(data.total_participantes || 0);
-            $('#total_oficinas').text(data.total_oficinas || 0);
-            $('#certificados_emitidos').text(data.certificados_emitidos || 0);
-            $('#certificados_pendentes').text(data.certificados_pendentes || 0);
-        }
-    }).fail(function() {
-        // Em caso de erro, manter os valores padrão
-        console.log('Erro ao carregar estatísticas do evento');
-    });
-}
-
-function previewCertificadoGeral() {
-    {% if evento %}
-    window.open('/certificado/preview_certificado_geral/{{ evento.id }}', '_blank');
-    {% else %}
-    alert('Nenhum evento selecionado');
-    {% endif %}
-}
-
-function gerarCertificadosGeral() {
-    {% if evento %}
-    if (confirm('Deseja gerar certificados para todos os participantes elegíveis?')) {
-        window.location.href = '/certificado/gerar_certificado_geral_evento/{{ evento.id }}';
-    }
-    {% else %}
-    alert('Nenhum evento selecionado');
-    {% endif %}
-}
-
-function exportarConfiguracoes() {
-    // Implementar exportação de configurações
-    alert('Funcionalidade em desenvolvimento');
-}
-</script>
+{% endblock %}
