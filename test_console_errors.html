@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Console Errors</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <h1>Teste de Console Errors</h1>
+    <select id="evento_id">
+        <option value="">Selecione um evento...</option>
+    </select>
+    
+    <div id="result"></div>
+    
+    <script>
+        $(document).ready(function() {
+            console.log('jQuery carregado:', typeof $ !== 'undefined');
+            console.log('Iniciando teste de carregamento de eventos...');
+            
+            function carregarEventos() {
+                console.log('Função carregarEventos chamada');
+                $.ajax({
+                    url: '/get_eventos_cliente',
+                    method: 'GET',
+                    success: function(response) {
+                        console.log('Resposta recebida:', response);
+                        if (response.success) {
+                            const $select = $('#evento_id');
+                            $select.empty().append('<option value="">Selecione um evento...</option>');
+                            
+                            if (response.eventos.length === 0) {
+                                $select.append('<option value="" disabled>Nenhum evento encontrado</option>');
+                                $('#result').html('<div style="color: orange;">Nenhum evento encontrado</div>');
+                            } else {
+                                response.eventos.forEach(function(evento) {
+                                    $select.append(`<option value="${evento.id}">${evento.nome}</option>`);
+                                });
+                                console.log('Eventos carregados com sucesso:', response.eventos.length);
+                                $('#result').html(`<div style="color: green;">Eventos carregados: ${response.eventos.length}</div>`);
+                            }
+                        } else {
+                            console.error('Erro na resposta:', response.message);
+                            $('#result').html(`<div style="color: red;">Erro: ${response.message}</div>`);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Erro AJAX:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            responseText: xhr.responseText,
+                            error: error
+                        });
+                        $('#result').html(`<div style="color: red;">Erro AJAX: ${xhr.status} - ${error}</div>`);
+                    }
+                });
+            }
+            
+            // Chamar a função
+            carregarEventos();
+        });
+    </script>
+</body>
+</html>

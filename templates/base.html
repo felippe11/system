@@ -319,6 +319,19 @@
 
     <!-- SCRIPTS -->
     {% block scripts %}
+    <!-- jQuery -->
+    <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+    <script>
+        // Fallback CDN para jQuery
+        if (typeof jQuery === 'undefined') {
+            const jqueryScript = document.createElement('script');
+            jqueryScript.src = 'https://code.jquery.com/jquery-3.7.1.min.js';
+            jqueryScript.integrity = 'sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=';
+            jqueryScript.crossOrigin = 'anonymous';
+            document.head.appendChild(jqueryScript);
+        }
+    </script>
+    
     <!-- Bootstrap Bundle -->
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script>

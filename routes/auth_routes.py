@@ -29,18 +29,47 @@ logger = logging.getLogger(__name__)
 def load_user(user_id):
     user_type = session.get('user_type')
 
+    # Tenta carregar baseado no user_type da sessão primeiro
     if user_type == 'ministrante':
-        return db.session.get(Ministrante, int(user_id))
+        user = db.session.get(Ministrante, int(user_id))
+        if user:
+            return user
     elif user_type in ['admin', 'participante']:
-        return db.session.get(Usuario, int(user_id))
+        user = db.session.get(Usuario, int(user_id))
+        if user:
+            return user
     elif user_type == 'cliente':
-        return db.session.get(Cliente, int(user_id))
+        user = db.session.get(Cliente, int(user_id))
+        if user:
+            return user
     elif user_type == 'monitor':
         from models.user import Monitor
-        return db.session.get(Monitor, int(user_id))
+        user = db.session.get(Monitor, int(user_id))
+        if user:
+            return user
 
-    # Fallback
-    return db.session.get(Usuario, int(user_id)) or db.session.get(Ministrante, int(user_id))
+    # Fallback robusto: tenta todas as tabelas se user_type não estiver disponível
+    # Isso é importante para casos onde a sessão pode não ter user_type
+    user = db.session.get(Cliente, int(user_id))
+    if user:
+        # Atualiza a sessão com o tipo correto
+        session['user_type'] = 'cliente'
+        return user
+    
+    user = db.session.get(Usuario, int(user_id))
+    if user:
+        # Atualiza a sessão com o tipo correto
+        session['user_type'] = user.tipo
+        return user
+    
+    user = db.session.get(Ministrante, int(user_id))
+    if user:
+        # Atualiza a sessão com o tipo correto
+        session['user_type'] = 'ministrante'
+        return user
+    
+    # Se chegou até aqui, usuário não foi encontrado
+    return None
 
 
 # =======================================

@@ -6,6 +6,7 @@ from flask import (
     url_for,
     flash,
     session,
+    jsonify,
 )
 from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
@@ -58,7 +59,15 @@ def submission_control():
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     
+    # Get current client ID
+    cliente_id = getattr(current_user, "id", None)
+    
+    # Get events associated with the logged-in client first
+    eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
+    evento_ids = [e.id for e in eventos]
+    
     # Join Submission with WorkMetadata to get real imported data
+    # Filter by client's events
     submissions = (
         db.session.query(Submission, WorkMetadata)
         .outerjoin(
@@ -66,6 +75,7 @@ def submission_control():
             (Submission.title == WorkMetadata.titulo) & 
             (Submission.evento_id == WorkMetadata.evento_id)
         )
+        .filter(Submission.evento_id.in_(evento_ids) if evento_ids else False)
         .all()
     )
     
@@ -78,14 +88,19 @@ def submission_control():
         )
         .all()
     )
+    
+    # eventos already retrieved above
+    
     config = ConfiguracaoCliente.query.filter_by(
-        cliente_id=getattr(current_user, "id", None)
+        cliente_id=cliente_id
     ).first()
+    
     return render_template(
         "peer_review/submission_control.html",
         submissions=submissions,
         reviewers=reviewers,
         config=config,
+        eventos=eventos,
     )
 
 
@@ -118,7 +133,7 @@ def discard_all_submissions():
     print("Verificação de acesso passou, iniciando processo...")
     
     try:
-        # Obter o evento_id do usuário atual (cliente)
+        # Obter o cliente_id do usuário atual
         cliente_id = getattr(current_user, "id", None)
         print(f"Cliente ID obtido: {cliente_id}")
         
@@ -126,26 +141,32 @@ def discard_all_submissions():
             print("ERRO: Cliente ID não encontrado")
             return {"success": False, "message": "Usuário não identificado"}, 400
         
-        # Buscar eventos do cliente
-        print(f"Buscando eventos para cliente_id: {cliente_id}")
-        eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
-        print(f"Eventos encontrados: {len(eventos)}")
+        # Buscar todas as submissões (incluindo as sem evento_id)
+        print(f"Buscando todas as submissões no sistema...")
+        submissions = Submission.query.all()
+        print(f"Total de submissões encontradas: {len(submissions)}")
         
-        if not eventos:
-            print("ERRO: Nenhum evento encontrado")
-            return {"success": False, "message": "Nenhum evento encontrado"}, 404
+        # Filtrar submissões por eventos do cliente (se tiverem evento_id)
+        # ou incluir submissões sem evento_id para clientes específicos
+        eventos_cliente = Evento.query.filter_by(cliente_id=cliente_id).all()
+        evento_ids_cliente = [e.id for e in eventos_cliente]
+        print(f"Eventos do cliente {cliente_id}: {evento_ids_cliente}")
         
-        evento_ids = [e.id for e in eventos]
-        print(f"IDs dos eventos: {evento_ids}")
+        # Filtrar submissões relevantes:
+        # 1. Submissões vinculadas a eventos do cliente
+        # 2. Submissões sem evento_id (assumindo que pertencem ao contexto atual)
+        submissions_relevantes = []
+        for s in submissions:
+            if s.evento_id is None or s.evento_id in evento_ids_cliente:
+                submissions_relevantes.append(s)
         
-        # Buscar todas as submissões dos eventos do cliente
-        print(f"Buscando submissões para evento_ids: {evento_ids}")
-        submissions = Submission.query.filter(Submission.evento_id.in_(evento_ids)).all()
-        print(f"Submissões encontradas: {len(submissions)}")
+        print(f"Submissões relevantes para exclusão: {len(submissions_relevantes)}")
         
-        if not submissions:
+        if not submissions_relevantes:
             print("AVISO: Nenhuma submissão encontrada para excluir")
             return {"success": False, "message": "Nenhum trabalho encontrado para excluir"}, 404
+        
+        submissions = submissions_relevantes
         
         submission_ids = [s.id for s in submissions]
         print(f"IDs das submissões: {submission_ids}")
@@ -168,14 +189,15 @@ def discard_all_submissions():
         audits_deleted = AuditLog.query.filter(AuditLog.submission_id.in_(submission_ids)).delete(synchronize_session=False)
         print(f"AuditLogs excluídos: {audits_deleted}")
         
-        # 4. Excluir WorkMetadata relacionados
-        print("Excluindo WorkMetadata...")
-        metadata_deleted = WorkMetadata.query.filter(WorkMetadata.evento_id.in_(evento_ids)).delete(synchronize_session=False)
-        print(f"WorkMetadata excluídos: {metadata_deleted}")
+        # 4. Excluir WorkMetadata relacionados (apenas se houver eventos do cliente)
+        if evento_ids_cliente:
+            print("Excluindo WorkMetadata...")
+            metadata_deleted = WorkMetadata.query.filter(WorkMetadata.evento_id.in_(evento_ids_cliente)).delete(synchronize_session=False)
+            print(f"WorkMetadata excluídos: {metadata_deleted}")
         
         # 5. Finalmente, excluir as Submissions
         print("Excluindo Submissions...")
-        submissions_deleted = Submission.query.filter(Submission.evento_id.in_(evento_ids)).delete(synchronize_session=False)
+        submissions_deleted = Submission.query.filter(Submission.id.in_(submission_ids)).delete(synchronize_session=False)
         print(f"Submissions excluídas: {submissions_deleted}")
         
         # Commit das alterações
@@ -192,8 +214,7 @@ def discard_all_submissions():
         db.session.add(
             AuditLog(
                 user_id=uid,
-                event_type="bulk_deletion",
-                details=f"Excluídos {len(submissions)} trabalhos e registros relacionados"
+                event_type="bulk_deletion"
             )
         )
         db.session.commit()
@@ -736,6 +757,152 @@ def client_reviews_panel():
         )
 
     return render_template("peer_review/dashboard_client.html", items=items)
+
+
+@peer_review_routes.route("/assign_by_category", methods=["POST"])
+@login_required
+def assign_by_category():
+    """Distribui trabalhos para revisores baseado na categoria dos trabalhos.
+    
+    Agrupa trabalhos por categoria e revisores por área de especialização,
+    fazendo correspondência automática entre categoria do trabalho e área do revisor.
+    
+    Returns:
+        JSON: Resultado da operação com estatísticas de atribuição.
+    """
+    try:
+        # Verificar se usuário tem permissão
+        if current_user.tipo not in ("cliente", "admin", "superadmin"):
+            return jsonify({"success": False, "message": "Acesso negado!"}), 403
+        
+        # Obter evento_id da sessão ou parâmetro
+        evento_id = session.get("evento_id")
+        if not evento_id:
+            return jsonify({"success": False, "message": "Evento não identificado!"}), 400
+        
+        # Buscar trabalhos importados que ainda não foram atribuídos
+        trabalhos = Submission.query.filter_by(
+            evento_id=evento_id,
+            status="imported"
+        ).all()
+        
+        if not trabalhos:
+            return jsonify({
+                "success": False, 
+                "message": "Nenhum trabalho disponível para atribuição!"
+            }), 400
+        
+        # Buscar revisores ativos
+        revisores = Usuario.query.filter_by(tipo="revisor", ativo=True).all()
+        
+        if not revisores:
+            return jsonify({
+                "success": False, 
+                "message": "Nenhum revisor disponível!"
+            }), 400
+        
+        # Agrupar trabalhos por categoria
+        trabalhos_por_categoria = {}
+        for trabalho in trabalhos:
+            categoria = getattr(trabalho.work_metadata, 'categoria', None) if trabalho.work_metadata else None
+            if categoria:
+                if categoria not in trabalhos_por_categoria:
+                    trabalhos_por_categoria[categoria] = []
+                trabalhos_por_categoria[categoria].append(trabalho)
+        
+        # Agrupar revisores por área de formação
+        revisores_por_area = {}
+        for revisor in revisores:
+            area = getattr(revisor, 'formacao', None)
+            if area:
+                if area not in revisores_por_area:
+                    revisores_por_area[area] = []
+                revisores_por_area[area].append(revisor)
+        
+        atribuicoes_criadas = 0
+        categorias_processadas = 0
+        
+        # Fazer correspondência entre categorias e áreas
+        for categoria, trabalhos_categoria in trabalhos_por_categoria.items():
+            # Buscar revisores com área compatível (correspondência exata ou similar)
+            revisores_compativeis = []
+            
+            # Primeiro, busca correspondência exata
+            if categoria in revisores_por_area:
+                revisores_compativeis.extend(revisores_por_area[categoria])
+            
+            # Se não encontrou correspondência exata, busca por similaridade
+            if not revisores_compativeis:
+                categoria_lower = categoria.lower()
+                for area, revisores_area in revisores_por_area.items():
+                    area_lower = area.lower()
+                    if (categoria_lower in area_lower or 
+                        area_lower in categoria_lower or
+                        any(palavra in area_lower for palavra in categoria_lower.split()) or
+                        any(palavra in categoria_lower for palavra in area_lower.split())):
+                        revisores_compativeis.extend(revisores_area)
+            
+            # Se ainda não encontrou, usa todos os revisores disponíveis
+            if not revisores_compativeis:
+                revisores_compativeis = revisores
+            
+            # Atribuir revisores aos trabalhos desta categoria
+            if revisores_compativeis:
+                categorias_processadas += 1
+                revisor_index = 0
+                
+                for trabalho in trabalhos_categoria:
+                    # Selecionar revisor de forma circular
+                    revisor = revisores_compativeis[revisor_index % len(revisores_compativeis)]
+                    
+                    # Verificar se já existe atribuição
+                    existing_assignment = Assignment.query.filter_by(
+                        submission_id=trabalho.id,
+                        reviewer_id=revisor.id
+                    ).first()
+                    
+                    if not existing_assignment:
+                        # Criar nova atribuição
+                        assignment = Assignment(
+                            submission_id=trabalho.id,
+                            reviewer_id=revisor.id,
+                            assigned_at=datetime.utcnow()
+                        )
+                        db.session.add(assignment)
+                        
+                        # Criar review associada
+                        review = Review(
+                            submission_id=trabalho.id,
+                            reviewer_id=revisor.id,
+                            locator=str(uuid.uuid4()),
+                            access_code=str(uuid.uuid4())[:8]
+                        )
+                        db.session.add(review)
+                        
+                        atribuicoes_criadas += 1
+                    
+                    revisor_index += 1
+        
+        # Salvar todas as alterações
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"Distribuição concluída! {atribuicoes_criadas} atribuições criadas para {categorias_processadas} categorias.",
+            "stats": {
+                "atribuicoes_criadas": atribuicoes_criadas,
+                "categorias_processadas": categorias_processadas,
+                "total_trabalhos": len(trabalhos),
+                "total_revisores": len(revisores)
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False, 
+            "message": f"Erro interno: {str(e)}"
+        }), 500
 
 
 # ------------------------- ROTAS FLAT PARA SPAS ---------------------------
