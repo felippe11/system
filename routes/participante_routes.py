@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 from models.user import Usuario, PasswordResetToken
 from models.certificado import CertificadoConfig, CertificadoParticipante, NotificacaoCertificado, SolicitacaoCertificado
 from models.event import Evento
-from models.oficina import Oficina
+from models.event import Oficina
 from extensions import db
 from datetime import datetime
 
