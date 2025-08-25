@@ -23,6 +23,7 @@ from models import (
     ReviewerApplication,
     RevisorCandidatura,
     RevisorProcess,
+    WorkMetadata,
 )
 
 import uuid
@@ -56,7 +57,18 @@ def submission_control():
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-    submissions = Submission.query.all()
+    
+    # Join Submission with WorkMetadata to get real imported data
+    submissions = (
+        db.session.query(Submission, WorkMetadata)
+        .outerjoin(
+            WorkMetadata,
+            (Submission.title == WorkMetadata.titulo) & 
+            (Submission.evento_id == WorkMetadata.evento_id)
+        )
+        .all()
+    )
+    
     reviewers = (
         Usuario.query
         .join(RevisorCandidatura, Usuario.email == RevisorCandidatura.email)
@@ -75,6 +87,147 @@ def submission_control():
         reviewers=reviewers,
         config=config,
     )
+
+
+# ---------------------------------------------------------------------------
+# Exclusão de todos os trabalhos do evento atual
+# ---------------------------------------------------------------------------
+@peer_review_routes.route("/submissoes/descartar_todos", methods=["POST"])
+@login_required
+def discard_all_submissions():
+    """Exclui todos os trabalhos submetidos do evento atual.
+    
+    Returns:
+        dict: JSON response with success flag and message.
+    """
+    # Obter dados do formulário
+    print(f"DEBUG: Dados do formulário recebidos: {request.form}")
+    print(f"DEBUG: Headers da requisição: {dict(request.headers)}")
+    print(f"DEBUG: CSRF token no formulário: {request.form.get('csrf_token')}")
+    print(f"DEBUG: Content-Type: {request.content_type}")
+    
+    print("\n=== INÍCIO discard_all_submissions ===")
+    print(f"Método da requisição: {request.method}")
+    print(f"Usuário atual: {current_user}")
+    print(f"Tipo do usuário: {getattr(current_user, 'tipo', 'N/A')}")
+    
+    if current_user.tipo not in ("cliente", "admin", "superadmin"):
+        print(f"ERRO: Acesso negado para tipo de usuário: {current_user.tipo}")
+        return {"success": False, "message": "Acesso negado!"}, 403
+    
+    print("Verificação de acesso passou, iniciando processo...")
+    
+    try:
+        # Obter o evento_id do usuário atual (cliente)
+        cliente_id = getattr(current_user, "id", None)
+        print(f"Cliente ID obtido: {cliente_id}")
+        
+        if not cliente_id:
+            print("ERRO: Cliente ID não encontrado")
+            return {"success": False, "message": "Usuário não identificado"}, 400
+        
+        # Buscar eventos do cliente
+        print(f"Buscando eventos para cliente_id: {cliente_id}")
+        eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
+        print(f"Eventos encontrados: {len(eventos)}")
+        
+        if not eventos:
+            print("ERRO: Nenhum evento encontrado")
+            return {"success": False, "message": "Nenhum evento encontrado"}, 404
+        
+        evento_ids = [e.id for e in eventos]
+        print(f"IDs dos eventos: {evento_ids}")
+        
+        # Buscar todas as submissões dos eventos do cliente
+        print(f"Buscando submissões para evento_ids: {evento_ids}")
+        submissions = Submission.query.filter(Submission.evento_id.in_(evento_ids)).all()
+        print(f"Submissões encontradas: {len(submissions)}")
+        
+        if not submissions:
+            print("AVISO: Nenhuma submissão encontrada para excluir")
+            return {"success": False, "message": "Nenhum trabalho encontrado para excluir"}, 404
+        
+        submission_ids = [s.id for s in submissions]
+        print(f"IDs das submissões: {submission_ids}")
+        
+        print("Iniciando exclusão de registros relacionados...")
+        
+        # Excluir registros relacionados primeiro (para evitar violação de chave estrangeira)
+        # 1. Excluir Reviews
+        print("Excluindo Reviews...")
+        reviews_deleted = Review.query.filter(Review.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+        print(f"Reviews excluídas: {reviews_deleted}")
+        
+        # 2. Excluir Assignments
+        print("Excluindo Assignments...")
+        assignments_deleted = Assignment.query.filter(Assignment.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+        print(f"Assignments excluídas: {assignments_deleted}")
+        
+        # 3. Excluir AuditLogs relacionados
+        print("Excluindo AuditLogs...")
+        audits_deleted = AuditLog.query.filter(AuditLog.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+        print(f"AuditLogs excluídos: {audits_deleted}")
+        
+        # 4. Excluir WorkMetadata relacionados
+        print("Excluindo WorkMetadata...")
+        metadata_deleted = WorkMetadata.query.filter(WorkMetadata.evento_id.in_(evento_ids)).delete(synchronize_session=False)
+        print(f"WorkMetadata excluídos: {metadata_deleted}")
+        
+        # 5. Finalmente, excluir as Submissions
+        print("Excluindo Submissions...")
+        submissions_deleted = Submission.query.filter(Submission.evento_id.in_(evento_ids)).delete(synchronize_session=False)
+        print(f"Submissions excluídas: {submissions_deleted}")
+        
+        # Commit das alterações
+        print("Fazendo commit das alterações...")
+        db.session.commit()
+        print("Commit realizado com sucesso!")
+        
+        # Log da ação
+        print("Criando log de auditoria...")
+        usuario = Usuario.query.get(cliente_id)
+        uid = usuario.id if usuario else None
+        print(f"UID para log: {uid}")
+        
+        db.session.add(
+            AuditLog(
+                user_id=uid,
+                event_type="bulk_deletion",
+                details=f"Excluídos {len(submissions)} trabalhos e registros relacionados"
+            )
+        )
+        db.session.commit()
+        print("Log de auditoria criado com sucesso!")
+        
+        success_message = f"Todos os {len(submissions)} trabalhos foram excluídos com sucesso!"
+        print(f"SUCESSO: {success_message}")
+        
+        response = {
+            "success": True, 
+            "message": success_message
+        }
+        print(f"Resposta a ser enviada: {response}")
+        print("=== FIM discard_all_submissions ===\n")
+        
+        return response
+        
+    except Exception as e:
+        print(f"ERRO CAPTURADO: {str(e)}")
+        print(f"Tipo do erro: {type(e).__name__}")
+        import traceback
+        print(f"Stack trace: {traceback.format_exc()}")
+        
+        print("Fazendo rollback...")
+        db.session.rollback()
+        
+        error_response = {
+            "success": False, 
+            "message": f"Erro ao excluir trabalhos: {str(e)}"
+        }
+        print(f"Resposta de erro: {error_response}")
+        print("=== FIM discard_all_submissions (COM ERRO) ===\n")
+        
+        return error_response, 500
 
 
 # ---------------------------------------------------------------------------

@@ -132,6 +132,12 @@ def create_app():
     def current_time():
         now = datetime.utcnow()
         return f"Horário de Brasília: {brasilia_filter(now)}"
+    
+    # Rota de debug temporária para testar modal
+    @app.route("/debug-modal")
+    def debug_modal():
+        from flask import render_template
+        return render_template('debug_modal.html')
 
     return app
 

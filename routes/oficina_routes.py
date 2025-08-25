@@ -23,6 +23,8 @@ from models import (
 from models.user import Ministrante, Cliente
 from extensions import db
 import logging
+logger = logging.getLogger(__name__)
+
 from datetime import datetime
 from utils import obter_estados  # ou de onde essa função vem
 from sqlalchemy import text
@@ -90,8 +92,35 @@ def criar_oficina():
         evento_id = request.form.get('evento_id')
 
         # Validação básica dos campos obrigatórios
+        context = {
+            'estados': estados,
+            'ministrantes': ministrantes_disponiveis,
+            'clientes': clientes_disponiveis,
+            'eventos': eventos_disponiveis,
+            'datas': request.form.getlist('data[]'),
+            'horarios_inicio': request.form.getlist('horario_inicio[]'),
+            'horarios_fim': request.form.getlist('horario_fim[]'),
+        }
         if not all([titulo, descricao, vagas, carga_horaria, estado, cidade, evento_id]):
             flash("Erro: Todos os campos obrigatórios devem ser preenchidos!", "danger")
+            return render_template('criar_oficina.html', **context)
+
+        if not vagas.isdigit():
+            flash("Erro: o campo 'vagas' deve conter apenas números.", "danger")
+            return render_template('criar_oficina.html', **context)
+
+        if not carga_horaria.isdigit():
+            flash(
+                "Erro: o campo 'carga horária' deve conter apenas números.",
+                "danger",
+            )
+            return render_template('criar_oficina.html', **context)
+
+        evento = Evento.query.get(evento_id)
+        if current_user.tipo == 'cliente' and (
+            not evento or evento.cliente_id != current_user.id
+        ):
+            flash('Você não tem permissão para criar uma atividade neste evento.', 'danger')
             return render_template(
                 'criar_oficina.html',
                 estados=estados,
@@ -151,12 +180,28 @@ def criar_oficina():
                 nomes_tipos = request.form.getlist('nome_tipo[]')
                 precos = request.form.getlist('preco_tipo[]')
                 if not nomes_tipos or not precos:
-                    raise ValueError("Tipos de inscrição e preços são obrigatórios para oficinas pagas.")
-                for nome, preco in zip(nomes_tipos, precos):
+                    raise ValueError(
+                        "Tipos de inscrição e preços são obrigatórios para oficinas pagas."
+                    )
+                precos_convertidos = []
+                for preco in precos:
+                    preco_str = preco.strip()
+                    if preco_str == '':
+                        flash("Erro: preço inválido.", "danger")
+                        return render_template('criar_oficina.html', **context)
+                    try:
+                        precos_convertidos.append(float(preco_str))
+                    except ValueError:
+                        flash(
+                            "Erro: o campo 'preço' deve conter apenas números.",
+                            "danger",
+                        )
+                        return render_template('criar_oficina.html', **context)
+                for nome, preco in zip(nomes_tipos, precos_convertidos):
                     novo_tipo = InscricaoTipo(
                         oficina_id=nova_oficina.id,
                         nome=nome,
-                        preco=float(preco)
+                        preco=preco,
                     )
                     db.session.add(novo_tipo)
 
@@ -181,8 +226,13 @@ def criar_oficina():
             ids_extras = request.form.getlist('ministrantes_ids[]')  # array
             for mid in ids_extras:
                 m = Ministrante.query.get(int(mid))
-                if m:
-                    nova_oficina.ministrantes_associados.append(m)
+                if not m:
+                    continue
+                if current_user.tipo == 'cliente' and m.cliente_id != current_user.id:
+                    raise ValueError(
+                        'Ministrante não pertence ao cliente atual.'
+                    )
+                nova_oficina.ministrantes_associados.append(m)
 
             db.session.commit()
             flash('Atividade criada com sucesso!', 'success')
@@ -234,11 +284,25 @@ def editar_oficina(oficina_id):
     clientes_disponiveis = Cliente.query.all() if current_user.tipo == 'admin' else []
 
     if request.method == 'POST':
+        context = {
+            'oficina': oficina,
+            'estados': estados,
+            'ministrantes': ministrantes,
+            'clientes': clientes_disponiveis,
+            'eventos': eventos_disponiveis,
+            'datas': request.form.getlist('data[]'),
+            'horarios_inicio': request.form.getlist('horario_inicio[]'),
+            'horarios_fim': request.form.getlist('horario_fim[]'),
+        }
         oficina.titulo = request.form.get('titulo')
         oficina.descricao = request.form.get('descricao')
         ministrante_id = request.form.get('ministrante_id') or None
         oficina.ministrante_id = ministrante_id
-        oficina.carga_horaria = request.form.get('carga_horaria')
+        carga_horaria = request.form.get('carga_horaria')
+        if not carga_horaria.isdigit():
+            flash("O campo 'carga horária' deve conter apenas números.", 'danger')
+            return render_template('editar_oficina.html', **context)
+        oficina.carga_horaria = carga_horaria
         oficina.estado = request.form.get('estado')
         oficina.cidade = request.form.get('cidade')
         oficina.opcoes_checkin = request.form.get('opcoes_checkin')
@@ -263,7 +327,11 @@ def editar_oficina(oficina_id):
         elif tipo_inscricao == 'com_inscricao_sem_limite':
             oficina.vagas = 9999  # Um valor alto para representar "sem limite"
         else:  # com_inscricao_com_limite
-            oficina.vagas = int(request.form.get('vagas'))
+            vagas_val = request.form.get('vagas', '')
+            if not vagas_val.isdigit():
+                flash("O campo 'vagas' deve conter apenas números.", 'danger')
+                return render_template('editar_oficina.html', **context)
+            oficina.vagas = int(vagas_val)
 
         # Permitir que apenas admins alterem o cliente
         if current_user.tipo == 'admin':
@@ -308,17 +376,33 @@ def editar_oficina(oficina_id):
             if not oficina.inscricao_gratuita:
                 # Remove os tipos de inscrição antigos
                 InscricaoTipo.query.filter_by(oficina_id=oficina.id).delete()
-                
+
                 # Adiciona os novos tipos de inscrição
                 nomes_tipos = request.form.getlist('nome_tipo[]')
                 precos = request.form.getlist('preco_tipo[]')
                 if not nomes_tipos or not precos:
-                    raise ValueError("Tipos de inscrição e preços são obrigatórios para oficinas pagas.")
-                for nome, preco in zip(nomes_tipos, precos):
+                    raise ValueError(
+                        "Tipos de inscrição e preços são obrigatórios para oficinas pagas."
+                    )
+                precos_convertidos = []
+                for preco in precos:
+                    preco_str = preco.strip()
+                    if preco_str == '':
+                        flash("Erro: preço inválido.", 'danger')
+                        return render_template('editar_oficina.html', **context)
+                    try:
+                        precos_convertidos.append(float(preco_str))
+                    except ValueError:
+                        flash(
+                            "Erro: o campo 'preço' deve conter apenas números.",
+                            'danger',
+                        )
+                        return render_template('editar_oficina.html', **context)
+                for nome, preco in zip(nomes_tipos, precos_convertidos):
                     novo_tipo = InscricaoTipo(
                         oficina_id=oficina.id,
                         nome=nome,
-                        preco=float(preco)
+                        preco=preco,
                     )
                     db.session.add(novo_tipo)
 
