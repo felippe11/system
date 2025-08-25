@@ -39,7 +39,6 @@ def importar_trabalhos():
         records = df.to_dict(orient="records")
         rows = []
         for row_dict in records:
-
             attributes = {}
             for key, value in row_dict.items():
                 if isinstance(value, pd.Timestamp):
@@ -51,7 +50,6 @@ def importar_trabalhos():
                 if not isinstance(value, (str, int, float, bool, type(None))):
                     value = str(value)
                 attributes[key] = value
-            rows.append(attributes)
             rows.append(attributes)
 
         temp_id = uuid.uuid4().hex
@@ -87,13 +85,19 @@ def importar_trabalhos():
     except FileNotFoundError:
         return jsonify({"success": False, "message": "ID temporário inválido ou expirado"}), 400
 
-    columns = request.form.getlist("columns")
-    title_column = request.form.get("title_column")
+    # Obter mapeamento de colunas do formulário
+    titulo_col = request.form.get("titulo")
+    categoria_col = request.form.get("categoria")
+    rede_ensino_col = request.form.get("rede_ensino")
+    etapa_ensino_col = request.form.get("etapa_ensino")
+    pdf_url_col = request.form.get("pdf_url")
 
     imported = 0
     for idx, row in enumerate(rows, start=1):
-        raw_title = row.get(title_column) if title_column else None
+        # Obter título usando o mapeamento
+        raw_title = row.get(titulo_col) if titulo_col else None
         title = str(raw_title) if raw_title else f"Trabalho {idx}"
+        
         submission = Submission(
             title=title,
             code_hash=generate_password_hash(
@@ -104,14 +108,14 @@ def importar_trabalhos():
         )
         db.session.add(submission)
 
-        selected = {col: row.get(col) for col in columns} if columns else row
+        # Criar WorkMetadata usando o mapeamento de colunas
         wm = WorkMetadata(
-            data=selected,
-            titulo=selected.get("titulo"),
-            categoria=selected.get("categoria"),
-            rede_ensino=selected.get("rede_ensino"),
-            etapa_ensino=selected.get("etapa_ensino"),
-            pdf_url=selected.get("pdf_url"),
+            data=row,
+            titulo=row.get(titulo_col) if titulo_col else None,
+            categoria=row.get(categoria_col) if categoria_col else None,
+            rede_ensino=row.get(rede_ensino_col) if rede_ensino_col else None,
+            etapa_ensino=row.get(etapa_ensino_col) if etapa_ensino_col else None,
+            pdf_url=row.get(pdf_url_col) if pdf_url_col else None,
             evento_id=evento_id,
         )
         db.session.add(wm)
