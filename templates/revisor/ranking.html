@@ -1,30 +1,193 @@
 {% extends "base.html" %}
+{% from 'partials/card.html' import render_card %}
 {% block title %}Ranking de Trabalhos{% endblock %}
 {% block content %}
 <div class="container py-4">
-  <h1 class="h3 mb-4">Ranking de Trabalhos</h1>
-  <p class="text-muted">Ordenado por: {{ ordenar_por }}</p>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Título</th>
-        <th>Total de Notas</th>
-        {% if ordenar_por != 'total_nota' %}
-        <th>{{ ordenar_por|capitalize }}</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in resultados %}
-      <tr>
-        <td>{{ item.submission.title }}</td>
-        <td>{{ '%.2f'|format(item.total_nota) }}</td>
-        {% if ordenar_por != 'total_nota' %}
-        <td>{{ item.submission|attribute(ordenar_por) }}</td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="text-center mb-4">
+    <h1 class="h3 text-primary mb-2">
+      <i class="bi bi-trophy me-2"></i>Ranking de Trabalhos
+    </h1>
+    <p class="text-muted">Classificação dos trabalhos por pontuação e critérios</p>
+  </div>
+  
+  <!-- Filtros e controles -->
+  {% set controles_content %}
+    <div class="row g-3 align-items-center">
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Ordenar por:</label>
+        <select class="form-select" id="ordenarPor" onchange="aplicarFiltro()">
+          <option value="total_nota" {{ 'selected' if ordenar_por == 'total_nota' else '' }}>Total de Notas</option>
+          <option value="title" {{ 'selected' if ordenar_por == 'title' else '' }}>Título</option>
+          <option value="created_at" {{ 'selected' if ordenar_por == 'created_at' else '' }}>Data de Criação</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">Buscar trabalho:</label>
+        <input type="text" class="form-control" id="buscarTrabalho" placeholder="Digite o título do trabalho..." oninput="filtrarTrabalhos()">
+      </div>
+    </div>
+  {% endset %}
+  {{ render_card('Controles de Visualização', controles_content, '', 'card shadow-sm border-0 mb-4') }}
+  
+  <!-- Estatísticas -->
+  {% set stats_content %}
+    <div class="row g-3 text-center">
+      <div class="col-md-3">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-file-earmark-text text-primary fs-3 me-2"></i>
+          <div>
+            <h4 class="mb-0">{{ resultados|length }}</h4>
+            <small class="text-muted">Total de Trabalhos</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-star-fill text-warning fs-3 me-2"></i>
+          <div>
+            <h4 class="mb-0">{{ '%.1f'|format(resultados|map(attribute='total_nota')|sum / resultados|length if resultados else 0) }}</h4>
+            <small class="text-muted">Nota Média</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-arrow-up-circle text-success fs-3 me-2"></i>
+          <div>
+            <h4 class="mb-0">{{ '%.1f'|format(resultados|map(attribute='total_nota')|max if resultados else 0) }}</h4>
+            <small class="text-muted">Maior Nota</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="d-flex align-items-center justify-content-center">
+          <i class="bi bi-arrow-down-circle text-danger fs-3 me-2"></i>
+          <div>
+            <h4 class="mb-0">{{ '%.1f'|format(resultados|map(attribute='total_nota')|min if resultados else 0) }}</h4>
+            <small class="text-muted">Menor Nota</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endset %}
+  {{ render_card('Estatísticas Gerais', stats_content, '', 'card shadow-sm border-0 mb-4') }}
+  
+  <!-- Ranking -->
+  {% set ranking_content %}
+    {% if resultados %}
+      <div class="table-responsive">
+        <table class="table table-hover" id="rankingTable">
+          <thead class="table-primary">
+            <tr>
+              <th class="text-center" style="width: 60px;">
+                <i class="bi bi-hash"></i>
+              </th>
+              <th>Título do Trabalho</th>
+              <th class="text-center" style="width: 120px;">
+                <i class="bi bi-star-fill me-1"></i>Nota
+              </th>
+              {% if ordenar_por != 'total_nota' %}
+              <th class="text-center">{{ ordenar_por|replace('_', ' ')|title }}</th>
+              {% endif %}
+              <th class="text-center" style="width: 100px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in resultados %}
+            <tr class="trabalho-row" data-titulo="{{ item.submission.title|lower }}">
+              <td class="text-center">
+                {% if loop.index <= 3 %}
+                  {% if loop.index == 1 %}
+                    <span class="badge bg-warning text-dark fs-6">
+                      <i class="bi bi-trophy-fill"></i> 1º
+                    </span>
+                  {% elif loop.index == 2 %}
+                    <span class="badge bg-secondary fs-6">
+                      <i class="bi bi-award-fill"></i> 2º
+                    </span>
+                  {% elif loop.index == 3 %}
+                    <span class="badge bg-warning text-dark fs-6">
+                      <i class="bi bi-award-fill"></i> 3º
+                    </span>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-light text-dark">{{ loop.index }}º</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-file-earmark-text text-primary me-2"></i>
+                  <div>
+                    <strong>{{ item.submission.title }}</strong>
+                    {% if item.submission.author %}
+                      <br><small class="text-muted">por {{ item.submission.author }}</small>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-primary fs-6">{{ '%.1f'|format(item.total_nota) }}</span>
+              </td>
+              {% if ordenar_por != 'total_nota' %}
+              <td class="text-center">
+                {% set attr_value = item.submission|attribute(ordenar_por) %}
+                {% if ordenar_por == 'created_at' and attr_value %}
+                  {{ attr_value.strftime('%d/%m/%Y') }}
+                {% else %}
+                  {{ attr_value or 'N/A' }}
+                {% endif %}
+              </td>
+              {% endif %}
+              <td class="text-center">
+                <div class="btn-group btn-group-sm">
+                  <a href="{{ url_for('revisor_routes.avaliar', submission_id=item.submission.id) }}" 
+                     class="btn btn-outline-primary btn-sm" title="Avaliar">
+                    <i class="bi bi-clipboard-data"></i>
+                  </a>
+                  {% if item.submission.file_path %}
+                  <a href="{{ url_for('static', filename=item.submission.file_path) }}" 
+                     target="_blank" class="btn btn-outline-secondary btn-sm" title="Visualizar">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <i class="bi bi-inbox text-muted fs-1 mb-3"></i>
+        <h5 class="text-muted">Nenhum trabalho encontrado</h5>
+        <p class="text-muted">Não há trabalhos disponíveis para classificação no momento.</p>
+      </div>
+    {% endif %}
+  {% endset %}
+  {{ render_card('Classificação dos Trabalhos', ranking_content, '', 'card shadow-sm border-0') }}
 </div>
+
+<script>
+function aplicarFiltro() {
+  const ordenarPor = document.getElementById('ordenarPor').value;
+  const url = new URL(window.location);
+  url.searchParams.set('ordenar_por', ordenarPor);
+  window.location.href = url.toString();
+}
+
+function filtrarTrabalhos() {
+  const busca = document.getElementById('buscarTrabalho').value.toLowerCase();
+  const rows = document.querySelectorAll('.trabalho-row');
+  
+  rows.forEach(row => {
+    const titulo = row.getAttribute('data-titulo');
+    if (titulo.includes(busca)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
 {% endblock %}

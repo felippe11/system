@@ -313,9 +313,7 @@
                         data-max="{{ config.num_revisores_max if config else 2 }}">
                   {% for r in reviewers %}
                   <option value="{{ r.id }}" data-area="{{ r.area if r.area else '' }}" data-nivel="{{ r.nivel if r.nivel else '' }}">
-                    {{ r.nome }}
-                    {% if r.area %} - {{ r.area }}{% endif %}
-                    {% if r.nivel %} ({{ r.nivel }}){% endif %}
+                    {{ r.nome }}{% if r.area %} - {{ r.area }}{% endif %}{% if r.nivel %} ({{ r.nivel }}){% endif %}
                   </option>
                   {% else %}
                   <option disabled>Nenhum revisor aprovado</option>
@@ -465,4 +463,170 @@
 {{ super() }}
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/submission_import.js') }}"></script>
+<script>
+$(document).ready(function() {
+    // Filtro de revisores por área e nível (presentes no HEAD)
+    $('#filterArea, #filterNivel').on('keyup', function() {
+        const areaFilter = $('#filterArea').val().toLowerCase();
+        const nivelFilter = $('#filterNivel').val().toLowerCase();
+        
+        $('#reviewerSelect option').each(function() {
+            const area = $(this).data('area') ? String($(this).data('area')).toLowerCase() : '';
+            const nivel = $(this).data('nivel') ? String($(this).data('nivel')).toLowerCase() : '';
+            const areaMatch = !areaFilter || area.includes(areaFilter);
+            const nivelMatch = !nivelFilter || nivel.includes(nivelFilter);
+            $(this).toggle(areaMatch && nivelMatch);
+        });
+    });
+
+    // Validação da atribuição manual
+    $('#assignManual').on('click', function(e) {
+        const submissionId = $('#submissionSelect').val();
+        const selectedReviewers = $('#reviewerSelect').val();
+        const minReviewers = parseInt($('#reviewerSelect').data('min'));
+        const maxReviewers = parseInt($('#reviewerSelect').data('max'));
+        
+        if (!submissionId) {
+            e.preventDefault();
+            showAlert('Por favor, selecione uma submissão.', 'warning');
+            return;
+        }
+        if (!selectedReviewers || selectedReviewers.length < minReviewers) {
+            e.preventDefault();
+            showAlert(`Por favor, selecione pelo menos ${minReviewers} revisor(es).`, 'warning');
+            return;
+        }
+        if (selectedReviewers.length > maxReviewers) {
+            e.preventDefault();
+            showAlert(`Por favor, selecione no máximo ${maxReviewers} revisor(es).`, 'warning');
+            return;
+        }
+    });
+
+    // Validação da atribuição automática por área
+    $('#autoArea').on('click', function(e) {
+        const eventoId = $('#eventoId').val();
+        if (!eventoId) {
+            e.preventDefault();
+            showAlert('Por favor, informe o ID do evento.', 'warning');
+            return;
+        }
+    });
+
+    // Tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+
+    // Validação do arquivo
+    $('#arquivo').on('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const allowedTypes = ['.xls', '.xlsx'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(fileExtension)) {
+                showAlert('Por favor, selecione um arquivo .xls ou .xlsx válido.', 'danger');
+                $(this).val('');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('O arquivo deve ter no máximo 10MB.', 'danger');
+                $(this).val('');
+                return;
+            }
+        }
+    });
+
+    // Botões com estado de processamento
+    $('button[type="submit"], #assignManual, #assignAutomatic, #autoArea').on('click', function() {
+        const $btn = $(this);
+        const originalText = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
+        setTimeout(() => {
+            $btn.prop('disabled', false).html(originalText);
+        }, 3000);
+    });
+
+    // Função de alerta centralizada no container correto
+    function showAlert(message, type = 'info') {
+        const icon = type === 'danger' ? 'exclamation-triangle'
+                   : type === 'warning' ? 'exclamation-circle'
+                   : 'info-circle';
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="fas fa-${icon} me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        $('#alertContainer').html(alertHtml);
+        setTimeout(() => {
+            $('#alertContainer .alert').fadeOut();
+        }, 5000);
+    }
+});
+</script>
+
+<style>
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.table-active {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+.reviewer-list {
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.btn {
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0 15px;
+    }
+    
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem !important;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+</style>
 {% endblock %}

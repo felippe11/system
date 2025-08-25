@@ -1,36 +1,162 @@
 {% extends 'base.html' %}
+{% from 'partials/card.html' import render_card %}
+{% block title %}Avaliar Trabalho{% endblock %}
 {% block content %}
-<div class="container mt-4">
-  <h3>Avaliar Trabalho</h3>
-  <h5 class="mb-4">{{ submission.title }}</h5>
-  {% if submission.file_path %}
-  <iframe src="{{ url_for('static', filename=submission.file_path) }}" width="100%" height="600"></iframe>
-  {% elif submission.content %}
-  <div class="border p-3 mb-4">{{ submission.content|safe }}</div>
-  {% endif %}
-  <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {% if barema and barema.requisitos %}
-      {% for requisito, faixa in barema.requisitos.items() %}
-      <div class="mb-3">
-        <label class="form-label">
-          {{ requisito }} ({{ faixa['min'] }}-{{ faixa['max'] }})
-        </label>
-        <input
-          type="number"
-          class="form-control"
-          name="{{ requisito }}"
-          min="{{ faixa['min'] }}"
-          max="{{ faixa['max'] }}"
-          value="{{ review.scores[requisito] if review and review.scores }}"
-        >
+<div class="container py-4">
+  <div class="row">
+    <!-- Coluna do trabalho -->
+    <div class="col-lg-8">
+      <div class="text-center mb-4">
+        <h1 class="h3 text-primary mb-2">
+          <i class="bi bi-clipboard-data me-2"></i>Avaliação de Trabalho
+        </h1>
+        <h4 class="text-muted">{{ submission.title }}</h4>
       </div>
-      {% endfor %}
-    {% else %}
-      <p>Não há barema cadastrado para este evento.</p>
-    {% endif %}
-    <button class="btn btn-primary">Salvar</button>
-  </form>
+      
+      <!-- Card com o conteúdo do trabalho -->
+      {% set trabalho_content %}
+        {% if submission.file_path %}
+          <div class="text-center mb-3">
+            <i class="bi bi-file-earmark-text text-primary fs-1 mb-2"></i>
+            <p class="text-muted">Arquivo anexado para avaliação</p>
+            <a href="{{ url_for('static', filename=submission.file_path) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-eye me-1"></i>Visualizar em Nova Aba
+            </a>
+          </div>
+          <div class="ratio ratio-16x9">
+            <iframe src="{{ url_for('static', filename=submission.file_path) }}" class="border rounded"></iframe>
+          </div>
+        {% elif submission.content %}
+          <div class="border rounded p-4 bg-light">
+            {{ submission.content|safe }}
+          </div>
+        {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-file-x text-muted fs-1 mb-3"></i>
+            <p class="text-muted">Nenhum conteúdo disponível para visualização.</p>
+          </div>
+        {% endif %}
+      {% endset %}
+      {{ render_card('Conteúdo do Trabalho', trabalho_content, '', 'card shadow-sm border-0') }}
+    </div>
+    
+    <!-- Coluna da avaliação -->
+    <div class="col-lg-4">
+      {% set avaliacao_content %}
+        <form method="POST" id="avaliacaoForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          {% if barema and barema.requisitos %}
+            <div class="mb-4">
+              <h6 class="text-primary mb-3">
+                <i class="bi bi-list-check me-2"></i>Critérios de Avaliação
+              </h6>
+              
+              {% for requisito, faixa in barema.requisitos.items() %}
+              <div class="mb-4">
+                <label class="form-label fw-bold">{{ requisito }}</label>
+                <div class="d-flex align-items-center mb-2">
+                  <small class="text-muted me-2">{{ faixa['min'] }}</small>
+                  <input
+                    type="range"
+                    class="form-range flex-grow-1 mx-2"
+                    id="range_{{ loop.index }}"
+                    min="{{ faixa['min'] }}"
+                    max="{{ faixa['max'] }}"
+                    value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
+                    oninput="updateNumberInput('{{ requisito }}', this.value)"
+                  >
+                  <small class="text-muted ms-2">{{ faixa['max'] }}</small>
+                </div>
+                <input
+                  type="number"
+                  class="form-control form-control-sm text-center"
+                  name="{{ requisito }}"
+                  id="{{ requisito }}"
+                  min="{{ faixa['min'] }}"
+                  max="{{ faixa['max'] }}"
+                  value="{{ review.scores[requisito] if review and review.scores and requisito in review.scores else faixa['min'] }}"
+                  oninput="updateRangeInput('range_{{ loop.index }}', this.value)"
+                  required
+                >
+              </div>
+              {% endfor %}
+            </div>
+            
+            <!-- Resumo da avaliação -->
+            <div class="alert alert-info">
+              <h6 class="alert-heading">
+                <i class="bi bi-calculator me-2"></i>Resumo da Avaliação
+              </h6>
+              <div id="resumoAvaliacao">
+                <p class="mb-1"><strong>Total de Pontos:</strong> <span id="totalPontos">0</span></p>
+                <p class="mb-0"><strong>Média:</strong> <span id="mediaPontos">0.0</span></p>
+              </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i>Salvar Avaliação
+              </button>
+              <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Voltar
+              </a>
+            </div>
+          {% else %}
+            <div class="alert alert-warning text-center">
+              <i class="bi bi-exclamation-triangle fs-1 mb-3"></i>
+              <h6>Barema não configurado</h6>
+              <p class="mb-0">Não há critérios de avaliação cadastrados para este evento.</p>
+            </div>
+            <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary w-100">
+              <i class="bi bi-arrow-left me-1"></i>Voltar
+            </a>
+          {% endif %}
+        </form>
+      {% endset %}
+      {{ render_card('Formulário de Avaliação', avaliacao_content, '', 'card shadow-sm border-0 sticky-top', 'top: 1rem;') }}
+    </div>
+  </div>
 </div>
+
+<script>
+function updateNumberInput(name, value) {
+  document.getElementById(name).value = value;
+  calcularResumo();
+}
+
+function updateRangeInput(rangeId, value) {
+  document.getElementById(rangeId).value = value;
+  calcularResumo();
+}
+
+function calcularResumo() {
+  const inputs = document.querySelectorAll('input[type="number"]');
+  let total = 0;
+  let count = 0;
+  
+  inputs.forEach(input => {
+    if (input.value && !isNaN(input.value)) {
+      total += parseInt(input.value);
+      count++;
+    }
+  });
+  
+  document.getElementById('totalPontos').textContent = total;
+  document.getElementById('mediaPontos').textContent = count > 0 ? (total / count).toFixed(1) : '0.0';
+}
+
+// Calcular resumo inicial
+document.addEventListener('DOMContentLoaded', function() {
+  calcularResumo();
+});
+</script>
+
+<style>
+.sticky-top {
+  position: sticky;
+  top: 1rem;
+}
+</style>
 {% endblock %}
 
