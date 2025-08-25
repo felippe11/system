@@ -317,11 +317,12 @@ document.getElementById('formAdicionarAluno').addEventListener('submit', functio
             return;
         }
         
-        if (materiaisSelecionados.length === 0) {
-            e.preventDefault();
-            alert('Por favor, selecione pelo menos um material de apoio.');
-            return;
-        }
+        // Material de apoio é opcional - removida validação obrigatória
+        // if (materiaisSelecionados.length === 0) {
+        //     e.preventDefault();
+        //     alert('Por favor, selecione pelo menos um material de apoio.');
+        //     return;
+        // }
     }
 });
 </script>

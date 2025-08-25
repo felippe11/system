@@ -13,7 +13,7 @@
   {% if eventos %}
     <!-- Estatísticas gerais -->
     {% set total_processos = eventos|length %}
-    {% set processos_ativos = eventos|selectattr('status', 'equalto', 'Ativo')|list|length %}
+    {% set processos_ativos = eventos|selectattr('status', 'equalto', 'Aberto')|list|length %}
     
     <div class="row mb-4">
       <div class="col-md-4">
@@ -56,7 +56,7 @@
       <div class="col-md-6">
         <select class="form-select" id="statusFilter">
           <option value="">Todos os status</option>
-          <option value="Ativo">Ativo</option>
+          <option value="Aberto">Aberto</option>
           <option value="Encerrado">Encerrado</option>
           <option value="Pendente">Pendente</option>
         </select>
@@ -80,7 +80,7 @@
                   <small class="text-muted">Processo #{{ item.processo.id }}</small>
                 </div>
               </div>
-              {% set status_class = 'success' if item.status == 'Ativo' else 'secondary' %}
+              {% set status_class = 'success' if item.status == 'Aberto' else 'secondary' %}
               <span class="badge bg-{{ status_class }} fs-6">{{ item.status }}</span>
             </div>
           </div>
@@ -135,7 +135,7 @@
             </div>
           </div>
           <div class="card-footer bg-transparent border-0">
-            {% if item.status == 'Ativo' %}
+            {% if item.status == 'Aberto' %}
               <a href="{{ url_for('revisor_routes.submit_application', process_id=item.processo.id) }}"
                  class="btn btn-success w-100">
                 <i class="bi bi-person-plus me-1"></i>Participar do Processo Seletivo

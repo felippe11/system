@@ -1,69 +1,471 @@
 {% extends "base.html" %}
 {% block title %}Processo de Revisores{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.config-card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 0.5rem;
+}
+.step-indicator {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+.form-section {
+  border-left: 3px solid #007bff;
+  padding-left: 1rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-  <h1 class="h3 mb-4">Configurar Processo de Revisores</h1>
-  <form method="post">
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Data de Início</label>
-        <input type="date" class="form-control" name="availability_start" value="{{ processo.availability_start.strftime('%Y-%m-%d') if processo and processo.availability_start else '' }}">
-      </div>
-      <div class="col-md-6 mb-3">
-        <label class="form-label">Data de Término</label>
-        <input type="date" class="form-control" name="availability_end" value="{{ processo.availability_end.strftime('%Y-%m-%d') if processo and processo.availability_end else '' }}">
-      </div>
-    </div>
-    <div class="form-check form-switch mb-3">
-      <input type="checkbox" class="form-check-input" id="exibir_para_participantes" name="exibir_para_participantes" {% if processo and processo.exibir_para_participantes %}checked{% endif %}>
-      <label class="form-check-label" for="exibir_para_participantes">Exibir para participantes?</label>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Formulário</label>
-      <select class="form-select" name="formulario_id">
-        {% for f in formularios %}
-        <option value="{{ f.id }}" {% if processo and f.id == processo.formulario_id %}selected{% endif %}>{{ f.nome }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Eventos vinculados</label>
-      <select class="form-select" name="eventos_ids" multiple>
-        {% for ev in eventos %}
-        <option value="{{ ev.id }}" {% if ev.id in selected_event_ids %}selected{% endif %}>{{ ev.nome }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Número de Etapas</label>
-      <input type="number" class="form-control" name="num_etapas" value="{{ processo.num_etapas if processo else 1 }}">
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Nomes das Etapas</label>
-      {% set total = processo.num_etapas if processo else 1 %}
-      {% for i in range(total) %}
-      <input type="text" class="form-control mb-2" name="stage_name" value="{{ etapas[i].nome if etapas|length > i else '' }}">
-      {% endfor %}
-    </div>
-    <div class="mb-3">
-      <label class="form-label">Barema (Critérios e Requisitos)</label>
-      {% set crit_total = criterios|length %}
-        {% for c in criterios %}
-        {% set outer_index = loop.index0 %}
-        <div class="border rounded p-3 mb-3">
-          <input type="text" class="form-control mb-2" name="criterio_nome" value="{{ c.nome }}">
-          {% for r in c.requisitos %}
-          <input type="text" class="form-control mb-1" name="criterio_{{ outer_index }}_requisito" value="{{ r.descricao }}">
-          {% endfor %}
-          <input type="text" class="form-control mb-1" name="criterio_{{ loop.index0 }}_requisito" placeholder="Novo requisito">
+  <div class="row">
+    <div class="col-12">
+      <div class="d-flex align-items-center mb-4">
+        <div class="step-indicator me-3">1</div>
+        <div>
+          <h1 class="h3 mb-0">Configurar Processo de Revisores</h1>
+          <p class="text-muted mb-0">Configure as etapas e critérios do processo seletivo</p>
         </div>
-        {% endfor %}
-      <div class="border rounded p-3 mb-3">
-        <input type="text" class="form-control mb-2" name="criterio_nome" placeholder="Novo critério">
-        <input type="text" class="form-control mb-1" name="criterio_{{ crit_total }}_requisito" placeholder="Requisito">
       </div>
     </div>
-    <button type="submit" class="btn btn-primary">Salvar</button>
+  </div>
+
+  <form method="post" id="configForm" novalidate>
+    <!-- Configurações Básicas -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-calendar-event me-2"></i>
+          Período de Disponibilidade
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-calendar-plus me-1"></i>
+              Data de Início
+            </label>
+            <input type="date" class="form-control" name="availability_start" 
+                   value="{{ processo.availability_start.strftime('%Y-%m-%d') if processo and processo.availability_start else '' }}"
+                   required>
+            <div class="invalid-feedback">
+              Por favor, selecione a data de início.
+            </div>
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-calendar-x me-1"></i>
+              Data de Término
+            </label>
+            <input type="date" class="form-control" name="availability_end" 
+                   value="{{ processo.availability_end.strftime('%Y-%m-%d') if processo and processo.availability_end else '' }}"
+                   required>
+            <div class="invalid-feedback">
+              Por favor, selecione a data de término.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Configurações de Visibilidade -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-eye me-2"></i>
+          Configurações de Visibilidade
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="form-check form-switch">
+          <input type="checkbox" class="form-check-input" id="exibir_para_participantes" 
+                 name="exibir_para_participantes" {% if processo and processo.exibir_para_participantes %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="exibir_para_participantes">
+            <i class="bi bi-people me-1"></i>
+            Exibir processo para participantes
+          </label>
+          <div class="form-text">
+            Quando ativado, o processo seletivo ficará visível na página de seleção de eventos.
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Configurações de Formulário e Eventos -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-file-earmark-text me-2"></i>
+          Formulário e Eventos
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-clipboard-data me-1"></i>
+              Formulário de Candidatura
+            </label>
+            <select class="form-select" name="formulario_id" required>
+              <option value="">Selecione um formulário...</option>
+              {% for f in formularios %}
+              <option value="{{ f.id }}" {% if processo and f.id == processo.formulario_id %}selected{% endif %}>{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback">
+              Por favor, selecione um formulário.
+            </div>
+            {% if not formularios %}
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Nenhum formulário disponível. <a href="#" class="text-primary">Criar novo formulário</a>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-calendar-event me-1"></i>
+              Eventos Vinculados
+            </label>
+            <select class="form-select" name="eventos_ids" multiple size="4">
+              {% for ev in eventos %}
+              <option value="{{ ev.id }}" {% if ev.id in selected_event_ids %}selected{% endif %}>{{ ev.nome }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">
+              Mantenha Ctrl pressionado para selecionar múltiplos eventos.
+            </div>
+            {% if not eventos %}
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              Nenhum evento disponível. <a href="#" class="text-primary">Criar novo evento</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Configuração de Etapas -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-list-ol me-2"></i>
+          Etapas do Processo
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4 mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-hash me-1"></i>
+              Número de Etapas
+            </label>
+            <input type="number" class="form-control" name="num_etapas" 
+                   value="{{ processo.num_etapas if processo else 1 }}" 
+                   min="1" max="10" required id="numEtapas">
+            <div class="invalid-feedback">
+              Por favor, informe o número de etapas (1-10).
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-section mt-3">
+          <h6 class="fw-semibold mb-3">
+            <i class="bi bi-pencil me-1"></i>
+            Nomes das Etapas
+          </h6>
+          <div id="etapasContainer">
+            {% set total = processo.num_etapas if processo else 1 %}
+            {% for i in range(total) %}
+            <div class="input-group mb-2 etapa-input">
+              <span class="input-group-text">
+                <i class="bi bi-arrow-right"></i>
+                Etapa {{ i + 1 }}
+              </span>
+              <input type="text" class="form-control" name="stage_name" 
+                     value="{{ etapas[i].nome if etapas|length > i else '' }}"
+                     placeholder="Nome da etapa {{ i + 1 }}" required>
+              <div class="invalid-feedback">
+                Por favor, informe o nome da etapa.
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Configuração de Critérios -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-clipboard-check me-2"></i>
+          Barema (Critérios e Requisitos)
+        </h5>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="addCriterio">
+          <i class="bi bi-plus-circle me-1"></i>
+          Adicionar Critério
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="form-text mb-3">
+          <i class="bi bi-info-circle me-1"></i>
+          Defina os critérios de avaliação e seus respectivos requisitos para o processo seletivo.
+        </div>
+        
+        <div id="criteriosContainer">
+          {% set crit_total = criterios|length %}
+          {% for c in criterios %}
+          {% set outer_index = loop.index0 %}
+          <div class="card border-start border-primary border-3 mb-3 criterio-card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-bookmark"></i>
+                </span>
+                <input type="text" class="form-control fw-semibold" name="criterio_nome" 
+                       value="{{ c.nome }}" placeholder="Nome do critério" required>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-criterio">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="requisitos-container">
+                {% for r in c.requisitos %}
+                <div class="input-group mb-2 requisito-input">
+                  <span class="input-group-text">
+                    <i class="bi bi-check-circle"></i>
+                  </span>
+                  <input type="text" class="form-control" name="criterio_{{ outer_index }}_requisito" 
+                         value="{{ r.descricao }}" placeholder="Descrição do requisito">
+                  <button type="button" class="btn btn-outline-danger remove-requisito">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+                {% endfor %}
+                <div class="input-group mb-2 requisito-input">
+                  <span class="input-group-text">
+                    <i class="bi bi-check-circle"></i>
+                  </span>
+                  <input type="text" class="form-control" name="criterio_{{ outer_index }}_requisito" 
+                         placeholder="Novo requisito">
+                  <button type="button" class="btn btn-outline-success add-requisito">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+          
+          <!-- Template para novo critério -->
+          <div class="card border-start border-success border-3 mb-3 criterio-card">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <div class="input-group">
+                <span class="input-group-text">
+                  <i class="bi bi-bookmark"></i>
+                </span>
+                <input type="text" class="form-control fw-semibold" name="criterio_nome" 
+                       placeholder="Novo critério">
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-criterio">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="requisitos-container">
+                <div class="input-group mb-2 requisito-input">
+                  <span class="input-group-text">
+                    <i class="bi bi-check-circle"></i>
+                  </span>
+                  <input type="text" class="form-control" name="criterio_{{ crit_total }}_requisito" 
+                         placeholder="Requisito">
+                  <button type="button" class="btn btn-outline-success add-requisito">
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Botões de Ação -->
+    <div class="card config-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-1">Finalizar Configuração</h6>
+            <small class="text-muted">Revise todas as informações antes de salvar</small>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+              <i class="bi bi-arrow-left me-1"></i>
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i>
+              Salvar Configuração
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </form>
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+// Validação do formulário
+(function() {
+  'use strict';
+  
+  // Validação de datas
+  const startDate = document.querySelector('input[name="availability_start"]');
+  const endDate = document.querySelector('input[name="availability_end"]');
+  
+  function validateDates() {
+    if (startDate.value && endDate.value) {
+      if (new Date(startDate.value) >= new Date(endDate.value)) {
+        endDate.setCustomValidity('A data de término deve ser posterior à data de início');
+      } else {
+        endDate.setCustomValidity('');
+      }
+    }
+  }
+  
+  startDate.addEventListener('change', validateDates);
+  endDate.addEventListener('change', validateDates);
+  
+  // Gerenciamento dinâmico de etapas
+  const numEtapasInput = document.getElementById('numEtapas');
+  const etapasContainer = document.getElementById('etapasContainer');
+  
+  numEtapasInput.addEventListener('change', function() {
+    const numEtapas = parseInt(this.value) || 1;
+    const currentEtapas = etapasContainer.querySelectorAll('.etapa-input');
+    
+    // Remove etapas extras
+    for (let i = numEtapas; i < currentEtapas.length; i++) {
+      currentEtapas[i].remove();
+    }
+    
+    // Adiciona novas etapas se necessário
+    for (let i = currentEtapas.length; i < numEtapas; i++) {
+      const etapaDiv = document.createElement('div');
+      etapaDiv.className = 'input-group mb-2 etapa-input';
+      etapaDiv.innerHTML = `
+        <span class="input-group-text">
+          <i class="bi bi-arrow-right"></i>
+          Etapa ${i + 1}
+        </span>
+        <input type="text" class="form-control" name="stage_name" 
+               placeholder="Nome da etapa ${i + 1}" required>
+        <div class="invalid-feedback">
+          Por favor, informe o nome da etapa.
+        </div>
+      `;
+      etapasContainer.appendChild(etapaDiv);
+    }
+  });
+  
+  // Gerenciamento de critérios e requisitos
+  document.getElementById('addCriterio').addEventListener('click', function() {
+    const criteriosContainer = document.getElementById('criteriosContainer');
+    const criterioCount = criteriosContainer.querySelectorAll('.criterio-card').length;
+    
+    const newCriterio = document.createElement('div');
+    newCriterio.className = 'card border-start border-success border-3 mb-3 criterio-card';
+    newCriterio.innerHTML = `
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-bookmark"></i>
+          </span>
+          <input type="text" class="form-control fw-semibold" name="criterio_nome" 
+                 placeholder="Novo critério">
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger ms-2 remove-criterio">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="requisitos-container">
+          <div class="input-group mb-2 requisito-input">
+            <span class="input-group-text">
+              <i class="bi bi-check-circle"></i>
+            </span>
+            <input type="text" class="form-control" name="criterio_${criterioCount}_requisito" 
+                   placeholder="Requisito">
+            <button type="button" class="btn btn-outline-success add-requisito">
+              <i class="bi bi-plus"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    criteriosContainer.appendChild(newCriterio);
+  });
+  
+  // Event delegation para botões dinâmicos
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.remove-criterio')) {
+      e.target.closest('.criterio-card').remove();
+    }
+    
+    if (e.target.closest('.add-requisito')) {
+      const container = e.target.closest('.requisitos-container');
+      const requisitos = container.querySelectorAll('.requisito-input');
+      const criterioIndex = Array.from(document.querySelectorAll('.criterio-card')).indexOf(e.target.closest('.criterio-card'));
+      
+      const newRequisito = document.createElement('div');
+      newRequisito.className = 'input-group mb-2 requisito-input';
+      newRequisito.innerHTML = `
+        <span class="input-group-text">
+          <i class="bi bi-check-circle"></i>
+        </span>
+        <input type="text" class="form-control" name="criterio_${criterioIndex}_requisito" 
+               placeholder="Novo requisito">
+        <button type="button" class="btn btn-outline-danger remove-requisito">
+          <i class="bi bi-x"></i>
+        </button>
+      `;
+      
+      container.appendChild(newRequisito);
+      
+      // Converte o botão + em botão -
+      e.target.closest('.add-requisito').className = 'btn btn-outline-danger remove-requisito';
+      e.target.closest('.add-requisito').innerHTML = '<i class="bi bi-x"></i>';
+    }
+    
+    if (e.target.closest('.remove-requisito')) {
+      e.target.closest('.requisito-input').remove();
+    }
+  });
+  
+  // Validação do formulário
+  const form = document.getElementById('configForm');
+  form.addEventListener('submit', function(event) {
+    if (!form.checkValidity()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    form.classList.add('was-validated');
+  });
+})();
+</script>
 {% endblock %}

@@ -384,14 +384,14 @@
                         <div class="card-body">
                           <p class="card-text small">Gerencie templates e emissão de declarações de comparecimento.</p>
                           <div class="d-grid gap-2">
-                            <a href="{{ url_for('certificado_routes.declaracoes') }}" class="btn btn-outline-info btn-sm">
+                            <a href="{{ url_for('certificado_routes.gerenciar_declaracoes') }}" class="btn btn-outline-info btn-sm">
                               <i class="bi bi-file-earmark me-1"></i>Templates de Declarações
                             </a>
-                            <a href="{{ url_for('certificado_routes.config_regras_declaracoes') }}" class="btn btn-outline-info btn-sm">
-                              <i class="bi bi-gear me-1"></i>Regras de Liberação
+                            <a href="{{ url_for('certificado_routes.criar_declaracao_template') }}" class="btn btn-outline-info btn-sm">
+                              <i class="bi bi-gear me-1"></i>Criar Template
                             </a>
-                            <a href="{{ url_for('certificado_routes.emissao_declaracoes') }}" class="btn btn-info btn-sm">
-                              <i class="bi bi-send me-1"></i>Emitir Declarações
+                            <a href="{{ url_for('certificado_routes.gerenciar_declaracoes') }}" class="btn btn-info btn-sm">
+                              <i class="bi bi-send me-1"></i>Gerenciar Declarações
                             </a>
                           </div>
                         </div>
@@ -407,12 +407,12 @@
                         <div class="card-body">
                           <p class="card-text small">Use IA para gerar e melhorar textos de certificados e declarações.</p>
                           <div class="d-grid gap-2">
-                            <a href="{{ url_for('ai_routes.assistente_texto') }}" class="btn btn-outline-warning btn-sm">
-                              <i class="bi bi-magic me-1"></i>Assistente de Texto
-                            </a>
-                            <a href="{{ url_for('ai_routes.configuracoes') }}" class="btn btn-outline-warning btn-sm">
-                              <i class="bi bi-gear me-1"></i>Configurações de IA
-                            </a>
+                            <a href="{{ url_for('ai.assistente_texto') }}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-robot me-1"></i>Assistente de Texto
+                        </a>
+                        <a href="{{ url_for('ai.configuracoes_ia') }}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-gear me-1"></i>Configurações de IA
+                        </a>
                           </div>
                         </div>
                       </div>
@@ -427,11 +427,11 @@
                         <div class="card-body">
                           <p class="card-text small">Visualize histórico de emissões e gere relatórios.</p>
                           <div class="d-grid gap-2">
-                            <a href="{{ url_for('certificado_routes.historico') }}" class="btn btn-outline-secondary btn-sm">
-                              <i class="bi bi-list me-1"></i>Histórico de Emissões
+                            <a href="{{ url_for('certificado_routes.historico_emissoes') }}" class="btn btn-outline-secondary btn-sm">
+                              <i class="bi bi-clock-history me-1"></i>Histórico de Emissões
                             </a>
-                            <a href="{{ url_for('certificado_routes.relatorios') }}" class="btn btn-outline-secondary btn-sm">
-                              <i class="bi bi-graph-up me-1"></i>Relatórios
+                            <a href="{{ url_for('certificado_routes.templates_certificado') }}" class="btn btn-outline-secondary btn-sm">
+                              <i class="bi bi-graph-up me-1"></i>Templates
                             </a>
                           </div>
                         </div>

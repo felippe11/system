@@ -288,6 +288,18 @@
           <small class="d-block text-muted">Adicionar bordas</small>
         </div>
         
+        <div class="element-item" data-type="qr-code">
+          <i class="fas fa-qrcode me-2"></i>
+          <strong>QR Code</strong>
+          <small class="d-block text-muted">Código QR para validação</small>
+        </div>
+        
+        <div class="element-item" data-type="custom-variable">
+          <i class="fas fa-code me-2"></i>
+          <strong>Variável Personalizada</strong>
+          <small class="d-block text-muted">Variável dinâmica customizada</small>
+        </div>
+        
         <h6 class="fw-bold mb-3 mt-4">Variáveis Dinâmicas</h6>
         <div id="dynamicVariables">
           <!-- Variáveis serão carregadas dinamicamente -->
@@ -554,11 +566,26 @@ class CertificateEditor {
         break;
       case 'logo':
         element.innerHTML = '<div style="border: 2px dashed #ccc; text-align: center; padding: 20px;">Logo</div>';
+        element.style.width = '120px';
+        element.style.height = '80px';
         break;
       case 'border':
         element.innerHTML = '';
         element.style.border = '3px solid #000';
         element.style.background = 'transparent';
+        element.style.width = '150px';
+        element.style.height = '100px';
+        break;
+      case 'qr-code':
+        element.innerHTML = '<div style="border: 1px solid #333; text-align: center; line-height: 100px; background: #fff;">QR Code</div>';
+        element.style.width = '100px';
+        element.style.height = '100px';
+        break;
+      case 'custom-variable':
+        element.innerHTML = '{VARIAVEL_PERSONALIZADA}';
+        element.style.backgroundColor = '#fff3cd';
+        element.style.border = '1px solid #ffeaa7';
+        element.style.padding = '5px';
         break;
     }
     
@@ -715,11 +742,149 @@ class CertificateEditor {
         </div>
       </div>
       
-      <button class="btn btn-primary w-100 mt-3" onclick="editor.applyProperties()">Aplicar Alterações</button>
+      <div id="logoProperties" class="property-group" style="display: none;">
+        <h6>Propriedades da Logo/Imagem</h6>
+        <div class="mb-3">
+          <label class="form-label">Arquivo de Imagem</label>
+          <input type="file" class="form-control" id="logoFile" accept="image/*">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">URL da Imagem</label>
+          <input type="url" class="form-control" id="logoUrl" placeholder="https://exemplo.com/logo.png">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Ajuste da Imagem</label>
+          <select class="form-select" id="logoFit">
+            <option value="contain">Ajustar</option>
+            <option value="cover">Preencher</option>
+            <option value="fill">Esticar</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="borderProperties" class="property-group" style="display: none;">
+        <h6>Propriedades da Borda</h6>
+        <div class="mb-3">
+          <label class="form-label">Estilo da Borda</label>
+          <select class="form-select" id="borderStyle">
+            <option value="solid">Sólida</option>
+            <option value="dashed">Tracejada</option>
+            <option value="dotted">Pontilhada</option>
+            <option value="double">Dupla</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Espessura</label>
+          <input type="range" class="form-range" id="borderWidth" min="1" max="10" value="3">
+          <span id="borderWidthValue">3px</span>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Cor da Borda</label>
+          <input type="color" class="form-control color-picker" id="borderColor" value="#000000">
+        </div>
+      </div>
+      
+      <div id="signatureProperties" class="property-group" style="display: none;">
+        <h6>Propriedades da Assinatura</h6>
+        <div class="mb-3">
+          <label class="form-label">Tipo de Assinatura</label>
+          <select class="form-select" id="signatureType">
+            <option value="digital">Digital</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Posição</label>
+          <select class="form-select" id="signaturePosition">
+            <option value="bottom-left">Inferior Esquerda</option>
+            <option value="bottom-center">Inferior Centro</option>
+            <option value="bottom-right">Inferior Direita</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="qrCodeProperties" class="property-group" style="display: none;">
+        <h6>Propriedades do QR Code</h6>
+        <div class="mb-3">
+          <label class="form-label">Tamanho</label>
+          <select class="form-select" id="qrCodeSize">
+            <option value="small">Pequeno (100x100)</option>
+            <option value="medium">Médio (150x150)</option>
+            <option value="large">Grande (200x200)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Posição</label>
+          <select class="form-select" id="qrCodePosition">
+            <option value="top-left">Superior Esquerda</option>
+            <option value="top-right">Superior Direita</option>
+            <option value="bottom-left">Inferior Esquerda</option>
+            <option value="bottom-right">Inferior Direita</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Conteúdo</label>
+          <select class="form-select" id="qrCodeContent">
+            <option value="validation-url">URL de Validação</option>
+            <option value="certificate-id">ID do Certificado</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="customVariableProperties" class="property-group" style="display: none;">
+        <h6>Propriedades da Variável Personalizada</h6>
+        <div class="mb-3">
+          <label class="form-label">Variável</label>
+          <select class="form-select" id="customVariableSelect">
+            <option value="">Selecione uma variável...</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Formato</label>
+          <select class="form-select" id="customVariableFormat">
+            <option value="text">Texto</option>
+            <option value="uppercase">MAIÚSCULO</option>
+            <option value="lowercase">minúsculo</option>
+            <option value="capitalize">Primeira Letra Maiúscula</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Valor Padrão</label>
+          <input type="text" class="form-control" id="customVariableDefault" placeholder="Valor quando variável estiver vazia">
+        </div>
+      </div>
+      
+      <button class="btn btn-primary w-100 mt-3" onclick="editor.applyProperties(); editor.applySpecialProperties();">Aplicar Alterações</button>
     `;
     
     // Definir valores selecionados
     document.getElementById('fontFamily').value = properties.fontFamily;
+    
+    // Mostrar/ocultar painéis específicos baseado no tipo
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    document.querySelectorAll('.property-group').forEach(group => group.style.display = 'none');
+    
+    if (elementData) {
+      switch(elementData.type) {
+        case 'logo':
+          document.getElementById('logoProperties').style.display = 'block';
+          break;
+        case 'border':
+          document.getElementById('borderProperties').style.display = 'block';
+          break;
+        case 'signature':
+          document.getElementById('signatureProperties').style.display = 'block';
+          break;
+        case 'qr-code':
+          document.getElementById('qrCodeProperties').style.display = 'block';
+          break;
+        case 'custom-variable':
+          document.getElementById('customVariableProperties').style.display = 'block';
+          this.loadCustomVariables();
+          break;
+      }
+    }
   }
   
   applyProperties() {
@@ -836,10 +1001,39 @@ class CertificateEditor {
   }
   
   saveTemplate() {
+    const titulo = document.getElementById('templateTitle').value;
+    const orientacao = document.getElementById('pageOrientation').value;
+    
+    if (!titulo) {
+      alert('Por favor, insira um título para o template.');
+      return;
+    }
+    
+    // Validar elementos obrigatórios
+    const hasParticipant = this.elements.some(el => el.type === 'participant-name');
+    if (!hasParticipant) {
+      if (!confirm('O template não possui um campo para nome do participante. Deseja continuar mesmo assim?')) {
+        return;
+      }
+    }
+    
     const templateData = {
-      titulo: document.getElementById('templateTitle').value,
-      orientacao: document.getElementById('pageOrientation').value,
-      elements: this.elements,
+      titulo: titulo,
+      orientacao: orientacao,
+      elementos: this.elements.map(el => ({
+        ...el,
+        // Incluir propriedades específicas dos novos elementos
+        variavel: el.variavel || null,
+        formato: el.formato || 'text',
+        valorPadrao: el.valorPadrao || '',
+        configuracoes: el.configuracoes || {}
+      })),
+      configuracoes: {
+        largura: this.canvas.offsetWidth,
+        altura: this.canvas.offsetHeight,
+        versao: '2.0', // Versão com novos elementos
+        elementos_suportados: ['text', 'title', 'participant-name', 'workload', 'activities', 'date', 'signature', 'logo', 'border', 'qr-code', 'custom-variable']
+      },
       html: this.canvas.innerHTML
     };
     
@@ -855,6 +1049,7 @@ class CertificateEditor {
     .then(data => {
       if (data.success) {
         alert('Template salvo com sucesso!');
+        window.location.href = '/certificado/templates_avancados';
       } else {
         alert('Erro ao salvar template: ' + data.message);
       }
@@ -874,7 +1069,11 @@ class CertificateEditor {
     previewCanvas.querySelectorAll('.draggable-element').forEach(el => {
       el.classList.remove('draggable-element', 'selected');
       el.style.border = 'none';
+      el.style.cursor = 'default';
     });
+    
+    // Substituir variáveis por valores de exemplo para preview
+    this.replaceVariablesForPreview(previewCanvas);
     
     document.getElementById('previewMode').style.display = 'flex';
   }
@@ -887,7 +1086,33 @@ class CertificateEditor {
   loadTemplate() {
     // Carregar template existente se houver
     {% if template %}
-    // Implementar carregamento do template
+    try {
+      const templateData = {{ template.configuracoes|tojson|safe }};
+      if (templateData && templateData.elementos) {
+        this.elements = templateData.elementos;
+        this.nextElementId = Math.max(...this.elements.map(el => parseInt(el.id.split('_')[1]) || 0)) + 1;
+        
+        // Recriar elementos no canvas
+        this.elements.forEach(elementData => {
+          const element = this.createElement(elementData.type, elementData.id);
+          element.style.left = elementData.x + 'px';
+          element.style.top = elementData.y + 'px';
+          element.style.width = elementData.width + 'px';
+          element.style.height = elementData.height + 'px';
+          
+          // Aplicar propriedades
+          if (elementData.properties) {
+            Object.assign(element.style, elementData.properties);
+          }
+          
+          this.canvas.appendChild(element);
+        });
+        
+        this.setupDragAndDrop();
+      }
+    } catch (error) {
+      console.error('Erro ao carregar template:', error);
+    }
     {% endif %}
   }
   
@@ -937,6 +1162,11 @@ class CertificateEditor {
         });
         container.appendChild(item);
       });
+    })
+    .catch(error => {
+      console.error('Erro ao carregar variáveis dinâmicas:', error);
+      // Adicionar variáveis padrão se houver erro
+      this.addDefaultVariables();
     });
   }
   
@@ -960,12 +1190,171 @@ class CertificateEditor {
     this.selectElement(element);
     this.saveState();
   }
+  
+  loadCustomVariables() {
+    const select = document.getElementById('customVariableSelect');
+    if (!select) return;
+    
+    fetch('/certificado/variaveis_dinamicas')
+    .then(response => response.json())
+    .then(data => {
+      select.innerHTML = '<option value="">Selecione uma variável...</option>';
+      data.variaveis.forEach(variavel => {
+        const option = document.createElement('option');
+        option.value = variavel.nome;
+        option.textContent = `{${variavel.nome}} - ${variavel.descricao}`;
+        select.appendChild(option);
+      });
+    })
+    .catch(error => console.error('Erro ao carregar variáveis:', error));
+  }
+  
+  applySpecialProperties() {
+    if (!this.selectedElement) return;
+    
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    if (!elementData) return;
+    
+    switch(elementData.type) {
+      case 'logo':
+        this.applyLogoProperties();
+        break;
+      case 'border':
+        this.applyBorderProperties();
+        break;
+      case 'qr-code':
+        this.applyQRCodeProperties();
+        break;
+      case 'custom-variable':
+        this.applyCustomVariableProperties();
+        break;
+    }
+  }
+  
+  applyLogoProperties() {
+    const logoFile = document.getElementById('logoFile');
+    const logoUrl = document.getElementById('logoUrl');
+    const logoFit = document.getElementById('logoFit');
+    
+    if (logoFile && logoFile.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.selectedElement.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
+      };
+      reader.readAsDataURL(logoFile.files[0]);
+    } else if (logoUrl && logoUrl.value) {
+      this.selectedElement.innerHTML = `<img src="${logoUrl.value}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
+    }
+  }
+  
+  applyBorderProperties() {
+    const borderStyle = document.getElementById('borderStyle');
+    const borderWidth = document.getElementById('borderWidth');
+    const borderColor = document.getElementById('borderColor');
+    
+    if (borderStyle && borderWidth && borderColor) {
+      this.selectedElement.style.border = `${borderWidth.value}px ${borderStyle.value} ${borderColor.value}`;
+      document.getElementById('borderWidthValue').textContent = `${borderWidth.value}px`;
+    }
+  }
+  
+  applyQRCodeProperties() {
+    const qrCodeSize = document.getElementById('qrCodeSize');
+    const qrCodeContent = document.getElementById('qrCodeContent');
+    
+    if (qrCodeSize) {
+      let size;
+      switch(qrCodeSize.value) {
+        case 'small': size = '100px'; break;
+        case 'medium': size = '150px'; break;
+        case 'large': size = '200px'; break;
+        default: size = '100px';
+      }
+      this.selectedElement.style.width = size;
+      this.selectedElement.style.height = size;
+    }
+  }
+  
+  applyCustomVariableProperties() {
+    const variableSelect = document.getElementById('customVariableSelect');
+    const variableFormat = document.getElementById('customVariableFormat');
+    const variableDefault = document.getElementById('customVariableDefault');
+    
+    if (variableSelect && variableSelect.value) {
+      let content = `{${variableSelect.value}}`;
+      
+      if (variableDefault && variableDefault.value) {
+        content += ` (padrão: ${variableDefault.value})`;
+      }
+      
+      this.selectedElement.innerHTML = content;
+      
+      // Salvar propriedades específicas
+      const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+      if (elementData) {
+        elementData.variavel = variableSelect.value;
+        elementData.formato = variableFormat ? variableFormat.value : 'text';
+        elementData.valorPadrao = variableDefault ? variableDefault.value : '';
+      }
+    }
+  }
 }
 
 // Inicializar editor
 let editor;
 document.addEventListener('DOMContentLoaded', function() {
   editor = new CertificateEditor();
+  
+  // Carregar variáveis dinâmicas
+  editor.loadDynamicVariables();
 });
+
+// Função auxiliar para substituir variáveis no preview
+CertificateEditor.prototype.replaceVariablesForPreview = function(container) {
+  const sampleData = {
+    'NOME_PARTICIPANTE': 'João Silva Santos',
+    'CARGA_HORARIA': '40',
+    'LISTA_OFICINAS': 'Oficina de Programação, Oficina de Design, Oficina de Marketing Digital',
+    'DATA_EMISSAO': new Date().toLocaleDateString('pt-BR'),
+    'NOME_INSTITUICAO': 'Instituto de Tecnologia',
+    'NOME_CURSO': 'Curso de Desenvolvimento Web',
+    'PERIODO': '01/01/2024 a 31/01/2024'
+  };
+  
+  container.querySelectorAll('*').forEach(element => {
+    if (element.innerHTML) {
+      let content = element.innerHTML;
+      Object.keys(sampleData).forEach(variable => {
+        const regex = new RegExp(`\\{${variable}\\}`, 'g');
+        content = content.replace(regex, sampleData[variable]);
+      });
+      element.innerHTML = content;
+    }
+  });
+};
+
+// Função para adicionar variáveis padrão
+CertificateEditor.prototype.addDefaultVariables = function() {
+  const defaultVariables = [
+    { nome: 'NOME_INSTITUICAO', descricao: 'Nome da Instituição' },
+    { nome: 'NOME_CURSO', descricao: 'Nome do Curso' },
+    { nome: 'PERIODO', descricao: 'Período do Curso' }
+  ];
+  
+  const container = document.getElementById('dynamicVariables');
+  defaultVariables.forEach(variavel => {
+    const item = document.createElement('div');
+    item.className = 'element-item';
+    item.innerHTML = `
+      <i class="fas fa-tag me-2"></i>
+      <strong>{${variavel.nome}}</strong>
+      <small class="d-block text-muted">${variavel.descricao}</small>
+    `;
+    item.addEventListener('click', () => {
+      this.addVariableElement(variavel);
+    });
+    container.appendChild(item);
+  });
+};
 </script>
 {% endblock %}

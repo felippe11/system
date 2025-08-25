@@ -17,6 +17,7 @@ from models import (
     HorarioVisitacao, AgendamentoVisita, AlunoVisitante,
     ProfessorBloqueado, Patrocinador, Sorteio, Submission,
     Feedback, Pagamento, ConfiguracaoCliente, ConfiguracaoEvento,
+    EventoBarema,
 )
 from utils import preco_com_taxa
 
@@ -1099,3 +1100,60 @@ def toggle_arquivamento(evento_id):
 
     flash(f"Evento {'arquivado' if novo_status == 'arquivado' else 'reativado'} com sucesso!", 'success')
     return redirect(url_for('evento_routes.meus_eventos'))
+
+
+@evento_routes.route('/evento/<int:evento_id>/barema', methods=['GET', 'POST'])
+@login_required
+def configurar_barema_evento(evento_id):
+    """Configurar barema de avaliação para um evento."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        flash('Este evento não pertence a você!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    
+    # Buscar ou criar barema do evento
+    barema = EventoBarema.query.filter_by(evento_id=evento_id).first()
+    if not barema:
+        barema = EventoBarema(evento_id=evento_id, requisitos={})
+        db.session.add(barema)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        try:
+            # Obter dados do formulário
+            requisitos = {}
+            
+            # Processar requisitos existentes e novos
+            for key in request.form.keys():
+                if key.startswith('requisito_nome_'):
+                    index = key.replace('requisito_nome_', '')
+                    nome = request.form.get(f'requisito_nome_{index}')
+                    min_val = request.form.get(f'requisito_min_{index}', type=int)
+                    max_val = request.form.get(f'requisito_max_{index}', type=int)
+                    
+                    if nome and min_val is not None and max_val is not None:
+                        if min_val >= max_val:
+                            flash(f'Valor mínimo deve ser menor que o máximo para "{nome}"', 'danger')
+                            return render_template('evento/configurar_barema.html', evento=evento, barema=barema)
+                        
+                        requisitos[nome] = {
+                            'min': min_val,
+                            'max': max_val
+                        }
+            
+            # Atualizar barema
+            barema.requisitos = requisitos
+            db.session.commit()
+            
+            flash('Barema configurado com sucesso!', 'success')
+            return redirect(url_for('evento_routes.configurar_barema_evento', evento_id=evento_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao salvar barema: {str(e)}', 'danger')
+    
+    return render_template('evento/configurar_barema.html', evento=evento, barema=barema)

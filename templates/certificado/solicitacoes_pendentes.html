@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitações Pendentes{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-clock"></i> Solicitações Pendentes</h2>
+                    <p class="text-muted mb-0">Aprovação de certificados</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="atualizarLista()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="form-label">Filtrar por evento</label>
+                            <select class="form-select" id="filtroEvento">
+                                <option value="">Todos os eventos</option>
+                                {% for solicitacao in solicitacoes %}
+                                    <option value="{{ solicitacao.evento.id }}">{{ solicitacao.evento.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo de certificado</label>
+                            <select class="form-select" id="filtroTipo">
+                                <option value="">Todos os tipos</option>
+                                <option value="geral">Geral</option>
+                                <option value="individual">Individual</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ordenar por</label>
+                            <select class="form-select" id="ordenacao">
+                                <option value="data_desc">Data (mais recente)</option>
+                                <option value="data_asc">Data (mais antiga)</option>
+                                <option value="participante">Nome do participante</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Solicitações -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Solicitações ({{ solicitacoes|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if solicitacoes %}
+                        <div id="listaSolicitacoes">
+                            {% for solicitacao in solicitacoes %}
+                            <div class="card mb-3 solicitacao-item" 
+                                 data-evento="{{ solicitacao.evento.id }}" 
+                                 data-tipo="{{ solicitacao.tipo_certificado }}">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-8">
+                                            <div class="d-flex align-items-start">
+                                                <div class="me-3">
+                                                    <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <h6 class="mb-1">
+                                                        {{ solicitacao.usuario.nome }}
+                                                        <span class="badge bg-{{ 'success' if solicitacao.tipo_certificado == 'geral' else 'info' }} ms-2">
+                                                            {{ 'Geral' if solicitacao.tipo_certificado == 'geral' else 'Individual' }}
+                                                        </span>
+                                                    </h6>
+                                                    <p class="text-muted mb-1">
+                                                        <i class="fas fa-calendar"></i> {{ solicitacao.evento.nome }}
+                                                        {% if solicitacao.oficina %}
+                                                            - {{ solicitacao.oficina.titulo }}
+                                                        {% endif %}
+                                                    </p>
+                                                    <p class="text-muted mb-2">
+                                                        <i class="fas fa-clock"></i> 
+                                                        Solicitado em {{ solicitacao.data_solicitacao.strftime('%d/%m/%Y às %H:%M') }}
+                                                    </p>
+                                                    {% if solicitacao.justificativa %}
+                                                        <div class="mt-2">
+                                                            <strong>Justificativa:</strong>
+                                                            <p class="text-muted mb-0">{{ solicitacao.justificativa }}</p>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <!-- Dados de Participação -->
+                                            {% if solicitacao.dados_participacao %}
+                                                <div class="mb-3">
+                                                    <h6>Dados de Participação:</h6>
+                                                    <ul class="list-unstyled small">
+                                                        <li><i class="fas fa-clock"></i> 
+                                                            Carga horária: {{ solicitacao.dados_participacao.get('total_horas', 0) }}h
+                                                        </li>
+                                                        <li><i class="fas fa-percentage"></i> 
+                                                            Presença: {{ "%.1f"|format(solicitacao.dados_participacao.get('percentual_presenca', 0)) }}%
+                                                        </li>
+                                                        <li><i class="fas fa-check"></i> 
+                                                            Check-ins: {{ solicitacao.dados_participacao.get('total_checkins', 0) }}
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <!-- Ações -->
+                                            <div class="d-grid gap-2">
+                                                <button class="btn btn-success btn-sm" 
+                                                        onclick="aprovarSolicitacao({{ solicitacao.id }})">
+                                                    <i class="fas fa-check"></i> Aprovar
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" 
+                                                        onclick="rejeitarSolicitacao({{ solicitacao.id }})">
+                                                    <i class="fas fa-times"></i> Rejeitar
+                                                </button>
+                                                <button class="btn btn-outline-info btn-sm" 
+                                                        onclick="verDetalhes({{ solicitacao.id }})">
+                                                    <i class="fas fa-eye"></i> Detalhes
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhuma solicitação pendente</h5>
+                            <p class="text-muted">Todas as solicitações foram processadas.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Rejeição -->
+<div class="modal fade" id="modalRejeicao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rejeitar Solicitação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formRejeicao">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Motivo da rejeição</label>
+                        <textarea class="form-control" name="observacoes" rows="3" 
+                                  placeholder="Explique o motivo da rejeição..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Rejeitar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let solicitacaoAtual = null;
+
+// Filtros
+document.getElementById('filtroEvento').addEventListener('change', aplicarFiltros);
+document.getElementById('filtroTipo').addEventListener('change', aplicarFiltros);
+document.getElementById('ordenacao').addEventListener('change', aplicarFiltros);
+
+function aplicarFiltros() {
+    const filtroEvento = document.getElementById('filtroEvento').value;
+    const filtroTipo = document.getElementById('filtroTipo').value;
+    const ordenacao = document.getElementById('ordenacao').value;
+    
+    const items = document.querySelectorAll('.solicitacao-item');
+    let itemsArray = Array.from(items);
+    
+    // Aplicar filtros
+    itemsArray.forEach(item => {
+        let mostrar = true;
+        
+        if (filtroEvento && item.dataset.evento !== filtroEvento) {
+            mostrar = false;
+        }
+        
+        if (filtroTipo && item.dataset.tipo !== filtroTipo) {
+            mostrar = false;
+        }
+        
+        item.style.display = mostrar ? 'block' : 'none';
+    });
+    
+    // Aplicar ordenação
+    const container = document.getElementById('listaSolicitacoes');
+    const itemsVisiveis = itemsArray.filter(item => item.style.display !== 'none');
+    
+    if (ordenacao === 'participante') {
+        itemsVisiveis.sort((a, b) => {
+            const nomeA = a.querySelector('h6').textContent.trim();
+            const nomeB = b.querySelector('h6').textContent.trim();
+            return nomeA.localeCompare(nomeB);
+        });
+    }
+    
+    // Reordenar elementos
+    itemsVisiveis.forEach(item => container.appendChild(item));
+}
+
+// Aprovar solicitação
+function aprovarSolicitacao(solicitacaoId) {
+    if (confirm('Tem certeza que deseja aprovar esta solicitação?')) {
+        fetch(`{{ url_for('certificado_routes.aprovar_solicitacao', solicitacao_id=0) }}`.replace('0', solicitacaoId), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao aprovar solicitação');
+        });
+    }
+}
+
+// Rejeitar solicitação
+function rejeitarSolicitacao(solicitacaoId) {
+    solicitacaoAtual = solicitacaoId;
+    const modal = new bootstrap.Modal(document.getElementById('modalRejeicao'));
+    modal.show();
+}
+
+// Form de rejeição
+document.getElementById('formRejeicao').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const observacoes = formData.get('observacoes');
+    
+    fetch(`{{ url_for('certificado_routes.rejeitar_solicitacao', solicitacao_id=0) }}`.replace('0', solicitacaoAtual), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            observacoes: observacoes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Erro: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao rejeitar solicitação');
+    });
+});
+
+// Ver detalhes
+function verDetalhes(solicitacaoId) {
+    // Implementar visualização de detalhes
+    alert('Funcionalidade de detalhes em desenvolvimento');
+}
+
+// Atualizar lista
+function atualizarLista() {
+    location.reload();
+}
+</script>
+{% endblock %}

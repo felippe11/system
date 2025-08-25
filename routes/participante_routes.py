@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 from models.user import Usuario, PasswordResetToken
 from models.certificado import CertificadoConfig, CertificadoParticipante, NotificacaoCertificado, SolicitacaoCertificado
 from models.event import Evento
-from models.oficina import Oficina
+from models.event import Oficina
 from extensions import db
 from datetime import datetime
 
@@ -197,7 +197,8 @@ def meus_certificados_evento(evento_id):
     config = CertificadoConfig.query.filter_by(evento_id=evento_id).first()
     
     # Calcular progresso
-    from routes.certificado_routes import calcular_atividades_participadas, verificar_criterios_certificado
+    from routes.certificado_routes import calcular_atividades_participadas
+    from services.certificado_service import verificar_criterios_certificado
     
     dados_participacao = calcular_atividades_participadas(current_user.id, evento_id)
     criterios_ok, pendencias = verificar_criterios_certificado(current_user.id, evento_id)
@@ -254,7 +255,8 @@ def minha_participacao(evento_id):
         return redirect(url_for('participante_routes.meus_certificados'))
     
     # Calcular dados de participação
-    from routes.certificado_routes import calcular_atividades_participadas, verificar_criterios_certificado
+    from routes.certificado_routes import calcular_atividades_participadas
+    from services.certificado_service import verificar_criterios_certificado
     
     dados_participacao = calcular_atividades_participadas(current_user.id, evento_id)
     criterios_ok, pendencias = verificar_criterios_certificado(current_user.id, evento_id)
@@ -361,4 +363,3 @@ def marcar_notificacao_lida_participante(notificacao_id):
     db.session.commit()
     
     return jsonify({'success': True})
-

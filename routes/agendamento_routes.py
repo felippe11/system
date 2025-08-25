@@ -187,9 +187,16 @@ class NotificacaoAgendamento:
     def _enviar_email_async(dest, subject, html):
         """Função interna para enviar email de forma assíncrona."""
         try:
+            if not dest or not subject or not html:
+                logger.warning("Dados incompletos para envio de email")
+                return
+                
             send_via_mailjet(to_email=dest, subject=subject, html=html)
+            logger.info(f"Email enviado com sucesso para {dest}")
         except ApiError as exc:
-            logger.exception("Erro ao enviar email de agendamento: %s", exc)
+            logger.exception("Erro da API Mailjet ao enviar email: %s", exc)
+        except Exception as exc:
+            logger.exception("Erro geral ao enviar email para %s: %s", dest, exc)
     
     @staticmethod
     def notificar_monitor_alunos_pcd(agendamento):
@@ -199,54 +206,68 @@ class NotificacaoAgendamento:
         Args:
             agendamento: Objeto AgendamentoVisita
         """
-        from models import MonitorAgendamento, NecessidadeEspecial
-        
-        # Verificar se há monitor atribuído
-        monitor_agendamento = MonitorAgendamento.query.filter_by(
-            agendamento_id=agendamento.id,
-            status='ativo'
-        ).first()
-        
-        if not monitor_agendamento or not monitor_agendamento.monitor:
-            logger.warning(f"Nenhum monitor ativo encontrado para o agendamento {agendamento.id}")
-            return
-        
-        monitor = monitor_agendamento.monitor
-        
-        # Buscar alunos com necessidades especiais neste agendamento
-        alunos_pcd = db.session.query(AlunoVisitante, NecessidadeEspecial).join(
-            NecessidadeEspecial, AlunoVisitante.id == NecessidadeEspecial.aluno_id
-        ).filter(
-            AlunoVisitante.agendamento_id == agendamento.id
-        ).all()
-        
-        if not alunos_pcd:
-            logger.info(f"Nenhum aluno PCD/Neurodivergente encontrado no agendamento {agendamento.id}")
-            return
-        
-        horario = agendamento.horario
-        evento = horario.evento
-        
-        assunto = f"Alunos PCD/Neurodivergentes - {evento.nome}"
-        
-        # Preparar o corpo do email
-        corpo_html = render_template(
-            'emails/notificacao_monitor_pcd.html',
-            monitor=monitor,
-            agendamento=agendamento,
-            horario=horario,
-            evento=evento,
-            alunos_pcd=alunos_pcd
-        )
-        
-        # Enviar em um thread separado
-        thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
-            args=[monitor.email, assunto, corpo_html]
-        )
-        thread.start()
-        
-        logger.info(f"Notificação enviada para monitor {monitor.nome_completo} sobre {len(alunos_pcd)} alunos PCD/ND")
+        try:
+            from models import MonitorAgendamento, NecessidadeEspecial
+            
+            # Verificar se há monitor atribuído
+            monitor_agendamento = MonitorAgendamento.query.filter_by(
+                agendamento_id=agendamento.id,
+                status='ativo'
+            ).first()
+            
+            if not monitor_agendamento or not monitor_agendamento.monitor:
+                logger.info(f"Nenhum monitor ativo encontrado para o agendamento {agendamento.id}")
+                return
+            
+            monitor = monitor_agendamento.monitor
+            
+            # Verificar se o monitor tem email válido
+            if not monitor.email:
+                logger.warning(f"Monitor {monitor.id} não possui email cadastrado")
+                return
+            
+            # Buscar alunos com necessidades especiais neste agendamento
+            alunos_pcd = db.session.query(AlunoVisitante, NecessidadeEspecial).join(
+                NecessidadeEspecial, AlunoVisitante.id == NecessidadeEspecial.aluno_id
+            ).filter(
+                AlunoVisitante.agendamento_id == agendamento.id
+            ).all()
+            
+            if not alunos_pcd:
+                logger.info(f"Nenhum aluno PCD/Neurodivergente encontrado no agendamento {agendamento.id}")
+                return
+            
+            horario = agendamento.horario
+            if not horario or not horario.evento:
+                logger.warning(f"Agendamento {agendamento.id} não possui horário ou evento válido")
+                return
+                
+            evento = horario.evento
+            
+            assunto = f"Alunos PCD/Neurodivergentes - {evento.nome}"
+            
+            # Preparar o corpo do email
+            corpo_html = render_template(
+                'emails/notificacao_monitor_pcd.html',
+                monitor=monitor,
+                agendamento=agendamento,
+                horario=horario,
+                evento=evento,
+                alunos_pcd=alunos_pcd
+            )
+            
+            # Enviar em um thread separado
+            thread = threading.Thread(
+                target=NotificacaoAgendamento._enviar_email_async,
+                args=[monitor.email, assunto, corpo_html]
+            )
+            thread.daemon = True  # Thread será finalizada quando o programa principal terminar
+            thread.start()
+            
+            logger.info(f"Notificação enviada para monitor {monitor.nome_completo} sobre {len(alunos_pcd)} alunos PCD/ND")
+            
+        except Exception as e:
+            logger.error(f"Erro ao notificar monitor sobre alunos PCD no agendamento {agendamento.id}: {str(e)}")
     
     @staticmethod
     def processar_lembretes_diarios():
@@ -734,20 +755,21 @@ def relatorio_geral_agendamentos():
     
     # Estatísticas de necessidades especiais
     try:
-        from models import MaterialApoio
+        from models import MaterialApoio, NecessidadeEspecial
         
         total_alunos_pcd = (
             db.session.query(func.count(AlunoVisitante.id))
             .join(AgendamentoVisita, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
             .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
             .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+            .join(NecessidadeEspecial, NecessidadeEspecial.aluno_id == AlunoVisitante.id)
             .filter(
                 Evento.cliente_id == cliente_id,
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    AlunoVisitante.pcd == True,
-                    AlunoVisitante.neurodivergente == True
+                    NecessidadeEspecial.tipo == 'PCD',
+                    NecessidadeEspecial.tipo == 'Neurodivergente'
                 )
             )
         )
@@ -760,13 +782,14 @@ def relatorio_geral_agendamentos():
             .join(AlunoVisitante, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
             .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
             .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+            .join(NecessidadeEspecial, NecessidadeEspecial.aluno_id == AlunoVisitante.id)
             .filter(
                 Evento.cliente_id == cliente_id,
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    AlunoVisitante.pcd == True,
-                    AlunoVisitante.neurodivergente == True
+                    NecessidadeEspecial.tipo == 'PCD',
+                    NecessidadeEspecial.tipo == 'Neurodivergente'
                 )
             )
         )
@@ -3433,11 +3456,19 @@ def atualizar_status_agendamento(agendamento_id):
     try:
         # Salvar as alterações no banco de dados
         db.session.commit()
+        logger.info(f"Agendamento {agendamento.id} atualizado com sucesso para status: {novo_status}")
 
         if enviar_confirmacao:
-            NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
+            try:
+                NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
+            except Exception as e:
+                logger.warning(f"Erro ao enviar email de confirmação: {str(e)}")
+            
             # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
-            NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+            try:
+                NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+            except Exception as e:
+                logger.warning(f"Erro ao notificar monitor sobre alunos PCD: {str(e)}")
 
         if request.is_json or request.method == 'PUT':
             resposta = {
@@ -4950,6 +4981,7 @@ def api_criar_material_apoio():
         novo_material = MaterialApoio(
             nome=data['nome'],
             descricao=data.get('descricao', ''),
+            cliente_id=current_user.id,
             ativo=data.get('ativo', True)
         )
         

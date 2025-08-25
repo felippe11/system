@@ -1392,10 +1392,11 @@ class MaterialApoio(db.Model):
     # Relações
     cliente = db.relationship("Cliente", backref=db.backref("materiais_apoio", lazy=True))
     
-    def __init__(self, nome, descricao, cliente_id):
+    def __init__(self, nome, descricao, cliente_id, ativo=True):
         self.nome = nome
         self.descricao = descricao
         self.cliente_id = cliente_id
+        self.ativo = ativo
     
     def __repr__(self):
         return f"<MaterialApoio {self.nome} - Cliente {self.cliente_id}>"
@@ -1428,38 +1429,27 @@ class NecessidadeEspecial(db.Model):
         self.tipo = tipo
         self.descricao = descricao
     
+    def get_tipo_display(self):
+        """Retorna a descrição legível do tipo de necessidade especial."""
+        tipos_display = {
+            'pcd_fisica': 'PCD Física',
+            'pcd_visual': 'PCD Visual',
+            'pcd_auditiva': 'PCD Auditiva',
+            'pcd_intelectual': 'PCD Intelectual',
+            'neurodivergente_autismo': 'Neurodivergente - Autismo',
+            'neurodivergente_tdah': 'Neurodivergente - TDAH',
+            'neurodivergente_dislexia': 'Neurodivergente - Dislexia',
+            'neurodivergente_outros': 'Neurodivergente - Outros',
+            'outros': 'Outros'
+        }
+        return tipos_display.get(self.tipo, self.tipo.title())
+    
     def __repr__(self):
         return f"<NecessidadeEspecial {self.tipo} - Aluno {self.aluno_id}>"
 
 
 
-class CertificadoTemplateAvancado(db.Model):
-    """Template avançado para certificados com configurações de layout e elementos visuais."""
-    __tablename__ = "certificado_template_avancado"
 
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    titulo = db.Column(db.String(100), nullable=False)
-    conteudo = db.Column(db.Text, nullable=False)  # HTML ou texto estruturado
-    ativo = db.Column(db.Boolean, default=False)
-    
-    # Configurações de layout
-    layout_config = db.Column(db.JSON, nullable=True)  # Posições, fontes, cores, etc.
-    elementos_visuais = db.Column(db.JSON, nullable=True)  # Logos, assinaturas, fundos
-    variaveis_dinamicas = db.Column(db.JSON, nullable=True)  # Placeholders personalizados
-    
-    # Configurações de geração
-    orientacao = db.Column(db.String(20), default="landscape")  # landscape, portrait
-    tamanho_pagina = db.Column(db.String(10), default="A4")  # A4, A3, Letter
-    margem_config = db.Column(db.JSON, nullable=True)  # Margens personalizadas
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    cliente = db.relationship("Cliente", backref="certificados_templates_avancados")
-
-    def __repr__(self):
-        return f"<CertificadoTemplateAvancado {self.titulo}>"
 
 
 class DeclaracaoComparecimento(db.Model):
@@ -1498,27 +1488,7 @@ class DeclaracaoComparecimento(db.Model):
         return f"<DeclaracaoComparecimento {self.titulo} - {self.usuario_id}>"
 
 
-class DeclaracaoTemplate(db.Model):
-    """Template para declarações de comparecimento."""
-    __tablename__ = "declaracao_template"
 
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    titulo = db.Column(db.String(100), nullable=False)
-    conteudo = db.Column(db.Text, nullable=False)
-    ativo = db.Column(db.Boolean, default=False)
-    
-    # Configurações visuais
-    layout_config = db.Column(db.JSON, nullable=True)
-    elementos_visuais = db.Column(db.JSON, nullable=True)
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    cliente = db.relationship("Cliente", backref="declaracao_templates")
-
-    def __repr__(self):
-        return f"<DeclaracaoTemplate {self.titulo}>"
 
 
 class ConfiguracaoCertificadoAvancada(db.Model):
@@ -1624,101 +1594,3 @@ class VariavelDinamica(db.Model):
 
     def __repr__(self):
         return f"<VariavelDinamica {self.nome}>"
-
-
-class RegraCertificado(db.Model):
-    """Regras condicionais para liberação de certificados."""
-    __tablename__ = "regra_certificado"
-
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
-    nome = db.Column(db.String(100), nullable=False)
-    descricao = db.Column(db.Text, nullable=True)
-    
-    # Condições da regra
-    condicoes = db.Column(db.JSON, nullable=False)  # Lista de condições
-    operador_logico = db.Column(db.String(10), default="AND")  # AND, OR
-    
-    # Ação da regra
-    acao = db.Column(db.String(50), nullable=False)  # liberar, bloquear, aprovar
-    template_especifico_id = db.Column(db.Integer, db.ForeignKey("certificado_template_avancado.id"), nullable=True)
-    
-    # Configurações
-    ativo = db.Column(db.Boolean, default=True)
-    prioridade = db.Column(db.Integer, default=0)  # Ordem de execução
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    cliente = db.relationship("Cliente", backref="regras_certificado")
-    evento = db.relationship("Evento", backref="regras_certificado")
-    template_especifico = db.relationship("CertificadoTemplateAvancado", backref="regras_associadas")
-
-    def __repr__(self):
-        return f"<RegraCertificado {self.nome}: {self.acao}>"
-
-
-class SolicitacaoCertificado(db.Model):
-    """Solicitações de certificados para aprovação manual."""
-    __tablename__ = "solicitacao_certificado"
-
-    id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
-    oficina_id = db.Column(db.Integer, db.ForeignKey("oficina.id"), nullable=True)
-    
-    tipo_certificado = db.Column(db.String(20), nullable=False)  # individual, geral
-    status = db.Column(db.String(20), default="pendente")  # pendente, aprovada, rejeitada
-    
-    # Dados da solicitação
-    justificativa = db.Column(db.Text, nullable=True)
-    dados_participacao = db.Column(db.JSON, nullable=True)  # Checkins, atividades, etc.
-    
-    # Aprovação
-    aprovado_por = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
-    data_aprovacao = db.Column(db.DateTime, nullable=True)
-    observacoes_aprovacao = db.Column(db.Text, nullable=True)
-    
-    data_solicitacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    usuario = db.relationship("Usuario", foreign_keys=[usuario_id], backref="solicitacoes_certificado")
-    evento = db.relationship("Evento", backref="solicitacoes_certificado")
-    oficina = db.relationship("Oficina", backref="solicitacoes_certificado")
-    aprovador = db.relationship("Usuario", foreign_keys=[aprovado_por], backref="aprovacoes_certificado")
-
-    def __repr__(self):
-        return f"<SolicitacaoCertificado Usuario={self.usuario_id}, Status={self.status}>"
-
-
-class NotificacaoCertificado(db.Model):
-    """Notificações relacionadas a certificados."""
-    __tablename__ = "notificacao_certificado"
-
-    id = db.Column(db.Integer, primary_key=True)
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
-    
-    tipo = db.Column(db.String(50), nullable=False)  # liberado, pendente, rejeitado, lembrete
-    titulo = db.Column(db.String(200), nullable=False)
-    mensagem = db.Column(db.Text, nullable=False)
-    
-    # Status da notificação
-    lida = db.Column(db.Boolean, default=False)
-    enviada_email = db.Column(db.Boolean, default=False)
-    data_envio_email = db.Column(db.DateTime, nullable=True)
-    
-    # Dados relacionados
-    certificado_id = db.Column(db.Integer, db.ForeignKey("historico_certificado.id"), nullable=True)
-    solicitacao_id = db.Column(db.Integer, db.ForeignKey("solicitacao_certificado.id"), nullable=True)
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-
-    usuario = db.relationship("Usuario", backref="notificacoes_certificado")
-    evento = db.relationship("Evento", backref="notificacoes_certificado")
-    certificado = db.relationship("HistoricoCertificado", backref="notificacoes")
-    solicitacao = db.relationship("SolicitacaoCertificado", backref="notificacoes")
-
-    def __repr__(self):
-        return f"<NotificacaoCertificado {self.tipo}: {self.titulo}>"

@@ -4,12 +4,13 @@ from flask_login import login_required, current_user
 
 from werkzeug.utils import secure_filename
 from extensions import db
-from models import Oficina, CertificadoTemplate
+from models import Oficina, CertificadoTemplate, Evento
 from models.user import Cliente
 
-from models.event import CertificadoTemplateAvancado, VariavelDinamica, ConfiguracaoCertificadoAvancada, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado
+from models.certificado import CertificadoTemplateAvancado, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado, DeclaracaoTemplate, CertificadoConfig, CertificadoParticipante
+from models.event import VariavelDinamica, ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
-from utils.auth import login_required, require_permission, require_resource_access, role_required
+from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
 
 
 import os
@@ -277,6 +278,12 @@ def preview_certificado():
             except OSError as exc:
                 logger.exception("Erro ao remover arquivo temporário %s", f)
         return response
+    
+    if pdf_path:
+        return send_file(pdf_path, as_attachment=True, download_name="preview_certificado.pdf")
+    else:
+        flash('Erro ao gerar preview do certificado', 'error')
+        return redirect(url_for('certificado_routes.templates_certificado'))
 
 
 # Rotas para Editor Avançado de Certificados
@@ -499,16 +506,54 @@ def gerenciar_variavel_dinamica(variavel_id):
             return {'success': False, 'message': str(e)}
 
 
+@certificado_routes.route('/templates_simples')
+@login_required
+@cliente_required
+def templates_simples():
+    """Listar templates simples de certificados."""
+    templates = CertificadoTemplate.query.filter_by(
+        cliente_id=current_user.id
+    ).order_by(CertificadoTemplate.data_criacao.desc()).all()
+    
+    return render_template('certificado/templates_certificado.html', templates=templates)
+
 @certificado_routes.route('/templates_avancados')
 @login_required
-@require_permission('templates.view')
+@cliente_required
 def templates_avancados():
-    """Listar templates avançados do cliente."""
+    """Listar templates avançados de certificados."""
     templates = CertificadoTemplateAvancado.query.filter_by(
         cliente_id=current_user.id
     ).order_by(CertificadoTemplateAvancado.data_criacao.desc()).all()
     
     return render_template('certificado/templates_avancados.html', templates=templates)
+
+@certificado_routes.route('/config_criterios')
+@login_required
+@cliente_required
+def config_criterios():
+    """Configurar critérios de certificados."""
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('certificado/config_criterios.html', eventos=eventos)
+
+
+@certificado_routes.route('/config_geral')
+@login_required
+@cliente_required
+def config_geral():
+    """Configuração geral de certificados."""
+    try:
+        templates = CertificadoTemplate.query.filter_by(cliente_id=current_user.cliente_id).all()
+        templates_avancados = CertificadoTemplateAvancado.query.filter_by(cliente_id=current_user.cliente_id).all()
+        eventos = Evento.query.filter_by(cliente_id=current_user.cliente_id).all()
+        
+        return render_template('certificado/config_geral.html', 
+                             templates=templates, 
+                             templates_avancados=templates_avancados,
+                             eventos=eventos)
+    except Exception as e:
+        flash(f'Erro ao carregar configurações: {str(e)}', 'error')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 @certificado_routes.route('/templates_personalizaveis')
 @login_required
@@ -544,17 +589,11 @@ def criar_template_personalizado():
             # Criar novo template
             template = CertificadoTemplateAvancado(
                 cliente_id=current_user.id,
-                titulo=data['titulo'],
-                conteudo=data['conteudo'],
-                layout_config=json.dumps(data.get('layout_config', {})),
-                elementos_visuais=json.dumps(data.get('elementos_visuais', {})),
-                variaveis_dinamicas=json.dumps(data.get('variaveis_selecionadas', [])),
-                orientacao=data.get('orientacao', 'landscape'),
-                tamanho_pagina=data.get('tamanho_pagina', 'A4'),
-                margem_config=json.dumps(data.get('margem_config', {
-                    'top': 20, 'bottom': 20, 'left': 20, 'right': 20
-                })),
-                data_criacao=datetime.now(),
+                nome=data['titulo'],
+                descricao=data.get('descricao', ''),
+                tipo=data.get('categoria', 'certificado'),
+                conteudo_html=data['conteudo'],
+                variaveis_disponiveis=json.dumps(data.get('variaveis_selecionadas', [])),
                 ativo=True
             )
             
@@ -600,14 +639,12 @@ def editar_template_personalizado(template_id):
             data = request.get_json() if request.is_json else request.form.to_dict()
             
             # Atualizar template
-            template.titulo = data.get('titulo', template.titulo)
-            template.conteudo = data.get('conteudo', template.conteudo)
-            template.layout_config = json.dumps(data.get('layout_config', json.loads(template.layout_config or '{}')))
-            template.elementos_visuais = json.dumps(data.get('elementos_visuais', json.loads(template.elementos_visuais or '{}')))
-            template.variaveis_dinamicas = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_dinamicas or '[]')))
-            template.orientacao = data.get('orientacao', template.orientacao)
-            template.tamanho_pagina = data.get('tamanho_pagina', template.tamanho_pagina)
-            template.margem_config = json.dumps(data.get('margem_config', json.loads(template.margem_config or '{}')))
+            template.nome = data.get('titulo', template.nome)
+            template.descricao = data.get('descricao', template.descricao)
+            template.tipo = data.get('categoria', template.tipo)
+            template.conteudo_html = data.get('conteudo', template.conteudo_html)
+            template.variaveis_disponiveis = json.dumps(data.get('variaveis_selecionadas', json.loads(template.variaveis_disponiveis or '[]')))
+            template.data_atualizacao = datetime.utcnow()
             
             db.session.commit()
             
@@ -1021,11 +1058,16 @@ def configuracoes_evento(evento_id):
     }
 
 
-@certificado_routes.route('/historico_emissoes', methods=['POST'])
+@certificado_routes.route('/historico_emissoes', methods=['GET', 'POST'])
 @login_required
 @require_permission('relatorios.view')
 def historico_emissoes():
     """Retorna o histórico de emissões de certificados e declarações."""
+    if request.method == 'GET':
+        # Renderizar página de histórico
+        return render_template('certificado/historico_emissoes.html')
+    
+    # POST - retornar dados filtrados
     filtros = request.get_json()
     
     # Implementar consulta do histórico baseado nos filtros
@@ -1996,5 +2038,4 @@ def gerar_declaracao_personalizada(usuario, evento, participacao, template, clie
     
     c.save()
     return pdf_path
-
 
