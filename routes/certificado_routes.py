@@ -7,7 +7,8 @@ from extensions import db
 from models import Oficina, CertificadoTemplate
 from models.user import Cliente
 
-from models.event import CertificadoTemplateAvancado, VariavelDinamica, ConfiguracaoCertificadoAvancada, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado
+from models.certificado import CertificadoTemplateAvancado, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado, DeclaracaoTemplate, CertificadoConfig, CertificadoParticipante
+from models.event import VariavelDinamica, ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 from utils.auth import login_required, require_permission, require_resource_access, role_required
 
@@ -499,16 +500,35 @@ def gerenciar_variavel_dinamica(variavel_id):
             return {'success': False, 'message': str(e)}
 
 
+@certificado_routes.route('/templates_simples')
+@login_required
+@cliente_required
+def templates_simples():
+    """Listar templates simples de certificados."""
+    templates = CertificadoTemplate.query.filter_by(
+        cliente_id=current_user.id
+    ).order_by(CertificadoTemplate.data_criacao.desc()).all()
+    
+    return render_template('certificado/templates_certificado.html', templates=templates)
+
 @certificado_routes.route('/templates_avancados')
 @login_required
-@require_permission('templates.view')
+@cliente_required
 def templates_avancados():
-    """Listar templates avançados do cliente."""
+    """Listar templates avançados de certificados."""
     templates = CertificadoTemplateAvancado.query.filter_by(
         cliente_id=current_user.id
     ).order_by(CertificadoTemplateAvancado.data_criacao.desc()).all()
     
     return render_template('certificado/templates_avancados.html', templates=templates)
+
+@certificado_routes.route('/config_criterios')
+@login_required
+@cliente_required
+def config_criterios():
+    """Configurar critérios de certificados."""
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('certificado/config_criterios.html', eventos=eventos)
 
 @certificado_routes.route('/templates_personalizaveis')
 @login_required
@@ -1996,5 +2016,4 @@ def gerar_declaracao_personalizada(usuario, evento, participacao, template, clie
     
     c.save()
     return pdf_path
-
 

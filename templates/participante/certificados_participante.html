@@ -205,6 +205,7 @@
                                                 onclick="solicitarCertificado('geral')">
                                             <i class="fas fa-award"></i> Certificado Geral
                                         </button>
+                                        <small class="text-muted d-block mt-1">Baseado na sua participação total</small>
                                     </div>
                                 {% endif %}
                                 {% if config.liberacao_individual %}
@@ -213,8 +214,26 @@
                                                 onclick="mostrarOficinas()">
                                             <i class="fas fa-certificate"></i> Certificado Individual
                                         </button>
+                                        <small class="text-muted d-block mt-1">Para atividades específicas</small>
                                     </div>
                                 {% endif %}
+                            </div>
+                            
+                            <!-- Nova seção para Declarações de Comparecimento -->
+                            <div class="border-top pt-3 mt-3">
+                                <h6 class="text-muted mb-3">Declarações de Comparecimento</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <button class="btn btn-outline-info w-100 btn-sm" onclick="solicitarDeclaracao('geral')">
+                                            <i class="fas fa-file-alt"></i> Declaração Geral
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <button class="btn btn-outline-info w-100 btn-sm" onclick="solicitarDeclaracao('individual')">
+                                            <i class="fas fa-file-text"></i> Declaração Individual
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -412,6 +431,28 @@
         
         function atualizarStatus() {
             location.reload();
+        }
+        
+        function solicitarDeclaracao(tipo) {
+            // Implementar modal ou redirecionamento para solicitação de declaração
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{{ url_for("certificado_routes.solicitar_declaracao") }}';
+            
+            const tipoInput = document.createElement('input');
+            tipoInput.type = 'hidden';
+            tipoInput.name = 'tipo';
+            tipoInput.value = tipo;
+            form.appendChild(tipoInput);
+            
+            const eventoInput = document.createElement('input');
+            eventoInput.type = 'hidden';
+            eventoInput.name = 'evento_id';
+            eventoInput.value = '{{ evento.id if evento else "" }}';
+            form.appendChild(eventoInput);
+            
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 </body>
