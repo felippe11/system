@@ -216,7 +216,6 @@ def criar_agendamento_professor(horario_id):
         responsavel_email = request.form.get('responsavel_email')
         acompanhantes_qtd = request.form.get('acompanhantes_qtd', type=int)
         acompanhantes_nomes = request.form.get('acompanhantes_nomes')
-        precisa_transporte = request.form.get('precisa_transporte')
         observacoes = request.form.get('observacoes')
 
         compromissos = [
@@ -264,7 +263,6 @@ def criar_agendamento_professor(horario_id):
                 responsavel_email=responsavel_email,
                 acompanhantes_nomes=acompanhantes_nomes,
                 acompanhantes_qtd=acompanhantes_qtd,
-                precisa_transporte=precisa_transporte == 'sim',
                 observacoes=observacoes,
                 compromisso_1=True,
                 compromisso_2=True,
@@ -317,6 +315,12 @@ def adicionar_alunos_professor(agendamento_id):
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
 
     if request.method == 'POST':
+        # Verificar se já atingiu o limite de alunos
+        total_atual = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+        if total_atual >= agendamento.quantidade_alunos:
+            flash(f'Limite de alunos atingido! Este agendamento permite apenas {agendamento.quantidade_alunos} alunos.', 'warning')
+            return redirect(url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id))
+        
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
         tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
@@ -412,6 +416,12 @@ def adicionar_alunos_participante(agendamento_id):
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
 
     if request.method == 'POST':
+        # Verificar se já atingiu o limite de alunos
+        total_atual = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+        if total_atual >= agendamento.quantidade_alunos:
+            flash(f'Limite de alunos atingido! Este agendamento permite apenas {agendamento.quantidade_alunos} alunos.', 'warning')
+            return redirect(url_for('routes.adicionar_alunos_participante', agendamento_id=agendamento.id))
+        
         nome = request.form.get('nome')
         cpf = request.form.get('cpf')
         tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
@@ -603,11 +613,25 @@ def importar_alunos_agendamento(agendamento_id):
                 conteudo = arquivo.read().decode('utf-8')
                 linhas = conteudo.splitlines()
                 
+                # Verificar quantos alunos já estão cadastrados
+                total_atual = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
+                limite_restante = agendamento.quantidade_alunos - total_atual
+                
+                if limite_restante <= 0:
+                    flash(f'Limite de alunos já atingido! Este agendamento permite apenas {agendamento.quantidade_alunos} alunos.', 'warning')
+                    return redirect(url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id))
+                
                 # Contar alunos adicionados
                 alunos_adicionados = 0
+                alunos_ignorados = 0
                 
                 # Processar cada linha do CSV
                 for linha in linhas:
+                    # Verificar se ainda há vagas disponíveis
+                    if alunos_adicionados >= limite_restante:
+                        alunos_ignorados += 1
+                        continue
+                        
                     if ',' in linha:
                         # Formato esperado: Nome,CPF (opcional)
                         partes = linha.split(',')
@@ -625,7 +649,10 @@ def importar_alunos_agendamento(agendamento_id):
                 
                 if alunos_adicionados > 0:
                     db.session.commit()
-                    flash(f'{alunos_adicionados} alunos importados com sucesso!', 'success')
+                    mensagem = f'{alunos_adicionados} alunos importados com sucesso!'
+                    if alunos_ignorados > 0:
+                        mensagem += f' {alunos_ignorados} alunos foram ignorados por exceder o limite de {agendamento.quantidade_alunos} alunos.'
+                    flash(mensagem, 'success')
                     total = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
                     if total >= agendamento.quantidade_alunos:
                         return redirect(url_for('routes.confirmacao_agendamento_professor', agendamento_id=agendamento.id))
@@ -974,7 +1001,6 @@ def criar_agendamento_participante(horario_id):
         responsavel_email = request.form.get('responsavel_email')
         acompanhantes_qtd = request.form.get('acompanhantes_qtd', type=int)
         acompanhantes_nomes = request.form.get('acompanhantes_nomes')
-        precisa_transporte = request.form.get('precisa_transporte')
         observacoes = request.form.get('observacoes')
 
         compromissos = [
@@ -1022,7 +1048,6 @@ def criar_agendamento_participante(horario_id):
                 responsavel_email=responsavel_email,
                 acompanhantes_nomes=acompanhantes_nomes,
                 acompanhantes_qtd=acompanhantes_qtd,
-                precisa_transporte=precisa_transporte == 'sim',
                 observacoes=observacoes,
                 compromisso_1=True,
                 compromisso_2=True,
