@@ -69,6 +69,7 @@ def app():
         db.session.add(horario)
 
         professor = Usuario(
+            id=100,
             nome='Prof',
             cpf='111',
             email='prof@test',
@@ -77,6 +78,7 @@ def app():
             tipo='professor',
         )
         outro_prof = Usuario(
+            id=101,
             nome='Prof2',
             cpf='222',
             email='prof2@test',
@@ -84,7 +86,16 @@ def app():
             formacao='F',
             tipo='professor',
         )
-        db.session.add_all([professor, outro_prof])
+        participante = Usuario(
+            id=102,
+            nome='Part',
+            cpf='333',
+            email='part@test',
+            senha=generate_password_hash('p123', method="pbkdf2:sha256"),
+            formacao='F',
+            tipo='participante',
+        )
+        db.session.add_all([professor, outro_prof, participante])
         db.session.commit()
 
         agendamento = AgendamentoVisita(
@@ -200,3 +211,63 @@ def test_email_nao_enviado_para_outros_status(client, app, monkeypatch):
     )
     assert resp.status_code == 200
     assert chamado['count'] == 0
+
+
+def test_redirecionamento_professor(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
+    login(client, 'prof@test', 'p123')
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.first()
+        agendamento.quantidade_alunos = 0
+        db.session.commit()
+        agendamento_id = agendamento.id
+    resp = client.post(
+        f'/atualizar_status/{agendamento_id}',
+        data={'status': 'confirmado'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/professor/meus_agendamentos' in resp.headers['Location']
+
+
+def test_redirecionamento_participante(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
+    login(client, 'part@test', 'p123')
+    with app.app_context():
+        participante = Usuario.query.filter_by(email='part@test').first()
+        agendamento = AgendamentoVisita.query.first()
+        agendamento.professor_id = participante.id
+        db.session.commit()
+        agendamento_id = agendamento.id
+    resp = client.post(
+        f'/atualizar_status/{agendamento_id}',
+        data={'status': 'confirmado'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/participante/meus_agendamentos' in resp.headers['Location']
+
+
+def test_redirecionamento_cliente(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamento,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
+    login(client, 'cli@test', '123')
+    agendamento = get_agendamento(app)
+    resp = client.post(
+        f'/atualizar_status/{agendamento.id}',
+        data={'status': 'confirmado'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/cliente/meus_agendamentos' in resp.headers['Location']

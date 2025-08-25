@@ -3502,7 +3502,17 @@ def atualizar_status_agendamento(agendamento_id):
             if alunos_existentes < agendamento.quantidade_alunos:
                 flash('Agendamento confirmado! Agora cadastre os alunos participantes.', 'info')
                 return redirect(url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id))
-        
+
+        if current_user.tipo == 'professor':
+            return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        if current_user.tipo == 'participante':
+            return redirect(
+                url_for('agendamento_routes.meus_agendamentos_participante')
+            )
+        if current_user.tipo == 'cliente':
+            return redirect(
+                url_for('agendamento_routes.meus_agendamentos_cliente')
+            )
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
     except Exception as e:
