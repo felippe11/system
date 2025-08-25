@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Configurar Barema - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-bar"></i>
+                        Configurar Barema de Avaliação
+                    </h4>
+                    <a href="{{ url_for('evento_routes.meus_eventos') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Evento:</strong> {{ evento.nome }}
+                        <br>
+                        <small>Configure os critérios de avaliação com valores mínimos e máximos para cada requisito.</small>
+                    </div>
+
+                    <form method="POST" id="baremaForm">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-list-ul"></i>
+                                    Requisitos de Avaliação
+                                </h5>
+                                
+                                <div id="requisitos-container">
+                                    {% if barema.requisitos %}
+                                        {% for nome, valores in barema.requisitos.items() %}
+                                        <div class="requisito-item card mb-3">
+                                            <div class="card-body">
+                                                <div class="row align-items-center">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Nome do Requisito</label>
+                                                        <input type="text" class="form-control" name="requisito_nome_{{ loop.index0 }}" value="{{ nome }}" placeholder="Ex: Qualidade do Conteúdo" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Valor Mínimo</label>
+                                                        <input type="number" class="form-control" name="requisito_min_{{ loop.index0 }}" value="{{ valores.min }}" min="0" max="10" step="0.1" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Valor Máximo</label>
+                                                        <input type="number" class="form-control" name="requisito_max_{{ loop.index0 }}" value="{{ valores.max }}" min="0" max="10" step="0.1" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <button type="button" class="btn btn-danger btn-sm d-block" onclick="removerRequisito(this)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="requisito-item card mb-3">
+                                            <div class="card-body">
+                                                <div class="row align-items-center">
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">Nome do Requisito</label>
+                                                        <input type="text" class="form-control" name="requisito_nome_0" placeholder="Ex: Qualidade do Conteúdo" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Valor Mínimo</label>
+                                                        <input type="number" class="form-control" name="requisito_min_0" min="0" max="10" step="0.1" value="0" required>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label">Valor Máximo</label>
+                                                        <input type="number" class="form-control" name="requisito_max_0" min="0" max="10" step="0.1" value="10" required>
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <button type="button" class="btn btn-danger btn-sm d-block" onclick="removerRequisito(this)">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-success" onclick="adicionarRequisito()">
+                                        <i class="fas fa-plus"></i> Adicionar Requisito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('evento_routes.meus_eventos') }}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Salvar Barema
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let contadorRequisitos = {{ barema.requisitos|length if barema.requisitos else 1 }};
+
+function adicionarRequisito() {
+    const container = document.getElementById('requisitos-container');
+    const novoRequisito = document.createElement('div');
+    novoRequisito.className = 'requisito-item card mb-3';
+    novoRequisito.innerHTML = `
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label">Nome do Requisito</label>
+                    <input type="text" class="form-control" name="requisito_nome_${contadorRequisitos}" placeholder="Ex: Qualidade do Conteúdo" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Valor Mínimo</label>
+                    <input type="number" class="form-control" name="requisito_min_${contadorRequisitos}" min="0" max="10" step="0.1" value="0" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Valor Máximo</label>
+                    <input type="number" class="form-control" name="requisito_max_${contadorRequisitos}" min="0" max="10" step="0.1" value="10" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm d-block" onclick="removerRequisito(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    container.appendChild(novoRequisito);
+    contadorRequisitos++;
+}
+
+function removerRequisito(button) {
+    const container = document.getElementById('requisitos-container');
+    const requisitos = container.querySelectorAll('.requisito-item');
+    
+    if (requisitos.length > 1) {
+        button.closest('.requisito-item').remove();
+    } else {
+        alert('Deve haver pelo menos um requisito de avaliação.');
+    }
+}
+
+// Validação do formulário
+document.getElementById('baremaForm').addEventListener('submit', function(e) {
+    const requisitos = document.querySelectorAll('.requisito-item');
+    let valido = true;
+    
+    requisitos.forEach(function(requisito, index) {
+        const nome = requisito.querySelector(`input[name*="requisito_nome_"]`).value.trim();
+        const min = parseFloat(requisito.querySelector(`input[name*="requisito_min_"]`).value);
+        const max = parseFloat(requisito.querySelector(`input[name*="requisito_max_"]`).value);
+        
+        if (!nome) {
+            alert(`O nome do requisito ${index + 1} é obrigatório.`);
+            valido = false;
+            return;
+        }
+        
+        if (min >= max) {
+            alert(`O valor mínimo deve ser menor que o máximo para "${nome}".`);
+            valido = false;
+            return;
+        }
+        
+        if (min < 0 || max > 10) {
+            alert(`Os valores devem estar entre 0 e 10 para "${nome}".`);
+            valido = false;
+            return;
+        }
+    });
+    
+    if (!valido) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

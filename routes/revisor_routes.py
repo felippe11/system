@@ -534,6 +534,48 @@ def approve(cand_id: int):
     )
     if submission_id and reviewer:
         db.session.add(Assignment(submission_id=submission_id, reviewer_id=reviewer.id))
+    
+    # Atribuição automática de trabalhos disponíveis para o revisor aprovado
+    if reviewer:
+        from datetime import timedelta
+        
+        # Busca trabalhos disponíveis do mesmo cliente que ainda precisam de revisores
+        trabalhos_disponiveis = (
+            Submission.query
+            .join(Evento, Submission.evento_id == Evento.id)
+            .filter(
+                Evento.cliente_id == cand.process.cliente_id,
+                ~Submission.id.in_(
+                    db.session.query(Assignment.submission_id)
+                    .filter(Assignment.reviewer_id == reviewer.id)
+                )
+            )
+            .limit(5)  # Limita a 5 trabalhos iniciais
+            .all()
+        )
+        
+        # Cria assignments para os trabalhos disponíveis
+        config = ConfiguracaoCliente.query.filter_by(
+            cliente_id=cand.process.cliente_id
+        ).first()
+        prazo_dias = config.prazo_parecer_dias if config else 14
+        
+        for trabalho in trabalhos_disponiveis:
+            # Cria Review
+            review = Review(
+                submission_id=trabalho.id,
+                reviewer_id=reviewer.id,
+                access_code=str(uuid.uuid4())[:8],
+            )
+            db.session.add(review)
+            
+            # Cria Assignment
+            assignment = Assignment(
+                submission_id=trabalho.id,
+                reviewer_id=reviewer.id,
+                deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+            )
+            db.session.add(assignment)
 
     db.session.commit()
     if cand.email:

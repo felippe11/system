@@ -50,6 +50,9 @@
                   <a href="{{ url_for('evento_routes.configurar_evento', evento_id=ev.id) }}" class="btn btn-outline-primary btn-sm" title="Editar">
                     <i class="bi bi-pencil"></i>
                   </a>
+                  <a href="{{ url_for('evento_routes.configurar_barema_evento', evento_id=ev.id) }}" class="btn btn-outline-success btn-sm" title="Configurar Barema">
+                    <i class="bi bi-bar-chart"></i>
+                  </a>
                   {% endif %}
                   <form action="{{ url_for('evento_routes.toggle_arquivamento', evento_id=ev.id) }}" method="POST" class="d-inline">
                     <button type="submit" class="btn btn-outline-danger btn-sm" title="{{ 'Arquivar' if ev.status=='ativo' else 'Reativar' }}">

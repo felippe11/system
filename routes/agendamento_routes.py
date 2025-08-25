@@ -4981,6 +4981,7 @@ def api_criar_material_apoio():
         novo_material = MaterialApoio(
             nome=data['nome'],
             descricao=data.get('descricao', ''),
+            cliente_id=current_user.id,
             ativo=data.get('ativo', True)
         )
         

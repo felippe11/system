@@ -1392,10 +1392,11 @@ class MaterialApoio(db.Model):
     # Relações
     cliente = db.relationship("Cliente", backref=db.backref("materiais_apoio", lazy=True))
     
-    def __init__(self, nome, descricao, cliente_id):
+    def __init__(self, nome, descricao, cliente_id, ativo=True):
         self.nome = nome
         self.descricao = descricao
         self.cliente_id = cliente_id
+        self.ativo = ativo
     
     def __repr__(self):
         return f"<MaterialApoio {self.nome} - Cliente {self.cliente_id}>"
