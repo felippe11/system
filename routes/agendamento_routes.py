@@ -1349,6 +1349,7 @@ def configurar_agendamentos(evento_id):
             config.tempo_bloqueio = request.form.get('tempo_bloqueio', type=int)
             config.capacidade_padrao = request.form.get('capacidade_padrao', type=int)
             config.intervalo_minutos = request.form.get('intervalo_minutos', type=int)
+            config.intervalo_entrada = request.form.get('intervalo_entrada', type=int)
             
             # Converter string para time
             hora_inicio = request.form.get('horario_inicio')
@@ -1373,6 +1374,7 @@ def configurar_agendamentos(evento_id):
                 tempo_bloqueio=request.form.get('tempo_bloqueio', type=int),
                 capacidade_padrao=request.form.get('capacidade_padrao', type=int),
                 intervalo_minutos=request.form.get('intervalo_minutos', type=int),
+                intervalo_entrada=request.form.get('intervalo_entrada', type=int),
                 horario_inicio=datetime.strptime(hora_inicio, '%H:%M').time(),
                 horario_fim=datetime.strptime(hora_fim, '%H:%M').time(),
                 dias_semana=','.join(request.form.getlist('dias_semana')),

@@ -862,6 +862,9 @@ class ConfiguracaoAgendamento(db.Model):
     intervalo_minutos = db.Column(
         db.Integer, nullable=False, default=60
     )  # Minutos entre agendamentos
+    intervalo_entrada = db.Column(
+        db.Integer, nullable=False, default=15
+    )  # Minutos de tolerância para entrada após o horário agendado
 
     tipos_inscricao_permitidos = db.Column(db.Text, nullable=True)
 
