@@ -1,17 +1,23 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
-from flask_login import current_user
+
+from flask_login import login_required, current_user
+
 from werkzeug.utils import secure_filename
 from extensions import db
 from models import Oficina, CertificadoTemplate
 from models.user import Cliente
+
 from models.event import CertificadoTemplateAvancado, VariavelDinamica, ConfiguracaoCertificadoAvancada, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 from utils.auth import login_required, require_permission, require_resource_access, role_required
 
+
 import os
 from datetime import datetime
 import logging
+
 import json
+
 
 certificado_routes = Blueprint(
     'certificado_routes',
@@ -24,7 +30,9 @@ logger = logging.getLogger(__name__)
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
 @login_required
+
 @require_permission('templates.view')
+
 def templates_certificado():
     if request.method == 'POST':
         titulo = request.form['titulo']
@@ -39,8 +47,10 @@ def templates_certificado():
 
 @certificado_routes.route('/set_template_ativo/<int:template_id>', methods=['POST'])
 @login_required
+
 @require_permission('templates.activate')
 @require_resource_access('template', 'template_id', 'edit')
+
 def set_template_ativo(template_id):
     CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
     template = CertificadoTemplate.query.get(template_id)
@@ -51,7 +61,9 @@ def set_template_ativo(template_id):
 
 @certificado_routes.route('/gerar_certificado_evento', methods=['POST'])
 @login_required
+
 @require_permission('certificados.generate')
+
 def gerar_certificado_evento():
     texto_personalizado = request.form.get('texto_personalizado', '')
     oficinas_ids = request.form.getlist('oficinas_selecionadas')
@@ -70,7 +82,9 @@ def gerar_certificado_evento():
 
 @certificado_routes.route('/salvar_personalizacao_certificado', methods=['POST'])
 @login_required
+
 @require_permission('certificados.edit')
+
 def salvar_personalizacao_certificado():
     cliente = Cliente.query.get(current_user.id)
 
@@ -90,8 +104,10 @@ def salvar_personalizacao_certificado():
 
 @certificado_routes.route('/ativar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+
 @require_permission('templates.activate')
 @require_resource_access('template', 'template_id', 'edit')
+
 def ativar_template_certificado(template_id):
     CertificadoTemplate.query.filter_by(cliente_id=current_user.id).update({'ativo': False})
     template = CertificadoTemplate.query.get_or_404(template_id)
@@ -104,8 +120,10 @@ def ativar_template_certificado(template_id):
 
 @certificado_routes.route('/editar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+
 @require_permission('templates.edit')
 @require_resource_access('template', 'template_id', 'edit')
+
 def editar_template_certificado(template_id):
     template = CertificadoTemplate.query.get_or_404(template_id)
 
@@ -129,8 +147,10 @@ def editar_template_certificado(template_id):
 
 @certificado_routes.route('/desativar_template_certificado/<int:template_id>', methods=['POST'])
 @login_required
+
 @require_permission('templates.deactivate')
 @require_resource_access('template', 'template_id', 'edit')
+
 def desativar_template_certificado(template_id):
     template = CertificadoTemplate.query.get_or_404(template_id)
 
@@ -145,7 +165,9 @@ def desativar_template_certificado(template_id):
 
 @certificado_routes.route('/upload_personalizacao_certificado', methods=['GET', 'POST'])
 @login_required
+
 @require_permission('certificados.create')
+
 def upload_personalizacao_certificado():
     
     cliente = Cliente.query.get(current_user.id)
@@ -188,7 +210,9 @@ def upload_personalizacao_certificado():
 
 @certificado_routes.route('/preview_certificado', methods=['GET', 'POST'])
 @login_required
+
 @require_permission('certificados.view')
+
 def preview_certificado():
     """Gera um PDF de exemplo para visualizar o certificado."""
 
@@ -1972,4 +1996,5 @@ def gerar_declaracao_personalizada(usuario, evento, participacao, template, clie
     
     c.save()
     return pdf_path
+
 

@@ -1,5 +1,6 @@
 from flask import Blueprint
 participante_routes = Blueprint("participante_routes", __name__)
+
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
@@ -9,6 +10,7 @@ from models.event import Evento
 from models.oficina import Oficina
 from extensions import db
 from datetime import datetime
+
 
 
 @participante_routes.route('/gerenciar_participantes', methods=['GET'])
@@ -74,6 +76,7 @@ def editar_participante_admin(participante_id):
     db.session.commit()
     flash('Participante atualizado com sucesso!', 'success')
     return redirect(url_for('dashboard_routes.dashboard'))
+
 
 
 # ===== ROTAS PARA CERTIFICADOS DO PARTICIPANTE =====
@@ -358,3 +361,4 @@ def marcar_notificacao_lida_participante(notificacao_id):
     db.session.commit()
     
     return jsonify({'success': True})
+

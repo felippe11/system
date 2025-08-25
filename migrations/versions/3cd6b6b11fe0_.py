@@ -3,17 +3,21 @@
 Revision ID: 3cd6b6b11fe0
 Revises: 36a58e54b28a
 Create Date: 2025-08-22 13:28:10.035219
+
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
 from sqlalchemy import inspect, text
 
 # revision identifiers, used by Alembic.
 revision = "3cd6b6b11fe0"
 down_revision = "36a58e54b28a"
+
 branch_labels = None
 depends_on = None
+
 
 
 def _has_table(inspector, table_name: str) -> bool:

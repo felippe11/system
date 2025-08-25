@@ -102,6 +102,7 @@
           <ul class="nav nav-tabs nav-justified" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="clientes-tab" data-bs-toggle="tab"
+
                       data-bs-target="#clientes" type="button">
                 <i class="bi bi-people me-1"></i>Clientes
               </button>
@@ -123,6 +124,7 @@
                       data-bs-target="#financeiro" type="button">
                 <i class="bi bi-graph-up me-1"></i>Financeiro
               </button>
+
             </li>
           </ul>
 
@@ -264,6 +266,7 @@
                 </div>
               </div>
             </div>
+
 
             <!-- Certificados Tab -->
             <div class="tab-pane fade" id="certificados">
@@ -459,6 +462,7 @@
               </div>
             </div>
 
+
             <!-- Financeiro Tab -->
             <div class="tab-pane fade" id="financeiro">
               {% include 'partials/dashboard_financeiro_admin.html' %}
@@ -634,6 +638,7 @@
     }
     
     // Validação para garantir que a taxa diferenciada seja menor que a geral
+
     
     // Carregar estatísticas de certificados quando a aba for ativada
     document.getElementById('certificados-tab').addEventListener('click', function() {
@@ -778,6 +783,7 @@
       // Fechar modal
       bootstrap.Modal.getInstance(document.getElementById('modalGerarLote')).hide();
     };
+
     taxaDiferenciada.addEventListener('input', validateTaxa);
     taxaGeral.addEventListener('input', validateTaxa);
     

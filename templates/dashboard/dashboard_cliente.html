@@ -71,12 +71,14 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
+
           <button class="nav-link" id="certificados-tab" data-bs-toggle="tab"
                   data-bs-target="#certificados" type="button">
             <i class="bi bi-award me-1"></i> Certificados
           </button>
         </li>
         <li class="nav-item" role="presentation">
+
           <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab"
                   data-bs-target="#configuracoes" type="button">
             <i class="bi bi-gear-fill me-1"></i> Configurações
@@ -887,6 +889,7 @@
 
 <!-- /ABA 3: CRIAR NOVO -->
 
+
   <!-- ABA 4: CERTIFICADOS -->
   <div class="tab-pane fade" id="certificados" role="tabpanel">
     <!-- Menu de navegação para categorias de certificados -->
@@ -1228,6 +1231,9 @@
   </div>
 
   <!-- ABA 5: CONFIGURAÇÕES -->
+
+  <!-- ABA 4: CONFIGURAÇÕES -->
+
   <div class="tab-pane fade" id="configuracoes" role="tabpanel">
     <!-- CSS para padronização dos botões -->
     
@@ -1974,6 +1980,7 @@
     });
   }
 
+
   // Funcionalidades da Aba de Certificados
   function carregarConfiguracoesCertificado() {
     const eventoId = document.getElementById('selectEventoCertificado').value;
@@ -2119,5 +2126,6 @@
   document.getElementById('tab-cert-historico').addEventListener('shown.bs.tab', function() {
     aplicarFiltrosHistorico();
   });
+
 </script>
 {% endblock %}{% endblock %}

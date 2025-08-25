@@ -8,14 +8,18 @@ from flask import (
     session,
     url_for,
 )
-from flask_login import current_user
+
+from flask_login import current_user, login_required
+
 from werkzeug.security import generate_password_hash
 import logging
 
 from extensions import db
 from models import ConfiguracaoCliente
 from models.user import Cliente
+
 from utils.auth import login_required, admin_required, require_permission, require_resource_access
+
 
 cliente_routes = Blueprint("cliente_routes", __name__)
 logger = logging.getLogger(__name__)
@@ -36,8 +40,10 @@ def _admin_required():
 
 @cliente_routes.route("/cadastrar_cliente", methods=["GET", "POST"])
 @login_required
+
 @require_permission('usuarios.create')
 def cadastrar_cliente():
+
 
     if request.method == "POST":
         nome = request.form["nome"]
@@ -69,8 +75,10 @@ def cadastrar_cliente():
 
 @cliente_routes.route("/editar_cliente/<int:cliente_id>", methods=["GET", "POST"])
 @login_required
+
 @require_permission('usuarios.edit')
 def editar_cliente(cliente_id):
+
 
     cliente = Cliente.query.get_or_404(cliente_id)
     if request.method == "POST":
@@ -113,8 +121,12 @@ def editar_cliente(cliente_id):
 
 @cliente_routes.route("/excluir_cliente/<int:cliente_id>", methods=["POST"])
 @login_required
-@require_permission('usuarios.delete')
+
 def excluir_cliente(cliente_id):
+    if current_user.tipo != "admin":
+        flash("Apenas administradores podem excluir clientes.", "danger")
+        return redirect(url_for("dashboard_routes.dashboard"))
+
 
     cliente = Cliente.query.get_or_404(cliente_id)
 
@@ -374,7 +386,9 @@ def excluir_cliente(cliente_id):
 
 @cliente_routes.route("/listar_usuarios/<int:cliente_id>")
 @login_required
+
 @require_permission('usuarios.view')
+
 def listar_usuarios(cliente_id: int):
     """Exibe os usuários vinculados a um cliente específico."""
     if current_user.tipo != "admin":
@@ -397,7 +411,9 @@ def listar_usuarios(cliente_id: int):
 
 @cliente_routes.route("/restringir_clientes", methods=["POST"])
 @login_required
+
 @require_permission('usuarios.edit')
+
 def restringir_clientes():
     """Ativa ou bloqueia em lote os *clientes* enviados por ID (check‑box)."""
     # Somente admin
@@ -421,7 +437,9 @@ def restringir_clientes():
 
 @cliente_routes.route("/excluir_clientes", methods=["POST"])
 @login_required
+
 @require_permission('usuarios.delete')
+
 def excluir_clientes():
     """Exclui, em lote, os *clientes* enviados via formulário (checkbox)."""
     redirect_resp = _admin_required()
@@ -446,7 +464,9 @@ def excluir_clientes():
 
 @cliente_routes.route("/toggle_usuario/<int:usuario_id>")
 @login_required
+
 @require_permission('usuarios.edit')
+
 def toggle_usuario(usuario_id: int):
     """Ativa ou bloqueia o acesso de um *usuário* específico."""
     from models import Usuario

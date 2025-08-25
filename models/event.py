@@ -1432,6 +1432,7 @@ class NecessidadeEspecial(db.Model):
         return f"<NecessidadeEspecial {self.tipo} - Aluno {self.aluno_id}>"
 
 
+
 class CertificadoTemplateAvancado(db.Model):
     """Template avançado para certificados com configurações de layout e elementos visuais."""
     __tablename__ = "certificado_template_avancado"
