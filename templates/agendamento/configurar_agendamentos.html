@@ -56,13 +56,18 @@
               <div class="col-md-6">
                 <label for="intervalo_minutos" class="form-label">Intervalo entre Visitas (minutos)</label>
                 <select class="form-select" id="intervalo_minutos" name="intervalo_minutos" required>
+                  <option value="15" {% if config and config.intervalo_minutos == 15 %}selected{% endif %}>15 minutos</option>
                   <option value="30" {% if config and config.intervalo_minutos == 30 %}selected{% endif %}>30 minutos</option>
+                  <option value="45" {% if config and config.intervalo_minutos == 45 %}selected{% endif %}>45 minutos</option>
                   <option value="60" {% if not config or config.intervalo_minutos == 60 %}selected{% endif %}>1 hora</option>
+                  <option value="75" {% if config and config.intervalo_minutos == 75 %}selected{% endif %}>1 hora e 15 minutos</option>
                   <option value="90" {% if config and config.intervalo_minutos == 90 %}selected{% endif %}>1 hora e 30 minutos</option>
                   <option value="120" {% if config and config.intervalo_minutos == 120 %}selected{% endif %}>2 horas</option>
+                  <option value="150" {% if config and config.intervalo_minutos == 150 %}selected{% endif %}>2 horas e 30 minutos</option>
                   <option value="180" {% if config and config.intervalo_minutos == 180 %}selected{% endif %}>3 horas</option>
+                  <option value="240" {% if config and config.intervalo_minutos == 240 %}selected{% endif %}>4 horas</option>
                 </select>
-                <div class="form-text">Duração de cada sessão de visitação.</div>
+                <div class="form-text">Duração de cada sessão de visitação. Opções de 15 minutos a 4 horas.</div>
               </div>
             </div>
             
@@ -70,13 +75,18 @@
               <div class="col-md-6">
                 <label for="intervalo_entrada" class="form-label">Tolerância para Entrada (minutos)</label>
                 <select class="form-select" id="intervalo_entrada" name="intervalo_entrada" required>
+                  <option value="2" {% if config and config.intervalo_entrada == 2 %}selected{% endif %}>2 minutos</option>
                   <option value="5" {% if config and config.intervalo_entrada == 5 %}selected{% endif %}>5 minutos</option>
                   <option value="10" {% if config and config.intervalo_entrada == 10 %}selected{% endif %}>10 minutos</option>
                   <option value="15" {% if not config or config.intervalo_entrada == 15 %}selected{% endif %}>15 minutos</option>
                   <option value="20" {% if config and config.intervalo_entrada == 20 %}selected{% endif %}>20 minutos</option>
+                  <option value="25" {% if config and config.intervalo_entrada == 25 %}selected{% endif %}>25 minutos</option>
                   <option value="30" {% if config and config.intervalo_entrada == 30 %}selected{% endif %}>30 minutos</option>
+                  <option value="40" {% if config and config.intervalo_entrada == 40 %}selected{% endif %}>40 minutos</option>
+                  <option value="45" {% if config and config.intervalo_entrada == 45 %}selected{% endif %}>45 minutos</option>
+                  <option value="60" {% if config and config.intervalo_entrada == 60 %}selected{% endif %}>60 minutos</option>
                 </select>
-                <div class="form-text">Tempo máximo de tolerância para entrada após o horário agendado.</div>
+                <div class="form-text">Tempo máximo de tolerância para entrada após o horário agendado. De 2 a 60 minutos.</div>
               </div>
               
               <div class="col-md-6">
