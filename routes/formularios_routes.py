@@ -39,6 +39,7 @@ from models import (
     AuditLog,
     Evento,
     ConfiguracaoCliente,
+    RevisorProcess,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -360,6 +361,20 @@ def editar_campo(campo_id):
 def deletar_campo(campo_id):
     campo = CampoFormulario.query.get_or_404(campo_id)
     formulario_id = campo.formulario_id
+
+    ligado_a_processo = RevisorProcess.query.filter_by(
+        formulario_id=formulario_id
+    ).first()
+
+    if campo.nome.lower() in {"nome", "email"} and ligado_a_processo:
+        flash(
+            "Campos 'nome' e 'email' são obrigatórios para o processo de revisores.",
+            "danger",
+        )
+        return redirect(
+            url_for("formularios_routes.gerenciar_campos", formulario_id=formulario_id)
+        )
+
     db.session.delete(campo)
     db.session.commit()
     flash("Campo removido com sucesso!", "success")
