@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}Editor de Template Personalizado{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-edit"></i> Editor de Template Personalizado</h4>
+                    <p class="mb-0 text-muted">Crie e edite templates de certificados com HTML, CSS e variáveis dinâmicas</p>
+                </div>
+                <div class="card-body">
+                    <form id="templateForm" method="POST">
+                        <div class="row">
+                            <!-- Configurações do Template -->
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6>Configurações</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="nome">Nome do Template</label>
+                                            <input type="text" class="form-control" id="nome" name="nome" 
+                                                   value="{{ template.nome if template else '' }}" required>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="descricao">Descrição</label>
+                                            <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ template.descricao if template else '' }}</textarea>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="orientacao">Orientação</label>
+                                            <select class="form-control" id="orientacao" name="orientacao">
+                                                <option value="landscape" {{ 'selected' if template and template.orientacao == 'landscape' else '' }}>Paisagem</option>
+                                                <option value="portrait" {{ 'selected' if template and template.orientacao == 'portrait' else '' }}>Retrato</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="tamanho">Tamanho</label>
+                                            <select class="form-control" id="tamanho" name="tamanho">
+                                                <option value="A4" {{ 'selected' if template and template.tamanho == 'A4' else '' }}>A4</option>
+                                                <option value="A3" {{ 'selected' if template and template.tamanho == 'A3' else '' }}>A3</option>
+                                                <option value="Letter" {{ 'selected' if template and template.tamanho == 'Letter' else '' }}>Letter</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="ativo" name="ativo" 
+                                                   {{ 'checked' if template and template.ativo else '' }}>
+                                            <label class="form-check-label" for="ativo">
+                                                Template Ativo
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Variáveis Disponíveis -->
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h6>Variáveis Disponíveis</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="accordion" id="variaveisAccordion">
+                                            <div class="card">
+                                                <div class="card-header p-2" id="participanteHeader">
+                                                    <button class="btn btn-link btn-sm" type="button" data-toggle="collapse" 
+                                                            data-target="#participanteCollapse">
+                                                        Participante
+                                                    </button>
+                                                </div>
+                                                <div id="participanteCollapse" class="collapse show" data-parent="#variaveisAccordion">
+                                                    <div class="card-body p-2">
+                                                        <small>
+                                                            <code>{{participante.nome}}</code><br>
+                                                            <code>{{participante.cpf}}</code><br>
+                                                            <code>{{participante.email}}</code><br>
+                                                            <code>{{participante.telefone}}</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="card">
+                                                <div class="card-header p-2" id="eventoHeader">
+                                                    <button class="btn btn-link btn-sm" type="button" data-toggle="collapse" 
+                                                            data-target="#eventoCollapse">
+                                                        Evento
+                                                    </button>
+                                                </div>
+                                                <div id="eventoCollapse" class="collapse" data-parent="#variaveisAccordion">
+                                                    <div class="card-body p-2">
+                                                        <small>
+                                                            <code>{{evento.nome}}</code><br>
+                                                            <code>{{evento.data_inicio}}</code><br>
+                                                            <code>{{evento.data_fim}}</code><br>
+                                                            <code>{{evento.local}}</code><br>
+                                                            <code>{{evento.organizador}}</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="card">
+                                                <div class="card-header p-2" id="certificadoHeader">
+                                                    <button class="btn btn-link btn-sm" type="button" data-toggle="collapse" 
+                                                            data-target="#certificadoCollapse">
+                                                        Certificado
+                                                    </button>
+                                                </div>
+                                                <div id="certificadoCollapse" class="collapse" data-parent="#variaveisAccordion">
+                                                    <div class="card-body p-2">
+                                                        <small>
+                                                            <code>{{certificado.codigo_verificacao}}</code><br>
+                                                            <code>{{certificado.data_emissao}}</code><br>
+                                                            <code>{{certificado.carga_horaria_total}}</code><br>
+                                                            <code>{{certificado.qr_code_url}}</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="card">
+                                                <div class="card-header p-2" id="workshopsHeader">
+                                                    <button class="btn btn-link btn-sm" type="button" data-toggle="collapse" 
+                                                            data-target="#workshopsCollapse">
+                                                        Workshops
+                                                    </button>
+                                                </div>
+                                                <div id="workshopsCollapse" class="collapse" data-parent="#variaveisAccordion">
+                                                    <div class="card-body p-2">
+                                                        <small>
+                                                            <code>{% for workshop in workshops %}</code><br>
+                                                            <code>&nbsp;&nbsp;{{workshop.nome}}</code><br>
+                                                            <code>&nbsp;&nbsp;{{workshop.carga_horaria}}</code><br>
+                                                            <code>{% endfor %}</code>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Editor de Código -->
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <ul class="nav nav-tabs card-header-tabs" id="editorTabs" role="tablist">
+                                            <li class="nav-item">
+                                                <a class="nav-link active" id="html-tab" data-toggle="tab" href="#html" role="tab">HTML</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link" id="css-tab" data-toggle="tab" href="#css" role="tab">CSS</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div class="tab-content h-100">
+                                            <div class="tab-pane fade show active h-100" id="html" role="tabpanel">
+                                                <textarea id="htmlEditor" name="conteudo_html" class="form-control h-100" 
+                                                          style="border: none; resize: none; font-family: 'Courier New', monospace;">{{ template.conteudo_html if template else default_html }}</textarea>
+                                            </div>
+                                            <div class="tab-pane fade h-100" id="css" role="tabpanel">
+                                                <textarea id="cssEditor" name="conteudo_css" class="form-control h-100" 
+                                                          style="border: none; resize: none; font-family: 'Courier New', monospace;">{{ template.conteudo_css if template else default_css }}</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Preview -->
+                            <div class="col-md-3">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h6>Preview</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="atualizarPreview()">
+                                            <i class="fas fa-sync-alt"></i> Atualizar
+                                        </button>
+                                    </div>
+                                    <div class="card-body p-2">
+                                        <div id="preview" style="border: 1px solid #ddd; min-height: 400px; background: white; transform: scale(0.3); transform-origin: top left; width: 333%; height: 333%; overflow: hidden;">
+                                            <!-- Preview será carregado aqui -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Ações -->
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-save"></i> Salvar Template
+                                </button>
+                                <button type="button" class="btn btn-primary ml-2" onclick="previewCompleto()">
+                                    <i class="fas fa-eye"></i> Preview Completo
+                                </button>
+                                <button type="button" class="btn btn-info ml-2" onclick="testarTemplate()">
+                                    <i class="fas fa-test-tube"></i> Testar com Dados
+                                </button>
+                                <a href="{{ url_for('certificado.templates_avancados') }}" class="btn btn-outline-secondary ml-2">
+                                    <i class="fas fa-arrow-left"></i> Voltar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Preview Completo -->
+<div class="modal fade" id="modalPreview" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Preview Completo do Certificado</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <iframe id="previewFrame" style="width: 100%; height: 600px; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let defaultHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Certificado</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: 'Times New Roman', serif; }
+        .certificado { width: 100%; height: 100vh; position: relative; background: linear-gradient(45deg, #f0f8ff, #e6f3ff); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .titulo { font-size: 48px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+        .subtitulo { font-size: 24px; color: #34495e; }
+        .conteudo { text-align: center; margin: 50px 0; }
+        .participante { font-size: 36px; font-weight: bold; color: #2980b9; margin: 20px 0; }
+        .evento { font-size: 24px; color: #2c3e50; margin: 20px 0; }
+        .footer { position: absolute; bottom: 50px; width: 100%; text-align: center; }
+        .qr-code { position: absolute; bottom: 20px; right: 20px; }
+    </style>
+</head>
+<body>
+    <div class="certificado">
+        <div class="header">
+            <h1 class="titulo">CERTIFICADO</h1>
+            <p class="subtitulo">de Participação</p>
+        </div>
+        
+        <div class="conteudo">
+            <p>Certificamos que</p>
+            <h2 class="participante">{{participante.nome}}</h2>
+            <p>participou do evento</p>
+            <h3 class="evento">{{evento.nome}}</h3>
+            <p>realizado de {{evento.data_inicio}} a {{evento.data_fim}}</p>
+            <p>com carga horária total de <strong>{{certificado.carga_horaria_total}} horas</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>Emitido em {{certificado.data_emissao}}</p>
+            <p>Código de verificação: {{certificado.codigo_verificacao}}</p>
+        </div>
+        
+        <div class="qr-code">
+            <img src="{{certificado.qr_code_url}}" alt="QR Code" width="80" height="80">
+        </div>
+    </div>
+</body>
+</html>`;
+
+let defaultCss = `/* CSS adicional para personalização */
+.certificado {
+    border: 10px solid #2c3e50;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+.titulo {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.participante {
+    border-bottom: 2px solid #2980b9;
+    display: inline-block;
+    padding-bottom: 5px;
+}`;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar editores se não há template
+    if (!document.getElementById('htmlEditor').value.trim()) {
+        document.getElementById('htmlEditor').value = defaultHtml;
+    }
+    if (!document.getElementById('cssEditor').value.trim()) {
+        document.getElementById('cssEditor').value = defaultCss;
+    }
+    
+    // Atualizar preview inicial
+    atualizarPreview();
+    
+    // Auto-save a cada 30 segundos
+    setInterval(autoSave, 30000);
+});
+
+function atualizarPreview() {
+    const html = document.getElementById('htmlEditor').value;
+    const css = document.getElementById('cssEditor').value;
+    
+    // Dados de exemplo para preview
+    const dadosExemplo = {
+        participante: {
+            nome: 'João Silva Santos',
+            cpf: '123.456.789-00',
+            email: 'joao@email.com'
+        },
+        evento: {
+            nome: 'Congresso de Tecnologia 2024',
+            data_inicio: '15/03/2024',
+            data_fim: '17/03/2024',
+            local: 'Centro de Convenções'
+        },
+        certificado: {
+            codigo_verificacao: 'CERT-2024-001234',
+            data_emissao: '20/03/2024',
+            carga_horaria_total: '24',
+            qr_code_url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSJ3aGl0ZSIvPgo8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0iYmxhY2siLz4KPC9zdmc+'
+        }
+    };
+    
+    // Substituir variáveis no HTML
+    let htmlProcessado = html;
+    Object.keys(dadosExemplo).forEach(categoria => {
+        Object.keys(dadosExemplo[categoria]).forEach(campo => {
+            const regex = new RegExp(`{{${categoria}\.${campo}}}`, 'g');
+            htmlProcessado = htmlProcessado.replace(regex, dadosExemplo[categoria][campo]);
+        });
+    });
+    
+    // Adicionar CSS
+    if (css.trim()) {
+        htmlProcessado = htmlProcessado.replace('</style>', css + '\n</style>');
+    }
+    
+    // Atualizar preview
+    document.getElementById('preview').innerHTML = htmlProcessado;
+}
+
+function previewCompleto() {
+    const html = document.getElementById('htmlEditor').value;
+    const css = document.getElementById('cssEditor').value;
+    
+    // Criar blob com o HTML completo
+    const htmlCompleto = html + (css ? `<style>${css}</style>` : '');
+    const blob = new Blob([htmlCompleto], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    document.getElementById('previewFrame').src = url;
+    $('#modalPreview').modal('show');
+}
+
+function testarTemplate() {
+    // Implementar teste com dados reais
+    alert('Funcionalidade de teste será implementada');
+}
+
+function autoSave() {
+    // Implementar auto-save
+    console.log('Auto-save executado');
+}
+
+// Inserir variável no cursor
+function inserirVariavel(variavel) {
+    const editor = document.getElementById('htmlEditor');
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+    const text = editor.value;
+    
+    editor.value = text.substring(0, start) + variavel + text.substring(end);
+    editor.focus();
+    editor.setSelectionRange(start + variavel.length, start + variavel.length);
+}
+
+// Adicionar event listeners para variáveis
+document.addEventListener('click', function(e) {
+    if (e.target.tagName === 'CODE') {
+        inserirVariavel(e.target.textContent);
+    }
+});
+</script>
+{% endblock %}

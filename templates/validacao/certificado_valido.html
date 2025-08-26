@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Certificado Válido{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white text-center">
+                    <h4><i class="fas fa-check-circle"></i> Certificado Válido</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success" role="alert">
+                        <strong>✓ Certificado autêntico e válido!</strong>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Dados do Participante</h5>
+                            <p><strong>Nome:</strong> {{ certificado.participante.nome }}</p>
+                            <p><strong>CPF:</strong> {{ certificado.participante.cpf }}</p>
+                            <p><strong>Email:</strong> {{ certificado.participante.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Dados do Evento</h5>
+                            <p><strong>Evento:</strong> {{ certificado.evento.nome }}</p>
+                            <p><strong>Data de Emissão:</strong> {{ certificado.data_emissao.strftime('%d/%m/%Y') }}</p>
+                            <p><strong>Carga Horária:</strong> {{ certificado.carga_horaria_total }}h</p>
+                        </div>
+                    </div>
+                    
+                    {% if certificado.workshops_participados %}
+                    <div class="mt-4">
+                        <h5>Workshops Participados</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Workshop</th>
+                                        <th>Carga Horária</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for workshop in certificado.workshops_participados %}
+                                    <tr>
+                                        <td>{{ workshop.nome }}</td>
+                                        <td>{{ workshop.carga_horaria }}h</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h5>Informações de Verificação</h5>
+                        <p><strong>Código de Verificação:</strong> <code>{{ certificado.codigo_verificacao }}</code></p>
+                        <p><strong>Hash de Verificação:</strong> <code class="text-muted">{{ certificado.hash_verificacao[:20] }}...</code></p>
+                        <p><strong>Data de Validação:</strong> {{ resultado.data_validacao.strftime('%d/%m/%Y às %H:%M') }}</p>
+                    </div>
+                    
+                    {% if certificado.arquivo_certificado %}
+                    <div class="text-center mt-4">
+                        <a href="{{ url_for('static', filename='certificados/' + certificado.arquivo_certificado) }}" 
+                           class="btn btn-primary" target="_blank">
+                            <i class="fas fa-download"></i> Baixar Certificado
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-muted text-center">
+                    <small>Este certificado foi validado em {{ resultado.data_validacao.strftime('%d/%m/%Y às %H:%M:%S') }}</small>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('validacao.buscar_certificados') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-search"></i> Buscar Outros Certificados
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Adicionar efeito de confete para celebrar certificado válido
+document.addEventListener('DOMContentLoaded', function() {
+    // Simples animação de sucesso
+    const card = document.querySelector('.card');
+    card.style.animation = 'fadeInUp 0.5s ease-out';
+});
+</script>
+
+<style>
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

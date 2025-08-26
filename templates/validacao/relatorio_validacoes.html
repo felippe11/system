@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Validações{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-chart-line"></i> Relatório de Validações de Certificados</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <form method="GET" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="data_inicio">Data Início</label>
+                                <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                                       value="{{ data_inicio }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label for="data_fim">Data Fim</label>
+                                <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                                       value="{{ data_fim }}">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('validacao.relatorio_validacoes') }}" class="btn btn-outline-secondary ml-2">
+                                    <i class="fas fa-refresh"></i> Limpar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- Resumo -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <h3>{{ relatorio.total_validacoes }}</h3>
+                                    <p class="mb-0">Total de Validações</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h3>{{ relatorio.certificados_unicos }}</h3>
+                                    <p class="mb-0">Certificados Únicos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <h3>{{ relatorio.validacoes_hoje }}</h3>
+                                    <p class="mb-0">Validações Hoje</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-white">
+                                <div class="card-body text-center">
+                                    <h3>{{ "%.1f"|format(relatorio.media_validacoes_dia) }}</h3>
+                                    <p class="mb-0">Média por Dia</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gráfico de Validações por Dia -->
+                    {% if relatorio.validacoes_por_dia %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Validações por Dia</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="graficoValidacoes" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Top Certificados Mais Validados -->
+                    {% if relatorio.top_certificados %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Certificados Mais Validados</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Evento</th>
+                                                    <th>Participante</th>
+                                                    <th>Validações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in relatorio.top_certificados[:10] %}
+                                                <tr>
+                                                    <td>{{ item.evento_nome }}</td>
+                                                    <td>{{ item.participante_nome }}</td>
+                                                    <td><span class="badge badge-primary">{{ item.total_validacoes }}</span></td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Top IPs -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>IPs com Mais Validações</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>IP</th>
+                                                    <th>Validações</th>
+                                                    <th>Última Validação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in relatorio.top_ips[:10] %}
+                                                <tr>
+                                                    <td><code>{{ item.ip_acesso or 'N/A' }}</code></td>
+                                                    <td><span class="badge badge-info">{{ item.total_validacoes }}</span></td>
+                                                    <td>{{ item.ultima_validacao.strftime('%d/%m/%Y %H:%M') if item.ultima_validacao else 'N/A' }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Validações Recentes -->
+                    {% if relatorio.validacoes_recentes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Validações Recentes</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Data/Hora</th>
+                                                    <th>Participante</th>
+                                                    <th>Evento</th>
+                                                    <th>IP</th>
+                                                    <th>User Agent</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for validacao in relatorio.validacoes_recentes %}
+                                                <tr>
+                                                    <td>{{ validacao.data_acesso.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                                                    <td>{{ validacao.certificado.participante.nome }}</td>
+                                                    <td>{{ validacao.certificado.evento.nome }}</td>
+                                                    <td><code>{{ validacao.ip_acesso or 'N/A' }}</code></td>
+                                                    <td>
+                                                        <span class="text-muted" title="{{ validacao.user_agent }}">
+                                                            {{ (validacao.user_agent[:50] + '...') if validacao.user_agent and validacao.user_agent|length > 50 else (validacao.user_agent or 'N/A') }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+{% if relatorio.validacoes_por_dia %}
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('graficoValidacoes').getContext('2d');
+    
+    const dados = {{ relatorio.validacoes_por_dia | tojson }};
+    const labels = dados.map(item => {
+        const data = new Date(item.data);
+        return data.toLocaleDateString('pt-BR');
+    });
+    const values = dados.map(item => item.total);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Validações',
+                data: values,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+{% endif %}
+</script>
+{% endblock %}

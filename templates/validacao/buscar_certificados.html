@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar Certificados{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h4><i class="fas fa-search"></i> Buscar Certificados</h4>
+                    <p class="mb-0 text-muted">Encontre seus certificados usando CPF ou email</p>
+                </div>
+                <div class="card-body">
+                    <form id="buscarForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="cpf">CPF</label>
+                                    <input type="text" class="form-control" id="cpf" name="cpf" 
+                                           placeholder="000.000.000-00" maxlength="14">
+                                    <small class="form-text text-muted">Digite apenas números ou com pontuação</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           placeholder="seu@email.com">
+                                    <small class="form-text text-muted">Email usado no cadastro do evento</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-search"></i> Buscar Certificados
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <!-- Loading -->
+                    <div id="loading" class="text-center mt-4" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Buscando...</span>
+                        </div>
+                        <p class="mt-2">Buscando certificados...</p>
+                    </div>
+                    
+                    <!-- Resultados -->
+                    <div id="resultados" class="mt-4" style="display: none;">
+                        <h5>Certificados Encontrados</h5>
+                        <div id="listaCertificados"></div>
+                    </div>
+                    
+                    <!-- Nenhum resultado -->
+                    <div id="nenhumResultado" class="mt-4" style="display: none;">
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Nenhum certificado encontrado</strong>
+                            <p class="mb-0">Verifique se os dados estão corretos ou se você possui certificados emitidos.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Erro -->
+                    <div id="erro" class="mt-4" style="display: none;">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Erro na busca</strong>
+                            <p id="mensagemErro" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3">
+                <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-home"></i> Página Inicial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('buscarForm');
+    const cpfInput = document.getElementById('cpf');
+    const emailInput = document.getElementById('email');
+    const loading = document.getElementById('loading');
+    const resultados = document.getElementById('resultados');
+    const nenhumResultado = document.getElementById('nenhumResultado');
+    const erro = document.getElementById('erro');
+    const listaCertificados = document.getElementById('listaCertificados');
+    const mensagemErro = document.getElementById('mensagemErro');
+    
+    // Máscara para CPF
+    cpfInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            e.target.value = value;
+        }
+    });
+    
+    // Limpar outros campos quando um é preenchido
+    cpfInput.addEventListener('input', function() {
+        if (this.value) {
+            emailInput.value = '';
+        }
+    });
+    
+    emailInput.addEventListener('input', function() {
+        if (this.value) {
+            cpfInput.value = '';
+        }
+    });
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const cpf = cpfInput.value.trim();
+        const email = emailInput.value.trim();
+        
+        if (!cpf && !email) {
+            alert('Por favor, informe o CPF ou email para buscar.');
+            return;
+        }
+        
+        // Esconder resultados anteriores
+        resultados.style.display = 'none';
+        nenhumResultado.style.display = 'none';
+        erro.style.display = 'none';
+        loading.style.display = 'block';
+        
+        // Fazer busca
+        const params = new URLSearchParams();
+        if (cpf) params.append('cpf', cpf.replace(/\D/g, ''));
+        if (email) params.append('email', email);
+        
+        fetch(`{{ url_for('validacao.api_buscar_certificados') }}?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.erro) {
+                    mensagemErro.textContent = data.erro;
+                    erro.style.display = 'block';
+                    return;
+                }
+                
+                if (data.certificados && data.certificados.length > 0) {
+                    mostrarCertificados(data.certificados);
+                    resultados.style.display = 'block';
+                } else {
+                    nenhumResultado.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                loading.style.display = 'none';
+                mensagemErro.textContent = 'Erro interno do sistema. Tente novamente.';
+                erro.style.display = 'block';
+            });
+    });
+    
+    function mostrarCertificados(certificados) {
+        listaCertificados.innerHTML = '';
+        
+        certificados.forEach(cert => {
+            const card = document.createElement('div');
+            card.className = 'card mb-3';
+            card.innerHTML = `
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6 class="card-title">${cert.evento}</h6>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    Emitido em: ${cert.data_emissao} | 
+                                    Carga Horária: ${cert.carga_horaria}h
+                                </small>
+                            </p>
+                            <p class="card-text">
+                                <strong>Código:</strong> <code>${cert.codigo_verificacao}</code>
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <a href="${cert.url_validacao}" class="btn btn-primary btn-sm" target="_blank">
+                                <i class="fas fa-check-circle"></i> Validar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listaCertificados.appendChild(card);
+        });
+    }
+});
+</script>
+{% endblock %}

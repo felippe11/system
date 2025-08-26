@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Certificado Inválido{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white text-center">
+                    <h4><i class="fas fa-times-circle"></i> Certificado Inválido</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>✗ Certificado não encontrado ou inválido!</strong>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-triangle fa-5x text-danger mb-3"></i>
+                        <h5>Motivo da Invalidação</h5>
+                        <p class="text-muted">{{ erro }}</p>
+                    </div>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <h6>Possíveis causas:</h6>
+                        <ul class="list-unstyled mb-0">
+                            <li>• Código de verificação incorreto ou inexistente</li>
+                            <li>• Certificado foi revogado ou cancelado</li>
+                            <li>• Link de validação expirado</li>
+                            <li>• Certificado não foi emitido por esta plataforma</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6>O que fazer?</h6>
+                        <p class="text-muted">
+                            Verifique se o código de verificação está correto ou entre em contato 
+                            com a organização do evento para esclarecimentos.
+                        </p>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('validacao.buscar_certificados') }}" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar Certificados
+                    </a>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary ml-2">
+                        <i class="fas fa-home"></i> Página Inicial
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animação de entrada
+    const card = document.querySelector('.card');
+    card.style.animation = 'shake 0.5s ease-in-out';
+});
+</script>
+
+<style>
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+</style>
+{% endblock %}
