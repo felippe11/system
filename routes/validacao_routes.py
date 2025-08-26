@@ -1,11 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
 from models.certificado import CertificadoParticipante, AcessoValidacaoCertificado
 from services.validacao_certificado_service import (
-    validar_certificado_por_codigo,
-    verificar_integridade_certificado,
-    registrar_acesso_validacao,
+    validar_certificado,
+    validar_hash_certificado,
     gerar_relatorio_validacoes,
-    verificar_integridade_certificados_cliente,
+    verificar_integridade_certificados,
     buscar_certificados_por_participante
 )
 from extensions import db
@@ -19,23 +18,19 @@ validacao_bp = Blueprint('validacao', __name__, url_prefix='/validacao')
 def validar_certificado(codigo):
     """Página pública para validação de certificados."""
     try:
-        resultado = validar_certificado_por_codigo(codigo)
+        resultado = validar_certificado(codigo)
         
         if resultado['valido']:
-            certificado = resultado['certificado']
-            
             # Registrar acesso
             ip_acesso = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
             user_agent = request.headers.get('User-Agent')
             
-            registrar_acesso_validacao(
-                certificado_id=certificado.id,
-                ip_acesso=ip_acesso,
-                user_agent=user_agent
-            )
+            # Registro de acesso será feito automaticamente pela função validar_certificado
             
             return render_template('validacao/certificado_valido.html', 
-                                 certificado=certificado,
+                                 certificado=resultado['certificado'],
+                                 participante=resultado['participante'],
+                                 evento=resultado['evento'],
                                  resultado=resultado)
         else:
             return render_template('validacao/certificado_invalido.html', 
@@ -49,28 +44,22 @@ def validar_certificado(codigo):
 def api_validar_certificado(codigo):
     """API para validação de certificados."""
     try:
-        resultado = validar_certificado_por_codigo(codigo)
+        resultado = validar_certificado(codigo)
         
         if resultado['valido']:
-            certificado = resultado['certificado']
-            
             # Registrar acesso
             ip_acesso = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
             user_agent = request.headers.get('User-Agent')
             
-            registrar_acesso_validacao(
-                certificado_id=certificado.id,
-                ip_acesso=ip_acesso,
-                user_agent=user_agent
-            )
+            # Registro de acesso será feito automaticamente pela função validar_certificado
             
             return jsonify({
                 'valido': True,
-                'participante': certificado.participante.nome,
-                'evento': certificado.evento.nome,
-                'data_emissao': certificado.data_emissao.strftime('%d/%m/%Y'),
-                'carga_horaria': certificado.carga_horaria_total,
-                'hash_verificacao': certificado.hash_verificacao
+                'participante': resultado['participante']['nome'],
+                'evento': resultado['evento']['nome'],
+                'data_emissao': resultado['certificado']['data_emissao'].strftime('%d/%m/%Y') if resultado['certificado']['data_emissao'] else 'N/A',
+                'carga_horaria': resultado['certificado']['carga_horaria'],
+                'hash_verificacao': resultado['certificado']['hash_verificacao']
             })
         else:
             return jsonify({
@@ -101,17 +90,19 @@ def api_buscar_certificados():
         }), 400
     
     try:
-        certificados = buscar_certificados_por_participante(cpf=cpf, email=email)
+        certificados = buscar_certificados_por_participante(cpf or email)
         
         resultado = []
-        for cert in certificados:
+        for item in certificados:
+            cert = item['certificado']
+            evento = item['evento']
             resultado.append({
-                'codigo_verificacao': cert.codigo_verificacao,
-                'evento': cert.evento.nome,
-                'data_emissao': cert.data_emissao.strftime('%d/%m/%Y'),
-                'carga_horaria': cert.carga_horaria_total,
-                'url_validacao': url_for('validacao.validar_certificado', 
-                                        codigo=cert.codigo_verificacao, _external=True)
+                'codigo_verificacao': item['codigo_verificacao'],
+                'evento': evento.nome if evento else 'N/A',
+                'data_emissao': cert.data_emissao.strftime('%d/%m/%Y') if cert.data_emissao else 'N/A',
+                'carga_horaria': cert.carga_horaria,
+                'url_validacao': item['url_verificacao'] or url_for('validacao.validar_certificado', 
+                                        codigo=item['codigo_verificacao'], _external=True)
             })
         
         return jsonify({
@@ -160,7 +151,7 @@ def relatorio_validacoes():
 def verificar_integridade():
     """Verificar integridade dos certificados do cliente."""
     try:
-        resultado = verificar_integridade_certificados_cliente(current_user.id)
+        resultado = verificar_integridade_certificados(current_user.id)
         
         return render_template('validacao/integridade_certificados.html',
                              resultado=resultado)
@@ -175,7 +166,7 @@ def verificar_integridade():
 def api_verificar_integridade():
     """API para verificar integridade dos certificados."""
     try:
-        resultado = verificar_integridade_certificados_cliente(current_user.id)
+        resultado = verificar_integridade_certificados(current_user.id)
         return jsonify(resultado)
         
     except Exception as e:

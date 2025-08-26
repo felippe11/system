@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Template de Declaração{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Editar Template de Declaração</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <form method="POST">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nome">Nome do Template</label>
+                                    <input type="text" class="form-control" id="nome" name="nome" 
+                                           value="{{ template.nome }}" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="tipo">Tipo</label>
+                                    <select class="form-control" id="tipo" name="tipo" disabled>
+                                        <option value="individual" {{ 'selected' if template.tipo == 'individual' else '' }}>Individual</option>
+                                        <option value="coletiva" {{ 'selected' if template.tipo == 'coletiva' else '' }}>Coletiva</option>
+                                    </select>
+                                    <small class="form-text text-muted">O tipo não pode ser alterado após a criação.</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="conteudo">Conteúdo HTML</label>
+                            <textarea class="form-control" id="conteudo" name="conteudo" rows="15" required>{{ template.conteudo }}</textarea>
+                            <small class="form-text text-muted">
+                                Use as seguintes variáveis no template:
+                                <br><strong>Individual:</strong> {{ usuario.nome }}, {{ usuario.cpf }}, {{ evento.nome }}, {{ evento.data_inicio }}, {{ evento.data_fim }}, {{ dados.carga_horaria }}
+                                <br><strong>Coletiva:</strong> {{ evento.nome }}, {{ dados_usuarios }} (lista com dados de cada participante)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="definir_ativo" 
+                                       name="definir_ativo" {{ 'checked' if template.ativo else '' }}>
+                                <label class="custom-control-label" for="definir_ativo">
+                                    Definir como template ativo
+                                </label>
+                                <small class="form-text text-muted">
+                                    Apenas um template por tipo pode estar ativo por vez.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Configurar editor de código para o textarea
+    if (typeof CodeMirror !== 'undefined') {
+        var editor = CodeMirror.fromTextArea(document.getElementById('conteudo'), {
+            mode: 'htmlmixed',
+            lineNumbers: true,
+            theme: 'default',
+            lineWrapping: true,
+            autoCloseTags: true,
+            matchBrackets: true
+        });
+        
+        editor.setSize(null, 400);
+    }
+});
+</script>
+{% endblock %}
