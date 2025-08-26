@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Template de Declaração{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Criar Template de Declaração</h3>
+                    <div class="card-tools">
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+                
+                <form method="POST">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nome">Nome do Template *</label>
+                                    <input type="text" class="form-control" id="nome" name="nome" 
+                                           placeholder="Ex: Declaração Padrão" required>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="tipo">Tipo *</label>
+                                    <select class="form-control" id="tipo" name="tipo" required>
+                                        <option value="">Selecione o tipo</option>
+                                        <option value="individual">Individual</option>
+                                        <option value="coletiva">Coletiva</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="definir_ativo" name="definir_ativo">
+                                <label class="custom-control-label" for="definir_ativo">
+                                    Definir como template ativo
+                                </label>
+                                <small class="form-text text-muted">
+                                    Se marcado, este template será usado por padrão para este tipo de declaração.
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="conteudo">Conteúdo HTML *</label>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <strong>Variáveis disponíveis:</strong><br>
+                                    <span id="variaveis-disponiveis"></span>
+                                </small>
+                            </div>
+                            <textarea class="form-control" id="conteudo" name="conteudo" rows="20" required
+                                      placeholder="Digite o conteúdo HTML da declaração..."></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card card-info">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Variáveis - Individual</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            <li><code>{{ usuario.nome }}</code> - Nome do participante</li>
+                                            <li><code>{{ usuario.cpf }}</code> - CPF do participante</li>
+                                            <li><code>{{ usuario.email }}</code> - Email do participante</li>
+                                            <li><code>{{ evento.nome }}</code> - Nome do evento</li>
+                                            <li><code>{{ evento.data_inicio }}</code> - Data de início</li>
+                                            <li><code>{{ evento.data_fim }}</code> - Data de fim</li>
+                                            <li><code>{{ evento.cidade }}</code> - Cidade do evento</li>
+                                            <li><code>{{ dados.total_checkins }}</code> - Total de atividades</li>
+                                            <li><code>{{ dados.carga_horaria }}</code> - Carga horária total</li>
+                                            <li><code>{{ data_atual }}</code> - Data atual</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card card-warning">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Variáveis - Coletiva</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul class="list-unstyled mb-0">
+                                            <li><code>{{ evento.nome }}</code> - Nome do evento</li>
+                                            <li><code>{{ evento.data_inicio }}</code> - Data de início</li>
+                                            <li><code>{{ evento.data_fim }}</code> - Data de fim</li>
+                                            <li><code>{{ evento.cidade }}</code> - Cidade do evento</li>
+                                            <li><code>{{ data_atual }}</code> - Data atual</li>
+                                            <li><strong>Loop de participantes:</strong></li>
+                                            <li><code>{% for dados in dados_usuarios %}</code></li>
+                                            <li><code>{{ dados.usuario.nome }}</code></li>
+                                            <li><code>{{ dados.usuario.cpf }}</code></li>
+                                            <li><code>{{ dados.total_checkins }}</code></li>
+                                            <li><code>{{ dados.carga_horaria }}</code></li>
+                                            <li><code>{% endfor %}</code></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Template
+                        </button>
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Atualizar variáveis disponíveis baseado no tipo selecionado
+    $('#tipo').change(function() {
+        const tipo = $(this).val();
+        let variaveis = '';
+        
+        if (tipo === 'individual') {
+            variaveis = '{{ usuario.nome }}, {{ evento.nome }}, {{ dados.total_checkins }}, {{ dados.carga_horaria }}, etc.';
+        } else if (tipo === 'coletiva') {
+            variaveis = '{{ evento.nome }}, {{ dados_usuarios }}, {{ data_atual }}, etc.';
+        }
+        
+        $('#variaveis-disponiveis').text(variaveis);
+    });
+    
+    // Template padrão baseado no tipo
+    $('#tipo').change(function() {
+        const tipo = $(this).val();
+        let template = '';
+        
+        if (tipo === 'individual') {
+            template = `<div style="text-align: center; font-family: Arial, sans-serif; padding: 50px;">
+    <h1 style="color: #2c3e50; margin-bottom: 30px;">DECLARAÇÃO DE PARTICIPAÇÃO</h1>
+    
+    <p style="font-size: 16px; line-height: 1.6; margin: 30px 0;">
+        Declaramos que <strong>{{ usuario.nome }}</strong>, 
+        portador(a) do CPF {{ usuario.cpf }}, 
+        participou do evento <strong>"{{ evento.nome }}"</strong>, 
+        realizado no período de {{ evento.data_inicio.strftime('%d/%m/%Y') }} 
+        {% if evento.data_fim %}a {{ evento.data_fim.strftime('%d/%m/%Y') }}{% endif %}.
+    </p>
+    
+    <p style="font-size: 16px; line-height: 1.6; margin: 30px 0;">
+        O participante esteve presente em {{ dados.total_checkins }} atividade(s), 
+        totalizando {{ dados.carga_horaria }} hora(s) de participação.
+    </p>
+    
+    <div style="margin-top: 80px;">
+        <p>{{ evento.cidade }}, {{ data_atual.strftime('%d de %B de %Y') }}</p>
+    </div>
+    
+    <div style="margin-top: 100px; border-top: 1px solid #000; width: 300px; margin-left: auto; margin-right: auto; padding-top: 10px;">
+        <p><strong>Coordenação do Evento</strong></p>
+    </div>
+</div>`;
+        } else if (tipo === 'coletiva') {
+            template = `<div style="font-family: Arial, sans-serif; padding: 50px;">
+    <h1 style="text-align: center; color: #2c3e50; margin-bottom: 30px;">DECLARAÇÃO COLETIVA DE PARTICIPAÇÃO</h1>
+    
+    <p style="font-size: 16px; line-height: 1.6; margin: 30px 0;">
+        Declaramos que os participantes relacionados abaixo estiveram presentes no evento 
+        <strong>"{{ evento.nome }}"</strong>, realizado no período de 
+        {{ evento.data_inicio.strftime('%d/%m/%Y') }} 
+        {% if evento.data_fim %}a {{ evento.data_fim.strftime('%d/%m/%Y') }}{% endif %}.
+    </p>
+    
+    <table style="width: 100%; border-collapse: collapse; margin: 30px 0;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Nome</th>
+                <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">CPF</th>
+                <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Atividades</th>
+                <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Carga Horária</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dados in dados_usuarios %}
+            <tr>
+                <td style="border: 1px solid #ddd; padding: 12px;">{{ dados.usuario.nome }}</td>
+                <td style="border: 1px solid #ddd; padding: 12px;">{{ dados.usuario.cpf }}</td>
+                <td style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ dados.total_checkins }}</td>
+                <td style="border: 1px solid #ddd; padding: 12px; text-align: center;">{{ dados.carga_horaria }}h</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 80px; text-align: center;">
+        <p>{{ evento.cidade }}, {{ data_atual.strftime('%d de %B de %Y') }}</p>
+    </div>
+    
+    <div style="margin-top: 100px; text-align: center;">
+        <div style="border-top: 1px solid #000; width: 300px; margin: 0 auto; padding-top: 10px;">
+            <p><strong>Coordenação do Evento</strong></p>
+        </div>
+    </div>
+</div>`;
+        }
+        
+        if (template && $('#conteudo').val() === '') {
+            $('#conteudo').val(template);
+        }
+    });
+});
+</script>
+{% endblock %}

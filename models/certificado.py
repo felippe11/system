@@ -220,3 +220,22 @@ class DeclaracaoTemplate(db.Model):
     
     def __repr__(self):
         return f'<DeclaracaoTemplate {self.nome}>'
+
+
+class AcessoValidacaoCertificado(db.Model):
+    """Registros de acessos para validação de certificados."""
+    __tablename__ = "acesso_validacao_certificado"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    certificado_id = db.Column(db.Integer, db.ForeignKey("certificado_participante.id"), nullable=False)
+    
+    # Dados do acesso
+    data_acesso = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    ip_acesso = db.Column(db.String(45))  # IPv4 ou IPv6
+    user_agent = db.Column(db.Text)
+    
+    # Relacionamentos
+    certificado = db.relationship("CertificadoParticipante", backref="acessos_validacao")
+    
+    def __repr__(self):
+        return f'<AcessoValidacaoCertificado {self.certificado_id}-{self.data_acesso}>'
