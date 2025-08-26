@@ -1343,6 +1343,25 @@ def configurar_agendamentos(evento_id):
     ).first()
     
     if request.method == 'POST':
+        dias_semana = request.form.getlist('dias_semana')
+        valores_validos = {str(i) for i in range(7)}
+        if not dias_semana:
+            flash('Selecione ao menos um dia da semana.', 'danger')
+            return render_template(
+                'configurar_agendamentos.html',
+                evento=evento,
+                config=config,
+                tipos_inscricao=tipos_inscricao,
+            )
+        if any(dia not in valores_validos for dia in dias_semana):
+            flash('Dias da semana inválidos.', 'danger')
+            return render_template(
+                'configurar_agendamentos.html',
+                evento=evento,
+                config=config,
+                tipos_inscricao=tipos_inscricao,
+            )
+        dias_semana_str = ','.join(dias_semana)
         if config:
             # Atualizar configuração existente
             config.prazo_cancelamento = request.form.get('prazo_cancelamento', type=int)
@@ -1350,23 +1369,22 @@ def configurar_agendamentos(evento_id):
             config.capacidade_padrao = request.form.get('capacidade_padrao', type=int)
             config.intervalo_minutos = request.form.get('intervalo_minutos', type=int)
             config.intervalo_entrada = request.form.get('intervalo_entrada', type=int)
-            
+
             # Converter string para time
             hora_inicio = request.form.get('horario_inicio')
             hora_fim = request.form.get('horario_fim')
             config.horario_inicio = datetime.strptime(hora_inicio, '%H:%M').time()
             config.horario_fim = datetime.strptime(hora_fim, '%H:%M').time()
-            
-            # Dias da semana selecionados
-            dias_semana = request.form.getlist('dias_semana')
-            config.dias_semana = ','.join(dias_semana)
+
+            config.dias_semana = dias_semana_str
             selecionados = request.form.getlist('tipos_inscricao_permitidos')
             config.tipos_inscricao_permitidos = ','.join(selecionados) if selecionados else None
         else:
             # Criar nova configuração
             hora_inicio = request.form.get('horario_inicio')
             hora_fim = request.form.get('horario_fim')
-            
+
+            selecionados = request.form.getlist('tipos_inscricao_permitidos')
             config = ConfiguracaoAgendamento(
                 cliente_id=current_user.id,
                 evento_id=evento_id,
@@ -1377,8 +1395,8 @@ def configurar_agendamentos(evento_id):
                 intervalo_entrada=request.form.get('intervalo_entrada', type=int),
                 horario_inicio=datetime.strptime(hora_inicio, '%H:%M').time(),
                 horario_fim=datetime.strptime(hora_fim, '%H:%M').time(),
-                dias_semana=','.join(request.form.getlist('dias_semana')),
-                tipos_inscricao_permitidos=','.join(request.form.getlist('tipos_inscricao_permitidos')) or None
+                dias_semana=dias_semana_str,
+                tipos_inscricao_permitidos=','.join(selecionados) or None,
             )
             db.session.add(config)
         
