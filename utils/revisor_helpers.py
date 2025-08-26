@@ -8,6 +8,8 @@ from flask import Request
 from extensions import db
 from models import (
     Evento,
+    Formulario,
+    CampoFormulario,
     RevisorCriterio,
     RevisorEtapa,
     RevisorProcess,
@@ -100,3 +102,28 @@ def recreate_criterios(
                 db.session.add(
                     RevisorRequisito(criterio_id=criterio.id, descricao=req_desc)
                 )
+
+
+def ensure_reviewer_required_fields(formulario: Formulario) -> None:
+    """Ensure that reviewer application forms have required name and email fields.
+
+    The function checks for fields named ``nome`` and ``email`` in ``formulario``.
+    Missing fields are created with ``obrigatorio=True`` and type ``text``; existing
+    fields are marked as required if not already.
+    """
+
+    existing = {campo.nome: campo for campo in formulario.campos}
+    for field in ("nome", "email"):
+        campo = existing.get(field)
+        if campo is None:
+            db.session.add(
+                CampoFormulario(
+                    formulario_id=formulario.id,
+                    nome=field,
+                    tipo="text",
+                    obrigatorio=True,
+                )
+            )
+        elif not campo.obrigatorio:
+            campo.obrigatorio = True
+    db.session.flush()
