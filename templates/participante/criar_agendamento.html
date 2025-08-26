@@ -96,6 +96,7 @@
                         <label for="quantidade_alunos" class="form-label">Quantidade de Alunos *</label>
                         <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" max="{{ horario.vagas_disponiveis }}" required>
                         <small class="text-muted">Máximo permitido: {{ horario.vagas_disponiveis }} alunos</small>
+                        <div class="invalid-feedback" id="quantidade_alunos_error"></div>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -207,6 +208,34 @@
 </div>
 {% endblock %}
 
+{% block styles_extra %}
+<style>
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.form-check-input.is-invalid {
+    border-color: #dc3545;
+}
+
+.form-check-input.is-invalid:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.alert-validation {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+}
+</style>
+{% endblock %}
+
 {% block scripts_extra %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -215,7 +244,79 @@ document.addEventListener('DOMContentLoaded', function () {
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
     const submitBtn = document.getElementById('submitBtn');
+    const form = document.getElementById('agendamentoForm');
     let currentStep = 0;
+
+    function validateQuantidadeAlunos() {
+        const quantidadeInput = document.getElementById('quantidade_alunos');
+        const errorDiv = document.getElementById('quantidade_alunos_error');
+        const maxVagas = parseInt(quantidadeInput.getAttribute('max'));
+        const valor = parseInt(quantidadeInput.value);
+        
+        if (quantidadeInput.value && valor > maxVagas) {
+            quantidadeInput.classList.add('is-invalid');
+            errorDiv.textContent = `A quantidade de alunos não pode exceder ${maxVagas} vagas disponíveis.`;
+            errorDiv.style.display = 'block';
+            return false;
+        } else if (quantidadeInput.value && valor < 1) {
+            quantidadeInput.classList.add('is-invalid');
+            errorDiv.textContent = 'A quantidade de alunos deve ser pelo menos 1.';
+            errorDiv.style.display = 'block';
+            return false;
+        } else {
+            quantidadeInput.classList.remove('is-invalid');
+            errorDiv.style.display = 'none';
+            return true;
+        }
+    }
+
+    function validateCurrentStep() {
+        const currentStepElement = steps[currentStep];
+        const requiredFields = currentStepElement.querySelectorAll('[required]');
+        let isValid = true;
+        
+        // Validação especial para quantidade de alunos
+        const quantidadeInput = document.getElementById('quantidade_alunos');
+        if (currentStepElement.contains(quantidadeInput)) {
+            if (!validateQuantidadeAlunos()) {
+                isValid = false;
+            }
+        }
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else if (field.id !== 'quantidade_alunos') {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        // Validação especial para checkboxes obrigatórios na última etapa
+        if (currentStep === steps.length - 1) {
+            const aceiteFinal = document.getElementById('aceite_final');
+            if (!aceiteFinal.checked) {
+                aceiteFinal.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                aceiteFinal.classList.remove('is-invalid');
+            }
+            
+            // Verificar se pelo menos uma sala foi selecionada (se existirem salas)
+            const salasCheckboxes = currentStepElement.querySelectorAll('input[name="salas_selecionadas"]');
+            if (salasCheckboxes.length > 0) {
+                const algumaSalaSelecionada = Array.from(salasCheckboxes).some(cb => cb.checked);
+                if (!algumaSalaSelecionada) {
+                    salasCheckboxes.forEach(cb => cb.classList.add('is-invalid'));
+                    isValid = false;
+                } else {
+                    salasCheckboxes.forEach(cb => cb.classList.remove('is-invalid'));
+                }
+            }
+        }
+        
+        return isValid;
+    }
 
     function updateSteps() {
         steps.forEach((step, idx) => {
@@ -230,9 +331,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     nextBtn.addEventListener('click', function () {
-        if (currentStep < steps.length - 1) {
+        if (validateCurrentStep() && currentStep < steps.length - 1) {
             currentStep += 1;
             updateSteps();
+        } else if (!validateCurrentStep()) {
+            alert('Por favor, preencha todos os campos obrigatórios antes de continuar.');
         }
     });
 
@@ -240,6 +343,67 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentStep > 0) {
             currentStep -= 1;
             updateSteps();
+        }
+    });
+    
+    // Validação do formulário antes do submit
+    form.addEventListener('submit', function(e) {
+        if (!validateCurrentStep()) {
+            e.preventDefault();
+            alert('Por favor, preencha todos os campos obrigatórios e aceite os termos antes de confirmar o agendamento.');
+            return false;
+        }
+        
+        // Desabilitar o botão para evitar duplo clique
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    });
+    
+    // Validação em tempo real para quantidade de alunos
+    const quantidadeInput = document.getElementById('quantidade_alunos');
+    if (quantidadeInput) {
+        quantidadeInput.addEventListener('input', function() {
+            validateQuantidadeAlunos();
+        });
+        
+        quantidadeInput.addEventListener('blur', function() {
+            validateQuantidadeAlunos();
+        });
+        
+        // Prevenir entrada de valores inválidos
+        quantidadeInput.addEventListener('keydown', function(e) {
+            const maxVagas = parseInt(this.getAttribute('max'));
+            const currentValue = parseInt(this.value) || 0;
+            
+            // Permitir teclas de controle (backspace, delete, tab, etc.)
+            if ([8, 9, 27, 13, 46, 110, 190].indexOf(e.keyCode) !== -1 ||
+                // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                (e.keyCode === 65 && e.ctrlKey === true) ||
+                (e.keyCode === 67 && e.ctrlKey === true) ||
+                (e.keyCode === 86 && e.ctrlKey === true) ||
+                (e.keyCode === 88 && e.ctrlKey === true) ||
+                // Permitir home, end, left, right
+                (e.keyCode >= 35 && e.keyCode <= 39)) {
+                return;
+            }
+            
+            // Garantir que apenas números sejam digitados
+            if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Remover classe de erro quando o usuário começar a digitar (outros campos)
+    document.querySelectorAll('input, select, textarea').forEach(field => {
+        if (field.id !== 'quantidade_alunos') {
+            field.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+            
+            field.addEventListener('change', function() {
+                this.classList.remove('is-invalid');
+            });
         }
     });
 
