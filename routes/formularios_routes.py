@@ -329,6 +329,15 @@ def editar_campo(campo_id):
         novo_tipo = request.form.get("tipo")
         novo_obrigatorio = request.form.get("obrigatorio") == "on"
 
+        # Verifica se o campo está protegido
+        if getattr(campo, 'protegido', False):
+            flash(
+                f"O campo '{campo.nome}' está protegido e não pode ser editado.",
+                "danger",
+            )
+            return render_template("editar_campo.html", campo=campo)
+        
+        # Verificação adicional para compatibilidade com sistema antigo
         if (
             campo.nome in ("nome", "email")
             and RevisorProcess.query.filter_by(
@@ -342,9 +351,9 @@ def editar_campo(campo_id):
                     "danger",
                 )
                 return render_template("editar_campo.html", campo=campo)
-        else:
-            campo.nome = novo_nome
-            campo.obrigatorio = novo_obrigatorio
+        
+        campo.nome = novo_nome
+        campo.obrigatorio = novo_obrigatorio
 
         campo.tipo = novo_tipo
         campo.opcoes = (
@@ -381,6 +390,17 @@ def deletar_campo(campo_id):
     campo = CampoFormulario.query.get_or_404(campo_id)
     formulario_id = campo.formulario_id
 
+    # Verifica se o campo está protegido
+    if getattr(campo, 'protegido', False):
+        flash(
+            f"O campo '{campo.nome}' está protegido e não pode ser excluído.",
+            "danger",
+        )
+        return redirect(
+            url_for("formularios_routes.gerenciar_campos", formulario_id=formulario_id)
+        )
+
+    # Verificação adicional para compatibilidade com sistema antigo
     ligado_a_processo = RevisorProcess.query.filter_by(
         formulario_id=formulario_id
     ).first()

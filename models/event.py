@@ -501,6 +501,7 @@ class CampoFormulario(db.Model):
     tamanho_max = db.Column(db.Integer, nullable=True)
     regex_validacao = db.Column(db.String(255), nullable=True)
     descricao = db.Column(db.Text, nullable=True)  # Novo campo conforme banco do Render
+    protegido = db.Column(db.Boolean, default=False)  # Campo para marcar campos como não editáveis
 
     def __repr__(self):
         return f"<Campo {self.nome} ({self.tipo})>"
