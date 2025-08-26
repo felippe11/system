@@ -1421,7 +1421,15 @@ def gerar_horarios_agendamento(evento_id):
         # Obter datas do form
         data_inicial = datetime.strptime(request.form.get('data_inicial'), '%Y-%m-%d').date()
         data_final = datetime.strptime(request.form.get('data_final'), '%Y-%m-%d').date()
-        
+
+        if data_final < data_inicial:
+            flash('A data final deve ser igual ou posterior à data inicial.', 'danger')
+            return render_template(
+                'gerar_horarios_agendamento.html',
+                evento=evento,
+                config=config,
+            )
+
         # Converter dias da semana para ints
         dias_permitidos = [int(dia) for dia in config.dias_semana.split(',')]
         
