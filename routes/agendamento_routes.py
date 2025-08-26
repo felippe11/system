@@ -999,6 +999,44 @@ def excluir_horario_agendamento():
     return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
 
 
+@agendamento_routes.route(
+    '/excluir_todos_horarios_agendamento/<int:evento_id>',
+    methods=['POST'],
+)
+@login_required
+def excluir_todos_horarios_agendamento(evento_id):
+    """Remove todos os horários de um evento e cancela agendamentos."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        flash('Este evento não pertence a você!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    try:
+        horarios = HorarioVisitacao.query.filter_by(evento_id=evento_id).all()
+        for horario in horarios:
+            agendamentos = AgendamentoVisita.query.filter(
+                AgendamentoVisita.horario_id == horario.id,
+                AgendamentoVisita.status.in_(['pendente', 'confirmado']),
+            ).all()
+            for agendamento in agendamentos:
+                agendamento.status = 'cancelado'
+                agendamento.data_cancelamento = datetime.utcnow()
+            db.session.delete(horario)
+        db.session.commit()
+        flash('Todos os horários foram excluídos com sucesso!', 'success')
+    except Exception as exc:  # pragma: no cover - erro inesperado
+        db.session.rollback()
+        flash(f'Erro ao excluir horários: {exc}', 'danger')
+
+    return redirect(
+        url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id)
+    )
+
+
 def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, caminho_pdf):
     """
     Gera um relatório geral em PDF com estatísticas de agendamentos para todos os eventos.

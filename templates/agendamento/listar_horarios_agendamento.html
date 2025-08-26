@@ -30,6 +30,20 @@
         <a href="{{ url_for('agendamento_routes.configurar_agendamentos', evento_id=evento.id) }}" class="btn btn-warning">
           <i class="bi bi-gear"></i> Configurações
         </a>
+        <form
+          method="POST"
+          action="{{ url_for(
+            'agendamento_routes.excluir_todos_horarios_agendamento',
+            evento_id=evento.id
+          ) }}"
+          class="d-inline ms-2"
+          onsubmit="return confirm('Confirma excluir todos os horários?');"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Excluir Todos Horários
+          </button>
+        </form>
       </div>
       
       <div class="card mb-4">
