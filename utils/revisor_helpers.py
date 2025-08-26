@@ -108,8 +108,8 @@ def ensure_reviewer_required_fields(formulario: Formulario) -> None:
     """Ensure that reviewer application forms have required name and email fields.
 
     The function checks for fields named ``nome`` and ``email`` in ``formulario``.
-    Missing fields are created with ``obrigatorio=True`` and type ``text``; existing
-    fields are marked as required if not already.
+    Missing fields are created with ``obrigatorio=True``, ``protegido=True`` and type ``text``; existing
+    fields are marked as required and protected if not already.
     """
 
     existing = {campo.nome: campo for campo in formulario.campos}
@@ -122,8 +122,13 @@ def ensure_reviewer_required_fields(formulario: Formulario) -> None:
                     nome=field,
                     tipo="text",
                     obrigatorio=True,
+                    protegido=True,  # Marca como protegido para impedir edição/exclusão
                 )
             )
-        elif not campo.obrigatorio:
-            campo.obrigatorio = True
+        else:
+            # Marca campos existentes como obrigatórios e protegidos
+            if not campo.obrigatorio:
+                campo.obrigatorio = True
+            if not campo.protegido:
+                campo.protegido = True
     db.session.flush()

@@ -40,16 +40,28 @@
                                         {% if campo.obrigatorio %}
                                         <span class="badge bg-danger">Obrigatório</span>
                                         {% endif %}
+                                        {% if campo.protegido %}
+                                        <span class="badge bg-warning text-dark">Protegido</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="btn-group btn-group-sm">
+                                    {% if campo.protegido %}
+                                    <button class="btn btn-outline-secondary" disabled title="Campo protegido não pode ser editado">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" disabled title="Campo protegido não pode ser excluído">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
                                     <a href="{{ url_for('formularios_routes.editar_campo', campo_id=campo.id) }}" class="btn btn-outline-warning">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                          <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
-                              <i class="bi bi-trash"></i>
-                          </button>
-                      </div>
+                                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ campo.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
                   </div>
               </div>
               {% endfor %}
