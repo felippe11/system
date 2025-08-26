@@ -39,6 +39,7 @@ from models import (
     AuditLog,
     Evento,
     ConfiguracaoCliente,
+    RevisorProcess,
 )
 from services.pdf_service import gerar_pdf_respostas
 
@@ -324,14 +325,33 @@ def editar_campo(campo_id):
     campo = CampoFormulario.query.get_or_404(campo_id)
 
     if request.method == "POST":
-        campo.nome = request.form.get("nome")
-        campo.tipo = request.form.get("tipo")
+        novo_nome = request.form.get("nome")
+        novo_tipo = request.form.get("tipo")
+        novo_obrigatorio = request.form.get("obrigatorio") == "on"
+
+        if (
+            campo.nome in ("nome", "email")
+            and RevisorProcess.query.filter_by(
+                formulario_id=campo.formulario_id
+            ).first()
+        ):
+            if novo_nome != campo.nome or novo_obrigatorio != campo.obrigatorio:
+                flash(
+                    "Campos 'nome' e 'email' não podem ser alterados em "
+                    "formulários de processo seletivo.",
+                    "danger",
+                )
+                return render_template("editar_campo.html", campo=campo)
+        else:
+            campo.nome = novo_nome
+            campo.obrigatorio = novo_obrigatorio
+
+        campo.tipo = novo_tipo
         campo.opcoes = (
             request.form.get("opcoes", "").strip()
             if campo.tipo in ["dropdown", "checkbox", "radio"]
             else None
         )
-        campo.obrigatorio = request.form.get("obrigatorio") == "on"
         tamanho_max_raw = request.form.get("tamanho_max", "").strip()
         if tamanho_max_raw:
             try:
