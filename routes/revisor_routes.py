@@ -119,6 +119,10 @@ def config_revisor():
         update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
         recreate_criterios(processo, dados["criterios"])
+        if processo.formulario_id:
+            formulario = Formulario.query.get(processo.formulario_id)
+            if formulario:
+                rh.ensure_reviewer_required_fields(formulario)
         db.session.commit()
         flash("Processo atualizado", "success")
         return redirect(url_for("revisor_routes.config_revisor"))
