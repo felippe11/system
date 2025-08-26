@@ -999,6 +999,44 @@ def excluir_horario_agendamento():
     return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
 
 
+@agendamento_routes.route(
+    '/excluir_todos_horarios_agendamento/<int:evento_id>',
+    methods=['POST'],
+)
+@login_required
+def excluir_todos_horarios_agendamento(evento_id):
+    """Remove todos os horários de um evento e cancela agendamentos."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    evento = Evento.query.get_or_404(evento_id)
+    if evento.cliente_id != current_user.id:
+        flash('Este evento não pertence a você!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+    try:
+        horarios = HorarioVisitacao.query.filter_by(evento_id=evento_id).all()
+        for horario in horarios:
+            agendamentos = AgendamentoVisita.query.filter(
+                AgendamentoVisita.horario_id == horario.id,
+                AgendamentoVisita.status.in_(['pendente', 'confirmado']),
+            ).all()
+            for agendamento in agendamentos:
+                agendamento.status = 'cancelado'
+                agendamento.data_cancelamento = datetime.utcnow()
+            db.session.delete(horario)
+        db.session.commit()
+        flash('Todos os horários foram excluídos com sucesso!', 'success')
+    except Exception as exc:  # pragma: no cover - erro inesperado
+        db.session.rollback()
+        flash(f'Erro ao excluir horários: {exc}', 'danger')
+
+    return redirect(
+        url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id)
+    )
+
+
 def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, caminho_pdf):
     """
     Gera um relatório geral em PDF com estatísticas de agendamentos para todos os eventos.
@@ -1343,6 +1381,25 @@ def configurar_agendamentos(evento_id):
     ).first()
     
     if request.method == 'POST':
+        dias_semana = request.form.getlist('dias_semana')
+        valores_validos = {str(i) for i in range(7)}
+        if not dias_semana:
+            flash('Selecione ao menos um dia da semana.', 'danger')
+            return render_template(
+                'configurar_agendamentos.html',
+                evento=evento,
+                config=config,
+                tipos_inscricao=tipos_inscricao,
+            )
+        if any(dia not in valores_validos for dia in dias_semana):
+            flash('Dias da semana inválidos.', 'danger')
+            return render_template(
+                'configurar_agendamentos.html',
+                evento=evento,
+                config=config,
+                tipos_inscricao=tipos_inscricao,
+            )
+        dias_semana_str = ','.join(dias_semana)
         if config:
             # Atualizar configuração existente
             config.prazo_cancelamento = request.form.get('prazo_cancelamento', type=int)
@@ -1350,23 +1407,22 @@ def configurar_agendamentos(evento_id):
             config.capacidade_padrao = request.form.get('capacidade_padrao', type=int)
             config.intervalo_minutos = request.form.get('intervalo_minutos', type=int)
             config.intervalo_entrada = request.form.get('intervalo_entrada', type=int)
-            
+
             # Converter string para time
             hora_inicio = request.form.get('horario_inicio')
             hora_fim = request.form.get('horario_fim')
             config.horario_inicio = datetime.strptime(hora_inicio, '%H:%M').time()
             config.horario_fim = datetime.strptime(hora_fim, '%H:%M').time()
-            
-            # Dias da semana selecionados
-            dias_semana = request.form.getlist('dias_semana')
-            config.dias_semana = ','.join(dias_semana)
+
+            config.dias_semana = dias_semana_str
             selecionados = request.form.getlist('tipos_inscricao_permitidos')
             config.tipos_inscricao_permitidos = ','.join(selecionados) if selecionados else None
         else:
             # Criar nova configuração
             hora_inicio = request.form.get('horario_inicio')
             hora_fim = request.form.get('horario_fim')
-            
+
+            selecionados = request.form.getlist('tipos_inscricao_permitidos')
             config = ConfiguracaoAgendamento(
                 cliente_id=current_user.id,
                 evento_id=evento_id,
@@ -1377,8 +1433,8 @@ def configurar_agendamentos(evento_id):
                 intervalo_entrada=request.form.get('intervalo_entrada', type=int),
                 horario_inicio=datetime.strptime(hora_inicio, '%H:%M').time(),
                 horario_fim=datetime.strptime(hora_fim, '%H:%M').time(),
-                dias_semana=','.join(request.form.getlist('dias_semana')),
-                tipos_inscricao_permitidos=','.join(request.form.getlist('tipos_inscricao_permitidos')) or None
+                dias_semana=dias_semana_str,
+                tipos_inscricao_permitidos=','.join(selecionados) or None,
             )
             db.session.add(config)
         
@@ -1421,17 +1477,25 @@ def gerar_horarios_agendamento(evento_id):
         # Obter datas do form
         data_inicial = datetime.strptime(request.form.get('data_inicial'), '%Y-%m-%d').date()
         data_final = datetime.strptime(request.form.get('data_final'), '%Y-%m-%d').date()
-        
-        # Converter dias da semana para ints
-        dias_permitidos = [int(dia) for dia in config.dias_semana.split(',')]
+
+        if data_final < data_inicial:
+            flash('A data final deve ser igual ou posterior à data inicial.', 'danger')
+            return render_template(
+                'gerar_horarios_agendamento.html',
+                evento=evento,
+                config=config,
+            )
+
+        # Converter dias da semana do formulário (0=Domingo … 6=Sábado)
+        # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
+        dias_permitidos = [(int(dia) + 6) % 7 for dia in config.dias_semana.split(',')]
         
         # Gerar horários
         data_atual = data_inicial
         horarios_criados = 0
         
         while data_atual <= data_final:
-            # Verificar se o dia da semana é permitido (0=Segunda, 6=Domingo na função weekday())
-            # Ajuste: convert 0-6 (seg-dom) do input para 0-6 (seg-dom) do Python (que usa 0=seg, 6=dom)
+            # Verificar se o dia da semana está entre os permitidos
             if data_atual.weekday() in dias_permitidos:
                 # Horário atual começa no início configurado
                 horario_atual = datetime.combine(data_atual, config.horario_inicio)
@@ -1978,8 +2042,9 @@ def configurar_horarios_agendamento():
                     horario_fim_obj = datetime.strptime(horario_fim, '%H:%M').time()
                     capacidade_int = int(capacidade)
                     
-                    # Converter dias da semana para inteiros (0=Segunda, 6=Domingo)
-                    dias = [int(dia) for dia in dias_semana]
+                    # Converter dias do formulário (0=Domingo … 6=Sábado)
+                    # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
+                    dias = [(int(dia) + 6) % 7 for dia in dias_semana]
                     
                     # Criar horários para todas as datas no período que correspondem aos dias da semana selecionados
                     delta = data_fim_obj - data_inicio_obj
@@ -1987,7 +2052,7 @@ def configurar_horarios_agendamento():
                     
                     for i in range(delta.days + 1):
                         data_atual = data_inicio_obj + timedelta(days=i)
-                        # weekday() retorna 0 para segunda e 6 para domingo
+                        # datetime.weekday() retorna 0 para segunda e 6 para domingo
                         if data_atual.weekday() in dias:
                             # Verificar se já existe um horário para esta data e período
                             horario_existente = HorarioVisitacao.query.filter_by(

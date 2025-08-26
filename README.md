@@ -256,6 +256,11 @@ Retorna os detalhes de um agendamento existente. Quando o cabeçalho
 responde com `404` e um corpo JSON no formato
 `{"erro": "Agendamento não encontrado"}`.
 
+### `POST /excluir_todos_horarios_agendamento/<evento_id>`
+
+Permite que clientes removam todos os horários de visitação de um evento. Os
+agendamentos associados são automaticamente cancelados.
+
 ### Render deploy hook
 
 To trigger redeploys automatically when new commits are pushed, open your web service settings on Render. Under **Deploy Hooks**, click **Enable deploy hook** to generate the URL. Call this endpoint from your CI workflow or repository settings whenever you want Render to rebuild the service.
