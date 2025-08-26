@@ -80,46 +80,36 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Definir valores padrão para as datas
     const hoje = new Date();
     const dataInicial = document.getElementById('data_inicial');
     const dataFinal = document.getElementById('data_final');
-    
-    // Data inicial: próximo dia útil
-    let dataInicialValue = new Date(hoje);
-    dataInicialValue.setDate(dataInicialValue.getDate() + 1);
-    // Garantir que não seja fim de semana (0 = domingo, 6 = sábado)
-    while(dataInicialValue.getDay() === 0 || dataInicialValue.getDay() === 6) {
-      dataInicialValue.setDate(dataInicialValue.getDate() + 1);
+
+    const inicioEvento = "{{ evento.data_inicio.strftime('%Y-%m-%d') if evento.data_inicio else '' }}";
+    const fimEvento = "{{ evento.data_fim.strftime('%Y-%m-%d') if evento.data_fim else '' }}";
+
+    if (inicioEvento) {
+      dataInicial.min = inicioEvento;
+      dataInicial.value = inicioEvento;
+      dataFinal.min = inicioEvento;
+    } else {
+      const hojeStr = hoje.toISOString().split('T')[0];
+      dataInicial.value = hojeStr;
+      dataFinal.min = hojeStr;
     }
-    
-    // Data final: 30 dias após a data inicial
-    let dataFinalValue = new Date(dataInicialValue);
-    dataFinalValue.setDate(dataFinalValue.getDate() + 30);
-    
-    // Formatar datas para o input (YYYY-MM-DD)
-    dataInicial.value = dataInicialValue.toISOString().split('T')[0];
-    dataFinal.value = dataFinalValue.toISOString().split('T')[0];
-    
-    // Validação: data final deve ser posterior à data inicial
+
+    if (fimEvento) {
+      dataFinal.max = fimEvento;
+      dataFinal.value = fimEvento;
+    } else {
+      dataFinal.value = dataFinal.min;
+    }
+
     dataInicial.addEventListener('change', function() {
-      const minDataFinal = new Date(this.value);
-      minDataFinal.setDate(minDataFinal.getDate() + 1);
-      dataFinal.min = minDataFinal.toISOString().split('T')[0];
-      
-      if (new Date(dataFinal.value) <= new Date(this.value)) {
-        dataFinal.value = minDataFinal.toISOString().split('T')[0];
+      dataFinal.min = this.value;
+      if (dataFinal.value < this.value) {
+        dataFinal.value = this.value;
       }
     });
-    
-    // Definir data mínima como hoje
-    dataInicial.min = hoje.toISOString().split('T')[0];
-    dataFinal.min = dataInicialValue.toISOString().split('T')[0];
-    
-    // Limite máximo de 3 meses (90 dias) para facilitar o gerenciamento
-    const maxDate = new Date(hoje);
-    maxDate.setDate(maxDate.getDate() + 90);
-    dataFinal.max = maxDate.toISOString().split('T')[0];
   });
 </script>
 {% endblock %}
