@@ -1486,16 +1486,16 @@ def gerar_horarios_agendamento(evento_id):
                 config=config,
             )
 
-        # Converter dias da semana para ints
-        dias_permitidos = [int(dia) for dia in config.dias_semana.split(',')]
+        # Converter dias da semana do formulário (0=Domingo … 6=Sábado)
+        # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
+        dias_permitidos = [(int(dia) + 6) % 7 for dia in config.dias_semana.split(',')]
         
         # Gerar horários
         data_atual = data_inicial
         horarios_criados = 0
         
         while data_atual <= data_final:
-            # Verificar se o dia da semana é permitido (0=Segunda, 6=Domingo na função weekday())
-            # Ajuste: convert 0-6 (seg-dom) do input para 0-6 (seg-dom) do Python (que usa 0=seg, 6=dom)
+            # Verificar se o dia da semana está entre os permitidos
             if data_atual.weekday() in dias_permitidos:
                 # Horário atual começa no início configurado
                 horario_atual = datetime.combine(data_atual, config.horario_inicio)
@@ -2042,8 +2042,9 @@ def configurar_horarios_agendamento():
                     horario_fim_obj = datetime.strptime(horario_fim, '%H:%M').time()
                     capacidade_int = int(capacidade)
                     
-                    # Converter dias da semana para inteiros (0=Segunda, 6=Domingo)
-                    dias = [int(dia) for dia in dias_semana]
+                    # Converter dias do formulário (0=Domingo … 6=Sábado)
+                    # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
+                    dias = [(int(dia) + 6) % 7 for dia in dias_semana]
                     
                     # Criar horários para todas as datas no período que correspondem aos dias da semana selecionados
                     delta = data_fim_obj - data_inicio_obj
@@ -2051,7 +2052,7 @@ def configurar_horarios_agendamento():
                     
                     for i in range(delta.days + 1):
                         data_atual = data_inicio_obj + timedelta(days=i)
-                        # weekday() retorna 0 para segunda e 6 para domingo
+                        # datetime.weekday() retorna 0 para segunda e 6 para domingo
                         if data_atual.weekday() in dias:
                             # Verificar se já existe um horário para esta data e período
                             horario_existente = HorarioVisitacao.query.filter_by(
