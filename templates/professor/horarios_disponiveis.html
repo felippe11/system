@@ -48,7 +48,7 @@
                         <tbody>
                             {% for horario in horarios %}
                                 <tr>
-                                    <td>{{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</td>
+                                    <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
                                     <td class="text-center">
                                         {% if horario.vagas_disponiveis > 10 %}
                                             <span class="badge bg-success">{{ horario.vagas_disponiveis }} vagas</span>

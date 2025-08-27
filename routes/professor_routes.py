@@ -1062,7 +1062,7 @@ def criar_agendamento_participante(horario_id):
                 db.session.commit()
                 flash('Agendamento realizado com sucesso!', 'success')
                 return redirect(
-                    url_for('agendamento_routes.meus_agendamentos_participante')
+                    url_for('routes.adicionar_alunos_participante', agendamento_id=agendamento.id)
                 )
             except Exception as e:
                 db.session.rollback()

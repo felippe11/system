@@ -73,7 +73,7 @@
                     <tbody>
                       {% for horario in horarios %}
                         <tr>
-                          <td>{{ horario.horario_inicio.strftime('%H:%M') }} às {{ horario.horario_fim.strftime('%H:%M') }}</td>
+                          <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
                           <td class="text-center">{{ horario.capacidade_total }}</td>
                           <td class="text-center">{{ horario.vagas_disponiveis }}</td>
                           <td class="text-center">
