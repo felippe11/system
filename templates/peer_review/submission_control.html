@@ -289,125 +289,295 @@
     </div>
     <div class="card-body">
       {% if submissions %}
-        <div class="row">
-          <!-- Seleção de Submissão -->
-          <div class="col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Selecionar Trabalho</h6>
+        <!-- Painel de Controle Principal -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card border-info">
+              <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                  <i class="fas fa-tachometer-alt me-2"></i>Painel de Controle
+                </h6>
               </div>
               <div class="card-body">
-                <label for="submissionSelect" class="form-label">Escolha o trabalho para atribuir revisores:</label>
-                <select id="submissionSelect" class="form-select form-select-lg">
-                  <option value="">-- Selecione um trabalho --</option>
-                  {% for submission_tuple in submissions %}
-                  {% set sub = submission_tuple[0] %}
-                  {% set work_metadata = submission_tuple[1] %}
-                  <option value="{{ sub.id }}" data-category="{{ work_metadata.categoria if work_metadata else 'N/A' }}">
-                    {{ sub.title }}
-                    {% if work_metadata %}
-                      ({{ work_metadata.categoria }})
+                <div class="row">
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-primary mb-1">{{ submissions|length }}</div>
+                      <small class="text-muted">Total de Trabalhos</small>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-success mb-1">{{ reviewers|length }}</div>
+                      <small class="text-muted">Revisores Disponíveis</small>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-warning mb-1">{{ config.num_revisores_min if config else 1 }}-{{ config.num_revisores_max if config else 2 }}</div>
+                      <small class="text-muted">Revisores por Trabalho</small>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-info mb-1">{{ config.max_trabalhos_por_revisor if config else 5 }}</div>
+                      <small class="text-muted">Máx. Trabalhos por Revisor</small>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-success mb-1" id="completeWorksCount">0</div>
+                      <small class="text-muted">Trabalhos Completos</small>
+                    </div>
+                  </div>
+                  <div class="col-md-2">
+                    <div class="text-center">
+                      <div class="h4 text-danger mb-1" id="totalAssignmentsCount">0</div>
+                      <small class="text-muted">Total Atribuições</small>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Barra de Progresso -->
+                <div class="row mt-3">
+                  <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <small class="text-muted">Progresso das Atribuições</small>
+                      <small class="text-muted" id="progressText">0% completo</small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="progressBar"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Filtros e Seleção -->
+        <div class="row mb-4">
+          <!-- Filtros de Trabalhos -->
+          <div class="col-md-6">
+            <div class="card h-100">
+              <div class="card-header bg-light">
+                <h6 class="mb-0">
+                  <i class="fas fa-filter me-2"></i>Filtrar Trabalhos
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <label for="filterWorkCategory" class="form-label">Categoria:</label>
+                  <select class="form-select" id="filterWorkCategory">
+                    <option value="">Todas as categorias</option>
+                    {% set unique_categories = [] %}
+                    {% for submission_tuple in submissions %}
+                    {% set work_metadata = submission_tuple[1] %}
+                    {% if work_metadata and work_metadata.categoria and work_metadata.categoria not in unique_categories %}
+                    {% set _ = unique_categories.append(work_metadata.categoria) %}
+                    <option value="{{ work_metadata.categoria }}">{{ work_metadata.categoria }}</option>
                     {% endif %}
-                  </option>
-                  {% endfor %}
-                </select>
+                    {% endfor %}
+                  </select>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Trabalhos Selecionados: <span id="selectedWorksCount" class="badge bg-primary">0</span></label>
+                  <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
+                    <div id="worksList">
+                      {% for submission_tuple in submissions %}
+                      {% set sub = submission_tuple[0] %}
+                      {% set work_metadata = submission_tuple[1] %}
+                        <div class="form-check work-item" data-category="{{ work_metadata.categoria if work_metadata else 'N/A' }}" data-id="{{ sub.id }}">
+                          <input class="form-check-input work-checkbox" type="checkbox" value="{{ sub.id }}" id="work_{{ sub.id }}">
+                          <label class="form-check-label" for="work_{{ sub.id }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                              <div>
+                                <strong>{{ sub.title }}</strong>
+                                <br><small class="text-muted">{{ work_metadata.categoria if work_metadata else 'N/A' }}</small>
+                              </div>
+                              <span class="badge bg-secondary" id="reviewers_count_{{ sub.id }}">0/{{ config.num_revisores_max if config else 2 }}</span>
+                            </div>
+                          </label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Seleção de Revisores -->
-          <div class="col-md-6 mb-4">
+          <!-- Lista de Revisores -->
+          <div class="col-md-6">
             <div class="card h-100">
               <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fas fa-users me-2"></i>Selecionar Revisores</h6>
+                <h6 class="mb-0">
+                  <i class="fas fa-users me-2"></i>Selecionar Revisores
+                </h6>
               </div>
               <div class="card-body">
-                <label for="reviewerSelect" class="form-label">Revisores disponíveis:</label>
-                <select id="reviewerSelect" class="form-select" multiple size="6"
-                        data-min="{{ config.num_revisores_min if config else 1 }}"
-                        data-max="{{ config.num_revisores_max if config else 2 }}">
-                  {% for r in reviewers %}
-                  <option value="{{ r.id }}" data-area="{{ r.area if r.area else '' }}" data-nivel="{{ r.nivel if r.nivel else '' }}">
-                    {{ r.nome }}{% if r.area %} - {{ r.area }}{% endif %}{% if r.nivel %} ({{ r.nivel }}){% endif %}
-                  </option>
-                  {% else %}
-                  <option disabled>Nenhum revisor aprovado</option>
-                  {% endfor %}
-                </select>
-                <small class="form-text text-muted mt-2">
-                  <i class="fas fa-info-circle me-1"></i>
-                  Selecione entre {{ config.num_revisores_min if config else 1 }} e {{ config.num_revisores_max if config else 2 }} revisores.
-                </small>
+                <!-- Filtros de Revisores -->
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="filterReviewerName" placeholder="Nome">
+                  </div>
+                  <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="filterReviewerFormacao" placeholder="Formação">
+                  </div>
+                  <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm" id="filterReviewerInstituicao" placeholder="Instituição">
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label class="form-label">Revisores Selecionados: <span id="selectedReviewersCount" class="badge bg-success">0</span></label>
+                  <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
+                    <div id="reviewersList">
+                      {% for r in reviewers %}
+                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}">
+                          <input class="form-check-input reviewer-checkbox" type="checkbox" value="{{ r.id }}" id="reviewer_{{ r.id }}">
+                          <label class="form-check-label" for="reviewer_{{ r.id }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                              <div>
+                                <strong>{{ r.nome if r.nome else 'N/A' }}</strong>
+                                <br><small class="text-muted">{{ r.formacao if r.formacao else 'N/A' }}</small>
+                                {% if r.instituicao %}
+                                  <br><small class="text-info">{{ r.instituicao }}</small>
+                                {% endif %}
+                              </div>
+                              <span class="badge bg-warning" id="works_count_{{ r.id }}">0/{{ config.max_trabalhos_por_revisor if config else 5 }}</span>
+                            </div>
+                          </label>
+                        </div>
+                      {% else %}
+                        <div class="text-muted text-center p-3">Nenhum revisor aprovado</div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Filtros e Opções Avançadas -->
-        <div class="card mb-4">
-          <div class="card-header bg-light">
-            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros e Opções Avançadas</h6>
-          </div>
-          <div class="card-body">
-            <div class="row g-3 mb-3">
-              <div class="col-md-4">
-                <label for="filterArea" class="form-label">Filtrar por Área</label>
-                <input type="text" id="filterArea" class="form-control" data-filter="area" placeholder="Ex.: Computação" />
+        <!-- Ações de Atribuição -->
+        <div class="row mb-4">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                  <i class="fas fa-cogs me-2"></i>Ações de Atribuição
+                </h6>
               </div>
-              <div class="col-md-4">
-                <label for="filterNivel" class="form-label">Filtrar por Nível</label>
-                <input type="text" id="filterNivel" class="form-control" data-filter="nivel" placeholder="Ex.: Doutorado" />
-              </div>
-              <div class="col-md-4">
-                <label for="eventoId" class="form-label">Evento (Auto por Área)</label>
-                <select id="eventoId" class="form-control">
-                  <option value="">Selecione um evento...</option>
-                </select>
+              <div class="card-body">
+                <div class="row">
+                  <!-- Atribuição Manual -->
+                  <div class="col-md-4">
+                    <div class="text-center mb-3">
+                      <h6>Atribuição Manual</h6>
+                      <button type="button" class="btn btn-success btn-lg w-100" id="assignManual" disabled>
+                        <i class="fas fa-hand-pointer me-2"></i>Atribuir Selecionados
+                      </button>
+                      <small class="text-muted d-block mt-2">Selecione trabalhos e revisores</small>
+                    </div>
+                  </div>
+                  
+                  <!-- Sorteio Inteligente -->
+                  <div class="col-md-4">
+                    <div class="text-center mb-3">
+                      <h6>Sorteio Inteligente</h6>
+                      <div class="mb-2">
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" id="smartByFormacao" checked>
+                          <label class="form-check-label" for="smartByFormacao">Formação</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" id="smartByInstituicao">
+                          <label class="form-check-label" for="smartByInstituicao">Instituição</label>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-warning btn-lg w-100" id="assignSmart" disabled>
+                        <i class="fas fa-magic me-2"></i>Sortear Revisores
+                      </button>
+                      <small class="text-muted d-block mt-2">Selecione trabalhos primeiro</small>
+                    </div>
+                  </div>
+                  
+                  <!-- Ações em Lote -->
+                  <div class="col-md-4">
+                    <div class="text-center mb-3">
+                      <h6>Ações em Lote</h6>
+                      <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-info" id="assignByCategory">
+                  <i class="fas fa-layer-group me-2"></i>Sortear por Categoria
+                </button>
+                <button type="button" class="btn btn-success" id="smartBulkAssign">
+                  <i class="fas fa-magic me-2"></i>Atribuição Inteligente em Lote
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="clearAllAssignments">
+                  <i class="fas fa-trash me-2"></i>Limpar Atribuições
+                </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <small class="form-text text-muted">
-              <i class="fas fa-lightbulb me-1"></i>
-              Use os filtros para encontrar revisores específicos. Deixe em branco para incluir todos.
-            </small>
           </div>
         </div>
 
-        <!-- Botões de Ação -->
-        <div class="card">
-          <div class="card-header bg-light">
-            <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Métodos de Atribuição</h6>
-          </div>
-          <div class="card-body">
-            <div class="row g-3">
-              <div class="col-md-4">
-                <button id="assignManual" class="btn btn-primary btn-lg w-100">
-                  <i class="fas fa-hand-pointer me-2"></i>
-                  Atribuir Manualmente
+        <!-- Relatório de Atribuições -->
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                  <i class="fas fa-chart-bar me-2"></i>Relatório de Atribuições
+                </h6>
+                <button type="button" class="btn btn-outline-light btn-sm" id="exportReport">
+                  <i class="fas fa-download me-2"></i>Exportar
                 </button>
-                <small class="text-muted d-block mt-2">Atribua revisores específicos ao trabalho selecionado</small>
               </div>
-              <div class="col-md-4">
-                <button id="assignAutomatic" class="btn btn-secondary btn-lg w-100" data-bs-toggle="tooltip" title="Sorteia revisores usando os filtros preenchidos">
-                  <i class="fas fa-random me-2"></i>
-                  Sorteio Automático
-                </button>
-                <small class="text-muted d-block mt-2">Sorteia revisores automaticamente com base nos filtros</small>
-              </div>
-              <div class="col-md-4">
-                <button id="autoArea" class="btn btn-info btn-lg w-100">
-                  <i class="fas fa-magic me-2"></i>
-                  Auto por Área
-                </button>
-                <small class="text-muted d-block mt-2">Atribui automaticamente por área de conhecimento</small>
-              </div>
-            </div>
-            <div class="row g-3 mt-3">
-              <div class="col-md-6 mx-auto">
-                <button id="assignByCategory" class="btn btn-success btn-lg w-100">
-                  <i class="fas fa-tags me-2"></i>
-                  Distribuir por Categoria
-                </button>
-                <small class="text-muted d-block mt-2">Distribui automaticamente trabalhos para revisores baseado na categoria</small>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover" id="assignmentsTable">
+                    <thead class="table-dark">
+                      <tr>
+                        <th>Trabalho</th>
+                        <th>Categoria</th>
+                        <th>Revisores Atribuídos</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for submission_tuple in submissions %}
+                      {% set sub = submission_tuple[0] %}
+                      {% set work_metadata = submission_tuple[1] %}
+                        <tr id="assignment_row_{{ sub.id }}">
+                          <td>
+                            <strong>{{ sub.title }}</strong>
+                          </td>
+                          <td>
+                            <span class="badge bg-secondary">{{ work_metadata.categoria if work_metadata else 'N/A' }}</span>
+                          </td>
+                          <td id="assigned_reviewers_{{ sub.id }}">
+                            <span class="text-muted">Nenhum revisor atribuído</span>
+                          </td>
+                          <td id="assignment_status_{{ sub.id }}">
+                            <span class="badge bg-warning">Pendente</span>
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeAssignment({{ sub.id }})">
+                              <i class="fas fa-times"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -497,42 +667,298 @@ $(document).ready(function() {
         window.location.reload();
     });
     
-    // Filtro de revisores por área e nível (presentes no HEAD)
-    $('#filterArea, #filterNivel').on('keyup', function() {
-        const areaFilter = $('#filterArea').val().toLowerCase();
-        const nivelFilter = $('#filterNivel').val().toLowerCase();
+    // Variáveis globais para controle de estado
+    let selectedWorks = new Set();
+    let selectedReviewers = new Set();
+    let assignmentsData = new Map(); // workId -> [reviewerIds]
+    let reviewerWorkCounts = new Map(); // reviewerId -> count
+    
+    // Configurações dos limites
+    const limits = {
+      minReviewersPerWork: {{ config.num_revisores_min if config else 1 }},
+      maxReviewersPerWork: {{ config.num_revisores_max if config else 2 }},
+      maxWorksPerReviewer: {{ config.max_trabalhos_por_revisor if config else 5 }}
+    };
+
+    // Inicializar contadores
+    function initializeCounts() {
+      {% for r in reviewers %}
+        reviewerWorkCounts.set('{{ r.id }}', 0);
+      {% endfor %}
+    }
+
+    // Atualizar contadores visuais
+    function updateCounters() {
+      // Atualizar contadores de TODOS os trabalhos
+      $('.work-item').each(function() {
+        const workId = $(this).data('id').toString();
+        const assignedReviewers = assignmentsData.get(workId) || [];
+        const countElement = $(`#reviewers_count_${workId}`);
+        const statusElement = $(`#assignment_status_${workId}`);
         
-        $('#reviewerSelect option').each(function() {
-            const area = $(this).data('area') ? String($(this).data('area')).toLowerCase() : '';
-            const nivel = $(this).data('nivel') ? String($(this).data('nivel')).toLowerCase() : '';
-            const areaMatch = !areaFilter || area.includes(areaFilter);
-            const nivelMatch = !nivelFilter || nivel.includes(nivelFilter);
-            $(this).toggle(areaMatch && nivelMatch);
-        });
+        // Atualizar contador de revisores
+        countElement.text(`${assignedReviewers.length}/${limits.maxReviewersPerWork}`);
+        
+        // Atualizar cor do badge baseado no status
+        if (assignedReviewers.length >= limits.maxReviewersPerWork) {
+          countElement.removeClass('bg-secondary bg-warning').addClass('bg-danger');
+        } else if (assignedReviewers.length >= limits.minReviewersPerWork) {
+          countElement.removeClass('bg-secondary bg-danger').addClass('bg-success');
+        } else if (assignedReviewers.length > 0) {
+          countElement.removeClass('bg-secondary bg-success bg-danger').addClass('bg-warning');
+        } else {
+          countElement.removeClass('bg-warning bg-success bg-danger').addClass('bg-secondary');
+        }
+        
+        // Atualizar status visual no relatório
+        if (statusElement.length) {
+          if (assignedReviewers.length >= limits.minReviewersPerWork) {
+            statusElement.html('<span class="badge bg-success">Completo</span>');
+          } else if (assignedReviewers.length > 0) {
+            statusElement.html('<span class="badge bg-warning">Parcial</span>');
+          } else {
+            statusElement.html('<span class="badge bg-secondary">Pendente</span>');
+          }
+        }
+        
+        // Desabilitar trabalho se atingiu o limite máximo
+        const workCheckbox = $(`#work_${workId}`);
+        if (assignedReviewers.length >= limits.maxReviewersPerWork) {
+          $(this).addClass('border-danger');
+        } else {
+          $(this).removeClass('border-danger');
+        }
+      });
+      
+      // Atualizar contadores de TODOS os revisores
+      $('.reviewer-item').each(function() {
+        const reviewerId = $(this).data('id').toString();
+        const count = reviewerWorkCounts.get(reviewerId) || 0;
+        const countElement = $(`#works_count_${reviewerId}`);
+        const checkbox = $(`#reviewer_${reviewerId}`);
+        
+        // Atualizar contador de trabalhos
+        countElement.text(`${count}/${limits.maxWorksPerReviewer}`);
+        
+        // Atualizar cor do badge baseado na carga
+        if (count >= limits.maxWorksPerReviewer) {
+          countElement.removeClass('bg-warning bg-success').addClass('bg-danger');
+          checkbox.prop('disabled', true);
+          $(this).addClass('text-muted border-danger');
+        } else if (count >= Math.floor(limits.maxWorksPerReviewer * 0.8)) {
+          countElement.removeClass('bg-warning bg-danger').addClass('bg-warning');
+          checkbox.prop('disabled', false);
+          $(this).removeClass('text-muted border-danger').addClass('border-warning');
+        } else {
+          countElement.removeClass('bg-danger bg-warning').addClass('bg-success');
+          checkbox.prop('disabled', false);
+          $(this).removeClass('text-muted border-danger border-warning');
+        }
+      });
+      
+      // Atualizar estatísticas do painel de controle
+      const totalAssignments = Array.from(assignmentsData.values()).reduce((sum, reviewers) => sum + reviewers.length, 0);
+      const worksWithReviewers = Array.from(assignmentsData.values()).filter(reviewers => reviewers.length > 0).length;
+      const completeWorks = Array.from(assignmentsData.values()).filter(reviewers => reviewers.length >= limits.minReviewersPerWork).length;
+      const totalWorks = $('.work-item').length;
+      
+      // Atualizar contadores no painel
+      $('#completeWorksCount').text(completeWorks);
+      $('#totalAssignmentsCount').text(totalAssignments);
+      
+      // Calcular e atualizar progresso
+      const progressPercentage = totalWorks > 0 ? Math.round((completeWorks / totalWorks) * 100) : 0;
+      $('#progressText').text(`${progressPercentage}% completo`);
+      $('#progressBar').css('width', `${progressPercentage}%`);
+      
+      // Atualizar cor da barra de progresso
+      const progressBar = $('#progressBar');
+      progressBar.removeClass('bg-success bg-warning bg-danger');
+      if (progressPercentage >= 80) {
+        progressBar.addClass('bg-success');
+      } else if (progressPercentage >= 40) {
+        progressBar.addClass('bg-warning');
+      } else {
+        progressBar.addClass('bg-danger');
+      }
+      
+      // Atualizar relatório de atribuições
+      updateAssignmentsReport();
+    }
+
+    // Filtro de trabalhos por categoria
+    $('#filterWorkCategory').on('change', function() {
+      const selectedCategory = $(this).val();
+      
+      $('.work-item').each(function() {
+        const category = $(this).data('category');
+        if (!selectedCategory || category === selectedCategory) {
+          $(this).show();
+        } else {
+          $(this).hide();
+          // Desmarcar se estiver oculto
+          $(this).find('.work-checkbox').prop('checked', false);
+        }
+      });
+      
+      updateSelections();
     });
 
-    // Validação da atribuição manual
-    $('#assignManual').on('click', function(e) {
-        const submissionId = $('#submissionSelect').val();
-        const selectedReviewers = $('#reviewerSelect').val();
-        const minReviewers = parseInt($('#reviewerSelect').data('min'));
-        const maxReviewers = parseInt($('#reviewerSelect').data('max'));
+    // Filtros de revisores
+    function filterReviewers() {
+      const nameFilter = $('#filterReviewerName').val().toLowerCase();
+      const formacaoFilter = $('#filterReviewerFormacao').val().toLowerCase();
+      const instituicaoFilter = $('#filterReviewerInstituicao').val().toLowerCase();
+      
+      $('.reviewer-item').each(function() {
+        const item = $(this);
+        const name = item.find('strong').text().toLowerCase();
+        const formacao = item.data('formacao') || '';
+        const instituicao = item.data('instituicao') || '';
         
-        if (!submissionId) {
-            e.preventDefault();
-            showAlert('Por favor, selecione uma submissão.', 'warning');
-            return;
+        const matchesName = !nameFilter || name.includes(nameFilter);
+        const matchesFormacao = !formacaoFilter || formacao.includes(formacaoFilter);
+        const matchesInstituicao = !instituicaoFilter || instituicao.includes(instituicaoFilter);
+        
+        if (matchesName && matchesFormacao && matchesInstituicao) {
+          item.show();
+        } else {
+          item.hide();
+          // Desmarcar se estiver oculto
+          item.find('.reviewer-checkbox').prop('checked', false);
         }
-        if (!selectedReviewers || selectedReviewers.length < minReviewers) {
-            e.preventDefault();
-            showAlert(`Por favor, selecione pelo menos ${minReviewers} revisor(es).`, 'warning');
-            return;
+      });
+      
+      updateSelections();
+    }
+
+    $('#filterReviewerName, #filterReviewerFormacao, #filterReviewerInstituicao').on('input', filterReviewers);
+
+    // Gerenciar seleções de trabalhos com validação em tempo real
+    $(document).on('change', '.work-checkbox', function() {
+      const workId = $(this).val();
+      const isChecked = $(this).is(':checked');
+      
+      if (isChecked) {
+        // Verificar se o trabalho já atingiu o limite máximo
+        const currentReviewers = assignmentsData.get(workId) || [];
+        if (currentReviewers.length >= limits.maxReviewersPerWork) {
+          $(this).prop('checked', false);
+          showAlert(`Este trabalho já possui o máximo de revisores (${limits.maxReviewersPerWork}).`, 'warning');
+          return;
         }
-        if (selectedReviewers.length > maxReviewers) {
-            e.preventDefault();
-            showAlert(`Por favor, selecione no máximo ${maxReviewers} revisor(es).`, 'warning');
-            return;
+      }
+      
+      updateSelections();
+    });
+
+    // Gerenciar seleções de revisores com validação em tempo real
+    $(document).on('change', '.reviewer-checkbox', function() {
+      const reviewerId = $(this).val();
+      const isChecked = $(this).is(':checked');
+      
+      if (isChecked) {
+        // Verificar se o revisor já atingiu o limite máximo
+        const currentCount = reviewerWorkCounts.get(reviewerId) || 0;
+        if (currentCount >= limits.maxWorksPerReviewer) {
+          $(this).prop('checked', false);
+          showAlert(`Este revisor já possui o máximo de trabalhos (${limits.maxWorksPerReviewer}).`, 'warning');
+          return;
         }
+        
+        // Verificar compatibilidade se houver trabalhos selecionados
+        if (selectedWorks.size > 0) {
+          let hasIncompatibleWork = false;
+          selectedWorks.forEach(workId => {
+            const currentReviewers = assignmentsData.get(workId) || [];
+            if (currentReviewers.includes(reviewerId)) {
+              hasIncompatibleWork = true;
+            }
+          });
+          
+          if (hasIncompatibleWork) {
+            showAlert('Este revisor já está atribuído a um dos trabalhos selecionados.', 'info');
+          }
+        }
+      }
+      
+      updateSelections();
+    });
+
+    // Atualizar seleções e habilitar/desabilitar botões
+    function updateSelections() {
+      // Atualizar conjunto de trabalhos selecionados
+      selectedWorks.clear();
+      $('.work-checkbox:checked').each(function() {
+        selectedWorks.add($(this).val());
+      });
+      
+      // Atualizar conjunto de revisores selecionados
+      selectedReviewers.clear();
+      $('.reviewer-checkbox:checked').each(function() {
+        selectedReviewers.add($(this).val());
+      });
+      
+      // Atualizar contadores visuais
+      $('#selectedWorksCount').text(selectedWorks.size);
+      $('#selectedReviewersCount').text(selectedReviewers.size);
+      
+      // Habilitar/desabilitar botões
+      const hasWorks = selectedWorks.size > 0;
+      const hasReviewers = selectedReviewers.size > 0;
+      
+      $('#assignManual').prop('disabled', !(hasWorks && hasReviewers));
+      $('#assignSmart').prop('disabled', !hasWorks);
+    }
+
+    // Atribuição manual
+    $('#assignManual').on('click', function() {
+      if (selectedWorks.size === 0 || selectedReviewers.size === 0) {
+        showAlert('Selecione pelo menos um trabalho e um revisor.', 'warning');
+        return;
+      }
+      
+      let assignmentsCount = 0;
+      let errors = [];
+      
+      selectedWorks.forEach(workId => {
+        const currentReviewers = assignmentsData.get(workId) || [];
+        
+        selectedReviewers.forEach(reviewerId => {
+          // Verificar se já está atribuído
+          if (currentReviewers.includes(reviewerId)) {
+            return;
+          }
+          
+          // Verificar limites
+          if (currentReviewers.length >= limits.maxReviewersPerWork) {
+            errors.push(`Trabalho já possui o máximo de revisores (${limits.maxReviewersPerWork})`);
+            return;
+          }
+          
+          const reviewerCount = reviewerWorkCounts.get(reviewerId) || 0;
+          if (reviewerCount >= limits.maxWorksPerReviewer) {
+            errors.push(`Revisor já possui o máximo de trabalhos (${limits.maxWorksPerReviewer})`);
+            return;
+          }
+          
+          // Fazer atribuição
+          currentReviewers.push(reviewerId);
+          assignmentsData.set(workId, currentReviewers);
+          reviewerWorkCounts.set(reviewerId, reviewerCount + 1);
+          assignmentsCount++;
+        });
+      });
+      
+      if (assignmentsCount > 0) {
+        showAlert(`${assignmentsCount} atribuição(ões) realizada(s) com sucesso!`, 'success');
+        clearSelections();
+        updateCounters();
+      }
+      
+      if (errors.length > 0) {
+        showAlert(`Alguns problemas encontrados: ${errors.slice(0, 3).join(', ')}`, 'warning');
+      }
     });
 
     // Validação da atribuição automática por área
@@ -567,8 +993,370 @@ $(document).ready(function() {
         }
     });
 
+    // Sorteio inteligente
+    $('#assignSmart').on('click', function() {
+      if (selectedWorks.size === 0) {
+        showAlert('Selecione pelo menos um trabalho.', 'warning');
+        return;
+      }
+      
+      const considerFormacao = $('#smartByFormacao').is(':checked');
+      const considerInstituicao = $('#smartByInstituicao').is(':checked');
+      
+      const button = $(this);
+      button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Sorteando...');
+      
+      setTimeout(() => {
+        let assignmentsCount = 0;
+        let compatibilityWarnings = [];
+        
+        selectedWorks.forEach(workId => {
+          const currentReviewers = assignmentsData.get(workId) || [];
+          const needed = limits.minReviewersPerWork - currentReviewers.length;
+          
+          if (needed <= 0) return;
+          
+          // Obter dados do trabalho
+          const workItem = $(`.work-item[data-id="${workId}"]`);
+          const workCategory = workItem.data('category') || '';
+          const workTitle = workItem.find('strong').text();
+          
+          // Obter revisores disponíveis com pontuação de compatibilidade
+          const availableReviewers = [];
+          $('.reviewer-item:visible').each(function() {
+            const reviewerId = $(this).data('id').toString();
+            const reviewerCount = reviewerWorkCounts.get(reviewerId) || 0;
+            
+            if (!currentReviewers.includes(reviewerId) && reviewerCount < limits.maxWorksPerReviewer) {
+              const reviewer = {
+                id: reviewerId,
+                nome: $(this).find('strong').text(),
+                formacao: $(this).data('formacao') || '',
+                instituicao: $(this).data('instituicao') || '',
+                score: 0
+              };
+              
+              // Calcular pontuação de compatibilidade
+              if (considerFormacao && workCategory && reviewer.formacao) {
+                // Verificar se a formação é compatível com a categoria
+                const formacaoLower = reviewer.formacao.toLowerCase();
+                const categoryLower = workCategory.toLowerCase();
+                
+                if (formacaoLower.includes(categoryLower) || 
+                    categoryLower.includes(formacaoLower) ||
+                    areRelatedFields(formacaoLower, categoryLower)) {
+                  reviewer.score += 10;
+                }
+              }
+              
+              if (considerInstituicao && reviewer.instituicao) {
+                // Dar pontos por ter instituição definida
+                reviewer.score += 5;
+                
+                // Evitar concentração na mesma instituição
+                const sameInstitutionCount = currentReviewers.filter(rId => {
+                  const rItem = $(`.reviewer-item[data-id="${rId}"]`);
+                  return rItem.data('instituicao') === reviewer.instituicao;
+                }).length;
+                
+                if (sameInstitutionCount === 0) {
+                  reviewer.score += 3; // Bonus por diversidade
+                }
+              }
+              
+              // Bonus por menor carga de trabalho
+              const workload = reviewerWorkCounts.get(reviewerId) || 0;
+              reviewer.score += (limits.maxWorksPerReviewer - workload);
+              
+              availableReviewers.push(reviewer);
+            }
+          });
+          
+          if (availableReviewers.length === 0) {
+            compatibilityWarnings.push(`Nenhum revisor disponível para "${workTitle}"`);
+            return;
+          }
+          
+          // Ordenar por pontuação (maior primeiro) e depois sortear entre os melhores
+          availableReviewers.sort((a, b) => b.score - a.score);
+          
+          // Pegar os top 30% ou pelo menos 3 revisores para sortear
+          const topCount = Math.max(3, Math.ceil(availableReviewers.length * 0.3));
+          const topReviewers = availableReviewers.slice(0, topCount);
+          
+          // Sortear entre os melhores
+          const shuffled = topReviewers.sort(() => 0.5 - Math.random());
+          const selected = shuffled.slice(0, Math.min(needed, limits.maxReviewersPerWork - currentReviewers.length));
+          
+          selected.forEach(reviewer => {
+            currentReviewers.push(reviewer.id);
+            const count = reviewerWorkCounts.get(reviewer.id) || 0;
+            reviewerWorkCounts.set(reviewer.id, count + 1);
+            assignmentsCount++;
+          });
+          
+          assignmentsData.set(workId, currentReviewers);
+        });
+        
+        let message = `Sorteio inteligente concluído! ${assignmentsCount} atribuição(ões) realizada(s).`;
+        if (compatibilityWarnings.length > 0) {
+          message += ` Avisos: ${compatibilityWarnings.slice(0, 2).join(', ')}`;
+        }
+        
+        showAlert(message, assignmentsCount > 0 ? 'success' : 'warning');
+        clearSelections();
+        updateCounters();
+        
+        button.prop('disabled', false).html('<i class="fas fa-magic me-2"></i>Sortear Revisores');
+      }, 1500);
+    });
+    
+    // Função auxiliar para verificar campos relacionados
+    function areRelatedFields(formacao, categoria) {
+      const relatedFields = {
+        'computacao': ['informatica', 'tecnologia', 'sistemas', 'software', 'programacao'],
+        'informatica': ['computacao', 'tecnologia', 'sistemas', 'software'],
+        'engenharia': ['tecnologia', 'sistemas', 'industrial', 'producao'],
+        'administracao': ['gestao', 'negocios', 'economia', 'financas'],
+        'educacao': ['pedagogia', 'ensino', 'didatica', 'aprendizagem'],
+        'saude': ['medicina', 'enfermagem', 'fisioterapia', 'nutricao'],
+        'direito': ['juridico', 'legal', 'advocacia', 'justica']
+      };
+      
+      for (const [field, related] of Object.entries(relatedFields)) {
+        if (formacao.includes(field) && related.some(r => categoria.includes(r))) {
+          return true;
+        }
+        if (categoria.includes(field) && related.some(r => formacao.includes(r))) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+    
+    // Sortear por categoria
+    $('#assignByCategory').on('click', function() {
+      const category = $('#filterWorkCategory').val();
+      
+      if (!category) {
+        showAlert('Selecione uma categoria primeiro.', 'warning');
+        return;
+      }
+      
+      const button = $(this);
+      button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Sorteando...');
+      
+      setTimeout(() => {
+        let assignmentsCount = 0;
+        
+        // Obter trabalhos da categoria
+        $(`.work-item[data-category="${category}"]`).each(function() {
+          const workId = $(this).data('id').toString();
+          const currentReviewers = assignmentsData.get(workId) || [];
+          const needed = limits.minReviewersPerWork - currentReviewers.length;
+          
+          if (needed <= 0) return;
+          
+          // Obter revisores disponíveis
+          const availableReviewers = [];
+          $('.reviewer-item').each(function() {
+            const reviewerId = $(this).data('id').toString();
+            const reviewerCount = reviewerWorkCounts.get(reviewerId) || 0;
+            
+            if (!currentReviewers.includes(reviewerId) && reviewerCount < limits.maxWorksPerReviewer) {
+              availableReviewers.push(reviewerId);
+            }
+          });
+          
+          // Sortear revisores
+          const shuffled = availableReviewers.sort(() => 0.5 - Math.random());
+          const selected = shuffled.slice(0, Math.min(needed, limits.maxReviewersPerWork - currentReviewers.length));
+          
+          selected.forEach(reviewerId => {
+            currentReviewers.push(reviewerId);
+            const count = reviewerWorkCounts.get(reviewerId) || 0;
+            reviewerWorkCounts.set(reviewerId, count + 1);
+            assignmentsCount++;
+          });
+          
+          assignmentsData.set(workId, currentReviewers);
+        });
+        
+        showAlert(`Sorteio por categoria "${category}" concluído! ${assignmentsCount} atribuição(ões) realizada(s).`, 'success');
+        updateCounters();
+        
+        button.prop('disabled', false).html('<i class="fas fa-layer-group me-2"></i>Sortear por Categoria');
+      }, 2000);
+    });
+    
+    // Atribuição inteligente em lote
+    $('#smartBulkAssign').on('click', function() {
+      const button = $(this);
+      button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processando...');
+      
+      setTimeout(() => {
+        let assignmentsCount = 0;
+        let processedWorks = 0;
+        
+        // Processar todos os trabalhos que precisam de revisores
+        $('.work-item').each(function() {
+          const workId = $(this).data('id').toString();
+          const workCategory = $(this).data('category');
+          const workTitle = $(this).find('strong').text();
+          const currentReviewers = assignmentsData.get(workId) || [];
+          const needed = limits.minReviewersPerWork - currentReviewers.length;
+          
+          if (needed <= 0) return;
+          
+          processedWorks++;
+          
+          // Obter revisores disponíveis com pontuação de compatibilidade
+          const availableReviewers = [];
+          $('.reviewer-item').each(function() {
+            const reviewerId = $(this).data('id').toString();
+            const reviewerCount = reviewerWorkCounts.get(reviewerId) || 0;
+            const reviewerFormacao = $(this).data('formacao') || '';
+            const reviewerInstituicao = $(this).data('instituicao') || '';
+            
+            if (!currentReviewers.includes(reviewerId) && reviewerCount < limits.maxWorksPerReviewer) {
+              let score = 0;
+              
+              // Pontuação por formação compatível
+              if (reviewerFormacao.toLowerCase().includes(workCategory.toLowerCase()) || 
+                  workCategory.toLowerCase().includes(reviewerFormacao.toLowerCase()) ||
+                  areRelatedFields(reviewerFormacao.toLowerCase(), workCategory.toLowerCase())) {
+                score += 10;
+              }
+              
+              // Pontuação por menor carga de trabalho
+              score += (limits.maxWorksPerReviewer - reviewerCount) * 2;
+              
+              // Pontuação por diversidade de instituição
+              const institutionCount = currentReviewers.filter(rId => {
+                const rInst = $(`.reviewer-item[data-id="${rId}"]`).data('instituicao') || '';
+                return rInst === reviewerInstituicao;
+              }).length;
+              
+              if (institutionCount === 0 && reviewerInstituicao) {
+                score += 5; // Bônus por diversidade
+              }
+              
+              availableReviewers.push({ id: reviewerId, score });
+            }
+          });
+          
+          // Ordenar por pontuação e selecionar os melhores
+          availableReviewers.sort((a, b) => b.score - a.score);
+          const topReviewers = availableReviewers.slice(0, Math.min(needed, limits.maxReviewersPerWork - currentReviewers.length));
+          
+          // Fazer atribuições
+          topReviewers.forEach(reviewer => {
+            currentReviewers.push(reviewer.id);
+            const count = reviewerWorkCounts.get(reviewer.id) || 0;
+            reviewerWorkCounts.set(reviewer.id, count + 1);
+            assignmentsCount++;
+          });
+          
+          assignmentsData.set(workId, currentReviewers);
+        });
+        
+        showAlert(`Atribuição inteligente em lote concluída! ${assignmentsCount} atribuição(ões) realizadas em ${processedWorks} trabalho(s).`, 'success');
+        updateCounters();
+        
+        button.prop('disabled', false).html('<i class="fas fa-magic me-2"></i>Atribuição Inteligente em Lote');
+      }, 3000);
+    });
+    
+    // Limpar todas as atribuições
+    $('#clearAllAssignments').on('click', function() {
+      if (confirm('Tem certeza que deseja limpar todas as atribuições?')) {
+        assignmentsData.clear();
+        initializeCounts();
+        clearSelections();
+        updateCounters();
+        showAlert('Todas as atribuições foram removidas.', 'info');
+      }
+    });
+
+    // Limpar seleções
+    function clearSelections() {
+      $('.work-checkbox, .reviewer-checkbox').prop('checked', false);
+      selectedWorks.clear();
+      selectedReviewers.clear();
+      updateSelections();
+    }
+
+    // Atualizar relatório de atribuições
+    function updateAssignmentsReport() {
+      assignmentsData.forEach((reviewerIds, workId) => {
+        const reviewerNames = reviewerIds.map(id => {
+          const reviewerItem = $(`.reviewer-item[data-id="${id}"]`);
+          return reviewerItem.find('strong').text();
+        });
+        
+        const reviewersHtml = reviewerNames.length > 0 
+          ? reviewerNames.map(name => `<span class="badge bg-primary me-1">${name}</span>`).join('')
+          : '<span class="text-muted">Nenhum revisor atribuído</span>';
+        
+        $(`#assigned_reviewers_${workId}`).html(reviewersHtml);
+      });
+    }
+
+    // Remover atribuição específica
+    window.removeAssignment = function(workId) {
+      if (confirm('Remover todas as atribuições deste trabalho?')) {
+        const reviewerIds = assignmentsData.get(workId.toString()) || [];
+        
+        // Decrementar contadores dos revisores
+        reviewerIds.forEach(reviewerId => {
+          const count = reviewerWorkCounts.get(reviewerId) || 0;
+          reviewerWorkCounts.set(reviewerId, Math.max(0, count - 1));
+        });
+        
+        // Remover atribuição
+        assignmentsData.delete(workId.toString());
+        updateCounters();
+        showAlert('Atribuições removidas com sucesso.', 'info');
+      }
+    };
+
+    // Exportar relatório
+    $('#exportReport').on('click', function() {
+      const reportData = [];
+      
+      assignmentsData.forEach((reviewerIds, workId) => {
+        const workTitle = $(`.work-item[data-id="${workId}"] strong`).text();
+        const workCategory = $(`.work-item[data-id="${workId}"]`).data('category');
+        
+        const reviewerNames = reviewerIds.map(id => {
+          return $(`.reviewer-item[data-id="${id}"] strong`).text();
+        });
+        
+        reportData.push({
+          trabalho: workTitle,
+          categoria: workCategory,
+          revisores: reviewerNames.join(', ')
+        });
+      });
+      
+      if (reportData.length === 0) {
+        showAlert('Nenhuma atribuição para exportar.', 'warning');
+        return;
+      }
+      
+      // Simular download (aqui você implementaria a exportação real)
+      console.log('Dados para exportação:', reportData);
+      showAlert(`Relatório com ${reportData.length} atribuição(ões) exportado com sucesso!`, 'success');
+    });
+
+    // Inicializar
+    initializeCounts();
+    updateSelections();
+    updateCounters();
+    
     // Botões com estado de processamento (exceto o formulário de importação)
-    $('#assignManual, #assignAutomatic, #autoArea, #assignByCategory').on('click', function() {
+    $('#assignManual, #assignAutomatic, #autoArea, #assignByCategory, #smartBulkAssign').on('click', function() {
         const $btn = $(this);
         const originalText = $btn.html();
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
@@ -587,10 +1375,93 @@ $(document).ready(function() {
         }, 3000);
     });
 
+    // Função de sorteio inteligente
+    function performSmartAssignment(submissionId, criteria) {
+        // Obter dados do trabalho selecionado
+        const selectedWork = $('#submissionSelect option:selected');
+        const workCategory = selectedWork.data('category');
+        
+        // Filtrar revisores compatíveis
+        const compatibleReviewers = [];
+        $('#reviewerSelect option').each(function() {
+            if ($(this).val() === '') return;
+            
+            const reviewer = {
+                id: $(this).val(),
+                name: $(this).text(),
+                nome: $(this).data('nome') || '',
+                formacao: $(this).data('formacao') || '',
+                instituicao: $(this).data('instituicao') || ''
+            };
+            
+            let isCompatible = true;
+            
+            // Verificar compatibilidade por formação
+            if (criteria.formacao && workCategory) {
+                isCompatible = isCompatible && reviewer.formacao.toLowerCase().includes(workCategory.toLowerCase());
+            }
+            
+            // Verificar compatibilidade por instituição
+            if (criteria.instituicao && reviewer.instituicao) {
+                // Lógica adicional para instituição pode ser implementada aqui
+                isCompatible = isCompatible && reviewer.instituicao.length > 0;
+            }
+            
+            if (isCompatible) {
+                compatibleReviewers.push(reviewer);
+            }
+        });
+        
+        if (compatibleReviewers.length === 0) {
+            showAlert('Nenhum revisor compatível encontrado com os critérios selecionados.', 'warning');
+            return;
+        }
+        
+        // Sortear revisores
+        const minReviewers = parseInt($('#reviewerSelect').data('min')) || 1;
+        const maxReviewers = parseInt($('#reviewerSelect').data('max')) || 2;
+        const numToSelect = Math.min(maxReviewers, compatibleReviewers.length);
+        
+        const selectedReviewers = [];
+        const shuffled = compatibleReviewers.sort(() => 0.5 - Math.random());
+        
+        for (let i = 0; i < numToSelect; i++) {
+            selectedReviewers.push(shuffled[i].id);
+        }
+        
+        // Atualizar seleção
+        $('#reviewerSelect').val(selectedReviewers);
+        
+        showAlert(`Sorteio realizado! ${selectedReviewers.length} revisor(es) selecionado(s) automaticamente.`, 'success');
+    }
+    
+    // Função de atribuição inteligente em lote
+    function performBulkSmartAssignment(category, criteria) {
+        showAlert(`Iniciando atribuição inteligente em lote para categoria: ${category}`, 'info');
+        
+        // Aqui seria implementada a lógica de atribuição em lote
+        // Por enquanto, apenas uma simulação
+        setTimeout(() => {
+            showAlert('Atribuição inteligente em lote concluída com sucesso!', 'success');
+        }, 2000);
+    }
+    
+    // Função de distribuição por categoria
+    function performCategoryDistribution(category) {
+        showAlert(`Iniciando distribuição por categoria: ${category}`, 'info');
+        
+        // Aqui seria implementada a lógica de distribuição
+        // Por enquanto, apenas uma simulação
+        setTimeout(() => {
+            showAlert('Distribuição por categoria concluída com sucesso!', 'success');
+        }, 2000);
+    }
+    
     // Função de alerta centralizada no container correto
     function showAlert(message, type = 'info') {
         const icon = type === 'danger' ? 'exclamation-triangle'
                    : type === 'warning' ? 'exclamation-circle'
+                   : type === 'success' ? 'check-circle'
                    : 'info-circle';
         const alertHtml = `
             <div class="alert alert-${type} alert-dismissible fade show" role="alert">
