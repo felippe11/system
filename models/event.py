@@ -1598,3 +1598,64 @@ class VariavelDinamica(db.Model):
 
     def __repr__(self):
         return f"<VariavelDinamica {self.nome}>"
+
+
+class NotificacaoAgendamento(db.Model):
+    """Notificações relacionadas a agendamentos de visitas."""
+    __tablename__ = "notificacao_agendamento"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey("agendamento_visita.id"), nullable=False)
+    remetente_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    destinatario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    
+    # Conteúdo da notificação
+    tipo = db.Column(db.String(50), nullable=False)  # 'mensagem', 'status_alterado', 'lembrete', 'confirmacao'
+    titulo = db.Column(db.String(200), nullable=False)
+    mensagem = db.Column(db.Text, nullable=False)
+    
+    # Status e controle
+    lida = db.Column(db.Boolean, default=False)
+    respondida = db.Column(db.Boolean, default=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_leitura = db.Column(db.DateTime, nullable=True)
+    data_resposta = db.Column(db.DateTime, nullable=True)
+    
+    # Resposta (se aplicável)
+    resposta = db.Column(db.Text, nullable=True)
+    
+    # Relacionamentos
+    agendamento = db.relationship("AgendamentoVisita", backref="notificacoes")
+    remetente = db.relationship("Usuario", foreign_keys=[remetente_id], backref="notificacoes_enviadas")
+    destinatario = db.relationship("Usuario", foreign_keys=[destinatario_id], backref="notificacoes_recebidas")
+    
+    def __repr__(self):
+        return f'<NotificacaoAgendamento {self.tipo}-{self.agendamento_id}>'
+    
+    def marcar_como_lida(self):
+        """Marca a notificação como lida."""
+        if not self.lida:
+            self.lida = True
+            self.data_leitura = datetime.utcnow()
+            db.session.commit()
+    
+    def responder(self, resposta_texto, usuario_resposta_id):
+        """Adiciona uma resposta à notificação."""
+        self.resposta = resposta_texto
+        self.respondida = True
+        self.data_resposta = datetime.utcnow()
+        
+        # Criar notificação de resposta para o remetente original
+        notificacao_resposta = NotificacaoAgendamento(
+            agendamento_id=self.agendamento_id,
+            remetente_id=usuario_resposta_id,
+            destinatario_id=self.remetente_id,
+            tipo='resposta',
+            titulo=f'Resposta: {self.titulo}',
+            mensagem=resposta_texto
+        )
+        
+        db.session.add(notificacao_resposta)
+        db.session.commit()
+        
+        return notificacao_resposta

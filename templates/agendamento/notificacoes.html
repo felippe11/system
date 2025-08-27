@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}Notificações{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --primary-color: #3a86ff;
+    --secondary-color: #8338ec;
+    --success-color: #38b000;
+    --warning-color: #ffbe0b;
+    --danger-color: #ff006e;
+    --info-color: #3a86ff;
+    --light-bg: #f8f9fa;
+    --dark-text: #212529;
+    --gray-text: #6c757d;
+  }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f8fafc;
+  }
+  
+  .notificacoes-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+  
+  .notificacao-item {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+  }
+  
+  .notificacao-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .notificacao-item.nao-lida {
+    border-left-color: var(--warning-color);
+    background: linear-gradient(to right, rgba(255, 190, 11, 0.05), white);
+  }
+  
+  .notificacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .notificacao-titulo {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--dark-text);
+    margin: 0;
+  }
+  
+  .notificacao-badges {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  
+  .notificacao-mensagem {
+    color: var(--gray-text);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  
+  .notificacao-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+    color: var(--gray-text);
+  }
+  
+  .notificacao-data {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .notificacao-acoes {
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+    border-radius: 0.5rem;
+  }
+  
+  .filtros-container {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  }
+  
+  .filtros-row {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    flex-wrap: wrap;
+  }
+  
+  .filtro-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  
+  .form-label {
+    font-weight: 600;
+    color: var(--dark-text);
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-select, .form-control {
+    border-radius: 0.75rem;
+    border: 2px solid #e9ecef;
+    padding: 0.75rem;
+    transition: all 0.2s ease;
+  }
+  
+  .form-select:focus, .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(58, 134, 255, 0.25);
+  }
+  
+  .btn {
+    border-radius: 0.75rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+  
+  .btn-primary:hover {
+    background: #2a75ee;
+    border-color: #2a75ee;
+    box-shadow: 0 4px 8px rgba(58, 134, 255, 0.3);
+  }
+  
+  .btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+  }
+  
+  .btn-outline-secondary:hover {
+    background: #6c757d;
+    border-color: #6c757d;
+  }
+  
+  .pagination {
+    justify-content: center;
+    margin-top: 2rem;
+  }
+  
+  .page-link {
+    border-radius: 0.5rem;
+    margin: 0 0.25rem;
+    border: none;
+    color: var(--primary-color);
+  }
+  
+  .page-link:hover {
+    background-color: var(--primary-color);
+    color: white;
+  }
+  
+  .page-item.active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-text);
+  }
+  
+  .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: var(--gray-text);
+  }
+  
+  @media (max-width: 768px) {
+    .notificacoes-container {
+      padding: 1rem;
+    }
+    
+    .filtros-row {
+      flex-direction: column;
+    }
+    
+    .filtro-group {
+      min-width: 100%;
+    }
+    
+    .notificacao-header {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .notificacao-footer {
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+  }
+</style>
+
+<div class="notificacoes-container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="fas fa-bell text-warning me-2"></i>
+      Minhas Notificações
+    </h2>
+    <a href="{{ url_for('dashboard_participante_routes.dashboard_participante') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i> Voltar ao Dashboard
+    </a>
+  </div>
+  
+  <!-- Filtros -->
+  <div class="filtros-container">
+    <form method="GET" id="filtros-form">
+      <div class="filtros-row">
+        <div class="filtro-group">
+          <label for="tipo" class="form-label">Tipo de Notificação</label>
+          <select name="tipo" id="tipo" class="form-select">
+            <option value="">Todos os tipos</option>
+            <option value="mensagem" {{ 'selected' if request.args.get('tipo') == 'mensagem' }}>Mensagem</option>
+            <option value="status_alterado" {{ 'selected' if request.args.get('tipo') == 'status_alterado' }}>Status Alterado</option>
+          </select>
+        </div>
+        
+        <div class="filtro-group">
+          <label for="status" class="form-label">Status</label>
+          <select name="status" id="status" class="form-select">
+            <option value="">Todas</option>
+            <option value="nao_lida" {{ 'selected' if request.args.get('status') == 'nao_lida' }}>Não lidas</option>
+            <option value="lida" {{ 'selected' if request.args.get('status') == 'lida' }}>Lidas</option>
+          </select>
+        </div>
+        
+        <div class="filtro-group">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-filter me-1"></i> Filtrar
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Lista de Notificações -->
+  <div id="notificacoes-lista">
+    {% if notificacoes.items %}
+      {% for notificacao in notificacoes.items %}
+        <div class="notificacao-item {{ 'nao-lida' if not notificacao.lida }}" data-id="{{ notificacao.id }}">
+          <div class="notificacao-header">
+            <h5 class="notificacao-titulo">{{ notificacao.titulo }}</h5>
+            <div class="notificacao-badges">
+              {% if not notificacao.lida %}
+                <span class="badge bg-warning">Nova</span>
+              {% endif %}
+              <span class="badge bg-info">{{ notificacao.tipo|title }}</span>
+            </div>
+          </div>
+          
+          <div class="notificacao-mensagem">
+            {{ notificacao.mensagem }}
+          </div>
+          
+          <div class="notificacao-footer">
+            <div class="notificacao-data">
+              <i class="fas fa-clock"></i>
+              {{ notificacao.data_criacao.strftime('%d/%m/%Y às %H:%M') }}
+              {% if notificacao.lida and notificacao.data_leitura %}
+                <span class="text-muted ms-2">
+                  (Lida em {{ notificacao.data_leitura.strftime('%d/%m/%Y às %H:%M') }})
+                </span>
+              {% endif %}
+            </div>
+            
+            <div class="notificacao-acoes">
+              {% if not notificacao.lida %}
+                <button class="btn btn-sm btn-outline-primary" onclick="marcarComoLida({{ notificacao.id }})">
+                  <i class="fas fa-check"></i> Marcar como lida
+                </button>
+              {% endif %}
+              
+              {% if notificacao.agendamento_id %}
+                <a href="{{ url_for('agendamento_routes.historico_comunicacao', agendamento_id=notificacao.agendamento_id) }}" 
+                   class="btn btn-sm btn-outline-info">
+                  <i class="fas fa-eye"></i> Ver agendamento
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+      
+      <!-- Paginação -->
+      {% if notificacoes.pages > 1 %}
+        <nav aria-label="Paginação de notificações">
+          <ul class="pagination">
+            {% if notificacoes.has_prev %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('agendamento_routes.listar_notificacoes', page=notificacoes.prev_num, **request.args) }}">
+                  <i class="fas fa-chevron-left"></i>
+                </a>
+              </li>
+            {% endif %}
+            
+            {% for page_num in notificacoes.iter_pages() %}
+              {% if page_num %}
+                {% if page_num != notificacoes.page %}
+                  <li class="page-item">
+                    <a class="page-link" href="{{ url_for('agendamento_routes.listar_notificacoes', page=page_num, **request.args) }}">
+                      {{ page_num }}
+                    </a>
+                  </li>
+                {% else %}
+                  <li class="page-item active">
+                    <span class="page-link">{{ page_num }}</span>
+                  </li>
+                {% endif %}
+              {% else %}
+                <li class="page-item disabled">
+                  <span class="page-link">…</span>
+                </li>
+              {% endif %}
+            {% endfor %}
+            
+            {% if notificacoes.has_next %}
+              <li class="page-item">
+                <a class="page-link" href="{{ url_for('agendamento_routes.listar_notificacoes', page=notificacoes.next_num, **request.args) }}">
+                  <i class="fas fa-chevron-right"></i>
+                </a>
+              </li>
+            {% endif %}
+          </ul>
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-inbox"></i>
+        <h4>Nenhuma notificação encontrada</h4>
+        <p>Você não possui notificações {% if request.args.get('status') or request.args.get('tipo') %}com os filtros selecionados{% endif %}.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function marcarComoLida(notificacaoId) {
+    fetch(`/notificacoes/${notificacaoId}/marcar-lida`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const notificacaoElement = document.querySelector(`[data-id="${notificacaoId}"]`);
+            if (notificacaoElement) {
+                notificacaoElement.classList.remove('nao-lida');
+                
+                // Remover badge "Nova"
+                const badge = notificacaoElement.querySelector('.badge.bg-warning');
+                if (badge) badge.remove();
+                
+                // Remover botão "Marcar como lida"
+                const botao = notificacaoElement.querySelector('.btn-outline-primary');
+                if (botao) botao.remove();
+                
+                // Adicionar data de leitura
+                const dataElement = notificacaoElement.querySelector('.notificacao-data');
+                if (dataElement) {
+                    const agora = new Date().toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    dataElement.innerHTML += `
+                        <span class="text-muted ms-2">
+                            (Lida em ${agora})
+                        </span>
+                    `;
+                }
+            }
+            
+            // Mostrar toast de sucesso
+            showToast('Notificação marcada como lida!', 'success');
+        } else {
+            showToast('Erro ao marcar notificação como lida.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        showToast('Erro ao marcar notificação como lida.', 'error');
+    });
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0 position-fixed bottom-0 end-0 m-3`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i> ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+</script>
+
+{% endblock %}
