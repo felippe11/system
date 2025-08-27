@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Detalhes do Agendamento{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0 mt-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 fw-bold text-primary mb-0">
+      <i class="bi bi-calendar-check me-2"></i>Detalhes do Agendamento #{{ agendamento.id }}
+    </h1>
+    <a href="{{ url_for('agendamento_routes.listar_agendamentos') }}" class="btn btn-outline-primary">
+      <i class="bi bi-arrow-left me-2"></i>Voltar à Lista
+    </a>
+  </div>
+
+  <div class="row">
+    <!-- Informações do Agendamento -->
+    <div class="col-md-8">
+      <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Informações do Agendamento</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3">Dados da Visita</h6>
+              <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+              <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} às {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
+              <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+              <p><strong>Status:</strong> 
+                {% set status_badges = {
+                  'pendente': 'warning',
+                  'confirmado': 'success',
+                  'cancelado': 'danger',
+                  'realizado': 'primary',
+                  'recusado': 'secondary'
+                } %}
+                {% set status_badge = status_badges.get(agendamento.status, 'secondary') %}
+                <span class="badge bg-{{ status_badge }}">{{ agendamento.status|capitalize }}</span>
+              </p>
+            </div>
+            <div class="col-md-6">
+              <h6 class="text-muted mb-3">Dados da Escola</h6>
+              <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+              {% if agendamento.professor %}
+              <p><strong>Professor:</strong> {{ agendamento.professor.nome }}</p>
+              <p><strong>Email:</strong> {{ agendamento.professor.email }}</p>
+              {% endif %}
+              <p><strong>Turma:</strong> {{ agendamento.turma or 'Não informado' }}</p>
+              <p><strong>Quantidade de Alunos:</strong> {{ agendamento.quantidade_alunos }}</p>
+            </div>
+          </div>
+          
+          {% if agendamento.observacoes %}
+          <div class="row mt-3">
+            <div class="col-12">
+              <h6 class="text-muted mb-2">Observações</h6>
+              <p class="text-muted">{{ agendamento.observacoes }}</p>
+            </div>
+          </div>
+          {% endif %}
+          
+          {% if agendamento.motivo_recusa %}
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="alert alert-warning">
+                <h6 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Motivo da Recusa</h6>
+                <p class="mb-0">{{ agendamento.motivo_recusa }}</p>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Ações do Agendamento -->
+    <div class="col-md-4">
+      <div class="card shadow">
+        <div class="card-header bg-secondary text-white">
+          <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Ações</h5>
+        </div>
+        <div class="card-body">
+          {% if agendamento.status == 'pendente' and (current_user.is_admin or (current_user.tipo == 'cliente' and agendamento.horario.evento.cliente_id == current_user.id)) %}
+          <!-- Formulário de Confirmação -->
+          <form method="POST" action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}" class="mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="confirmado">
+            <button type="submit" class="btn btn-success w-100 mb-2">
+              <i class="bi bi-check-circle me-2"></i>Confirmar Agendamento
+            </button>
+          </form>
+          
+          <!-- Formulário de Recusa -->
+          <div class="mb-3">
+            <button type="button" class="btn btn-danger w-100" data-bs-toggle="modal" data-bs-target="#modalRecusarAgendamento">
+              <i class="bi bi-x-circle me-2"></i>Recusar Agendamento
+            </button>
+          </div>
+          {% endif %}
+          
+          {% if agendamento.status in ['confirmado', 'realizado'] %}
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Lembrete:</strong> Certifique-se de que os alunos foram adicionados ao agendamento.
+            {% if agendamento.professor %}
+            <a href="{{ url_for('professor_routes.adicionar_alunos_professor', agendamento_id=agendamento.id) }}" class="btn btn-sm btn-outline-primary mt-2 w-100">
+              <i class="bi bi-people me-2"></i>Gerenciar Alunos
+            </a>
+            {% endif %}
+          </div>
+          {% endif %}
+          
+          {% if current_user.is_admin or current_user.id == agendamento.professor_id %}
+          <a href="{{ url_for('agendamento_routes.editar_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-outline-primary w-100 mb-2">
+            <i class="bi bi-pencil me-2"></i>Editar Agendamento
+          </a>
+          {% endif %}
+          
+          <a href="{{ url_for('agendamento_routes.qrcode_agendamento', agendamento_id=agendamento.id) }}" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-qr-code me-2"></i>QR Code
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Recusar Agendamento -->
+<div class="modal fade" id="modalRecusarAgendamento" tabindex="-1" aria-labelledby="modalRecusarAgendamentoLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="modalRecusarAgendamentoLabel">
+          <i class="bi bi-x-circle me-2"></i>Recusar Agendamento
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{{ url_for('agendamento_routes.atualizar_status_agendamento', agendamento_id=agendamento.id) }}">
+        <div class="modal-body">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="status" value="recusado">
+          
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Atenção:</strong> Esta ação irá recusar o agendamento e restaurar as vagas disponíveis.
+          </div>
+          
+          <div class="mb-3">
+            <label for="motivo_recusa" class="form-label">Motivo da Recusa <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="motivo_recusa" name="motivo_recusa" rows="4" required placeholder="Por favor, informe o motivo da recusa do agendamento..."></textarea>
+            <div class="form-text">Este motivo será enviado ao professor responsável.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">
+            <i class="bi bi-x-circle me-2"></i>Confirmar Recusa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

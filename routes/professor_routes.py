@@ -127,9 +127,10 @@ def horarios_disponiveis_professor(evento_id):
         evento_id=evento_id
     ).filter(HorarioVisitacao.vagas_disponiveis > 0)
     
-    # Filtrar apenas datas futuras (a partir de amanhã)
-    amanha = datetime.utcnow().date() + timedelta(days=1)
-    query = query.filter(HorarioVisitacao.data >= amanha)
+    # Permitir visualização de todos os horários (passados, presentes e futuros)
+    # Removido filtro automático de datas futuras para mostrar histórico completo
+    # amanha = datetime.utcnow().date() + timedelta(days=1)
+    # query = query.filter(HorarioVisitacao.data >= amanha)
     
     # Aplicar filtro por data específica
     if data_filtro:

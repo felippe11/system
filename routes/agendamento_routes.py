@@ -31,11 +31,13 @@ from models import (
     Checkin,
     AlunoVisitante,
 )
+from models.event import NotificacaoAgendamento
 from utils import obter_estados
 from fpdf import FPDF
 import pandas as pd
 import qrcode
 import io
+from PIL import Image
 from types import SimpleNamespace
 from . import routes
 
@@ -856,14 +858,11 @@ def relatorio_geral_agendamentos():
         pdf_path = os.path.join("static", "relatorios", pdf_filename)
         os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
 
-        dummy_evento = SimpleNamespace(
-            nome='Relatório Geral',
-            local='-',
-            data_inicio=datetime.combine(data_inicio, datetime.min.time()),
-            data_fim=datetime.combine(data_fim, datetime.min.time()),
+        # Gerar PDF completo com todas as estatísticas
+        gerar_pdf_relatorio_geral_completo(
+            eventos_periodo, estatisticas, totais, dados_agregados, 
+            professores_confirmados, agendamentos, data_inicio, data_fim, pdf_path
         )
-
-        pdf_service.gerar_pdf_relatorio_agendamentos(dummy_evento, agendamentos, pdf_path)
 
         return send_file(pdf_path, as_attachment=True)
     
@@ -1035,6 +1034,165 @@ def excluir_todos_horarios_agendamento(evento_id):
     return redirect(
         url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id)
     )
+
+
+def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agregados, professores_confirmados, agendamentos, data_inicio, data_fim, caminho_pdf):
+    """
+    Gera um relatório geral completo em PDF com todas as estatísticas de agendamentos.
+    
+    Args:
+        eventos: Lista de objetos Evento
+        estatisticas: Dicionário com estatísticas por evento
+        totais: Dicionário com totais gerais
+        dados_agregados: Dados agregados (escolas, professores, etc.)
+        professores_confirmados: Lista de professores confirmados
+        agendamentos: Lista de agendamentos
+        data_inicio: Data inicial do período do relatório
+        data_fim: Data final do período do relatório
+        caminho_pdf: Caminho onde o PDF será salvo
+    """
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Configurar fonte
+    pdf.set_font('Arial', 'B', 16)
+    
+    # Título
+    pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(190, 10, f'Período: {data_inicio.strftime("%d/%m/%Y")} a {data_fim.strftime("%d/%m/%Y")}', 0, 1, 'C')
+    
+    # Data e hora de geração
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(190, 10, f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', 0, 1, 'R')
+    
+    # Resumo geral
+    pdf.ln(5)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(190, 10, 'Resumo Geral', 0, 1)
+    
+    total_agendamentos = totais['confirmados'] + totais['realizados'] + totais['cancelados'] + totais['pendentes']
+    
+    pdf.set_font('Arial', '', 12)
+    pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
+    pdf.cell(95, 10, f'Total de Visitantes: {totais["visitantes_confirmados"]}', 0, 1)
+    
+    pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 0)
+    pdf.cell(95, 10, f'Realizados: {totais["realizados"]}', 0, 1)
+    
+    pdf.cell(95, 10, f'Cancelados: {totais["cancelados"]}', 0, 0)
+    pdf.cell(95, 10, f'Pendentes: {totais["pendentes"]}', 0, 1)
+    
+    pdf.cell(95, 10, f'Check-ins: {totais["checkins"]}', 0, 1)
+    
+    # Calcular taxas
+    if total_agendamentos > 0:
+        taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
+        pdf.cell(190, 10, f'Taxa de Cancelamento: {taxa_cancelamento:.1f}%', 0, 1)
+    
+    if totais['confirmados'] + totais['realizados'] > 0:
+        taxa_conclusao = (totais['realizados'] / (totais['confirmados'] + totais['realizados'])) * 100
+        pdf.cell(190, 10, f'Taxa de Conclusão: {taxa_conclusao:.1f}%', 0, 1)
+    
+    # Estatísticas por escola
+    if 'escolas' in dados_agregados and dados_agregados['escolas']:
+        pdf.ln(10)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Top 10 Escolas', 0, 1)
+        
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(80, 10, 'Escola', 1, 0, 'C')
+        pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
+        pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
+        
+        pdf.set_font('Arial', '', 10)
+        for escola in dados_agregados['escolas'][:10]:
+            escola_nome = escola.nome[:35] + '...' if len(escola.nome) > 35 else escola.nome
+            pdf.cell(80, 10, escola_nome, 1, 0)
+            pdf.cell(30, 10, str(escola.total_agendamentos), 1, 0, 'C')
+            pdf.cell(30, 10, str(escola.total_alunos or 0), 1, 1, 'C')
+    
+    # Estatísticas por professor
+    if 'professores' in dados_agregados and dados_agregados['professores']:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Top 10 Professores', 0, 1)
+        
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(80, 10, 'Professor', 1, 0, 'C')
+        pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
+        pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
+        
+        pdf.set_font('Arial', '', 10)
+        for professor in dados_agregados['professores'][:10]:
+            prof_nome = professor.nome[:35] + '...' if len(professor.nome) > 35 else professor.nome
+            pdf.cell(80, 10, prof_nome, 1, 0)
+            pdf.cell(30, 10, str(professor.total_agendamentos), 1, 0, 'C')
+            pdf.cell(30, 10, str(professor.total_alunos or 0), 1, 1, 'C')
+    
+    # Professores confirmados
+    if professores_confirmados:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Professores Confirmados', 0, 1)
+        
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(60, 10, 'Nome', 1, 0, 'C')
+        pdf.cell(70, 10, 'Email', 1, 0, 'C')
+        pdf.cell(60, 10, 'WhatsApp', 1, 1, 'C')
+        
+        pdf.set_font('Arial', '', 8)
+        for professor in professores_confirmados[:20]:  # Limitar a 20 para não sobrecarregar
+            nome = professor.nome[:25] + '...' if len(professor.nome) > 25 else professor.nome
+            email = professor.email[:30] + '...' if len(professor.email) > 30 else professor.email
+            whatsapp = professor.responsavel_whatsapp or 'N/A'
+            
+            pdf.cell(60, 10, nome, 1, 0)
+            pdf.cell(70, 10, email, 1, 0)
+            pdf.cell(60, 10, whatsapp, 1, 1)
+    
+    # Necessidades especiais
+    if 'necessidades_especiais' in dados_agregados:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, 'Necessidades Especiais', 0, 1)
+        
+        pdf.set_font('Arial', '', 12)
+        pcd_data = dados_agregados['necessidades_especiais']
+        pdf.cell(95, 10, f'Total de Alunos PCD: {pcd_data["total"]}', 0, 0)
+        pdf.cell(95, 10, f'Agendamentos com PCD: {pcd_data["agendamentos"]}', 0, 1)
+        pdf.cell(95, 10, f'Percentual: {pcd_data["percentual"]}%', 0, 1)
+    
+    # Análise e recomendações
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
+    
+    pdf.set_font('Arial', '', 12)
+    if total_agendamentos > 0:
+        if taxa_cancelamento > 30:
+            pdf.multi_cell(190, 10, '- Alta taxa de cancelamento. Considere revisar suas políticas de cancelamento.')
+            pdf.multi_cell(190, 10, '- Envie lembretes com mais frequência para professores com agendamentos confirmados.')
+        else:
+            pdf.multi_cell(190, 10, '- Taxa de cancelamento está em níveis aceitáveis.')
+        
+        if totais['realizados'] < totais['confirmados']:
+            pdf.multi_cell(190, 10, '- Implemente um sistema de lembretes mais eficiente para aumentar o comparecimento.')
+            
+        if totais['visitantes_confirmados'] < 100:
+            pdf.multi_cell(190, 10, '- Divulgue mais seus eventos entre escolas e professores para aumentar a quantidade de visitantes.')
+    else:
+        pdf.multi_cell(190, 10, '- Ainda não há dados suficientes para recomendações personalizadas.')
+    
+    pdf.multi_cell(190, 10, '- Continue monitorando os agendamentos e ajustando a capacidade disponível conforme necessário.')
+    
+    # Rodapé
+    pdf.ln(10)
+    pdf.set_font('Arial', 'I', 10)
+    pdf.cell(190, 10, 'Este relatório é gerado automaticamente pelo sistema de agendamentos.', 0, 1, 'C')
+    
+    # Salvar o PDF
+    pdf.output(caminho_pdf)
 
 
 def gerar_pdf_relatorio_geral(eventos, estatisticas, data_inicio, data_fim, caminho_pdf):
@@ -1819,6 +1977,7 @@ def criar_agendamento():
                             compromisso_2=True,
                             compromisso_3=True,
                             compromisso_4=True,
+                            status='pendente',
                         )
 
                         horario.vagas_disponiveis -= quantidade
@@ -3334,6 +3493,128 @@ def visualizar_agendamento(agendamento_id):
         salas_ids=salas_ids
     )
     
+@agendamento_routes.route('/editar-cadastro-pendente/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def editar_cadastro_pendente(agendamento_id):
+    """Editar um cadastro pendente com acesso completo a todos os campos."""
+
+    # Busca o agendamento no banco de dados
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+    
+    # Verificar se é um cadastro pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está mais pendente.', 'warning')
+        return redirect(url_for('agendamento_routes.listar_cadastros_pendentes'))
+    
+    # Verifica permissões (apenas administradores ou clientes podem editar)
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Você não tem permissão para editar este cadastro.', 'danger')
+        return redirect(url_for('agendamento_routes.listar_cadastros_pendentes'))
+    
+    # Se for cliente, verificar se o evento pertence a ele
+    if current_user.tipo == 'cliente' and agendamento.horario.evento.cliente_id != current_user.id:
+        flash('Este cadastro não pertence aos seus eventos.', 'danger')
+        return redirect(url_for('agendamento_routes.listar_cadastros_pendentes'))
+
+    # Busca horários disponíveis para edição
+    horarios_disponiveis = (
+        HorarioVisitacao.query
+        .filter(HorarioVisitacao.vagas_disponiveis > 0)
+        .all()
+    )
+    # Adiciona o horário atual do agendamento, caso ele não esteja mais disponível
+    if agendamento.horario not in horarios_disponiveis:
+        horarios_disponiveis.append(agendamento.horario)
+    
+    # Carrega as possíveis salas para visitação
+    from models import SalaVisitacao
+    salas = SalaVisitacao.query.all()
+    
+    # Pega as salas já selecionadas
+    salas_selecionadas = []
+    if agendamento.salas_selecionadas:
+        salas_selecionadas = [int(sala_id) for sala_id in agendamento.salas_selecionadas.split(',')]
+    
+    if request.method == 'POST':
+        # Captura todos os dados do formulário
+        horario_id = request.form.get('horario_id')
+        escola_nome = request.form.get('escola_nome')
+        escola_codigo_inep = request.form.get('escola_codigo_inep')
+        turma = request.form.get('turma')
+        nivel_ensino = request.form.get('nivel_ensino')
+        quantidade_alunos = request.form.get('quantidade_alunos')
+        rede_ensino = request.form.get('rede_ensino')
+        municipio = request.form.get('municipio')
+        bairro = request.form.get('bairro')
+        responsavel_nome = request.form.get('responsavel_nome')
+        responsavel_cargo = request.form.get('responsavel_cargo')
+        responsavel_whatsapp = request.form.get('responsavel_whatsapp')
+        responsavel_email = request.form.get('responsavel_email')
+        acompanhantes_nomes = request.form.get('acompanhantes_nomes')
+        acompanhantes_qtd = request.form.get('acompanhantes_qtd')
+        observacoes = request.form.get('observacoes')
+        salas_ids = request.form.getlist('salas')
+        
+        # Capturar compromissos
+        compromisso_1 = 'compromisso_1' in request.form
+        compromisso_2 = 'compromisso_2' in request.form
+        compromisso_3 = 'compromisso_3' in request.form
+        compromisso_4 = 'compromisso_4' in request.form
+        
+        # Validação básica
+        if not all([horario_id, escola_nome, turma, nivel_ensino, quantidade_alunos]):
+            flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
+            return render_template(
+                'editar_cadastro_pendente.html',
+                agendamento=agendamento,
+                horarios=horarios_disponiveis,
+                salas=salas,
+                salas_selecionadas=salas_selecionadas
+            )
+        
+        try:
+            # Atualiza todos os dados do agendamento
+            agendamento.horario_id = horario_id
+            agendamento.escola_nome = escola_nome
+            agendamento.escola_codigo_inep = escola_codigo_inep
+            agendamento.turma = turma
+            agendamento.nivel_ensino = nivel_ensino
+            agendamento.quantidade_alunos = int(quantidade_alunos)
+            agendamento.rede_ensino = rede_ensino
+            agendamento.municipio = municipio
+            agendamento.bairro = bairro
+            agendamento.responsavel_nome = responsavel_nome
+            agendamento.responsavel_cargo = responsavel_cargo
+            agendamento.responsavel_whatsapp = responsavel_whatsapp
+            agendamento.responsavel_email = responsavel_email
+            agendamento.acompanhantes_nomes = acompanhantes_nomes
+            agendamento.acompanhantes_qtd = int(acompanhantes_qtd) if acompanhantes_qtd else None
+            agendamento.observacoes = observacoes
+            agendamento.compromisso_1 = compromisso_1
+            agendamento.compromisso_2 = compromisso_2
+            agendamento.compromisso_3 = compromisso_3
+            agendamento.compromisso_4 = compromisso_4
+            
+            # Atualiza as salas selecionadas
+            agendamento.salas_selecionadas = ','.join(salas_ids) if salas_ids else None
+            
+            db.session.commit()
+            flash('Cadastro pendente atualizado com sucesso!', 'success')
+            return redirect(url_for('agendamento_routes.listar_cadastros_pendentes'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar cadastro: {str(e)}', 'danger')
+    
+    # Renderiza o template com os dados do agendamento
+    return render_template(
+        'editar_cadastro_pendente.html',
+        agendamento=agendamento,
+        horarios=horarios_disponiveis,
+        salas=salas,
+        salas_selecionadas=salas_selecionadas
+    )
+
 @agendamento_routes.route('/editar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def editar_agendamento(agendamento_id):
@@ -3477,9 +3758,11 @@ def atualizar_status_agendamento(agendamento_id):
     
     # Validar o status
     novo_status = dados.get('status')
-    if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado']:
-        return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado' ou 'realizado'"}), 400
+    if novo_status and novo_status not in ['confirmado', 'cancelado', 'realizado', 'recusado']:
+        return jsonify({"erro": "Status inválido. Use 'confirmado', 'cancelado', 'realizado' ou 'recusado'"}), 400
     
+    # Obter motivo da recusa se fornecido
+    motivo_recusa = dados.get('motivo_recusa')
 
     status_anterior = agendamento.status
     enviar_confirmacao = novo_status == 'confirmado' and status_anterior != 'confirmado'
@@ -3487,19 +3770,31 @@ def atualizar_status_agendamento(agendamento_id):
     # Atualizar o status
     if novo_status:
         agendamento.status = novo_status
+        
+        # Controle automático de vagas
+        horario = agendamento.horario
+        if horario:
+            if novo_status == 'confirmado' and status_anterior != 'confirmado':
+                # Reduzir vagas disponíveis ao confirmar
+                horario.vagas_disponiveis = max(
+                    horario.vagas_disponiveis - agendamento.quantidade_alunos,
+                    0
+                )
+            elif novo_status in ['cancelado', 'recusado'] and status_anterior not in ['cancelado', 'recusado']:
+                # Restaurar vagas ao cancelar ou recusar
+                horario.vagas_disponiveis = min(
+                    horario.vagas_disponiveis + agendamento.quantidade_alunos,
+                    horario.capacidade_total,
+                )
 
-
-        if novo_status == 'cancelado':
-            if status_anterior != 'cancelado':
-                horario = agendamento.horario
-                if horario:
-                    horario.vagas_disponiveis = min(
-                        horario.vagas_disponiveis + agendamento.quantidade_alunos,
-                        horario.capacidade_total,
-                    )
-
+        # Atualizar campos específicos por status
+        if novo_status in ['cancelado', 'recusado']:
             if not agendamento.data_cancelamento:
                 agendamento.data_cancelamento = datetime.utcnow()
+            
+            # Armazenar motivo da recusa se fornecido
+            if novo_status == 'recusado' and motivo_recusa:
+                agendamento.motivo_recusa = motivo_recusa
 
     
     # Verificar se houve alteração no check-in
@@ -3660,6 +3955,74 @@ def checkin_agendamento(qr_code_token):
         db.session.rollback()
         return jsonify({"erro": f"Erro ao realizar check-in: {str(e)}"}), 500
 
+@agendamento_routes.route('/cadastros-pendentes', methods=['GET'])
+@login_required
+def listar_cadastros_pendentes():
+    """
+    Lista especificamente os agendamentos com status 'pendente' para visualização e edição.
+    Permite acesso completo aos formulários preenchidos pelos professores.
+    """
+    # Verificar se é um cliente ou administrador
+    if current_user.tipo not in ['cliente', 'admin']:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    # Definir os parâmetros de filtro
+    page = request.args.get('page', 1, type=int)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    escola_nome = request.args.get('escola_nome')
+    professor_nome = request.args.get('professor_nome')
+    
+    # Base da query com joins para acesso aos dados do evento
+    query = (
+        AgendamentoVisita.query.join(
+            HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+        ).join(
+            Evento, HorarioVisitacao.evento_id == Evento.id
+        ).filter(
+            AgendamentoVisita.status == 'pendente'  # Filtrar apenas pendentes
+        )
+    )
+    
+    # Filtrar por tipo de usuário
+    if current_user.tipo == 'cliente':
+        query = query.filter(Evento.cliente_id == current_user.id)
+    
+    # Filtros dos parâmetros da URL
+    if data_inicio:
+        data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data >= data_inicio_dt)
+    
+    if data_fim:
+        data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data <= data_fim_dt)
+    
+    if escola_nome:
+        query = query.filter(AgendamentoVisita.escola_nome.ilike(f'%{escola_nome}%'))
+    
+    if professor_nome:
+        from models import Usuario
+        query = query.join(Usuario, AgendamentoVisita.professor_id == Usuario.id)
+        query = query.filter(Usuario.nome.ilike(f'%{professor_nome}%'))
+    
+    # Ordenar por data de agendamento (mais recentes primeiro)
+    query = query.order_by(AgendamentoVisita.data_agendamento.desc())
+    
+    # Paginação
+    agendamentos = query.paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template(
+        'cadastros_pendentes.html',
+        agendamentos=agendamentos,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        escola_nome=escola_nome,
+        professor_nome=professor_nome
+    )
+
 @agendamento_routes.route('/agendamentos', methods=['GET'])
 @login_required
 def listar_agendamentos():
@@ -3691,7 +4054,7 @@ def listar_agendamentos():
     elif current_user.tipo == 'cliente':
         query = query.filter(Evento.cliente_id == current_user.id)
     
-    # Filtros dos parâmetros da URL
+    # Filtros dos parâmetros da URL (aplicados apenas se fornecidos)
     if data_inicio:
         data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
         query = query.filter(HorarioVisitacao.data >= data_inicio_dt)
@@ -3699,6 +4062,9 @@ def listar_agendamentos():
     if data_fim:
         data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
         query = query.filter(HorarioVisitacao.data <= data_fim_dt)
+    
+    # Por padrão, mostrar todos os agendamentos (passados, presentes e futuros)
+    # sem aplicar filtros de data automáticos
     
     if status:
         query = query.filter(AgendamentoVisita.status == status)
@@ -4372,6 +4738,14 @@ def detalhes_agendamento(agendamento_id):
 
     # Buscar lista de alunos vinculados ao agendamento
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
+    
+    # Buscar alunos com necessidades especiais
+    from models import NecessidadeEspecial
+    alunos_pcd = []
+    for aluno in alunos:
+        necessidade = NecessidadeEspecial.query.filter_by(aluno_id=aluno.id).first()
+        if necessidade:
+            alunos_pcd.append((aluno, necessidade))
 
     return render_template(
         "professor/detalhes_agendamento.html",
@@ -4379,6 +4753,7 @@ def detalhes_agendamento(agendamento_id):
         horario=horario,
         evento=evento,
         alunos=alunos,
+        alunos_pcd=alunos_pcd,
     )
 
 @agendamento_routes.route('/professor/meus_agendamentos')
@@ -4478,6 +4853,88 @@ def meus_agendamentos_cliente():
     )
 
 
+@agendamento_routes.route('/processar_lote_agendamentos', methods=['POST'])
+@login_required
+def processar_lote_agendamentos():
+    """Processa ações em lote para agendamentos (confirmar ou cancelar)."""
+    # Verificar permissões
+    if current_user.tipo not in ['admin', 'cliente']:
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+    
+    try:
+        # Obter dados do formulário
+        acao = request.form.get('acao')  # 'confirmar' ou 'cancelar'
+        agendamentos_ids = request.form.getlist('agendamentos_selecionados')
+        
+        if not acao or not agendamentos_ids:
+            flash('Nenhuma ação ou agendamento selecionado.', 'warning')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
+        
+        # Converter IDs para inteiros
+        agendamentos_ids = [int(id_) for id_ in agendamentos_ids]
+        
+        # Buscar agendamentos
+        query = AgendamentoVisita.query.filter(AgendamentoVisita.id.in_(agendamentos_ids))
+        
+        # Filtrar por permissões do usuário
+        if current_user.tipo == 'cliente':
+            query = query.join(
+                HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+            ).join(
+                Evento, HorarioVisitacao.evento_id == Evento.id
+            ).filter(Evento.cliente_id == current_user.id)
+        
+        agendamentos = query.all()
+        
+        if not agendamentos:
+            flash('Nenhum agendamento válido encontrado.', 'warning')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
+        
+        # Processar ação
+        contador_sucesso = 0
+        contador_erro = 0
+        
+        for agendamento in agendamentos:
+            try:
+                if acao == 'confirmar':
+                    if agendamento.status in ['pendente']:
+                        agendamento.status = 'confirmado'
+                        contador_sucesso += 1
+                    else:
+                        contador_erro += 1
+                elif acao == 'cancelar':
+                    if agendamento.status in ['pendente', 'confirmado']:
+                        agendamento.status = 'cancelado'
+                        # Liberar vagas
+                        if agendamento.horario:
+                            agendamento.horario.vagas_disponiveis += agendamento.quantidade_alunos
+                        contador_sucesso += 1
+                    else:
+                        contador_erro += 1
+            except Exception as e:
+                contador_erro += 1
+                print(f"Erro ao processar agendamento {agendamento.id}: {str(e)}")
+        
+        # Salvar alterações
+        db.session.commit()
+        
+        # Mensagens de feedback
+        if contador_sucesso > 0:
+            acao_texto = 'confirmados' if acao == 'confirmar' else 'cancelados'
+            flash(f'{contador_sucesso} agendamento(s) {acao_texto} com sucesso!', 'success')
+        
+        if contador_erro > 0:
+            flash(f'{contador_erro} agendamento(s) não puderam ser processados.', 'warning')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao processar agendamentos: {str(e)}', 'danger')
+    
+    # Redirecionar de volta para a lista de agendamentos
+    return redirect(url_for('agendamento_routes.listar_agendamentos'))
+
+
 @agendamento_routes.route('/professor/cancelar_agendamento/<int:agendamento_id>', methods=['GET', 'POST'])
 @login_required
 def cancelar_agendamento_professor(agendamento_id):
@@ -4493,17 +4950,17 @@ def cancelar_agendamento_professor(agendamento_id):
     # Verificar se o agendamento pertence ao professor
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar se o agendamento já foi cancelado
     if agendamento.status == 'cancelado':
         flash('Este agendamento já foi cancelado!', 'warning')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar se o agendamento já foi realizado
     if agendamento.status == 'realizado':
         flash('Este agendamento já foi realizado e não pode ser cancelado!', 'warning')
-        return redirect(url_for('agendamento_routes.meus_agendamentos'))
+        return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos'))
     
     # Verificar prazo de cancelamento
     horario = agendamento.horario
@@ -4543,7 +5000,7 @@ def cancelar_agendamento_professor(agendamento_id):
         try:
             db.session.commit()
             flash('Agendamento cancelado com sucesso!', 'success')
-            return redirect(url_for('agendamento_routes.meus_agendamentos'))
+            return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
@@ -4570,11 +5027,11 @@ def cancelar_agendamento_participante(agendamento_id):
 
     if agendamento.professor_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+        return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos_participante'))
 
     if agendamento.status == 'cancelado':
         flash('Este agendamento já foi cancelado!', 'warning')
-        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+        return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos_participante'))
 
     horario = agendamento.horario
 
@@ -4585,7 +5042,7 @@ def cancelar_agendamento_participante(agendamento_id):
         try:
             db.session.commit()
             flash('Agendamento cancelado com sucesso!', 'success')
-            return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+            return redirect(request.referrer or url_for('agendamento_routes.meus_agendamentos_participante'))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cancelar agendamento: {str(e)}', 'danger')
@@ -4610,19 +5067,19 @@ def cancelar_agendamento_cliente(agendamento_id):
     if agendamento.cliente_id != current_user.id:
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
         return redirect(
-            url_for('agendamento_routes.meus_agendamentos_cliente')
+            request.referrer or url_for('agendamento_routes.meus_agendamentos_cliente')
         )
 
     if agendamento.status == 'cancelado':
         flash('Este agendamento já foi cancelado!', 'warning')
         return redirect(
-            url_for('agendamento_routes.meus_agendamentos_cliente')
+            request.referrer or url_for('agendamento_routes.meus_agendamentos_cliente')
         )
 
     if agendamento.status == 'realizado':
         flash('Este agendamento já foi realizado e não pode ser cancelado!', 'warning')
         return redirect(
-            url_for('agendamento_routes.meus_agendamentos_cliente')
+            request.referrer or url_for('agendamento_routes.meus_agendamentos_cliente')
         )
 
     horario = agendamento.horario
@@ -4646,7 +5103,7 @@ def cancelar_agendamento_cliente(agendamento_id):
             db.session.commit()
             flash('Agendamento cancelado com sucesso!', 'success')
             return redirect(
-                url_for('agendamento_routes.meus_agendamentos_cliente')
+                request.referrer or url_for('agendamento_routes.meus_agendamentos_cliente')
             )
         except Exception as e:
             db.session.rollback()
@@ -4697,6 +5154,42 @@ def marcar_presenca_aluno(aluno_id):
     return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id))
 
 
+@agendamento_routes.route('/checkin_manual/<int:agendamento_id>', methods=['POST'])
+@login_required
+def checkin_manual_agendamento(agendamento_id):
+    """Realiza check-in manual de um agendamento sem necessidade de QR code."""
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+    
+    # Verificar permissões: professor, cliente, participante ou administrador
+    if (current_user.id != agendamento.professor_id and
+        current_user.id != agendamento.horario.evento.cliente_id and
+        current_user.tipo not in ['participante', 'admin']):
+        flash('Você não tem permissão para realizar check-in neste agendamento.', 'danger')
+        return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento_id))
+    
+    # Verificar se o check-in já foi realizado
+    if agendamento.checkin_realizado:
+        flash('Check-in já foi realizado para este agendamento.', 'warning')
+        return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento_id))
+    
+    # Realizar o check-in
+    agendamento.checkin_realizado = True
+    agendamento.data_checkin = datetime.utcnow()
+    
+    try:
+        db.session.commit()
+        flash('Check-in realizado com sucesso!', 'success')
+        
+        # Log da ação
+        logger.info(f"Check-in manual realizado para agendamento {agendamento_id} por usuário {current_user.id}")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao realizar check-in manual: {e}")
+        flash('Erro ao realizar check-in. Tente novamente.', 'danger')
+    
+    return redirect(url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento_id))
+
 @agendamento_routes.route('/qrcode_agendamento/<int:agendamento_id>', methods=['GET'])
 @login_required
 def qrcode_agendamento(agendamento_id):
@@ -4720,10 +5213,18 @@ def qrcode_agendamento(agendamento_id):
         _external=True,
     )
 
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=12,
+        border=4
+    )
     qr.add_data(qr_data)
     qr.make(fit=True)
-    img = qr.make_image(fill='black', back_color='white')
+    img = qr.make_image(fill_color='black', back_color='white')
+    
+    # Otimizar tamanho da imagem
+    img = img.resize((300, 300), Image.LANCZOS)
 
     buf = io.BytesIO()
     img.save(buf, 'PNG')
@@ -5174,5 +5675,236 @@ def api_toggle_material_apoio(material_id):
             'success': False,
             'error': 'Erro interno do servidor'
         }), 500
+
+
+# ==================== SISTEMA DE NOTIFICAÇÕES ====================
+
+@agendamento_routes.route('/notificacoes')
+@login_required
+def listar_notificacoes():
+    """Lista todas as notificações do usuário atual."""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        
+        # Filtros
+        tipo = request.args.get('tipo')
+        lida = request.args.get('lida')
+        
+        # Query base
+        query = NotificacaoAgendamento.query.filter_by(destinatario_id=current_user.id)
+        
+        # Aplicar filtros
+        if tipo:
+            query = query.filter_by(tipo=tipo)
+        if lida is not None:
+            query = query.filter_by(lida=lida.lower() == 'true')
+        
+        # Ordenar por data de criação (mais recentes primeiro)
+        query = query.order_by(NotificacaoAgendamento.data_criacao.desc())
+        
+        # Paginação
+        notificacoes = query.paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return render_template(
+            'agendamento/notificacoes.html',
+            notificacoes=notificacoes,
+            tipo_filtro=tipo,
+            lida_filtro=lida
+        )
+    except Exception as e:
+        current_app.logger.error(f"Erro ao listar notificações: {e}")
+        flash('Erro ao carregar notificações', 'error')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
+
+
+@agendamento_routes.route('/notificacoes/<int:notificacao_id>/marcar-lida', methods=['POST'])
+@login_required
+def marcar_notificacao_lida(notificacao_id):
+    """Marca uma notificação como lida."""
+    try:
+        notificacao = NotificacaoAgendamento.query.get_or_404(notificacao_id)
+        
+        # Verificar se o usuário tem permissão
+        if notificacao.destinatario_id != current_user.id:
+            return jsonify({
+                'success': False,
+                'error': 'Acesso negado'
+            }), 403
+        
+        notificacao.marcar_como_lida()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Notificação marcada como lida'
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao marcar notificação como lida: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/notificacoes/<int:notificacao_id>/responder', methods=['POST'])
+@login_required
+def responder_notificacao(notificacao_id):
+    """Responde a uma notificação."""
+    try:
+        notificacao = NotificacaoAgendamento.query.get_or_404(notificacao_id)
+        
+        # Verificar se o usuário tem permissão
+        if notificacao.destinatario_id != current_user.id:
+            return jsonify({
+                'success': False,
+                'error': 'Acesso negado'
+            }), 403
+        
+        data = request.get_json()
+        resposta_texto = data.get('resposta', '').strip()
+        
+        if not resposta_texto:
+            return jsonify({
+                'success': False,
+                'error': 'Resposta não pode estar vazia'
+            }), 400
+        
+        # Responder à notificação
+        notificacao_resposta = notificacao.responder(resposta_texto, current_user.id)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Resposta enviada com sucesso',
+            'notificacao_resposta_id': notificacao_resposta.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao responder notificação: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/notificacoes/criar', methods=['POST'])
+@login_required
+def criar_notificacao():
+    """Cria uma nova notificação para um agendamento."""
+    try:
+        data = request.get_json()
+        
+        # Validações
+        agendamento_id = data.get('agendamento_id')
+        destinatario_id = data.get('destinatario_id')
+        tipo = data.get('tipo', 'mensagem')
+        titulo = data.get('titulo', '').strip()
+        mensagem = data.get('mensagem', '').strip()
+        
+        if not all([agendamento_id, destinatario_id, titulo, mensagem]):
+            return jsonify({
+                'success': False,
+                'error': 'Todos os campos são obrigatórios'
+            }), 400
+        
+        # Verificar se o agendamento existe
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
+        if not agendamento:
+            return jsonify({
+                'success': False,
+                'error': 'Agendamento não encontrado'
+            }), 404
+        
+        # Verificar se o destinatário existe
+        destinatario = Usuario.query.get(destinatario_id)
+        if not destinatario:
+            return jsonify({
+                'success': False,
+                'error': 'Destinatário não encontrado'
+            }), 404
+        
+        # Verificar permissões (apenas admin/cliente pode enviar para professor)
+        if current_user.tipo not in ['admin', 'cliente']:
+            return jsonify({
+                'success': False,
+                'error': 'Acesso negado'
+            }), 403
+        
+        # Criar notificação
+        nova_notificacao = NotificacaoAgendamento(
+            agendamento_id=agendamento_id,
+            remetente_id=current_user.id,
+            destinatario_id=destinatario_id,
+            tipo=tipo,
+            titulo=titulo,
+            mensagem=mensagem
+        )
+        
+        db.session.add(nova_notificacao)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Notificação enviada com sucesso',
+            'notificacao_id': nova_notificacao.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Erro ao criar notificação: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/api/notificacoes/nao-lidas/count')
+@login_required
+def contar_notificacoes_nao_lidas():
+    """Retorna o número de notificações não lidas do usuário."""
+    try:
+        count = NotificacaoAgendamento.query.filter_by(
+            destinatario_id=current_user.id,
+            lida=False
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao contar notificações não lidas: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro interno do servidor'
+        }), 500
+
+
+@agendamento_routes.route('/agendamentos/<int:agendamento_id>/historico-comunicacao')
+@login_required
+def historico_comunicacao(agendamento_id):
+    """Exibe o histórico de comunicação de um agendamento."""
+    try:
+        agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+        
+        # Verificar permissões
+        if current_user.tipo == 'professor' and agendamento.professor_id != current_user.id:
+            flash('Acesso negado', 'error')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
+        
+        # Buscar todas as notificações relacionadas ao agendamento
+        notificacoes = NotificacaoAgendamento.query.filter_by(
+            agendamento_id=agendamento_id
+        ).order_by(NotificacaoAgendamento.data_criacao.asc()).all()
+        
+        return render_template(
+            'historico_comunicacao.html',
+            agendamento=agendamento,
+            notificacoes=notificacoes
+        )
+    except Exception as e:
+        current_app.logger.error(f"Erro ao carregar histórico de comunicação: {e}")
+        flash('Erro ao carregar histórico de comunicação', 'error')
+        return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
 

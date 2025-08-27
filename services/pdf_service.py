@@ -2747,8 +2747,22 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
         )
     
     # 5) QR Code para check-in
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(agendamento.qr_code_token)
+    from flask import url_for
+    
+    # Gerar URL completa para o QR Code
+    qr_url = url_for(
+        'agendamento_routes.checkin_qr_agendamento',
+        token=agendamento.qr_code_token,
+        _external=True
+    )
+    
+    qr = qrcode.QRCode(
+        version=1, 
+        box_size=12, 
+        border=3,
+        error_correction=qrcode.constants.ERROR_CORRECT_M
+    )
+    qr.add_data(qr_url)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     
@@ -2959,25 +2973,35 @@ def gerar_qrcode_url(token, tamanho=200):
     Returns:
         BytesIO: Buffer contendo a imagem do QR Code em formato PNG
     """
-    # Preparar a URL para o QR Code (pode ser um endpoint de check-in)
-    url = f"/checkin?token={token}"
+    from flask import url_for
     
-    # Gerar QR Code
+    # Preparar a URL completa para o QR Code
+    url = url_for(
+        'agendamento_routes.checkin_qr_agendamento',
+        token=token,
+        _external=True
+    )
+    
+    # Gerar QR Code com configurações otimizadas
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,  # Melhor correção de erro
+        box_size=12,  # Tamanho maior para melhor legibilidade
+        border=3,     # Borda menor para economizar espaço
     )
     qr.add_data(url)
     qr.make(fit=True)
     
-    # Criar imagem
+    # Criar imagem com alta qualidade
     img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Redimensionar se necessário
+    if tamanho != 200:
+        img = img.resize((tamanho, tamanho), Image.LANCZOS)
     
     # Salvar em um buffer em memória
     buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
+    img.save(buffer, format="PNG", optimize=True)
     buffer.seek(0)
     
     return buffer
