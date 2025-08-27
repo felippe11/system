@@ -976,6 +976,7 @@ class AgendamentoVisita(db.Model):
     status = db.Column(
         db.String(20), default="pendente"
     )  # pendente, confirmado, cancelado, realizado
+    motivo_recusa = db.Column(db.Text, nullable=True)  # Motivo quando agendamento for recusado
     checkin_realizado = db.Column(db.Boolean, default=False)
     data_checkin = db.Column(db.DateTime, nullable=True)
 

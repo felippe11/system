@@ -3,19 +3,35 @@
 
 {% block content %}
 <div class="container-fluid px-0 mt-0">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h2 fw-bold text-primary mb-0">
-      <i class="bi bi-calendar-plus me-2"></i>Criar Novo Agendamento
-    </h1>
-    <a href="{{ url_for('dashboard_routes.dashboard_agendamentos') }}" class="btn btn-outline-primary">
-      <i class="bi bi-arrow-left me-2"></i>Voltar ao Dashboard
-    </a>
-  </div>
+  <!-- BREADCRUMB -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard_agendamentos') }}">Agendamentos</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Criar Novo</li>
+    </ol>
+  </nav>
 
-  <p class="text-muted mb-4">
-    Você está agendando como
-    {{ 'Professor' if current_user.tipo == 'professor' else 'Cliente' }}.
-  </p>
+  <!-- CABEÇALHO -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h2 fw-bold text-primary mb-1">
+        <i class="bi bi-calendar-plus me-2"></i>Criar Novo Agendamento
+      </h1>
+      <p class="text-muted mb-0">
+        Você está agendando como
+        <span class="badge bg-secondary">{{ 'Professor' if current_user.tipo == 'professor' else 'Cliente' }}</span>
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('agendamento_routes.listar_agendamentos') }}" class="btn btn-outline-info">
+        <i class="bi bi-list-ul me-2"></i>Ver Lista
+      </a>
+      <a href="{{ url_for('dashboard_routes.dashboard_agendamentos') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+      </a>
+    </div>
+  </div>
 
   <div class="card shadow">
     <div class="card-body">
@@ -153,6 +169,24 @@
             <div class="mb-3">
               <label for="observacoes" class="form-label">Observações</label>
               <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Alerta sobre obrigatoriedade de adicionar alunos -->
+        <div class="row mt-3">
+          <div class="col-12">
+            <div class="alert alert-info border-start border-4 border-info">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-3 text-info fs-4"></i>
+                <div>
+                  <h6 class="alert-heading mb-1">Importante: Adição de Alunos Obrigatória</h6>
+                  <p class="mb-0">
+                    <strong>Após criar este agendamento, você DEVE adicionar a lista de alunos participantes.</strong>
+                    O agendamento não será considerado completo até que você clique em "Adicionar Alunos" e forneça os nomes dos estudantes.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

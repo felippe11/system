@@ -3,10 +3,35 @@
 
 {% block content %}
 <div class="container mt-4">
-  <h2 class="mb-4">
-    <i class="bi bi-calendar-check me-2"></i>
-    Agendamentos
-  </h2>
+  <!-- BREADCRUMB -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard_agendamentos') }}">Agendamentos</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Lista</li>
+    </ol>
+  </nav>
+
+  <!-- CABEÇALHO -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">
+        <i class="bi bi-calendar-check me-2"></i>
+        Lista de Agendamentos
+      </h2>
+      <p class="text-muted mb-0">Visualize e gerencie todos os agendamentos</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
+      <a href="{{ url_for('agendamento_routes.criar_agendamento') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
+      </a>
+      {% endif %}
+      <a href="{{ url_for('dashboard_routes.dashboard_agendamentos') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+      </a>
+    </div>
+  </div>
 
   <!-- Filtros -->
   <div class="card shadow-sm mb-4">
@@ -84,22 +109,42 @@
     </div>
   </div>
 
+  <!-- Ações em Lote -->
+  {% if current_user.tipo in ['admin', 'cliente'] %}
+  <div class="card shadow-sm mb-3" id="acoes-lote" style="display: none;">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="fw-bold">Ações em Lote:</span>
+          <span id="contador-selecionados" class="badge bg-primary ms-2">0 selecionados</span>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-success btn-sm" onclick="confirmarLote()">
+            <i class="bi bi-check-circle me-1"></i> Confirmar Selecionados
+          </button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="cancelarLote()">
+            <i class="bi bi-x-circle me-1"></i> Cancelar Selecionados
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparSelecao()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Limpar Seleção
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Tabela de Agendamentos -->
   <div class="card shadow">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Lista de Agendamentos</h5>
-      <div>
+      <h5 class="mb-0"><i class="bi bi-table me-2"></i>Resultados</h5>
+      <div class="btn-group">
         <a href="{{ url_for('agendamento_routes.exportar_agendamentos_pdf') }}" class="btn btn-sm btn-outline-primary">
-          <i class="bi bi-file-pdf me-1"></i> Exportar PDF
+          <i class="bi bi-file-pdf me-1"></i> PDF
         </a>
         <a href="{{ url_for('agendamento_routes.exportar_agendamentos_csv') }}" class="btn btn-sm btn-outline-success">
-          <i class="bi bi-file-excel me-1"></i> Exportar CSV
+          <i class="bi bi-file-excel me-1"></i> CSV
         </a>
-        {% if current_user.tipo in ['admin', 'cliente', 'ministrante'] %}
-        <a href="{{ url_for('agendamento_routes.criar_agendamento') }}" class="btn btn-sm btn-primary ms-2">
-          <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
-        </a>
-        {% endif %}
       </div>
     </div>
     <div class="card-body p-0">
@@ -107,6 +152,14 @@
         <table class="table table-hover table-striped align-middle mb-0">
           <thead class="table-light">
             <tr>
+              {% if current_user.tipo in ['admin', 'cliente'] %}
+              <th width="50">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                  <label class="form-check-label" for="selectAll"></label>
+                </div>
+              </th>
+              {% endif %}
               <th>ID</th>
               <th>Data</th>
               <th>Horário</th>
@@ -120,6 +173,19 @@
             {% if agendamentos %}
               {% for agendamento in agendamentos %}
                 <tr>
+                  {% if current_user.tipo in ['admin', 'cliente'] %}
+                  <td>
+                    {% if agendamento.status in ['pendente', 'confirmado'] %}
+                    <div class="form-check">
+                      <input class="form-check-input agendamento-checkbox" type="checkbox" 
+                             value="{{ agendamento.id }}" 
+                             id="agendamento_{{ agendamento.id }}"
+                             onchange="updateSelectionCounter()">
+                      <label class="form-check-label" for="agendamento_{{ agendamento.id }}"></label>
+                    </div>
+                    {% endif %}
+                  </td>
+                  {% endif %}
                   <td>{{ agendamento.id }}</td>
                   <td>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</td>
                   <td>{{ agendamento.horario.horario_inicio }} - {{ agendamento.horario.horario_fim }}</td>
@@ -194,7 +260,7 @@
               {% endfor %}
             {% else %}
               <tr>
-                <td colspan="7" class="text-center py-4">
+                <td colspan="{{ '8' if current_user.tipo in ['admin', 'cliente'] else '7' }}" class="text-center py-4">
                   <div class="text-muted">
                     <i class="bi bi-calendar-x fs-4 d-block mb-2"></i>
                     Nenhum agendamento encontrado.
@@ -248,5 +314,121 @@
       return new bootstrap.Tooltip(el);
     });
   });
+
+  // Funções para seleção múltipla
+  function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateSelectionCounter();
+  }
+
+  function updateSelectionCounter() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox:checked');
+    const counter = document.getElementById('contador-selecionados');
+    const acoesLote = document.getElementById('acoes-lote');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    const count = checkboxes.length;
+    counter.textContent = count + ' selecionados';
+    
+    // Mostrar/ocultar painel de ações em lote
+    if (count > 0) {
+      acoesLote.style.display = 'block';
+    } else {
+      acoesLote.style.display = 'none';
+    }
+    
+    // Atualizar estado do checkbox "Selecionar Todos"
+    const totalCheckboxes = document.querySelectorAll('.agendamento-checkbox').length;
+    if (count === 0) {
+      selectAllCheckbox.indeterminate = false;
+      selectAllCheckbox.checked = false;
+    } else if (count === totalCheckboxes) {
+      selectAllCheckbox.indeterminate = false;
+      selectAllCheckbox.checked = true;
+    } else {
+      selectAllCheckbox.indeterminate = true;
+    }
+  }
+
+  function limparSelecao() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = false;
+    
+    updateSelectionCounter();
+  }
+
+  function confirmarLote() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+      alert('Nenhum agendamento selecionado.');
+      return;
+    }
+    
+    if (confirm(`Deseja confirmar ${ids.length} agendamento(s) selecionado(s)?`)) {
+      processarLote(ids, 'confirmado');
+    }
+  }
+
+  function cancelarLote() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+      alert('Nenhum agendamento selecionado.');
+      return;
+    }
+    
+    if (confirm(`Deseja cancelar ${ids.length} agendamento(s) selecionado(s)?`)) {
+      processarLote(ids, 'cancelado');
+    }
+  }
+
+  function processarLote(ids, status) {
+    // Criar formulário dinâmico para envio
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("agendamento_routes.processar_lote_agendamentos") }}';
+    
+    // CSRF Token
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrf_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
+    
+    // Status
+    const statusInput = document.createElement('input');
+    statusInput.type = 'hidden';
+    statusInput.name = 'status';
+    statusInput.value = status;
+    form.appendChild(statusInput);
+    
+    // IDs dos agendamentos
+    ids.forEach(id => {
+      const idInput = document.createElement('input');
+      idInput.type = 'hidden';
+      idInput.name = 'agendamento_ids';
+      idInput.value = id;
+      form.appendChild(idInput);
+    });
+    
+    // Adicionar ao DOM e submeter
+    document.body.appendChild(form);
+    form.submit();
+  }
 </script>
 {% endblock %}
