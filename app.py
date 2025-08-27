@@ -212,4 +212,5 @@ def reconciliar_pendentes(app: Flask) -> None:
 if __name__ == "__main__":
     # Instância para servidores WSGI como o gunicorn
     app = create_app()
-    socketio.run(app, debug=True)
+    port = int(os.getenv('PORT', 5000))
+    socketio.run(app, debug=True, port=port)

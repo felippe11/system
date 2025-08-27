@@ -5684,40 +5684,106 @@ def api_toggle_material_apoio(material_id):
 def listar_notificacoes():
     """Lista todas as notificações do usuário atual."""
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = 20
+        # Verificar se é uma requisição AJAX (com parâmetro limit ou Accept: application/json)
+        limit = request.args.get('limit', type=int)
+        is_ajax = limit is not None or 'application/json' in request.headers.get('Accept', '')
         
-        # Filtros
-        tipo = request.args.get('tipo')
-        lida = request.args.get('lida')
+        if is_ajax:
+            # Retornar JSON para requisições AJAX
+            query = NotificacaoAgendamento.query.filter_by(destinatario_id=current_user.id)
+            
+            # Aplicar filtros se fornecidos
+            tipo = request.args.get('tipo')
+            lida = request.args.get('lida')
+            
+            if tipo:
+                query = query.filter_by(tipo=tipo)
+            if lida is not None:
+                query = query.filter_by(lida=lida.lower() == 'true')
+            
+            # Ordenar por data de criação (mais recentes primeiro)
+            query = query.order_by(NotificacaoAgendamento.data_criacao.desc())
+            
+            # Aplicar limite se fornecido
+            if limit:
+                notificacoes_list = query.limit(limit).all()
+            else:
+                notificacoes_list = query.all()
+            
+            # Contar total de notificações não lidas
+            count_nao_lidas = NotificacaoAgendamento.query.filter_by(
+                destinatario_id=current_user.id,
+                lida=False
+            ).count()
+            
+            # Converter notificações para formato JSON
+            notificacoes_json = []
+            for notif in notificacoes_list:
+                notificacoes_json.append({
+                    'id': notif.id,
+                    'titulo': notif.titulo,
+                    'mensagem': notif.mensagem,
+                    'tipo': notif.tipo,
+                    'lida': notif.lida,
+                    'data_criacao': notif.data_criacao.strftime('%d/%m/%Y %H:%M') if notif.data_criacao else '',
+                    'remetente_nome': notif.remetente.nome if notif.remetente else 'Sistema',
+                    'agendamento_id': notif.agendamento_id
+                })
+            
+            return jsonify({
+                'success': True,
+                'notificacoes': notificacoes_json,
+                'count': count_nao_lidas
+            })
         
-        # Query base
-        query = NotificacaoAgendamento.query.filter_by(destinatario_id=current_user.id)
-        
-        # Aplicar filtros
-        if tipo:
-            query = query.filter_by(tipo=tipo)
-        if lida is not None:
-            query = query.filter_by(lida=lida.lower() == 'true')
-        
-        # Ordenar por data de criação (mais recentes primeiro)
-        query = query.order_by(NotificacaoAgendamento.data_criacao.desc())
-        
-        # Paginação
-        notificacoes = query.paginate(
-            page=page, per_page=per_page, error_out=False
-        )
-        
-        return render_template(
-            'agendamento/notificacoes.html',
-            notificacoes=notificacoes,
-            tipo_filtro=tipo,
-            lida_filtro=lida
-        )
+        else:
+            # Retornar HTML para acesso direto
+            page = request.args.get('page', 1, type=int)
+            per_page = 20
+            
+            # Filtros
+            tipo = request.args.get('tipo')
+            lida = request.args.get('lida')
+            
+            # Query base
+            query = NotificacaoAgendamento.query.filter_by(destinatario_id=current_user.id)
+            
+            # Aplicar filtros
+            if tipo:
+                query = query.filter_by(tipo=tipo)
+            if lida is not None:
+                query = query.filter_by(lida=lida.lower() == 'true')
+            
+            # Ordenar por data de criação (mais recentes primeiro)
+            query = query.order_by(NotificacaoAgendamento.data_criacao.desc())
+            
+            # Paginação
+            notificacoes = query.paginate(
+                page=page, per_page=per_page, error_out=False
+            )
+            
+            return render_template(
+                'agendamento/notificacoes.html',
+                notificacoes=notificacoes,
+                tipo_filtro=tipo,
+                lida_filtro=lida
+            )
+            
     except Exception as e:
         current_app.logger.error(f"Erro ao listar notificações: {e}")
-        flash('Erro ao carregar notificações', 'error')
-        return redirect(url_for('agendamento_routes.listar_agendamentos'))
+        
+        # Verificar se é AJAX para retornar erro em JSON
+        limit = request.args.get('limit', type=int)
+        is_ajax = limit is not None or 'application/json' in request.headers.get('Accept', '')
+        
+        if is_ajax:
+            return jsonify({
+                'success': False,
+                'error': 'Erro ao carregar notificações'
+            }), 500
+        else:
+            flash('Erro ao carregar notificações', 'error')
+            return redirect(url_for('agendamento_routes.listar_agendamentos'))
 
 
 @agendamento_routes.route('/notificacoes/<int:notificacao_id>/marcar-lida', methods=['POST'])
