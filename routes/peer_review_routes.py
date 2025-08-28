@@ -25,6 +25,7 @@ from models import (
     RevisorCandidatura,
     RevisorProcess,
     WorkMetadata,
+    Formulario,
 )
 
 import uuid
@@ -66,10 +67,20 @@ def submission_control():
     eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
     evento_ids = [e.id for e in eventos]
     
+    # Get reviewer selection processes for this client
+    processos_seletivos = (
+        db.session.query(RevisorProcess, Formulario)
+        .join(Formulario, RevisorProcess.formulario_id == Formulario.id)
+        .filter(RevisorProcess.cliente_id == cliente_id)
+        .all()
+    )
+    
     # Get submissions for client's events with metadata
     submissions = (
         db.session.query(Submission, WorkMetadata)
-        .outerjoin(WorkMetadata, Submission.evento_id == WorkMetadata.evento_id)
+        .outerjoin(WorkMetadata, 
+                  (Submission.evento_id == WorkMetadata.evento_id) & 
+                  (Submission.title == WorkMetadata.titulo))
         .filter(Submission.evento_id.in_(evento_ids) if evento_ids else False)
         .all()
     )
@@ -82,8 +93,9 @@ def submission_control():
     
     submissions = list(submission_dict.values())
     
-    reviewers = (
-        Usuario.query
+    # Get reviewers with their form responses
+    reviewers_query = (
+        db.session.query(Usuario, RevisorCandidatura)
         .join(RevisorCandidatura, Usuario.email == RevisorCandidatura.email)
         .filter(
             Usuario.tipo == "revisor",
@@ -91,6 +103,71 @@ def submission_control():
         )
         .all()
     )
+    
+    # Process reviewers to extract form data
+    reviewers = []
+    for usuario, candidatura in reviewers_query:
+        reviewer_data = {
+            'id': usuario.id,
+            'nome': usuario.nome,
+            'email': usuario.email,
+            'process_id': candidatura.process_id,
+            'formacao': '',
+            'instituicao': '',
+            'area_atuacao': '',
+            'titulacao': '',
+            'experiencia': ''
+        }
+        
+        # Extract information from form responses (JSON field)
+        if candidatura.respostas:
+            respostas = candidatura.respostas
+            
+            # Map common form field names to reviewer data
+            # Adjust these mappings based on your actual form structure
+            if 'formacao' in respostas:
+                reviewer_data['formacao'] = respostas['formacao']
+            elif 'formação' in respostas:
+                reviewer_data['formacao'] = respostas['formação']
+            elif 'graduacao' in respostas:
+                reviewer_data['formacao'] = respostas['graduacao']
+            elif 'graduação' in respostas:
+                reviewer_data['formacao'] = respostas['graduação']
+                
+            if 'instituicao' in respostas:
+                reviewer_data['instituicao'] = respostas['instituicao']
+            elif 'instituição' in respostas:
+                reviewer_data['instituicao'] = respostas['instituição']
+            elif 'universidade' in respostas:
+                reviewer_data['instituicao'] = respostas['universidade']
+                
+            if 'area_atuacao' in respostas:
+                reviewer_data['area_atuacao'] = respostas['area_atuacao']
+            elif 'área_atuação' in respostas:
+                reviewer_data['area_atuacao'] = respostas['área_atuação']
+            elif 'area' in respostas:
+                reviewer_data['area_atuacao'] = respostas['area']
+                
+            if 'titulacao' in respostas:
+                reviewer_data['titulacao'] = respostas['titulacao']
+            elif 'titulação' in respostas:
+                reviewer_data['titulacao'] = respostas['titulação']
+            elif 'titulo' in respostas:
+                reviewer_data['titulacao'] = respostas['titulo']
+                
+            if 'experiencia' in respostas:
+                reviewer_data['experiencia'] = respostas['experiencia']
+            elif 'experiência' in respostas:
+                reviewer_data['experiencia'] = respostas['experiência']
+        
+        # Create a simple object to maintain compatibility with template
+        class ReviewerInfo:
+            def __init__(self, data):
+                for key, value in data.items():
+                    setattr(self, key, value)
+        
+        reviewers.append(ReviewerInfo(reviewer_data))
+    
     
     # eventos already retrieved above
     
@@ -104,6 +181,7 @@ def submission_control():
         reviewers=reviewers,
         config=config,
         eventos=eventos,
+        processos_seletivos=processos_seletivos,
     )
 
 

@@ -423,6 +423,27 @@
                 </h6>
               </div>
               <div class="card-body">
+                <!-- Seletor de Formulário/Processo -->
+                <div class="mb-3">
+                  <label for="filterProcesso" class="form-label fw-bold">
+                    <i class="fas fa-filter me-2"></i>Filtrar por Formulário/Processo
+                  </label>
+                  <select class="form-select" id="filterProcesso">
+                    <option value="">Todos os processos seletivos</option>
+                    {% for processo, formulario in processos_seletivos %}
+                      <option value="{{ processo.id }}">
+                        {{ formulario.nome if formulario.nome else 'Processo ' + processo.id|string }}
+                        {% if processo.evento_id %}
+                          - {{ processo.evento.nome if processo.evento else 'Evento ' + processo.evento_id|string }}
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">
+                    Mostra apenas revisores que responderam ao formulário selecionado
+                  </div>
+                </div>
+                
                 <!-- Filtros de Revisores -->
                 <div class="row mb-3">
                   <div class="col-md-4">
@@ -446,15 +467,24 @@
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="reviewersList">
                       {% for r in reviewers %}
-                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}">
+                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-process-id="{{ r.process_id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}" data-area="{{ r.area_atuacao|lower if r.area_atuacao else '' }}" data-titulacao="{{ r.titulacao|lower if r.titulacao else '' }}">
                           <input class="form-check-input reviewer-checkbox" type="checkbox" value="{{ r.id }}" id="reviewer_{{ r.id }}">
                           <label class="form-check-label" for="reviewer_{{ r.id }}">
                             <div class="d-flex justify-content-between align-items-start">
                               <div>
                                 <strong>{{ r.nome if r.nome else 'N/A' }}</strong>
+                                {% if r.titulacao %}
+                                  <span class="badge bg-primary ms-2">{{ r.titulacao }}</span>
+                                {% endif %}
                                 <br><small class="text-muted">{{ r.formacao if r.formacao else 'N/A' }}</small>
                                 {% if r.instituicao %}
                                   <br><small class="text-info">{{ r.instituicao }}</small>
+                                {% endif %}
+                                {% if r.area_atuacao %}
+                                  <br><small class="text-success"><i class="fas fa-tag me-1"></i>{{ r.area_atuacao }}</small>
+                                {% endif %}
+                                {% if r.experiencia %}
+                                  <br><small class="text-secondary"><i class="fas fa-clock me-1"></i>{{ r.experiencia }}</small>
                                 {% endif %}
                               </div>
                               <span class="badge bg-warning" id="works_count_{{ r.id }}">0/{{ config.max_trabalhos_por_revisor if config else 5 }}</span>
@@ -836,18 +866,21 @@ $(document).ready(function() {
       const nameFilter = $('#filterReviewerName').val().toLowerCase();
       const formacaoFilter = $('#filterReviewerFormacao').val().toLowerCase();
       const instituicaoFilter = $('#filterReviewerInstituicao').val().toLowerCase();
+      const processFilter = $('#filterProcesso').val();
       
       $('.reviewer-item').each(function() {
         const item = $(this);
         const name = item.find('strong').text().toLowerCase();
         const formacao = item.data('formacao') || '';
         const instituicao = item.data('instituicao') || '';
+        const processId = item.data('process-id') || '';
         
         const matchesName = !nameFilter || name.includes(nameFilter);
         const matchesFormacao = !formacaoFilter || formacao.includes(formacaoFilter);
         const matchesInstituicao = !instituicaoFilter || instituicao.includes(instituicaoFilter);
+        const matchesProcess = !processFilter || processId.toString() === processFilter;
         
-        if (matchesName && matchesFormacao && matchesInstituicao) {
+        if (matchesName && matchesFormacao && matchesInstituicao && matchesProcess) {
           item.show();
         } else {
           item.hide();
@@ -859,7 +892,7 @@ $(document).ready(function() {
       updateSelections();
     }
 
-    $('#filterReviewerName, #filterReviewerFormacao, #filterReviewerInstituicao').on('input', filterReviewers);
+    $('#filterReviewerName, #filterReviewerFormacao, #filterReviewerInstituicao, #filterProcesso').on('input change', filterReviewers);
 
     // Gerenciar seleções de trabalhos com validação em tempo real
     $(document).on('change', '.work-checkbox', function() {
