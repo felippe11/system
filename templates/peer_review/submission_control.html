@@ -382,7 +382,12 @@
                 </div>
                 
                 <div class="mb-3">
-                  <label class="form-label">Trabalhos Selecionados: <span id="selectedWorksCount" class="badge bg-primary">0</span></label>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Trabalhos Selecionados: <span id="selectedWorksCount" class="badge bg-primary">0</span></label>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllWorks">
+                      <i class="fas fa-check-square me-1"></i>Selecionar Todos
+                    </button>
+                  </div>
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="worksList">
                       {% for submission_tuple in submissions %}
@@ -431,7 +436,12 @@
                 </div>
                 
                 <div class="mb-3">
-                  <label class="form-label">Revisores Selecionados: <span id="selectedReviewersCount" class="badge bg-success">0</span></label>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label">Revisores Selecionados: <span id="selectedReviewersCount" class="badge bg-success">0</span></label>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllReviewers">
+                      <i class="fas fa-check-square me-1"></i>Selecionar Todos
+                    </button>
+                  </div>
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="reviewersList">
                       {% for r in reviewers %}
@@ -802,6 +812,22 @@ $(document).ready(function() {
       });
       
       updateSelections();
+      
+      // Atualizar o texto do botão "Selecionar Todos" para revisores
+      const $buttonReviewers = $('#selectAllReviewers');
+      const $checkboxesReviewers = $('.reviewer-checkbox:visible');
+      const checkedCountReviewers = $checkboxesReviewers.filter(':checked').length;
+      
+      if (checkedCountReviewers === 0) {
+        $buttonReviewers.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $buttonReviewers.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else if (checkedCountReviewers === $checkboxesReviewers.length) {
+        $buttonReviewers.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $buttonReviewers.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      } else {
+        $buttonReviewers.html('<i class="fas fa-minus-square me-1"></i>Selecionar Todos');
+        $buttonReviewers.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      }
     });
 
     // Filtros de revisores
@@ -847,6 +873,22 @@ $(document).ready(function() {
           showAlert(`Este trabalho já possui o máximo de revisores (${limits.maxReviewersPerWork}).`, 'warning');
           return;
         }
+      }
+      
+      // Atualizar o texto do botão "Selecionar Todos"
+      const $button = $('#selectAllWorks');
+      const $checkboxes = $('.work-checkbox:visible');
+      const checkedCount = $checkboxes.filter(':checked').length;
+      
+      if (checkedCount === 0) {
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else if (checkedCount === $checkboxes.length) {
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      } else {
+        $button.html('<i class="fas fa-minus-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
       }
       
       updateSelections();
@@ -910,6 +952,58 @@ $(document).ready(function() {
       $('#assignManual').prop('disabled', !(hasWorks && hasReviewers));
       $('#assignSmart').prop('disabled', !hasWorks);
     }
+
+    // Funcionalidade do botão "Selecionar Todos" para trabalhos
+    $('#selectAllWorks').on('click', function() {
+      const $button = $(this);
+      const $icon = $button.find('i');
+      const $checkboxes = $('.work-checkbox:visible');
+      
+      // Verificar se todos os checkboxes visíveis estão marcados
+      const allChecked = $checkboxes.length > 0 && $checkboxes.filter(':checked').length === $checkboxes.length;
+      
+      if (allChecked) {
+        // Desmarcar todos
+        $checkboxes.prop('checked', false);
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else {
+        // Marcar todos os visíveis
+        $checkboxes.prop('checked', true);
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      }
+      
+      // Atualizar seleções
+      updateSelections();
+    });
+
+    // Funcionalidade do botão "Selecionar Todos" para revisores
+    $('#selectAllReviewers').on('click', function() {
+      const $button = $(this);
+      const $icon = $button.find('i');
+      const $checkboxes = $('.reviewer-checkbox:visible');
+      
+      // Verificar se todos os checkboxes visíveis estão marcados
+      const allChecked = $checkboxes.length > 0 && $checkboxes.filter(':checked').length === $checkboxes.length;
+      
+      if (allChecked) {
+        // Desmarcar todos
+        $checkboxes.prop('checked', false);
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else {
+        // Marcar todos os visíveis
+        $checkboxes.prop('checked', true);
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      }
+      
+      // Atualizar seleções
+      updateSelections();
+    });
+
+
 
     // Atribuição manual
     $('#assignManual').on('click', function() {
