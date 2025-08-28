@@ -807,18 +807,49 @@ def relatorio_geral_agendamentos():
             'percentual': round(percentual_pcd, 1)
         }
         
-        # Materiais de apoio mais utilizados (simulado - seria necessário implementar a relação)
+        # Materiais de apoio mais utilizados
         materiais_stats = (
             db.session.query(
                 MaterialApoio.nome.label('nome'),
-                func.count(MaterialApoio.id).label('total_uso')
+                func.count(func.distinct(AlunoVisitante.id)).label('total_uso')
             )
-            .filter(MaterialApoio.ativo == True)
+            .join(AlunoVisitante.materiais_apoio)
+            .join(AgendamentoVisita, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
+            .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+            .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+            .filter(
+                Evento.cliente_id == cliente_id,
+                coluna_data >= data_inicio,
+                coluna_data <= data_fim,
+                MaterialApoio.ativo == True
+            )
             .group_by(MaterialApoio.id, MaterialApoio.nome)
-            .order_by(func.count(MaterialApoio.id).desc())
+            .order_by(func.count(func.distinct(AlunoVisitante.id)).desc())
             .limit(5)
             .all()
         )
+        if evento_id:
+            materiais_stats = (
+                db.session.query(
+                    MaterialApoio.nome.label('nome'),
+                    func.count(func.distinct(AlunoVisitante.id)).label('total_uso')
+                )
+                .join(AlunoVisitante.materiais_apoio)
+                .join(AgendamentoVisita, AlunoVisitante.agendamento_id == AgendamentoVisita.id)
+                .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+                .join(Evento, HorarioVisitacao.evento_id == Evento.id)
+                .filter(
+                    Evento.cliente_id == cliente_id,
+                    Evento.id == evento_id,
+                    coluna_data >= data_inicio,
+                    coluna_data <= data_fim,
+                    MaterialApoio.ativo == True
+                )
+                .group_by(MaterialApoio.id, MaterialApoio.nome)
+                .order_by(func.count(func.distinct(AlunoVisitante.id)).desc())
+                .limit(5)
+                .all()
+            )
         dados_agregados['materiais_apoio'] = materiais_stats
         
     except ImportError:
