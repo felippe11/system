@@ -607,6 +607,7 @@ class ConfiguracaoCliente(db.Model):
     limite_inscritos = db.Column(db.Integer, default=1000)
     limite_formularios = db.Column(db.Integer, default=3)
     limite_revisores = db.Column(db.Integer, default=2)
+    limite_total_revisores = db.Column(db.Integer, default=10)
 
 
 class ConfiguracaoEvento(db.Model):

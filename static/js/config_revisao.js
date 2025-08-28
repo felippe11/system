@@ -104,6 +104,53 @@
   const minRev = parseInt(container.dataset.minRev || '1', 10);
   const maxRev = parseInt(container.dataset.maxRev || '2', 10);
 
+  // Configuração AJAX para campos de input numéricos
+  document.querySelectorAll('input[data-update-url]').forEach((input) => {
+    attachOnce(input, 'change', async () => {
+      const url = input.dataset.updateUrl;
+      const value = parseInt(input.value, 10);
+      
+      if (!url || isNaN(value) || value < 1) {
+        console.error('URL ou valor inválido:', url, value);
+        return;
+      }
+      
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+          },
+          body: JSON.stringify({ value: value }),
+        });
+        
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.success) {
+            console.log('Configuração atualizada:', input.id, value);
+            // Mostrar feedback visual temporário
+            input.style.borderColor = '#28a745';
+            setTimeout(() => {
+              input.style.borderColor = '';
+            }, 1000);
+          } else {
+            alert(data.message || 'Erro ao atualizar configuração');
+            input.focus();
+          }
+        } else {
+          const data = await resp.json().catch(() => null);
+          alert(data?.message || 'Erro ao processar solicitação');
+          input.focus();
+        }
+      } catch (err) {
+        console.error('Erro de rede ao atualizar configuração:', err);
+        alert('Erro de conexão. Tente novamente.');
+        input.focus();
+      }
+    });
+  });
+
   attachOnce(document.getElementById('assignManual'), 'click', () => {
     console.log('Botão Atribuir Manualmente clicado');
     const subId = document.getElementById('submissionSelect').value;

@@ -497,8 +497,8 @@ def approve(cand_id: int):
             .count()
         )
         if (
-            config_cli.limite_revisores is not None
-            and aprovados >= config_cli.limite_revisores
+            config_cli.limite_total_revisores is not None
+            and aprovados >= config_cli.limite_total_revisores
         ):
             flash("Limite de revisores atingido.", "danger")
             return redirect(url_for("dashboard_routes.dashboard_cliente"))

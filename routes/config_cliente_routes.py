@@ -850,6 +850,32 @@ def set_limite_revisores(cliente_id):
     return jsonify({"success": True, "value": config.limite_revisores})
 
 
+@config_cliente_routes.route("/set_limite_total_revisores", methods=["POST"])
+@login_required
+def set_limite_total_revisores():
+    """Define o limite total de revisores para o cliente."""
+    if current_user.tipo != "cliente":
+        return jsonify({"success": False, "message": "Acesso negado!"}), 403
+    
+    value = request.form.get("value") or request.json.get("value")
+    try:
+        value_int = int(value)
+        if value_int < 0:
+            return jsonify({"success": False, "message": "Valor deve ser positivo"}), 400
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Valor inválido"}), 400
+    
+    config = ConfiguracaoCliente.query.filter_by(cliente_id=current_user.id).first()
+    if not config:
+        config = ConfiguracaoCliente(cliente_id=current_user.id)
+        db.session.add(config)
+    
+    config.limite_total_revisores = value_int
+    db.session.commit()
+    
+    return jsonify({"success": True, "value": config.limite_total_revisores})
+
+
 @config_cliente_routes.route("/revisao_config/<int:evento_id>", methods=["POST"])
 @login_required
 def atualizar_revisao_config(evento_id):
