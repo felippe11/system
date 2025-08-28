@@ -453,8 +453,8 @@
                     <select class="form-select form-select-sm" id="dynamicFieldSelect">
                       <option value="">Selecione um campo para filtrar</option>
                       {% for process_id, fields in form_fields.items() %}
-                        {% for field in fields %}
-                          <option value="{{ field.nome }}" data-process-id="{{ process_id }}">{{ field.nome }}</option>
+                        {% for field_data in fields %}
+                          <option value="{{ field_data.nome }}" data-process-id="{{ process_id }}">{{ field_data.nome }}</option>
                         {% endfor %}
                       {% endfor %}
                     </select>
@@ -872,8 +872,19 @@ $(document).ready(function() {
 
     // Dados dos campos dinâmicos
     const fieldOptions = {{ field_options|tojson|safe }};
+    console.log('=== INICIALIZAÇÃO DO FILTRO DINÂMICO ===');
     console.log('DEBUG: fieldOptions carregados:', fieldOptions);
     console.log('DEBUG: Estrutura dos fieldOptions:', Object.keys(fieldOptions));
+    console.log('DEBUG: Tipo de fieldOptions:', typeof fieldOptions);
+    console.log('DEBUG: fieldOptions é array?', Array.isArray(fieldOptions));
+    
+    // Verificar cada processo
+    Object.keys(fieldOptions).forEach(processId => {
+        console.log(`DEBUG: Processo ${processId}:`, fieldOptions[processId]);
+        if (fieldOptions[processId]) {
+            console.log(`DEBUG: Campos disponíveis para processo ${processId}:`, Object.keys(fieldOptions[processId]));
+        }
+    });
     
     // Filtros de revisores
     function filterReviewers() {
@@ -918,9 +929,15 @@ $(document).ready(function() {
     // Atualizar opções do filtro de campos quando o processo for selecionado
     $('#filterProcesso').on('change', function() {
       const selectedProcessId = $(this).val();
+      console.log('=== EVENTO CHANGE DO PROCESSO ===');
       console.log('DEBUG: Processo selecionado:', selectedProcessId);
+      console.log('DEBUG: Tipo do processo selecionado:', typeof selectedProcessId);
+      
       const $fieldSelect = $('#dynamicFieldSelect');
       const $valueSelect = $('#dynamicValueSelect');
+      
+      console.log('DEBUG: Elemento fieldSelect encontrado:', $fieldSelect.length > 0);
+      console.log('DEBUG: Elemento valueSelect encontrado:', $valueSelect.length > 0);
       
       // Limpar seletores
       $fieldSelect.empty().append('<option value="">Selecione um campo para filtrar</option>');
@@ -928,26 +945,47 @@ $(document).ready(function() {
       console.log('DEBUG: Seletores limpos');
       
       if (selectedProcessId) {
+        console.log('DEBUG: Verificando fieldOptions para processo:', selectedProcessId);
+        console.log('DEBUG: fieldOptions[selectedProcessId] existe?', !!fieldOptions[selectedProcessId]);
+        console.log('DEBUG: Conteúdo de fieldOptions[selectedProcessId]:', fieldOptions[selectedProcessId]);
+        
         // Adicionar apenas campos do processo selecionado
         let addedFields = 0;
         allFieldOptions.each(function() {
           const optionProcessId = $(this).data('process-id');
           console.log('DEBUG: Comparando processId da opção:', optionProcessId, 'com selecionado:', selectedProcessId);
           if (optionProcessId && optionProcessId.toString() === selectedProcessId) {
-            $fieldSelect.append($(this).clone());
+            const clonedOption = $(this).clone();
+            console.log('DEBUG: Adicionando opção:', clonedOption.text(), 'valor:', clonedOption.val());
+            $fieldSelect.append(clonedOption);
             addedFields++;
           }
         });
-        console.log('DEBUG: Campos adicionados para processo', selectedProcessId, ':', addedFields);
+        console.log('DEBUG: Total de campos adicionados para processo', selectedProcessId, ':', addedFields);
+        
+        if (addedFields === 0) {
+          console.log('AVISO: Nenhum campo foi adicionado! Verificando allFieldOptions...');
+          console.log('DEBUG: Total de allFieldOptions:', allFieldOptions.length);
+          allFieldOptions.each(function(index) {
+            console.log(`DEBUG: Opção ${index}:`, {
+              text: $(this).text(),
+              value: $(this).val(),
+              processId: $(this).data('process-id')
+            });
+          });
+        }
       } else {
         // Mostrar todos os campos se nenhum processo estiver selecionado
         allFieldOptions.each(function() {
           $fieldSelect.append($(this).clone());
         });
-        console.log('DEBUG: Todos os campos adicionados');
+        console.log('DEBUG: Todos os campos adicionados (', allFieldOptions.length, 'campos)');
       }
       
+      console.log('DEBUG: Opções finais no fieldSelect:', $fieldSelect.find('option').length);
+      
       // Reexecutar filtro
+      console.log('DEBUG: Executando filterReviewers...');
       filterReviewers();
     });
     
@@ -955,30 +993,55 @@ $(document).ready(function() {
     $('#dynamicFieldSelect').on('change', function() {
       const selectedField = $(this).val();
       const selectedProcessId = $('#filterProcesso').val() || $(this).find('option:selected').data('process-id');
-      console.log('DEBUG: Campo selecionado:', selectedField, 'para processo:', selectedProcessId);
+      console.log('=== EVENTO CHANGE DO CAMPO ===');
+      console.log('DEBUG: Campo selecionado:', selectedField);
+      console.log('DEBUG: Processo para campo:', selectedProcessId);
+      console.log('DEBUG: Tipo do campo:', typeof selectedField);
+      console.log('DEBUG: Tipo do processo:', typeof selectedProcessId);
+      
       const $valueSelect = $('#dynamicValueSelect');
+      console.log('DEBUG: Elemento valueSelect encontrado:', $valueSelect.length > 0);
       
       $valueSelect.empty().append('<option value="">Selecione uma opção</option>');
       
       console.log('DEBUG: Verificando fieldOptions[' + selectedProcessId + '][' + selectedField + ']');
       console.log('DEBUG: fieldOptions para processo:', fieldOptions[selectedProcessId]);
+      console.log('DEBUG: fieldOptions[selectedProcessId] existe?', !!fieldOptions[selectedProcessId]);
+      
+      if (fieldOptions[selectedProcessId]) {
+        console.log('DEBUG: Campos disponíveis no processo:', Object.keys(fieldOptions[selectedProcessId]));
+        console.log('DEBUG: fieldOptions[selectedProcessId][selectedField]:', fieldOptions[selectedProcessId][selectedField]);
+      }
       
       if (selectedField && selectedProcessId && fieldOptions[selectedProcessId] && fieldOptions[selectedProcessId][selectedField]) {
         $valueSelect.prop('disabled', false);
         const options = fieldOptions[selectedProcessId][selectedField];
         console.log('DEBUG: Opções encontradas para campo:', options);
+        console.log('DEBUG: Tipo das opções:', typeof options, 'É array?', Array.isArray(options));
         
         // Adicionar opções disponíveis para o campo selecionado
-        options.forEach(function(option) {
-          $valueSelect.append(`<option value="${option}">${option}</option>`);
-        });
-        console.log('DEBUG: Opções adicionadas ao select de valores');
+        if (Array.isArray(options)) {
+          options.forEach(function(option, index) {
+            console.log(`DEBUG: Adicionando opção ${index}:`, option);
+            $valueSelect.append(`<option value="${option}">${option}</option>`);
+          });
+          console.log('DEBUG: Total de opções adicionadas:', options.length);
+        } else {
+          console.log('ERRO: options não é um array:', options);
+        }
       } else {
         $valueSelect.prop('disabled', true);
-        console.log('DEBUG: Nenhuma opção encontrada - campo desabilitado');
+        console.log('DEBUG: Condições não atendidas:');
+        console.log('  - selectedField:', !!selectedField);
+        console.log('  - selectedProcessId:', !!selectedProcessId);
+        console.log('  - fieldOptions[selectedProcessId]:', !!fieldOptions[selectedProcessId]);
+        console.log('  - fieldOptions[selectedProcessId][selectedField]:', !!(fieldOptions[selectedProcessId] && fieldOptions[selectedProcessId][selectedField]));
       }
       
+      console.log('DEBUG: Opções finais no valueSelect:', $valueSelect.find('option').length);
+      
       // Limpar filtro e reexecutar
+      console.log('DEBUG: Executando filterReviewers...');
       filterReviewers();
     });
 
