@@ -1106,42 +1106,52 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
-    pdf.cell(95, 10, f'Total de Visitantes: {totais["visitantes_confirmados"]}', 0, 1)
-    
-    pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 0)
-    pdf.cell(95, 10, f'Realizados: {totais["realizados"]}', 0, 1)
+    pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 1)
     
     pdf.cell(95, 10, f'Cancelados: {totais["cancelados"]}', 0, 0)
-    pdf.cell(95, 10, f'Pendentes: {totais["pendentes"]}', 0, 1)
-    
     pdf.cell(95, 10, f'Check-ins: {totais["checkins"]}', 0, 1)
     
     # Calcular taxas
     if total_agendamentos > 0:
         taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
-        pdf.cell(190, 10, f'Taxa de Cancelamento: {taxa_cancelamento:.1f}%', 0, 1)
+        pdf.cell(95, 10, f'Taxa de Cancelamento: {taxa_cancelamento:.1f}%', 0, 0)
     
     if totais['confirmados'] + totais['realizados'] > 0:
         taxa_conclusao = (totais['realizados'] / (totais['confirmados'] + totais['realizados'])) * 100
-        pdf.cell(190, 10, f'Taxa de Conclusão: {taxa_conclusao:.1f}%', 0, 1)
+        pdf.cell(95, 10, f'Taxa de Conclusão: {taxa_conclusao:.1f}%', 0, 1)
     
-    # Estatísticas por escola
+    # Estatísticas por escola com PCD
     if 'escolas' in dados_agregados and dados_agregados['escolas']:
         pdf.ln(10)
         pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Top 10 Escolas', 0, 1)
         
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(80, 10, 'Escola', 1, 0, 'C')
-        pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
-        pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(60, 10, 'Escola', 1, 0, 'C')
+        pdf.cell(25, 10, 'Agendamentos', 1, 0, 'C')
+        pdf.cell(25, 10, 'Alunos', 1, 0, 'C')
+        pdf.cell(25, 10, 'PCD', 1, 0, 'C')
+        pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
+        pdf.cell(30, 10, 'Pendentes', 1, 1, 'C')
         
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('Arial', '', 8)
         for escola in dados_agregados['escolas'][:10]:
-            escola_nome = escola.nome[:35] + '...' if len(escola.nome) > 35 else escola.nome
-            pdf.cell(80, 10, escola_nome, 1, 0)
-            pdf.cell(30, 10, str(escola.total_agendamentos), 1, 0, 'C')
-            pdf.cell(30, 10, str(escola.total_alunos or 0), 1, 1, 'C')
+            escola_nome = escola.nome[:30] + '...' if len(escola.nome) > 30 else escola.nome
+            
+            # Calcular PCD por escola
+            pcd_escola = 0
+            for agendamento in agendamentos:
+                if agendamento.escola_nome == escola.nome:
+                    for aluno in agendamento.alunos:
+                        if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                            pcd_escola += 1
+            
+            pdf.cell(60, 8, escola_nome, 1, 0)
+            pdf.cell(25, 8, str(escola.total_agendamentos), 1, 0, 'C')
+            pdf.cell(25, 8, str(escola.total_alunos or 0), 1, 0, 'C')
+            pdf.cell(25, 8, str(pcd_escola), 1, 0, 'C')
+            pdf.cell(25, 8, str(escola.realizados or 0), 1, 0, 'C')
+            pdf.cell(30, 8, str(escola.pendentes or 0), 1, 1, 'C')
     
     # Estatísticas por professor
     if 'professores' in dados_agregados and dados_agregados['professores']:
@@ -1170,7 +1180,8 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(60, 10, 'Nome', 1, 0, 'C')
         pdf.cell(70, 10, 'Email', 1, 0, 'C')
-        pdf.cell(60, 10, 'WhatsApp', 1, 1, 'C')
+        pdf.cell(30, 10, 'Total de Visitantes', 1, 0, 'C')
+        pdf.cell(30, 10, 'WhatsApp', 1, 1, 'C')
         
         pdf.set_font('Arial', '', 8)
         for professor in professores_confirmados[:20]:  # Limitar a 20 para não sobrecarregar
@@ -1178,11 +1189,18 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             email = professor.email[:30] + '...' if len(professor.email) > 30 else professor.email
             whatsapp = professor.responsavel_whatsapp or 'N/A'
             
-            pdf.cell(60, 10, nome, 1, 0)
-            pdf.cell(70, 10, email, 1, 0)
-            pdf.cell(60, 10, whatsapp, 1, 1)
+            # Calcular total de visitantes do professor
+            total_visitantes_prof = sum(
+                ag.quantidade_alunos for ag in agendamentos 
+                if ag.professor and ag.professor.id == professor.id and ag.status in ['confirmado', 'realizado']
+            )
+            
+            pdf.cell(60, 8, nome, 1, 0)
+            pdf.cell(70, 8, email, 1, 0)
+            pdf.cell(30, 8, str(total_visitantes_prof), 1, 0, 'C')
+            pdf.cell(30, 8, whatsapp, 1, 1)
     
-    # Necessidades especiais
+    # Necessidades especiais com detalhes
     if 'necessidades_especiais' in dados_agregados:
         pdf.ln(5)
         pdf.set_font('Arial', 'B', 14)
@@ -1190,17 +1208,125 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         
         pdf.set_font('Arial', '', 12)
         pcd_data = dados_agregados['necessidades_especiais']
-        pdf.cell(95, 10, f'Total de Alunos PCD: {pcd_data["total"]}', 0, 0)
+        
+        # Calcular estatísticas detalhadas de PCD
+        total_alunos_pcd = 0
+        tipos_pcd = {}
+        
+        for agendamento in agendamentos:
+            for aluno in agendamento.alunos:
+                if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                    total_alunos_pcd += 1
+                    tipo_display = aluno.necessidade_especial.get_tipo_display()
+                    tipos_pcd[tipo_display] = tipos_pcd.get(tipo_display, 0) + 1
+        
+        percentual = (total_alunos_pcd / max(totais.get('visitantes_confirmados', 1), 1)) * 100
+        
+        pdf.cell(95, 10, f'Total de Alunos PCD: {total_alunos_pcd}', 0, 0)
+        pdf.cell(95, 10, f'Percentual: {percentual:.1f}%', 0, 1)
         pdf.cell(95, 10, f'Agendamentos com PCD: {pcd_data["agendamentos"]}', 0, 1)
-        pdf.cell(95, 10, f'Percentual: {pcd_data["percentual"]}%', 0, 1)
+        
+        # Distribuição por tipo de necessidade especial
+        if tipos_pcd:
+            pdf.ln(3)
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(190, 8, 'Distribuição por Tipo de Necessidade:', 0, 1)
+            pdf.set_font('Arial', '', 10)
+            for tipo, quantidade in tipos_pcd.items():
+                pdf.cell(190, 6, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
+    
+    # Agendamentos detalhados por status
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1, 'C')
+    
+    # Organizar agendamentos por status (confirmados primeiro)
+    agendamentos_por_status = {
+        'confirmado': [a for a in agendamentos if a.status == 'confirmado'],
+        'realizado': [a for a in agendamentos if a.status == 'realizado'],
+        'pendente': [a for a in agendamentos if a.status == 'pendente'],
+        'cancelado': [a for a in agendamentos if a.status == 'cancelado']
+    }
+    
+    for status, lista_agendamentos in agendamentos_por_status.items():
+        if not lista_agendamentos:
+            continue
+            
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, f'Agendamentos {status.capitalize()}s ({len(lista_agendamentos)})', 0, 1)
+        
+        for agendamento in lista_agendamentos:
+            # Verificar se precisa de nova página
+            if pdf.get_y() > 250:
+                pdf.add_page()
+            
+            horario = agendamento.horario
+            
+            # Cabeçalho do agendamento
+            pdf.ln(3)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.set_fill_color(230, 230, 230)
+            pdf.cell(190, 8, f'#{agendamento.id} - {agendamento.escola_nome} - {horario.data.strftime("%d/%m/%Y")} {horario.horario_inicio.strftime("%H:%M")}', 1, 1, 'L', True)
+            
+            # Informações básicas
+            pdf.set_font('Arial', '', 9)
+            professor_nome = agendamento.professor.nome if agendamento.professor else 'Não informado'
+            pdf.cell(95, 6, f'Professor: {professor_nome}', 1, 0)
+            pdf.cell(95, 6, f'Status: {agendamento.status.capitalize()}', 1, 1)
+            
+            pdf.cell(95, 6, f'Turma: {agendamento.turma}', 1, 0)
+            pdf.cell(95, 6, f'Total de Alunos: {agendamento.quantidade_alunos}', 1, 1)
+            
+            # Lista de alunos
+            if agendamento.alunos:
+                pdf.ln(2)
+                pdf.set_font('Arial', 'B', 9)
+                pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
+                
+                # Cabeçalho da tabela de alunos
+                pdf.set_font('Arial', 'B', 8)
+                pdf.cell(70, 6, 'Nome', 1, 0, 'C')
+                pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+                pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
+                pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
+                
+                pdf.set_font('Arial', '', 7)
+                for aluno in agendamento.alunos:
+                    # Verificar se precisa de nova página
+                    if pdf.get_y() > 270:
+                        pdf.add_page()
+                        # Repetir cabeçalho
+                        pdf.set_font('Arial', 'B', 8)
+                        pdf.cell(70, 6, 'Nome', 1, 0, 'C')
+                        pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+                        pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
+                        pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
+                        pdf.set_font('Arial', '', 7)
+                    
+                    nome = aluno.nome[:35] + '...' if len(aluno.nome) > 35 else aluno.nome
+                    presente = 'Sim' if aluno.presente else 'Não'
+                    
+                    tipo_pcd = ''
+                    descricao_pcd = ''
+                    
+                    if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                        tipo_pcd = aluno.necessidade_especial.get_tipo_display()[:25]
+                        descricao_pcd = aluno.necessidade_especial.descricao[:30] + '...' if len(aluno.necessidade_especial.descricao) > 30 else aluno.necessidade_especial.descricao
+                    
+                    pdf.cell(70, 6, nome, 1, 0, 'L')
+                    pdf.cell(20, 6, presente, 1, 0, 'C')
+                    pdf.cell(50, 6, tipo_pcd, 1, 0, 'L')
+                    pdf.cell(50, 6, descricao_pcd, 1, 1, 'L')
     
     # Análise e recomendações
-    pdf.ln(10)
+    pdf.add_page()
     pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
     pdf.set_font('Arial', '', 12)
     if total_agendamentos > 0:
+        taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
         if taxa_cancelamento > 30:
             pdf.multi_cell(190, 10, '- Alta taxa de cancelamento. Considere revisar suas políticas de cancelamento.')
             pdf.multi_cell(190, 10, '- Envie lembretes com mais frequência para professores com agendamentos confirmados.')
@@ -1210,7 +1336,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         if totais['realizados'] < totais['confirmados']:
             pdf.multi_cell(190, 10, '- Implemente um sistema de lembretes mais eficiente para aumentar o comparecimento.')
             
-        if totais['visitantes_confirmados'] < 100:
+        if totais.get('visitantes_confirmados', 0) < 100:
             pdf.multi_cell(190, 10, '- Divulgue mais seus eventos entre escolas e professores para aumentar a quantidade de visitantes.')
     else:
         pdf.multi_cell(190, 10, '- Ainda não há dados suficientes para recomendações personalizadas.')
