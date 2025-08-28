@@ -116,7 +116,8 @@ def submission_control():
             'instituicao': '',
             'area_atuacao': '',
             'titulacao': '',
-            'experiencia': ''
+            'experiencia': '',
+            'respostas': candidatura.respostas or {}  # Include full responses for dynamic filtering
         }
         
         # Extract information from form responses (JSON field)
@@ -169,6 +170,64 @@ def submission_control():
         reviewers.append(ReviewerInfo(reviewer_data))
     
     
+    # Get form fields for dynamic filtering
+    form_fields = {}
+    field_options = {}
+    
+    print(f"DEBUG: Processando {len(processos_seletivos)} processos seletivos para form_fields")
+    
+    for revisor_process, formulario in processos_seletivos:
+        print(f"DEBUG: Processo {revisor_process.id}, Formulário ID: {revisor_process.formulario_id}")
+        if revisor_process.formulario_id and formulario:
+            # Get fields for this form
+            campos = formulario.campos
+            form_fields[revisor_process.id] = []
+            field_options[revisor_process.id] = {}
+            
+            print(f"DEBUG: Formulário {formulario.id} tem {len(campos)} campos")
+            
+            for campo in campos:
+                print(f"DEBUG: Verificando campo: {campo.nome} (protegido: {campo.protegido}, tipo: {campo.tipo})")
+                # Skip protected fields (nome, email)
+                if not campo.protegido:
+                    form_fields[revisor_process.id].append({
+                        'nome': campo.nome,
+                        'tipo': campo.tipo,
+                        'id': campo.id
+                    })
+                    print(f"DEBUG: Campo adicionado: {campo.nome} (tipo: {campo.tipo})")
+                    
+                    # Get unique values for this field from reviewer responses
+                    if campo.tipo in ['dropdown', 'text', 'textarea']:
+                        valores_unicos = set()
+                        
+                        # Get all responses for this process
+                        candidaturas = RevisorCandidatura.query.filter_by(
+                            process_id=revisor_process.id,
+                            status='aprovado'
+                        ).all()
+                        
+                        print(f"DEBUG: Encontradas {len(candidaturas)} candidaturas aprovadas para processo {revisor_process.id}")
+                        
+                        for candidatura in candidaturas:
+                            if candidatura.respostas and campo.nome in candidatura.respostas:
+                                valor = candidatura.respostas[campo.nome]
+                                if valor and str(valor).strip():
+                                    valores_unicos.add(str(valor).strip())
+                        
+                        # For dropdown fields, also include predefined options
+                        if campo.tipo == 'dropdown' and campo.opcoes:
+                            opcoes_predefinidas = [opt.strip() for opt in campo.opcoes.split(',') if opt.strip()]
+                            valores_unicos.update(opcoes_predefinidas)
+                        
+                        field_options[revisor_process.id][campo.nome] = sorted(list(valores_unicos))
+                        print(f"DEBUG: Campo {campo.nome} tem {len(valores_unicos)} valores únicos: {list(valores_unicos)[:5]}...")
+                else:
+                    print(f"DEBUG: Campo {campo.nome} foi ignorado por ser protegido")
+    
+    print(f"DEBUG: form_fields final: {form_fields}")
+    print(f"DEBUG: field_options final: {field_options}")
+    
     # eventos already retrieved above
     
     config = ConfiguracaoCliente.query.filter_by(
@@ -182,6 +241,8 @@ def submission_control():
         config=config,
         eventos=eventos,
         processos_seletivos=processos_seletivos,
+        form_fields=form_fields,
+        field_options=field_options,
     )
 
 

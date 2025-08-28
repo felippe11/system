@@ -446,14 +446,23 @@
                 
                 <!-- Filtros de Revisores -->
                 <div class="row mb-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <input type="text" class="form-control form-control-sm" id="filterReviewerName" placeholder="Nome">
                   </div>
                   <div class="col-md-4">
-                    <input type="text" class="form-control form-control-sm" id="filterReviewerFormacao" placeholder="Formação">
+                    <select class="form-select form-select-sm" id="dynamicFieldSelect">
+                      <option value="">Selecione um campo para filtrar</option>
+                      {% for process_id, fields in form_fields.items() %}
+                        {% for field in fields %}
+                          <option value="{{ field.nome }}" data-process-id="{{ process_id }}">{{ field.nome }}</option>
+                        {% endfor %}
+                      {% endfor %}
+                    </select>
                   </div>
-                  <div class="col-md-4">
-                    <input type="text" class="form-control form-control-sm" id="filterReviewerInstituicao" placeholder="Instituição">
+                  <div class="col-md-5">
+                    <select class="form-select form-select-sm" id="dynamicValueSelect" disabled>
+                      <option value="">Selecione um campo primeiro</option>
+                    </select>
                   </div>
                 </div>
                 
@@ -467,7 +476,7 @@
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="reviewersList">
                       {% for r in reviewers %}
-                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-process-id="{{ r.process_id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}" data-area="{{ r.area_atuacao|lower if r.area_atuacao else '' }}" data-titulacao="{{ r.titulacao|lower if r.titulacao else '' }}">
+                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-process-id="{{ r.process_id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}" data-area="{{ r.area_atuacao|lower if r.area_atuacao else '' }}" data-titulacao="{{ r.titulacao|lower if r.titulacao else '' }}" data-reviewer-data='{{ r.respostas|tojson|safe if r.respostas else "{}" }}'>
                           <input class="form-check-input reviewer-checkbox" type="checkbox" value="{{ r.id }}" id="reviewer_{{ r.id }}">
                           <label class="form-check-label" for="reviewer_{{ r.id }}">
                             <div class="d-flex justify-content-between align-items-start">
@@ -861,26 +870,35 @@ $(document).ready(function() {
       }
     });
 
+    // Dados dos campos dinâmicos
+    const fieldOptions = {{ field_options|tojson|safe }};
+    console.log('DEBUG: fieldOptions carregados:', fieldOptions);
+    console.log('DEBUG: Estrutura dos fieldOptions:', Object.keys(fieldOptions));
+    
     // Filtros de revisores
     function filterReviewers() {
       const nameFilter = $('#filterReviewerName').val().toLowerCase();
-      const formacaoFilter = $('#filterReviewerFormacao').val().toLowerCase();
-      const instituicaoFilter = $('#filterReviewerInstituicao').val().toLowerCase();
+      const dynamicField = $('#dynamicFieldSelect').val();
+      const dynamicValue = $('#dynamicValueSelect').val();
       const processFilter = $('#filterProcesso').val();
       
       $('.reviewer-item').each(function() {
         const item = $(this);
         const name = item.find('strong').text().toLowerCase();
-        const formacao = item.data('formacao') || '';
-        const instituicao = item.data('instituicao') || '';
         const processId = item.data('process-id') || '';
         
         const matchesName = !nameFilter || name.includes(nameFilter);
-        const matchesFormacao = !formacaoFilter || formacao.includes(formacaoFilter);
-        const matchesInstituicao = !instituicaoFilter || instituicao.includes(instituicaoFilter);
         const matchesProcess = !processFilter || processId.toString() === processFilter;
         
-        if (matchesName && matchesFormacao && matchesInstituicao && matchesProcess) {
+        // Verificar filtro dinâmico
+        let matchesDynamic = true;
+        if (dynamicField && dynamicValue) {
+          const reviewerData = item.data('reviewer-data') || {};
+          const fieldValue = reviewerData[dynamicField] || '';
+          matchesDynamic = fieldValue.toString().toLowerCase() === dynamicValue.toLowerCase();
+        }
+        
+        if (matchesName && matchesProcess && matchesDynamic) {
           item.show();
         } else {
           item.hide();
@@ -891,8 +909,80 @@ $(document).ready(function() {
       
       updateSelections();
     }
+    
+    // Armazenar todas as opções de campo originalmente carregadas
+    const allFieldOptions = $('#dynamicFieldSelect option[data-process-id]').clone();
+    console.log('DEBUG: allFieldOptions carregadas:', allFieldOptions.length, 'opções');
+    console.log('DEBUG: Conteúdo das opções:', allFieldOptions.map(function() { return {text: $(this).text(), value: $(this).val(), processId: $(this).data('process-id')}; }).get());
+    
+    // Atualizar opções do filtro de campos quando o processo for selecionado
+    $('#filterProcesso').on('change', function() {
+      const selectedProcessId = $(this).val();
+      console.log('DEBUG: Processo selecionado:', selectedProcessId);
+      const $fieldSelect = $('#dynamicFieldSelect');
+      const $valueSelect = $('#dynamicValueSelect');
+      
+      // Limpar seletores
+      $fieldSelect.empty().append('<option value="">Selecione um campo para filtrar</option>');
+      $valueSelect.empty().append('<option value="">Selecione um campo primeiro</option>').prop('disabled', true);
+      console.log('DEBUG: Seletores limpos');
+      
+      if (selectedProcessId) {
+        // Adicionar apenas campos do processo selecionado
+        let addedFields = 0;
+        allFieldOptions.each(function() {
+          const optionProcessId = $(this).data('process-id');
+          console.log('DEBUG: Comparando processId da opção:', optionProcessId, 'com selecionado:', selectedProcessId);
+          if (optionProcessId && optionProcessId.toString() === selectedProcessId) {
+            $fieldSelect.append($(this).clone());
+            addedFields++;
+          }
+        });
+        console.log('DEBUG: Campos adicionados para processo', selectedProcessId, ':', addedFields);
+      } else {
+        // Mostrar todos os campos se nenhum processo estiver selecionado
+        allFieldOptions.each(function() {
+          $fieldSelect.append($(this).clone());
+        });
+        console.log('DEBUG: Todos os campos adicionados');
+      }
+      
+      // Reexecutar filtro
+      filterReviewers();
+    });
+    
+    // Atualizar opções do filtro dinâmico quando o campo for selecionado
+    $('#dynamicFieldSelect').on('change', function() {
+      const selectedField = $(this).val();
+      const selectedProcessId = $('#filterProcesso').val() || $(this).find('option:selected').data('process-id');
+      console.log('DEBUG: Campo selecionado:', selectedField, 'para processo:', selectedProcessId);
+      const $valueSelect = $('#dynamicValueSelect');
+      
+      $valueSelect.empty().append('<option value="">Selecione uma opção</option>');
+      
+      console.log('DEBUG: Verificando fieldOptions[' + selectedProcessId + '][' + selectedField + ']');
+      console.log('DEBUG: fieldOptions para processo:', fieldOptions[selectedProcessId]);
+      
+      if (selectedField && selectedProcessId && fieldOptions[selectedProcessId] && fieldOptions[selectedProcessId][selectedField]) {
+        $valueSelect.prop('disabled', false);
+        const options = fieldOptions[selectedProcessId][selectedField];
+        console.log('DEBUG: Opções encontradas para campo:', options);
+        
+        // Adicionar opções disponíveis para o campo selecionado
+        options.forEach(function(option) {
+          $valueSelect.append(`<option value="${option}">${option}</option>`);
+        });
+        console.log('DEBUG: Opções adicionadas ao select de valores');
+      } else {
+        $valueSelect.prop('disabled', true);
+        console.log('DEBUG: Nenhuma opção encontrada - campo desabilitado');
+      }
+      
+      // Limpar filtro e reexecutar
+      filterReviewers();
+    });
 
-    $('#filterReviewerName, #filterReviewerFormacao, #filterReviewerInstituicao, #filterProcesso').on('input change', filterReviewers);
+    $('#filterReviewerName, #dynamicFieldSelect, #dynamicValueSelect, #filterProcesso').on('input change', filterReviewers);
 
     // Gerenciar seleções de trabalhos com validação em tempo real
     $(document).on('change', '.work-checkbox', function() {
