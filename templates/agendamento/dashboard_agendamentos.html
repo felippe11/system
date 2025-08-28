@@ -21,9 +21,6 @@
       <p class="text-muted mb-0">Gerencie todos os aspectos dos seus agendamentos de visitas</p>
     </div>
     <div class="d-flex gap-2">
-      <a href="{{ url_for('agendamento_routes.listar_agendamentos') }}" class="btn btn-primary">
-        <i class="bi bi-list-ul me-2"></i>Ver Todos
-      </a>
       <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left me-2"></i>Voltar
       </a>
@@ -41,23 +38,19 @@
             <i class="bi bi-bar-chart-fill me-1"></i> Resumo
           </button>
         </li>
-        <li class="nav-item" role="presentation">
-          <a class="nav-link" id="agendamentos-tab" href="{{ url_for('agendamento_routes.listar_agendamentos') }}">
-            <i class="bi bi-calendar-check me-1"></i> Agendamentos
-          </a>
-        </li>
-        <li class="nav-item" role="presentation">
+
+        <!-- <li class="nav-item" role="presentation">
           <button class="nav-link" id="criar-tab" data-bs-toggle="tab"
                   data-bs-target="#criar" type="button">
             <i class="bi bi-plus-circle me-1"></i> Criar
           </button>
-        </li>
-        <li class="nav-item" role="presentation">
+        </li> -->
+        <!-- <li class="nav-item" role="presentation">
           <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab"
                   data-bs-target="#configuracoes" type="button">
             <i class="bi bi-gear-fill me-1"></i> Configurações
           </button>
-        </li>
+        </li> -->
       </ul>
 
       <!-- Conteúdo das Abas -->
@@ -73,7 +66,7 @@
                   <div class="d-flex justify-content-between align-items-center">
                     <div>
                       <h5 class="card-subtitle mb-2">Total de Eventos</h5>
-                      <h2 class="card-title mb-0">{{ eventos_ativos|length if eventos_ativos else 0 }}</h2>
+                      <h2 class="card-title mb-0">{{ total_eventos_com_agendamentos if total_eventos_com_agendamentos is defined else (eventos_cliente|length if eventos_cliente else 0) }}</h2>
                     </div>
                     <i class="bi bi-calendar-event fs-1 opacity-25"></i>
                   </div>
@@ -121,6 +114,107 @@
             </div>
           </div>
 
+          <!-- Cards de Gerenciamento -->
+          <div class="row g-4 mb-4">
+            <div class="col-md-3">
+              <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                  <i class="bi bi-calendar-event"></i> Seus Eventos
+                </div>
+                <div class="card-body text-center">
+                  <h3 class="text-primary">{{ eventos_cliente|length if eventos_cliente else 0 }}</h3>
+                  <p class="text-muted mb-3">Total de eventos</p>
+                  <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-eye me-1"></i> Ver Todos
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card shadow h-100">
+                <div class="card-header bg-success text-white">
+                  <i class="bi bi-play-circle"></i> Ativos
+                </div>
+                <div class="card-body text-center">
+                  <h3 class="text-success">{{ eventos_ativos|length if eventos_ativos else 0 }}</h3>
+                  <p class="text-muted mb-3">Eventos ativos</p>
+                  <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}?status=ativo" class="btn btn-success btn-sm">
+                    <i class="bi bi-eye me-1"></i> Ver Ativos
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card shadow h-100">
+                <div class="card-header bg-info text-white">
+                  <i class="bi bi-calendar-plus"></i> Futuros
+                </div>
+                <div class="card-body text-center">
+                  <h3 class="text-info">{{ eventos_futuros|length if eventos_futuros else 0 }}</h3>
+                  <p class="text-muted mb-3">Eventos futuros</p>
+                  <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}?status=futuro" class="btn btn-info btn-sm">
+                    <i class="bi bi-eye me-1"></i> Ver Futuros
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card shadow h-100">
+                <div class="card-header bg-secondary text-white">
+                  <i class="bi bi-stop-circle"></i> Encerrados
+                </div>
+                <div class="card-body text-center">
+                  <h3 class="text-secondary">{{ eventos_encerrados|length if eventos_encerrados else 0 }}</h3>
+                  <p class="text-muted mb-3">Eventos encerrados</p>
+                  <a href="{{ url_for('agendamento_routes.eventos_agendamento') }}?status=encerrado" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-eye me-1"></i> Ver Encerrados
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Material de Apoio -->
+          <div class="row g-4 mb-4">
+            <div class="col-12">
+              <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                  <h5 class="m-0 fw-bold"><i class="bi bi-heart-pulse me-2"></i>Material de Apoio</h5>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted mb-3">Gerencie os materiais de apoio disponíveis para alunos PCD/Neurodivergentes.</p>
+                  
+                  <div class="table-responsive mb-3">
+                    <table class="table table-hover align-middle" id="materiaisTable">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Nome</th>
+                          <th>Descrição</th>
+                          <th>Status</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody id="materiaisTableBody">
+                        <!-- Conteúdo carregado via JavaScript -->
+                      </tbody>
+                    </table>
+                  </div>
+                  
+                  <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalMaterialApoio">
+                    <i class="bi bi-plus-circle me-2"></i> Adicionar Material de Apoio
+                  </button>
+                  
+                  <div class="card bg-light">
+                    <div class="card-body small">
+                      <p class="mb-1"><i class="bi bi-info-circle me-2"></i><strong>Dica:</strong></p>
+                      <p class="mb-0 text-muted">Configure materiais de apoio que podem ser solicitados durante o cadastro de alunos com necessidades especiais.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="row">
             <div class="col-md-8">
               <div class="card shadow mb-4">
@@ -136,9 +230,9 @@
                           <i class="bi bi-calendar-day"></i> Agendamentos Hoje
                         </div>
                         <div class="card-body">
-                          {% if agendamentos_hoje %}
+                          {% if todos_agendamentos_hoje %}
                             <div class="list-group">
-                              {% for agendamento in agendamentos_hoje %}
+                              {% for agendamento in todos_agendamentos_hoje %}
                                 <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
                                   <div class="d-flex w-100 justify-content-between">
                                     <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
@@ -146,10 +240,15 @@
                                   </div>
                                   <p class="mb-1">{{ agendamento.turma }} - {{ agendamento.quantidade_alunos }} alunos</p>
                                   <small>
+                                    <span class="badge bg-info">{{ agendamento.horario.evento.nome }}</span>
                                     {% if agendamento.checkin_realizado %}
                                       <span class="badge bg-success">Check-in realizado</span>
                                     {% else %}
                                       <span class="badge bg-warning text-dark">Aguardando check-in</span>
+                                    {% endif %}
+                                    <!-- Mostrar contato e email para status específicos -->
+                                    {% if agendamento.status in ['pendente', 'cancelado', 'confirmado'] %}
+                                      <br><small class="text-muted">{{ agendamento.contato_responsavel }} - {{ agendamento.email_responsavel }}</small>
                                     {% endif %}
                                   </small>
                                 </a>
@@ -171,22 +270,29 @@
                           <i class="bi bi-calendar-week"></i> Próximos Agendamentos
                         </div>
                         <div class="card-body">
-                          {% if proximos_agendamentos %}
+                          {% if agendamentos_futuros %}
                             <div class="list-group">
-                              {% for agendamento in proximos_agendamentos %}
+                              {% for agendamento in agendamentos_futuros %}
                                 <a href="{{ url_for('agendamento_routes.detalhes_agendamento', agendamento_id=agendamento.id) }}" class="list-group-item list-group-item-action">
                                   <div class="d-flex w-100 justify-content-between">
                                     <h5 class="mb-1">{{ agendamento.escola_nome }}</h5>
                                     <small>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</small>
                                   </div>
                                   <p class="mb-1">{{ agendamento.turma }} - {{ agendamento.quantidade_alunos }} alunos</p>
-                                  <small>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario.evento.nome }}</small>
+                                  <small>
+                                    <span class="badge bg-info">{{ agendamento.horario.evento.nome }}</span>
+                                    <span class="badge bg-secondary">{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</span>
+                                    <!-- Mostrar contato e email para status específicos -->
+                                    {% if agendamento.status in ['pendente', 'cancelado', 'confirmado'] %}
+                                      <br><small class="text-muted">{{ agendamento.contato_responsavel }} - {{ agendamento.email_responsavel }}</small>
+                                    {% endif %}
+                                  </small>
                                 </a>
                               {% endfor %}
                             </div>
                           {% else %}
                             <div class="alert alert-info">
-                              <i class="bi bi-info-circle"></i> Não há agendamentos programados para os próximos dias.
+                              <i class="bi bi-info-circle"></i> Não há agendamentos futuros configurados.
                             </div>
                           {% endif %}
                         </div>
@@ -316,7 +422,7 @@
 
 
         <!-- ABA 3: CRIAR -->
-        <div class="tab-pane fade" id="criar" role="tabpanel">
+        <!-- <div class="tab-pane fade" id="criar" role="tabpanel">
           <div class="row g-4">
             <div class="col-md-6">
               <div class="card shadow">
@@ -371,10 +477,10 @@
               </div>
             </div>
           </div>
-        </div><!-- /ABA 3: CRIAR -->
+        </div> --> <!-- /ABA 3: CRIAR -->
 
         <!-- ABA 4: CONFIGURAÇÕES -->
-        <div class="tab-pane fade" id="configuracoes" role="tabpanel">
+        <!-- <div class="tab-pane fade" id="configuracoes" role="tabpanel">
           <div class="row g-4">
             <div class="col-md-6">
               <div class="card shadow">
@@ -590,7 +696,7 @@
               </div>
             </div>
           </div>
-        </div><!-- /ABA 4: CONFIGURAÇÕES -->
+        </div> --> <!-- /ABA 4: CONFIGURAÇÕES -->
       </div><!-- /tab-content -->
     </div><!-- /card-body -->
   </div><!-- /card shadow -->
