@@ -93,9 +93,9 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="quantidade_alunos" class="form-label">Quantidade de Alunos (max. 45) *</label>
+                        <label for="quantidade_alunos" class="form-label">Quantidade de Alunos *</label>
                         <input type="number" class="form-control" id="quantidade_alunos" name="quantidade_alunos" min="1" max="{{ horario.vagas_disponiveis }}" required>
-                        <small class="text-muted">Vagas disponíveis: {{ horario.vagas_disponiveis }} vagas</small>
+                        <small class="text-muted">Máximo permitido: {{ horario.vagas_disponiveis }} alunos</small>
                         <div class="invalid-feedback" id="quantidade_alunos_error"></div>
                     </div>
                     <div class="row">

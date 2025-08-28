@@ -471,10 +471,7 @@
         </a>
       {% endif %}
       
-      <a href="{{ url_for('agendamento_routes.listar_notificacoes') }}" class="btn btn-warning btn-lg position-relative">
-        <i class="fas fa-bell me-2"></i> Notificações
-        <span id="badge-notificacoes" class="badge-notificacao" style="display: none;">0</span>
-      </a>
+
     </div>
   </div>
 
@@ -482,26 +479,7 @@
 
 {% endif %}
 
-  <!-- Seção de Notificações Recentes -->
-  <div class="container-fluid px-4 mt-4">
-    <div class="notificacoes-section">
-      <h4 class="mb-3">
-        <i class="fas fa-bell text-warning me-2"></i>
-        Notificações Recentes
-      </h4>
-      <div id="notificacoes-recentes">
-        <div class="text-center text-muted">
-          <i class="fas fa-spinner fa-spin me-2"></i>
-          Carregando notificações...
-        </div>
-      </div>
-      <div class="text-center mt-3">
-        <a href="{{ url_for('agendamento_routes.listar_notificacoes') }}" class="btn btn-outline-primary btn-sm">
-          <i class="fas fa-eye me-1"></i> Ver todas as notificações
-        </a>
-      </div>
-    </div>
-  </div>
+
   
 
   {% if evento and evento.configuracao_evento and evento.configuracao_evento.habilitar_qrcode_evento_credenciamento %}
