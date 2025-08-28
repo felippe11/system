@@ -66,8 +66,8 @@ def submission_control():
     eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
     evento_ids = [e.id for e in eventos]
     
-    # Join Submission with WorkMetadata to get real imported data
-    # Filter by client's events
+    # Get submissions for client's events without duplicates
+    # Use distinct to avoid duplicates from JOIN
     submissions = (
         db.session.query(Submission, WorkMetadata)
         .outerjoin(
@@ -76,6 +76,7 @@ def submission_control():
             (Submission.evento_id == WorkMetadata.evento_id)
         )
         .filter(Submission.evento_id.in_(evento_ids) if evento_ids else False)
+        .distinct(Submission.id)
         .all()
     )
     

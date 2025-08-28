@@ -93,10 +93,27 @@ def importar_trabalhos():
     pdf_url_col = request.form.get("pdf_url")
 
     imported = 0
+    skipped = 0
     for idx, row in enumerate(rows, start=1):
         # Obter título usando o mapeamento
         raw_title = row.get(titulo_col) if titulo_col else None
         title = str(raw_title) if raw_title else f"Trabalho {idx}"
+        
+        # Verificar se já existe um trabalho com o mesmo título e evento_id
+        existing_submission = Submission.query.filter_by(
+            title=title,
+            evento_id=evento_id
+        ).first()
+        
+        existing_metadata = WorkMetadata.query.filter_by(
+            titulo=title,
+            evento_id=evento_id
+        ).first()
+        
+        # Se já existe, pular este registro
+        if existing_submission or existing_metadata:
+            skipped += 1
+            continue
         
         submission = Submission(
             title=title,
@@ -142,4 +159,8 @@ def importar_trabalhos():
     except OSError:
         pass
 
-    return jsonify({"success": True, "status": "ok", "imported": imported, "message": f"Importação concluída! {imported} trabalhos importados."})
+    message = f"Importação concluída! {imported} trabalhos importados."
+    if skipped > 0:
+        message += f" {skipped} trabalhos foram ignorados por já existirem."
+    
+    return jsonify({"success": True, "status": "ok", "imported": imported, "skipped": skipped, "message": message})
