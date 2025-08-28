@@ -226,8 +226,8 @@
             </thead>
             <tbody>
               {% for submission_tuple in submissions %}
-              {% set sub = submission_tuple[0] %}
-              {% set work_metadata = submission_tuple[1] %}
+                        {% set sub = submission_tuple[0] %}
+                        {% set work_metadata = submission_tuple[1] %}
               <tr>
                 <td>
                   <strong>{{ sub.title }}</strong>
@@ -372,6 +372,7 @@
                     <option value="">Todas as categorias</option>
                     {% set unique_categories = [] %}
                     {% for submission_tuple in submissions %}
+                    {% set sub = submission_tuple[0] %}
                     {% set work_metadata = submission_tuple[1] %}
                     {% if work_metadata and work_metadata.categoria and work_metadata.categoria not in unique_categories %}
                     {% set _ = unique_categories.append(work_metadata.categoria) %}

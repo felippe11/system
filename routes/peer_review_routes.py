@@ -66,19 +66,21 @@ def submission_control():
     eventos = Evento.query.filter_by(cliente_id=cliente_id).all()
     evento_ids = [e.id for e in eventos]
     
-    # Get submissions for client's events without duplicates
-    # Use distinct to avoid duplicates from JOIN
+    # Get submissions for client's events with metadata
     submissions = (
         db.session.query(Submission, WorkMetadata)
-        .outerjoin(
-            WorkMetadata,
-            (Submission.title == WorkMetadata.titulo) & 
-            (Submission.evento_id == WorkMetadata.evento_id)
-        )
+        .outerjoin(WorkMetadata, Submission.evento_id == WorkMetadata.evento_id)
         .filter(Submission.evento_id.in_(evento_ids) if evento_ids else False)
-        .distinct(Submission.id)
         .all()
     )
+    
+    # Group by submission to avoid duplicates
+    submission_dict = {}
+    for sub, work_meta in submissions:
+        if sub.id not in submission_dict:
+            submission_dict[sub.id] = (sub, work_meta)
+    
+    submissions = list(submission_dict.values())
     
     reviewers = (
         Usuario.query
