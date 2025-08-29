@@ -718,7 +718,19 @@ def relatorio_geral_agendamentos():
         db.session.query(
             AgendamentoVisita.escola_nome.label('nome'),
             func.count(AgendamentoVisita.id).label('total_agendamentos'),
-            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos')
+            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos'),
+            func.sum(
+                case(
+                    (AgendamentoVisita.status == 'realizado', 1),
+                    else_=0,
+                )
+            ).label('realizados'),
+            func.sum(
+                case(
+                    (AgendamentoVisita.status == 'pendente', 1),
+                    else_=0,
+                )
+            ).label('pendentes'),
         )
         .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
         .join(Evento, HorarioVisitacao.evento_id == Evento.id)
