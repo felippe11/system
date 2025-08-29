@@ -226,8 +226,8 @@
             </thead>
             <tbody>
               {% for submission_tuple in submissions %}
-              {% set sub = submission_tuple[0] %}
-              {% set work_metadata = submission_tuple[1] %}
+                        {% set sub = submission_tuple[0] %}
+                        {% set work_metadata = submission_tuple[1] %}
               <tr>
                 <td>
                   <strong>{{ sub.title }}</strong>
@@ -372,6 +372,7 @@
                     <option value="">Todas as categorias</option>
                     {% set unique_categories = [] %}
                     {% for submission_tuple in submissions %}
+                    {% set sub = submission_tuple[0] %}
                     {% set work_metadata = submission_tuple[1] %}
                     {% if work_metadata and work_metadata.categoria and work_metadata.categoria not in unique_categories %}
                     {% set _ = unique_categories.append(work_metadata.categoria) %}
@@ -382,7 +383,12 @@
                 </div>
                 
                 <div class="mb-3">
-                  <label class="form-label">Trabalhos Selecionados: <span id="selectedWorksCount" class="badge bg-primary">0</span></label>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Trabalhos Selecionados: <span id="selectedWorksCount" class="badge bg-primary">0</span></label>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllWorks">
+                      <i class="fas fa-check-square me-1"></i>Selecionar Todos
+                    </button>
+                  </div>
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="worksList">
                       {% for submission_tuple in submissions %}
@@ -417,33 +423,77 @@
                 </h6>
               </div>
               <div class="card-body">
+                <!-- Seletor de Formulário/Processo -->
+                <div class="mb-3">
+                  <label for="filterProcesso" class="form-label fw-bold">
+                    <i class="fas fa-filter me-2"></i>Filtrar por Formulário/Processo
+                  </label>
+                  <select class="form-select" id="filterProcesso">
+                    <option value="">Todos os processos seletivos</option>
+                    {% for processo, formulario in processos_seletivos %}
+                      <option value="{{ processo.id }}">
+                        {{ formulario.nome if formulario.nome else 'Processo ' + processo.id|string }}
+                        {% if processo.evento_id %}
+                          - {{ processo.evento.nome if processo.evento else 'Evento ' + processo.evento_id|string }}
+                        {% endif %}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <div class="form-text">
+                    Mostra apenas revisores que responderam ao formulário selecionado
+                  </div>
+                </div>
+                
                 <!-- Filtros de Revisores -->
                 <div class="row mb-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <input type="text" class="form-control form-control-sm" id="filterReviewerName" placeholder="Nome">
                   </div>
                   <div class="col-md-4">
-                    <input type="text" class="form-control form-control-sm" id="filterReviewerFormacao" placeholder="Formação">
+                    <select class="form-select form-select-sm" id="dynamicFieldSelect">
+                      <option value="">Selecione um campo para filtrar</option>
+                      {% for process_id, fields in form_fields.items() %}
+                        {% for field_data in fields %}
+                          <option value="{{ field_data.nome }}" data-process-id="{{ process_id }}">{{ field_data.nome }}</option>
+                        {% endfor %}
+                      {% endfor %}
+                    </select>
                   </div>
-                  <div class="col-md-4">
-                    <input type="text" class="form-control form-control-sm" id="filterReviewerInstituicao" placeholder="Instituição">
+                  <div class="col-md-5">
+                    <select class="form-select form-select-sm" id="dynamicValueSelect" disabled>
+                      <option value="">Selecione um campo primeiro</option>
+                    </select>
                   </div>
                 </div>
                 
                 <div class="mb-3">
-                  <label class="form-label">Revisores Selecionados: <span id="selectedReviewersCount" class="badge bg-success">0</span></label>
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label">Revisores Selecionados: <span id="selectedReviewersCount" class="badge bg-success">0</span></label>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllReviewers">
+                      <i class="fas fa-check-square me-1"></i>Selecionar Todos
+                    </button>
+                  </div>
                   <div class="border rounded p-2" style="height: 200px; overflow-y: auto;">
                     <div id="reviewersList">
                       {% for r in reviewers %}
-                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}">
+                        <div class="form-check reviewer-item" data-id="{{ r.id }}" data-process-id="{{ r.process_id }}" data-formacao="{{ r.formacao|lower if r.formacao else '' }}" data-instituicao="{{ r.instituicao|lower if r.instituicao else '' }}" data-area="{{ r.area_atuacao|lower if r.area_atuacao else '' }}" data-titulacao="{{ r.titulacao|lower if r.titulacao else '' }}" data-reviewer-data='{{ r.respostas|tojson|safe if r.respostas else "{}" }}'>
                           <input class="form-check-input reviewer-checkbox" type="checkbox" value="{{ r.id }}" id="reviewer_{{ r.id }}">
                           <label class="form-check-label" for="reviewer_{{ r.id }}">
                             <div class="d-flex justify-content-between align-items-start">
                               <div>
                                 <strong>{{ r.nome if r.nome else 'N/A' }}</strong>
+                                {% if r.titulacao %}
+                                  <span class="badge bg-primary ms-2">{{ r.titulacao }}</span>
+                                {% endif %}
                                 <br><small class="text-muted">{{ r.formacao if r.formacao else 'N/A' }}</small>
                                 {% if r.instituicao %}
                                   <br><small class="text-info">{{ r.instituicao }}</small>
+                                {% endif %}
+                                {% if r.area_atuacao %}
+                                  <br><small class="text-success"><i class="fas fa-tag me-1"></i>{{ r.area_atuacao }}</small>
+                                {% endif %}
+                                {% if r.experiencia %}
+                                  <br><small class="text-secondary"><i class="fas fa-clock me-1"></i>{{ r.experiencia }}</small>
                                 {% endif %}
                               </div>
                               <span class="badge bg-warning" id="works_count_{{ r.id }}">0/{{ config.max_trabalhos_por_revisor if config else 5 }}</span>
@@ -802,25 +852,64 @@ $(document).ready(function() {
       });
       
       updateSelections();
+      
+      // Atualizar o texto do botão "Selecionar Todos" para revisores
+      const $buttonReviewers = $('#selectAllReviewers');
+      const $checkboxesReviewers = $('.reviewer-checkbox:visible');
+      const checkedCountReviewers = $checkboxesReviewers.filter(':checked').length;
+      
+      if (checkedCountReviewers === 0) {
+        $buttonReviewers.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $buttonReviewers.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else if (checkedCountReviewers === $checkboxesReviewers.length) {
+        $buttonReviewers.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $buttonReviewers.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      } else {
+        $buttonReviewers.html('<i class="fas fa-minus-square me-1"></i>Selecionar Todos');
+        $buttonReviewers.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      }
     });
 
+    // Dados dos campos dinâmicos
+    const fieldOptions = {{ field_options|tojson|safe }};
+    console.log('=== INICIALIZAÇÃO DO FILTRO DINÂMICO ===');
+    console.log('DEBUG: fieldOptions carregados:', fieldOptions);
+    console.log('DEBUG: Estrutura dos fieldOptions:', Object.keys(fieldOptions));
+    console.log('DEBUG: Tipo de fieldOptions:', typeof fieldOptions);
+    console.log('DEBUG: fieldOptions é array?', Array.isArray(fieldOptions));
+    
+    // Verificar cada processo
+    Object.keys(fieldOptions).forEach(processId => {
+        console.log(`DEBUG: Processo ${processId}:`, fieldOptions[processId]);
+        if (fieldOptions[processId]) {
+            console.log(`DEBUG: Campos disponíveis para processo ${processId}:`, Object.keys(fieldOptions[processId]));
+        }
+    });
+    
     // Filtros de revisores
     function filterReviewers() {
       const nameFilter = $('#filterReviewerName').val().toLowerCase();
-      const formacaoFilter = $('#filterReviewerFormacao').val().toLowerCase();
-      const instituicaoFilter = $('#filterReviewerInstituicao').val().toLowerCase();
+      const dynamicField = $('#dynamicFieldSelect').val();
+      const dynamicValue = $('#dynamicValueSelect').val();
+      const processFilter = $('#filterProcesso').val();
       
       $('.reviewer-item').each(function() {
         const item = $(this);
         const name = item.find('strong').text().toLowerCase();
-        const formacao = item.data('formacao') || '';
-        const instituicao = item.data('instituicao') || '';
+        const processId = item.data('process-id') || '';
         
         const matchesName = !nameFilter || name.includes(nameFilter);
-        const matchesFormacao = !formacaoFilter || formacao.includes(formacaoFilter);
-        const matchesInstituicao = !instituicaoFilter || instituicao.includes(instituicaoFilter);
+        const matchesProcess = !processFilter || processId.toString() === processFilter;
         
-        if (matchesName && matchesFormacao && matchesInstituicao) {
+        // Verificar filtro dinâmico
+        let matchesDynamic = true;
+        if (dynamicField && dynamicValue) {
+          const reviewerData = item.data('reviewer-data') || {};
+          const fieldValue = reviewerData[dynamicField] || '';
+          matchesDynamic = fieldValue.toString().toLowerCase() === dynamicValue.toLowerCase();
+        }
+        
+        if (matchesName && matchesProcess && matchesDynamic) {
           item.show();
         } else {
           item.hide();
@@ -831,8 +920,132 @@ $(document).ready(function() {
       
       updateSelections();
     }
+    
+    // Armazenar todas as opções de campo originalmente carregadas
+    const allFieldOptions = $('#dynamicFieldSelect option[data-process-id]').clone();
+    console.log('DEBUG: allFieldOptions carregadas:', allFieldOptions.length, 'opções');
+    console.log('DEBUG: Conteúdo das opções:', allFieldOptions.map(function() { return {text: $(this).text(), value: $(this).val(), processId: $(this).data('process-id')}; }).get());
+    
+    // Atualizar opções do filtro de campos quando o processo for selecionado
+    $('#filterProcesso').on('change', function() {
+      const selectedProcessId = $(this).val();
+      console.log('=== EVENTO CHANGE DO PROCESSO ===');
+      console.log('DEBUG: Processo selecionado:', selectedProcessId);
+      console.log('DEBUG: Tipo do processo selecionado:', typeof selectedProcessId);
+      
+      const $fieldSelect = $('#dynamicFieldSelect');
+      const $valueSelect = $('#dynamicValueSelect');
+      
+      console.log('DEBUG: Elemento fieldSelect encontrado:', $fieldSelect.length > 0);
+      console.log('DEBUG: Elemento valueSelect encontrado:', $valueSelect.length > 0);
+      
+      // Limpar seletores
+      $fieldSelect.empty().append('<option value="">Selecione um campo para filtrar</option>');
+      $valueSelect.empty().append('<option value="">Selecione um campo primeiro</option>').prop('disabled', true);
+      console.log('DEBUG: Seletores limpos');
+      
+      if (selectedProcessId) {
+        console.log('DEBUG: Verificando fieldOptions para processo:', selectedProcessId);
+        console.log('DEBUG: fieldOptions[selectedProcessId] existe?', !!fieldOptions[selectedProcessId]);
+        console.log('DEBUG: Conteúdo de fieldOptions[selectedProcessId]:', fieldOptions[selectedProcessId]);
+        
+        // Adicionar apenas campos do processo selecionado
+        let addedFields = 0;
+        allFieldOptions.each(function() {
+          const optionProcessId = $(this).data('process-id');
+          console.log('DEBUG: Comparando processId da opção:', optionProcessId, 'com selecionado:', selectedProcessId);
+          if (optionProcessId && optionProcessId.toString() === selectedProcessId) {
+            const clonedOption = $(this).clone();
+            console.log('DEBUG: Adicionando opção:', clonedOption.text(), 'valor:', clonedOption.val());
+            $fieldSelect.append(clonedOption);
+            addedFields++;
+          }
+        });
+        console.log('DEBUG: Total de campos adicionados para processo', selectedProcessId, ':', addedFields);
+        
+        if (addedFields === 0) {
+          console.log('AVISO: Nenhum campo foi adicionado! Verificando allFieldOptions...');
+          console.log('DEBUG: Total de allFieldOptions:', allFieldOptions.length);
+          allFieldOptions.each(function(index) {
+            console.log(`DEBUG: Opção ${index}:`, {
+              text: $(this).text(),
+              value: $(this).val(),
+              processId: $(this).data('process-id')
+            });
+          });
+        }
+      } else {
+        // Mostrar todos os campos se nenhum processo estiver selecionado
+        allFieldOptions.each(function() {
+          $fieldSelect.append($(this).clone());
+        });
+        console.log('DEBUG: Todos os campos adicionados (', allFieldOptions.length, 'campos)');
+      }
+      
+      console.log('DEBUG: Opções finais no fieldSelect:', $fieldSelect.find('option').length);
+      
+      // Reexecutar filtro
+      console.log('DEBUG: Executando filterReviewers...');
+      filterReviewers();
+    });
+    
+    // Atualizar opções do filtro dinâmico quando o campo for selecionado
+    $('#dynamicFieldSelect').on('change', function() {
+      const selectedField = $(this).val();
+      const selectedProcessId = $('#filterProcesso').val() || $(this).find('option:selected').data('process-id');
+      console.log('=== EVENTO CHANGE DO CAMPO ===');
+      console.log('DEBUG: Campo selecionado:', selectedField);
+      console.log('DEBUG: Processo para campo:', selectedProcessId);
+      console.log('DEBUG: Tipo do campo:', typeof selectedField);
+      console.log('DEBUG: Tipo do processo:', typeof selectedProcessId);
+      
+      const $valueSelect = $('#dynamicValueSelect');
+      console.log('DEBUG: Elemento valueSelect encontrado:', $valueSelect.length > 0);
+      
+      $valueSelect.empty().append('<option value="">Selecione uma opção</option>');
+      
+      console.log('DEBUG: Verificando fieldOptions[' + selectedProcessId + '][' + selectedField + ']');
+      console.log('DEBUG: fieldOptions para processo:', fieldOptions[selectedProcessId]);
+      console.log('DEBUG: fieldOptions[selectedProcessId] existe?', !!fieldOptions[selectedProcessId]);
+      
+      if (fieldOptions[selectedProcessId]) {
+        console.log('DEBUG: Campos disponíveis no processo:', Object.keys(fieldOptions[selectedProcessId]));
+        console.log('DEBUG: fieldOptions[selectedProcessId][selectedField]:', fieldOptions[selectedProcessId][selectedField]);
+      }
+      
+      if (selectedField && selectedProcessId && fieldOptions[selectedProcessId] && fieldOptions[selectedProcessId][selectedField]) {
+        $valueSelect.prop('disabled', false);
+        const options = fieldOptions[selectedProcessId][selectedField];
+        console.log('DEBUG: Opções encontradas para campo:', options);
+        console.log('DEBUG: Tipo das opções:', typeof options, 'É array?', Array.isArray(options));
+        
+        // Adicionar opções disponíveis para o campo selecionado
+        if (Array.isArray(options)) {
+          options.forEach(function(option, index) {
+            console.log(`DEBUG: Adicionando opção ${index}:`, option);
+            $valueSelect.append(`<option value="${option}">${option}</option>`);
+          });
+          console.log('DEBUG: Total de opções adicionadas:', options.length);
+        } else {
+          console.log('ERRO: options não é um array:', options);
+        }
+      } else {
+        $valueSelect.prop('disabled', true);
+        console.log('DEBUG: Condições não atendidas:');
+        console.log('  - selectedField:', !!selectedField);
+        console.log('  - selectedProcessId:', !!selectedProcessId);
+        console.log('  - fieldOptions[selectedProcessId]:', !!fieldOptions[selectedProcessId]);
+        console.log('  - fieldOptions[selectedProcessId][selectedField]:', !!(fieldOptions[selectedProcessId] && fieldOptions[selectedProcessId][selectedField]));
+      }
+      
+      console.log('DEBUG: Opções finais no valueSelect:', $valueSelect.find('option').length);
+      
+      // Limpar filtro e reexecutar
+      console.log('DEBUG: Executando filterReviewers...');
+      filterReviewers();
+    });
 
-    $('#filterReviewerName, #filterReviewerFormacao, #filterReviewerInstituicao').on('input', filterReviewers);
+    $('#filterReviewerName, #dynamicFieldSelect, #dynamicValueSelect, #filterProcesso').on('input change', filterReviewers);
 
     // Gerenciar seleções de trabalhos com validação em tempo real
     $(document).on('change', '.work-checkbox', function() {
@@ -847,6 +1060,22 @@ $(document).ready(function() {
           showAlert(`Este trabalho já possui o máximo de revisores (${limits.maxReviewersPerWork}).`, 'warning');
           return;
         }
+      }
+      
+      // Atualizar o texto do botão "Selecionar Todos"
+      const $button = $('#selectAllWorks');
+      const $checkboxes = $('.work-checkbox:visible');
+      const checkedCount = $checkboxes.filter(':checked').length;
+      
+      if (checkedCount === 0) {
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else if (checkedCount === $checkboxes.length) {
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      } else {
+        $button.html('<i class="fas fa-minus-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
       }
       
       updateSelections();
@@ -910,6 +1139,58 @@ $(document).ready(function() {
       $('#assignManual').prop('disabled', !(hasWorks && hasReviewers));
       $('#assignSmart').prop('disabled', !hasWorks);
     }
+
+    // Funcionalidade do botão "Selecionar Todos" para trabalhos
+    $('#selectAllWorks').on('click', function() {
+      const $button = $(this);
+      const $icon = $button.find('i');
+      const $checkboxes = $('.work-checkbox:visible');
+      
+      // Verificar se todos os checkboxes visíveis estão marcados
+      const allChecked = $checkboxes.length > 0 && $checkboxes.filter(':checked').length === $checkboxes.length;
+      
+      if (allChecked) {
+        // Desmarcar todos
+        $checkboxes.prop('checked', false);
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else {
+        // Marcar todos os visíveis
+        $checkboxes.prop('checked', true);
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      }
+      
+      // Atualizar seleções
+      updateSelections();
+    });
+
+    // Funcionalidade do botão "Selecionar Todos" para revisores
+    $('#selectAllReviewers').on('click', function() {
+      const $button = $(this);
+      const $icon = $button.find('i');
+      const $checkboxes = $('.reviewer-checkbox:visible');
+      
+      // Verificar se todos os checkboxes visíveis estão marcados
+      const allChecked = $checkboxes.length > 0 && $checkboxes.filter(':checked').length === $checkboxes.length;
+      
+      if (allChecked) {
+        // Desmarcar todos
+        $checkboxes.prop('checked', false);
+        $button.html('<i class="fas fa-check-square me-1"></i>Selecionar Todos');
+        $button.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+      } else {
+        // Marcar todos os visíveis
+        $checkboxes.prop('checked', true);
+        $button.html('<i class="fas fa-square me-1"></i>Desmarcar Todos');
+        $button.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+      }
+      
+      // Atualizar seleções
+      updateSelections();
+    });
+
+
 
     // Atribuição manual
     $('#assignManual').on('click', function() {

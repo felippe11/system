@@ -341,14 +341,7 @@ class Assignment(db.Model):
     reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
 
 
-# Associação N:N entre processos de revisor e eventos
-revisor_process_evento = db.Table(
-    "revisor_process_evento",
-    db.Column(
-        "process_id", db.Integer, db.ForeignKey("revisor_process.id"), primary_key=True
-    ),
-    db.Column("evento_id", db.Integer, db.ForeignKey("evento.id"), primary_key=True),
-)
+# Associação N:N entre processos de revisor e eventos (removida - usando a definição do topo do arquivo)
 
 
 class RevisorProcess(db.Model):

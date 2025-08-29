@@ -17,217 +17,75 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="config-item d-flex justify-content-between align-items-center p-3 border-bottom form-group">
-        <div>
-          <h6 class="mb-0 fw-semibold d-flex align-items-center">
-            <i class="bi bi-upload text-primary me-2"></i>
-            Submissão de Trabalhos
+
+
+
+
+        <!-- Configurações de Revisão -->
+        <div class="config-item p-4 form-group border rounded bg-light">
+          <h6 class="mb-3 fw-semibold text-primary">
+            <i class="bi bi-gear me-2"></i>Configurações de Revisão
           </h6>
-          <p class="text-muted small mb-1">
-            Permite que participantes submetam trabalhos
-          </p>
-          <small class="form-text text-muted">Desativar impede novos envios.</small>
-        </div>
-        <button type="button"
-                id="btnToggleSubmissao"
-                class="btn btn-padrao btn-toggle btn-{{ 'success' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'danger' }}"
-                data-toggle-url="{{ url_for('config_cliente_routes.toggle_submissao_trabalhos_cliente') }}">
-          <i class="bi bi-{{ 'check-circle-fill' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'x-circle-fill' }}"></i>
-          {{ 'Ativo' if config_cliente and config_cliente.habilitar_submissao_trabalhos else 'Desativado' }}
-        </button>
-      </div>
-      <div class="config-item p-3 border-bottom form-group">
-        <label for="inputAllowedFiles" class="form-label">Tipos de Arquivo Permitidos</label>
-        <input type="text" id="inputAllowedFiles" class="form-control w-auto" value="{{ config_cliente.allowed_file_types }}" data-update-url="{{ url_for('config_cliente_routes.set_allowed_file_types') }}">
-        <small class="form-text text-muted">Separe extensões por vírgula.</small>
-      </div>
-      <div class="config-item p-3 border-bottom form-group">
-        <label for="selectFormularioSubmissao" class="form-label">Formulário de Submissão</label>
-        <select id="selectFormularioSubmissao" class="form-select w-auto" data-update-url="{{ url_for('config_cliente_routes.set_formulario_submissao') }}">
-          <option value="" {% if not config_cliente.formulario_submissao_id %}selected{% endif %}>Padrão</option>
-          {% for formulario in formularios %}
-          <option value="{{ formulario.id }}" {% if config_cliente.formulario_submissao_id == formulario.id %}selected{% endif %}>{{ formulario.nome }}</option>
-          {% endfor %}
-        </select>
-        <small class="form-text text-muted">Define quais campos os autores preenchem.</small>
-      </div>
-      <div class="config-item p-3 border-bottom form-group">
-        <label for="selectReviewModel" class="form-label">Modelo de Revisão</label>
-        <select id="selectReviewModel" class="form-select w-auto" data-update-url="{{ url_for('config_cliente_routes.set_review_model') }}">
-          <option value="single" {% if config_cliente.review_model == 'single' %}selected{% endif %}>Single-blind</option>
-          <option value="double" {% if config_cliente.review_model == 'double' %}selected{% endif %}>Double-blind</option>
-        </select>
-        <small class="form-text text-muted">Escolha o nível de anonimato da revisão.</small>
-      </div>
-        <div class="config-item p-3 form-group">
-          <p class="small text-muted mb-3">Ajuste limites e prazos para a revisão.</p>
-          <div class="row g-2 align-items-end">
-          <div class="col">
-            <label class="form-label mb-0">Mínimo Revisores</label>
-            <input type="number" min="1" class="form-control" id="inputRevisoresMin" value="{{ config_cliente.num_revisores_min }}" data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_min') }}">
-            <small class="form-text text-muted">Quantidade mínima por trabalho.</small>
+          <p class="small text-muted mb-4">Ajuste limites e prazos para o processo de revisão de trabalhos.</p>
+          
+          <!-- Configurações de Revisores -->
+          <div class="mb-4">
+            <h6 class="small fw-semibold text-secondary mb-3">Limites de Revisores</h6>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-medium">Mínimo de Revisores</label>
+                <input type="number" min="1" class="form-control" id="inputRevisoresMin" 
+                       value="{{ config_cliente.num_revisores_min }}" 
+                       data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_min') }}">
+                <small class="form-text text-muted">Quantidade mínima de revisores por trabalho.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium">Máximo de Revisores</label>
+                <input type="number" min="1" class="form-control" id="inputRevisoresMax" 
+                       value="{{ config_cliente.num_revisores_max }}" 
+                       data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_max') }}">
+                <small class="form-text text-muted">Limite máximo de revisores por trabalho.</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-medium">Limite Total de Revisores</label>
+                <input type="number" min="1" class="form-control" id="inputLimiteTotalRevisores" 
+                       value="{{ config_cliente.limite_total_revisores if config_cliente.limite_total_revisores else 10 }}" 
+                       data-update-url="{{ url_for('config_cliente_routes.set_limite_total_revisores') }}">
+                <small class="form-text text-muted">Número máximo total de revisores no sistema.</small>
+              </div>
+            </div>
           </div>
-          <div class="col">
-            <label class="form-label mb-0">Máximo Revisores</label>
-            <input type="number" min="1" class="form-control" id="inputRevisoresMax" value="{{ config_cliente.num_revisores_max }}" data-update-url="{{ url_for('config_cliente_routes.set_num_revisores_max') }}">
-            <small class="form-text text-muted">Limite máximo por trabalho.</small>
-          </div>
-          <div class="col">
-            <label class="form-label mb-0">Prazo (dias)</label>
-            <input type="number" min="1" class="form-control" id="inputPrazoParecer" value="{{ config_cliente.prazo_parecer_dias }}" data-update-url="{{ url_for('config_cliente_routes.set_prazo_parecer_dias') }}">
-            <small class="form-text text-muted">Tempo padrão para entrega do parecer.</small>
-          </div>
-          <div class="col">
-            <label class="form-label mb-0">Máx. Trab./Revisor</label>
-            <input type="number" min="1" class="form-control" id="inputMaxTrabalhosRevisor" value="{{ config_cliente.max_trabalhos_por_revisor }}" data-update-url="{{ url_for('config_cliente_routes.set_max_trabalhos_revisor') }}">
-            <small class="form-text text-muted">Total de trabalhos por avaliador.</small>
+          
+          <!-- Configurações de Prazos e Distribuição -->
+          <div class="mb-3">
+            <h6 class="small fw-semibold text-secondary mb-3">Prazos e Distribuição</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-medium">Prazo para Revisão (dias)</label>
+                <input type="number" min="1" class="form-control" id="inputPrazoParecer" 
+                       value="{{ config_cliente.prazo_parecer_dias }}" 
+                       data-update-url="{{ url_for('config_cliente_routes.set_prazo_parecer_dias') }}">
+                <small class="form-text text-muted">Tempo padrão para entrega do parecer de revisão.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-medium">Máximo de Trabalhos por Revisor</label>
+                <input type="number" min="1" class="form-control" id="inputMaxTrabalhosRevisor" 
+                       value="{{ config_cliente.max_trabalhos_por_revisor }}" 
+                       data-update-url="{{ url_for('config_cliente_routes.set_max_trabalhos_revisor') }}">
+                <small class="form-text text-muted">Total máximo de trabalhos atribuídos por revisor.</small>
+              </div>
+            </div>
           </div>
         </div>
 
-        {% if eventos %}
-        <div class="mt-3 form-group">
-          <h6 class="mb-2 fw-semibold">Submissão por Evento</h6>
-          <p class="small text-muted mb-2">Gerencie a abertura de submissões por evento.</p>
-          {% for evento in eventos %}
-          <div class="config-item d-flex justify-content-between align-items-center p-2 border-bottom">
-            <span>{{ evento.nome }}</span>
-            <button type="button"
-                    class="btn btn-padrao btn-toggle btn-{{ 'success' if evento.submissao_aberta else 'danger' }}"
-                    data-toggle-url="{{ url_for('config_cliente_routes.toggle_submissao_evento', evento_id=evento.id) }}"
-                    data-label="{{ evento.nome }}">
-              {{ 'Ativo' if evento.submissao_aberta else 'Desativado' }}
-            </button>
-          </div>
-          {% endfor %}
-        </div>
-        <div class="mt-3 form-group">
-          <h6 class="mb-2 fw-semibold">Configuração de Revisão por Evento</h6>
-          <p class="small text-muted mb-2">Defina etapas e prazos específicos de revisão.</p>
-          <form id="formRevisaoConfig" class="row g-2 align-items-end">
-            <div class="col">
-              <label class="form-label mb-0">Evento</label>
-              <select id="selectEventoRevisao" class="form-select">
-                {% for evento in eventos %}
-                <option value="{{ evento.id }}">{{ evento.nome }}</option>
-                {% endfor %}
-              </select>
-              <small class="form-text text-muted">Evento alvo da configuração.</small>
-            </div>
-            <div class="col">
-              <label class="form-label mb-0">Nº Revisores</label>
-              <input type="number" min="1" class="form-control" id="inputNumeroRevisores">
-              <small class="form-text text-muted">Número de avaliadores desejado.</small>
-            </div>
-            <div class="col">
-              <label class="form-label mb-0">Prazo Revisão</label>
-              <input type="date" class="form-control" id="inputPrazoRevisao">
-              <small class="form-text text-muted">Data limite para as avaliações.</small>
-            </div>
-            <div class="col">
-              <label class="form-label mb-0">Modelo Blind</label>
-              <select id="selectModeloBlind" class="form-select">
-                <option value="single">Single-blind</option>
-                <option value="double">Double-blind</option>
-                <option value="open">Open review</option>
-              </select>
-              <small class="form-text text-muted">Modelo de anonimato.</small>
-            </div>
-            <div class="col-12 col-sm-2">
-              <button type="submit" class="btn btn-primary w-100 mt-2 mt-sm-0">Salvar</button>
-            </div>
-          </form>
-        </div>
-        {% endif %}
+
         <div class="text-end mt-4">
           <a href="{{ url_for('peer_review_routes.submission_control') }}" class="btn btn-outline-primary">Distribuição de Trabalhos</a>
         </div>
       </div>
     </div>
     </div>
-  <div class="accordion mt-4" id="accordionDistribuicao">
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingDistribuicao">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDistribuicao" aria-expanded="false" aria-controls="collapseDistribuicao">
-          Distribuição de Trabalhos
-        </button>
-      </h2>
-      <div id="collapseDistribuicao" class="accordion-collapse collapse" aria-labelledby="headingDistribuicao" data-bs-parent="#accordionDistribuicao">
-        <div class="accordion-body">
-          <form id="formImportarTrabalhos"
-                class="mb-3"
-                method="post"
-                enctype="multipart/form-data"
-                action="{{ url_for('config_cliente_routes.importar_trabalhos') }}"
-                data-context="config-submissao">
-            <div class="input-group">
-              <input class="form-control" type="file" name="arquivo" accept=".xls,.xlsx">
-              <button class="btn btn-primary" type="submit">Importar</button>
-            </div>
-          </form>
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>Título</th>
-                <th>Localizador</th>
-                <th>Autor</th>
-                <th>Revisores</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for sub in submissions %}
-              <tr>
-                <td>{{ sub.title }}</td>
-                <td>{{ sub.locator }}</td>
-                <td>{{ sub.author.nome if sub.author else 'N/A' }}</td>
-                <td>
-                  <ul class="mb-0">
-                    {% for rev in sub.reviews %}
-                    <li>{{ rev.reviewer.nome if rev.reviewer else 'N/A' }} - {{ rev.access_code }}</li>
-                    {% else %}
-                    <li>Nenhum revisor atribuído</li>
-                    {% endfor %}
-                  </ul>
-                  <button class="btn btn-sm btn-secondary mt-1 gerar-codigos" data-locator="{{ sub.locator }}">Gerar Códigos</button>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
 
-          <div class="mt-5">
-            <h4>Atribuir Revisores</h4>
-            <div class="mb-3">
-              <label for="submissionSelect" class="form-label">Submissão</label>
-              <select id="submissionSelect" class="form-select">
-                {% for sub in submissions %}
-                <option value="{{ sub.id }}">{{ sub.title }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="reviewerSelect" class="form-label">Revisores</label>
-              <select id="reviewerSelect" class="form-select" multiple
-                      data-min="{{ config_cliente.num_revisores_min if config_cliente else 1 }}"
-                      data-max="{{ config_cliente.num_revisores_max if config_cliente else 2 }}">
-                {% for r in reviewers %}
-                <option value="{{ r.id }}">{{ r.nome }}</option>
-                {% endfor %}
-              </select>
-              <small class="form-text text-muted">
-                Selecione entre {{ config_cliente.num_revisores_min if config_cliente else 1 }} e {{ config_cliente.num_revisores_max if config_cliente else 2 }} revisores.
-              </small>
-            </div>
-            <button id="assignManual" class="btn btn-primary me-2">Atribuir Manualmente</button>
-            <button id="assignAutomatic" class="btn btn-secondary me-2">Sorteio Automático</button>
-            <div class="input-group mt-2" style="max-width: 300px;">
-              <input type="number" id="eventoId" class="form-control" placeholder="ID do Evento" />
-              <button id="autoArea" class="btn btn-info">Auto por Área</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
   <div id="mapearColunasModal"></div>
   <script type="text/template" id="mapearColunasTemplate">
     {% include 'trabalho/selecionar_colunas_trabalho.html' %}

@@ -142,4 +142,6 @@ def importar_trabalhos():
     except OSError:
         pass
 
-    return jsonify({"success": True, "status": "ok", "imported": imported, "message": f"Importação concluída! {imported} trabalhos importados."})
+    message = f"Importação concluída! {imported} trabalhos importados."
+    
+    return jsonify({"success": True, "status": "ok", "imported": imported, "message": message})
