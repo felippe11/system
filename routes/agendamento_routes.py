@@ -4210,6 +4210,7 @@ def listar_agendamentos():
     participante_id = request.args.get('participante_id')
     oficina_id = request.args.get('oficina_id')
     cliente_id = request.args.get('cliente_id')
+    evento_id = request.args.get('evento_id', type=int)
 
     # Base da query com joins para acesso aos dados do evento
     query = (
@@ -4252,6 +4253,9 @@ def listar_agendamentos():
     if cliente_id and current_user.tipo == 'admin':
         query = query.filter(Evento.cliente_id == cliente_id)
     
+    if evento_id:
+        query = query.filter(Evento.id == evento_id)
+    
     # Ordenação
     query = query.order_by(AgendamentoVisita.data_agendamento.desc())
     
@@ -4263,16 +4267,30 @@ def listar_agendamentos():
     oficinas = Oficina.query.all()
     participantes = Usuario.query.filter_by(tipo='participante').all()
     clientes = []
+    eventos = []
     if current_user.tipo == 'admin':
         clientes = Cliente.query.all()
+        eventos = Evento.query.all()
+    elif current_user.tipo == 'cliente':
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    else:
+        # Para professores/participantes, mostrar eventos dos agendamentos que eles têm
+        eventos = db.session.query(Evento).join(
+            HorarioVisitacao, Evento.id == HorarioVisitacao.evento_id
+        ).join(
+            AgendamentoVisita, HorarioVisitacao.id == AgendamentoVisita.horario_id
+        ).filter(
+            AgendamentoVisita.professor_id == current_user.id
+        ).distinct().all()
     
     return render_template(
-        'listar_agendamentos.html',
+        'agendamento/listar_agendamentos.html',
         agendamentos=agendamentos,
         pagination=pagination,
         oficinas=oficinas,
         participantes=participantes,
-        clientes=clientes
+        clientes=clientes,
+        eventos=eventos
     )
     
 @agendamento_routes.route('/processar_qrcode_agendamento', methods=['POST'])
