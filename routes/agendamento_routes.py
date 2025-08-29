@@ -30,6 +30,7 @@ from models import (
     ProfessorBloqueado,
     Checkin,
     AlunoVisitante,
+    NecessidadeEspecial,
 )
 from models.event import NotificacaoAgendamento
 from utils import obter_estados
@@ -782,8 +783,9 @@ def relatorio_geral_agendamentos():
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    NecessidadeEspecial.tipo == 'PCD',
-                    NecessidadeEspecial.tipo == 'Neurodivergente'
+                    NecessidadeEspecial.tipo.like('pcd_%'),
+                    NecessidadeEspecial.tipo.like('neurodivergente_%'),
+                    NecessidadeEspecial.tipo == 'outros'
                 )
             )
         )
@@ -802,8 +804,9 @@ def relatorio_geral_agendamentos():
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    NecessidadeEspecial.tipo == 'PCD',
-                    NecessidadeEspecial.tipo == 'Neurodivergente'
+                    NecessidadeEspecial.tipo.like('pcd_%'),
+                    NecessidadeEspecial.tipo.like('neurodivergente_%'),
+                    NecessidadeEspecial.tipo == 'outros'
                 )
             )
         )
@@ -5198,42 +5201,53 @@ def adicionar_alunos_cliente(agendamento_id):
 
     if request.method == 'POST':
         try:
-            # Processar adição de alunos
-            nomes_alunos = request.form.getlist('nome_aluno')
-            tipos_necessidade = request.form.getlist('tipo_necessidade')
-            descricoes_necessidade = request.form.getlist('descricao_necessidade')
+            # Processar adição de aluno único
+            nome_aluno = request.form.get('nome_aluno', '').strip()
+            cpf_aluno = request.form.get('cpf_aluno', '').strip()
+            tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
+            tipo_necessidade = request.form.get('tipo_necessidade', '').strip()
+            descricao_necessidade = request.form.get('descricao_necessidade', '').strip()
             
-            alunos_adicionados = 0
+            if not nome_aluno:
+                flash('Nome do aluno é obrigatório!', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
             
-            for i, nome in enumerate(nomes_alunos):
-                if nome.strip():  # Só adiciona se o nome não estiver vazio
-                    tipo_necessidade = tipos_necessidade[i] if i < len(tipos_necessidade) else 'Nenhuma'
-                    descricao_necessidade = descricoes_necessidade[i] if i < len(descricoes_necessidade) else ''
-                    
-                    # Verificar se ainda há vagas disponíveis
-                    if agendamento.horario.vagas_disponiveis > 0:
-                        novo_aluno = AlunoVisitante(
-                            nome=nome.strip(),
-                            agendamento_id=agendamento.id,
-                            tipo_necessidade_especial=tipo_necessidade,
-                            descricao_necessidade_especial=descricao_necessidade,
-                            presente=False
-                        )
-                        db.session.add(novo_aluno)
-                        
-                        # Atualizar contadores
-                        agendamento.quantidade_alunos += 1
-                        agendamento.horario.vagas_disponiveis -= 1
-                        alunos_adicionados += 1
-                    else:
-                        flash('Não há mais vagas disponíveis para este horário!', 'warning')
-                        break
+            # Validar campos de necessidade especial se marcado
+            if tem_necessidade_especial and (not tipo_necessidade or not descricao_necessidade):
+                flash('Tipo e descrição da necessidade especial são obrigatórios quando marcado!', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
             
-            if alunos_adicionados > 0:
-                db.session.commit()
-                flash(f'{alunos_adicionados} aluno(s) adicionado(s) com sucesso!', 'success')
-            else:
-                flash('Nenhum aluno foi adicionado.', 'warning')
+            # Verificar se ainda há vagas disponíveis
+            if agendamento.horario.vagas_disponiveis <= 0:
+                flash('Não há mais vagas disponíveis para este horário!', 'warning')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+            
+            # Criar novo aluno
+            novo_aluno = AlunoVisitante(
+                nome=nome_aluno,
+                cpf=cpf_aluno if cpf_aluno else None,
+                agendamento_id=agendamento.id,
+                presente=False
+            )
+            db.session.add(novo_aluno)
+            db.session.flush()  # Para obter o ID do aluno
+            
+            # Criar registro de necessidade especial se necessário
+            if tem_necessidade_especial and tipo_necessidade:
+                necessidade_especial = NecessidadeEspecial(
+                    aluno_id=novo_aluno.id,
+                    tipo=tipo_necessidade,
+                    descricao=descricao_necessidade,
+                    data_registro=datetime.utcnow()
+                )
+                db.session.add(necessidade_especial)
+            
+            # Atualizar contadores
+            agendamento.quantidade_alunos += 1
+            agendamento.horario.vagas_disponiveis -= 1
+            
+            db.session.commit()
+            flash('Aluno adicionado com sucesso!', 'success')
                 
         except Exception as e:
             db.session.rollback()

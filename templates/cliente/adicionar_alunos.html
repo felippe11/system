@@ -60,6 +60,41 @@
                             <input type="text" class="form-control" id="cpf_aluno" name="cpf_aluno" placeholder="000.000.000-00">
                         </div>
                     </div>
+                    
+                    <!-- Campos de Necessidades Especiais -->
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="tem_necessidade_especial" name="tem_necessidade_especial">
+                                <label class="form-check-label" for="tem_necessidade_especial">
+                                    Este aluno possui necessidades especiais (PCD/Neurodivergente)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="campos_necessidade" class="row mt-3" style="display: none;">
+                        <div class="col-md-6">
+                            <label for="tipo_necessidade" class="form-label">Tipo de Necessidade Especial</label>
+                            <select class="form-select" id="tipo_necessidade" name="tipo_necessidade">
+                                <option value="">Selecione o tipo</option>
+                                <option value="pcd_fisica">PCD Física</option>
+                                <option value="pcd_visual">PCD Visual</option>
+                                <option value="pcd_auditiva">PCD Auditiva</option>
+                                <option value="pcd_intelectual">PCD Intelectual</option>
+                                <option value="neurodivergente_autismo">Neurodivergente - Autismo</option>
+                                <option value="neurodivergente_tdah">Neurodivergente - TDAH</option>
+                                <option value="neurodivergente_dislexia">Neurodivergente - Dislexia</option>
+                                <option value="neurodivergente_sindrome_down">Neurodivergente - Síndrome de Down</option>
+                                <option value="outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="descricao_necessidade" class="form-label">Descrição/Observações</label>
+                            <textarea class="form-control" id="descricao_necessidade" name="descricao_necessidade" rows="3" placeholder="Descreva as necessidades específicas do aluno..."></textarea>
+                        </div>
+                    </div>
+                    
                     <div class="mt-3">
                         <button type="submit" class="btn btn-success">
                             <i class="fas fa-plus me-1"></i>Adicionar Aluno
@@ -88,6 +123,7 @@
                             <tr>
                                 <th>Nome</th>
                                 <th>CPF</th>
+                                <th>Necessidades Especiais</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -96,6 +132,16 @@
                             <tr>
                                 <td>{{ aluno.nome }}</td>
                                 <td>{{ aluno.cpf if aluno.cpf else '-' }}</td>
+                                <td>
+                                    {% if aluno.tipo_necessidade_especial %}
+                                        <span class="badge bg-info">{{ aluno.tipo_necessidade_especial }}</span>
+                                        {% if aluno.descricao_necessidade_especial %}
+                                            <br><small class="text-muted">{{ aluno.descricao_necessidade_especial }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <form method="POST" action="{{ url_for('agendamento_routes.remover_aluno_cliente', agendamento_id=agendamento.id, aluno_id=aluno.id) }}" style="display: inline;">
                                         <button type="submit" class="btn btn-sm btn-outline-danger" 
@@ -139,8 +185,9 @@
     </div>
 </div>
 
-<!-- Script para formatação do CPF -->
+<!-- Scripts -->
 <script>
+// Formatação do CPF
 document.getElementById('cpf_aluno').addEventListener('input', function (e) {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length <= 11) {
@@ -148,6 +195,25 @@ document.getElementById('cpf_aluno').addEventListener('input', function (e) {
         value = value.replace(/(\d{3})(\d)/, '$1.$2');
         value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
         e.target.value = value;
+    }
+});
+
+// Mostrar/ocultar campos de necessidades especiais
+document.getElementById('tem_necessidade_especial').addEventListener('change', function() {
+    const camposNecessidade = document.getElementById('campos_necessidade');
+    const tipoNecessidade = document.getElementById('tipo_necessidade');
+    const descricaoNecessidade = document.getElementById('descricao_necessidade');
+    
+    if (this.checked) {
+        camposNecessidade.style.display = 'block';
+        tipoNecessidade.required = true;
+        descricaoNecessidade.required = true;
+    } else {
+        camposNecessidade.style.display = 'none';
+        tipoNecessidade.required = false;
+        descricaoNecessidade.required = false;
+        tipoNecessidade.value = '';
+        descricaoNecessidade.value = '';
     }
 });
 </script>

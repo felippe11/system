@@ -1029,6 +1029,10 @@ class AlunoVisitante(db.Model):
     nome = db.Column(db.String(150), nullable=False)
     cpf = db.Column(db.String(14), nullable=True)  # Opcional para menores
     presente = db.Column(db.Boolean, default=False)
+    
+    # Campos para necessidades especiais (compatibilidade com cliente)
+    tipo_necessidade_especial = db.Column(db.String(100), nullable=True)
+    descricao_necessidade_especial = db.Column(db.Text, nullable=True)
 
     # Relações
     agendamento = db.relationship(
