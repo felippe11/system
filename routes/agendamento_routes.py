@@ -5907,7 +5907,7 @@ def api_materiais_apoio_admin():
     try:
         from models import MaterialApoio
         
-        materiais = MaterialApoio.query.order_by(MaterialApoio.nome).all()
+        materiais = MaterialApoio.query.filter_by(cliente_id=current_user.id).order_by(MaterialApoio.nome).all()
         materiais_data = [{
             'id': material.id,
             'nome': material.nome,
@@ -5934,7 +5934,7 @@ def api_material_apoio_detalhes(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,
@@ -5974,8 +5974,8 @@ def api_criar_material_apoio():
                 'error': 'Nome é obrigatório'
             }), 400
         
-        # Verificar se já existe um material com o mesmo nome
-        material_existente = MaterialApoio.query.filter_by(nome=data['nome']).first()
+        # Verificar se já existe um material com o mesmo nome para este cliente
+        material_existente = MaterialApoio.query.filter_by(nome=data['nome'], cliente_id=current_user.id).first()
         if material_existente:
             return jsonify({
                 'success': False,
@@ -6019,7 +6019,7 @@ def api_atualizar_material_apoio(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,
@@ -6035,10 +6035,11 @@ def api_atualizar_material_apoio(material_id):
                 'error': 'Nome é obrigatório'
             }), 400
         
-        # Verificar se já existe outro material com o mesmo nome
+        # Verificar se já existe outro material com o mesmo nome para este cliente
         material_existente = MaterialApoio.query.filter(
             MaterialApoio.nome == data['nome'],
-            MaterialApoio.id != material_id
+            MaterialApoio.id != material_id,
+            MaterialApoio.cliente_id == current_user.id
         ).first()
         if material_existente:
             return jsonify({
@@ -6079,7 +6080,7 @@ def api_toggle_material_apoio(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,
