@@ -4983,30 +4983,256 @@ def meus_agendamentos_participante():
 @agendamento_routes.route('/cliente/meus_agendamentos')
 @login_required
 def meus_agendamentos_cliente():
-    """Lista agendamentos do cliente logado."""
+    """Lista agendamentos do cliente logado com paginação e filtros."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
+    # Parâmetros de filtro e paginação
+    page = request.args.get('page', 1, type=int)
     status = request.args.get('status')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    oficina_id = request.args.get('oficina_id')
+    participante_id = request.args.get('participante_id')
 
-    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id)
+    # Base da query com joins
+    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id).join(
+        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+    ).join(
+        Evento, HorarioVisitacao.evento_id == Evento.id
+    )
+
+    # Aplicar filtros
     if status:
         query = query.filter(AgendamentoVisita.status == status)
+    
+    if data_inicio:
+        data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data >= data_inicio_dt)
+    
+    if data_fim:
+        data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data <= data_fim_dt)
+    
+    if oficina_id:
+        query = query.filter(Evento.id == oficina_id)
+    
+    if participante_id:
+        query = query.filter(AgendamentoVisita.professor_id == participante_id)
 
-    agendamentos = query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).order_by(
+    # Ordenação
+    query = query.order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio
-    ).all()
+    )
+
+    # Paginação
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    agendamentos = pagination.items
+
+    # Dados para os filtros
+    oficinas = Evento.query.filter_by(cliente_id=current_user.id).all()
+    participantes = Usuario.query.filter_by(tipo='participante').all()
 
     return render_template(
         'cliente/meus_agendamentos.html',
         agendamentos=agendamentos,
+        pagination=pagination,
         status_filtro=status,
+        oficinas=oficinas,
+        participantes=participantes,
         today=date.today,
         hoje=date.today()
+    )
+
+
+@agendamento_routes.route('/cliente/aprovar_agendamento/<int:agendamento_id>', methods=['POST'])
+@login_required
+def aprovar_agendamento_cliente(agendamento_id):
+    """Permite que o cliente aprove um agendamento pendente."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+@agendamento_routes.route('/remover_aluno_cliente/<int:agendamento_id>/<int:aluno_id>', methods=['POST'])
+@login_required
+def remover_aluno_cliente(agendamento_id, aluno_id):
+    """Remove um aluno de um agendamento do cliente"""
+    try:
+        # Verificar se o agendamento pertence ao cliente logado
+        agendamento = Agendamento.query.filter_by(
+            id=agendamento_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not agendamento:
+            flash('Agendamento não encontrado ou você não tem permissão para acessá-lo.', 'error')
+            return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+        
+        # Verificar se o agendamento está em status que permite remoção
+        if agendamento.status not in ['pendente', 'confirmado']:
+            flash('Não é possível remover alunos de agendamentos com este status.', 'error')
+            return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+        
+        # Buscar o aluno
+        aluno = AlunoVisitante.query.filter_by(
+            id=aluno_id,
+            agendamento_id=agendamento_id
+        ).first()
+        
+        if not aluno:
+            flash('Aluno não encontrado.', 'error')
+            return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+        
+        # Remover o aluno
+        db.session.delete(aluno)
+        
+        # Atualizar quantidade de alunos e vagas disponíveis
+        agendamento.quantidade_alunos -= 1
+        agendamento.horario.vagas_disponiveis += 1
+        
+        db.session.commit()
+        
+        flash(f'Aluno {aluno.nome} removido com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover aluno: {str(e)}', 'error')
+    
+    return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+
+    # Verificar se o agendamento está pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está pendente de aprovação!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    try:
+        agendamento.status = 'confirmado'
+        agendamento.data_confirmacao = datetime.utcnow()
+        db.session.commit()
+        flash('Agendamento aprovado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao aprovar agendamento: {str(e)}', 'danger')
+
+    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+
+@agendamento_routes.route('/cliente/negar_agendamento/<int:agendamento_id>', methods=['POST'])
+@login_required
+def negar_agendamento_cliente(agendamento_id):
+    """Permite que o cliente negue um agendamento pendente."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    # Verificar se o agendamento está pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está pendente de aprovação!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    try:
+        # Cancelar agendamento e liberar vagas
+        agendamento.status = 'cancelado'
+        agendamento.data_cancelamento = datetime.utcnow()
+        
+        # Liberar vagas no horário
+        if agendamento.horario:
+            agendamento.horario.vagas_disponiveis += agendamento.quantidade_alunos
+        
+        db.session.commit()
+        flash('Agendamento negado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao negar agendamento: {str(e)}', 'danger')
+
+    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+
+@agendamento_routes.route('/cliente/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def adicionar_alunos_cliente(agendamento_id):
+    """Permite que o cliente adicione alunos a um agendamento."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    # Verificar se o agendamento permite adição de alunos
+    if agendamento.status not in ['pendente', 'confirmado']:
+        flash('Não é possível adicionar alunos a este agendamento!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    if request.method == 'POST':
+        try:
+            # Processar adição de alunos
+            nomes_alunos = request.form.getlist('nome_aluno')
+            tipos_necessidade = request.form.getlist('tipo_necessidade')
+            descricoes_necessidade = request.form.getlist('descricao_necessidade')
+            
+            alunos_adicionados = 0
+            
+            for i, nome in enumerate(nomes_alunos):
+                if nome.strip():  # Só adiciona se o nome não estiver vazio
+                    tipo_necessidade = tipos_necessidade[i] if i < len(tipos_necessidade) else 'Nenhuma'
+                    descricao_necessidade = descricoes_necessidade[i] if i < len(descricoes_necessidade) else ''
+                    
+                    # Verificar se ainda há vagas disponíveis
+                    if agendamento.horario.vagas_disponiveis > 0:
+                        novo_aluno = AlunoVisitante(
+                            nome=nome.strip(),
+                            agendamento_id=agendamento.id,
+                            tipo_necessidade_especial=tipo_necessidade,
+                            descricao_necessidade_especial=descricao_necessidade,
+                            presente=False
+                        )
+                        db.session.add(novo_aluno)
+                        
+                        # Atualizar contadores
+                        agendamento.quantidade_alunos += 1
+                        agendamento.horario.vagas_disponiveis -= 1
+                        alunos_adicionados += 1
+                    else:
+                        flash('Não há mais vagas disponíveis para este horário!', 'warning')
+                        break
+            
+            if alunos_adicionados > 0:
+                db.session.commit()
+                flash(f'{alunos_adicionados} aluno(s) adicionado(s) com sucesso!', 'success')
+            else:
+                flash('Nenhum aluno foi adicionado.', 'warning')
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao adicionar alunos: {str(e)}', 'danger')
+        
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+    
+    # GET - Renderizar formulário
+    return render_template(
+        'cliente/adicionar_alunos.html',
+        agendamento=agendamento
     )
 
 

@@ -1,0 +1,154 @@
+<!-- Template: cliente/adicionar_alunos.html -->
+<!-- Acesso para clientes -->
+{% extends 'base.html' %}
+
+{% block title %}Adicionar Alunos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Adicionar Alunos ao Agendamento</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Detalhes do Agendamento
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome }}</p>
+                    <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                    <p><strong>Horário:</strong>
+                        {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} -
+                        {{ agendamento.horario.horario_fim.strftime('%H:%M') }}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Escola:</strong> {{ agendamento.escola_nome }}</p>
+                    <p><strong>Turma:</strong> {{ agendamento.turma }}</p>
+                    <p><strong>Quantidade de Alunos:</strong>
+                        {{ alunos|length }} / {{ agendamento.quantidade_alunos }}
+                    </p>
+                    <p><strong>Status:</strong>
+                        <span class="badge 
+                            {% if agendamento.status == 'pendente' %}bg-warning{% endif %}
+                            {% if agendamento.status == 'confirmado' %}bg-success{% endif %}
+                            {% if agendamento.status == 'cancelado' %}bg-danger{% endif %}
+                            {% if agendamento.status == 'realizado' %}bg-info{% endif %}">
+                            {{ agendamento.status|title }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário para adicionar aluno -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <i class="fas fa-user-plus me-2"></i>Adicionar Novo Aluno
+        </div>
+        <div class="card-body">
+            {% if alunos|length < agendamento.quantidade_alunos %}
+                <form method="POST" action="{{ url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento.id) }}">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="nome_aluno" class="form-label">Nome do Aluno</label>
+                            <input type="text" class="form-control" id="nome_aluno" name="nome_aluno" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="cpf_aluno" class="form-label">CPF (opcional)</label>
+                            <input type="text" class="form-control" id="cpf_aluno" name="cpf_aluno" placeholder="000.000.000-00">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus me-1"></i>Adicionar Aluno
+                        </button>
+                    </div>
+                </form>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Você já atingiu o limite máximo de alunos para este agendamento.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lista de alunos adicionados -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-users me-2"></i>Alunos Adicionados ({{ alunos|length }})
+        </div>
+        <div class="card-body">
+            {% if alunos %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for aluno in alunos %}
+                            <tr>
+                                <td>{{ aluno.nome }}</td>
+                                <td>{{ aluno.cpf if aluno.cpf else '-' }}</td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('agendamento_routes.remover_aluno_cliente', agendamento_id=agendamento.id, aluno_id=aluno.id) }}" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                onclick="return confirm('Tem certeza que deseja remover este aluno?')">
+                                            <i class="fas fa-trash me-1"></i>Remover
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Nenhum aluno foi adicionado ainda. Adicione pelo menos um aluno para completar o agendamento.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Voltar aos Meus Agendamentos
+        </a>
+        
+        {% if agendamento.status == 'confirmado' %}
+        <div>
+            <a href="{{ url_for('routes.imprimir_agendamento_cliente', agendamento_id=agendamento.id) }}"
+               class="btn btn-outline-primary me-2">
+                <i class="fas fa-print me-1"></i>Imprimir Comprovante
+            </a>
+            <a href="{{ url_for('routes.qrcode_agendamento_cliente', agendamento_id=agendamento.id) }}"
+               class="btn btn-outline-secondary">
+                <i class="fas fa-qrcode me-1"></i>Ver QR Code
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Script para formatação do CPF -->
+<script>
+document.getElementById('cpf_aluno').addEventListener('input', function (e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        e.target.value = value;
+    }
+});
+</script>
+{% endblock %}

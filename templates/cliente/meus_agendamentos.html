@@ -4,10 +4,117 @@
 {% block title %}Meus Agendamentos{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-  <div class="row mb-4">
-    <div class="col">
-      <h2 class="mb-4 border-bottom pb-2">Meus Agendamentos</h2>
+<div class="container mt-4">
+  <!-- BREADCRUMB -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard_routes.dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Meus Agendamentos</li>
+    </ol>
+  </nav>
+
+  <!-- CABEÇALHO -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">
+        <i class="bi bi-calendar-check me-2"></i>
+        Meus Agendamentos
+      </h2>
+      <p class="text-muted mb-0">Visualize e gerencie seus agendamentos</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('agendamento_routes.criar_agendamento') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i> Novo Agendamento
+      </a>
+      <a href="{{ url_for('dashboard_routes.dashboard') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Voltar
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Filtros</h5>
+    </div>
+    <div class="card-body">
+      <form method="GET" action="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="data_inicio" class="form-label">Data Inicial</label>
+            <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                  value="{{ request.args.get('data_inicio', '') }}">
+          </div>
+          <div class="col-md-4">
+            <label for="data_fim" class="form-label">Data Final</label>
+            <input type="date" class="form-control" id="data_fim" name="data_fim"
+                  value="{{ request.args.get('data_fim', '') }}">
+          </div>
+          <div class="col-md-4">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select" id="status" name="status">
+              <option value="">Todos</option>
+              <option value="pendente" {% if request.args.get('status') == 'pendente' %}selected{% endif %}>Pendente</option>
+              <option value="confirmado" {% if request.args.get('status') == 'confirmado' %}selected{% endif %}>Confirmado</option>
+              <option value="cancelado" {% if request.args.get('status') == 'cancelado' %}selected{% endif %}>Cancelado</option>
+              <option value="realizado" {% if request.args.get('status') == 'realizado' %}selected{% endif %}>Realizado</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="participante" class="form-label">Participante</label>
+            <select class="form-select" id="participante" name="participante_id">
+              <option value="">Todos os Participantes</option>
+              {% for participante in participantes %}
+                <option value="{{ participante.id }}" {% if request.args.get('participante_id')|string == participante.id|string %}selected{% endif %}>
+                  {{ participante.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="oficina" class="form-label">Oficina</label>
+            <select class="form-select" id="oficina" name="oficina_id">
+              <option value="">Todas as Oficinas</option>
+              {% for oficina in oficinas %}
+                <option value="{{ oficina.id }}" {% if request.args.get('oficina_id')|string == oficina.id|string %}selected{% endif %}>
+                  {{ oficina.titulo }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 text-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-funnel-fill me-1"></i>Filtrar
+            </button>
+            <a href="{{ url_for('agendamento_routes.meus_agendamentos_cliente') }}" class="btn btn-outline-secondary">Limpar</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Ações em Lote -->
+  <div class="card shadow-sm mb-3" id="acoes-lote" style="display: none;">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <span class="fw-bold">Ações em Lote:</span>
+          <span id="contador-selecionados" class="badge bg-primary ms-2">0 selecionados</span>
+        </div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-success btn-sm" onclick="confirmarLote()">
+            <i class="bi bi-check-circle me-1"></i> Confirmar Selecionados
+          </button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="cancelarLote()">
+            <i class="bi bi-x-circle me-1"></i> Cancelar Selecionados
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="limparSelecao()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Limpar Seleção
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
       <!-- Filtro -->
       <div class="card shadow-sm mb-4">
@@ -46,11 +153,28 @@
 
       {% if agendamentos %}
       <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-table me-2"></i>Resultados</h5>
+          <div class="btn-group">
+            <a href="{{ url_for('agendamento_routes.exportar_agendamentos_pdf') }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-file-pdf me-1"></i> PDF
+            </a>
+            <a href="{{ url_for('agendamento_routes.exportar_agendamentos_csv') }}" class="btn btn-sm btn-outline-success">
+              <i class="bi bi-file-excel me-1"></i> CSV
+            </a>
+          </div>
+        </div>
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover mb-0">
               <thead class="table-dark">
                 <tr>
+                  <th width="50">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                      <label class="form-check-label" for="selectAll"></label>
+                    </div>
+                  </th>
                   <th>Evento</th>
                   <th>Data</th>
                   <th>Horário</th>
@@ -59,7 +183,7 @@
                   <th>Turma</th>
                   <th>Alunos</th>
                   <th>Status</th>
-                  <th>Ações</th>
+                  <th class="text-center">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -71,6 +195,17 @@
                   {% if agendamento.status == 'realizado' %}table-success{% endif %}
                   {% if horario.data and hoje_local and horario.data < hoje_local and agendamento.status == 'confirmado' %} table-warning{% endif %}
                 ">
+                  <td>
+                    {% if agendamento.status in ['pendente', 'confirmado'] %}
+                    <div class="form-check">
+                      <input class="form-check-input agendamento-checkbox" type="checkbox" 
+                             value="{{ agendamento.id }}" 
+                             id="agendamento_{{ agendamento.id }}"
+                             onchange="updateSelectionCounter()">
+                      <label class="form-check-label" for="agendamento_{{ agendamento.id }}"></label>
+                    </div>
+                    {% endif %}
+                  </td>
                   <td>{{ horario.evento.nome }}</td>
                   <td>{{ horario.data.strftime('%d/%m/%Y') }}</td>
                   <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
@@ -98,15 +233,36 @@
                         <i class="fas fa-info-circle me-1"></i>Detalhes
                       </a>
 
+                      {% if agendamento.status == 'pendente' %}
+                      <!-- Botões para aprovar/negar agendamentos pendentes -->
+                      <form method="POST" action="{{ url_for('agendamento_routes.aprovar_agendamento_cliente', agendamento_id=agendamento.id) }}" style="display: inline;" class="form-single-submit">
+                        <button type="submit" class="btn btn-sm btn-success" title="Aprovar agendamento" 
+                                onclick="return confirm('Tem certeza que deseja aprovar este agendamento?')">
+                          <i class="fas fa-check me-1"></i>Aprovar
+                        </button>
+                      </form>
+                      <form method="POST" action="{{ url_for('agendamento_routes.negar_agendamento_cliente', agendamento_id=agendamento.id) }}" style="display: inline;" class="form-single-submit">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Negar agendamento"
+                                onclick="return confirm('Tem certeza que deseja negar este agendamento?')">
+                          <i class="fas fa-times me-1"></i>Negar
+                        </button>
+                      </form>
+                      {% endif %}
+
                       {% if agendamento.status in ['pendente', 'confirmado'] %}
-                      <a href="{{ url_for('routes.adicionar_alunos_professor', agendamento_id=agendamento.id) }}"
+                      <a href="{{ url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento.id) }}"
                          class="btn btn-sm btn-outline-success" title="Adicionar alunos">
-                        <i class="fas fa-user-plus me-1"></i>Adicionar
+                        <i class="fas fa-user-plus me-1"></i>Adicionar Alunos
                       </a>
-                      <a href="{{ url_for('agendamento_routes.cancelar_agendamento_cliente', agendamento_id=agendamento.id) }}"
-                         class="btn btn-sm btn-outline-danger" title="Cancelar">
-                        <i class="fas fa-times me-1"></i>Cancelar
-                      </a>
+                      {% endif %}
+
+                      {% if agendamento.status in ['pendente', 'confirmado'] %}
+                      <form method="POST" action="{{ url_for('agendamento_routes.cancelar_agendamento', agendamento_id=agendamento.id) }}" style="display: inline;" class="form-single-submit" onsubmit="return confirm('Tem certeza que deseja cancelar este agendamento?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancelar">
+                          <i class="fas fa-times me-1"></i>Cancelar
+                        </button>
+                      </form>
                       {% endif %}
 
                       {% if agendamento.status == 'confirmado' %}
@@ -126,6 +282,53 @@
               </tbody>
             </table>
           </div>
+          
+          <!-- Paginação -->
+      {% if pagination and pagination.pages > 1 %}
+      <nav aria-label="Navegação de páginas">
+        <ul class="pagination justify-content-center">
+          {% if pagination.has_prev %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('agendamento_routes.meus_agendamentos_cliente', page=pagination.prev_num, status=request.args.get('status'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim'), participante_id=request.args.get('participante_id'), oficina_id=request.args.get('oficina_id')) }}">
+                <i class="bi bi-chevron-left"></i> Anterior
+              </a>
+            </li>
+          {% endif %}
+          
+          {% for page_num in pagination.iter_pages() %}
+            {% if page_num %}
+              {% if page_num != pagination.page %}
+                <li class="page-item">
+                  <a class="page-link" href="{{ url_for('agendamento_routes.meus_agendamentos_cliente', page=page_num, status=request.args.get('status'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim'), participante_id=request.args.get('participante_id'), oficina_id=request.args.get('oficina_id')) }}">{{ page_num }}</a>
+                </li>
+              {% else %}
+                <li class="page-item active">
+                  <span class="page-link">{{ page_num }}</span>
+                </li>
+              {% endif %}
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link">…</span>
+              </li>
+            {% endif %}
+          {% endfor %}
+          
+          {% if pagination.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="{{ url_for('agendamento_routes.meus_agendamentos_cliente', page=pagination.next_num, status=request.args.get('status'), data_inicio=request.args.get('data_inicio'), data_fim=request.args.get('data_fim'), participante_id=request.args.get('participante_id'), oficina_id=request.args.get('oficina_id')) }}">
+                Próxima <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+      
+      <div class="text-center text-muted">
+        Mostrando {{ pagination.per_page * (pagination.page - 1) + 1 }} a 
+        {{ pagination.per_page * (pagination.page - 1) + agendamentos|length }} de 
+        {{ pagination.total }} agendamentos
+      </div>
+      {% endif %}
         </div>
       </div>
       {% else %}
@@ -136,4 +339,169 @@
     </div>
   </div>
 </div>
+
+<!-- Modal para processamento em lote -->
+<div class="modal fade" id="batchProcessModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Processando...</h5>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex align-items-center">
+          <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+          <span>Processando agendamentos selecionados...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Formulário oculto para ações em lote -->
+<form id="batchForm" method="POST" action="{{ url_for('agendamento_routes.processar_lote_agendamentos') }}" style="display: none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="acao" id="batchAction">
+  <div id="selectedIds"></div>
+</form>
+
+<script>
+  let selectedCount = 0;
+  let isSubmitting = false;
+  
+  // Prevenir múltiplas submissões
+  document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.form-single-submit');
+    forms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        if (isSubmitting) {
+          e.preventDefault();
+          return false;
+        }
+        isSubmitting = true;
+        
+        // Desabilitar o botão de submit
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>Processando...';
+        }
+        
+        // Reabilitar após 3 segundos (caso haja erro)
+        setTimeout(() => {
+          isSubmitting = false;
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-original-text') || submitBtn.innerHTML;
+          }
+        }, 3000);
+      });
+    });
+  });
+  
+  // Atualizar contador de seleção
+  function updateSelectionCounter() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox:checked');
+    selectedCount = checkboxes.length;
+    
+    const counter = document.getElementById('contador-selecionados');
+    const acoesLote = document.getElementById('acoes-lote');
+    
+    if (counter) {
+      counter.textContent = selectedCount + ' selecionados';
+    }
+    
+    if (acoesLote) {
+      acoesLote.style.display = selectedCount > 0 ? 'block' : 'none';
+    }
+  }
+  
+  // Selecionar/deselecionar todos
+  function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateSelectionCounter();
+  }
+  
+  // Limpar seleção
+  function limparSelecao() {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    
+    if (selectAllCheckbox) {
+      selectAllCheckbox.checked = false;
+    }
+    
+    updateSelectionCounter();
+  }
+  
+  // Confirmar em lote
+  function confirmarLote() {
+    processBatch('confirmar');
+  }
+  
+  // Cancelar em lote
+  function cancelarLote() {
+    processBatch('cancelar');
+  }
+  
+  // Processar ação em lote
+  function processBatch(action) {
+    const checkboxes = document.querySelectorAll('.agendamento-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+      alert('Selecione pelo menos um agendamento.');
+      return;
+    }
+    
+    let confirmMessage = '';
+    if (action === 'confirmar') {
+      confirmMessage = `Tem certeza que deseja confirmar ${checkboxes.length} agendamento(s)?`;
+    } else if (action === 'cancelar') {
+      confirmMessage = `Tem certeza que deseja cancelar ${checkboxes.length} agendamento(s)?`;
+    }
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+    
+    // Preparar formulário
+    const form = document.getElementById('batchForm');
+    const actionInput = document.getElementById('batchAction');
+    const selectedIdsDiv = document.getElementById('selectedIds');
+    
+    actionInput.value = action;
+    selectedIdsDiv.innerHTML = '';
+    
+    checkboxes.forEach(checkbox => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'agendamento_ids';
+      input.value = checkbox.value;
+      selectedIdsDiv.appendChild(input);
+    });
+    
+    // Mostrar modal de processamento
+    const modal = new bootstrap.Modal(document.getElementById('batchProcessModal'));
+    modal.show();
+    
+    // Submeter formulário
+    form.submit();
+  }
+  
+  // Inicializar tooltips
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+  })
+</script>
+
 {% endblock %}
