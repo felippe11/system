@@ -287,10 +287,12 @@
     <!-- Paginação, se aplicável -->
     {% if pagination and pagination.pages > 1 %}
     <div class="card-footer">
+      {% set args_without_page = request.args.copy() %}
+      {% set _ = args_without_page.pop('page', None) %}
       <nav aria-label="Navegação de páginas">
         <ul class="pagination justify-content-center mb-0">
           <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
-            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page-1, **request.args) if pagination.page > 1 else '#' }}">
+            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page-1, **args_without_page) if pagination.page > 1 else '#' }}">
               <span aria-hidden="true">&laquo;</span>
             </a>
           </li>
@@ -298,7 +300,7 @@
           {% for p in range(1, pagination.pages + 1) %}
             {% if p >= pagination.page - 2 and p <= pagination.page + 2 %}
               <li class="page-item {{ 'active' if p == pagination.page else '' }}">
-                <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=p, **request.args) }}">
+                <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=p, **args_without_page) }}">
                   {{ p }}
                 </a>
               </li>
@@ -306,7 +308,7 @@
           {% endfor %}
           
           <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
-            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page+1, **request.args) if pagination.page < pagination.pages else '#' }}">
+            <a class="page-link" href="{{ url_for('agendamento_routes.listar_agendamentos', page=pagination.page+1, **args_without_page) if pagination.page < pagination.pages else '#' }}">
               <span aria-hidden="true">&raquo;</span>
             </a>
           </li>
