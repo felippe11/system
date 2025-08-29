@@ -3574,7 +3574,7 @@ def exportar_agendamentos_csv():
             agendamento.escola_nome,
             agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
-            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            f"{agendamento.horario.horario_inicio.strftime('%H:%M')} - {agendamento.horario.horario_fim.strftime('%H:%M')}",
             agendamento.turma,
             agendamento.nivel_ensino,
             agendamento.quantidade_alunos,
@@ -3630,8 +3630,8 @@ def visualizar_agendamento(agendamento_id):
             'horario': {
                 'id': agendamento.horario.id,
                 'data': agendamento.horario.data.strftime('%d/%m/%Y'),
-                'hora_inicio': agendamento.horario.hora_inicio.strftime('%H:%M'),
-                'hora_fim': agendamento.horario.hora_fim.strftime('%H:%M')
+                'hora_inicio': agendamento.horario.horario_inicio.strftime('%H:%M'),
+                'hora_fim': agendamento.horario.horario_fim.strftime('%H:%M')
             },
             'professor': (
                 {
