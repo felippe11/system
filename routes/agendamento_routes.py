@@ -30,6 +30,7 @@ from models import (
     ProfessorBloqueado,
     Checkin,
     AlunoVisitante,
+    NecessidadeEspecial,
 )
 from models.event import NotificacaoAgendamento
 from utils import obter_estados
@@ -718,7 +719,19 @@ def relatorio_geral_agendamentos():
         db.session.query(
             AgendamentoVisita.escola_nome.label('nome'),
             func.count(AgendamentoVisita.id).label('total_agendamentos'),
-            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos')
+            func.sum(AgendamentoVisita.quantidade_alunos).label('total_alunos'),
+            func.sum(
+                case(
+                    (AgendamentoVisita.status == 'realizado', 1),
+                    else_=0,
+                )
+            ).label('realizados'),
+            func.sum(
+                case(
+                    (AgendamentoVisita.status == 'pendente', 1),
+                    else_=0,
+                )
+            ).label('pendentes'),
         )
         .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
         .join(Evento, HorarioVisitacao.evento_id == Evento.id)
@@ -770,8 +783,9 @@ def relatorio_geral_agendamentos():
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    NecessidadeEspecial.tipo == 'PCD',
-                    NecessidadeEspecial.tipo == 'Neurodivergente'
+                    NecessidadeEspecial.tipo.like('pcd_%'),
+                    NecessidadeEspecial.tipo.like('neurodivergente_%'),
+                    NecessidadeEspecial.tipo == 'outros'
                 )
             )
         )
@@ -790,8 +804,9 @@ def relatorio_geral_agendamentos():
                 coluna_data >= data_inicio,
                 coluna_data <= data_fim,
                 or_(
-                    NecessidadeEspecial.tipo == 'PCD',
-                    NecessidadeEspecial.tipo == 'Neurodivergente'
+                    NecessidadeEspecial.tipo.like('pcd_%'),
+                    NecessidadeEspecial.tipo.like('neurodivergente_%'),
+                    NecessidadeEspecial.tipo == 'outros'
                 )
             )
         )
@@ -1106,42 +1121,52 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     
     pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
-    pdf.cell(95, 10, f'Total de Visitantes: {totais["visitantes_confirmados"]}', 0, 1)
-    
-    pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 0)
-    pdf.cell(95, 10, f'Realizados: {totais["realizados"]}', 0, 1)
+    pdf.cell(95, 10, f'Confirmados: {totais["confirmados"]}', 0, 1)
     
     pdf.cell(95, 10, f'Cancelados: {totais["cancelados"]}', 0, 0)
-    pdf.cell(95, 10, f'Pendentes: {totais["pendentes"]}', 0, 1)
-    
     pdf.cell(95, 10, f'Check-ins: {totais["checkins"]}', 0, 1)
     
     # Calcular taxas
     if total_agendamentos > 0:
         taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
-        pdf.cell(190, 10, f'Taxa de Cancelamento: {taxa_cancelamento:.1f}%', 0, 1)
+        pdf.cell(95, 10, f'Taxa de Cancelamento: {taxa_cancelamento:.1f}%', 0, 0)
     
     if totais['confirmados'] + totais['realizados'] > 0:
         taxa_conclusao = (totais['realizados'] / (totais['confirmados'] + totais['realizados'])) * 100
-        pdf.cell(190, 10, f'Taxa de Conclusão: {taxa_conclusao:.1f}%', 0, 1)
+        pdf.cell(95, 10, f'Taxa de Conclusão: {taxa_conclusao:.1f}%', 0, 1)
     
-    # Estatísticas por escola
+    # Estatísticas por escola com PCD
     if 'escolas' in dados_agregados and dados_agregados['escolas']:
         pdf.ln(10)
         pdf.set_font('Arial', 'B', 14)
         pdf.cell(190, 10, 'Top 10 Escolas', 0, 1)
         
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(80, 10, 'Escola', 1, 0, 'C')
-        pdf.cell(30, 10, 'Agendamentos', 1, 0, 'C')
-        pdf.cell(30, 10, 'Alunos', 1, 1, 'C')
+        pdf.set_font('Arial', 'B', 9)
+        pdf.cell(60, 10, 'Escola', 1, 0, 'C')
+        pdf.cell(25, 10, 'Agendamentos', 1, 0, 'C')
+        pdf.cell(25, 10, 'Alunos', 1, 0, 'C')
+        pdf.cell(25, 10, 'PCD', 1, 0, 'C')
+        pdf.cell(25, 10, 'Realizados', 1, 0, 'C')
+        pdf.cell(30, 10, 'Pendentes', 1, 1, 'C')
         
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('Arial', '', 8)
         for escola in dados_agregados['escolas'][:10]:
-            escola_nome = escola.nome[:35] + '...' if len(escola.nome) > 35 else escola.nome
-            pdf.cell(80, 10, escola_nome, 1, 0)
-            pdf.cell(30, 10, str(escola.total_agendamentos), 1, 0, 'C')
-            pdf.cell(30, 10, str(escola.total_alunos or 0), 1, 1, 'C')
+            escola_nome = escola.nome[:30] + '...' if len(escola.nome) > 30 else escola.nome
+            
+            # Calcular PCD por escola
+            pcd_escola = 0
+            for agendamento in agendamentos:
+                if agendamento.escola_nome == escola.nome:
+                    for aluno in agendamento.alunos:
+                        if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                            pcd_escola += 1
+            
+            pdf.cell(60, 8, escola_nome, 1, 0)
+            pdf.cell(25, 8, str(escola.total_agendamentos), 1, 0, 'C')
+            pdf.cell(25, 8, str(escola.total_alunos or 0), 1, 0, 'C')
+            pdf.cell(25, 8, str(pcd_escola), 1, 0, 'C')
+            pdf.cell(25, 8, str(escola.realizados or 0), 1, 0, 'C')
+            pdf.cell(30, 8, str(escola.pendentes or 0), 1, 1, 'C')
     
     # Estatísticas por professor
     if 'professores' in dados_agregados and dados_agregados['professores']:
@@ -1170,7 +1195,8 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(60, 10, 'Nome', 1, 0, 'C')
         pdf.cell(70, 10, 'Email', 1, 0, 'C')
-        pdf.cell(60, 10, 'WhatsApp', 1, 1, 'C')
+        pdf.cell(30, 10, 'Total de Visitantes', 1, 0, 'C')
+        pdf.cell(30, 10, 'WhatsApp', 1, 1, 'C')
         
         pdf.set_font('Arial', '', 8)
         for professor in professores_confirmados[:20]:  # Limitar a 20 para não sobrecarregar
@@ -1178,11 +1204,18 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             email = professor.email[:30] + '...' if len(professor.email) > 30 else professor.email
             whatsapp = professor.responsavel_whatsapp or 'N/A'
             
-            pdf.cell(60, 10, nome, 1, 0)
-            pdf.cell(70, 10, email, 1, 0)
-            pdf.cell(60, 10, whatsapp, 1, 1)
+            # Calcular total de visitantes do professor
+            total_visitantes_prof = sum(
+                ag.quantidade_alunos for ag in agendamentos 
+                if ag.professor and ag.professor.id == professor.id and ag.status in ['confirmado', 'realizado']
+            )
+            
+            pdf.cell(60, 8, nome, 1, 0)
+            pdf.cell(70, 8, email, 1, 0)
+            pdf.cell(30, 8, str(total_visitantes_prof), 1, 0, 'C')
+            pdf.cell(30, 8, whatsapp, 1, 1)
     
-    # Necessidades especiais
+    # Necessidades especiais com detalhes
     if 'necessidades_especiais' in dados_agregados:
         pdf.ln(5)
         pdf.set_font('Arial', 'B', 14)
@@ -1190,17 +1223,125 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         
         pdf.set_font('Arial', '', 12)
         pcd_data = dados_agregados['necessidades_especiais']
-        pdf.cell(95, 10, f'Total de Alunos PCD: {pcd_data["total"]}', 0, 0)
+        
+        # Calcular estatísticas detalhadas de PCD
+        total_alunos_pcd = 0
+        tipos_pcd = {}
+        
+        for agendamento in agendamentos:
+            for aluno in agendamento.alunos:
+                if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                    total_alunos_pcd += 1
+                    tipo_display = aluno.necessidade_especial.get_tipo_display()
+                    tipos_pcd[tipo_display] = tipos_pcd.get(tipo_display, 0) + 1
+        
+        percentual = (total_alunos_pcd / max(totais.get('visitantes_confirmados', 1), 1)) * 100
+        
+        pdf.cell(95, 10, f'Total de Alunos PCD: {total_alunos_pcd}', 0, 0)
+        pdf.cell(95, 10, f'Percentual: {percentual:.1f}%', 0, 1)
         pdf.cell(95, 10, f'Agendamentos com PCD: {pcd_data["agendamentos"]}', 0, 1)
-        pdf.cell(95, 10, f'Percentual: {pcd_data["percentual"]}%', 0, 1)
+        
+        # Distribuição por tipo de necessidade especial
+        if tipos_pcd:
+            pdf.ln(3)
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(190, 8, 'Distribuição por Tipo de Necessidade:', 0, 1)
+            pdf.set_font('Arial', '', 10)
+            for tipo, quantidade in tipos_pcd.items():
+                pdf.cell(190, 6, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
+    
+    # Agendamentos detalhados por status
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1, 'C')
+    
+    # Organizar agendamentos por status (confirmados primeiro)
+    agendamentos_por_status = {
+        'confirmado': [a for a in agendamentos if a.status == 'confirmado'],
+        'realizado': [a for a in agendamentos if a.status == 'realizado'],
+        'pendente': [a for a in agendamentos if a.status == 'pendente'],
+        'cancelado': [a for a in agendamentos if a.status == 'cancelado']
+    }
+    
+    for status, lista_agendamentos in agendamentos_por_status.items():
+        if not lista_agendamentos:
+            continue
+            
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(190, 10, f'Agendamentos {status.capitalize()}s ({len(lista_agendamentos)})', 0, 1)
+        
+        for agendamento in lista_agendamentos:
+            # Verificar se precisa de nova página
+            if pdf.get_y() > 250:
+                pdf.add_page()
+            
+            horario = agendamento.horario
+            
+            # Cabeçalho do agendamento
+            pdf.ln(3)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.set_fill_color(230, 230, 230)
+            pdf.cell(190, 8, f'#{agendamento.id} - {agendamento.escola_nome} - {horario.data.strftime("%d/%m/%Y")} {horario.horario_inicio.strftime("%H:%M")}', 1, 1, 'L', True)
+            
+            # Informações básicas
+            pdf.set_font('Arial', '', 9)
+            professor_nome = agendamento.professor.nome if agendamento.professor else 'Não informado'
+            pdf.cell(95, 6, f'Professor: {professor_nome}', 1, 0)
+            pdf.cell(95, 6, f'Status: {agendamento.status.capitalize()}', 1, 1)
+            
+            pdf.cell(95, 6, f'Turma: {agendamento.turma}', 1, 0)
+            pdf.cell(95, 6, f'Total de Alunos: {agendamento.quantidade_alunos}', 1, 1)
+            
+            # Lista de alunos
+            if agendamento.alunos:
+                pdf.ln(2)
+                pdf.set_font('Arial', 'B', 9)
+                pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
+                
+                # Cabeçalho da tabela de alunos
+                pdf.set_font('Arial', 'B', 8)
+                pdf.cell(70, 6, 'Nome', 1, 0, 'C')
+                pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+                pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
+                pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
+                
+                pdf.set_font('Arial', '', 7)
+                for aluno in agendamento.alunos:
+                    # Verificar se precisa de nova página
+                    if pdf.get_y() > 270:
+                        pdf.add_page()
+                        # Repetir cabeçalho
+                        pdf.set_font('Arial', 'B', 8)
+                        pdf.cell(70, 6, 'Nome', 1, 0, 'C')
+                        pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+                        pdf.cell(50, 6, 'Tipo PCD', 1, 0, 'C')
+                        pdf.cell(50, 6, 'Descrição PCD', 1, 1, 'C')
+                        pdf.set_font('Arial', '', 7)
+                    
+                    nome = aluno.nome[:35] + '...' if len(aluno.nome) > 35 else aluno.nome
+                    presente = 'Sim' if aluno.presente else 'Não'
+                    
+                    tipo_pcd = ''
+                    descricao_pcd = ''
+                    
+                    if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                        tipo_pcd = aluno.necessidade_especial.get_tipo_display()[:25]
+                        descricao_pcd = aluno.necessidade_especial.descricao[:30] + '...' if len(aluno.necessidade_especial.descricao) > 30 else aluno.necessidade_especial.descricao
+                    
+                    pdf.cell(70, 6, nome, 1, 0, 'L')
+                    pdf.cell(20, 6, presente, 1, 0, 'C')
+                    pdf.cell(50, 6, tipo_pcd, 1, 0, 'L')
+                    pdf.cell(50, 6, descricao_pcd, 1, 1, 'L')
     
     # Análise e recomendações
-    pdf.ln(10)
+    pdf.add_page()
     pdf.set_font('Arial', 'B', 14)
     pdf.cell(190, 10, 'Análise e Recomendações', 0, 1)
     
     pdf.set_font('Arial', '', 12)
     if total_agendamentos > 0:
+        taxa_cancelamento = (totais['cancelados'] / total_agendamentos) * 100
         if taxa_cancelamento > 30:
             pdf.multi_cell(190, 10, '- Alta taxa de cancelamento. Considere revisar suas políticas de cancelamento.')
             pdf.multi_cell(190, 10, '- Envie lembretes com mais frequência para professores com agendamentos confirmados.')
@@ -1210,7 +1351,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
         if totais['realizados'] < totais['confirmados']:
             pdf.multi_cell(190, 10, '- Implemente um sistema de lembretes mais eficiente para aumentar o comparecimento.')
             
-        if totais['visitantes_confirmados'] < 100:
+        if totais.get('visitantes_confirmados', 0) < 100:
             pdf.multi_cell(190, 10, '- Divulgue mais seus eventos entre escolas e professores para aumentar a quantidade de visitantes.')
     else:
         pdf.multi_cell(190, 10, '- Ainda não há dados suficientes para recomendações personalizadas.')
@@ -3433,7 +3574,7 @@ def exportar_agendamentos_csv():
             agendamento.escola_nome,
             agendamento.professor.nome if agendamento.professor else "-",
             agendamento.horario.data.strftime('%d/%m/%Y'),
-            f"{agendamento.horario.hora_inicio} - {agendamento.horario.hora_fim}",
+            f"{agendamento.horario.horario_inicio.strftime('%H:%M')} - {agendamento.horario.horario_fim.strftime('%H:%M')}",
             agendamento.turma,
             agendamento.nivel_ensino,
             agendamento.quantidade_alunos,
@@ -3489,8 +3630,8 @@ def visualizar_agendamento(agendamento_id):
             'horario': {
                 'id': agendamento.horario.id,
                 'data': agendamento.horario.data.strftime('%d/%m/%Y'),
-                'hora_inicio': agendamento.horario.hora_inicio.strftime('%H:%M'),
-                'hora_fim': agendamento.horario.hora_fim.strftime('%H:%M')
+                'hora_inicio': agendamento.horario.horario_inicio.strftime('%H:%M'),
+                'hora_fim': agendamento.horario.horario_fim.strftime('%H:%M')
             },
             'professor': (
                 {
@@ -4069,6 +4210,7 @@ def listar_agendamentos():
     participante_id = request.args.get('participante_id')
     oficina_id = request.args.get('oficina_id')
     cliente_id = request.args.get('cliente_id')
+    evento_id = request.args.get('evento_id', type=int)
 
     # Base da query com joins para acesso aos dados do evento
     query = (
@@ -4111,6 +4253,9 @@ def listar_agendamentos():
     if cliente_id and current_user.tipo == 'admin':
         query = query.filter(Evento.cliente_id == cliente_id)
     
+    if evento_id:
+        query = query.filter(Evento.id == evento_id)
+    
     # Ordenação
     query = query.order_by(AgendamentoVisita.data_agendamento.desc())
     
@@ -4122,16 +4267,30 @@ def listar_agendamentos():
     oficinas = Oficina.query.all()
     participantes = Usuario.query.filter_by(tipo='participante').all()
     clientes = []
+    eventos = []
     if current_user.tipo == 'admin':
         clientes = Cliente.query.all()
+        eventos = Evento.query.all()
+    elif current_user.tipo == 'cliente':
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    else:
+        # Para professores/participantes, mostrar eventos dos agendamentos que eles têm
+        eventos = db.session.query(Evento).join(
+            HorarioVisitacao, Evento.id == HorarioVisitacao.evento_id
+        ).join(
+            AgendamentoVisita, HorarioVisitacao.id == AgendamentoVisita.horario_id
+        ).filter(
+            AgendamentoVisita.professor_id == current_user.id
+        ).distinct().all()
     
     return render_template(
-        'listar_agendamentos.html',
+        'agendamento/listar_agendamentos.html',
         agendamentos=agendamentos,
         pagination=pagination,
         oficinas=oficinas,
         participantes=participantes,
-        clientes=clientes
+        clientes=clientes,
+        eventos=eventos
     )
     
 @agendamento_routes.route('/processar_qrcode_agendamento', methods=['POST'])
@@ -4857,30 +5016,267 @@ def meus_agendamentos_participante():
 @agendamento_routes.route('/cliente/meus_agendamentos')
 @login_required
 def meus_agendamentos_cliente():
-    """Lista agendamentos do cliente logado."""
+    """Lista agendamentos do cliente logado com paginação e filtros."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard'))
 
+    # Parâmetros de filtro e paginação
+    page = request.args.get('page', 1, type=int)
     status = request.args.get('status')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    oficina_id = request.args.get('oficina_id')
+    participante_id = request.args.get('participante_id')
 
-    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id)
+    # Base da query com joins
+    query = AgendamentoVisita.query.filter_by(cliente_id=current_user.id).join(
+        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
+    ).join(
+        Evento, HorarioVisitacao.evento_id == Evento.id
+    )
+
+    # Aplicar filtros
     if status:
         query = query.filter(AgendamentoVisita.status == status)
+    
+    if data_inicio:
+        data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data >= data_inicio_dt)
+    
+    if data_fim:
+        data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+        query = query.filter(HorarioVisitacao.data <= data_fim_dt)
+    
+    if oficina_id:
+        query = query.filter(Evento.id == oficina_id)
+    
+    if participante_id:
+        query = query.filter(AgendamentoVisita.professor_id == participante_id)
 
-    agendamentos = query.join(
-        HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
-    ).order_by(
+    # Ordenação
+    query = query.order_by(
         HorarioVisitacao.data,
         HorarioVisitacao.horario_inicio
-    ).all()
+    )
+
+    # Paginação
+    pagination = query.paginate(page=page, per_page=10, error_out=False)
+    agendamentos = pagination.items
+
+    # Dados para os filtros
+    oficinas = Evento.query.filter_by(cliente_id=current_user.id).all()
+    participantes = Usuario.query.filter_by(tipo='participante').all()
 
     return render_template(
         'cliente/meus_agendamentos.html',
         agendamentos=agendamentos,
+        pagination=pagination,
         status_filtro=status,
+        oficinas=oficinas,
+        participantes=participantes,
         today=date.today,
         hoje=date.today()
+    )
+
+
+@agendamento_routes.route('/cliente/aprovar_agendamento/<int:agendamento_id>', methods=['POST'])
+@login_required
+def aprovar_agendamento_cliente(agendamento_id):
+    """Permite que o cliente aprove um agendamento pendente."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+@agendamento_routes.route('/remover_aluno_cliente/<int:agendamento_id>/<int:aluno_id>', methods=['POST'])
+@login_required
+def remover_aluno_cliente(agendamento_id, aluno_id):
+    """Remove um aluno de um agendamento do cliente"""
+    try:
+        # Verificar se o agendamento pertence ao cliente logado
+        agendamento = Agendamento.query.filter_by(
+            id=agendamento_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not agendamento:
+            flash('Agendamento não encontrado ou você não tem permissão para acessá-lo.', 'error')
+            return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+        
+        # Verificar se o agendamento está em status que permite remoção
+        if agendamento.status not in ['pendente', 'confirmado']:
+            flash('Não é possível remover alunos de agendamentos com este status.', 'error')
+            return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+        
+        # Buscar o aluno
+        aluno = AlunoVisitante.query.filter_by(
+            id=aluno_id,
+            agendamento_id=agendamento_id
+        ).first()
+        
+        if not aluno:
+            flash('Aluno não encontrado.', 'error')
+            return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+        
+        # Remover o aluno
+        db.session.delete(aluno)
+        
+        # Atualizar quantidade de alunos e vagas disponíveis
+        agendamento.quantidade_alunos -= 1
+        agendamento.horario.vagas_disponiveis += 1
+        
+        db.session.commit()
+        
+        flash(f'Aluno {aluno.nome} removido com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao remover aluno: {str(e)}', 'error')
+    
+    return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+
+    # Verificar se o agendamento está pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está pendente de aprovação!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    try:
+        agendamento.status = 'confirmado'
+        agendamento.data_confirmacao = datetime.utcnow()
+        db.session.commit()
+        flash('Agendamento aprovado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao aprovar agendamento: {str(e)}', 'danger')
+
+    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+
+@agendamento_routes.route('/cliente/negar_agendamento/<int:agendamento_id>', methods=['POST'])
+@login_required
+def negar_agendamento_cliente(agendamento_id):
+    """Permite que o cliente negue um agendamento pendente."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    # Verificar se o agendamento está pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está pendente de aprovação!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    try:
+        # Cancelar agendamento e liberar vagas
+        agendamento.status = 'cancelado'
+        agendamento.data_cancelamento = datetime.utcnow()
+        
+        # Liberar vagas no horário
+        if agendamento.horario:
+            agendamento.horario.vagas_disponiveis += agendamento.quantidade_alunos
+        
+        db.session.commit()
+        flash('Agendamento negado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao negar agendamento: {str(e)}', 'danger')
+
+    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+
+@agendamento_routes.route('/cliente/adicionar_alunos/<int:agendamento_id>', methods=['GET', 'POST'])
+@login_required
+def adicionar_alunos_cliente(agendamento_id):
+    """Permite que o cliente adicione alunos a um agendamento."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
+
+    agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+
+    # Verificar se o agendamento pertence ao cliente
+    if agendamento.cliente_id != current_user.id:
+        flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    # Verificar se o agendamento permite adição de alunos
+    if agendamento.status not in ['pendente', 'confirmado']:
+        flash('Não é possível adicionar alunos a este agendamento!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    if request.method == 'POST':
+        try:
+            # Processar adição de aluno único
+            nome_aluno = request.form.get('nome_aluno', '').strip()
+            cpf_aluno = request.form.get('cpf_aluno', '').strip()
+            tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
+            tipo_necessidade = request.form.get('tipo_necessidade', '').strip()
+            descricao_necessidade = request.form.get('descricao_necessidade', '').strip()
+            
+            if not nome_aluno:
+                flash('Nome do aluno é obrigatório!', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+            
+            # Validar campos de necessidade especial se marcado
+            if tem_necessidade_especial and (not tipo_necessidade or not descricao_necessidade):
+                flash('Tipo e descrição da necessidade especial são obrigatórios quando marcado!', 'danger')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+            
+            # Verificar se ainda há vagas disponíveis
+            if agendamento.horario.vagas_disponiveis <= 0:
+                flash('Não há mais vagas disponíveis para este horário!', 'warning')
+                return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
+            
+            # Criar novo aluno
+            novo_aluno = AlunoVisitante(
+                nome=nome_aluno,
+                cpf=cpf_aluno if cpf_aluno else None,
+                agendamento_id=agendamento.id,
+                presente=False
+            )
+            db.session.add(novo_aluno)
+            db.session.flush()  # Para obter o ID do aluno
+            
+            # Criar registro de necessidade especial se necessário
+            if tem_necessidade_especial and tipo_necessidade:
+                necessidade_especial = NecessidadeEspecial(
+                    aluno_id=novo_aluno.id,
+                    tipo=tipo_necessidade,
+                    descricao=descricao_necessidade,
+                    data_registro=datetime.utcnow()
+                )
+                db.session.add(necessidade_especial)
+            
+            # Atualizar contadores
+            agendamento.quantidade_alunos += 1
+            agendamento.horario.vagas_disponiveis -= 1
+            
+            db.session.commit()
+            flash('Aluno adicionado com sucesso!', 'success')
+                
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao adicionar alunos: {str(e)}', 'danger')
+        
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+    
+    # GET - Renderizar formulário
+    return render_template(
+        'cliente/adicionar_alunos.html',
+        agendamento=agendamento
     )
 
 
@@ -5511,7 +5907,7 @@ def api_materiais_apoio_admin():
     try:
         from models import MaterialApoio
         
-        materiais = MaterialApoio.query.order_by(MaterialApoio.nome).all()
+        materiais = MaterialApoio.query.filter_by(cliente_id=current_user.id).order_by(MaterialApoio.nome).all()
         materiais_data = [{
             'id': material.id,
             'nome': material.nome,
@@ -5538,7 +5934,7 @@ def api_material_apoio_detalhes(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,
@@ -5578,8 +5974,8 @@ def api_criar_material_apoio():
                 'error': 'Nome é obrigatório'
             }), 400
         
-        # Verificar se já existe um material com o mesmo nome
-        material_existente = MaterialApoio.query.filter_by(nome=data['nome']).first()
+        # Verificar se já existe um material com o mesmo nome para este cliente
+        material_existente = MaterialApoio.query.filter_by(nome=data['nome'], cliente_id=current_user.id).first()
         if material_existente:
             return jsonify({
                 'success': False,
@@ -5623,7 +6019,7 @@ def api_atualizar_material_apoio(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,
@@ -5639,10 +6035,11 @@ def api_atualizar_material_apoio(material_id):
                 'error': 'Nome é obrigatório'
             }), 400
         
-        # Verificar se já existe outro material com o mesmo nome
+        # Verificar se já existe outro material com o mesmo nome para este cliente
         material_existente = MaterialApoio.query.filter(
             MaterialApoio.nome == data['nome'],
-            MaterialApoio.id != material_id
+            MaterialApoio.id != material_id,
+            MaterialApoio.cliente_id == current_user.id
         ).first()
         if material_existente:
             return jsonify({
@@ -5683,7 +6080,7 @@ def api_toggle_material_apoio(material_id):
     try:
         from models import MaterialApoio
         
-        material = MaterialApoio.query.get(material_id)
+        material = MaterialApoio.query.filter_by(id=material_id, cliente_id=current_user.id).first()
         if not material:
             return jsonify({
                 'success': False,

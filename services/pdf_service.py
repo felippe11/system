@@ -2804,14 +2804,14 @@ def gerar_pdf_comprovante_agendamento(agendamento, horario, evento, salas, aluno
 
 
 def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
-    """Gera um PDF de agendamentos com presenças via QR code."""
+    """Gera um PDF completo de agendamentos com todas as informações detalhadas."""
 
     pdf = FPDF()
     pdf.add_page()
 
     # Título
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(190, 10, f'Relatório de Agendamentos - {evento.nome}', 0, 1, 'C')
+    pdf.cell(190, 10, f'Relatório Completo de Agendamentos - {evento.nome}', 0, 1, 'C')
 
     # Informações do evento
     pdf.set_font('Arial', '', 12)
@@ -2833,10 +2833,10 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         'R',
     )
 
-    # Estatísticas
+    # Estatísticas Gerais
     pdf.ln(5)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Estatísticas', 0, 1)
+    pdf.cell(190, 10, 'Estatísticas Gerais', 0, 1)
 
     confirmados = sum(1 for a in agendamentos if a.status == 'confirmado')
     realizados = sum(1 for a in agendamentos if a.status == 'realizado')
@@ -2851,10 +2851,33 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
         for a in agendamentos
         if a.status in ['confirmado', 'realizado', 'pendente']
     )
+    
+    # Calcular estatísticas de PCD
+    total_alunos_pcd = 0
+    tipos_pcd = {}
+    materiais_apoio_utilizados = set()
+    
+    for agendamento in agendamentos:
+        for aluno in agendamento.alunos:
+            if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                total_alunos_pcd += 1
+                tipo_display = aluno.necessidade_especial.get_tipo_display()
+                tipos_pcd[tipo_display] = tipos_pcd.get(tipo_display, 0) + 1
+            
+            # Materiais de apoio
+            if hasattr(aluno, 'materiais_apoio'):
+                for material in aluno.materiais_apoio:
+                    materiais_apoio_utilizados.add(material.nome)
+    
     presentes = 0
+    presentes_pcd = 0
     for a in agendamentos:
         if a.status == 'realizado':
-            presentes += sum(1 for aluno in a.alunos if aluno.presente)
+            for aluno in a.alunos:
+                if aluno.presente:
+                    presentes += 1
+                    if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                        presentes_pcd += 1
 
     pdf.set_font('Arial', '', 12)
     pdf.cell(95, 10, f'Total de Agendamentos: {total_agendamentos}', 0, 0)
@@ -2867,78 +2890,126 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(95, 10, f'Pendentes: {pendentes}', 0, 1)
 
     pdf.cell(95, 10, f'Check-ins: {checkins}', 0, 0)
-    if realizados > 0:
-        pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
-    else:
-        pdf.ln(10)
+    pdf.cell(95, 10, f'Alunos Presentes: {presentes}', 0, 1)
+    
+    pdf.cell(95, 10, f'Alunos PCD: {total_alunos_pcd}', 0, 0)
+    pdf.cell(95, 10, f'Alunos PCD Presentes: {presentes_pcd}', 0, 1)
 
-    # Lista de agendamentos
+    # Estatísticas de PCD
+    if tipos_pcd:
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(190, 10, 'Distribuição por Tipo de Necessidade Especial:', 0, 1)
+        pdf.set_font('Arial', '', 10)
+        for tipo, quantidade in tipos_pcd.items():
+            pdf.cell(190, 8, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
+    
+    # Materiais de apoio utilizados
+    if materiais_apoio_utilizados:
+        pdf.ln(3)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(190, 10, 'Materiais de Apoio Utilizados:', 0, 1)
+        pdf.set_font('Arial', '', 10)
+        for material in sorted(materiais_apoio_utilizados):
+            pdf.cell(190, 8, f'• {material}', 0, 1)
+
+    # Detalhes dos Agendamentos
     pdf.ln(10)
     pdf.set_font('Arial', 'B', 14)
-    pdf.cell(190, 10, 'Lista de Agendamentos', 0, 1)
+    pdf.cell(190, 10, 'Detalhes dos Agendamentos', 0, 1)
 
-    # Cabeçalho da tabela
-    pdf.set_font('Arial', 'B', 9)
-    pdf.cell(10, 10, 'ID', 1, 0, 'C')
-    pdf.cell(20, 10, 'Data', 1, 0, 'C')
-    pdf.cell(15, 10, 'Horário', 1, 0, 'C')
-    pdf.cell(40, 10, 'Escola', 1, 0, 'C')
-    pdf.cell(30, 10, 'Professor', 1, 0, 'C')
-    pdf.cell(15, 10, 'Alunos', 1, 0, 'C')
-    pdf.cell(20, 10, 'Presentes', 1, 0, 'C')
-    pdf.cell(25, 10, 'Check-in', 1, 0, 'C')
-    pdf.cell(15, 10, 'Status', 1, 1, 'C')
-
-    pdf.set_font('Arial', '', 8)
-    for agendamento in agendamentos:
+    for i, agendamento in enumerate(agendamentos, 1):
+        # Verificar se precisa de nova página
+        if pdf.get_y() > 250:
+            pdf.add_page()
+        
         horario = agendamento.horario
-
-        escola_nome = agendamento.escola_nome
-        if len(escola_nome) > 25:
-            escola_nome = escola_nome[:22] + '...'
-
-        professor_nome = (
-            agendamento.professor.nome if agendamento.professor else '-'
+        
+        # Cabeçalho do agendamento
+        pdf.ln(5)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.set_fill_color(230, 230, 230)
+        pdf.cell(190, 8, f'Agendamento #{agendamento.id} - {agendamento.escola_nome}', 1, 1, 'L', True)
+        
+        # Informações básicas
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(95, 6, f'Data: {horario.data.strftime("%d/%m/%Y")}', 1, 0)
+        pdf.cell(95, 6, f'Horário: {horario.horario_inicio.strftime("%H:%M")} às {horario.horario_fim.strftime("%H:%M")}', 1, 1)
+        
+        professor_nome = agendamento.professor.nome if agendamento.professor else 'Não informado'
+        pdf.cell(95, 6, f'Professor: {professor_nome}', 1, 0)
+        pdf.cell(95, 6, f'Status: {agendamento.status.capitalize()}', 1, 1)
+        
+        pdf.cell(95, 6, f'Turma: {agendamento.turma}', 1, 0)
+        pdf.cell(95, 6, f'Nível: {agendamento.nivel_ensino}', 1, 1)
+        
+        pdf.cell(95, 6, f'Total de Alunos: {agendamento.quantidade_alunos}', 1, 0)
+        
+        # Contar alunos PCD neste agendamento
+        alunos_pcd_agendamento = sum(
+            1 for aluno in agendamento.alunos 
+            if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial
         )
-        if len(professor_nome) > 18:
-            professor_nome = professor_nome[:15] + '...'
-
-        pdf.cell(10, 8, str(agendamento.id), 1, 0, 'C')
-        pdf.cell(20, 8, horario.data.strftime('%d/%m/%Y'), 1, 0, 'C')
-        pdf.cell(15, 8, horario.horario_inicio.strftime('%H:%M'), 1, 0, 'C')
-        pdf.cell(40, 8, escola_nome, 1, 0, 'L')
-        pdf.cell(30, 8, professor_nome, 1, 0, 'L')
-        pdf.cell(15, 8, str(agendamento.quantidade_alunos), 1, 0, 'C')
-
-        presentes = sum(1 for aluno in agendamento.alunos if aluno.presente)
-        presentes_txt = (
-            'Prof + ' + str(presentes)
-            if agendamento.checkin_realizado
-            else '- + ' + str(presentes)
-        )
-        pdf.cell(20, 8, presentes_txt, 1, 0, 'C')
-
-        checkin_txt = (
-            agendamento.data_checkin.strftime('%d/%m/%Y %H:%M')
-            if agendamento.data_checkin
-            else '-'
-        )
-        pdf.cell(25, 8, checkin_txt, 1, 0, 'C')
-
-        status_txt = agendamento.status.capitalize()
-        if agendamento.checkin_realizado:
-            status_txt += ' (OK)'
-
-        pdf.cell(15, 8, status_txt, 1, 1, 'C')
-
-        presentes_alunos = [
-            aluno for aluno in agendamento.alunos if aluno.presente
-        ]
-        if presentes_alunos:
-            pdf.set_font('Arial', 'I', 7)
-            for aluno in presentes_alunos:
-                pdf.cell(190, 5, f"- {aluno.nome}", 0, 1)
-            pdf.set_font('Arial', '', 8)
+        pdf.cell(95, 6, f'Alunos PCD: {alunos_pcd_agendamento}', 1, 1)
+        
+        # Check-in
+        if agendamento.checkin_realizado and agendamento.data_checkin:
+            pdf.cell(190, 6, f'Check-in realizado em: {agendamento.data_checkin.strftime("%d/%m/%Y %H:%M")}', 1, 1)
+        else:
+            pdf.cell(190, 6, 'Check-in: Não realizado', 1, 1)
+        
+        # Observações
+        if agendamento.observacoes:
+            pdf.cell(190, 6, f'Observações: {agendamento.observacoes[:80]}...', 1, 1)
+        
+        # Lista de alunos com detalhes
+        if agendamento.alunos:
+            pdf.ln(2)
+            pdf.set_font('Arial', 'B', 10)
+            pdf.cell(190, 6, 'Lista de Alunos:', 0, 1)
+            
+            # Cabeçalho da tabela de alunos
+            pdf.set_font('Arial', 'B', 8)
+            pdf.cell(50, 6, 'Nome', 1, 0, 'C')
+            pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+            pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
+            pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
+            pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
+            
+            pdf.set_font('Arial', '', 7)
+            for aluno in agendamento.alunos:
+                # Verificar se precisa de nova página
+                if pdf.get_y() > 270:
+                    pdf.add_page()
+                    # Repetir cabeçalho
+                    pdf.set_font('Arial', 'B', 8)
+                    pdf.cell(50, 6, 'Nome', 1, 0, 'C')
+                    pdf.cell(20, 6, 'Presente', 1, 0, 'C')
+                    pdf.cell(40, 6, 'Tipo PCD', 1, 0, 'C')
+                    pdf.cell(40, 6, 'Descrição', 1, 0, 'C')
+                    pdf.cell(40, 6, 'Materiais de Apoio', 1, 1, 'C')
+                    pdf.set_font('Arial', '', 7)
+                
+                nome = aluno.nome[:25] + '...' if len(aluno.nome) > 25 else aluno.nome
+                presente = 'Sim' if aluno.presente else 'Não'
+                
+                tipo_pcd = ''
+                descricao_pcd = ''
+                materiais = ''
+                
+                if hasattr(aluno, 'necessidade_especial') and aluno.necessidade_especial:
+                    tipo_pcd = aluno.necessidade_especial.get_tipo_display()[:20]
+                    descricao_pcd = aluno.necessidade_especial.descricao[:25] + '...' if len(aluno.necessidade_especial.descricao) > 25 else aluno.necessidade_especial.descricao
+                
+                if hasattr(aluno, 'materiais_apoio') and aluno.materiais_apoio:
+                    materiais_lista = [m.nome for m in aluno.materiais_apoio]
+                    materiais = ', '.join(materiais_lista)[:25] + '...' if len(', '.join(materiais_lista)) > 25 else ', '.join(materiais_lista)
+                
+                pdf.cell(50, 6, nome, 1, 0, 'L')
+                pdf.cell(20, 6, presente, 1, 0, 'C')
+                pdf.cell(40, 6, tipo_pcd, 1, 0, 'L')
+                pdf.cell(40, 6, descricao_pcd, 1, 0, 'L')
+                pdf.cell(40, 6, materiais, 1, 1, 'L')
 
     # Rodapé
     pdf.ln(10)
@@ -2946,7 +3017,7 @@ def gerar_pdf_relatorio_agendamentos(evento, agendamentos, caminho_pdf):
     pdf.cell(
         190,
         10,
-        'Este relatório é gerado automaticamente pelo sistema de agendamentos.',
+        'Este relatório completo é gerado automaticamente pelo sistema de agendamentos.',
         0,
         1,
         'C',
