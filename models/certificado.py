@@ -222,6 +222,38 @@ class DeclaracaoTemplate(db.Model):
         return f'<DeclaracaoTemplate {self.nome}>'
 
 
+class VariavelDinamica(db.Model):
+    """Variáveis dinâmicas para templates de certificados e declarações."""
+    __tablename__ = "variavel_dinamica"
+    __table_args__ = {'extend_existing': True}
+    
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    
+    # Identificação
+    nome = db.Column(db.String(100), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    tipo = db.Column(db.String(20), nullable=False)  # 'texto', 'numero', 'data', 'booleano'
+    
+    # Configurações
+    valor_padrao = db.Column(db.Text, nullable=True)
+    obrigatoria = db.Column(db.Boolean, default=False)
+    formato = db.Column(db.String(100), nullable=True)  # Para datas, números, etc.
+    
+    # Status
+    ativa = db.Column(db.Boolean, default=True)
+    
+    # Datas
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    data_atualizacao = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamentos
+    cliente = db.relationship("Cliente", backref="variaveis_dinamicas")
+    
+    def __repr__(self):
+        return f'<VariavelDinamica {self.nome}>'
+
+
 class AcessoValidacaoCertificado(db.Model):
     """Registros de acessos para validação de certificados."""
     __tablename__ = "acesso_validacao_certificado"

@@ -1,31 +1,34 @@
-{% extends 'base.html' %}
-{% block title %}Editor Avançado de Certificados{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}Editor Avançado de Declarações{% endblock %}
 
 {% block extra_css %}
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
   .editor-container {
     height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
   }
   
   .toolbar {
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
-    padding: 10px;
+    padding: 10px 15px;
     display: flex;
-    gap: 10px;
     align-items: center;
+    gap: 10px;
     flex-wrap: wrap;
   }
   
   .editor-workspace {
+    flex: 1;
     display: flex;
-    height: calc(100vh - 120px);
+    overflow: hidden;
   }
   
   .sidebar {
-    width: 300px;
+    width: 280px;
     background: #f8f9fa;
     border-right: 1px solid #dee2e6;
     overflow-y: auto;
@@ -34,25 +37,24 @@
   .canvas-container {
     flex: 1;
     background: #e9ecef;
-    position: relative;
-    overflow: auto;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     padding: 20px;
+    overflow: auto;
   }
   
-  .certificate-canvas {
+  .declaration-canvas {
+    width: 794px;
+    min-height: 1123px;
     background: white;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     position: relative;
-    min-height: 600px;
-    width: 800px;
-    border: 1px solid #ccc;
+    margin: 0 auto;
   }
   
   .properties-panel {
-    width: 300px;
+    width: 320px;
     background: #f8f9fa;
     border-left: 1px solid #dee2e6;
     overflow-y: auto;
@@ -60,11 +62,12 @@
   
   .draggable-element {
     position: absolute;
-    cursor: move;
     border: 2px dashed transparent;
-    min-width: 100px;
-    min-height: 30px;
+    cursor: move;
+    min-width: 50px;
+    min-height: 20px;
     padding: 5px;
+    word-wrap: break-word;
   }
   
   .draggable-element:hover {
@@ -72,7 +75,7 @@
   }
   
   .draggable-element.selected {
-    border-color: #28a745;
+    border-color: #007bff;
     border-style: solid;
   }
   
@@ -80,12 +83,22 @@
     position: absolute;
     top: -25px;
     right: 0;
+    background: #007bff;
+    border-radius: 3px;
     display: none;
-    gap: 2px;
   }
   
   .draggable-element.selected .element-controls {
-    display: flex;
+    display: block;
+  }
+  
+  .element-controls button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 2px 6px;
+    font-size: 12px;
+    cursor: pointer;
   }
   
   .resize-handle {
@@ -141,39 +154,10 @@
     cursor: pointer;
   }
   
-  .font-preview {
-    padding: 5px;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    margin-top: 5px;
-  }
-  
   .template-actions {
     padding: 15px;
     border-top: 1px solid #dee2e6;
     background: white;
-  }
-  
-  .preview-mode {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    z-index: 1000;
-    display: none;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .preview-content {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    max-width: 90%;
-    max-height: 90%;
-    overflow: auto;
   }
   
   .variable-tag {
@@ -183,14 +167,6 @@
     border-radius: 3px;
     font-size: 0.85em;
     cursor: pointer;
-  }
-  
-  .ai-suggestions {
-    background: #f0f8ff;
-    border: 1px solid #b3d9ff;
-    border-radius: 4px;
-    padding: 10px;
-    margin-top: 10px;
   }
 </style>
 {% endblock %}
@@ -234,7 +210,7 @@
       <option value="1.5">150%</option>
     </select>
     <div class="vr"></div>
-    <span class="text-muted">Template: <strong id="templateName">{{ template.titulo if template else 'Novo Template' }}</strong></span>
+    <span class="text-muted">Template: <strong id="templateName">{{ template.nome if template else 'Novo Template' }}</strong></span>
   </div>
 
   <!-- Workspace -->
@@ -253,31 +229,37 @@
         <div class="element-item" data-type="title">
           <i class="fas fa-heading me-2"></i>
           <strong>Título</strong>
-          <small class="d-block text-muted">Título principal do certificado</small>
+          <small class="d-block text-muted">Título principal da declaração</small>
         </div>
         
         <div class="element-item" data-type="participant-name">
           <i class="fas fa-user me-2"></i>
           <strong>Nome do Participante</strong>
-          <small class="d-block text-muted">{NOME_PARTICIPANTE}</small>
+          <small class="d-block text-muted">{{ usuario.nome }}</small>
+        </div>
+        
+        <div class="element-item" data-type="event-name">
+          <i class="fas fa-calendar me-2"></i>
+          <strong>Nome do Evento</strong>
+          <small class="d-block text-muted">{{ evento.nome }}</small>
         </div>
         
         <div class="element-item" data-type="workload">
           <i class="fas fa-clock me-2"></i>
           <strong>Carga Horária</strong>
-          <small class="d-block text-muted">{CARGA_HORARIA}</small>
+          <small class="d-block text-muted">{{ dados.carga_horaria }}</small>
         </div>
         
-        <div class="element-item" data-type="activities">
-          <i class="fas fa-list me-2"></i>
-          <strong>Lista de Atividades</strong>
-          <small class="d-block text-muted">{LISTA_OFICINAS}</small>
+        <div class="element-item" data-type="date-period">
+          <i class="fas fa-calendar-alt me-2"></i>
+          <strong>Período</strong>
+          <small class="d-block text-muted">{{ evento.data_inicio }} a {{ evento.data_fim }}</small>
         </div>
         
         <div class="element-item" data-type="date">
-          <i class="fas fa-calendar me-2"></i>
-          <strong>Data</strong>
-          <small class="d-block text-muted">{DATA_EMISSAO}</small>
+          <i class="fas fa-calendar-day me-2"></i>
+          <strong>Data de Emissão</strong>
+          <small class="d-block text-muted">Data atual</small>
         </div>
         
         <div class="element-item" data-type="signature">
@@ -289,25 +271,13 @@
         <div class="element-item" data-type="logo">
           <i class="fas fa-image me-2"></i>
           <strong>Logo/Imagem</strong>
-          <small class="d-block text-muted">Inserir logotipo</small>
+          <small class="d-block text-muted">Logotipo da instituição</small>
         </div>
         
         <div class="element-item" data-type="border">
           <i class="fas fa-border-style me-2"></i>
           <strong>Borda Decorativa</strong>
-          <small class="d-block text-muted">Adicionar bordas</small>
-        </div>
-        
-        <div class="element-item" data-type="qr-code">
-          <i class="fas fa-qrcode me-2"></i>
-          <strong>QR Code</strong>
-          <small class="d-block text-muted">Código QR para validação</small>
-        </div>
-        
-        <div class="element-item" data-type="custom-variable">
-          <i class="fas fa-code me-2"></i>
-          <strong>Variável Personalizada</strong>
-          <small class="d-block text-muted">Variável dinâmica customizada</small>
+          <small class="d-block text-muted">Moldura para a declaração</small>
         </div>
         
         <h6 class="fw-bold mb-3 mt-4">Variáveis Dinâmicas</h6>
@@ -315,63 +285,60 @@
           <!-- Variáveis serão carregadas dinamicamente -->
         </div>
         
-        <button class="btn btn-outline-primary btn-sm w-100 mt-2" id="addVariable">
+        <button class="btn btn-outline-primary btn-sm w-100 mt-2" data-bs-toggle="modal" data-bs-target="#newVariableModal">
           <i class="fas fa-plus"></i> Nova Variável
         </button>
       </div>
     </div>
 
-    <!-- Canvas Principal -->
+    <!-- Canvas -->
     <div class="canvas-container">
-      <div class="certificate-canvas" id="certificateCanvas">
-        <!-- Elementos do certificado serão adicionados aqui -->
+      <div class="declaration-canvas" id="declarationCanvas">
+        <!-- Elementos serão adicionados aqui -->
       </div>
     </div>
 
     <!-- Painel de Propriedades -->
     <div class="properties-panel">
       <div class="properties-content">
-        <h6 class="fw-bold mb-3">Propriedades</h6>
+        <h6 class="fw-bold mb-3">Configurações do Template</h6>
+        
+        <div class="form-group">
+          <label class="form-label">Nome do Template</label>
+          <input type="text" class="form-control" id="templateTitle" value="{{ template.nome if template else '' }}" placeholder="Digite o nome do template">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Tipo de Declaração</label>
+          <select class="form-select" id="declarationType">
+            <option value="individual" {{ 'selected' if template and template.tipo == 'individual' else '' }}>Individual</option>
+            <option value="coletiva" {{ 'selected' if template and template.tipo == 'coletiva' else '' }}>Coletiva</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Orientação da Página</label>
+          <select class="form-select" id="pageOrientation">
+            <option value="portrait">Retrato</option>
+            <option value="landscape">Paisagem</option>
+          </select>
+        </div>
+        
+        <hr>
+        
         <div id="elementProperties">
           <p class="text-muted">Selecione um elemento para editar suas propriedades.</p>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Ações do Template -->
-  <div class="template-actions">
-    <div class="row">
-      <div class="col-md-6">
-        <div class="form-group">
-          <label>Nome do Template</label>
-          <input type="text" class="form-control" id="templateTitle" value="{{ template.titulo if template else '' }}" placeholder="Digite o nome do template">
-        </div>
+      
+      <div class="template-actions">
+        <button class="btn btn-primary w-100 mb-2" onclick="declarationEditor.saveTemplate()">
+          <i class="fas fa-save"></i> Salvar Template
+        </button>
+        <button class="btn btn-outline-secondary w-100" onclick="window.location.href='{{ url_for('declaracao.listar_templates') }}'">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </button>
       </div>
-      <div class="col-md-6">
-        <div class="form-group">
-          <label>Orientação</label>
-          <select class="form-select" id="pageOrientation">
-            <option value="landscape">Paisagem</option>
-            <option value="portrait">Retrato</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal de Pré-visualização -->
-<div class="preview-mode" id="previewMode">
-  <div class="preview-content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5>Pré-visualização do Certificado</h5>
-      <button class="btn btn-outline-secondary" id="closePreview">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <div id="previewCanvas">
-      <!-- Pré-visualização será renderizada aqui -->
     </div>
   </div>
 </div>
@@ -385,49 +352,46 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <div class="form-group mb-3">
-          <label>Nome da Variável</label>
+        <div class="mb-3">
+          <label class="form-label">Nome da Variável</label>
           <input type="text" class="form-control" id="variableName" placeholder="Ex: NOME_INSTITUICAO">
         </div>
-        <div class="form-group mb-3">
-          <label>Descrição</label>
-          <input type="text" class="form-control" id="variableDescription" placeholder="Descrição da variável">
+        <div class="mb-3">
+          <label class="form-label">Descrição</label>
+          <input type="text" class="form-control" id="variableDescription" placeholder="Ex: Nome da Instituição">
         </div>
-        <div class="form-group mb-3">
-          <label>Valor Padrão</label>
-          <input type="text" class="form-control" id="variableDefault" placeholder="Valor padrão">
+        <div class="mb-3">
+          <label class="form-label">Valor Padrão</label>
+          <input type="text" class="form-control" id="variableDefault" placeholder="Valor quando variável estiver vazia">
         </div>
-        <div class="form-group">
-          <label>Tipo</label>
+        <div class="mb-3">
+          <label class="form-label">Tipo</label>
           <select class="form-select" id="variableType">
-            <option value="texto">Texto</option>
-            <option value="data">Data</option>
-            <option value="numero">Número</option>
-            <option value="lista">Lista</option>
+            <option value="text">Texto</option>
+            <option value="date">Data</option>
+            <option value="number">Número</option>
           </select>
         </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="saveVariable">Salvar Variável</button>
+        <button type="button" class="btn btn-primary" onclick="declarationEditor.saveNewVariable()">Salvar</button>
       </div>
     </div>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+<script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
 <script>
-// Editor Avançado de Certificados
-class CertificateEditor {
+class DeclarationEditor {
   constructor() {
-    this.canvas = document.getElementById('certificateCanvas');
-    this.selectedElement = null;
+    this.canvas = document.getElementById('declarationCanvas');
     this.elements = [];
+    this.selectedElement = null;
+    this.nextElementId = 1;
     this.history = [];
     this.historyIndex = -1;
-    this.nextElementId = 1;
+    this.livePreview = false;
     
     this.init();
   }
@@ -436,41 +400,19 @@ class CertificateEditor {
     this.setupEventListeners();
     this.setupDragAndDrop();
     this.loadTemplate();
+    this.saveState();
   }
   
   setupEventListeners() {
-    // Biblioteca de elementos
+    // Event listeners para elementos da biblioteca
     document.querySelectorAll('.element-item').forEach(item => {
       item.addEventListener('click', () => {
-        this.addElement(item.dataset.type);
+        const type = item.getAttribute('data-type');
+        this.addElement(type);
       });
     });
     
-    // Toolbar
-    document.getElementById('saveTemplate').addEventListener('click', () => this.saveTemplate());
-    document.getElementById('previewTemplate').addEventListener('click', () => this.previewTemplate());
-    document.getElementById('exportTemplate').addEventListener('click', () => this.exportTemplate());
-    document.getElementById('undoAction').addEventListener('click', () => this.undo());
-    document.getElementById('redoAction').addEventListener('click', () => this.redo());
-    
-    // Zoom
-    document.getElementById('zoomLevel').addEventListener('change', (e) => {
-      this.setZoom(parseFloat(e.target.value));
-    });
-    
-    // Preview
-    document.getElementById('closePreview').addEventListener('click', () => {
-      document.getElementById('previewMode').style.display = 'none';
-    });
-    
-    // Nova variável
-    document.getElementById('addVariable').addEventListener('click', () => {
-      new bootstrap.Modal(document.getElementById('newVariableModal')).show();
-    });
-    
-    document.getElementById('saveVariable').addEventListener('click', () => this.saveNewVariable());
-    
-    // Canvas click
+    // Event listener para clique no canvas
     this.canvas.addEventListener('click', (e) => {
       if (e.target === this.canvas) {
         this.deselectElement();
@@ -483,6 +425,9 @@ class CertificateEditor {
     interact('.draggable-element')
       .draggable({
         listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+          },
           move: (event) => {
             const target = event.target;
             let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
@@ -602,7 +547,7 @@ class CertificateEditor {
     const container = document.getElementById('guidelinesContainer');
     if (!container) return;
     
-    const tolerance = 5; // pixels de tolerância para snap
+    const tolerance = 5;
     const draggedRect = {
       left: x,
       top: y,
@@ -682,38 +627,38 @@ class CertificateEditor {
   }
   
   hideGuidelines() {
-     const container = document.getElementById('guidelinesContainer');
-     if (container) {
-       container.querySelectorAll('.guideline').forEach(guideline => {
-         guideline.remove();
-       });
-     }
-   }
-   
-   toggleGrid() {
-     const gridOverlay = document.getElementById('gridOverlay');
-     const toggleBtn = document.getElementById('toggleGrid');
-     
-     if (gridOverlay) {
-       const isVisible = gridOverlay.style.display !== 'none';
-       gridOverlay.style.display = isVisible ? 'none' : 'block';
-       toggleBtn.classList.toggle('active', !isVisible);
-     }
-   }
-   
-   toggleSnap() {
-     this.snapToGrid = !this.snapToGrid;
-     const toggleBtn = document.getElementById('toggleSnap');
-     toggleBtn.classList.toggle('active', this.snapToGrid);
-   }
-   
-   setGridSize(size) {
-     this.gridSize = size;
-     const gridOverlay = document.getElementById('gridOverlay');
-     if (gridOverlay) {
-       gridOverlay.style.backgroundSize = `${size}px ${size}px`;
-     }
-   }
+    const container = document.getElementById('guidelinesContainer');
+    if (container) {
+      container.querySelectorAll('.guideline').forEach(guideline => {
+        guideline.remove();
+      });
+    }
+  }
+  
+  toggleGrid() {
+    const gridOverlay = document.getElementById('gridOverlay');
+    const toggleBtn = document.getElementById('toggleGrid');
+    
+    if (gridOverlay) {
+      const isVisible = gridOverlay.style.display !== 'none';
+      gridOverlay.style.display = isVisible ? 'none' : 'block';
+      toggleBtn.classList.toggle('active', !isVisible);
+    }
+  }
+  
+  toggleSnap() {
+    this.snapToGrid = !this.snapToGrid;
+    const toggleBtn = document.getElementById('toggleSnap');
+    toggleBtn.classList.toggle('active', this.snapToGrid);
+  }
+  
+  setGridSize(size) {
+    this.gridSize = size;
+    const gridOverlay = document.getElementById('gridOverlay');
+    if (gridOverlay) {
+      gridOverlay.style.backgroundSize = `${size}px ${size}px`;
+    }
+  }
   
   addElement(type) {
     const elementId = `element_${this.nextElementId++}`;
@@ -725,12 +670,13 @@ class CertificateEditor {
       type: type,
       x: 50,
       y: 50,
-      width: 200,
-      height: 40,
+      width: element.offsetWidth || 200,
+      height: element.offsetHeight || 40,
       properties: this.getDefaultProperties(type)
     });
     
     this.selectElement(element);
+    this.setupDragAndDrop();
     this.saveState();
   }
   
@@ -740,79 +686,73 @@ class CertificateEditor {
     element.className = 'draggable-element';
     element.style.left = '50px';
     element.style.top = '50px';
-    element.style.width = '200px';
-    element.style.height = '40px';
+    element.setAttribute('data-x', 50);
+    element.setAttribute('data-y', 50);
     
-    // Conteúdo baseado no tipo
-    switch(type) {
-      case 'text':
-        element.innerHTML = 'Texto personalizado';
-        break;
-      case 'title':
-        element.innerHTML = '<h3>CERTIFICADO</h3>';
-        element.style.textAlign = 'center';
-        break;
-      case 'participant-name':
-        element.innerHTML = '<strong>{NOME_PARTICIPANTE}</strong>';
-        element.style.textAlign = 'center';
-        break;
-      case 'workload':
-        element.innerHTML = 'Carga horária: {CARGA_HORARIA} horas';
-        break;
-      case 'activities':
-        element.innerHTML = '{LISTA_OFICINAS}';
-        break;
-      case 'date':
-        element.innerHTML = 'Data: {DATA_EMISSAO}';
-        break;
-      case 'signature':
-        element.innerHTML = '<div style="border-top: 1px solid #000; margin-top: 20px; text-align: center;">Assinatura</div>';
-        break;
-      case 'logo':
-        element.innerHTML = '<div style="border: 2px dashed #ccc; text-align: center; padding: 20px;">Logo</div>';
-        element.style.width = '120px';
-        element.style.height = '80px';
-        break;
-      case 'border':
-        element.innerHTML = '';
-        element.style.border = '3px solid #000';
-        element.style.background = 'transparent';
-        element.style.width = '150px';
-        element.style.height = '100px';
-        break;
-      case 'qr-code':
-        element.innerHTML = '<div style="border: 1px solid #333; text-align: center; line-height: 100px; background: #fff;">QR Code</div>';
-        element.style.width = '100px';
-        element.style.height = '100px';
-        break;
-      case 'custom-variable':
-        element.innerHTML = '{VARIAVEL_PERSONALIZADA}';
-        element.style.backgroundColor = '#fff3cd';
-        element.style.border = '1px solid #ffeaa7';
-        element.style.padding = '5px';
-        break;
-    }
-    
-    // Controles do elemento
+    // Adicionar controles
     const controls = document.createElement('div');
     controls.className = 'element-controls';
     controls.innerHTML = `
-      <button class="btn btn-sm btn-outline-primary" onclick="editor.editElement('${id}')">
-        <i class="fas fa-edit"></i>
-      </button>
-      <button class="btn btn-sm btn-outline-danger" onclick="editor.deleteElement('${id}')">
+      <button onclick="declarationEditor.deleteElement('${id}')" title="Excluir">
         <i class="fas fa-trash"></i>
       </button>
     `;
     element.appendChild(controls);
     
-    // Handles de redimensionamento
+    // Adicionar handles de redimensionamento
     ['nw', 'ne', 'sw', 'se'].forEach(pos => {
       const handle = document.createElement('div');
       handle.className = `resize-handle ${pos}`;
       element.appendChild(handle);
     });
     
+    // Definir conteúdo baseado no tipo
+    switch(type) {
+      case 'text':
+        element.innerHTML += 'Texto personalizado';
+        break;
+      case 'title':
+        element.innerHTML += 'DECLARAÇÃO';
+        element.style.fontSize = '24px';
+        element.style.fontWeight = 'bold';
+        element.style.textAlign = 'center';
+        break;
+      case 'participant-name':
+        element.innerHTML += '{{ usuario.nome }}';
+        element.style.fontWeight = 'bold';
+        break;
+      case 'event-name':
+        element.innerHTML += '{{ evento.nome }}';
+        break;
+      case 'workload':
+        element.innerHTML += '{{ dados.carga_horaria }} horas';
+        break;
+      case 'date-period':
+        element.innerHTML += 'de {{ evento.data_inicio }} a {{ evento.data_fim }}';
+        break;
+      case 'date':
+        element.innerHTML += new Date().toLocaleDateString('pt-BR');
+        break;
+      case 'signature':
+        element.innerHTML += '_'.repeat(50);
+        element.style.textAlign = 'center';
+        element.style.borderBottom = '1px solid #000';
+        break;
+      case 'logo':
+        element.innerHTML += '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center;">Logo/Imagem</div>';
+        break;
+      case 'border':
+        element.innerHTML += '';
+        element.style.border = '3px solid #000';
+        element.style.width = '100%';
+        element.style.height = '100%';
+        element.style.position = 'absolute';
+        element.style.top = '0';
+        element.style.left = '0';
+        break;
+    }
+    
+    // Event listener para seleção
     element.addEventListener('click', (e) => {
       e.stopPropagation();
       this.selectElement(element);
@@ -822,44 +762,27 @@ class CertificateEditor {
   }
   
   getDefaultProperties(type) {
-    const defaults = {
-      fontSize: '16px',
+    return {
+      fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#000000',
-      backgroundColor: 'transparent',
       textAlign: 'left',
       fontWeight: 'normal',
-      fontStyle: 'normal'
+      fontStyle: 'normal',
+      backgroundColor: 'transparent'
     };
-    
-    switch(type) {
-      case 'title':
-        defaults.fontSize = '24px';
-        defaults.fontWeight = 'bold';
-        defaults.textAlign = 'center';
-        break;
-      case 'participant-name':
-        defaults.fontSize = '20px';
-        defaults.fontWeight = 'bold';
-        defaults.textAlign = 'center';
-        break;
-    }
-    
-    return defaults;
   }
   
   selectElement(element) {
-    // Deselecionar elemento anterior
-    if (this.selectedElement) {
-      this.selectedElement.classList.remove('selected');
-    }
+    // Desselecionar elemento anterior
+    this.deselectElement();
     
     // Selecionar novo elemento
     this.selectedElement = element;
     element.classList.add('selected');
     
-    // Atualizar painel de propriedades
-    this.updatePropertiesPanel();
+    // Mostrar propriedades
+    this.showElementProperties();
   }
   
   deselectElement() {
@@ -868,52 +791,49 @@ class CertificateEditor {
       this.selectedElement = null;
     }
     
-    document.getElementById('elementProperties').innerHTML = 
-      '<p class="text-muted">Selecione um elemento para editar suas propriedades.</p>';
+    // Limpar painel de propriedades
+    document.getElementById('elementProperties').innerHTML = '<p class="text-muted">Selecione um elemento para editar suas propriedades.</p>';
   }
   
-  updatePropertiesPanel() {
+  showElementProperties() {
     if (!this.selectedElement) return;
     
     const elementData = this.elements.find(el => el.id === this.selectedElement.id);
     if (!elementData) return;
     
-    const properties = elementData.properties;
+    const properties = elementData.properties || this.getDefaultProperties(elementData.type);
     
     document.getElementById('elementProperties').innerHTML = `
-      <div class="form-group">
-        <label>Texto</label>
-        <textarea class="form-control" id="elementText" rows="3">${this.selectedElement.innerHTML.replace(/<[^>]*>/g, '')}</textarea>
+      <h6>Propriedades do Elemento</h6>
+      
+      <div class="mb-3">
+        <label class="form-label">Texto</label>
+        <textarea class="form-control" id="elementText" rows="2">${this.selectedElement.textContent || ''}</textarea>
       </div>
       
-      <div class="form-group">
-        <label>Fonte</label>
+      <div class="mb-3">
+        <label class="form-label">Fonte</label>
         <select class="form-select" id="fontFamily">
           <option value="Arial, sans-serif">Arial</option>
           <option value="Times New Roman, serif">Times New Roman</option>
           <option value="Helvetica, sans-serif">Helvetica</option>
           <option value="Georgia, serif">Georgia</option>
-          <option value="Verdana, sans-serif">Verdana</option>
         </select>
       </div>
       
-      <div class="row">
-        <div class="col-6">
-          <div class="form-group">
-            <label>Tamanho</label>
-            <input type="number" class="form-control" id="fontSize" value="${parseInt(properties.fontSize)}" min="8" max="72">
-          </div>
-        </div>
-        <div class="col-6">
-          <div class="form-group">
-            <label>Cor</label>
-            <input type="color" class="form-control color-picker" id="textColor" value="${properties.color}">
-          </div>
-        </div>
+      <div class="mb-3">
+        <label class="form-label">Tamanho da Fonte</label>
+        <input type="range" class="form-range" id="fontSize" min="8" max="72" value="${parseInt(properties.fontSize)}">
+        <small class="text-muted">Tamanho: <span id="fontSizeValue">${properties.fontSize}</span></small>
       </div>
       
-      <div class="form-group">
-        <label>Alinhamento</label>
+      <div class="mb-3">
+        <label class="form-label">Cor do Texto</label>
+        <input type="color" class="color-picker" id="textColor" value="${properties.color}">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Alinhamento</label>
         <div class="btn-group w-100" role="group">
           <input type="radio" class="btn-check" name="textAlign" id="alignLeft" value="left" ${properties.textAlign === 'left' ? 'checked' : ''}>
           <label class="btn btn-outline-secondary" for="alignLeft"><i class="fas fa-align-left"></i></label>
@@ -926,7 +846,7 @@ class CertificateEditor {
         </div>
       </div>
       
-      <div class="form-group">
+      <div class="mb-3">
         <div class="form-check">
           <input class="form-check-input" type="checkbox" id="fontBold" ${properties.fontWeight === 'bold' ? 'checked' : ''}>
           <label class="form-check-label" for="fontBold">Negrito</label>
@@ -937,158 +857,27 @@ class CertificateEditor {
         </div>
       </div>
       
-      <div class="form-group">
-        <label>Cor de Fundo</label>
-        <input type="color" class="form-control color-picker" id="backgroundColor" value="${properties.backgroundColor === 'transparent' ? '#ffffff' : properties.backgroundColor}">
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="transparentBg" ${properties.backgroundColor === 'transparent' ? 'checked' : ''}>
-          <label class="form-check-label" for="transparentBg">Fundo transparente</label>
+      <div class="mb-3">
+        <label class="form-label">Cor de Fundo</label>
+        <div class="d-flex align-items-center">
+          <input type="color" class="color-picker me-2" id="backgroundColor" value="${properties.backgroundColor === 'transparent' ? '#ffffff' : properties.backgroundColor}">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="transparentBg" ${properties.backgroundColor === 'transparent' ? 'checked' : ''}>
+            <label class="form-check-label" for="transparentBg">Transparente</label>
+          </div>
         </div>
       </div>
       
-      <div id="logoProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Logo/Imagem</h6>
-        <div class="mb-3">
-          <label class="form-label">Arquivo de Imagem</label>
-          <input type="file" class="form-control" id="logoFile" accept="image/*">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">URL da Imagem</label>
-          <input type="url" class="form-control" id="logoUrl" placeholder="https://exemplo.com/logo.png">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Ajuste da Imagem</label>
-          <select class="form-select" id="logoFit">
-            <option value="contain">Ajustar</option>
-            <option value="cover">Preencher</option>
-            <option value="fill">Esticar</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="borderProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Borda</h6>
-        <div class="mb-3">
-          <label class="form-label">Estilo da Borda</label>
-          <select class="form-select" id="borderStyle">
-            <option value="solid">Sólida</option>
-            <option value="dashed">Tracejada</option>
-            <option value="dotted">Pontilhada</option>
-            <option value="double">Dupla</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Espessura</label>
-          <input type="range" class="form-range" id="borderWidth" min="1" max="10" value="3">
-          <span id="borderWidthValue">3px</span>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Cor da Borda</label>
-          <input type="color" class="form-control color-picker" id="borderColor" value="#000000">
-        </div>
-      </div>
-      
-      <div id="signatureProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Assinatura</h6>
-        <div class="mb-3">
-          <label class="form-label">Tipo de Assinatura</label>
-          <select class="form-select" id="signatureType">
-            <option value="digital">Digital</option>
-            <option value="manual">Manual</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Posição</label>
-          <select class="form-select" id="signaturePosition">
-            <option value="bottom-left">Inferior Esquerda</option>
-            <option value="bottom-center">Inferior Centro</option>
-            <option value="bottom-right">Inferior Direita</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="qrCodeProperties" class="property-group" style="display: none;">
-        <h6>Propriedades do QR Code</h6>
-        <div class="mb-3">
-          <label class="form-label">Tamanho</label>
-          <select class="form-select" id="qrCodeSize">
-            <option value="small">Pequeno (100x100)</option>
-            <option value="medium">Médio (150x150)</option>
-            <option value="large">Grande (200x200)</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Posição</label>
-          <select class="form-select" id="qrCodePosition">
-            <option value="top-left">Superior Esquerda</option>
-            <option value="top-right">Superior Direita</option>
-            <option value="bottom-left">Inferior Esquerda</option>
-            <option value="bottom-right">Inferior Direita</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Conteúdo</label>
-          <select class="form-select" id="qrCodeContent">
-            <option value="validation-url">URL de Validação</option>
-            <option value="certificate-id">ID do Certificado</option>
-            <option value="custom">Personalizado</option>
-          </select>
-        </div>
-      </div>
-      
-      <div id="customVariableProperties" class="property-group" style="display: none;">
-        <h6>Propriedades da Variável Personalizada</h6>
-        <div class="mb-3">
-          <label class="form-label">Variável</label>
-          <select class="form-select" id="customVariableSelect">
-            <option value="">Selecione uma variável...</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Formato</label>
-          <select class="form-select" id="customVariableFormat">
-            <option value="text">Texto</option>
-            <option value="uppercase">MAIÚSCULO</option>
-            <option value="lowercase">minúsculo</option>
-            <option value="capitalize">Primeira Letra Maiúscula</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Valor Padrão</label>
-          <input type="text" class="form-control" id="customVariableDefault" placeholder="Valor quando variável estiver vazia">
-        </div>
-      </div>
-      
-      <button class="btn btn-primary w-100 mt-3" onclick="editor.applyProperties(); editor.applySpecialProperties();">Aplicar Alterações</button>
+      <button class="btn btn-primary w-100 mt-3" onclick="declarationEditor.applyProperties()">Aplicar Alterações</button>
     `;
     
     // Definir valores selecionados
     document.getElementById('fontFamily').value = properties.fontFamily;
     
-    // Mostrar/ocultar painéis específicos baseado no tipo
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    document.querySelectorAll('.property-group').forEach(group => group.style.display = 'none');
-    
-    if (elementData) {
-      switch(elementData.type) {
-        case 'logo':
-          document.getElementById('logoProperties').style.display = 'block';
-          break;
-        case 'border':
-          document.getElementById('borderProperties').style.display = 'block';
-          break;
-        case 'signature':
-          document.getElementById('signatureProperties').style.display = 'block';
-          break;
-        case 'qr-code':
-          document.getElementById('qrCodeProperties').style.display = 'block';
-          break;
-        case 'custom-variable':
-          document.getElementById('customVariableProperties').style.display = 'block';
-          this.loadCustomVariables();
-          break;
-      }
-    }
+    // Event listener para atualização em tempo real do tamanho da fonte
+    document.getElementById('fontSize').addEventListener('input', (e) => {
+      document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+    });
   }
   
   applyProperties() {
@@ -1117,10 +906,12 @@ class CertificateEditor {
     this.selectedElement.style.fontStyle = fontStyle;
     this.selectedElement.style.backgroundColor = backgroundColor;
     
-    // Atualizar texto (preservando HTML se necessário)
-    if (elementData.type === 'text') {
-      this.selectedElement.innerHTML = text;
-    }
+    // Atualizar texto (preservando controles)
+    const controls = this.selectedElement.querySelector('.element-controls');
+    const handles = this.selectedElement.querySelectorAll('.resize-handle');
+    this.selectedElement.innerHTML = text;
+    this.selectedElement.appendChild(controls);
+    handles.forEach(handle => this.selectedElement.appendChild(handle));
     
     // Salvar propriedades
     elementData.properties = {
@@ -1211,6 +1002,7 @@ class CertificateEditor {
   
   saveTemplate() {
     const titulo = document.getElementById('templateTitle').value;
+    const tipo = document.getElementById('declarationType').value;
     const orientacao = document.getElementById('pageOrientation').value;
     
     if (!titulo) {
@@ -1218,36 +1010,21 @@ class CertificateEditor {
       return;
     }
     
-    // Validar elementos obrigatórios
-    const hasParticipant = this.elements.some(el => el.type === 'participant-name');
-    if (!hasParticipant) {
-      if (!confirm('O template não possui um campo para nome do participante. Deseja continuar mesmo assim?')) {
-        return;
-      }
-    }
-    
     const templateData = {
-      titulo: titulo,
+      nome: titulo,
+      tipo: tipo,
       orientacao: orientacao,
-      elementos: this.elements.map(el => ({
-        ...el,
-        // Incluir propriedades específicas dos novos elementos
-        variavel: el.variavel || null,
-        formato: el.formato || 'text',
-        valorPadrao: el.valorPadrao || '',
-        configuracoes: el.configuracoes || {}
-      })),
+      elementos: this.elements,
       configuracoes: {
         largura: this.canvas.offsetWidth,
         altura: this.canvas.offsetHeight,
-        versao: '2.0', // Versão com novos elementos
-        elementos_suportados: ['text', 'title', 'participant-name', 'workload', 'activities', 'date', 'signature', 'logo', 'border', 'qr-code', 'custom-variable']
+        versao: '2.0'
       },
-      html: this.canvas.innerHTML
+      conteudo: this.generateHTML()
     };
     
     // Enviar para o servidor
-    fetch('/certificado/salvar_template_avancado', {
+    fetch('/declaracao/salvar_template_avancado', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1258,7 +1035,7 @@ class CertificateEditor {
     .then(data => {
       if (data.success) {
         alert('Template salvo com sucesso!');
-        window.location.href = '/certificado/templates_avancados';
+        window.location.href = '/declaracao/templates';
       } else {
         alert('Erro ao salvar template: ' + data.message);
       }
@@ -1269,6 +1046,19 @@ class CertificateEditor {
     });
   }
   
+  generateHTML() {
+    // Gerar HTML limpo sem controles de edição
+    const tempCanvas = this.canvas.cloneNode(true);
+    tempCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
+    tempCanvas.querySelectorAll('.draggable-element').forEach(el => {
+      el.classList.remove('draggable-element', 'selected');
+      el.style.border = 'none';
+      el.style.cursor = 'default';
+    });
+    
+    return tempCanvas.innerHTML;
+  }
+  
   previewTemplate() {
     // Criar modal de preview se não existir
     if (!document.getElementById('previewModal')) {
@@ -1276,16 +1066,7 @@ class CertificateEditor {
     }
     
     const previewCanvas = document.getElementById('previewCanvas');
-    previewCanvas.innerHTML = this.canvas.innerHTML;
-    
-    // Remover controles de edição da pré-visualização
-    previewCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
-    previewCanvas.querySelectorAll('.draggable-element').forEach(el => {
-      el.classList.remove('draggable-element', 'selected');
-      el.style.border = 'none';
-      el.style.cursor = 'default';
-      el.style.transform = 'none';
-    });
+    previewCanvas.innerHTML = this.generateHTML();
     
     // Substituir variáveis por valores de exemplo para preview
     this.replaceVariablesForPreview(previewCanvas);
@@ -1301,15 +1082,15 @@ class CertificateEditor {
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Pré-visualização do Certificado</h5>
+              <h5 class="modal-title">Pré-visualização da Declaração</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body text-center">
-              <div id="previewCanvas" class="certificate-canvas" style="margin: 0 auto; transform: scale(0.8); transform-origin: center;"></div>
+              <div id="previewCanvas" class="declaration-canvas" style="margin: 0 auto; transform: scale(0.8); transform-origin: center;"></div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-              <button type="button" class="btn btn-primary" onclick="editor.generatePDF()">Gerar PDF</button>
+              <button type="button" class="btn btn-primary" onclick="declarationEditor.generatePDF()">Gerar PDF</button>
             </div>
           </div>
         </div>
@@ -1342,7 +1123,7 @@ class CertificateEditor {
       panel.innerHTML = `
         <div style="padding: 10px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;">
           <strong>Preview ao Vivo</strong>
-          <button class="btn btn-sm btn-outline-secondary float-end" onclick="editor.closeLivePreview()">
+          <button class="btn btn-sm btn-outline-secondary float-end" onclick="declarationEditor.closeLivePreview()">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -1362,16 +1143,7 @@ class CertificateEditor {
     
     const liveCanvas = document.getElementById('livePreviewCanvas');
     if (liveCanvas) {
-      liveCanvas.innerHTML = this.canvas.innerHTML;
-      
-      // Limpar elementos de edição
-      liveCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
-      liveCanvas.querySelectorAll('.draggable-element').forEach(el => {
-        el.classList.remove('draggable-element', 'selected');
-        el.style.border = 'none';
-        el.style.cursor = 'default';
-      });
-      
+      liveCanvas.innerHTML = this.generateHTML();
       this.replaceVariablesForPreview(liveCanvas);
     }
   }
@@ -1404,8 +1176,11 @@ class CertificateEditor {
   }
   
   exportTemplate() {
-    // Implementar exportação para PDF
     alert('Funcionalidade de exportação será implementada.');
+  }
+  
+  generatePDF() {
+    alert('Funcionalidade de geração de PDF será implementada.');
   }
   
   loadTemplate() {
@@ -1449,7 +1224,7 @@ class CertificateEditor {
       tipo: document.getElementById('variableType').value
     };
     
-    fetch('/certificado/salvar_variavel', {
+    fetch('/declaracao/salvar_variavel', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1468,7 +1243,7 @@ class CertificateEditor {
   }
   
   loadDynamicVariables() {
-    fetch('/certificado/variaveis_dinamicas')
+    fetch('/declaracao/variaveis_dinamicas')
     .then(response => response.json())
     .then(data => {
       const container = document.getElementById('dynamicVariables');
@@ -1490,7 +1265,6 @@ class CertificateEditor {
     })
     .catch(error => {
       console.error('Erro ao carregar variáveis dinâmicas:', error);
-      // Adicionar variáveis padrão se houver erro
       this.addDefaultVariables();
     });
   }
@@ -1516,156 +1290,46 @@ class CertificateEditor {
     this.saveState();
   }
   
-  loadCustomVariables() {
-    const select = document.getElementById('customVariableSelect');
-    if (!select) return;
+  addDefaultVariables() {
+    const defaultVariables = [
+      { nome: 'NOME_INSTITUICAO', descricao: 'Nome da Instituição' },
+      { nome: 'NOME_CURSO', descricao: 'Nome do Curso' },
+      { nome: 'PERIODO', descricao: 'Período do Curso' }
+    ];
     
-    fetch('/certificado/variaveis_dinamicas')
-    .then(response => response.json())
-    .then(data => {
-      select.innerHTML = '<option value="">Selecione uma variável...</option>';
-      data.variaveis.forEach(variavel => {
-        const option = document.createElement('option');
-        option.value = variavel.nome;
-        option.textContent = `{${variavel.nome}} - ${variavel.descricao}`;
-        select.appendChild(option);
+    const container = document.getElementById('dynamicVariables');
+    defaultVariables.forEach(variavel => {
+      const item = document.createElement('div');
+      item.className = 'element-item';
+      item.innerHTML = `
+        <i class="fas fa-tag me-2"></i>
+        <strong>{${variavel.nome}}</strong>
+        <small class="d-block text-muted">${variavel.descricao}</small>
+      `;
+      item.addEventListener('click', () => {
+        this.addVariableElement(variavel);
       });
-    })
-    .catch(error => console.error('Erro ao carregar variáveis:', error));
-  }
-  
-  applySpecialProperties() {
-    if (!this.selectedElement) return;
-    
-    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-    if (!elementData) return;
-    
-    switch(elementData.type) {
-      case 'logo':
-        this.applyLogoProperties();
-        break;
-      case 'border':
-        this.applyBorderProperties();
-        break;
-      case 'qr-code':
-        this.applyQRCodeProperties();
-        break;
-      case 'custom-variable':
-        this.applyCustomVariableProperties();
-        break;
-    }
-  }
-  
-  applyLogoProperties() {
-    const logoFile = document.getElementById('logoFile');
-    const logoUrl = document.getElementById('logoUrl');
-    const logoFit = document.getElementById('logoFit');
-    
-    if (logoFile && logoFile.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.selectedElement.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
-      };
-      reader.readAsDataURL(logoFile.files[0]);
-    } else if (logoUrl && logoUrl.value) {
-      this.selectedElement.innerHTML = `<img src="${logoUrl.value}" style="width: 100%; height: 100%; object-fit: ${logoFit.value};">`;
-    }
-  }
-  
-  applyBorderProperties() {
-    const borderStyle = document.getElementById('borderStyle');
-    const borderWidth = document.getElementById('borderWidth');
-    const borderColor = document.getElementById('borderColor');
-    
-    if (borderStyle && borderWidth && borderColor) {
-      this.selectedElement.style.border = `${borderWidth.value}px ${borderStyle.value} ${borderColor.value}`;
-      document.getElementById('borderWidthValue').textContent = `${borderWidth.value}px`;
-    }
-  }
-  
-  applyQRCodeProperties() {
-    const qrCodeSize = document.getElementById('qrCodeSize');
-    const qrCodeContent = document.getElementById('qrCodeContent');
-    
-    if (qrCodeSize) {
-      let size;
-      switch(qrCodeSize.value) {
-        case 'small': size = '100px'; break;
-        case 'medium': size = '150px'; break;
-        case 'large': size = '200px'; break;
-        default: size = '100px';
-      }
-      this.selectedElement.style.width = size;
-      this.selectedElement.style.height = size;
-    }
-  }
-  
-  applyCustomVariableProperties() {
-    const variableSelect = document.getElementById('customVariableSelect');
-    const variableFormat = document.getElementById('customVariableFormat');
-    const variableDefault = document.getElementById('customVariableDefault');
-    
-    if (variableSelect && variableSelect.value) {
-      let content = `{${variableSelect.value}}`;
-      
-      if (variableDefault && variableDefault.value) {
-        content += ` (padrão: ${variableDefault.value})`;
-      }
-      
-      this.selectedElement.innerHTML = content;
-      
-      // Salvar propriedades específicas
-      const elementData = this.elements.find(el => el.id === this.selectedElement.id);
-      if (elementData) {
-        elementData.variavel = variableSelect.value;
-        elementData.formato = variableFormat ? variableFormat.value : 'text';
-        elementData.valorPadrao = variableDefault ? variableDefault.value : '';
-      }
-    }
+      container.appendChild(item);
+    });
   }
 }
 
-// Inicializar editor
-let editor;
-document.addEventListener('DOMContentLoaded', function() {
-  editor = new CertificateEditor();
-  
-  // Carregar variáveis dinâmicas
-  editor.loadDynamicVariables();
-  
-  // Event listeners para controles do toolbar
-  document.getElementById('saveTemplate').addEventListener('click', () => editor.saveTemplate());
-  document.getElementById('previewTemplate').addEventListener('click', () => editor.previewTemplate());
-  document.getElementById('livePreviewToggle').addEventListener('click', () => editor.toggleLivePreview());
-  document.getElementById('exportTemplate').addEventListener('click', () => editor.exportTemplate());
-  document.getElementById('undoAction').addEventListener('click', () => editor.undo());
-  document.getElementById('redoAction').addEventListener('click', () => editor.redo());
-  document.getElementById('toggleGrid').addEventListener('click', () => editor.toggleGrid());
-  document.getElementById('toggleSnap').addEventListener('click', () => editor.toggleSnap());
-  
-  // Event listener para zoom
-  document.getElementById('zoomLevel').addEventListener('change', (e) => {
-    editor.setZoom(parseFloat(e.target.value));
-  });
-});
-
 // Função auxiliar para substituir variáveis no preview
-CertificateEditor.prototype.replaceVariablesForPreview = function(container) {
+DeclarationEditor.prototype.replaceVariablesForPreview = function(container) {
   const sampleData = {
-    'NOME_PARTICIPANTE': 'João Silva Santos',
-    'CARGA_HORARIA': '40',
-    'LISTA_OFICINAS': 'Oficina de Programação, Oficina de Design, Oficina de Marketing Digital',
-    'DATA_EMISSAO': new Date().toLocaleDateString('pt-BR'),
-    'NOME_INSTITUICAO': 'Instituto de Tecnologia',
-    'NOME_CURSO': 'Curso de Desenvolvimento Web',
-    'PERIODO': '01/01/2024 a 31/01/2024'
+    'usuario.nome': 'João Silva Santos',
+    'usuario.cpf': '123.456.789-00',
+    'evento.nome': 'Curso de Desenvolvimento Web',
+    'evento.data_inicio': '01/01/2024',
+    'evento.data_fim': '31/01/2024',
+    'dados.carga_horaria': '40'
   };
   
   container.querySelectorAll('*').forEach(element => {
     if (element.innerHTML) {
       let content = element.innerHTML;
       Object.keys(sampleData).forEach(variable => {
-        const regex = new RegExp(`\\{${variable}\\}`, 'g');
+        const regex = new RegExp(`\{\{\s*${variable}\s*\}\}`, 'g');
         content = content.replace(regex, sampleData[variable]);
       });
       element.innerHTML = content;
@@ -1673,28 +1337,28 @@ CertificateEditor.prototype.replaceVariablesForPreview = function(container) {
   });
 };
 
-// Função para adicionar variáveis padrão
-CertificateEditor.prototype.addDefaultVariables = function() {
-  const defaultVariables = [
-    { nome: 'NOME_INSTITUICAO', descricao: 'Nome da Instituição' },
-    { nome: 'NOME_CURSO', descricao: 'Nome do Curso' },
-    { nome: 'PERIODO', descricao: 'Período do Curso' }
-  ];
+// Inicializar editor
+let declarationEditor;
+document.addEventListener('DOMContentLoaded', function() {
+  declarationEditor = new DeclarationEditor();
   
-  const container = document.getElementById('dynamicVariables');
-  defaultVariables.forEach(variavel => {
-    const item = document.createElement('div');
-    item.className = 'element-item';
-    item.innerHTML = `
-      <i class="fas fa-tag me-2"></i>
-      <strong>{${variavel.nome}}</strong>
-      <small class="d-block text-muted">${variavel.descricao}</small>
-    `;
-    item.addEventListener('click', () => {
-      this.addVariableElement(variavel);
-    });
-    container.appendChild(item);
+  // Carregar variáveis dinâmicas
+  declarationEditor.loadDynamicVariables();
+  
+  // Event listeners para controles do toolbar
+  document.getElementById('saveTemplate').addEventListener('click', () => declarationEditor.saveTemplate());
+  document.getElementById('previewTemplate').addEventListener('click', () => declarationEditor.previewTemplate());
+  document.getElementById('livePreviewToggle').addEventListener('click', () => declarationEditor.toggleLivePreview());
+  document.getElementById('exportTemplate').addEventListener('click', () => declarationEditor.exportTemplate());
+  document.getElementById('undoAction').addEventListener('click', () => declarationEditor.undo());
+  document.getElementById('redoAction').addEventListener('click', () => declarationEditor.redo());
+  document.getElementById('toggleGrid').addEventListener('click', () => declarationEditor.toggleGrid());
+  document.getElementById('toggleSnap').addEventListener('click', () => declarationEditor.toggleSnap());
+  
+  // Event listener para zoom
+  document.getElementById('zoomLevel').addEventListener('change', (e) => {
+    declarationEditor.setZoom(parseFloat(e.target.value));
   });
-};
+});
 </script>
 {% endblock %}

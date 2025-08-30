@@ -688,6 +688,14 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Carregar materiais de apoio ao exibir a aba Resumo
+  const resumoTab = document.getElementById('resumo-tab');
+  if (resumoTab) {
+    resumoTab.addEventListener('shown.bs.tab', function() {
+      carregarMateriaisApoio();
+    });
+  }
+
   // Configurar formulário de material de apoio
   const formMaterialApoio = document.getElementById('formMaterialApoio');
   if (formMaterialApoio) {
@@ -696,6 +704,9 @@ document.addEventListener("DOMContentLoaded", function() {
       salvarMaterialApoio();
     });
   }
+
+  // Carregamento inicial para preencher a tabela na primeira visita
+  carregarMateriaisApoio();
 
 });
 

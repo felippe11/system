@@ -1,8 +1,9 @@
-from flask import Blueprint, render_template, request, jsonify, send_file, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, send_file, flash, redirect, url_for, make_response
 from flask_login import login_required, current_user
 from models import Evento
 from models.user import Usuario
-from models.certificado import DeclaracaoTemplate
+from models.certificado import DeclaracaoTemplate, VariavelDinamica
+import json
 from services.declaracao_service import (
     gerar_declaracao_participacao, gerar_declaracao_coletiva,
     listar_participantes_evento, validar_participacao
@@ -12,6 +13,7 @@ from decorators import cliente_required
 import os
 from flask import current_app
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 declaracao_bp = Blueprint('declaracao', __name__, url_prefix='/declaracao')
@@ -362,3 +364,468 @@ def preview_template(template_id):
         logger.error(f"Erro ao gerar preview: {str(e)}")
         flash('Erro ao gerar preview.', 'error')
         return redirect(url_for('declaracao.listar_templates'))
+
+
+@declaracao_bp.route('/editor-avancado')
+@login_required
+def editor_avancado():
+    """Exibe o editor avançado de declarações"""
+    try:
+        return render_template('declaracao/editor_avancado.html')
+    except Exception as e:
+        logger.error(f"Erro ao carregar editor avançado: {str(e)}")
+        flash('Erro ao carregar editor avançado.', 'error')
+        return redirect(url_for('declaracao.listar_templates'))
+
+
+@declaracao_bp.route('/editor-avancado/<int:template_id>')
+@login_required
+def editar_template_avancado(template_id):
+    """Edita um template existente no editor avançado"""
+    try:
+        template = DeclaracaoTemplate.query.get_or_404(template_id)
+        
+        # Verificar se o usuário tem permissão para editar este template
+        if not current_user.is_admin and template.cliente_id != current_user.cliente_id:
+            flash('Você não tem permissão para editar este template.', 'error')
+            return redirect(url_for('declaracao.listar_templates'))
+        
+        return render_template('declaracao/editor_avancado.html', template=template)
+    except Exception as e:
+        logger.error(f"Erro ao carregar template para edição: {str(e)}")
+        flash('Erro ao carregar template.', 'error')
+        return redirect(url_for('declaracao.listar_templates'))
+
+
+
+
+
+
+
+@declaracao_bp.route('/configuracoes_avancadas/<int:template_id>')
+@login_required
+def configuracoes_avancadas(template_id):
+    """Exibe as configurações avançadas de um template"""
+    try:
+        template = DeclaracaoTemplate.query.get_or_404(template_id)
+        
+        # Verificar permissões
+        if not current_user.is_admin and template.cliente_id != current_user.cliente_id:
+            flash('Você não tem permissão para acessar este template.', 'error')
+            return redirect(url_for('declaracao.listar_templates'))
+        
+        # Carregar configurações existentes
+        configuracoes = {}
+        if template.configuracoes:
+            try:
+                configuracoes = json.loads(template.configuracoes)
+            except:
+                configuracoes = {}
+        
+        return render_template('declaracao/configuracoes_avancadas.html', 
+                             template=template, 
+                             configuracoes=configuracoes)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar configurações: {str(e)}")
+        flash('Erro ao carregar configurações.', 'error')
+        return redirect(url_for('declaracao.listar_templates'))
+
+
+@declaracao_bp.route('/salvar_configuracoes/<int:template_id>', methods=['POST'])
+@login_required
+def salvar_configuracoes(template_id):
+    """Salva as configurações avançadas de um template"""
+    try:
+        template = DeclaracaoTemplate.query.get_or_404(template_id)
+        
+        # Verificar permissões
+        if not current_user.is_admin and template.cliente_id != current_user.cliente_id:
+            return jsonify({'success': False, 'message': 'Sem permissão para editar este template'})
+        
+        data = request.get_json()
+        configuracoes = data.get('configuracoes', {})
+        
+        template.configuracoes = json.dumps(configuracoes)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Configurações salvas com sucesso!'})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao salvar configurações: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+
+def editar_template_avancado(template_id):
+    """Edita template existente no editor avançado."""
+    try:
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, 
+            cliente_id=current_user.id
+        ).first()
+        
+        if not template:
+            flash('Template não encontrado.', 'error')
+            return redirect(url_for('declaracao.listar_templates'))
+            
+        return render_template('declaracao/editor_avancado.html', template=template)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar template para edição: {str(e)}")
+        flash('Erro ao carregar template.', 'error')
+        return redirect(url_for('declaracao.listar_templates'))
+
+
+@declaracao_bp.route('/salvar_template_avancado', methods=['POST'])
+@login_required
+@cliente_required
+def salvar_template_avancado():
+    """Salva template criado no editor avançado."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados não fornecidos'})
+            
+        nome = data.get('nome')
+        tipo = data.get('tipo')
+        orientacao = data.get('orientacao', 'portrait')
+        elementos = data.get('elementos', [])
+        configuracoes = data.get('configuracoes', {})
+        conteudo = data.get('conteudo', '')
+        
+        if not all([nome, tipo]):
+            return jsonify({'success': False, 'message': 'Nome e tipo são obrigatórios'})
+            
+        # Verificar se é edição ou criação
+        template_id = data.get('template_id')
+        
+        if template_id:
+            # Editar template existente
+            template = DeclaracaoTemplate.query.filter_by(
+                id=template_id,
+                cliente_id=current_user.id
+            ).first()
+            
+            if not template:
+                return jsonify({'success': False, 'message': 'Template não encontrado'})
+                
+        else:
+            # Criar novo template
+            template = DeclaracaoTemplate(cliente_id=current_user.id)
+            db.session.add(template)
+            
+        # Atualizar dados do template
+        template.nome = nome
+        template.tipo = tipo
+        template.conteudo = conteudo
+        template.configuracoes = {
+            'elementos': elementos,
+            'orientacao': orientacao,
+            'versao': '2.0',
+            **configuracoes
+        }
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Template salvo com sucesso!',
+            'template_id': template.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao salvar template avançado: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+@declaracao_bp.route('/salvar_variavel', methods=['POST'])
+@login_required
+@cliente_required
+def salvar_variavel():
+    """Salva nova variável dinâmica."""
+    try:
+        from models.certificado import VariavelDinamica
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'Dados não fornecidos'})
+            
+        nome = data.get('nome')
+        descricao = data.get('descricao')
+        valor_padrao = data.get('valor_padrao', '')
+        tipo = data.get('tipo', 'text')
+        
+        if not all([nome, descricao]):
+            return jsonify({'success': False, 'message': 'Nome e descrição são obrigatórios'})
+            
+        # Verificar se variável já existe
+        variavel_existente = VariavelDinamica.query.filter_by(
+            cliente_id=current_user.id,
+            nome=nome
+        ).first()
+        
+        if variavel_existente:
+            return jsonify({'success': False, 'message': 'Variável com este nome já existe'})
+            
+        # Criar nova variável
+        variavel = VariavelDinamica(
+            cliente_id=current_user.id,
+            nome=nome,
+            descricao=descricao,
+            valor_padrao=valor_padrao,
+            tipo=tipo
+        )
+        
+        db.session.add(variavel)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Variável criada com sucesso!',
+            'variavel': {
+                'id': variavel.id,
+                'nome': variavel.nome,
+                'descricao': variavel.descricao,
+                'valor_padrao': variavel.valor_padrao,
+                'tipo': variavel.tipo
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao salvar variável: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+@declaracao_bp.route('/variaveis_dinamicas')
+@login_required
+@cliente_required
+def listar_variaveis_dinamicas():
+    """Lista variáveis dinâmicas do cliente."""
+    try:
+        from models.certificado import VariavelDinamica
+        
+        variaveis = VariavelDinamica.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
+        
+        dados_variaveis = []
+        for variavel in variaveis:
+            dados_variaveis.append({
+                'id': variavel.id,
+                'nome': variavel.nome,
+                'descricao': variavel.descricao,
+                'valor_padrao': variavel.valor_padrao,
+                'tipo': variavel.tipo
+            })
+            
+        return jsonify({
+            'success': True,
+            'variaveis': dados_variaveis
+        })
+        
+    except Exception as e:
+        logger.error(f"Erro ao listar variáveis dinâmicas: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+@declaracao_bp.route('/exportar-importar')
+@login_required
+@cliente_required
+def exportar_importar():
+    """Página para exportar e importar templates."""
+    try:
+        templates = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id
+        ).all()
+        
+        return render_template('declaracao/exportar_importar.html', templates=templates)
+        
+    except Exception as e:
+        logger.error(f"Erro ao carregar página de exportar/importar: {str(e)}")
+        flash('Erro ao carregar página.', 'error')
+        return redirect(url_for('declaracao.listar_templates'))
+
+
+@declaracao_bp.route('/exportar', methods=['POST'])
+@login_required
+@cliente_required
+def exportar_templates():
+    """Exporta templates selecionados."""
+    try:
+        data = request.get_json()
+        template_ids = data.get('template_ids', [])
+        formato = data.get('formato', 'json')
+        incluir_metadados = data.get('incluir_metadados', True)
+        
+        if not template_ids:
+            return jsonify({'success': False, 'message': 'Nenhum template selecionado'})
+        
+        # Buscar templates do cliente
+        templates = DeclaracaoTemplate.query.filter(
+            DeclaracaoTemplate.id.in_(template_ids),
+            DeclaracaoTemplate.cliente_id == current_user.id
+        ).all()
+        
+        if not templates:
+            return jsonify({'success': False, 'message': 'Templates não encontrados'})
+        
+        # Preparar dados para exportação
+        export_data = {
+            'version': '1.0',
+            'export_date': datetime.now().isoformat(),
+            'format': formato,
+            'include_metadata': incluir_metadados,
+            'templates': []
+        }
+        
+        for template in templates:
+            template_data = {
+                'nome': template.nome,
+                'tipo': template.tipo,
+                'conteudo_html': template.conteudo_html,
+                'ativo': template.ativo
+            }
+            
+            if incluir_metadados:
+                template_data.update({
+                    'data_criacao': template.data_criacao.isoformat() if template.data_criacao else None,
+                    'data_atualizacao': template.data_atualizacao.isoformat() if template.data_atualizacao else None
+                })
+            
+            export_data['templates'].append(template_data)
+        
+        # Criar resposta com arquivo
+        from io import BytesIO
+        import zipfile
+        
+        if formato == 'zip':
+            # Criar arquivo ZIP
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr('templates.json', json.dumps(export_data, indent=2, ensure_ascii=False))
+            
+            zip_buffer.seek(0)
+            
+            return send_file(
+                zip_buffer,
+                as_attachment=True,
+                download_name=f'templates_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip',
+                mimetype='application/zip'
+            )
+        else:
+            # Retornar JSON
+            response = make_response(json.dumps(export_data, indent=2, ensure_ascii=False))
+            response.headers['Content-Type'] = 'application/json; charset=utf-8'
+            response.headers['Content-Disposition'] = f'attachment; filename=templates_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            return response
+            
+    except Exception as e:
+        logger.error(f"Erro ao exportar templates: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+@declaracao_bp.route('/importar', methods=['POST'])
+@login_required
+@cliente_required
+def importar_templates():
+    """Importa templates de arquivo."""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'Nenhum arquivo enviado'})
+        
+        file = request.files['file']
+        sobrescrever = request.form.get('sobrescrever', 'false').lower() == 'true'
+        validar = request.form.get('validar', 'true').lower() == 'true'
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'message': 'Nenhum arquivo selecionado'})
+        
+        # Verificar extensão do arquivo
+        if not (file.filename.endswith('.json') or file.filename.endswith('.zip')):
+            return jsonify({'success': False, 'message': 'Formato de arquivo não suportado'})
+        
+        # Ler conteúdo do arquivo
+        import_data = None
+        
+        if file.filename.endswith('.zip'):
+            import zipfile
+            with zipfile.ZipFile(file, 'r') as zip_file:
+                # Procurar arquivo templates.json no ZIP
+                if 'templates.json' in zip_file.namelist():
+                    with zip_file.open('templates.json') as json_file:
+                        import_data = json.loads(json_file.read().decode('utf-8'))
+                else:
+                    return jsonify({'success': False, 'message': 'Arquivo templates.json não encontrado no ZIP'})
+        else:
+            import_data = json.loads(file.read().decode('utf-8'))
+        
+        # Validar estrutura do arquivo
+        if validar:
+            if not isinstance(import_data, dict) or 'templates' not in import_data:
+                return jsonify({'success': False, 'message': 'Estrutura do arquivo inválida'})
+            
+            if not isinstance(import_data['templates'], list):
+                return jsonify({'success': False, 'message': 'Lista de templates inválida'})
+        
+        # Importar templates
+        templates_importados = 0
+        templates_ignorados = 0
+        erros = []
+        
+        for template_data in import_data['templates']:
+            try:
+                # Verificar se template já existe
+                template_existente = DeclaracaoTemplate.query.filter_by(
+                    cliente_id=current_user.id,
+                    nome=template_data['nome']
+                ).first()
+                
+                if template_existente and not sobrescrever:
+                    templates_ignorados += 1
+                    continue
+                
+                if template_existente and sobrescrever:
+                    # Atualizar template existente
+                    template_existente.tipo = template_data.get('tipo', template_existente.tipo)
+                    template_existente.conteudo_html = template_data.get('conteudo_html', template_existente.conteudo_html)
+                    template_existente.ativo = template_data.get('ativo', template_existente.ativo)
+                    template_existente.data_atualizacao = datetime.now()
+                else:
+                    # Criar novo template
+                    novo_template = DeclaracaoTemplate(
+                        cliente_id=current_user.id,
+                        nome=template_data['nome'],
+                        tipo=template_data.get('tipo', 'individual'),
+                        conteudo_html=template_data.get('conteudo_html', ''),
+                        ativo=template_data.get('ativo', True)
+                    )
+                    db.session.add(novo_template)
+                
+                templates_importados += 1
+                
+            except Exception as e:
+                erros.append(f"Erro ao importar template '{template_data.get('nome', 'Desconhecido')}': {str(e)}")
+        
+        db.session.commit()
+        
+        # Preparar resposta
+        resultado = {
+            'success': True,
+            'message': f'Importação concluída! {templates_importados} template(s) importado(s), {templates_ignorados} ignorado(s).',
+            'templates_importados': templates_importados,
+            'templates_ignorados': templates_ignorados,
+            'erros': erros
+        }
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        logger.error(f"Erro ao importar templates: {str(e)}")
+        db.session.rollback()
+        return jsonify({'success': False, 'message': 'Erro interno do servidor'})

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templates Pré-definidos - Declarações</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .template-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            height: 100%;
+        }
+        .template-card:hover {
+            border-color: #28a745;
+            box-shadow: 0 4px 12px rgba(40,167,69,0.15);
+            transform: translateY(-2px);
+        }
+        .template-preview {
+            height: 200px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        .template-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+        .template-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(40,167,69,0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+        .category-filter {
+            margin-bottom: 30px;
+        }
+        .search-box {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-file-alt"></i> Templates Pré-definidos - Declarações</h2>
+                    <div>
+                        <button type="button" class="btn btn-success" onclick="criarTemplatePersonalizado()">
+                            <i class="fas fa-plus"></i> Criar Template Personalizado
+                        </button>
+                        <a href="{{ url_for('declaracao.listar_templates') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros e Busca -->
+        <div class="row">
+            <div class="col-12">
+                <div class="search-box">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Buscar templates...">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <select class="form-select" id="categoryFilter">
+                                <option value="">Todas as Categorias</option>
+                                <option value="participacao">Participação</option>
+                                <option value="comparecimento">Comparecimento</option>
+                                <option value="conclusao">Conclusão</option>
+                                <option value="apresentacao">Apresentação</option>
+                                <option value="ministrante">Ministrante</option>
+                                <option value="organizacao">Organização</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates Grid -->
+        <div class="row" id="templatesGrid">
+            <!-- Template Participação Simples -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="participacao">
+                <div class="card template-card" onclick="selecionarTemplate('participacao_simples')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Participação</div>
+                            <div class="text-center">
+                                <i class="fas fa-user-check fa-3x text-success mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Participação em evento</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Participação Simples</h5>
+                        <p class="card-text text-muted">Template básico para declarar participação em eventos, cursos e atividades.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 2.5k usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('participacao_simples')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('participacao_simples')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Comparecimento Formal -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="comparecimento">
+                <div class="card template-card" onclick="selecionarTemplate('comparecimento_formal')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Comparecimento</div>
+                            <div class="text-center">
+                                <i class="fas fa-calendar-check fa-3x text-primary mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Comparecimento formal</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Comparecimento Formal</h5>
+                        <p class="card-text text-muted">Template formal para declarar comparecimento a eventos oficiais e reuniões.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 1.8k usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('comparecimento_formal')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('comparecimento_formal')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Conclusão de Curso -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="conclusao">
+                <div class="card template-card" onclick="selecionarTemplate('conclusao_curso')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Conclusão</div>
+                            <div class="text-center">
+                                <i class="fas fa-graduation-cap fa-3x text-warning mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Conclusão de curso</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Conclusão de Curso</h5>
+                        <p class="card-text text-muted">Template específico para declarar conclusão de cursos e treinamentos.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 1.4k usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('conclusao_curso')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('conclusao_curso')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Apresentação de Trabalho -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="apresentacao">
+                <div class="card template-card" onclick="selecionarTemplate('apresentacao_trabalho')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Apresentação</div>
+                            <div class="text-center">
+                                <i class="fas fa-presentation fa-3x text-info mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Apresentação de trabalho</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Apresentação de Trabalho</h5>
+                        <p class="card-text text-muted">Template para declarar apresentação de trabalhos científicos e acadêmicos.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 967 usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('apresentacao_trabalho')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('apresentacao_trabalho')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Ministrante -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="ministrante">
+                <div class="card template-card" onclick="selecionarTemplate('ministrante_evento')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Ministrante</div>
+                            <div class="text-center">
+                                <i class="fas fa-chalkboard-teacher fa-3x text-danger mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Atividade de ensino</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Ministrante de Evento</h5>
+                        <p class="card-text text-muted">Template para declarar atividades de ensino, palestras e ministrações.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 756 usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('ministrante_evento')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('ministrante_evento')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Organização de Evento -->
+            <div class="col-lg-4 col-md-6 mb-4 template-item" data-category="organizacao">
+                <div class="card template-card" onclick="selecionarTemplate('organizacao_evento')">
+                    <div class="card-body">
+                        <div class="template-preview">
+                            <div class="template-badge">Organização</div>
+                            <div class="text-center">
+                                <i class="fas fa-users-cog fa-3x text-dark mb-3"></i>
+                                <h6>DECLARAÇÃO</h6>
+                                <p class="small text-muted">Atividade organizacional</p>
+                            </div>
+                        </div>
+                        <h5 class="card-title">Organização de Evento</h5>
+                        <p class="card-text text-muted">Template para declarar participação na organização de eventos e atividades.</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted"><i class="fas fa-download"></i> 543 usos</small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="event.stopPropagation(); previewTemplate('organizacao_evento')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-success" onclick="event.stopPropagation(); usarTemplate('organizacao_evento')">
+                                    <i class="fas fa-check"></i> Usar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mensagem quando não há resultados -->
+        <div class="row" id="noResults" style="display: none;">
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum template encontrado</h4>
+                <p class="text-muted">Tente ajustar os filtros ou termos de busca.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Preview -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Preview do Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="previewContent">
+                    <!-- Conteúdo do preview será carregado aqui -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-success" id="useTemplateBtn">Usar Este Template</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentTemplate = null;
+
+        // Filtros e busca
+        document.getElementById('searchInput').addEventListener('input', filtrarTemplates);
+        document.getElementById('categoryFilter').addEventListener('change', filtrarTemplates);
+
+        function filtrarTemplates() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const templates = document.querySelectorAll('.template-item');
+            let visibleCount = 0;
+
+            templates.forEach(template => {
+                const title = template.querySelector('.card-title').textContent.toLowerCase();
+                const description = template.querySelector('.card-text').textContent.toLowerCase();
+                const templateCategory = template.dataset.category;
+
+                const matchesSearch = title.includes(searchTerm) || description.includes(searchTerm);
+                const matchesCategory = !category || templateCategory === category;
+
+                if (matchesSearch && matchesCategory) {
+                    template.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    template.style.display = 'none';
+                }
+            });
+
+            document.getElementById('noResults').style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        function selecionarTemplate(templateId) {
+            currentTemplate = templateId;
+            usarTemplate(templateId);
+        }
+
+        function previewTemplate(templateId) {
+            currentTemplate = templateId;
+            const templates = {
+                'participacao_simples': {
+                    nome: 'Participação Simples',
+                    preview: `
+                        <div style="padding: 40px; text-align: center; background: #ffffff; font-family: Arial, sans-serif; border: 1px solid #ddd;">
+                            <h2 style="color: #28a745; margin-bottom: 30px; font-size: 28px; text-transform: uppercase;">DECLARAÇÃO</h2>
+                            <p style="font-size: 18px; margin-bottom: 25px; line-height: 1.6;">
+                                Declaramos para os devidos fins que <strong>[NOME_PARTICIPANTE]</strong>, 
+                                portador(a) do documento de identidade nº [DOCUMENTO], 
+                                participou do evento <strong>[NOME_EVENTO]</strong>, 
+                                realizado no período de [DATA_INICIO] a [DATA_FIM], 
+                                com carga horária total de [CARGA_HORARIA] horas.
+                            </p>
+                            <p style="font-size: 16px; margin-bottom: 40px;">
+                                Por ser verdade, firmamos a presente declaração.
+                            </p>
+                            <div style="margin-top: 50px;">
+                                <p style="font-size: 14px; margin-bottom: 5px;">[LOCAL], [DATA_EMISSAO]</p>
+                                <div style="border-top: 1px solid #000; width: 250px; margin: 30px auto 10px;"></div>
+                                <p style="font-size: 14px;">[NOME_RESPONSAVEL]<br>[CARGO_RESPONSAVEL]</p>
+                            </div>
+                        </div>
+                    `
+                },
+                'comparecimento_formal': {
+                    nome: 'Comparecimento Formal',
+                    preview: `
+                        <div style="padding: 50px; background: #ffffff; font-family: 'Times New Roman', serif; border: 2px solid #333;">
+                            <div style="text-align: center; margin-bottom: 40px;">
+                                <h2 style="color: #000; margin: 0; font-size: 24px; letter-spacing: 2px;">DECLARAÇÃO DE COMPARECIMENTO</h2>
+                            </div>
+                            <div style="text-align: justify; line-height: 2; font-size: 16px;">
+                                <p style="margin-bottom: 20px; text-indent: 50px;">
+                                    Declaramos que o(a) Sr.(a) <strong>[NOME_PARTICIPANTE]</strong>, 
+                                    portador(a) do CPF nº [CPF], compareceu ao evento 
+                                    <strong>[NOME_EVENTO]</strong>, realizado em [DATA_EVENTO], 
+                                    das [HORARIO_INICIO] às [HORARIO_FIM], nas dependências de [LOCAL_EVENTO].
+                                </p>
+                                <p style="margin-bottom: 20px; text-indent: 50px;">
+                                    O referido evento teve como objetivo [OBJETIVO_EVENTO] 
+                                    e contou com a participação de [NUMERO_PARTICIPANTES] pessoas.
+                                </p>
+                                <p style="margin-bottom: 40px; text-indent: 50px;">
+                                    Declaração emitida a pedido do interessado para os fins que se fizerem necessários.
+                                </p>
+                            </div>
+                            <div style="text-align: center; margin-top: 60px;">
+                                <p style="margin-bottom: 40px;">[LOCAL], [DATA_EMISSAO]</p>
+                                <div style="border-top: 1px solid #000; width: 300px; margin: 0 auto 15px;"></div>
+                                <p style="font-weight: bold;">[NOME_RESPONSAVEL]</p>
+                                <p>[CARGO_RESPONSAVEL]</p>
+                                <p style="font-size: 14px;">[INSTITUICAO]</p>
+                            </div>
+                        </div>
+                    `
+                }
+                // Adicionar mais templates conforme necessário
+            };
+
+            const template = templates[templateId];
+            if (template) {
+                document.getElementById('previewContent').innerHTML = template.preview;
+                document.querySelector('#previewModal .modal-title').textContent = `Preview: ${template.nome}`;
+                document.getElementById('useTemplateBtn').onclick = () => usarTemplate(templateId);
+                new bootstrap.Modal(document.getElementById('previewModal')).show();
+            }
+        }
+
+        function usarTemplate(templateId) {
+            // Redirecionar para o editor com o template selecionado
+            window.location.href = `{{ url_for('declaracao.editor_avancado') }}?template=${templateId}`;
+        }
+
+        function criarTemplatePersonalizado() {
+            window.location.href = `{{ url_for('declaracao.editor_avancado') }}`;
+        }
+    </script>
+</body>
+</html>
