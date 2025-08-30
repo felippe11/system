@@ -88,6 +88,39 @@
       {% endset %}
       {{ render_card('Progresso das Etapas', etapas_content, '', 'card shadow-sm border-0 mb-4') }}
       
+      <!-- Card com trabalhos designados -->
+      {% if trabalhos_designados %}
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header">
+            <h5 class="m-0 fw-bold">Trabalhos Designados para Revisão</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Título do Trabalho</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trabalho in trabalhos_designados %}
+                        <tr>
+                            <td>{{ trabalho.title }}</td>
+                            <td>
+                                <a href="{{ trabalho.file_path }}" target="_blank" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-file-earmark-pdf"></i> Ver PDF
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Ações -->
       <div class="d-flex gap-2 justify-content-center">
         <a href="{{ url_for('evento_routes.home') }}" class="btn btn-outline-secondary">
