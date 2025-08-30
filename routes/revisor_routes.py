@@ -398,8 +398,23 @@ def progress(codigo: str):
     cand: RevisorCandidatura = RevisorCandidatura.query.filter_by(
         codigo=codigo
     ).first_or_404()
+
+    trabalhos_designados = []
+    if cand.status == 'aprovado':
+        revisor_user = Usuario.query.filter_by(email=cand.email).first()
+        if revisor_user:
+            assignments = Assignment.query.filter_by(reviewer_id=revisor_user.id).all()
+            submission_ids = [assignment.submission_id for assignment in assignments]
+            if submission_ids:
+                trabalhos_designados = Submission.query.filter(Submission.id.in_(submission_ids)).all()
+
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
-    return render_template("revisor/progress.html", candidatura=cand, pdf_url=pdf_url)
+    return render_template(
+        "revisor/progress.html",
+        candidatura=cand,
+        pdf_url=pdf_url,
+        trabalhos_designados=trabalhos_designados
+    )
 
 
 @revisor_routes.route("/revisor/progress/<codigo>/pdf")
