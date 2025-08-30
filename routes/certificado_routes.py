@@ -7,8 +7,17 @@ from extensions import db
 from models import Oficina, CertificadoTemplate, Evento
 from models.user import Cliente
 
-from models.certificado import CertificadoTemplateAvancado, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado, DeclaracaoTemplate, CertificadoConfig, CertificadoParticipante
-from models.event import VariavelDinamica, ConfiguracaoCertificadoAvancada
+from models.certificado import (
+    CertificadoTemplateAvancado,
+    RegraCertificado,
+    SolicitacaoCertificado,
+    NotificacaoCertificado,
+    DeclaracaoTemplate,
+    CertificadoConfig,
+    CertificadoParticipante,
+    VariavelDinamica,
+)
+from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
 
@@ -2038,4 +2047,3 @@ def gerar_declaracao_personalizada(usuario, evento, participacao, template, clie
     
     c.save()
     return pdf_path
-

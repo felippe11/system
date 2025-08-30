@@ -222,12 +222,21 @@
                                         </td>
                                         <td>
                                             {% set agendamentos_monitor = monitor.agendamentos_atribuidos %}
-                                            <span class="badge bg-primary">{{ agendamentos_monitor|length }} agendamentos</span>
-                                            {% if agendamentos_monitor %}
+                                            {% set agendamentos_monitor_ativos = agendamentos_monitor | selectattr('status','equalto','ativo') | list %}
+                                            <span class="badge bg-primary">{{ agendamentos_monitor_ativos|length }} agendamentos</span>
+                                            {% if agendamentos_monitor_ativos %}
+                                                {% set ns = namespace(proximo=None) %}
+                                                {% for ma in agendamentos_monitor_ativos %}
+                                                    {% set data_visita = ma.agendamento.horario.data if ma.agendamento and ma.agendamento.horario else None %}
+                                                    {% if data_visita and data_visita >= today %}
+                                                        {% if ns.proximo is none or data_visita < ns.proximo %}
+                                                            {% set ns.proximo = data_visita %}
+                                                        {% endif %}
+                                                    {% endif %}
+                                                {% endfor %}
                                                 <small class="text-muted d-block">Próximo: 
-                                                    {% set proximo = agendamentos_monitor|selectattr('data_visita', 'ge', today)|first %}
-                                                    {% if proximo %}
-                                                        {{ proximo.data_visita.strftime('%d/%m') }}
+                                                    {% if ns.proximo %}
+                                                        {{ ns.proximo.strftime('%d/%m') }}
                                                     {% else %}
                                                         Nenhum
                                                     {% endif %}

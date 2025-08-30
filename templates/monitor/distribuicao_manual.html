@@ -99,17 +99,17 @@
                                     {% for agendamento, horario in agendamentos_sem_monitor %}
                                     <tr>
                                         <td>
-                                            <strong>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</strong><br>
+                                            <strong>{{ horario.data.strftime('%d/%m/%Y') }}</strong><br>
                                             <small class="text-muted">
                                                 {{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}
                                             </small>
                                         </td>
                                         <td>
-                                            <span class="badge bg-primary">{{ agendamento.visitantes.count() }} visitantes</span>
+                                            <span class="badge bg-primary">{{ agendamento.quantidade_alunos }} visitantes</span>
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-success" 
-                                                    onclick="abrirModalAtribuicao({{ agendamento.id }}, '{{ agendamento.data_visita.strftime('%d/%m/%Y') }}', '{{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}')"
+                                                    onclick="abrirModalAtribuicao({{ agendamento.id }}, '{{ horario.data.strftime('%d/%m/%Y') }}', '{{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}')"
                                                     title="Atribuir Monitor">
                                                 <i class="fas fa-plus me-1"></i>
                                                 Atribuir
@@ -154,7 +154,7 @@
                                     {% for monitor_agendamento, agendamento, horario, monitor in agendamentos_atribuidos %}
                                     <tr>
                                         <td>
-                                            <strong>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</strong><br>
+                                            <strong>{{ horario.data.strftime('%d/%m/%Y') }}</strong><br>
                                             <small class="text-muted">
                                                 {{ horario.horario_inicio.strftime('%H:%M') }} - {{ horario.horario_fim.strftime('%H:%M') }}
                                             </small>
