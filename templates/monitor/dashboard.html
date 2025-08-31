@@ -111,8 +111,8 @@
                                             <strong>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</strong>
                                             <small class="text-muted d-block">{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</small>
                                         </td>
-                                        <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
-                                        <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
+                                        <td>{{ agendamento.horario.evento.nome if agendamento.horario.evento else 'N/A' }}</td>
+                                        <td>{{ agendamento.professor.nome if agendamento.professor else 'N/A' }}</td>
                                         <td>
                                             <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
                                         </td>
@@ -172,8 +172,8 @@
                                         <strong>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</strong>
                                         <small class="text-muted d-block">{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</small>
                                     </td>
-                                    <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
-                                    <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
+                                    <td>{{ agendamento.horario.evento.nome if agendamento.horario.evento else 'N/A' }}</td>
+                                    <td>{{ agendamento.professor.nome if agendamento.professor else 'N/A' }}</td>
                                     <td>
                                         <span class="badge bg-secondary">{{ agendamento.alunos|length }} alunos</span>
                                     </td>
