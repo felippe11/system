@@ -26,8 +26,8 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>Data:</strong> {{ agendamento.data_visita.strftime('%d/%m/%Y') }}</p>
-                            <p><strong>Horário:</strong> {{ agendamento.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario_fim.strftime('%H:%M') }}</p>
+                            <p><strong>Data:</strong> {{ agendamento.horario.data.strftime('%d/%m/%Y') }}</p>
+                            <p><strong>Horário:</strong> {{ agendamento.horario.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario.horario_fim.strftime('%H:%M') }}</p>
                             <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome if agendamento.horario.evento else 'N/A' }}</p>
                         </div>
                         <div class="col-md-6">
@@ -365,7 +365,7 @@ document.getElementById('stop-scan').addEventListener('click', function() {
 
 function onScanSuccess(decodedText, decodedResult) {
     // Processar o QR Code escaneado
-    fetch(`{{ url_for('monitor_routes.processar_qr_code') }}`, {
+    fetch(`{{ url_for('monitor_routes.processar_qr') }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

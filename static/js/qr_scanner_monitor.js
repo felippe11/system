@@ -16,6 +16,9 @@ class QRScannerMonitor {
                 throw new Error('Câmera não suportada neste navegador');
             }
 
+            // Atualizar status para solicitar permissão
+            this.updateScannerStatus('Solicitando permissão para acessar a câmera...', 'info');
+
             // Solicitar permissão para câmera
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -40,7 +43,28 @@ class QRScannerMonitor {
             
         } catch (error) {
             console.error('Erro ao inicializar scanner:', error);
-            this.updateScannerStatus('Erro: ' + error.message);
+            
+            // Tratamento específico para diferentes tipos de erro
+            let errorMessage = 'Erro desconhecido';
+            
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage = 'Permissão de câmera negada. Por favor, permita o acesso à câmera e tente novamente.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage = 'Nenhuma câmera encontrada no dispositivo.';
+            } else if (error.name === 'NotSupportedError') {
+                errorMessage = 'Câmera não suportada neste navegador.';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                errorMessage = 'Câmera está sendo usada por outro aplicativo.';
+            } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+                errorMessage = 'Configurações de câmera não suportadas.';
+            } else {
+                errorMessage = error.message || 'Erro ao acessar a câmera';
+            }
+            
+            this.updateScannerStatus(errorMessage, 'error');
+            
+            // Adicionar botão para tentar novamente
+            this.addRetryButton();
         }
     }
 
@@ -175,6 +199,24 @@ class QRScannerMonitor {
         if (statusElement) {
             statusElement.textContent = message;
             statusElement.className = `scanner-status ${type}`;
+        }
+    }
+
+    // Adicionar botão para tentar novamente
+    addRetryButton() {
+        const statusElement = document.getElementById('scanner-status');
+        if (statusElement) {
+            const retryButton = document.createElement('button');
+            retryButton.className = 'btn btn-primary btn-sm mt-2';
+            retryButton.textContent = 'Tentar Novamente';
+            retryButton.onclick = () => {
+                // Remover botão e tentar novamente
+                retryButton.remove();
+                this.init(this.agendamentoId);
+            };
+            
+            // Adicionar botão após o elemento de status
+            statusElement.parentNode.insertBefore(retryButton, statusElement.nextSibling);
         }
     }
 

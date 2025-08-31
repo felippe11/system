@@ -191,6 +191,7 @@ def detalhe_agendamento(agendamento_id):
     
     # Buscar registros de presença já feitos
     registros_presenca = {}
+    presencas_confirmadas = 0
     for aluno in alunos:
         registro = PresencaAluno.query.filter_by(
             aluno_id=aluno.id,
@@ -198,11 +199,21 @@ def detalhe_agendamento(agendamento_id):
             agendamento_id=agendamento_id
         ).first()
         registros_presenca[aluno.id] = registro
+        
+        # Contar presenças confirmadas
+        if registro and registro.presente:
+            presencas_confirmadas += 1
     
-    return render_template('monitor/detalhe_agendamento.html',
+    # Calcular total de alunos
+    total_alunos = len(alunos)
+    
+    return render_template('monitor/detalhes_agendamento.html',
                          agendamento=agendamento,
                          alunos=alunos,
-                         registros_presenca=registros_presenca)
+                         registros_presenca=registros_presenca,
+                         presencas_dict=registros_presenca,
+                         total_alunos=total_alunos,
+                         presencas_confirmadas=presencas_confirmadas)
 
 # =======================================
 # Registro de Presença
