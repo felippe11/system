@@ -84,17 +84,17 @@
                                             </small>
                                         </td>
                                         <td>
-                                            {{ agendamento.evento.nome if agendamento.evento else 'N/A' }}
-                                            {% if agendamento.evento and agendamento.evento.descricao %}
-                                                <small class="text-muted d-block">{{ agendamento.evento.descricao[:50] }}...</small>
+                                            {{ agendamento.horario.evento.nome if agendamento.horario.evento else 'N/A' }}
+                                            {% if agendamento.horario.evento and agendamento.horario.evento.descricao %}
+                                                <small class="text-muted d-block">{{ agendamento.horario.evento.descricao[:50] }}...</small>
                                             {% endif %}
                                         </td>
                                         <td>
-                                            {{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}
-                                            {% if agendamento.usuario and agendamento.usuario.email %}
-                                                <small class="text-muted d-block">{{ agendamento.usuario.email }}</small>
-                                            {% endif %}
-                                        </td>
+                            {{ agendamento.professor.nome if agendamento.professor else 'N/A' }}
+                            {% if agendamento.professor and agendamento.professor.email %}
+                                <small class="text-muted d-block">{{ agendamento.professor.email }}</small>
+                            {% endif %}
+                        </td>
                                         <td>
                                             <span class="badge bg-info">{{ agendamento.alunos|length }} alunos</span>
                                         </td>

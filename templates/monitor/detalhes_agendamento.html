@@ -28,10 +28,10 @@
                         <div class="col-md-6">
                             <p><strong>Data:</strong> {{ agendamento.data_visita.strftime('%d/%m/%Y') }}</p>
                             <p><strong>Horário:</strong> {{ agendamento.horario_inicio.strftime('%H:%M') }} - {{ agendamento.horario_fim.strftime('%H:%M') }}</p>
-                            <p><strong>Evento:</strong> {{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</p>
+                            <p><strong>Evento:</strong> {{ agendamento.horario.evento.nome if agendamento.horario.evento else 'N/A' }}</p>
                         </div>
                         <div class="col-md-6">
-                            <p><strong>Responsável:</strong> {{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</p>
+                            <p><strong>Responsável:</strong> {{ agendamento.professor.nome if agendamento.professor else 'N/A' }}</p>
                             <p><strong>Status:</strong> 
                                 {% if agendamento.status == 'confirmado' %}
                                     <span class="badge bg-success">Confirmado</span>
