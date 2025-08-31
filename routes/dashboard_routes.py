@@ -8,9 +8,11 @@ from flask import (
     abort,
     request,
     current_app,
+    jsonify
 )
 from flask_login import login_required, current_user, login_user
 from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
+from services.template_service import TemplateService
 
 dashboard_routes = Blueprint(
     'dashboard_routes',
@@ -190,6 +192,35 @@ def dashboard_superadmin():
         clientes=clientes,
     )
 
+
+@dashboard_routes.route('/inicializar_templates/<int:cliente_id>', methods=['POST'])
+@login_required
+def inicializar_templates(cliente_id: int):
+    """Inicializa templates pré-definidos para um cliente."""
+    if current_user.tipo not in {'admin', 'superadmin'}:
+        abort(403)
+    
+    try:
+        from models import Cliente
+        cliente = Cliente.query.get_or_404(cliente_id)
+        
+        resultado = TemplateService.inicializar_templates_cliente(cliente_id)
+        
+        flash(f'Templates inicializados com sucesso! {resultado["certificados"]} templates de certificados e {resultado["declaracoes"]} templates de declarações criados.', 'success')
+        
+        return jsonify({
+            'success': True,
+            'message': f'Templates inicializados com sucesso!',
+            'certificados': resultado['certificados'],
+            'declaracoes': resultado['declaracoes']
+        })
+    
+    except Exception as e:
+        flash(f'Erro ao inicializar templates: {str(e)}', 'error')
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao inicializar templates: {str(e)}'
+        }), 500
 
 @dashboard_routes.route('/login_as_cliente/<int:cliente_id>')
 @login_required

@@ -1,9 +1,6 @@
 import json
 import os
 import uuid
-import json
-
-import pandas as pd
 
 import pandas as pd
 from flask import (
@@ -30,6 +27,8 @@ from models import (
     Usuario,
     WorkMetadata,
 )
+from models.review import Assignment
+from services.submission_service import SubmissionService
 from utils.mfa import mfa_required
 
 
@@ -46,9 +45,15 @@ trabalho_routes = Blueprint(
 @mfa_required
 def submeter_trabalho():
     """Participante faz upload do PDF e registra o trabalho no banco."""
-    if current_user.tipo != "participante":
-        flash("Apenas participantes podem submeter trabalhos.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+    if current_user.tipo not in ["participante", "ministrante"]:
+        flash("Acesso negado. Apenas participantes podem submeter trabalhos.", "error")
+        return redirect(url_for("dashboard.dashboard"))
+
+    # Verificar se o cliente tem configuração de submissão ativa
+    client_config = current_user.client.configuracao
+    if not client_config or not client_config.get("submissao_trabalhos", False):
+        flash("Submissão de trabalhos não está habilitada.", "error")
+        return redirect(url_for("dashboard.dashboard"))
 
     config = current_user.cliente.configuracao if current_user.cliente else None
     formulario = None
@@ -135,35 +140,44 @@ def submeter_trabalho():
         titulo = titulo or "Trabalho sem título"
 
 
-        code = uuid.uuid4().hex[:8]
-        submission = Submission(
-            title=titulo,
-            file_path=arquivo_pdf,
-            author_id=current_user.id,
-            evento_id=evento_id,
-            status="submitted",
-            code_hash=generate_password_hash(code, method="pbkdf2:sha256"),
-
-        )
-        db.session.add(submission)
-        db.session.flush()
-
-        usuario = Usuario.query.get(getattr(current_user, "id", None))
-        uid = usuario.id if usuario else None
-        db.session.add(
-            AuditLog(user_id=uid, submission_id=submission.id, event_type="submission")
-        )
-
-        db.session.commit()
-
-        flash(
-
-            "Trabalho submetido com sucesso! "
-            f"Localizador: {submission.locator} Código: {code}",
-
-            "success",
-        )
-        return redirect(url_for("trabalho_routes.meus_trabalhos"))
+        try:
+            # Usar o serviço unificado para criar a submissão
+            submission = SubmissionService.create_submission(
+                title=titulo,
+                author_id=current_user.id,
+                evento_id=evento_id,
+                file_path=arquivo_pdf
+            )
+            
+            # Gerar código de acesso
+            code = uuid.uuid4().hex[:8]
+            submission.code_hash = generate_password_hash(code, method="pbkdf2:sha256")
+            
+            # Log de auditoria
+            usuario = Usuario.query.get(getattr(current_user, "id", None))
+            uid = usuario.id if usuario else None
+            db.session.add(
+                AuditLog(user_id=uid, submission_id=submission.id, event_type="submission")
+            )
+            
+            db.session.commit()
+            
+            flash(
+                "Trabalho submetido com sucesso! "
+                f"Localizador: {submission.locator} Código: {code}",
+                "success",
+            )
+            return redirect(url_for("trabalho_routes.meus_trabalhos"))
+            
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), "error")
+            return redirect(url_for("trabalho_routes.submeter_trabalho"))
+        except Exception as e:
+            db.session.rollback()
+            flash("Erro interno. Tente novamente.", "error")
+            current_app.logger.error(f"Erro na submissão: {e}")
+            return redirect(url_for("trabalho_routes.submeter_trabalho"))
 
     return render_template("submeter_trabalho.html", formulario=formulario)
 
@@ -172,15 +186,49 @@ def submeter_trabalho():
 @trabalho_routes.route("/meus_trabalhos")
 @login_required
 def meus_trabalhos():
-
-    """Lista trabalhos do participante logado."""
-    if current_user.tipo != "participante":
+    """Lista trabalhos do participante logado com informações detalhadas."""
+    if current_user.tipo not in ["participante", "ministrante"]:
         return redirect(
-            url_for("dashboard_participante_routes.dashboard_participante")
+            url_for("dashboard.dashboard")
         )
 
-    trabalhos = Submission.query.filter_by(author_id=current_user.id).all()
-    return render_template("meus_trabalhos.html", trabalhos=trabalhos)
+    # Buscar submissões com informações relacionadas
+    from sqlalchemy.orm import joinedload
+    from models.review import Review, Assignment
+    
+    trabalhos = db.session.query(Submission).options(
+        joinedload(Submission.evento),
+        joinedload(Submission.author)
+    ).filter_by(author_id=current_user.id).all()
+    
+    # Enriquecer dados dos trabalhos
+    trabalhos_detalhados = []
+    for trabalho in trabalhos:
+        # Buscar revisões
+        reviews = Review.query.filter_by(submission_id=trabalho.id).all()
+        assignments = Assignment.query.filter_by(submission_id=trabalho.id).all()
+        
+        # Traduzir status
+        status_map = {
+            'submitted': 'Submetido',
+            'under_review': 'Em Revisão',
+            'accepted': 'Aceito',
+            'rejected': 'Rejeitado',
+            'pending': 'Pendente'
+        }
+        
+        trabalho_info = {
+            'submission': trabalho,
+            'status_traduzido': status_map.get(trabalho.status, trabalho.status),
+            'total_reviews': len(reviews),
+            'completed_reviews': len([r for r in reviews if r.finished_at]),
+            'pending_reviews': len([a for a in assignments if not any(r.finished_at for r in reviews if r.submission_id == a.submission_id)]),
+            'evento_nome': trabalho.evento.nome if trabalho.evento else 'N/A',
+            'area_nome': 'Área Geral'  # Placeholder - implementar busca de área se necessário
+        }
+        trabalhos_detalhados.append(trabalho_info)
+    
+    return render_template("meus_trabalhos.html", trabalhos=trabalhos_detalhados)
 
 
 # ───────────────────────────── DISTRIBUIÇÃO ──────────────────────────────── #

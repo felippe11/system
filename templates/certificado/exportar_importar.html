@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exportar/Importar Templates de Certificados</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .export-card, .import-card {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+        .export-card:hover, .import-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+        }
+        .template-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .template-item {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+        }
+        .template-item:hover {
+            background-color: #f8f9fa;
+        }
+        .template-item.selected {
+            border-color: #007bff;
+            background-color: #e3f2fd;
+        }
+        .drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .progress-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .log-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .template-preview {
+            max-height: 150px;
+            overflow: hidden;
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-exchange-alt"></i> Exportar/Importar Templates de Certificados</h2>
+                    <a href="{{ url_for('certificado_routes.templates_avancados') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Seção de Exportação -->
+            <div class="col-lg-6 mb-4">
+                <div class="card export-card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="fas fa-download"></i> Exportar Templates</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Selecione os templates de certificados que deseja exportar. Os templates serão salvos em formato JSON.</p>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label">Templates Disponíveis:</label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selecionarTodos()">
+                                        <i class="fas fa-check-double"></i> Selecionar Todos
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparSelecao()">
+                                        <i class="fas fa-times"></i> Limpar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="template-list" id="templateList">
+                                {% for template in templates %}
+                                <div class="template-item" data-template-id="{{ template.id }}" onclick="toggleTemplate(this)">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">{{ template.nome }}</h6>
+                                            <small class="text-muted">
+                                                Tipo: {{ 'Geral' if template.tipo == 'geral' else 'Individual' }} | 
+                                                Status: {{ 'Ativo' if template.ativo else 'Inativo' }} |
+                                                Padrão: {{ 'Sim' if template.padrao else 'Não' }}
+                                            </small>
+                                            {% if template.descricao %}
+                                            <div class="template-preview mt-2">
+                                                <small>{{ template.descricao[:100] }}{% if template.descricao|length > 100 %}...{% endif %}</small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="template_{{ template.id }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="exportFormat" class="form-label">Formato de Exportação:</label>
+                            <select class="form-select" id="exportFormat">
+                                <option value="json">JSON (Recomendado)</option>
+                                <option value="zip">ZIP (JSON + Recursos)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeMetadata" checked>
+                                <label class="form-check-label" for="includeMetadata">
+                                    Incluir metadados (data de criação, variáveis, etc.)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeVariables" checked>
+                                <label class="form-check-label" for="includeVariables">
+                                    Incluir variáveis dinâmicas associadas
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-primary w-100" onclick="exportarTemplates()">
+                            <i class="fas fa-download"></i> Exportar Templates Selecionados
+                        </button>
+
+                        <div class="progress-container" id="exportProgress">
+                            <div class="progress mb-2">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted">Preparando exportação...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Importação -->
+            <div class="col-lg-6 mb-4">
+                <div class="card import-card h-100">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0"><i class="fas fa-upload"></i> Importar Templates</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">Importe templates de certificados de arquivos JSON ou ZIP. Os templates serão validados antes da importação.</p>
+                        
+                        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h5>Arraste arquivos aqui ou clique para selecionar</h5>
+                            <p class="text-muted mb-0">Formatos suportados: .json, .zip</p>
+                            <input type="file" id="fileInput" accept=".json,.zip" multiple style="display: none;" onchange="handleFiles(this.files)">
+                        </div>
+
+                        <div class="mt-3" id="fileList" style="display: none;">
+                            <h6>Arquivos Selecionados:</h6>
+                            <div id="selectedFiles"></div>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="overwriteExisting">
+                                <label class="form-check-label" for="overwriteExisting">
+                                    Sobrescrever templates existentes com mesmo nome
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="validateTemplates" checked>
+                                <label class="form-check-label" for="validateTemplates">
+                                    Validar templates antes da importação
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="importVariables" checked>
+                                <label class="form-check-label" for="importVariables">
+                                    Importar variáveis dinâmicas associadas
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-success w-100 mt-3" id="importBtn" onclick="importarTemplates()" disabled>
+                            <i class="fas fa-upload"></i> Importar Templates
+                        </button>
+
+                        <div class="progress-container" id="importProgress">
+                            <div class="progress mb-2">
+                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted">Processando arquivos...</small>
+                        </div>
+
+                        <div class="mt-3" id="importLog" style="display: none;">
+                            <h6>Log de Importação:</h6>
+                            <div class="log-container" id="logContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico de Operações -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-history"></i> Histórico de Operações</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th>
+                                        <th>Operação</th>
+                                        <th>Arquivo</th>
+                                        <th>Templates</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyTable">
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">Nenhuma operação realizada ainda</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Operação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmMessage">
+                    <!-- Mensagem de confirmação -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Preview -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Preview do Template</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="previewContent">
+                    <!-- Conteúdo do preview -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedFiles = [];
+        let selectedTemplates = [];
+
+        // Configurar drag and drop
+        const dropZone = document.getElementById('dropZone');
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        function toggleTemplate(element) {
+            const checkbox = element.querySelector('input[type="checkbox"]');
+            const templateId = element.dataset.templateId;
+            
+            checkbox.checked = !checkbox.checked;
+            element.classList.toggle('selected', checkbox.checked);
+            
+            if (checkbox.checked) {
+                selectedTemplates.push(templateId);
+            } else {
+                selectedTemplates = selectedTemplates.filter(id => id !== templateId);
+            }
+        }
+
+        function selecionarTodos() {
+            const items = document.querySelectorAll('.template-item');
+            selectedTemplates = [];
+            
+            items.forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                checkbox.checked = true;
+                item.classList.add('selected');
+                selectedTemplates.push(item.dataset.templateId);
+            });
+        }
+
+        function limparSelecao() {
+            const items = document.querySelectorAll('.template-item');
+            selectedTemplates = [];
+            
+            items.forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                checkbox.checked = false;
+                item.classList.remove('selected');
+            });
+        }
+
+        function handleFiles(files) {
+            selectedFiles = Array.from(files).filter(file => 
+                file.type === 'application/json' || file.name.endsWith('.json') || 
+                file.type === 'application/zip' || file.name.endsWith('.zip')
+            );
+            
+            if (selectedFiles.length > 0) {
+                displaySelectedFiles();
+                document.getElementById('importBtn').disabled = false;
+            } else {
+                alert('Por favor, selecione apenas arquivos JSON ou ZIP.');
+            }
+        }
+
+        function displaySelectedFiles() {
+            const fileList = document.getElementById('fileList');
+            const selectedFilesDiv = document.getElementById('selectedFiles');
+            
+            selectedFilesDiv.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'alert alert-info alert-dismissible fade show';
+                fileItem.innerHTML = `
+                    <i class="fas fa-file"></i> ${file.name} (${(file.size / 1024).toFixed(2)} KB)
+                    <button type="button" class="btn-close" onclick="removeFile(${index})"></button>
+                `;
+                selectedFilesDiv.appendChild(fileItem);
+            });
+            
+            fileList.style.display = 'block';
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            if (selectedFiles.length > 0) {
+                displaySelectedFiles();
+            } else {
+                document.getElementById('fileList').style.display = 'none';
+                document.getElementById('importBtn').disabled = true;
+            }
+        }
+
+        function exportarTemplates() {
+            if (selectedTemplates.length === 0) {
+                alert('Por favor, selecione pelo menos um template para exportar.');
+                return;
+            }
+
+            const format = document.getElementById('exportFormat').value;
+            const includeMetadata = document.getElementById('includeMetadata').checked;
+            const includeVariables = document.getElementById('includeVariables').checked;
+            
+            // Mostrar progresso
+            const progressContainer = document.getElementById('exportProgress');
+            progressContainer.style.display = 'block';
+            
+            // Fazer requisição para o backend
+            fetch('/certificado/exportar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    template_ids: selectedTemplates,
+                    formato: format,
+                    incluir_metadados: includeMetadata,
+                    incluir_variaveis: includeVariables
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.blob();
+                } else {
+                    throw new Error('Erro na exportação');
+                }
+            })
+            .then(blob => {
+                // Fazer download do arquivo
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `certificados_export_${new Date().toISOString().split('T')[0]}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                addToHistory('Exportação', a.download, selectedTemplates.length, 'Sucesso');
+                progressContainer.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao exportar templates.');
+                progressContainer.style.display = 'none';
+            });
+        }
+
+        function importarTemplates() {
+            if (selectedFiles.length === 0) {
+                alert('Por favor, selecione arquivos para importar.');
+                return;
+            }
+
+            const overwrite = document.getElementById('overwriteExisting').checked;
+            const validate = document.getElementById('validateTemplates').checked;
+            const importVariables = document.getElementById('importVariables').checked;
+            
+            // Mostrar progresso
+            const progressContainer = document.getElementById('importProgress');
+            const logContainer = document.getElementById('importLog');
+            const logContent = document.getElementById('logContent');
+            
+            progressContainer.style.display = 'block';
+            logContainer.style.display = 'block';
+            logContent.innerHTML = '';
+            
+            // Preparar FormData
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+            formData.append('sobrescrever', overwrite);
+            formData.append('validar', validate);
+            formData.append('importar_variaveis', importVariables);
+            
+            // Fazer requisição para o backend
+            fetch('/certificado/importar', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    addLog('Importação concluída com sucesso!');
+                    addLog(`Templates importados: ${data.templates_importados}`);
+                    addLog(`Templates ignorados: ${data.templates_ignorados}`);
+                    
+                    if (data.erros && data.erros.length > 0) {
+                        data.erros.forEach(erro => addLog(`ERRO: ${erro}`));
+                    }
+                    
+                    addToHistory('Importação', selectedFiles[0].name, data.templates_importados, 'Sucesso');
+                } else {
+                    addLog(`ERRO: ${data.message}`);
+                    addToHistory('Importação', selectedFiles[0].name, 0, 'Erro');
+                }
+                
+                progressContainer.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                addLog('ERRO: Falha na comunicação com o servidor');
+                addToHistory('Importação', selectedFiles[0].name, 0, 'Erro');
+                progressContainer.style.display = 'none';
+            });
+        }
+
+        function addLog(message) {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            logContent.innerHTML += `[${timestamp}] ${message}<br>`;
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function addToHistory(operation, filename, count, status) {
+            const historyTable = document.getElementById('historyTable');
+            
+            // Remover mensagem de "nenhuma operação"
+            if (historyTable.children.length === 1 && historyTable.children[0].children.length === 1) {
+                historyTable.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            const statusClass = status === 'Sucesso' ? 'text-success' : 'text-danger';
+            const statusIcon = status === 'Sucesso' ? 'fa-check-circle' : 'fa-times-circle';
+            
+            row.innerHTML = `
+                <td>${new Date().toLocaleString()}</td>
+                <td>${operation}</td>
+                <td>${filename}</td>
+                <td>${count}</td>
+                <td class="${statusClass}"><i class="fas ${statusIcon}"></i> ${status}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" onclick="viewDetails('${operation}', '${filename}')">
+                        <i class="fas fa-eye"></i> Detalhes
+                    </button>
+                </td>
+            `;
+            
+            historyTable.insertBefore(row, historyTable.firstChild);
+        }
+
+        function viewDetails(operation, filename) {
+            alert(`Detalhes da operação:\n\nTipo: ${operation}\nArquivo: ${filename}\nData: ${new Date().toLocaleString()}`);
+        }
+    </script>
+</body>
+</html>
