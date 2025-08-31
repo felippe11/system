@@ -322,18 +322,18 @@ def processar_qr():
         return jsonify({'success': False, 'message': 'Acesso negado'}), 403
     
     monitor_id = session.get('monitor_id')
-    qr_token = request.json.get('qr_token')
+    qr_code = request.json.get('qr_code')  # Mudança: aceitar 'qr_code' em vez de 'qr_token'
     agendamento_id = request.json.get('agendamento_id')
     
     try:
-        # Buscar agendamento pelo token QR
-        agendamento = AgendamentoVisita.query.filter_by(
-            qr_code_token=qr_token,
-            id=agendamento_id
-        ).first()
+        # Validar dados recebidos
+        if not all([qr_code, agendamento_id]):
+            return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
+        # Buscar agendamento
+        agendamento = AgendamentoVisita.query.get(agendamento_id)
         if not agendamento:
-            return jsonify({'success': False, 'message': 'QR Code inválido'}), 404
+            return jsonify({'success': False, 'message': 'Agendamento não encontrado'}), 404
         
         # Verificar se o monitor tem acesso
         monitor_agendamento = MonitorAgendamento.query.filter_by(
@@ -345,21 +345,110 @@ def processar_qr():
         if not monitor_agendamento:
             return jsonify({'success': False, 'message': 'Acesso negado ao agendamento'}), 403
         
-        # Marcar check-in do agendamento
-        if not agendamento.checkin_realizado:
-            agendamento.checkin_realizado = True
-            agendamento.data_checkin = datetime.utcnow()
-            db.session.commit()
+        # Processar QR Code - tentar extrair dados do aluno
+        aluno_id = None
+        try:
+            # Tentar fazer parse do QR code como JSON
+            import json
+            qr_data = json.loads(qr_code)
+            aluno_id = qr_data.get('aluno_id')
+        except (json.JSONDecodeError, AttributeError):
+            # Se não for JSON, verificar se é uma URL de check-in
+            if 'checkin_qr_agendamento' in qr_code and 'token=' in qr_code:
+                # Extrair token da URL
+                import re
+                token_match = re.search(r'token=([a-f0-9-]+)', qr_code)
+                if token_match:
+                    token = token_match.group(1)
+                    
+                    # Buscar agendamento pelo token
+                    agendamento_token = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
+                    
+                    if agendamento_token and agendamento_token.id == agendamento_id:
+                        # Marcar todos os alunos como presentes
+                        from models.event import PresencaAluno
+                        alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento_id).all()
+                        
+                        alunos_registrados = []
+                        for aluno in alunos:
+                            presenca_existente = PresencaAluno.query.filter_by(
+                                aluno_id=aluno.id,
+                                agendamento_id=agendamento_id
+                            ).first()
+                            
+                            if presenca_existente:
+                                presenca_existente.presente = True
+                                presenca_existente.data_presenca = datetime.utcnow()
+                                presenca_existente.metodo_registro = 'qr_code_agendamento'
+                            else:
+                                nova_presenca = PresencaAluno(
+                                    aluno_id=aluno.id,
+                                    agendamento_id=agendamento_id,
+                                    presente=True,
+                                    data_presenca=datetime.utcnow(),
+                                    metodo_registro='qr_code_agendamento'
+                                )
+                                db.session.add(nova_presenca)
+                            
+                            alunos_registrados.append(aluno.nome)
+                        
+                        db.session.commit()
+                        
+                        return jsonify({
+                            'success': True,
+                            'message': f'Presença registrada para todos os alunos ({len(alunos_registrados)} alunos)!',
+                            'aluno_nome': f'Todos os alunos ({len(alunos_registrados)})'
+                        })
+                    else:
+                        return jsonify({'success': False, 'message': 'Token de agendamento inválido ou não corresponde ao agendamento atual'}), 400
+                else:
+                    return jsonify({'success': False, 'message': 'Token não encontrado na URL'}), 400
+            else:
+                # Se não for JSON nem URL, tentar extrair ID diretamente
+                try:
+                    aluno_id = int(qr_code)
+                except ValueError:
+                    return jsonify({'success': False, 'message': 'QR Code inválido'}), 400
+        
+        if not aluno_id:
+            return jsonify({'success': False, 'message': 'ID do aluno não encontrado no QR Code'}), 400
+        
+        # Buscar aluno
+        aluno = AlunoVisitante.query.get(aluno_id)
+        if not aluno:
+            return jsonify({'success': False, 'message': 'Aluno não encontrado'}), 404
+        
+        # Verificar se o aluno pertence a este agendamento
+        if aluno.agendamento_id != agendamento_id:
+            return jsonify({'success': False, 'message': 'Aluno não pertence a este agendamento'}), 400
+        
+        # Registrar presença
+        from models.event import PresencaAluno
+        presenca_existente = PresencaAluno.query.filter_by(
+            aluno_id=aluno_id,
+            agendamento_id=agendamento_id
+        ).first()
+        
+        if presenca_existente:
+            presenca_existente.presente = True
+            presenca_existente.data_presenca = datetime.utcnow()
+            presenca_existente.metodo_registro = 'qr_code'
+        else:
+            nova_presenca = PresencaAluno(
+                aluno_id=aluno_id,
+                agendamento_id=agendamento_id,
+                presente=True,
+                data_presenca=datetime.utcnow(),
+                metodo_registro='qr_code'
+            )
+            db.session.add(nova_presenca)
+        
+        db.session.commit()
         
         return jsonify({
             'success': True,
-            'message': 'Check-in realizado com sucesso!',
-            'agendamento': {
-                'id': agendamento.id,
-                'escola_nome': agendamento.escola_nome,
-                'turma': agendamento.turma,
-                'quantidade_alunos': agendamento.quantidade_alunos
-            }
+            'message': 'Presença registrada com sucesso!',
+            'aluno_nome': aluno.nome
         })
         
     except Exception as e:

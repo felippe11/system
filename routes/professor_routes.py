@@ -891,9 +891,21 @@ def qrcode_agendamento_participante(agendamento_id):
         evento_id=evento_id
     ).first()
     
+    # Se não estiver associado, criar a associação automaticamente
     if not participante:
-        flash('Acesso negado! Você não está associado a este evento.', 'danger')
-        return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
+        try:
+            participante = ParticipanteEvento(
+                usuario_id=current_user.id,
+                evento_id=evento_id,
+                status="ativo"
+            )
+            db.session.add(participante)
+            db.session.commit()
+            flash('Você foi associado automaticamente a este evento.', 'info')
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao associar você ao evento. Tente novamente.', 'danger')
+            return redirect(url_for('agendamento_routes.meus_agendamentos_participante'))
 
     if agendamento.status != 'confirmado':
         flash('Agendamento ainda não confirmado.', 'warning')
