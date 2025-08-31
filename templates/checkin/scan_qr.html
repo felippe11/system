@@ -270,6 +270,7 @@ import { initScanner, stopScanner } from "{{ url_for('static', filename='js/qr_s
 
         const statusElement = document.getElementById('qr-status');
         const resultElement = document.getElementById('qr-result');
+        let scanner;
 
         if (window.Html5Qrcode) {
             // Carrega check-ins anteriores antes de iniciar

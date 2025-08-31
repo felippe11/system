@@ -1,4 +1,4 @@
-from flask import Flask, url_for as flask_url_for
+from flask import Flask, url_for as flask_url_for, send_from_directory
 from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -84,6 +84,15 @@ def create_app():
         dt_brasilia = dt.astimezone(pytz.timezone("America/Sao_Paulo"))
         return dt_brasilia.strftime("%d/%m/%Y %H:%M:%S")
 
+    @app.template_filter("utc_iso")
+    def utc_iso_filter(dt):
+        """Convert datetime to UTC ISO format for JavaScript processing"""
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=pytz.utc)
+        else:
+            dt = dt.astimezone(pytz.utc)
+        return dt.isoformat()
+
 
     @app.template_filter("dia_semana")
     def dia_semana_filter(value):
@@ -160,6 +169,8 @@ def create_app():
     def debug_avancar():
         from flask import render_template
         return render_template('debug_test.html')
+    
+
 
     return app
 

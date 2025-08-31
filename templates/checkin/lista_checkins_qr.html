@@ -58,7 +58,7 @@
                 <td>
                   {{ checkin.oficina.titulo if checkin.oficina else checkin.evento.nome }}
                 </td>
-                <td>{{ checkin.data_hora|brasilia }}</td>
+                <td class="datetime-local" data-utc="{{ checkin.data_hora|utc_iso }}">{{ checkin.data_hora|brasilia }}</td>
               </tr>
               {% endfor %}
             {% else %}
@@ -145,6 +145,31 @@
         });
       }
     }
+
+    // Converter horários UTC para horário local
+    const datetimeElements = document.querySelectorAll('.datetime-local');
+    
+    datetimeElements.forEach(element => {
+      const utcTime = element.getAttribute('data-utc');
+      
+      if (utcTime) {
+        try {
+          const date = new Date(utcTime);
+          const localTime = date.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+          
+          element.textContent = localTime;
+        } catch (error) {
+          console.error('Erro ao converter horário:', error);
+        }
+      }
+    });
   });
 </script>
 {% endblock %}
