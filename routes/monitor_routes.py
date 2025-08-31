@@ -693,7 +693,7 @@ def distribuicao_manual():
             HorarioVisitacao.data >= datetime.now().date()
         ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
-        return render_template('distribuicao_manual.html',
+        return render_template('monitor/distribuicao_manual.html',
                              agendamentos_sem_monitor=agendamentos_sem_monitor,
                              monitores_ativos=monitores_ativos,
                              agendamentos_atribuidos=agendamentos_atribuidos)

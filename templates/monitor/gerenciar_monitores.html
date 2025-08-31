@@ -225,9 +225,9 @@
                                             <span class="badge bg-primary">{{ agendamentos_monitor|length }} agendamentos</span>
                                             {% if agendamentos_monitor %}
                                                 <small class="text-muted d-block">Próximo: 
-                                                    {% set proximo = agendamentos_monitor|selectattr('data_visita', 'ge', today)|first %}
+                                                    {% set proximo = agendamentos_monitor|selectattr('agendamento.horario.data', 'ge', today)|first %}
                                                     {% if proximo %}
-                                                        {{ proximo.data_visita.strftime('%d/%m') }}
+                                                        {{ proximo.agendamento.horario.data.strftime('%d/%m') }}
                                                     {% else %}
                                                         Nenhum
                                                     {% endif %}
