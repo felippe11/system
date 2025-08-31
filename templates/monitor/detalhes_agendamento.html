@@ -71,11 +71,7 @@
                         </div>
                     </div>
                     <div class="mt-3">
-                        <button class="btn btn-primary btn-lg" onclick="iniciarScanner({{ agendamento.id }})">
-                            <i class="fas fa-camera"></i> Iniciar Scanner
-                        </button>
                         <p class="mt-2 text-muted">Use o scanner para confirmar presença automaticamente</p>
-                        <div id="scanner-status" class="scanner-status mt-2"></div>
                     </div>
                 </div>
             </div>
@@ -98,7 +94,7 @@
                             <small class="text-muted">Ausentes</small>
                         </div>
                         <div class="text-center">
-                            <div class="h4 text-warning mb-0" id="pendentes-count">{{ total_alunos - presencas_confirmadas }}</div>
+                            <div class="h4 text-warning mb-0" id="pendentes-count">0</div>
                             <small class="text-muted">Pendentes</small>
                         </div>
                     </div>
@@ -526,14 +522,22 @@ function addToRecentScans(aluno, status, error = null) {
 }
 
 function updateCounters() {
-    // Contar presenças atuais na tabela
-    const presentesBadges = document.querySelectorAll('.badge.bg-success');
-    const ausentesBadges = document.querySelectorAll('.badge.bg-danger');
+    // Contar presenças atuais na tabela (apenas dentro da tabela de alunos)
+    const tabelaAlunos = document.querySelector('table');
+    const presentesBadges = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-success') : [];
+    const ausentesBadges = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-danger') : [];
+    const pendentesBadges = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-secondary') : [];
     const totalAlunos = document.querySelectorAll('tr[id^="aluno-"]').length;
     
     const presentes = presentesBadges.length;
     const ausentes = ausentesBadges.length;
-    const pendentes = totalAlunos - presentes - ausentes;
+    const pendentes = pendentesBadges.length;
+    
+    // Verificar se a soma está correta
+    const soma = presentes + ausentes + pendentes;
+    if (soma !== totalAlunos) {
+        console.warn(`Inconsistência nos contadores: ${presentes} + ${ausentes} + ${pendentes} = ${soma}, mas total de alunos é ${totalAlunos}`);
+    }
     
     document.getElementById('presentes-count').textContent = presentes;
     document.getElementById('ausentes-count').textContent = ausentes;
