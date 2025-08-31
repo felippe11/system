@@ -108,8 +108,8 @@
                                     {% for agendamento in agendamentos_hoje %}
                                     <tr>
                                         <td>
-                                            <strong>{{ agendamento.horario_inicio.strftime('%H:%M') }}</strong>
-                                            <small class="text-muted d-block">{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</small>
+                                            <strong>{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</strong>
+                                            <small class="text-muted d-block">{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</small>
                                         </td>
                                         <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
                                         <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
@@ -169,8 +169,8 @@
                                 {% for agendamento in agendamentos_proximos %}
                                 <tr>
                                     <td>
-                                        <strong>{{ agendamento.data_visita.strftime('%d/%m/%Y') }}</strong>
-                                        <small class="text-muted d-block">{{ agendamento.horario_inicio.strftime('%H:%M') }}</small>
+                                        <strong>{{ agendamento.horario.data.strftime('%d/%m/%Y') }}</strong>
+                                        <small class="text-muted d-block">{{ agendamento.horario.horario_inicio.strftime('%H:%M') }}</small>
                                     </td>
                                     <td>{{ agendamento.evento.nome if agendamento.evento else 'N/A' }}</td>
                                     <td>{{ agendamento.usuario.nome if agendamento.usuario else 'N/A' }}</td>
