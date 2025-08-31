@@ -314,7 +314,7 @@ function marcarTodosPresentes() {
     if (confirm('Deseja marcar todos os alunos como presentes?')) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         
-        fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -328,10 +328,24 @@ function marcarTodosPresentes() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Atualizar todas as linhas da tabela
+                const alunos = document.querySelectorAll('[id^="aluno-"]');
+                alunos.forEach(row => {
+                    const alunoId = row.id.replace('aluno-', '');
+                    updateAlunoRow(alunoId, true);
+                });
+                
+                // Atualizar contadores
+                updateCounters();
+                
+                alert(data.message);
             } else {
                 alert('Erro ao registrar presenças: ' + data.message);
             }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao registrar presenças');
         });
     }
 }
@@ -341,7 +355,7 @@ function marcarTodosAusentes() {
     if (confirm('Deseja marcar todos os alunos como ausentes?')) {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         
-        fetch(`{{ url_for('monitor_routes.registrar_presenca') }}`, {
+        fetch(`{{ url_for('monitor_routes.registrar_presenca_lote') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -355,10 +369,24 @@ function marcarTodosAusentes() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                // Atualizar todas as linhas da tabela
+                const alunos = document.querySelectorAll('[id^="aluno-"]');
+                alunos.forEach(row => {
+                    const alunoId = row.id.replace('aluno-', '');
+                    updateAlunoRow(alunoId, false);
+                });
+                
+                // Atualizar contadores
+                updateCounters();
+                
+                alert(data.message);
             } else {
                 alert('Erro ao registrar presenças: ' + data.message);
             }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao registrar presenças');
         });
     }
 }

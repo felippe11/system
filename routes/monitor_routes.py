@@ -286,6 +286,76 @@ def registrar_presenca():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro: {str(e)}'}), 500
 
+@monitor_routes.route('/monitor/registrar_presenca_lote', methods=['POST'])
+@login_required
+def registrar_presenca_lote():
+    """Registra presença/ausência de todos os alunos de um agendamento"""
+    if session.get('user_type') != 'monitor':
+        return jsonify({'success': False, 'message': 'Acesso negado'}), 403
+    
+    monitor_id = session.get('monitor_id')
+    agendamento_id = request.json.get('agendamento_id')
+    presente = request.json.get('presente', False)
+    metodo = request.json.get('metodo', 'manual_lote')
+    
+    try:
+        # Verificar se o monitor tem acesso ao agendamento
+        monitor_agendamento = MonitorAgendamento.query.filter_by(
+            monitor_id=monitor_id,
+            agendamento_id=agendamento_id,
+            status='ativo'
+        ).first()
+        
+        if not monitor_agendamento:
+            return jsonify({'success': False, 'message': 'Agendamento não atribuído'}), 403
+        
+        # Buscar todos os alunos do agendamento
+        alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento_id).all()
+        
+        if not alunos:
+            return jsonify({'success': False, 'message': 'Nenhum aluno encontrado'}), 404
+        
+        alunos_atualizados = []
+        
+        for aluno in alunos:
+            # Buscar ou criar registro de presença
+            registro = PresencaAluno.query.filter_by(
+                aluno_id=aluno.id,
+                monitor_id=monitor_id,
+                agendamento_id=agendamento_id
+            ).first()
+            
+            if registro:
+                registro.presente = presente
+                registro.data_registro = datetime.utcnow()
+                registro.metodo_confirmacao = metodo
+            else:
+                registro = PresencaAluno(
+                    aluno_id=aluno.id,
+                    monitor_id=monitor_id,
+                    agendamento_id=agendamento_id,
+                    presente=presente,
+                    metodo_confirmacao=metodo
+                )
+                db.session.add(registro)
+            
+            # Atualizar também o campo presente do aluno (compatibilidade)
+            aluno.presente = presente
+            alunos_atualizados.append(aluno.nome)
+        
+        db.session.commit()
+        
+        status_texto = "presentes" if presente else "ausentes"
+        return jsonify({
+            'success': True,
+            'message': f'{len(alunos_atualizados)} alunos marcados como {status_texto}',
+            'alunos_atualizados': len(alunos_atualizados)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro: {str(e)}'}), 500
+
 # =======================================
 # QR Code Scanner
 # =======================================
