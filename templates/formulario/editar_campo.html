@@ -8,17 +8,19 @@
       <h2 class="mb-0 fs-4"><i class="bi bi-pencil-square me-2"></i>Editar Campo</h2>
     </div>
     <div class="card-body">
+      {% set disable_all = campo.protegido and campo.nome not in ['nome', 'email'] %}
+      {% set disable_others = campo.protegido and campo.nome in ['nome', 'email'] %}
       <form method="POST">
         <!-- Nome do campo -->
         <div class="mb-3">
           <label class="form-label fw-bold" for="nome">Nome do Campo <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" id="nome" name="nome" value="{{ campo.nome }}" required>
+          <input type="text" class="form-control" id="nome" name="nome" value="{{ campo.nome }}" required {% if disable_all %}disabled{% endif %}>
         </div>
 
         <!-- Tipo do campo -->
         <div class="mb-3">
           <label class="form-label fw-bold" for="tipo-campo">Tipo <span class="text-danger">*</span></label>
-          <select class="form-select" id="tipo-campo" name="tipo" required>
+          <select class="form-select" id="tipo-campo" name="tipo" required {% if disable_all or disable_others %}disabled{% endif %}>
             {% set tipos = ['text','textarea','number','file','date','dropdown','checkbox','radio'] %}
             {% for tipo in tipos %}
               <option value="{{ tipo }}" {% if campo.tipo == tipo %}selected{% endif %}>{{ tipo|capitalize }}</option>
@@ -29,13 +31,13 @@
         <!-- Opções (mostrado dinamicamente) -->
         <div class="mb-3" id="grupo-opcoes" style="display: none;">
           <label class="form-label fw-bold" for="opcoes">Opções (separadas por vírgula)</label>
-          <textarea class="form-control" id="opcoes" name="opcoes" rows="2">{{ campo.opcoes }}</textarea>
+          <textarea class="form-control" id="opcoes" name="opcoes" rows="2" {% if disable_all or disable_others %}disabled{% endif %}>{{ campo.opcoes }}</textarea>
           <div class="form-text">Ex.: Opção A, Opção B, Opção C</div>
         </div>
 
         <!-- Obrigatório -->
         <div class="form-check form-switch mb-3">
-          <input class="form-check-input" type="checkbox" role="switch" id="obrigatorio" name="obrigatorio" {% if campo.obrigatorio %}checked{% endif %}>
+          <input class="form-check-input" type="checkbox" role="switch" id="obrigatorio" name="obrigatorio" {% if campo.obrigatorio %}checked{% endif %} {% if disable_all or disable_others %}disabled{% endif %}>
           <label class="form-check-label" for="obrigatorio">Campo obrigatório</label>
         </div>
 
@@ -43,18 +45,18 @@
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label fw-bold" for="tamanho_max">Tamanho Máximo</label>
-            <input type="number" class="form-control" id="tamanho_max" name="tamanho_max" value="{{ campo.tamanho_max or '' }}">
+            <input type="number" class="form-control" id="tamanho_max" name="tamanho_max" value="{{ campo.tamanho_max or '' }}" {% if disable_all or disable_others %}disabled{% endif %}>
           </div>
           <div class="col-md-6">
             <label class="form-label fw-bold" for="regex_validacao">Regex de Validação</label>
-            <input type="text" class="form-control" id="regex_validacao" name="regex_validacao" value="{{ campo.regex_validacao or '' }}">
+            <input type="text" class="form-control" id="regex_validacao" name="regex_validacao" value="{{ campo.regex_validacao or '' }}" {% if disable_all or disable_others %}disabled{% endif %}>
           </div>
         </div>
 
         <!-- Descrição -->
         <div class="mb-3 mt-3">
           <label class="form-label fw-bold" for="descricao">Descrição</label>
-          <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ campo.descricao or '' }}</textarea>
+          <textarea class="form-control" id="descricao" name="descricao" rows="3" {% if disable_all or disable_others %}disabled{% endif %}>{{ campo.descricao or '' }}</textarea>
         </div>
 
         <!-- Ações -->
@@ -62,7 +64,7 @@
           <a href="{{ url_for('formularios_routes.gerenciar_campos', formulario_id=campo.formulario_id) }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar
           </a>
-          <button type="submit" class="btn btn-primary ms-auto">
+          <button type="submit" class="btn btn-primary ms-auto" {% if disable_all %}disabled{% endif %}>
             <i class="bi bi-save me-1"></i> Salvar Alterações
           </button>
         </div>
