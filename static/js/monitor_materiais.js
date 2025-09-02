@@ -28,27 +28,36 @@ function configurarEventListeners() {
 async function carregarDadosIniciais() {
     try {
         mostrarCarregando(true);
-        
+
         // Carregar polos e materiais
         const [polosResponse, materiaisResponse] = await Promise.all([
             fetch('/api/polos'),
             fetch('/api/materiais')
         ]);
-        
-        if (polosResponse.ok && materiaisResponse.ok) {
-            const polosJson = await polosResponse.json();
-            const materiaisJson = await materiaisResponse.json();
-            polosData = polosJson.polos || [];
-            materiaisData = materiaisJson.materiais || [];
-            
-            atualizarCardsPolos();
-            atualizarTabelaMateriais();
-        } else {
-            throw new Error('Erro ao carregar dados');
-        }
+
+        const parseAndValidate = async (response) => {
+            const contentType = response.headers.get('Content-Type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error('Sessão expirada');
+            }
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Erro ao carregar dados');
+            }
+            return data;
+        };
+
+        const polosJson = await parseAndValidate(polosResponse);
+        const materiaisJson = await parseAndValidate(materiaisResponse);
+        polosData = polosJson.polos || [];
+        materiaisData = materiaisJson.materiais || [];
+
+        atualizarCardsPolos();
+        atualizarTabelaMateriais();
     } catch (error) {
         console.error('Erro:', error);
-        mostrarAlerta('Erro ao carregar dados', 'error');
+        mostrarAlerta(error.message || 'Erro ao carregar dados', 'error');
+        return;
     } finally {
         mostrarCarregando(false);
     }
