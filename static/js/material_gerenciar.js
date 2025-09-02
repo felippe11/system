@@ -35,11 +35,11 @@ function configurarEventos() {
     
     // Forms
     // Event listeners removidos - agora usando páginas separadas
-    document.getElementById('form-movimentacao').addEventListener('submit', salvarMovimentacao);
-    
+    document.getElementById('form-movimentacao')?.addEventListener('submit', salvarMovimentacao);
+
     // Exportação WhatsApp
-    document.getElementById('tipo-exportacao').addEventListener('change', gerarTextoWhatsApp);
-    document.getElementById('polo-exportacao').addEventListener('change', gerarTextoWhatsApp);
+    document.getElementById('tipo-exportacao')?.addEventListener('change', gerarTextoWhatsApp);
+    document.getElementById('polo-exportacao')?.addEventListener('change', gerarTextoWhatsApp);
 }
 
 // Carregar dados iniciais
