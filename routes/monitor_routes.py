@@ -21,6 +21,7 @@ import qrcode
 import io
 import base64
 from PIL import Image
+import unicodedata
 import pandas as pd
 
 from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
@@ -93,13 +94,17 @@ def dashboard():
     
     # Buscar agendamentos atribuídos ao monitor para hoje
     hoje = datetime.now().date()
-    agendamentos_hoje = db.session.query(AgendamentoVisita).join(
-        MonitorAgendamento
-    ).filter(
-        MonitorAgendamento.monitor_id == monitor_id,
-        MonitorAgendamento.status == 'ativo',
-        db.func.date(AgendamentoVisita.data_agendamento) == hoje
-    ).all()
+    agendamentos_hoje = (
+        db.session.query(AgendamentoVisita)
+        .join(MonitorAgendamento, MonitorAgendamento.agendamento_id == AgendamentoVisita.id)
+        .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+        .filter(
+            MonitorAgendamento.monitor_id == monitor_id,
+            MonitorAgendamento.status == 'ativo',
+            HorarioVisitacao.data == hoje,
+        )
+        .all()
+    )
     
     # Estatísticas do dia
     total_agendamentos = len(agendamentos_hoje)
@@ -577,24 +582,31 @@ def gerenciar_monitores():
         HorarioVisitacao.data == hoje
     ).count()
     
-    # Agendamentos cobertos (com monitor atribuído)
-    agendamentos_cobertos = db.session.query(AgendamentoVisita).join(
-        MonitorAgendamento
-    ).join(
-        HorarioVisitacao
-    ).filter(
-        HorarioVisitacao.data >= hoje
-    ).count()
-    
-    # Agendamentos descobertos (sem monitor)
-    agendamentos_descobertos = db.session.query(AgendamentoVisita).join(
-        HorarioVisitacao
-    ).filter(
-        HorarioVisitacao.data >= hoje,
-        ~AgendamentoVisita.id.in_(
-            db.session.query(MonitorAgendamento.agendamento_id)
+    # Agendamentos cobertos (com atribuição ativa)
+    agendamentos_cobertos = (
+        db.session.query(AgendamentoVisita)
+        .join(MonitorAgendamento)
+        .join(HorarioVisitacao)
+        .filter(
+            HorarioVisitacao.data >= hoje,
+            MonitorAgendamento.status == 'ativo',
         )
-    ).count()
+        .count()
+    )
+    
+    # Agendamentos descobertos (sem atribuição ativa)
+    subq_ativos = db.session.query(MonitorAgendamento.agendamento_id).filter(
+        MonitorAgendamento.status == 'ativo'
+    )
+    agendamentos_descobertos = (
+        db.session.query(AgendamentoVisita)
+        .join(HorarioVisitacao)
+        .filter(
+            HorarioVisitacao.data >= hoje,
+            ~AgendamentoVisita.id.in_(subq_ativos),
+        )
+        .count()
+    )
     
     return render_template('monitor/gerenciar_monitores.html',
                          monitores=monitores,
@@ -832,13 +844,15 @@ def distribuicao_manual():
     
     try:
         # Buscar agendamentos sem monitor atribuído
+        # Outer join apenas com atribuições ativas para identificar sem monitor
         agendamentos_sem_monitor = db.session.query(
             AgendamentoVisita,
             HorarioVisitacao
         ).join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).outerjoin(
-            MonitorAgendamento, AgendamentoVisita.id == MonitorAgendamento.agendamento_id
+            MonitorAgendamento,
+            (AgendamentoVisita.id == MonitorAgendamento.agendamento_id) & (MonitorAgendamento.status == 'ativo')
         ).filter(
             MonitorAgendamento.id.is_(None),
             HorarioVisitacao.data >= datetime.now().date()
@@ -860,7 +874,8 @@ def distribuicao_manual():
         ).join(
             Monitor, MonitorAgendamento.monitor_id == Monitor.id
         ).filter(
-            HorarioVisitacao.data >= datetime.now().date()
+            HorarioVisitacao.data >= datetime.now().date(),
+            MonitorAgendamento.status == 'ativo'
         ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
         
         return render_template('monitor/distribuicao_manual.html',
@@ -890,7 +905,11 @@ def atribuir_monitor():
         
         # Verificar se o agendamento existe e não tem monitor
         agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
-        monitor_existente = MonitorAgendamento.query.filter_by(agendamento_id=agendamento_id).first()
+        # Verificar apenas atribuições ativas
+        monitor_existente = MonitorAgendamento.query.filter_by(
+            agendamento_id=agendamento_id,
+            status='ativo'
+        ).first()
         
         if monitor_existente:
             return jsonify({'success': False, 'message': 'Agendamento já possui monitor atribuído'})
@@ -1268,23 +1287,43 @@ def distribuir_automaticamente():
         return jsonify({'success': False, 'message': 'Acesso negado'})
     
     try:
+        payload = request.get_json(silent=True) or {}
+        modo = payload.get('modo', 'somente_sem_monitor')  # 'somente_sem_monitor' | 'redistribuir_todos'
         # Obter agendamentos futuros sem monitor atribuído
         hoje = datetime.now().date()
         current_app.logger.info(
             "Iniciando distribuição automática de monitores"
         )
-        agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
-            HorarioVisitacao
-        ).filter(
+        # Subquery apenas com atribuições ativas
+        subq_ativos = db.session.query(MonitorAgendamento.agendamento_id).filter(
+            MonitorAgendamento.status == 'ativo'
+        )
+
+        # Selecionar universo de agendamentos alvo
+        base_query = db.session.query(AgendamentoVisita).join(HorarioVisitacao).filter(
             HorarioVisitacao.data >= hoje,
-            AgendamentoVisita.status.in_(['confirmado', 'pendente']),
-            ~AgendamentoVisita.id.in_(
-                db.session.query(MonitorAgendamento.agendamento_id)
+            AgendamentoVisita.status.in_(['confirmado', 'pendente'])
+        )
+
+        if modo == 'redistribuir_todos':
+            # Desativar atribuições ativas futuras antes de redistribuir
+            ativos = (
+                db.session.query(MonitorAgendamento)
+                .join(AgendamentoVisita, MonitorAgendamento.agendamento_id == AgendamentoVisita.id)
+                .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
+                .filter(HorarioVisitacao.data >= hoje, MonitorAgendamento.status == 'ativo')
+                .all()
             )
-        ).order_by(
-            HorarioVisitacao.data,
-            HorarioVisitacao.horario_inicio,
-        ).all()
+            for ma in ativos:
+                ma.status = 'inativo'
+            db.session.flush()
+            agendamentos_alvo = base_query.order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+        else:
+            agendamentos_alvo = (
+                base_query.filter(~AgendamentoVisita.id.in_(subq_ativos))
+                .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+                .all()
+            )
         
         # Obter monitores ativos
         monitores_ativos = Monitor.query.filter_by(ativo=True).all()
@@ -1297,28 +1336,42 @@ def distribuir_automaticamente():
             })
         
         atribuicoes = 0
+        atribuicoes_detalhes = []
+        pendentes = []
         
-        for agendamento in agendamentos_sem_monitor:
-            # Determinar o turno do agendamento
+        # Helpers de normalização para comparar valores com e sem acento
+        def _norm_token(s: str) -> str:
+            if not s:
+                return ""
+            # Remove acentos, força minúsculo e remove espaços/aspas/brackets residuais
+            s_norm = unicodedata.normalize('NFKD', s)
+            s_ascii = ''.join(c for c in s_norm if not unicodedata.combining(c))
+            return s_ascii.lower().strip().strip("[]()\"' ")
+
+        for agendamento in agendamentos_alvo:
+            # Determinar o turno do agendamento (padronizado sem acentos)
             hora_inicio = agendamento.horario.horario_inicio.hour
             if hora_inicio < 12:
-                turno_agendamento = 'manhã'  # Corrigido para usar acento
+                turno_agendamento = 'manha'
             elif hora_inicio < 18:
                 turno_agendamento = 'tarde'
             else:
                 turno_agendamento = 'noite'
             
-            # Determinar o dia da semana
-            dias_semana = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo']  # Corrigido para usar acentos
+            # Determinar o dia da semana (padronizado sem acentos)
+            dias_semana = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo']
             dia_agendamento = dias_semana[agendamento.horario.data.weekday()]
             
             # Encontrar monitores disponíveis para este agendamento
             monitores_disponiveis = []
             for monitor in monitores_ativos:
-                # Verificar disponibilidade de dia
-                if dia_agendamento in monitor.get_dias_disponibilidade():
-                    # Verificar disponibilidade de turno
-                    if turno_agendamento in monitor.get_turnos_disponibilidade():
+                # Normalizar preferências do monitor
+                dias_monitor = {_norm_token(x) for x in monitor.get_dias_disponibilidade()}
+                turnos_monitor = {_norm_token(x) for x in monitor.get_turnos_disponibilidade()}
+
+                # Verificar disponibilidade de dia/turno normalizados
+                if _norm_token(dia_agendamento) in dias_monitor:
+                    if _norm_token(turno_agendamento) in turnos_monitor:
                         # Verificar carga horária (apenas agendamentos ativos)
                         agendamentos_monitor = MonitorAgendamento.query.filter_by(
                             monitor_id=monitor.id,
@@ -1356,6 +1409,18 @@ def distribuir_automaticamente():
                     monitor_escolhido.id,
                     agendamento.id,
                 )
+                # Guardar detalhe
+                try:
+                    atribuicoes_detalhes.append({
+                        'agendamento_id': agendamento.id,
+                        'monitor_id': monitor_escolhido.id,
+                        'monitor_nome': getattr(monitor_escolhido, 'nome_completo', ''),
+                        'data': agendamento.horario.data.strftime('%d/%m/%Y'),
+                        'hora': agendamento.horario.horario_inicio.strftime('%H:%M'),
+                        'escola': getattr(agendamento, 'escola_nome', ''),
+                    })
+                except Exception:
+                    pass
                 
                 # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
                 from routes.agendamento_routes import NotificacaoAgendamento
@@ -1365,6 +1430,16 @@ def distribuir_automaticamente():
                     "Nenhum monitor disponível para o agendamento %s",
                     agendamento.id,
                 )
+                try:
+                    pendentes.append({
+                        'agendamento_id': agendamento.id,
+                        'data': agendamento.horario.data.strftime('%d/%m/%Y'),
+                        'hora': agendamento.horario.horario_inicio.strftime('%H:%M'),
+                        'escola': getattr(agendamento, 'escola_nome', ''),
+                        'motivo': 'Nenhum monitor disponível no dia/turno com carga horária'
+                    })
+                except Exception:
+                    pass
 
         if atribuicoes == 0:
             current_app.logger.warning(
@@ -1386,6 +1461,9 @@ def distribuir_automaticamente():
             'success': True,
             'message': 'Distribuição automática concluída',
             'atribuicoes': atribuicoes,
+            'atribuicoes_detalhes': atribuicoes_detalhes,
+            'pendentes': pendentes,
+            'modo': modo,
         })
          
     except Exception as e:

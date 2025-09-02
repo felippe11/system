@@ -7,8 +7,17 @@ from extensions import db
 from models import Oficina, CertificadoTemplate, Evento
 from models.user import Cliente
 
-from models.certificado import CertificadoTemplateAvancado, RegraCertificado, SolicitacaoCertificado, NotificacaoCertificado, DeclaracaoTemplate, CertificadoConfig, CertificadoParticipante
-from models.event import VariavelDinamica, ConfiguracaoCertificadoAvancada
+from models.certificado import (
+    CertificadoTemplateAvancado,
+    RegraCertificado,
+    SolicitacaoCertificado,
+    NotificacaoCertificado,
+    DeclaracaoTemplate,
+    CertificadoConfig,
+    CertificadoParticipante,
+    VariavelDinamica,
+)
+from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
 
@@ -1230,6 +1239,290 @@ def gerar_certificado_geral_personalizado(usuario, evento, atividades, template,
     return pdf_path
 
 
+@certificado_routes.route('/exportar_importar')
+@login_required
+@require_permission('templates.export_import')
+def exportar_importar():
+    """Página para exportar e importar templates de certificados"""
+    templates = CertificadoTemplateAvancado.query.filter_by(cliente_id=current_user.id).all()
+    return render_template('certificado/exportar_importar.html', templates=templates)
+
+
+@certificado_routes.route('/exportar', methods=['POST'])
+@login_required
+@require_permission('templates.export')
+def exportar_templates():
+    """Exportar templates de certificados selecionados"""
+    try:
+        data = request.get_json()
+        template_ids = data.get('template_ids', [])
+        formato = data.get('formato', 'json')
+        incluir_metadados = data.get('incluir_metadados', True)
+        incluir_variaveis = data.get('incluir_variaveis', True)
+        
+        if not template_ids:
+            return {'success': False, 'message': 'Nenhum template selecionado'}, 400
+        
+        # Buscar templates
+        templates = CertificadoTemplateAvancado.query.filter(
+            CertificadoTemplateAvancado.id.in_(template_ids),
+            CertificadoTemplateAvancado.cliente_id == current_user.id
+        ).all()
+        
+        if not templates:
+            return {'success': False, 'message': 'Nenhum template encontrado'}, 404
+        
+        # Preparar dados para exportação
+        export_data = {
+            'tipo': 'certificados',
+            'versao': '1.0',
+            'data_exportacao': datetime.now().isoformat(),
+            'templates': []
+        }
+        
+        if incluir_metadados:
+            export_data['metadados'] = {
+                'cliente_id': current_user.id,
+                'total_templates': len(templates)
+            }
+        
+        for template in templates:
+            template_data = {
+                'nome': template.nome,
+                'tipo': template.tipo,
+                'conteudo_html': template.conteudo_html,
+                'conteudo_css': template.conteudo_css,
+                'ativo': template.ativo,
+                'padrao': template.padrao,
+                'descricao': template.descricao,
+                'orientacao': template.orientacao,
+                'tamanho_papel': template.tamanho_papel
+            }
+            
+            if incluir_variaveis:
+                variaveis = VariavelDinamica.query.filter_by(
+                    template_id=template.id,
+                    tipo_template='certificado'
+                ).all()
+                template_data['variaveis'] = [{
+                    'nome': var.nome,
+                    'tipo': var.tipo,
+                    'valor_padrao': var.valor_padrao,
+                    'obrigatoria': var.obrigatoria,
+                    'descricao': var.descricao
+                } for var in variaveis]
+            
+            export_data['templates'].append(template_data)
+        
+        if formato == 'zip':
+            # Criar arquivo ZIP
+            import zipfile
+            import tempfile
+            
+            temp_dir = tempfile.mkdtemp()
+            zip_path = os.path.join(temp_dir, f'certificados_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+            
+            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                # Adicionar JSON principal
+                json_content = json.dumps(export_data, indent=2, ensure_ascii=False)
+                zipf.writestr('templates.json', json_content)
+                
+                # Adicionar README
+                readme_content = f"""# Exportação de Templates de Certificados
+
+Data da exportação: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
+Total de templates: {len(templates)}
+Formato: ZIP
+
+## Conteúdo
+- templates.json: Dados dos templates
+
+## Como importar
+1. Acesse a página de Exportar/Importar Templates
+2. Selecione este arquivo ZIP
+3. Configure as opções de importação
+4. Clique em "Importar Templates"
+"""
+                zipf.writestr('README.txt', readme_content)
+            
+            @after_this_request
+            def remove_temp_file(response):
+                try:
+                    os.remove(zip_path)
+                    os.rmdir(temp_dir)
+                except:
+                    pass
+                return response
+            
+            return send_file(zip_path, as_attachment=True, download_name=f'certificados_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.zip')
+        
+        else:
+            # Retornar JSON
+            @after_this_request
+            def set_download_headers(response):
+                response.headers['Content-Disposition'] = f'attachment; filename=certificados_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+                return response
+            
+            return export_data
+    
+    except Exception as e:
+        logger.error(f"Erro ao exportar templates: {str(e)}")
+        return {'success': False, 'message': 'Erro interno do servidor'}, 500
+
+
+@certificado_routes.route('/importar', methods=['POST'])
+@login_required
+@require_permission('templates.import')
+def importar_templates():
+    """Importar templates de certificados"""
+    try:
+        sobrescrever = request.form.get('sobrescrever') == 'true'
+        validar = request.form.get('validar') == 'true'
+        importar_variaveis = request.form.get('importar_variaveis') == 'true'
+        
+        files = request.files.getlist('files')
+        if not files:
+            return {'success': False, 'message': 'Nenhum arquivo enviado'}, 400
+        
+        templates_importados = 0
+        templates_ignorados = 0
+        erros = []
+        
+        for file in files:
+            if not file.filename:
+                continue
+            
+            try:
+                if file.filename.endswith('.zip'):
+                    # Processar arquivo ZIP
+                    import zipfile
+                    import tempfile
+                    
+                    temp_dir = tempfile.mkdtemp()
+                    zip_path = os.path.join(temp_dir, secure_filename(file.filename))
+                    file.save(zip_path)
+                    
+                    with zipfile.ZipFile(zip_path, 'r') as zipf:
+                        # Procurar arquivo JSON principal
+                        json_files = [f for f in zipf.namelist() if f.endswith('.json')]
+                        if not json_files:
+                            erros.append(f"Nenhum arquivo JSON encontrado em {file.filename}")
+                            continue
+                        
+                        # Usar o primeiro JSON encontrado (ou templates.json se existir)
+                        json_file = 'templates.json' if 'templates.json' in json_files else json_files[0]
+                        
+                        with zipf.open(json_file) as f:
+                            data = json.load(f)
+                    
+                    # Limpar arquivos temporários
+                    os.remove(zip_path)
+                    os.rmdir(temp_dir)
+                
+                elif file.filename.endswith('.json'):
+                    # Processar arquivo JSON
+                    data = json.load(file)
+                
+                else:
+                    erros.append(f"Formato de arquivo não suportado: {file.filename}")
+                    continue
+                
+                # Validar estrutura do arquivo
+                if validar:
+                    if 'templates' not in data:
+                        erros.append(f"Estrutura inválida em {file.filename}: campo 'templates' não encontrado")
+                        continue
+                    
+                    if data.get('tipo') != 'certificados':
+                        erros.append(f"Tipo de arquivo incorreto em {file.filename}: esperado 'certificados'")
+                        continue
+                
+                # Processar templates
+                for template_data in data.get('templates', []):
+                    try:
+                        nome = template_data.get('nome')
+                        if not nome:
+                            erros.append("Template sem nome encontrado")
+                            continue
+                        
+                        # Verificar se template já existe
+                        existing_template = CertificadoTemplateAvancado.query.filter_by(
+                            nome=nome,
+                            cliente_id=current_user.id
+                        ).first()
+                        
+                        if existing_template and not sobrescrever:
+                            templates_ignorados += 1
+                            continue
+                        
+                        # Criar ou atualizar template
+                        if existing_template:
+                            template = existing_template
+                        else:
+                            template = CertificadoTemplateAvancado(cliente_id=current_user.id)
+                        
+                        # Atualizar dados do template
+                        template.nome = nome
+                        template.tipo = template_data.get('tipo', 'geral')
+                        template.conteudo_html = template_data.get('conteudo_html', '')
+                        template.conteudo_css = template_data.get('conteudo_css', '')
+                        template.ativo = template_data.get('ativo', False)
+                        template.padrao = template_data.get('padrao', False)
+                        template.descricao = template_data.get('descricao', '')
+                        template.orientacao = template_data.get('orientacao', 'portrait')
+                        template.tamanho_papel = template_data.get('tamanho_papel', 'A4')
+                        
+                        if not existing_template:
+                            db.session.add(template)
+                        
+                        db.session.flush()  # Para obter o ID do template
+                        
+                        # Importar variáveis se solicitado
+                        if importar_variaveis and 'variaveis' in template_data:
+                            # Remover variáveis existentes se sobrescrever
+                            if existing_template:
+                                VariavelDinamica.query.filter_by(
+                                    template_id=template.id,
+                                    tipo_template='certificado'
+                                ).delete()
+                            
+                            # Adicionar novas variáveis
+                            for var_data in template_data['variaveis']:
+                                variavel = VariavelDinamica(
+                                    template_id=template.id,
+                                    tipo_template='certificado',
+                                    nome=var_data.get('nome'),
+                                    tipo=var_data.get('tipo', 'texto'),
+                                    valor_padrao=var_data.get('valor_padrao'),
+                                    obrigatoria=var_data.get('obrigatoria', False),
+                                    descricao=var_data.get('descricao')
+                                )
+                                db.session.add(variavel)
+                        
+                        templates_importados += 1
+                    
+                    except Exception as e:
+                        erros.append(f"Erro ao processar template '{template_data.get('nome', 'sem nome')}': {str(e)}")
+            
+            except Exception as e:
+                erros.append(f"Erro ao processar arquivo {file.filename}: {str(e)}")
+        
+        # Salvar alterações
+        db.session.commit()
+        
+        return {
+            'success': True,
+            'templates_importados': templates_importados,
+            'templates_ignorados': templates_ignorados,
+            'erros': erros
+        }
+    
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Erro ao importar templates: {str(e)}")
+        return {'success': False, 'message': 'Erro interno do servidor'}, 500
+
+
 # ===== SISTEMA FLEXÍVEL DE LIBERAÇÃO DE CERTIFICADOS =====
 
 @certificado_routes.route('/regras_certificado/<int:evento_id>')
@@ -2038,4 +2331,3 @@ def gerar_declaracao_personalizada(usuario, evento, participacao, template, clie
     
     c.save()
     return pdf_path
-

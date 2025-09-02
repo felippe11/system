@@ -4,8 +4,17 @@ import pandas as pd
 from extensions import db
 from models import Submission, Assignment, RevisorCandidatura, Usuario, Evento
 from werkzeug.security import generate_password_hash
+
 import uuid
 from sqlalchemy.orm import joinedload
+
+from models import Submission, WorkMetadata, Usuario
+from sqlalchemy.exc import DataError
+
+importar_trabalhos_routes = Blueprint(
+    "importar_trabalhos_routes", __name__
+)
+
 
 importar_trabalhos_routes = Blueprint('importar_trabalhos_routes', __name__)
 
@@ -23,11 +32,14 @@ def importar_trabalhos():
         flash('Arquivo ou evento não selecionado.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
+
     if not arquivo.filename.endswith('.xlsx'):
         flash('Formato de arquivo inválido. Por favor, envie um arquivo .xlsx.', 'danger')
         return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
+
     try:
+
         df = pd.read_excel(arquivo)
 
         required_columns = ['titulo', 'categoria', 'Rede de Ensino', 'Etapa de Ensino', 'URL do PDF']
@@ -68,6 +80,7 @@ def importar_trabalhos():
                 reviewer_id=revisor.id
             )
             db.session.add(assignment)
+
 
         db.session.commit()
         flash(f'{len(submissions)} trabalhos importados e atribuídos com sucesso!', 'success')

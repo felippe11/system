@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Polo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📍 Novo Polo Formativo</h2>
+                    <p class="text-muted mb-0">Cadastre um novo polo para organizar seus materiais</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Polo</h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-polo">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="polo-nome" class="form-label">Nome do Polo *</label>
+                                    <input type="text" class="form-control" id="polo-nome" required>
+                                    <div class="form-text">Nome identificador do polo formativo</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="polo-descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="polo-descricao" rows="3" placeholder="Descreva as atividades e características do polo"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="polo-endereco" class="form-label">Endereço</label>
+                            <input type="text" class="form-control" id="polo-endereco" placeholder="Endereço completo do polo">
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="polo-responsavel" class="form-label">Responsável</label>
+                                    <input type="text" class="form-control" id="polo-responsavel" placeholder="Nome do responsável">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="polo-telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control" id="polo-telefone" placeholder="(00) 00000-0000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="polo-email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" id="polo-email" placeholder="email@exemplo.com">
+                        </div>
+                        
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Polo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para mostrar alertas
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Salvar polo
+async function salvarPolo(event) {
+    event.preventDefault();
+    
+    const formData = {
+        nome: document.getElementById('polo-nome').value,
+        descricao: document.getElementById('polo-descricao').value,
+        endereco: document.getElementById('polo-endereco').value,
+        responsavel: document.getElementById('polo-responsavel').value,
+        telefone: document.getElementById('polo-telefone').value,
+        email: document.getElementById('polo-email').value
+    };
+    
+    try {
+        const response = await fetch('/api/polos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showAlert('Polo criado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("material_routes.gerenciar_materiais") }}';
+            }, 1500);
+        } else {
+            const error = await response.json();
+            console.error('Erro do servidor:', error);
+            showAlert(error.message || `Erro ${response.status}: ${response.statusText}`, 'danger');
+        }
+    } catch (error) {
+        console.error('Erro de rede ou parsing:', error);
+        showAlert(`Erro de conexão: ${error.message}`, 'danger');
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('form-polo').addEventListener('submit', salvarPolo);
+});
+</script>
+{% endblock %}

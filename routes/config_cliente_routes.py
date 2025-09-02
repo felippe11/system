@@ -6,6 +6,7 @@ from flask import (
     url_for,
     flash,
     render_template,
+    current_app,
 )
 from flask_login import login_required, current_user
 from extensions import db
@@ -1001,12 +1002,31 @@ def config_submissao():
         ).all()
     }
 
+    # Verificar se há um arquivo template para processar automaticamente
+    arquivo_template = request.args.get('arquivo')
+    evento_id = request.args.get('evento_id')
+    auto_import_data = None
+    
+    if arquivo_template == 'template_trabalhos.xlsx' and evento_id:
+        try:
+            import os
+            template_path = os.path.join(current_app.static_folder, 'templates', 'template_trabalhos.xlsx')
+            if os.path.exists(template_path):
+                auto_import_data = {
+                    'template_file': arquivo_template,
+                    'evento_id': evento_id,
+                    'template_path': template_path
+                }
+        except Exception as e:
+            flash(f"Erro ao carregar template: {str(e)}", "warning")
+
     return render_template(
         "config/config_submissao.html",
         config_cliente=config_cliente,
         eventos=eventos,
         formularios=formularios,
         revisao_configs=revisao_configs,
+        auto_import_data=auto_import_data,
     )
 
 

@@ -73,7 +73,7 @@
     <!-- Botão de Execução -->
     <div class="row">
         <div class="col-12 text-center">
-            <button class="btn btn-success btn-lg" onclick="executarDistribuicaoAutomatica()" id="btnDistribuir">
+            <button class="btn btn-success btn-lg" onclick="abrirModalDistribuicao()" id="btnDistribuir">
                 <i class="fas fa-magic"></i> Executar Distribuição Automática
             </button>
         </div>
@@ -96,8 +96,36 @@
 
 <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
+<!-- Modal de escolha de modo -->
+<div class="modal fade" id="modalDistribuicao" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Como deseja distribuir?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Escolha o modo de distribuição:</p>
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary" onclick="executarDistribuicaoAutomatica('somente_sem_monitor')">
+            Manter quem já tem e distribuir apenas pendentes
+          </button>
+          <button class="btn btn-outline-danger" onclick="executarDistribuicaoAutomatica('redistribuir_todos')">
+            Redistribuir todos os agendamentos futuros
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>
+
 <script>
-function executarDistribuicaoAutomatica() {
+function abrirModalDistribuicao(){
+  const modal = new bootstrap.Modal(document.getElementById('modalDistribuicao'));
+  modal.show();
+}
+
+function executarDistribuicaoAutomatica(modo = 'somente_sem_monitor') {
     const btnDistribuir = document.getElementById('btnDistribuir');
     const resultadoDiv = document.getElementById('resultadoDistribuicao');
     const conteudoDiv = document.getElementById('conteudoResultado');
@@ -115,7 +143,7 @@ function executarDistribuicaoAutomatica() {
             'Content-Type': 'application/json',
             'X-CSRFToken': csrfToken
         },
-        body: JSON.stringify({})
+        body: JSON.stringify({ modo })
     })
     .then(response => response.json())
     .then(data => {
@@ -127,18 +155,62 @@ function executarDistribuicaoAutomatica() {
         resultadoDiv.style.display = 'block';
         
         if (data.success) {
-            conteudoDiv.innerHTML = `
+            let html = `
                 <div class="alert alert-success">
                     <h6>Distribuição realizada com sucesso!</h6>
                     <p><strong>Atribuições realizadas:</strong> ${data.atribuicoes}</p>
                     <p><strong>Mensagem:</strong> ${data.message}</p>
                 </div>
             `;
-            
-            // Recarregar página após 3 segundos
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
+            if (data.atribuicoes_detalhes && data.atribuicoes_detalhes.length) {
+                html += `
+                    <h6 class="mt-3">Agendamentos com monitor</h6>
+                    <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>ID</th><th>Data</th><th>Hora</th><th>Escola</th><th>Monitor</th></tr></thead>
+                        <tbody>
+                            ${data.atribuicoes_detalhes.map(a => `
+                                <tr>
+                                    <td>${a.agendamento_id}</td>
+                                    <td>${a.data || ''}</td>
+                                    <td>${a.hora || ''}</td>
+                                    <td>${a.escola || ''}</td>
+                                    <td>${a.monitor_nome || a.monitor_id}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    </div>
+                `;
+            }
+            if (data.pendentes && data.pendentes.length) {
+                html += `
+                    <h6 class="mt-3">Agendamentos sem monitor (carência)</h6>
+                    <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead><tr><th>ID</th><th>Data</th><th>Hora</th><th>Escola</th><th>Motivo</th></tr></thead>
+                        <tbody>
+                            ${data.pendentes.map(p => `
+                                <tr>
+                                    <td>${p.agendamento_id}</td>
+                                    <td>${p.data || ''}</td>
+                                    <td>${p.hora || ''}</td>
+                                    <td>${p.escola || ''}</td>
+                                    <td>${p.motivo || ''}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    </div>
+                `;
+            }
+            conteudoDiv.innerHTML = html + `
+                <div class="mt-3 text-end">
+                  <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">
+                    <i class="fas fa-rotate"></i> Atualizar página
+                  </button>
+                </div>
+            `;
         } else {
             conteudoDiv.innerHTML = `
                 <div class="alert alert-danger">

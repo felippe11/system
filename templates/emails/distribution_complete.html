@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribuição Concluída</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .stats {
+            background-color: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Distribuição Automática Concluída</h1>
+        <p>{{ evento_nome }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Olá,</p>
+        
+        <p>A distribuição automática de submissões foi concluída com sucesso!</p>
+        
+        <div class="stats">
+            <h3>📊 Estatísticas da Distribuição</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_submissions }}</div>
+                    <div class="stat-label">Submissões</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_assignments }}</div>
+                    <div class="stat-label">Atribuições</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_reviewers }}</div>
+                    <div class="stat-label">Revisores</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ success_rate }}%</div>
+                    <div class="stat-label">Taxa de Sucesso</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="alert alert-success">
+            <strong>✅ Modo de Distribuição:</strong> {{ distribution_mode|title }}<br>
+            <strong>⏱️ Duração:</strong> {{ duration_minutes }} minutos<br>
+            <strong>🕐 Concluída em:</strong> {{ completed_at.strftime('%d/%m/%Y às %H:%M') }}
+        </div>
+        
+        {% if conflicts_detected > 0 %}
+        <div class="alert alert-warning">
+            <strong>⚠️ Atenção:</strong> {{ conflicts_detected }} conflito(s) de interesse foram detectados e resolvidos automaticamente.
+        </div>
+        {% endif %}
+        
+        {% if fallback_assignments > 0 %}
+        <div class="alert alert-warning">
+            <strong>🔄 Fallback:</strong> {{ fallback_assignments }} atribuição(ões) foram feitas usando o método de fallback devido a restrições.
+        </div>
+        {% endif %}
+        
+        <h3>📋 Próximos Passos</h3>
+        <ul>
+            <li>Revisar as atribuições no dashboard</li>
+            <li>Notificar os revisores sobre suas novas atribuições</li>
+            <li>Monitorar o progresso das revisões</li>
+            <li>Verificar se há necessidade de rebalanceamento</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ dashboard_url }}" class="btn">📊 Ver Dashboard</a>
+            <a href="{{ metrics_url }}" class="btn">📈 Ver Métricas</a>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Sistema IAFAP - Distribuição Automática de Submissões</p>
+        <p>Este é um email automático, não responda a esta mensagem.</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Material{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📦 Novo Material</h2>
+                    <p class="text-muted mb-0">Cadastre um novo material para controle de estoque</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Material</h5>
+                </div>
+                <div class="card-body">
+                    <form id="form-material">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-polo" class="form-label">Polo *</label>
+                                    <select class="form-select" id="material-polo" required>
+                                        <option value="">Selecione um polo</option>
+                                    </select>
+                                    <div class="form-text">Polo onde o material será armazenado</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-categoria" class="form-label">Categoria</label>
+                                    <select class="form-select" id="material-categoria">
+                                        <option value="">Selecione uma categoria</option>
+                                        <option value="Papelaria">Papelaria</option>
+                                        <option value="Limpeza">Limpeza</option>
+                                        <option value="Informática">Informática</option>
+                                        <option value="Móveis">Móveis</option>
+                                        <option value="Equipamentos">Equipamentos</option>
+                                        <option value="Consumíveis">Consumíveis</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="material-nome" class="form-label">Nome do Material *</label>
+                            <input type="text" class="form-control" id="material-nome" required placeholder="Ex: Papel A4, Caneta azul, etc.">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="material-descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="material-descricao" rows="3" placeholder="Descreva características específicas do material"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-unidade" class="form-label">Unidade *</label>
+                                    <select class="form-select" id="material-unidade" required>
+                                        <option value="">Selecione</option>
+                                        <option value="un">Unidade</option>
+                                        <option value="cx">Caixa</option>
+                                        <option value="pct">Pacote</option>
+                                        <option value="kg">Quilograma</option>
+                                        <option value="l">Litro</option>
+                                        <option value="m">Metro</option>
+                                        <option value="m²">Metro²</option>
+                                        <option value="resma">Resma</option>
+                                        <option value="dz">Dúzia</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-quantidade-inicial" class="form-label">Quantidade Inicial</label>
+                                    <input type="number" class="form-control" id="material-quantidade-inicial" min="0" value="0">
+                                    <div class="form-text">Quantidade atual em estoque</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-quantidade-minima" class="form-label">Estoque Mínimo</label>
+                                    <input type="number" class="form-control" id="material-quantidade-minima" min="0" value="1">
+                                    <div class="form-text">Alerta quando atingir este valor</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-preco" class="form-label">Preço Unitário (R$)</label>
+                                    <input type="number" class="form-control" id="material-preco" min="0" step="0.01" placeholder="0,00">
+                                    <div class="form-text">Opcional - para controle de custos</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-fornecedor" class="form-label">Fornecedor</label>
+                                    <input type="text" class="form-control" id="material-fornecedor" placeholder="Nome do fornecedor">
+                                    <div class="form-text">Opcional - para controle de compras</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salvar Material
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para mostrar alertas
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+
+// Carregar polos
+async function carregarPolos() {
+    try {
+        const response = await fetch('/api/polos');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('Dados dos polos recebidos:', data);
+        
+        const select = document.getElementById('material-polo');
+        select.innerHTML = '<option value="">Selecione um polo</option>';
+        
+        if (data.success && data.polos) {
+            data.polos.forEach(polo => {
+                const option = document.createElement('option');
+                option.value = polo.id;
+                option.textContent = polo.nome;
+                select.appendChild(option);
+            });
+            console.log(`${data.polos.length} polos carregados com sucesso`);
+        } else {
+            console.warn('Nenhum polo encontrado ou erro na resposta:', data);
+            showAlert('Nenhum polo encontrado', 'info');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar polos:', error);
+        showAlert(`Erro ao carregar polos: ${error.message}`, 'warning');
+    }
+}
+
+// Salvar material
+async function salvarMaterial(event) {
+    event.preventDefault();
+    
+    const formData = {
+        polo_id: document.getElementById('material-polo').value,
+        nome: document.getElementById('material-nome').value,
+        descricao: document.getElementById('material-descricao').value,
+        unidade: document.getElementById('material-unidade').value,
+        categoria: document.getElementById('material-categoria').value,
+        quantidade_inicial: parseInt(document.getElementById('material-quantidade-inicial').value) || 0,
+        quantidade_minima: parseInt(document.getElementById('material-quantidade-minima').value) || 0,
+        preco_unitario: parseFloat(document.getElementById('material-preco').value) || null,
+        fornecedor: document.getElementById('material-fornecedor').value || null
+    };
+    
+    try {
+        const response = await fetch('/api/materiais', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showAlert('Material criado com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("material_routes.gerenciar_materiais") }}';
+            }, 1500);
+        } else {
+            const error = await response.json();
+            console.error('Erro do servidor:', error);
+            showAlert(error.message || `Erro ${response.status}: ${response.statusText}`, 'danger');
+        }
+    } catch (error) {
+        console.error('Erro de rede ou parsing:', error);
+        showAlert(`Erro de conexão: ${error.message}`, 'danger');
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    carregarPolos();
+    document.getElementById('form-material').addEventListener('submit', salvarMaterial);
+});
+</script>
+{% endblock %}

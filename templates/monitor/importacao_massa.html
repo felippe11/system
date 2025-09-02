@@ -97,6 +97,7 @@
                             </div>
                             <div class="card-body">
                                 <form id="formImportacao" enctype="multipart/form-data">
+                                    <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token() }}">
                                     <div class="upload-area" id="uploadArea">
                                         <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
                                         <h5>Arraste e solte o arquivo aqui</h5>
@@ -233,6 +234,8 @@
             
             const formData = new FormData();
             formData.append('arquivo', fileInput.files[0]);
+            // Incluir CSRF para validação do Flask-WTF
+            formData.append('csrf_token', document.getElementById('csrf_token').value);
             
             // Mostrar barra de progresso
             progressBar.style.display = 'block';
@@ -241,6 +244,9 @@
             
             fetch('{{ url_for("monitor_routes.processar_importacao") }}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.getElementById('csrf_token').value
+                },
                 body: formData
             })
             .then(response => {

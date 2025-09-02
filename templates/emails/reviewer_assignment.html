@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Atribuição de Revisão</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .assignment-card {
+            background-color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .assignment-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        .assignment-meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .assignment-abstract {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #495057;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            margin-top: 10px;
+        }
+        .deadline-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .deadline-date {
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .guidelines {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .guidelines h4 {
+            color: #004085;
+            margin-top: 0;
+        }
+        .guidelines ul {
+            margin-bottom: 0;
+        }
+        .stats-summary {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .stat-inline {
+            display: inline-block;
+            margin: 0 15px;
+            font-size: 14px;
+        }
+        .stat-number {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 Nova Atribuição de Revisão</h1>
+        <p>{{ evento_nome }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Olá <strong>{{ reviewer_name }}</strong>,</p>
+        
+        <p>Você recebeu {{ assignments|length }} nova(s) atribuição(ões) de revisão para o evento <strong>{{ evento_nome }}</strong>.</p>
+        
+        <div class="deadline-box">
+            <p><strong>⏰ Prazo para Revisão:</strong></p>
+            <div class="deadline-date">{{ deadline.strftime('%d/%m/%Y às %H:%M') }}</div>
+            <p><small>{{ days_remaining }} dias restantes</small></p>
+        </div>
+        
+        <div class="stats-summary">
+            <div class="stat-inline">
+                <span class="stat-number">{{ assignments|length }}</span>
+                <span>Nova(s) Atribuição(ões)</span>
+            </div>
+            <div class="stat-inline">
+                <span class="stat-number">{{ total_assignments }}</span>
+                <span>Total de Atribuições</span>
+            </div>
+            <div class="stat-inline">
+                <span class="stat-number">{{ current_load }}%</span>
+                <span>Carga Atual</span>
+            </div>
+        </div>
+        
+        <h3>📋 Suas Novas Atribuições:</h3>
+        
+        {% for assignment in assignments %}
+        <div class="assignment-card">
+            <div class="assignment-title">{{ assignment.submission.title }}</div>
+            <div class="assignment-meta">
+                <strong>Autor:</strong> {{ assignment.submission.author_name }}<br>
+                <strong>Categoria:</strong> {{ assignment.submission.category }}<br>
+                <strong>Modalidade:</strong> {{ assignment.submission.modality }}<br>
+                <strong>ID da Submissão:</strong> #{{ assignment.submission.id }}
+            </div>
+            
+            {% if assignment.submission.abstract %}
+            <div class="assignment-abstract">
+                <strong>Resumo:</strong><br>
+                {{ assignment.submission.abstract[:300] }}{% if assignment.submission.abstract|length > 300 %}...{% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <div class="guidelines">
+            <h4>📖 Diretrizes para Revisão</h4>
+            <ul>
+                <li><strong>Confidencialidade:</strong> Mantenha sigilo absoluto sobre o conteúdo das submissões</li>
+                <li><strong>Imparcialidade:</strong> Avalie baseado apenas no mérito científico/técnico</li>
+                <li><strong>Conflitos:</strong> Informe imediatamente se identificar conflito de interesse</li>
+                <li><strong>Prazo:</strong> Complete suas revisões até a data limite indicada</li>
+                <li><strong>Qualidade:</strong> Forneça feedback construtivo e detalhado</li>
+                <li><strong>Critérios:</strong> Use os critérios de avaliação estabelecidos pelo evento</li>
+            </ul>
+        </div>
+        
+        {% if blind_type == 'double' %}
+        <div style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+            <strong>🔒 Revisão Duplo-Cega:</strong> Este evento utiliza revisão duplo-cega. Não procure identificar os autores e mantenha sua identidade anônima.
+        </div>
+        {% endif %}
+        
+        <h3>🚀 Próximos Passos</h3>
+        <ol>
+            <li>Acesse o sistema de revisão</li>
+            <li>Baixe os arquivos das submissões</li>
+            <li>Realize a avaliação conforme os critérios</li>
+            <li>Preencha o formulário de revisão</li>
+            <li>Submeta sua avaliação antes do prazo</li>
+        </ol>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ review_system_url }}" class="btn">🔗 Acessar Sistema de Revisão</a>
+            <a href="{{ guidelines_url }}" class="btn btn-secondary">📋 Ver Diretrizes Completas</a>
+        </div>
+        
+        <p><strong>Dúvidas?</strong> Entre em contato com a organização do evento através do email: <a href="mailto:{{ contact_email }}">{{ contact_email }}</a></p>
+    </div>
+    
+    <div class="footer">
+        <p>Sistema IAFAP - Gestão de Revisões</p>
+        <p>Este é um email automático, mas você pode responder para esclarecer dúvidas.</p>
+    </div>
+</body>
+</html>

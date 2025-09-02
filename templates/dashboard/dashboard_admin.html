@@ -181,6 +181,12 @@
                                 <a href="{{ url_for('cliente_routes.listar_usuarios', cliente_id=cliente.id) }}" class="btn btn-sm btn-outline-secondary" title="Listar usuários">
                                   <i class="bi bi-people"></i>
                                 </a>
+                                <!-- Botão Inicializar Templates -->
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="inicializarTemplates({{ cliente.id }}, '{{ cliente.nome }}')"
+                                        title="Inicializar templates pré-definidos">
+                                  <i class="bi bi-file-earmark-plus"></i>
+                                </button>
                                 <!-- Botão de Editar -->
                                 <button class="btn btn-sm btn-outline-warning"
                                         data-bs-toggle="modal"
@@ -972,6 +978,44 @@
   });
 </script>
 
+
+<script>
+  // Função para inicializar templates pré-definidos
+  function inicializarTemplates(clienteId, clienteNome) {
+    if (confirm(`Deseja inicializar templates pré-definidos para o cliente "${clienteNome}"?\n\nIsso criará templates de certificados e declarações padrão.`)) {
+      // Mostrar loading
+      const button = event.target.closest('button');
+      const originalContent = button.innerHTML;
+      button.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+      button.disabled = true;
+      
+      fetch(`{{ url_for('dashboard_routes.inicializar_templates', cliente_id=0) }}`.replace('0', clienteId), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || ''
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(`Templates inicializados com sucesso!\n\n${data.certificados} templates de certificados\n${data.declaracoes} templates de declarações`);
+        } else {
+          alert(`Erro: ${data.message}`);
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao inicializar templates. Verifique o console para mais detalhes.');
+      })
+      .finally(() => {
+        // Restaurar botão
+        button.innerHTML = originalContent;
+        button.disabled = false;
+      });
+    }
+  }
+</script>
 
 <script>
   // Aguarda o carregamento da página
