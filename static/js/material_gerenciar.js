@@ -51,11 +51,14 @@ async function carregarDados() {
         const responsePolos = await fetch('/api/polos');
         const polosJson = await responsePolos.json();
         polosData = polosJson.polos || [];
-        
+
         // Carregar materiais
         const responseMateriais = await fetch('/api/materiais');
         const materiaisJson = await responseMateriais.json();
-        materiaisData = materiaisJson.materiais || [];
+        materiaisData = (materiaisJson.materiais || []).map(material => ({
+            ...material,
+            polo: polosData.find(p => p.id === material.polo_id)
+        }));
         
         // Atualizar interface
         atualizarTabelaMateriais();
@@ -231,7 +234,7 @@ function criarLinhaTabela(material) {
             ${material.descricao ? `<br><small class="text-muted">${material.descricao}</small>` : ''}
         </td>
         <td>
-            <span class="badge bg-secondary">${material.polo.nome}</span>
+            <span class="badge bg-secondary">${material.polo ? material.polo.nome : '-'}</span>
         </td>
         <td>${material.categoria || '-'}</td>
         <td>
@@ -453,11 +456,11 @@ function atualizarLista() {
 // Gerar relatório geral
 function gerarRelatorioGeral() {
     const relatorio = materiaisData.map(material => {
-        const polo = polosData.find(p => p.id === material.polo_id);
+        const poloNome = material.polo ? material.polo.nome : 'N/A';
         const status = material.quantidade_atual === 0 ? 'SEM ESTOQUE' :
                       material.quantidade_atual <= material.quantidade_minima ? 'ESTOQUE BAIXO' : 'OK';
-        
-        return `${material.nome} (${polo ? polo.nome : 'N/A'}) - Atual: ${material.quantidade_atual} ${material.unidade} - Status: ${status}`;
+
+        return `${material.nome} (${poloNome}) - Atual: ${material.quantidade_atual} ${material.unidade} - Status: ${status}`;
     }).join('\n');
     
     const textoCompleto = `📋 RELATÓRIO GERAL DE MATERIAIS\n\n${relatorio}\n\n📊 RESUMO:\n• Total: ${materiaisData.length} materiais\n• OK: ${materiaisData.filter(m => m.quantidade_atual > m.quantidade_minima).length}\n• Estoque Baixo: ${materiaisData.filter(m => m.quantidade_atual > 0 && m.quantidade_atual <= m.quantidade_minima).length}\n• Sem Estoque: ${materiaisData.filter(m => m.quantidade_atual === 0).length}`;
@@ -577,17 +580,17 @@ function gerarTextoWhatsApp(tipo) {
         showAlert(`Não há materiais para exportar no tipo: ${titulo}`, 'info');
         return;
     }
-    
+
     const texto = materiais.map(material => {
-        const polo = polosData.find(p => p.id === material.polo_id);
+        const poloNome = material.polo ? material.polo.nome : 'N/A';
         const status = material.quantidade_atual === 0 ? 'SEM ESTOQUE' :
                       material.quantidade_atual <= material.quantidade_minima ? 'ESTOQUE BAIXO' : 'OK';
-        
+
         if (tipo === 'compras') {
             const qtdNecessaria = Math.max(0, material.quantidade_minima - material.quantidade_atual + Math.ceil(material.quantidade_minima * 0.5));
-            return `• ${material.nome} (${polo ? polo.nome : 'N/A'}) - Comprar: ${qtdNecessaria} ${material.unidade}`;
+            return `• ${material.nome} (${poloNome}) - Comprar: ${qtdNecessaria} ${material.unidade}`;
         } else {
-            return `• ${material.nome} (${polo ? polo.nome : 'N/A'}) - Atual: ${material.quantidade_atual} ${material.unidade} - ${status}`;
+            return `• ${material.nome} (${poloNome}) - Atual: ${material.quantidade_atual} ${material.unidade} - ${status}`;
         }
     }).join('\n');
     
@@ -709,7 +712,7 @@ function gerarTextoWhatsApp() {
             const status = getStatusMaterial(material);
             const emoji = status.texto === 'Esgotado' ? '🔴' : status.texto === 'Baixo Estoque' ? '🟡' : '🟢';
             texto += `${emoji} *${material.nome}*\n`;
-            texto += `   📍 Polo: ${material.polo.nome}\n`;
+            texto += `   📍 Polo: ${material.polo ? material.polo.nome : 'N/A'}\n`;
             texto += `   📊 Estoque: ${material.quantidade_atual} ${material.unidade}\n`;
             texto += `   ⚠️ Mínimo: ${material.quantidade_minima} ${material.unidade}\n\n`;
         });
@@ -726,7 +729,7 @@ function gerarTextoWhatsApp() {
         materiaisBaixo.forEach(material => {
             const emoji = material.quantidade_atual <= 0 ? '🔴' : '🟡';
             texto += `${emoji} *${material.nome}*\n`;
-            texto += `   📍 Polo: ${material.polo.nome}\n`;
+            texto += `   📍 Polo: ${material.polo ? material.polo.nome : 'N/A'}\n`;
             texto += `   📊 Estoque: ${material.quantidade_atual} ${material.unidade}\n`;
             texto += `   ⚠️ Mínimo: ${material.quantidade_minima} ${material.unidade}\n\n`;
         });
@@ -743,7 +746,7 @@ function gerarTextoWhatsApp() {
         materiaisComprar.forEach(material => {
             const necessario = Math.max(0, material.quantidade_minima - material.quantidade_atual);
             texto += `🛍️ *${material.nome}*\n`;
-            texto += `   📍 Polo: ${material.polo.nome}\n`;
+            texto += `   📍 Polo: ${material.polo ? material.polo.nome : 'N/A'}\n`;
             texto += `   🔢 Quantidade: ${necessario} ${material.unidade}\n\n`;
         });
     }
