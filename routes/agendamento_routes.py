@@ -1802,85 +1802,163 @@ def gerar_horarios_agendamento(evento_id):
         flash('Este evento não pertence a você!', 'danger')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    config = ConfiguracaoAgendamento.query.filter_by(evento_id=evento_id).first_or_404()
-    
+    config = ConfiguracaoAgendamento.query.filter_by(
+        evento_id=evento_id
+    ).first_or_404()
+
     if request.method == 'POST':
         # Obter datas do form
-        data_inicial = datetime.strptime(request.form.get('data_inicial'), '%Y-%m-%d').date()
-        data_final = datetime.strptime(request.form.get('data_final'), '%Y-%m-%d').date()
+        data_inicial = datetime.strptime(
+            request.form.get('data_inicial'), '%Y-%m-%d'
+        ).date()
+        data_final = datetime.strptime(
+            request.form.get('data_final'), '%Y-%m-%d'
+        ).date()
 
         if data_final < data_inicial:
-            flash('A data final deve ser igual ou posterior à data inicial.', 'danger')
+            flash(
+                'A data final deve ser igual ou posterior à data inicial.',
+                'danger'
+            )
             return render_template(
                 'gerar_horarios_agendamento.html',
                 evento=evento,
                 config=config,
             )
 
+        # Datas com horários extras
+        datas_extra = [
+            datetime.strptime(d, '%Y-%m-%d').date()
+            for d in request.form.getlist('datas_extra[]')
+            if d
+        ]
+        inicio_extra = [
+            datetime.strptime(h, '%H:%M').time()
+            for h in request.form.getlist('horario_inicio_extra[]')
+            if h
+        ]
+        fim_extra = [
+            datetime.strptime(h, '%H:%M').time()
+            for h in request.form.getlist('horario_fim_extra[]')
+            if h
+        ]
+        extras = {
+            d: (i, f)
+            for d, i, f in zip(datas_extra, inicio_extra, fim_extra)
+        }
+
         # Converter dias da semana do formulário (0=Domingo … 6=Sábado)
         # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
-        dias_permitidos = [(int(dia) + 6) % 7 for dia in config.dias_semana.split(',')]
-        
+        dias_permitidos = [
+            (int(dia) + 6) % 7 for dia in config.dias_semana.split(',')
+        ]
+
+        def tem_conflito(intervalos, inicio, fim):
+            for ini_exist, fim_exist in intervalos:
+                if inicio < fim_exist and fim > ini_exist:
+                    return True
+            return False
+
         # Gerar horários
         data_atual = data_inicial
         horarios_criados = 0
-        
+
         while data_atual <= data_final:
-            # Verificar se o dia da semana está entre os permitidos
+            intervalos_existentes = [
+                (h.horario_inicio, h.horario_fim)
+                for h in HorarioVisitacao.query.filter_by(
+                    evento_id=evento_id, data=data_atual
+                ).all()
+            ]
+
             if data_atual.weekday() in dias_permitidos:
-                # Horário atual começa no início configurado
-                horario_atual = datetime.combine(data_atual, config.horario_inicio)
-                hora_final = datetime.combine(data_atual, config.horario_fim)
-                
-                # Continuar gerando slots até atingir o horário final
+                horario_atual = datetime.combine(
+                    data_atual, config.horario_inicio
+                )
+                hora_final = datetime.combine(
+                    data_atual, config.horario_fim
+                )
+
                 while horario_atual < hora_final:
-                    # Calcular horário de término do slot
-                    horario_fim = horario_atual + timedelta(minutes=config.intervalo_minutos)
-                    
-                    # Não ultrapassar o horário final do dia
+                    horario_fim = horario_atual + timedelta(
+                        minutes=config.intervalo_minutos
+                    )
                     if horario_fim > hora_final:
                         horario_fim = hora_final
-                    
-                    # Verificar se já existe esse horário
-                    horario_existente = HorarioVisitacao.query.filter_by(
-                        evento_id=evento_id,
-                        data=data_atual,
-                        horario_inicio=horario_atual.time(),
-                        horario_fim=horario_fim.time()
-                    ).first()
-                    
-                    if not horario_existente:
-                        # Criar novo horário
+
+                    if not tem_conflito(
+                        intervalos_existentes,
+                        horario_atual.time(),
+                        horario_fim.time(),
+                    ):
                         novo_horario = HorarioVisitacao(
                             evento_id=evento_id,
                             data=data_atual,
                             horario_inicio=horario_atual.time(),
                             horario_fim=horario_fim.time(),
                             capacidade_total=config.capacidade_padrao,
-                            vagas_disponiveis=config.capacidade_padrao
+                            vagas_disponiveis=config.capacidade_padrao,
                         )
                         db.session.add(novo_horario)
                         horarios_criados += 1
-                    
-                    # Avançar para o próximo slot
+                        intervalos_existentes.append(
+                            (horario_atual.time(), horario_fim.time())
+                        )
+
                     horario_atual = horario_fim
-            
-            # Avançar para o próximo dia
+
+            if data_atual in extras:
+                extra_inicio, extra_fim = extras[data_atual]
+                horario_extra = datetime.combine(data_atual, extra_inicio)
+                fim_extra_dt = datetime.combine(data_atual, extra_fim)
+                while horario_extra < fim_extra_dt:
+                    hf_extra = horario_extra + timedelta(
+                        minutes=config.intervalo_minutos
+                    )
+                    if hf_extra > fim_extra_dt:
+                        hf_extra = fim_extra_dt
+
+                    if not tem_conflito(
+                        intervalos_existentes,
+                        horario_extra.time(),
+                        hf_extra.time(),
+                    ):
+                        novo_horario = HorarioVisitacao(
+                            evento_id=evento_id,
+                            data=data_atual,
+                            horario_inicio=horario_extra.time(),
+                            horario_fim=hf_extra.time(),
+                            capacidade_total=config.capacidade_padrao,
+                            vagas_disponiveis=config.capacidade_padrao,
+                        )
+                        db.session.add(novo_horario)
+                        horarios_criados += 1
+                        intervalos_existentes.append(
+                            (horario_extra.time(), hf_extra.time())
+                        )
+
+                    horario_extra = hf_extra
+
             data_atual += timedelta(days=1)
-        
-        # Salvar alterações no banco
+
         try:
             db.session.commit()
-            flash(f'{horarios_criados} horários de visitação foram criados com sucesso!', 'success')
-            return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
+            flash(
+                f'{horarios_criados} horários de visitação foram criados com sucesso!',
+                'success',
+            )
+            return redirect(
+                url_for(
+                    'agendamento_routes.listar_horarios_agendamento',
+                    evento_id=evento_id,
+                )
+            )
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao gerar horários: {str(e)}', 'danger')
-    
+
     return render_template(
-        'gerar_horarios_agendamento.html',
-        evento=evento,
-        config=config
+        'gerar_horarios_agendamento.html', evento=evento, config=config
     )
 
 
