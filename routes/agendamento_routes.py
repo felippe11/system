@@ -4925,7 +4925,7 @@ def detalhes_agendamento(agendamento_id):
     if current_user.tipo == "cliente":
         if not evento or evento.cliente_id != current_user.id:
             flash("Acesso negado!", "danger")
-            return redirect(url_for("dashboard_cliente.dashboard_cliente"))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # Buscar lista de alunos vinculados ao agendamento
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()

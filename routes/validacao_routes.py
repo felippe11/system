@@ -11,6 +11,7 @@ from extensions import db
 from datetime import datetime, timedelta
 from flask_login import login_required, current_user
 from decorators import cliente_required
+from utils import endpoints
 
 validacao_bp = Blueprint('validacao', __name__, url_prefix='/validacao')
 
@@ -143,7 +144,7 @@ def relatorio_validacoes():
                              
     except Exception as e:
         flash('Erro ao gerar relatório de validações', 'error')
-        return redirect(url_for('dashboard.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 @validacao_bp.route('/admin/integridade')
 @login_required
@@ -158,7 +159,7 @@ def verificar_integridade():
                              
     except Exception as e:
         flash('Erro ao verificar integridade dos certificados', 'error')
-        return redirect(url_for('dashboard.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 @validacao_bp.route('/admin/api/integridade')
 @login_required
