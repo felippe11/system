@@ -5,6 +5,7 @@ from sqlalchemy import and_
 from typing import Optional
 import logging
 from sqlalchemy.exc import ProgrammingError
+from utils import endpoints
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ def dashboard_participante():
     
     if current_user.tipo != 'participante':
         logger.debug(f"DEBUG [2] -> Redirecionando: usuário não é participante (tipo: {current_user.tipo})")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     logger.debug(f"DEBUG [3] -> Usuário é participante, cliente_id = {current_user.cliente_id}")
 

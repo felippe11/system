@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from extensions import db
 from models import Feedback, Oficina
 from models.user import Cliente
+from utils import endpoints
 
 feedback_routes = Blueprint('feedback_routes', __name__)
 
@@ -48,7 +49,7 @@ def feedback(oficina_id):
     oficina = Oficina.query.get_or_404(oficina_id)
     if current_user.tipo != 'participante':
         flash('Apenas participantes podem enviar feedback.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     if request.method == 'POST':
         try:
             rating = int(request.form.get('rating', 0))

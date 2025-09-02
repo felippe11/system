@@ -7,6 +7,7 @@ da perspectiva de participantes.
 """
 
 from __future__ import annotations
+from utils import endpoints
 
 import os
 import uuid
@@ -90,7 +91,7 @@ def _ensure_secret_key(setup_state):  # pragma: no cover
 def config_revisor():
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Um cliente pode ter no máximo 1 processo configurado.
     processo: RevisorProcess | None = RevisorProcess.query.filter_by(
@@ -169,7 +170,7 @@ def manage_barema(process_id: int):
     """
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     processo = RevisorProcess.query.get_or_404(process_id)
     barema = ProcessoBarema.query.filter_by(process_id=process_id).first()
     if barema is None:
@@ -192,7 +193,7 @@ def manage_barema(process_id: int):
 def add_requisito(barema_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     barema = ProcessoBarema.query.get_or_404(barema_id)
 
     if request.method == "POST":
@@ -233,7 +234,7 @@ def edit_requisito(req_id: int):
         flash("Acesso negado!", "danger")
 
 
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     if request.method == "POST":
         requisito.nome = request.form.get("nome") or requisito.nome
         requisito.descricao = request.form.get("descricao")
@@ -277,7 +278,7 @@ def delete_requisito(req_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
 
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     process_id = requisito.barema.process_id
     db.session.delete(requisito)
     db.session.commit()
@@ -293,7 +294,7 @@ def delete_requisito(req_id: int):
 def delete_barema(process_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     barema = ProcessoBarema.query.filter_by(process_id=process_id).first_or_404()
 
     db.session.delete(barema)
@@ -516,7 +517,7 @@ def approve(cand_id: int):
             and aprovados >= config_cli.limite_total_revisores
         ):
             flash("Limite de revisores atingido.", "danger")
-            return redirect(url_for("dashboard_routes.dashboard_cliente"))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     cand.status = "aprovado"
     cand.etapa_atual = cand.process.num_etapas  # type: ignore[attr-defined]
 
@@ -548,7 +549,7 @@ def approve(cand_id: int):
                 if request.is_json:
                     return jsonify({"success": False, "error": err_msg}), 500
                 flash(err_msg, "danger")
-                return redirect(url_for("dashboard_routes.dashboard_cliente"))
+                return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
             db.session.add(reviewer)
             db.session.flush()
         else:
@@ -624,7 +625,7 @@ def approve(cand_id: int):
         resp["message"] = msg
         return jsonify(resp)
     flash(msg, "success")
-    return redirect(url_for("dashboard_routes.dashboard_cliente"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @revisor_routes.route("/revisor/reject/<int:cand_id>", methods=["POST"])
@@ -649,7 +650,7 @@ def reject(cand_id: int):
         )
     if request.is_json:
         return jsonify({"success": True})
-    return redirect(url_for("dashboard_routes.dashboard_cliente"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @revisor_routes.route("/revisor/advance/<int:cand_id>", methods=["POST"])
@@ -705,7 +706,7 @@ def advance(cand_id: int):
         )
     if request.is_json:
         return jsonify({"success": True, "etapa_atual": cand.etapa_atual})
-    return redirect(url_for("dashboard_routes.dashboard_cliente"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @revisor_routes.route("/revisor/view/<int:cand_id>")
@@ -714,7 +715,7 @@ def view_candidatura(cand_id: int):
     """Exibe os detalhes e respostas de uma candidatura."""
     if current_user.tipo not in {"cliente", "admin", "superadmin"}:  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     cand: RevisorCandidatura = RevisorCandidatura.query.get_or_404(cand_id)
     return render_template("revisor/candidatura_detail.html", candidatura=cand)
@@ -734,7 +735,7 @@ def avaliar(submission_id: int):
     ).first()
     if not assignment:
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     barema = EventoBarema.query.filter_by(evento_id=submission.evento_id).first()
     review = Review.query.filter_by(
@@ -824,7 +825,7 @@ def ranking_trabalhos():
 
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     ordenar_por = request.args.get("ordenar_por", "total_nota")
 

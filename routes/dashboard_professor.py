@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from models import AgendamentoVisita
 from models.review import Review
+from utils import endpoints
 
 dashboard_professor_routes = Blueprint("dashboard_professor", __name__)
 
@@ -9,7 +10,7 @@ dashboard_professor_routes = Blueprint("dashboard_professor", __name__)
 @login_required
 def dashboard_professor():
     if current_user.tipo != 'professor':
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Buscando os agendamentos do professor logado
     agendamentos_professor = AgendamentoVisita.query.filter_by(
@@ -22,5 +23,3 @@ def dashboard_professor():
         agendamentos=agendamentos_professor,
         reviews=reviews,
     )
-
-

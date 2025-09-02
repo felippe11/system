@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
+from utils import endpoints
 
 from flask_login import login_required, current_user
 
@@ -562,7 +563,7 @@ def config_geral():
                              eventos=eventos)
     except Exception as e:
         flash(f'Erro ao carregar configurações: {str(e)}', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 @certificado_routes.route('/templates_personalizaveis')
 @login_required
@@ -806,7 +807,7 @@ def configurar_certificados(evento_id):
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
     if not evento:
         flash('Evento não encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     config = ConfiguracaoCertificadoAvancada.query.filter_by(
         evento_id=evento_id, cliente_id=current_user.id
@@ -908,7 +909,7 @@ def gerar_certificado_geral_evento(evento_id):
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
     if not evento:
         flash('Evento não encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Verificar se há configuração específica para este evento
     config = ConfiguracaoCertificadoAvancada.query.filter_by(
@@ -917,7 +918,7 @@ def gerar_certificado_geral_evento(evento_id):
     
     if not config or not config.liberacao_geral:
         flash('Certificado geral não está habilitado para este evento', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Buscar participantes que fizeram check-in no evento
     participantes_query = db.session.query(
@@ -930,7 +931,7 @@ def gerar_certificado_geral_evento(evento_id):
     
     if not participantes_ids:
         flash('Nenhum participante encontrado para este evento', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar certificados para todos os participantes elegíveis
     certificados_gerados = []
@@ -982,7 +983,7 @@ def gerar_certificado_geral_evento(evento_id):
         return send_file(zip_path, as_attachment=True, download_name=f'certificados_{evento.nome}.zip')
     else:
         flash('Nenhum participante atende aos critérios para certificado', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @certificado_routes.route('/preview_certificado_geral/<int:evento_id>')
@@ -996,7 +997,7 @@ def preview_certificado_geral(evento_id):
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
     if not evento:
         flash('Evento não encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     config = ConfiguracaoCertificadoAvancada.query.filter_by(
         evento_id=evento_id, cliente_id=current_user.id
@@ -1035,7 +1036,7 @@ def preview_certificado_geral(evento_id):
         return send_file(pdf_path, mimetype="application/pdf")
     else:
         flash('Nenhum template encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @certificado_routes.route('/configuracoes_evento/<int:evento_id>')
@@ -1536,7 +1537,7 @@ def gerenciar_regras_certificado(evento_id):
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
     if not evento:
         flash('Evento não encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     regras = RegraCertificado.query.filter_by(
         evento_id=evento_id, cliente_id=current_user.id
@@ -2090,7 +2091,7 @@ def gerar_declaracao_individual(evento_id, usuario_id):
     
     if not participacao['participou']:
         flash('Usuário não participou deste evento', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Buscar template ativo
     template = DeclaracaoTemplate.query.filter_by(
@@ -2099,7 +2100,7 @@ def gerar_declaracao_individual(evento_id, usuario_id):
     
     if not template:
         flash('Nenhum template de declaração encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declaração
     pdf_path = gerar_declaracao_personalizada(usuario, evento, participacao, template, current_user)
@@ -2129,7 +2130,7 @@ def gerar_declaracoes_lote(evento_id):
     
     if not participantes_ids:
         flash('Nenhum participante encontrado para este evento', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Buscar template ativo
     template = DeclaracaoTemplate.query.filter_by(
@@ -2138,7 +2139,7 @@ def gerar_declaracoes_lote(evento_id):
     
     if not template:
         flash('Nenhum template de declaração encontrado', 'error')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declarações
     declaracoes_geradas = []
@@ -2175,7 +2176,7 @@ def gerar_declaracoes_lote(evento_id):
         return send_file(zip_path, as_attachment=True, download_name=f'declaracoes_{evento.nome}.zip')
     else:
         flash('Nenhuma declaração pôde ser gerada', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @certificado_routes.route('/declaracoes/preview/<int:template_id>/<int:evento_id>')

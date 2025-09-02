@@ -1,4 +1,5 @@
 from flask import Blueprint
+from utils import endpoints
 participante_routes = Blueprint("participante_routes", __name__)
 
 from flask import render_template, request, redirect, url_for, flash, jsonify
@@ -19,7 +20,7 @@ def gerenciar_participantes():
     # Verifique se é admin
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Busca todos os usuários cujo tipo é 'participante'
     participantes = Usuario.query.filter_by(tipo='participante').all()
@@ -33,30 +34,30 @@ def gerenciar_participantes():
 def excluir_participante(participante_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     participante = Usuario.query.get_or_404(participante_id)
     if participante.tipo != 'participante':
         flash('Esse usuário não é um participante.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     PasswordResetToken.query.filter_by(usuario_id=participante.id).delete()
     db.session.delete(participante)
     db.session.commit()
     flash('Participante excluído com sucesso!', 'success')
-    return redirect(url_for('dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 @participante_routes.route('/editar_participante_admin/<int:participante_id>', methods=['POST'])
 @login_required
 def editar_participante_admin(participante_id):
     if current_user.tipo != 'admin':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     participante = Usuario.query.get_or_404(participante_id)
     if participante.tipo != 'participante':
         flash('Esse usuário não é um participante.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Captura os dados do form
     nome = request.form.get('nome')
@@ -75,7 +76,7 @@ def editar_participante_admin(participante_id):
 
     db.session.commit()
     flash('Participante atualizado com sucesso!', 'success')
-    return redirect(url_for('dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 
@@ -87,7 +88,7 @@ def meus_certificados():
     """Página principal de certificados do participante."""
     if current_user.tipo != 'participante':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Buscar certificados liberados
     certificados_disponiveis = CertificadoParticipante.query.filter_by(
@@ -165,7 +166,7 @@ def meus_certificados_evento(evento_id):
     """Certificados específicos de um evento."""
     if current_user.tipo != 'participante':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
@@ -239,7 +240,7 @@ def minha_participacao(evento_id):
     """Detalhes da participação do usuário em um evento."""
     if current_user.tipo != 'participante':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     

@@ -1,3 +1,4 @@
+from utils import endpoints
 # -*- coding: utf-8 -*-
 # routes/monitor_routes.py
 
@@ -547,7 +548,7 @@ def gerenciar_monitores():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado. Apenas administradores e clientes podem acessar esta página.', 'error')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Filtros
     status_filter = request.args.get('status')
@@ -623,7 +624,7 @@ def novo_monitor():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado. Apenas administradores e clientes podem acessar esta página.', 'error')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     return render_template('monitor/novo_monitor.html')
 
@@ -634,7 +635,7 @@ def cadastrar_monitor():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado.', 'error')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     try:
         # Obter dados do formulário
@@ -1252,7 +1253,7 @@ def distribuicao_automatica():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado.', 'error')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Obter estatísticas para exibir na página
     hoje = datetime.now().date()

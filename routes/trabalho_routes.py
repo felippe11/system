@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from utils import endpoints
 
 import pandas as pd
 from flask import (
@@ -47,7 +48,7 @@ def submeter_trabalho():
     """Participante faz upload do PDF e registra o trabalho no banco."""
     if current_user.tipo not in ["participante", "ministrante"]:
         flash("Acesso negado. Apenas participantes podem submeter trabalhos.", "error")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     config = current_user.cliente.configuracao if current_user.cliente else None
     formulario = None
@@ -55,17 +56,17 @@ def submeter_trabalho():
         formulario = config.formulario_submissao
         if not formulario or not formulario.is_submission_form:
             flash("Formulário de submissão inválido.", "danger")
-            return redirect(url_for("dashboard_routes.dashboard"))
+            return redirect(url_for(endpoints.DASHBOARD))
         if (
             formulario.eventos
             and current_user.evento_id not in [ev.id for ev in formulario.eventos]
         ):
             flash("Formulário indisponível para seu evento.", "danger")
-            return redirect(url_for("dashboard_routes.dashboard"))
+            return redirect(url_for(endpoints.DASHBOARD))
 
     if not formulario:
         flash("Submissão de trabalhos desabilitada.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     if request.method == "POST":
         evento_id = getattr(current_user, "evento_id", None)
@@ -183,7 +184,7 @@ def meus_trabalhos():
     """Lista trabalhos do participante logado com informações detalhadas."""
     if current_user.tipo not in ["participante", "ministrante"]:
         return redirect(
-            url_for("dashboard_routes.dashboard")
+            url_for(endpoints.DASHBOARD)
         )
 
     # Buscar submissões com informações relacionadas

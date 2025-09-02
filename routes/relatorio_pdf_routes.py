@@ -1,6 +1,7 @@
 from flask import Blueprint, send_file, flash, redirect, url_for, request
 from flask_login import login_required, current_user
 from io import BytesIO
+from utils import endpoints
 
 from openpyxl import Workbook
 from reportlab.lib.pagesizes import A4
@@ -56,12 +57,12 @@ def exportar_participantes_evento():
     formato = request.args.get('formato', 'xlsx')
     if not evento_id:
         flash('Evento não encontrado.', 'warning')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     evento = Evento.query.get_or_404(evento_id)
     if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
         flash('Acesso negado ao evento.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     inscricoes = (
         Inscricao.query
@@ -123,7 +124,7 @@ def exportar_financeiro():
     """Exporta o resumo financeiro do cliente em PDF ou XLSX."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     formato = request.args.get('formato', 'xlsx')
 
@@ -187,7 +188,7 @@ def gerar_relatorio_evento(evento_id):
     evento = Evento.query.get_or_404(evento_id)
     if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
         flash('Acesso negado ao evento.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     payload = request.get_json() or {}
     dados_selecionados = payload.get('dados', [])
