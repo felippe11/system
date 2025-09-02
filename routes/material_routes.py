@@ -172,7 +172,7 @@ def estatisticas_polos():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@material_routes.route('/relatorio', methods=['GET'])
+@material_routes.route('/relatorios/materiais/excel', methods=['GET'])
 @login_required
 def gerar_relatorio_excel():
     """Gerar relatório de materiais em Excel."""
@@ -243,9 +243,13 @@ def gerar_relatorio_excel():
                 'Unidade': material.unidade,
                 'Status': status,
                 'Quantidade para Compra': qtd_necessaria,
-                'Preço Unitário': material.preco_unitario or 0,
-                'Valor Total Estoque': material.quantidade_atual * (material.preco_unitario or 0),
-                'Última Atualização': material.data_atualizacao.strftime('%d/%m/%Y %H:%M') if material.data_atualizacao else ''
+                'Preço Unitário': getattr(material, 'preco_unitario', 0) or 0,
+                'Valor Total Estoque': material.quantidade_atual * (getattr(material, 'preco_unitario', 0) or 0),
+                'Última Atualização': (
+                    getattr(material, 'data_atualizacao', None).strftime('%d/%m/%Y %H:%M')
+                    if getattr(material, 'data_atualizacao', None)
+                    else ''
+                )
             })
         
         # Criar DataFrame
@@ -818,66 +822,6 @@ def gerar_relatorio():
             texto_whatsapp = "📊 *RELATÓRIO DE MATERIAIS*\n\n"
             for material in materiais:
                 status_emoji = "🔴" if material.status_estoque == "esgotado" else "🟡" if material.status_estoque == "baixo" else "🟢"
-                texto_whatsapp += f"{status_emoji} *{material.nome}*\n"
-                texto_whatsapp += f"   Estoque: {material.quantidade_atual} {material.unidade}\n"
-                if material.polo:
-                    texto_whatsapp += f"   📍 {material.polo.nome}\n"
-                texto_whatsapp += "\n"
-        
-        return jsonify({
-            'success': True,
-            'materiais': [material.to_dict() for material in materiais],
-            'texto_whatsapp': texto_whatsapp
-        })
-    
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@material_routes.route('/relatorio', methods=['GET'])
-@login_required
-def relatorio_materiais():
-    """Rota para relatórios de materiais (compatibilidade com frontend)."""
-    if not verificar_acesso_cliente():
-        return jsonify({'success': False, 'message': 'Acesso negado'}), 403
-    
-    try:
-        polo_id = request.args.get('polo_id')
-        tipo_relatorio = request.args.get('tipo', 'geral')  # geral, baixo_estoque, compras
-        
-        query = Material.query.filter_by(cliente_id=current_user.id, ativo=True)
-        
-        if polo_id:
-            query = query.filter_by(polo_id=polo_id)
-        
-        if tipo_relatorio == 'baixo_estoque':
-            query = query.filter(Material.quantidade_atual <= Material.quantidade_minima)
-        elif tipo_relatorio == 'compras':
-            query = query.filter(Material.quantidade_atual < Material.quantidade_minima)
-        
-        materiais = query.all()
-        
-        # Gerar texto para WhatsApp
-        if tipo_relatorio == 'compras':
-            texto_whatsapp = "📋 *LISTA DE COMPRAS*\n\n"
-            for material in materiais:
-                necessario = max(0, material.quantidade_minima - material.quantidade_atual)
-                if necessario > 0:
-                    texto_whatsapp += f"• {material.nome}: {necessario} {material.unidade}\n"
-                    if material.polo:
-                        texto_whatsapp += f"  📍 {material.polo.nome}\n"
-            
-            if not any(max(0, m.quantidade_minima - m.quantidade_atual) > 0 for m in materiais):
-                texto_whatsapp += "✅ Nenhum material precisa ser comprado no momento."
-        else:
-            texto_whatsapp = "📊 *RELATÓRIO DE MATERIAIS*\n\n"
-            for material in materiais:
-                if material.quantidade_atual <= 0:
-                    status_emoji = "🔴"
-                elif material.quantidade_atual <= material.quantidade_minima:
-                    status_emoji = "🟡"
-                else:
-                    status_emoji = "🟢"
                 texto_whatsapp += f"{status_emoji} *{material.nome}*\n"
                 texto_whatsapp += f"   Estoque: {material.quantidade_atual} {material.unidade}\n"
                 if material.polo:

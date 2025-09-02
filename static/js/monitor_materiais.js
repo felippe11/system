@@ -443,7 +443,7 @@ function copiarTextoWhatsApp() {
 async function gerarRelatorio() {
     try {
         const poloId = document.getElementById('filtro-polo').value;
-        const url = poloId ? `/relatorio?polo_id=${poloId}` : '/relatorio';
+        const url = poloId ? `/relatorios/materiais/excel?polo_id=${poloId}` : '/relatorios/materiais/excel';
         
         const response = await fetch(url);
         

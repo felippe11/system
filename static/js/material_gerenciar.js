@@ -469,12 +469,12 @@ function gerarRelatorioGeral() {
 
 // Gerar lista de compras
 function gerarListaCompras() {
-    window.open('/relatorio?tipo=compras', '_blank');
+    window.open('/relatorios/materiais/excel?tipo=compras', '_blank');
 }
 
 // Função para baixar relatório em Excel
 function baixarRelatorioExcel(tipo = 'geral', poloId = null) {
-    let url = `/relatorio?tipo=${tipo}`;
+    let url = `/relatorios/materiais/excel?tipo=${tipo}`;
     if (poloId) {
         url += `&polo_id=${poloId}`;
     }
