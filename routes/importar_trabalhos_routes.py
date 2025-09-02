@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request
 import pandas as pd
 from extensions import db
 from werkzeug.security import generate_password_hash
-from models import Submission, WorkMetadata
+from models import Submission, WorkMetadata, Usuario
 from sqlalchemy.exc import DataError
 
 importar_trabalhos_routes = Blueprint(
@@ -68,7 +68,17 @@ def importar_trabalhos():
                 "temp_id": temp_id,
                 "columns": df.columns.tolist(),
                 "data": preview,
-                "message": "Arquivo processado com sucesso"
+                "message": "Arquivo processado com sucesso",
+                "suggested_mappings": {
+                    "titulo": [col for col in df.columns if any(word in col.lower() for word in ["titulo", "title", "nome"])],
+                    "categoria": [col for col in df.columns if any(word in col.lower() for word in ["categoria", "category", "tipo"])],
+                    "autor_nome": [col for col in df.columns if any(word in col.lower() for word in ["autor", "author", "nome", "name"])],
+                    "autor_email": [col for col in df.columns if any(word in col.lower() for word in ["email", "e-mail", "mail"])],
+                    "distribuicao": {
+                        "regra": [col for col in df.columns if any(word in col.lower() for word in ["area_atuacao", "especialidade", "preferencia"])],
+                        "peso": [col for col in df.columns if any(word in col.lower() for word in ["prioridade", "nivel"])]
+                    }
+                }
             }
         )
 
@@ -91,6 +101,8 @@ def importar_trabalhos():
     rede_ensino_col = request.form.get("rede_ensino")
     etapa_ensino_col = request.form.get("etapa_ensino")
     pdf_url_col = request.form.get("pdf_url")
+    autor_nome_col = request.form.get("autor_nome")
+    autor_email_col = request.form.get("autor_email")
 
     imported = 0
     for idx, row in enumerate(rows, start=1):
@@ -98,8 +110,31 @@ def importar_trabalhos():
         raw_title = row.get(titulo_col) if titulo_col else None
         title = str(raw_title) if raw_title else f"Trabalho {idx}"
         
+        # Processar informações do autor
+        author_id = None
+        if autor_email_col and row.get(autor_email_col):
+            author_email = str(row.get(autor_email_col)).strip().lower()
+            author_name = str(row.get(autor_nome_col)) if autor_nome_col and row.get(autor_nome_col) else "Autor Importado"
+            
+            # Buscar usuário existente por email
+            existing_user = Usuario.query.filter_by(email=author_email).first()
+            if existing_user:
+                author_id = existing_user.id
+            else:
+                # Criar novo usuário se não existir
+                new_user = Usuario(
+                    nome=author_name,
+                    email=author_email,
+                    tipo="participante",
+                    senha_hash=generate_password_hash(uuid.uuid4().hex)  # Senha temporária
+                )
+                db.session.add(new_user)
+                db.session.flush()  # Para obter o ID
+                author_id = new_user.id
+        
         submission = Submission(
             title=title,
+            author_id=author_id,
             code_hash=generate_password_hash(
                 uuid.uuid4().hex, method="pbkdf2:sha256"
             ),

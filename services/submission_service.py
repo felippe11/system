@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
-from sqlalchemy import and_, func
+from sqlalchemy import and_, or_, func
 from extensions import db
 from models.review import Submission, Review, Assignment
 from models import Usuario, Evento
@@ -118,7 +118,7 @@ class SubmissionService:
         # Filtrar por evento se necessário
         if evento_id:
             query = query.filter(
-                db.or_(
+                or_(
                     Usuario.evento_id == evento_id,
                     Usuario.tipo == 'admin'  # Admins podem revisar qualquer evento
                 )
@@ -129,7 +129,7 @@ class SubmissionService:
             Assignment.reviewer_id,
             func.count(Assignment.id).label('current_load')
         ).filter(
-            Assignment.completed_at.is_(None)  # Apenas revisões pendentes
+            Assignment.completed == False  # Apenas revisões pendentes
         ).group_by(Assignment.reviewer_id).subquery()
         
         # Juntar com carga de trabalho e ordenar por menor carga

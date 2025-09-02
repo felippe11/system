@@ -38,6 +38,9 @@ peer_review_routes = Blueprint(
     "peer_review_routes", __name__, template_folder="../templates/peer_review"
 )
 
+# Notificação por e-mail para revisores
+from services.review_notification_service import notify_reviewer
+
 
 @peer_review_routes.app_context_processor
 def inject_reviewer_registration_flag():

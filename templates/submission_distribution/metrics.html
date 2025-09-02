@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Métricas - Distribuição Automática{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-chart-line"></i> Dashboard de Métricas
+                    <small class="text-muted">{{ evento.nome }}</small>
+                </h2>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="refreshMetrics()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                    <a href="{{ url_for('submission_distribution.dashboard', evento_id=evento.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form id="filterForm" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">Data Início</label>
+                            <input type="date" class="form-control" id="startDate" name="start_date">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">Data Fim</label>
+                            <input type="date" class="form-control" id="endDate" name="end_date">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="metricType" class="form-label">Tipo de Métrica</label>
+                            <select class="form-select" id="metricType" name="metric_type">
+                                <option value="all">Todas</option>
+                                <option value="distribution">Distribuição</option>
+                                <option value="reviewer">Revisores</option>
+                                <option value="import">Importação</option>
+                                <option value="conflicts">Conflitos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="row mb-4" id="summaryCards">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0" id="totalDistributions">-</h4>
+                            <p class="mb-0">Distribuições</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-share-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0" id="totalAssignments">-</h4>
+                            <p class="mb-0">Atribuições</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0" id="totalConflicts">-</h4>
+                            <p class="mb-0">Conflitos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0" id="avgSuccessRate">-</h4>
+                            <p class="mb-0">Taxa de Sucesso</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-percentage fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-line"></i> Distribuições ao Longo do Tempo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="distributionChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-pie"></i> Modos de Distribuição
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="modeChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabelas de Dados -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-users"></i> Performance dos Revisores
+                    </h5>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-outline-primary" onclick="exportReviewerData()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="reviewerTable">
+                            <thead>
+                                <tr>
+                                    <th>Revisor</th>
+                                    <th>Atribuições</th>
+                                    <th>Concluídas</th>
+                                    <th>Taxa (%)</th>
+                                    <th>Nota Média</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reviewerTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Carregando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-history"></i> Histórico de Distribuições
+                    </h5>
+                    <div class="card-tools">
+                        <button class="btn btn-sm btn-outline-primary" onclick="exportDistributionData()">
+                            <i class="fas fa-download"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="distributionTable">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Modo</th>
+                                    <th>Submissões</th>
+                                    <th>Atribuições</th>
+                                    <th>Sucesso (%)</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="distributionTableBody">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner-border spinner-border-sm" role="status">
+                                            <span class="visually-hidden">Carregando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise de Conflitos -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-exclamation-triangle"></i> Análise de Conflitos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <canvas id="conflictChart" height="100"></canvas>
+                        </div>
+                        <div class="col-lg-4">
+                            <div id="conflictSummary">
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas de Importação -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-import"></i> Métricas de Importação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <canvas id="importChart" height="150"></canvas>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Lote</th>
+                                            <th>Data</th>
+                                            <th>Registros</th>
+                                            <th>Sucesso (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="importTableBody">
+                                        <tr>
+                                            <td colspan="4" class="text-center">
+                                                <div class="spinner-border spinner-border-sm" role="status">
+                                                    <span class="visually-hidden">Carregando...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detailModalTitle">Detalhes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <!-- Conteúdo será carregado dinamicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let charts = {};
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadMetrics();
+    
+    // Definir datas padrão (últimos 30 dias)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+});
+
+// Inicializar gráficos
+function initializeCharts() {
+    // Gráfico de distribuições ao longo do tempo
+    const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+    charts.distribution = new Chart(distributionCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Distribuições',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }, {
+                label: 'Atribuições',
+                data: [],
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Gráfico de modos de distribuição
+    const modeCtx = document.getElementById('modeChart').getContext('2d');
+    charts.mode = new Chart(modeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Balanceada', 'Estratificada', 'Aleatória'],
+            datasets: [{
+                data: [],
+                backgroundColor: [
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)',
+                    'rgb(255, 99, 132)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // Gráfico de conflitos
+    const conflictCtx = document.getElementById('conflictChart').getContext('2d');
+    charts.conflict = new Chart(conflictCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Conflitos Detectados',
+                data: [],
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: 'rgb(255, 193, 7)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // Gráfico de importação
+    const importCtx = document.getElementById('importChart').getContext('2d');
+    charts.import = new Chart(importCtx, {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Registros Processados',
+                data: [],
+                backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                borderColor: 'rgb(40, 167, 69)',
+                borderWidth: 1
+            }, {
+                label: 'Registros com Erro',
+                data: [],
+                backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                borderColor: 'rgb(220, 53, 69)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Carregar métricas
+function loadMetrics() {
+    const formData = new FormData(document.getElementById('filterForm'));
+    const params = new URLSearchParams(formData);
+    
+    fetch(`{{ url_for('submission_distribution.get_metrics', evento_id=evento.id) }}?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSummaryCards(data.summary);
+                updateCharts(data);
+                updateTables(data);
+            } else {
+                console.error('Erro ao carregar métricas:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro na requisição:', error);
+        });
+}
+
+// Atualizar cards de resumo
+function updateSummaryCards(summary) {
+    document.getElementById('totalDistributions').textContent = summary.total_distributions || 0;
+    document.getElementById('totalAssignments').textContent = summary.total_assignments || 0;
+    document.getElementById('totalConflicts').textContent = summary.total_conflicts || 0;
+    document.getElementById('avgSuccessRate').textContent = (summary.avg_success_rate || 0) + '%';
+}
+
+// Atualizar gráficos
+function updateCharts(data) {
+    // Gráfico de distribuições
+    if (data.distribution_timeline) {
+        charts.distribution.data.labels = data.distribution_timeline.labels;
+        charts.distribution.data.datasets[0].data = data.distribution_timeline.distributions;
+        charts.distribution.data.datasets[1].data = data.distribution_timeline.assignments;
+        charts.distribution.update();
+    }
+    
+    // Gráfico de modos
+    if (data.mode_distribution) {
+        charts.mode.data.datasets[0].data = [
+            data.mode_distribution.balanced || 0,
+            data.mode_distribution.stratified || 0,
+            data.mode_distribution.random || 0
+        ];
+        charts.mode.update();
+    }
+    
+    // Gráfico de conflitos
+    if (data.conflict_timeline) {
+        charts.conflict.data.labels = data.conflict_timeline.labels;
+        charts.conflict.data.datasets[0].data = data.conflict_timeline.conflicts;
+        charts.conflict.update();
+    }
+    
+    // Gráfico de importação
+    if (data.import_timeline) {
+        charts.import.data.labels = data.import_timeline.labels;
+        charts.import.data.datasets[0].data = data.import_timeline.processed;
+        charts.import.data.datasets[1].data = data.import_timeline.errors;
+        charts.import.update();
+    }
+}
+
+// Atualizar tabelas
+function updateTables(data) {
+    // Tabela de revisores
+    if (data.reviewer_performance) {
+        const tbody = document.getElementById('reviewerTableBody');
+        tbody.innerHTML = '';
+        
+        data.reviewer_performance.forEach(reviewer => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${reviewer.name}</td>
+                <td>${reviewer.total_assignments}</td>
+                <td>${reviewer.completed_reviews}</td>
+                <td>
+                    <span class="badge bg-${reviewer.completion_rate >= 80 ? 'success' : reviewer.completion_rate >= 60 ? 'warning' : 'danger'}">
+                        ${reviewer.completion_rate}%
+                    </span>
+                </td>
+                <td>${reviewer.average_score}</td>
+            `;
+        });
+    }
+    
+    // Tabela de distribuições
+    if (data.distribution_history) {
+        const tbody = document.getElementById('distributionTableBody');
+        tbody.innerHTML = '';
+        
+        data.distribution_history.forEach(dist => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${new Date(dist.started_at).toLocaleDateString()}</td>
+                <td><span class="badge bg-info">${dist.mode}</span></td>
+                <td>${dist.total_submissions}</td>
+                <td>${dist.total_assignments}</td>
+                <td>
+                    <span class="badge bg-${dist.success_rate >= 80 ? 'success' : dist.success_rate >= 60 ? 'warning' : 'danger'}">
+                        ${dist.success_rate}%
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="showDistributionDetails(${dist.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            `;
+        });
+    }
+    
+    // Tabela de importações
+    if (data.import_history) {
+        const tbody = document.getElementById('importTableBody');
+        tbody.innerHTML = '';
+        
+        data.import_history.forEach(batch => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${batch.batch_id}</td>
+                <td>${new Date(batch.imported_at).toLocaleDateString()}</td>
+                <td>${batch.total_records}</td>
+                <td>
+                    <span class="badge bg-${batch.success_rate >= 80 ? 'success' : batch.success_rate >= 60 ? 'warning' : 'danger'}">
+                        ${batch.success_rate}%
+                    </span>
+                </td>
+            `;
+        });
+    }
+}
+
+// Aplicar filtros
+function applyFilters() {
+    loadMetrics();
+}
+
+// Atualizar métricas
+function refreshMetrics() {
+    loadMetrics();
+}
+
+// Mostrar detalhes da distribuição
+function showDistributionDetails(distributionId) {
+    fetch(`{{ url_for('submission_distribution.get_distribution_details', evento_id=evento.id) }}/${distributionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('detailModalTitle').textContent = 'Detalhes da Distribuição';
+                document.getElementById('detailModalBody').innerHTML = formatDistributionDetails(data.distribution);
+                new bootstrap.Modal(document.getElementById('detailModal')).show();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar detalhes:', error);
+        });
+}
+
+// Formatar detalhes da distribuição
+function formatDistributionDetails(distribution) {
+    return `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Informações Gerais</h6>
+                <ul class="list-unstyled">
+                    <li><strong>ID:</strong> ${distribution.id}</li>
+                    <li><strong>Modo:</strong> ${distribution.mode}</li>
+                    <li><strong>Iniciado em:</strong> ${new Date(distribution.started_at).toLocaleString()}</li>
+                    <li><strong>Concluído em:</strong> ${distribution.completed_at ? new Date(distribution.completed_at).toLocaleString() : 'Em andamento'}</li>
+                    <li><strong>Duração:</strong> ${distribution.duration_minutes || 'N/A'} minutos</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Estatísticas</h6>
+                <ul class="list-unstyled">
+                    <li><strong>Submissões:</strong> ${distribution.total_submissions}</li>
+                    <li><strong>Atribuições:</strong> ${distribution.total_assignments}</li>
+                    <li><strong>Conflitos:</strong> ${distribution.conflicts_detected}</li>
+                    <li><strong>Fallbacks:</strong> ${distribution.fallback_assignments}</li>
+                    <li><strong>Taxa de Sucesso:</strong> ${distribution.success_rate}%</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// Exportar dados
+function exportReviewerData() {
+    window.open(`{{ url_for('submission_distribution.export_data', evento_id=evento.id) }}?type=reviewer_performance`, '_blank');
+}
+
+function exportDistributionData() {
+    window.open(`{{ url_for('submission_distribution.export_data', evento_id=evento.id) }}?type=distribution`, '_blank');
+}
+</script>
+{% endblock %}

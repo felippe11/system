@@ -47,13 +47,7 @@ def submeter_trabalho():
     """Participante faz upload do PDF e registra o trabalho no banco."""
     if current_user.tipo not in ["participante", "ministrante"]:
         flash("Acesso negado. Apenas participantes podem submeter trabalhos.", "error")
-        return redirect(url_for("dashboard.dashboard"))
-
-    # Verificar se o cliente tem configuração de submissão ativa
-    client_config = current_user.client.configuracao
-    if not client_config or not client_config.get("submissao_trabalhos", False):
-        flash("Submissão de trabalhos não está habilitada.", "error")
-        return redirect(url_for("dashboard.dashboard"))
+        return redirect(url_for("dashboard_routes.dashboard"))
 
     config = current_user.cliente.configuracao if current_user.cliente else None
     formulario = None
@@ -189,7 +183,7 @@ def meus_trabalhos():
     """Lista trabalhos do participante logado com informações detalhadas."""
     if current_user.tipo not in ["participante", "ministrante"]:
         return redirect(
-            url_for("dashboard.dashboard")
+            url_for("dashboard_routes.dashboard")
         )
 
     # Buscar submissões com informações relacionadas

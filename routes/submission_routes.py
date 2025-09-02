@@ -103,12 +103,14 @@ def add_review(locator):
         config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
     prazo_dias = config.prazo_parecer_dias if config else 14
 
-    assignment = Assignment(
-        submission_id=submission.id,
-        reviewer_id=reviewer_id_val,
-        deadline=datetime.utcnow() + timedelta(days=prazo_dias),
-    )
-    db.session.add(assignment)
+    # Cria Assignment apenas quando há um reviewer de sistema
+    if reviewer_id_val is not None:
+        assignment = Assignment(
+            submission_id=submission.id,
+            reviewer_id=reviewer_id_val,
+            deadline=datetime.utcnow() + timedelta(days=prazo_dias),
+        )
+        db.session.add(assignment)
 
     db.session.add(
         AuditLog(

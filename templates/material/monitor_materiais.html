@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Materiais - Monitor - IAFAP{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Gerenciar Materiais</h2>
+                    <p class="text-muted mb-0">Controle de estoque dos seus polos</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('monitor_routes.dashboard') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
+                    </a>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalMovimentacao">
+                        <i class="fas fa-plus me-2"></i>Nova Movimentação
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo por Polo -->
+    <div class="row mb-4" id="cardsPolos">
+        <!-- Cards serão carregados dinamicamente -->
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Polo</label>
+                            <select class="form-select" id="filtro-polo">
+                                <option value="">Todos os polos</option>
+                                {% for polo in polos %}
+                                <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="filtro-status">
+                                <option value="">Todos</option>
+                                <option value="em_estoque">Em Estoque</option>
+                                <option value="estoque_baixo">Estoque Baixo</option>
+                                <option value="sem_estoque">Sem Estoque</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar Material</label>
+                            <input type="text" class="form-control" id="buscar-material" placeholder="Nome do material...">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="filtrarMateriais()">
+                                <i class="fas fa-search me-2"></i>Filtrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Materiais -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Materiais dos Polos</h5>
+                    <div>
+                        <button class="btn btn-outline-success btn-sm" onclick="gerarRelatorio()">
+                            <i class="fas fa-file-excel me-2"></i>Relatório
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="exportarWhatsApp()">
+                            <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="tabelaMateriais">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Polo</th>
+                                    <th>Quantidade Atual</th>
+                                    <th>Quantidade Mínima</th>
+                                    <th>Status</th>
+                                    <th>Última Movimentação</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaMateriais">
+                                <!-- Dados carregados via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova Movimentação -->
+<div class="modal fade" id="modalMovimentacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Movimentação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formMovimentacao">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Polo</label>
+                        <select class="form-select" id="movimentacao-polo" required>
+                            <option value="">Selecione um polo</option>
+                            {% for polo in polos %}
+                            <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Material</label>
+                        <select class="form-select" id="movimentacao-material" required>
+                            <option value="">Selecione um material</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Movimentação</label>
+                        <select class="form-select" id="movimentacao-tipo" required>
+                            <option value="entrada">Entrada (Recebimento)</option>
+                            <option value="saida">Saída (Consumo)</option>
+                            <option value="ajuste">Ajuste de Estoque</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantidade</label>
+                        <input type="number" class="form-control" id="movimentacao-quantidade" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="movimentacao-observacoes" rows="3" placeholder="Observações sobre a movimentação..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Registrar Movimentação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Histórico de Movimentações -->
+<div class="modal fade" id="modalHistorico" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Histórico de Movimentações</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Monitor</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaHistorico">
+                            <!-- Dados carregados via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Exportar WhatsApp -->
+<div class="modal fade" id="modalWhatsApp" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Exportar para WhatsApp</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tipo de Relatório</label>
+                    <select class="form-select" id="whatsapp-tipo">
+                        <option value="estoque_baixo">Materiais com Estoque Baixo</option>
+                        <option value="sem_estoque">Materiais Sem Estoque</option>
+                        <option value="lista_compras">Lista de Compras</option>
+                        <option value="geral">Relatório Geral</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Polo (opcional)</label>
+                    <select class="form-select" id="whatsapp-polo">
+                        <option value="">Todos os polos</option>
+                        {% for polo in polos %}
+                        <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Texto para WhatsApp</label>
+                    <textarea class="form-control" id="whatsapp-texto" rows="10" readonly></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-success" onclick="copiarTextoWhatsApp()">
+                    <i class="fas fa-copy me-2"></i>Copiar Texto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/monitor_materiais.js') }}"></script>
+{% endblock %}

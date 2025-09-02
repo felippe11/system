@@ -63,10 +63,12 @@ def register_routes(app):
     from .relatorio_pdf_routes import relatorio_pdf_routes
     from .static_page_routes import static_page_routes
     from .monitor_routes import monitor_routes
+    from .material_routes import material_routes
     from .ai_routes import ai_bp
     from .validacao_routes import validacao_bp
     from .declaracao_routes import declaracao_bp
     from .secure_file_routes import secure_file_routes
+    from .submission_distribution_routes import submission_distribution_routes
     # Importa servicos que registram rotas diretamente no blueprint
     from services import lote_service  # noqa: F401
 
@@ -113,9 +115,11 @@ def register_routes(app):
     app.register_blueprint(static_page_routes)
     app.register_blueprint(peer_review_routes)
     app.register_blueprint(monitor_routes)
+    app.register_blueprint(material_routes)
     app.register_blueprint(ai_bp)
     app.register_blueprint(validacao_bp)
     app.register_blueprint(declaracao_bp)
     app.register_blueprint(secure_file_routes)
+    app.register_blueprint(submission_distribution_routes)
 
 
