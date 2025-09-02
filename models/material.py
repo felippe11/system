@@ -51,6 +51,10 @@ class Material(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     unidade = db.Column(db.String(50), nullable=False, default="unidade")  # unidade, kg, litro, etc.
     categoria = db.Column(db.String(100), nullable=True)  # categoria do material
+    preco_unitario = db.Column(db.Float, nullable=True)
+    data_atualizacao = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     
     # Quantidades
     quantidade_inicial = db.Column(db.Integer, nullable=False, default=0)
@@ -106,11 +110,15 @@ class Material(db.Model):
             'quantidade_minima': self.quantidade_minima,
             'quantidade_necessaria': self.quantidade_necessaria,
             'status_estoque': self.status_estoque,
+            'preco_unitario': self.preco_unitario,
             'ativo': self.ativo,
             'polo_id': self.polo_id,
             'polo_nome': self.polo.nome if self.polo else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'data_atualizacao': (
+                self.data_atualizacao.isoformat() if self.data_atualizacao else None
+            )
         }
 
 
