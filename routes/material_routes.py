@@ -1,3 +1,8 @@
+"""Routes for material management.
+
+Unauthorized AJAX requests receive a JSON 401 from the global handler.
+"""
+
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
