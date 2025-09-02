@@ -57,6 +57,10 @@
                 <i class="bi bi-calendar-date text-muted me-2"></i>
               {% elif campo.tipo == 'dropdown' %}
                 <i class="bi bi-list text-muted me-2"></i>
+              {% elif campo.tipo == 'checkbox' %}
+                <i class="bi bi-check-square text-muted me-2"></i>
+              {% elif campo.tipo == 'radio' %}
+                <i class="bi bi-record-circle text-muted me-2"></i>
               {% endif %}
               {{ campo.nome }}
               {% if campo.obrigatorio %}
@@ -132,7 +136,7 @@
               {% elif campo.tipo == 'dropdown' %}
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-list"></i></span>
-                <select id="campo-{{ campo.id }}" name="{{ campo.id }}" 
+                <select id="campo-{{ campo.id }}" name="{{ campo.id }}"
                         class="form-select campo-input"
                         {% if campo.obrigatorio %}required{% endif %}>
                   <option value="" disabled selected>Selecione uma opção</option>
@@ -140,6 +144,38 @@
                   <option value="{{ opcao.strip() }}">{{ opcao.strip() }}</option>
                   {% endfor %}
                 </select>
+              </div>
+              {% elif campo.tipo == 'checkbox' %}
+              <div class="checkbox-group">
+                {% for opcao in campo.opcoes.split(',') %}
+                <div class="form-check">
+                  <input class="form-check-input campo-input" type="checkbox"
+                         id="check-{{ campo.id }}-{{ loop.index }}" name="{{ campo.id }}"
+                         value="{{ opcao.strip() }}">
+                  <label class="form-check-label" for="check-{{ campo.id }}-{{ loop.index }}">
+                    {{ opcao.strip() }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+              {% elif campo.tipo == 'radio' %}
+              <div class="radio-group">
+                {% for opcao in campo.opcoes.split(',') %}
+                <div class="form-check">
+                  <input class="form-check-input campo-input" type="radio"
+                         id="radio-{{ campo.id }}-{{ loop.index }}" name="{{ campo.id }}"
+                         value="{{ opcao.strip() }}"{% if campo.obrigatorio %} required{% endif %}>
+                  <label class="form-check-label" for="radio-{{ campo.id }}-{{ loop.index }}">
+                    {{ opcao.strip() }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+              {% else %}
+              <div class="input-group">
+                <input type="{{ campo.tipo }}" id="campo-{{ campo.id }}" name="{{ campo.id }}"
+                       class="form-control campo-input"
+                       {% if campo.obrigatorio %}required{% endif %}>
               </div>
               {% endif %}
               

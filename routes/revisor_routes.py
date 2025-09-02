@@ -346,6 +346,23 @@ def submit_application(process_id: int):
                     path = os.path.join(dir_path, unique_name)
                     arquivo.save(path)
                     valor = path
+            elif campo.tipo == "checkbox":
+                valores = request.form.getlist(key)
+                if is_required and not valores:
+                    flash(f"O campo {campo.nome} é obrigatório.", "danger")
+                    return redirect(request.url)
+                valor = valores
+            elif campo.tipo == "radio":
+                raw_val = request.form.get(key)
+                if is_required and not raw_val:
+                    flash(f"O campo {campo.nome} é obrigatório.", "danger")
+                    return redirect(request.url)
+                if raw_val and campo.opcoes:
+                    opcoes_validas = [o.strip() for o in campo.opcoes.split(",")]
+                    if raw_val not in opcoes_validas:
+                        flash("Opção inválida.", "danger")
+                        return redirect(request.url)
+                valor = raw_val
             else:
                 raw_val = request.form.get(key)
                 if is_required and not raw_val:

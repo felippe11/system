@@ -405,3 +405,39 @@ def test_revisor_details_pdf_contains_resposta(app):
             content = f.read().decode("latin-1")
 
     assert "telefone" in content
+
+
+def test_application_with_checkbox_and_radio(client, app):
+    with app.app_context():
+        proc = RevisorProcess.query.first()
+        form = proc.formulario
+        campo_cb = CampoFormulario(
+            formulario_id=form.id,
+            nome="areas",
+            tipo="checkbox",
+            opcoes="A,B",
+        )
+        campo_radio = CampoFormulario(
+            formulario_id=form.id,
+            nome="nivel",
+            tipo="radio",
+            opcoes="Junior,Senior",
+        )
+        db.session.add_all([campo_cb, campo_radio])
+        db.session.commit()
+        campos = {c.nome: c.id for c in form.campos}
+
+    data = {
+        str(campos["email"]): "cb@test",
+        str(campos["nome"]): "Checker",
+        str(campos["areas"]): ["A", "B"],
+        str(campos["nivel"]): "Junior",
+    }
+    resp = client.post(f"/revisor/apply/{proc.id}", data=data)
+    assert resp.status_code in (200, 302)
+
+    with app.app_context():
+        cand = RevisorCandidatura.query.filter_by(email="cb@test").first()
+        assert cand is not None
+        assert cand.respostas["areas"] == ["A", "B"]
+        assert cand.respostas["nivel"] == "Junior"
