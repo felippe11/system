@@ -123,10 +123,10 @@ def horarios_disponiveis_professor(evento_id):
     # Filtrar por data
     data_filtro = request.args.get('data')
     
-    # Base da consulta - horários com vagas disponíveis
+    # Base da consulta - horários não fechados
     query = HorarioVisitacao.query.filter_by(
         evento_id=evento_id
-    ).filter(HorarioVisitacao.vagas_disponiveis > 0)
+    ).filter(HorarioVisitacao.fechado.is_(False))
     
     # Permitir visualização de todos os horários (passados, presentes e futuros)
     # Removido filtro automático de datas futuras para mostrar histórico completo
@@ -193,7 +193,11 @@ def criar_agendamento_professor(horario_id):
         )
         return redirect(url_for('routes.eventos_disponiveis_professor'))
     
-    # Verificar se ainda há vagas
+    # Verificar se o horário está fechado ou sem vagas
+    if horario.fechado:
+        flash('Este horário está fechado para agendamentos.', 'warning')
+        return redirect(url_for('routes.horarios_disponiveis_professor', evento_id=evento.id))
+
     if horario.vagas_disponiveis <= 0:
         flash('Não há mais vagas disponíveis para este horário!', 'warning')
         return redirect(url_for('routes.horarios_disponiveis_professor', evento_id=evento.id))
@@ -944,7 +948,7 @@ def horarios_disponiveis_participante(evento_id):
     data_filtro = request.args.get('data')
 
     query = HorarioVisitacao.query.filter_by(evento_id=evento_id).filter(
-        HorarioVisitacao.vagas_disponiveis > 0,
+        HorarioVisitacao.fechado.is_(False),
         HorarioVisitacao.data >= datetime.utcnow().date() + timedelta(days=1)
     )
 
@@ -990,7 +994,11 @@ def criar_agendamento_participante(horario_id):
         flash('Você não está inscrito neste evento.', 'warning')
         return redirect(url_for('dashboard_participante_routes.dashboard_participante'))
 
-    # Verificar vagas disponíveis
+    # Verificar se o horário está fechado ou sem vagas
+    if horario.fechado:
+        flash('Este horário está fechado para agendamentos.', 'warning')
+        return redirect(url_for('routes.horarios_disponiveis_participante', evento_id=evento.id))
+
     if horario.vagas_disponiveis <= 0:
         flash('Não há mais vagas disponíveis para este horário!', 'warning')
         return redirect(url_for('routes.horarios_disponiveis_participante', evento_id=evento.id))

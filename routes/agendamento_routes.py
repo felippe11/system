@@ -2353,7 +2353,8 @@ def configurar_horarios_agendamento():
                         'horario_inicio': h.horario_inicio.strftime('%H:%M'),
                         'horario_fim': h.horario_fim.strftime('%H:%M'),
                         'capacidade': h.capacidade_total,
-                        'agendamentos': h.capacidade_total - h.vagas_disponiveis
+                        'agendamentos': h.capacidade_total - h.vagas_disponiveis,
+                        'fechado': h.fechado
                     } for h in horarios_existentes
                 ]
     except Exception as e:
@@ -2429,7 +2430,31 @@ def configurar_horarios_agendamento():
                     
                     # Redirecionar para a mesma página com o evento selecionado
                     return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
-            
+
+            elif acao == 'fechar':
+                horario_id = request.form.get('horario_id')
+                evento_id = request.form.get('evento_id')
+                horario = HorarioVisitacao.query.get(horario_id)
+                if horario:
+                    horario.fechado = True
+                    db.session.commit()
+                    flash('Horário fechado com sucesso!', 'success')
+                else:
+                    flash('Horário não encontrado.', 'danger')
+                return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
+
+            elif acao == 'reabrir':
+                horario_id = request.form.get('horario_id')
+                evento_id = request.form.get('evento_id')
+                horario = HorarioVisitacao.query.get(horario_id)
+                if horario:
+                    horario.fechado = False
+                    db.session.commit()
+                    flash('Horário reaberto com sucesso!', 'success')
+                else:
+                    flash('Horário não encontrado.', 'danger')
+                return redirect(url_for('agendamento_routes.configurar_horarios_agendamento', evento_id=evento_id))
+
             elif acao == 'adicionar_periodo':
                 # Obter dados do formulário para adicionar vários horários em um período
                 evento_id = request.form.get('evento_id')

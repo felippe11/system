@@ -924,6 +924,7 @@ class HorarioVisitacao(db.Model):
     horario_fim = db.Column(db.Time, nullable=False)
     capacidade_total = db.Column(db.Integer, nullable=False)
     vagas_disponiveis = db.Column(db.Integer, nullable=False)
+    fechado = db.Column(db.Boolean, default=False, nullable=False)
 
     # Relações
     evento = db.relationship(
