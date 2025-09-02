@@ -47,10 +47,13 @@
                         </thead>
                         <tbody>
                             {% for horario in horarios %}
+                                {% set sem_vagas = horario.fechado or horario.vagas_disponiveis <= 0 %}
                                 <tr>
                                     <td>{{ horario.horario_inicio.strftime('%H:%M') }}</td>
                                     <td class="text-center">
-                                        {% if horario.vagas_disponiveis > 10 %}
+                                        {% if sem_vagas %}
+                                            <span class="badge bg-secondary">Vagas esgotadas</span>
+                                        {% elif horario.vagas_disponiveis > 10 %}
                                             <span class="badge bg-success">{{ horario.vagas_disponiveis }} vagas</span>
                                         {% elif horario.vagas_disponiveis > 5 %}
                                             <span class="badge bg-warning text-dark">{{ horario.vagas_disponiveis }} vagas</span>
@@ -59,9 +62,15 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <a href="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-calendar-plus"></i> Agendar
-                                        </a>
+                                        {% if sem_vagas %}
+                                            <a class="btn btn-sm btn-primary disabled" href="#" tabindex="-1" aria-disabled="true">
+                                                <i class="fas fa-calendar-plus"></i> Agendar
+                                            </a>
+                                        {% else %}
+                                            <a href="{{ url_for('routes.criar_agendamento_participante', horario_id=horario.id) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-calendar-plus"></i> Agendar
+                                            </a>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
