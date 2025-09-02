@@ -99,9 +99,18 @@ def listar_polos():
             polos = (
                 db.session.query(Polo)
                 .join(MonitorPolo, MonitorPolo.polo_id == Polo.id)
-                .filter(MonitorPolo.monitor_id == current_user.id, MonitorPolo.ativo == True, Polo.ativo == True)
+                .filter(
+                    MonitorPolo.monitor_id == current_user.id,
+                    MonitorPolo.ativo == True,
+                    Polo.ativo == True
+                )
                 .all()
             )
+            if not polos:
+                return jsonify({
+                    'success': False,
+                    'message': 'Nenhum polo associado ao monitor'
+                })
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
         else:

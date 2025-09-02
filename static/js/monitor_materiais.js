@@ -29,6 +29,7 @@ async function carregarDadosIniciais() {
     try {
         mostrarCarregando(true);
 
+
         // Carregar polos e materiais
         const [polosResponse, materiaisResponse] = await Promise.all([
             fetch('/api/polos'),
@@ -41,12 +42,14 @@ async function carregarDadosIniciais() {
         }
 
         const parseJSON = async (response) => {
+
             const contentType = response.headers.get('Content-Type') || '';
             if (!contentType.includes('application/json')) {
                 throw new Error('Sessão expirada');
             }
             return response.json();
         };
+
 
         const polosJson = await parseJSON(polosResponse);
         const materiaisJson = await parseJSON(materiaisResponse);
@@ -59,7 +62,12 @@ async function carregarDadosIniciais() {
             );
         }
 
+
         polosData = polosJson.polos || [];
+
+        // Carregar materiais somente se houver polos
+        const materiaisResponse = await fetch('/api/materiais');
+        const materiaisJson = await parseAndValidate(materiaisResponse);
         materiaisData = materiaisJson.materiais || [];
 
         if (polosData.length === 0) {
