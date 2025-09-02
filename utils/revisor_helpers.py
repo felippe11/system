@@ -19,7 +19,11 @@ from models import (
 
 def parse_revisor_form(req: Request) -> Dict[str, Any]:
     """Extracts and normalizes form data for reviewer process configuration."""
-    formulario_id = req.form.get("formulario_id", type=int)
+    raw_form_id = req.form.get("formulario_id")
+    try:
+        formulario_id = int(raw_form_id) if raw_form_id else None
+    except (TypeError, ValueError):
+        formulario_id = None
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
     if len(stage_names) < num_etapas or any(
