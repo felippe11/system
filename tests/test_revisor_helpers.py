@@ -78,6 +78,14 @@ def test_parse_revisor_form_missing_stage(app):
         with pytest.raises(ValueError):
             parse_revisor_form(request)
 
+
+def test_parse_revisor_form_without_formulario_id(app):
+    with app.test_request_context(
+        method="POST", data={"num_etapas": 1, "stage_name": ["Etapa 1"]}
+    ):
+        dados = parse_revisor_form(request)
+    assert dados["formulario_id"] is None
+
 def test_update_and_recreate_stages(app):
     with app.app_context():
         cliente, form = _create_cliente_formulario()

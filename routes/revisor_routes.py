@@ -89,6 +89,7 @@ def _ensure_secret_key(setup_state):  # pragma: no cover
 @revisor_routes.route("/config_revisor", methods=["GET", "POST"])
 @login_required
 def config_revisor():
+    """Render or update reviewer process configuration."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
@@ -113,14 +114,27 @@ def config_revisor():
         except ValueError as exc:
             flash(str(exc), "danger")
             return redirect(url_for("revisor_routes.config_revisor"))
+
+        created_form: Formulario | None = None
+        if not dados.get("formulario_id"):
+            created_form = Formulario(
+                nome="Formulário de Candidatura",
+                cliente_id=current_user.id,  # type: ignore[attr-defined]
+            )
+            db.session.add(created_form)
+            db.session.flush()
+            rh.ensure_reviewer_required_fields(created_form)
+            dados["formulario_id"] = created_form.id
+
         if not processo:
             processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
             db.session.add(processo)
+
         update_revisor_process(processo, dados)
         update_process_eventos(processo, dados["eventos_ids"])
         recreate_stages(processo, dados["stage_names"])
         recreate_criterios(processo, dados["criterios"])
-        if processo.formulario_id:
+        if created_form is None and processo.formulario_id:
             formulario = Formulario.query.get(processo.formulario_id)
             if formulario:
                 rh.ensure_reviewer_required_fields(formulario)
