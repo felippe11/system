@@ -7,6 +7,7 @@ from extensions import db
 from werkzeug.security import generate_password_hash
 import os
 import uuid
+from utils import endpoints
 
 ministrante_routes = Blueprint(
     "ministrante_routes",
@@ -20,7 +21,7 @@ ministrante_routes = Blueprint(
 def cadastro_ministrante():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Apenas administradores e clientes podem cadastrar ministrantes!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else []
 
@@ -80,7 +81,7 @@ def cadastro_ministrante():
             db.session.commit()
             flash('Cadastro realizado com sucesso!', 'success')
             # Redireciona para o dashboard adequado (admin / cliente)
-            return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cadastrar ministrante: {str(e)}', 'danger')
@@ -94,7 +95,7 @@ def editar_ministrante(ministrante_id):
 
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     clientes = Cliente.query.all() if current_user.tipo == 'admin' else None
     ids_extras = request.form.getlist('ministrantes_ids[]')
@@ -146,7 +147,7 @@ def excluir_ministrante(ministrante_id):
 
     if current_user.tipo == 'cliente' and ministrante.cliente_id != current_user.id:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     db.session.delete(ministrante)
     db.session.commit()
@@ -159,7 +160,7 @@ def excluir_ministrante(ministrante_id):
 def gerenciar_ministrantes():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     ministrantes = Ministrante.query.filter_by(cliente_id=current_user.id).all() if current_user.tipo == 'cliente' else Ministrante.query.all()
 
@@ -249,4 +250,3 @@ def upload_material(oficina_id):
             flash('Nenhum arquivo foi enviado.', 'danger')
     
     return render_template('upload_material.html', oficina=oficina)
-

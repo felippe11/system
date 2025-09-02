@@ -8,6 +8,7 @@ from flask import (
     session,
     url_for,
 )
+from utils import endpoints
 
 from flask_login import current_user, login_required
 
@@ -34,7 +35,7 @@ def _admin_required():
         "superadmin",
     ):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     return None
 
 
@@ -68,7 +69,7 @@ def cadastrar_cliente():
         db.session.commit()
 
         flash("Cliente cadastrado com sucesso!", "success")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     return render_template("auth/cadastrar_cliente.html")
 
@@ -114,7 +115,7 @@ def editar_cliente(cliente_id):
             db.session.rollback()
             logger.error("Erro ao atualizar cliente: %s", e, exc_info=True)
             flash(f"Erro ao atualizar cliente: {str(e)}", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     return render_template("auth/editar_cliente.html", cliente=cliente)
 
@@ -125,7 +126,7 @@ def editar_cliente(cliente_id):
 def excluir_cliente(cliente_id):
     if current_user.tipo != "admin":
         flash("Apenas administradores podem excluir clientes.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
 
     cliente = Cliente.query.get_or_404(cliente_id)
@@ -381,7 +382,7 @@ def excluir_cliente(cliente_id):
         db.session.rollback()
         flash(f"Erro ao excluir cliente: {str(e)}", "danger")
 
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @cliente_routes.route("/listar_usuarios/<int:cliente_id>")
@@ -393,7 +394,7 @@ def listar_usuarios(cliente_id: int):
     """Exibe os usuários vinculados a um cliente específico."""
     if current_user.tipo != "admin":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     from models import Usuario, Cliente, usuario_clientes
 
@@ -424,7 +425,7 @@ def restringir_clientes():
     ids = request.form.getlist("cliente_ids")
     if not ids:
         flash("Nenhum cliente selecionado!", "warning")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     clientes = Cliente.query.filter(Cliente.id.in_(ids)).all()
     for cliente in clientes:
@@ -432,7 +433,7 @@ def restringir_clientes():
     db.session.commit()
 
     flash(f"{len(clientes)} cliente(s) atualizados com sucesso!", "success")
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @cliente_routes.route("/excluir_clientes", methods=["POST"])
@@ -449,13 +450,13 @@ def excluir_clientes():
     ids = request.form.getlist("cliente_ids")
     if not ids:
         flash("Nenhum cliente selecionado!", "warning")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     for cid in ids:
         excluir_cliente(int(cid))
 
     flash(f"{len(ids)} cliente(s) excluídos!", "success")
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 # ---------------------------------------------------------------------------
@@ -486,4 +487,4 @@ def toggle_usuario(usuario_id: int):
     # Redireciona para a lista de usuários do cliente ao qual pertence
     if usuario.cliente_id:
         return redirect(url_for("cliente_routes.listar_usuarios", cliente_id=usuario.cliente_id))
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))

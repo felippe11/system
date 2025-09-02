@@ -12,6 +12,7 @@ from flask_login import login_required, current_user
 from extensions import db, socketio
 from datetime import datetime
 import logging
+from utils import endpoints
 
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     inscricao = Inscricao.query.filter_by(qr_code_token=token).first()
     logger.debug("Inscricao encontrada: %s (ID: %s)", inscricao, inscricao.id if inscricao else 'None')
@@ -61,7 +62,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 404
         flash(mensagem, "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     if inscricao.oficina_id:
         cliente_id_associado = inscricao.oficina.cliente_id
@@ -89,7 +90,7 @@ def leitor_checkin():
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return jsonify({"status": "erro", "mensagem": mensagem}), 403
         flash(mensagem, "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Verifica se é check-in de oficina ou evento (prioriza oficina)
     if inscricao.oficina_id:
@@ -104,7 +105,7 @@ def leitor_checkin():
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
 
         novo_checkin = Checkin(
             usuario_id=inscricao.usuario_id,
@@ -132,7 +133,7 @@ def leitor_checkin():
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'status': 'repetido', 'mensagem': mensagem}), 200
             flash(mensagem, "warning")
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
 
         novo_checkin = Checkin(
             usuario_id=inscricao.usuario_id,
@@ -151,7 +152,7 @@ def leitor_checkin():
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 400
         flash(mensagem, "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     db.session.add(novo_checkin)
     db.session.commit()
@@ -167,7 +168,7 @@ def leitor_checkin():
 
     flash("Check-in realizado com sucesso!", "success")
     logger.info("Check-in concluído e flash exibido, redirecionando para dashboard.")
-    return redirect(url_for('dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 @checkin_routes.route('/cliente/checkin_manual/<int:usuario_id>/<int:oficina_id>', methods=['POST'])
 @login_required
@@ -177,7 +178,7 @@ def checkin_manual(usuario_id, oficina_id):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'status': 'erro', 'mensagem': mensagem}), 403
         flash(mensagem, 'danger')
-        return redirect(request.referrer or url_for('dashboard_routes.dashboard'))
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD))
 
     checkin_existente = Checkin.query.filter_by(
         usuario_id=usuario_id, oficina_id=oficina_id
@@ -272,7 +273,7 @@ def checkin(oficina_id):
 def lista_checkins(oficina_id):
     if current_user.tipo not in ["admin", "cliente"]:
         flash("Acesso não autorizado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
 
     oficina = Oficina.query.get_or_404(oficina_id)
@@ -304,7 +305,7 @@ def checkin_token():
     
     if not token:
         flash('Token inválido ou não fornecido', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Se não estiver logado, redirecionar para login
     if not current_user.is_authenticated:
@@ -316,14 +317,14 @@ def checkin_token():
     # Verificar se é um cliente (organizador)
     if current_user.tipo != 'cliente':
         flash('Apenas organizadores podem realizar check-in', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Buscar o agendamento pelo token
     agendamento = AgendamentoVisita.query.filter_by(qr_code_token=token).first()
     
     if not agendamento:
         flash('Agendamento não encontrado', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Verificar se o agendamento pertence a um evento do cliente
     evento_id = agendamento.horario.evento_id
@@ -331,7 +332,7 @@ def checkin_token():
     
     if evento.cliente_id != current_user.id:
         flash('Este agendamento não pertence a um evento seu', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Verificar se já foi realizado check-in
     if agendamento.checkin_realizado:
@@ -438,7 +439,7 @@ def lista_checkins_qr():
     """
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso não autorizado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
         
     # Busca apenas check-ins via QR dos usuários do cliente
     from sqlalchemy import or_
@@ -550,7 +551,7 @@ def confirmar_checkin(agendamento_id):
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -663,6 +664,6 @@ def processar_qrcode():
 def admin_scan():
     if current_user.tipo not in ('admin', 'cliente'):
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     return render_template('checkin/scan_qr.html')

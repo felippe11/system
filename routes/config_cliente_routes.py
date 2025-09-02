@@ -10,6 +10,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from extensions import db
+from utils import endpoints
 
 from models import (
     ConfiguracaoCliente,
@@ -242,7 +243,7 @@ def toggle_certificado_individual():
 
     status = "ativado" if config.habilitar_certificado_individual else "desativado"
     flash(f"Certificado individual {status} com sucesso!", "success")
-    return redirect(url_for("dashboard_routes.dashboard_cliente"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @config_cliente_routes.route("/toggle_feedback", methods=["POST"])
@@ -259,7 +260,7 @@ def toggle_feedback():
     db.session.commit()
     status = "ativado" if config.habilitar_feedback else "desativado"
     flash(f"Feedback global {status} com sucesso!", "success")
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @config_cliente_routes.route("/toggle_cliente/<int:cliente_id>")
@@ -267,7 +268,7 @@ def toggle_feedback():
 def toggle_cliente(cliente_id):
     if current_user.tipo != "admin":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     cliente = Cliente.query.get_or_404(cliente_id)
     logging.debug("Antes: %s", cliente.ativo)
@@ -278,7 +279,7 @@ def toggle_cliente(cliente_id):
     flash(
         f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success"
     )
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @config_cliente_routes.route("/toggle_submissao_trabalhos", methods=["POST"])
@@ -975,7 +976,7 @@ def config_submissao():
     """Página de configuração das opções de submissão e revisão"""
     if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     config_cliente = ConfiguracaoCliente.query.filter_by(
         cliente_id=current_user.id

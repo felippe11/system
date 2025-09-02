@@ -2,6 +2,7 @@ import logging
 import os
 from collections import defaultdict
 from datetime import datetime, date, time
+from utils import endpoints
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
@@ -181,7 +182,7 @@ def listar_eventos():
 def configurar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # Lista apenas eventos ativos do cliente
     eventos = Evento.query.filter_by(cliente_id=current_user.id, status='ativo').all()
@@ -648,7 +649,7 @@ def configurar_evento():
                 )
                 
             flash('Evento salvo com sucesso!', 'success')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
         
         except Exception as e:
             db.session.rollback()
@@ -671,7 +672,7 @@ def configurar_evento():
 def salvar_config_certificado(evento_id):
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     config = ConfiguracaoCertificadoEvento.query.filter_by(evento_id=evento_id).first()
     if not config:
@@ -695,7 +696,7 @@ def excluir_evento(evento_id):
 
     if current_user.tipo == 'cliente' and evento.cliente_id != current_user.id:
         flash('Você não tem permissão para excluir este evento.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     try:
         # Desassociar usuários do evento
@@ -766,7 +767,7 @@ def excluir_evento(evento_id):
         db.session.rollback()
         flash(f'Erro ao excluir evento: {str(e)}', 'danger')
 
-    return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
 
 @evento_routes.route('/exibir_evento/<int:evento_id>')
 @login_required
@@ -846,7 +847,7 @@ def preview_evento(evento_id):
 def criar_evento():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # Para evitar o erro 'evento is undefined' no template
     evento = None
@@ -857,7 +858,7 @@ def criar_evento():
         count_ev = Evento.query.filter_by(cliente_id=current_user.id).count()
         if config_cli and config_cli.limite_eventos is not None and count_ev >= config_cli.limite_eventos:
             flash('Limite de eventos atingido.', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
         nome = request.form.get('nome')
         descricao = request.form.get('descricao')
@@ -1020,7 +1021,7 @@ def criar_evento():
             db.session.commit()
             flash('Evento criado com sucesso!', 'success')
             flash('Agora você pode configurar as regras de inscrição para este evento.', 'info')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
         
         except Exception as e:
             db.session.rollback()
@@ -1080,7 +1081,7 @@ def detalhes_evento(evento_id):
 def meus_eventos():
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.data_inicio.desc()).all()
     return render_template('evento/meus_eventos.html', eventos=eventos)
@@ -1108,12 +1109,12 @@ def configurar_barema_evento(evento_id):
     """Configurar barema de avaliação para um evento."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Buscar ou criar barema do evento
     barema = EventoBarema.query.filter_by(evento_id=evento_id).first()

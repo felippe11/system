@@ -6,6 +6,13 @@ A Flask-based management system.
 
 Consulte [AGENTS.md](AGENTS.md) para convenções de código, práticas de commit e requisitos de testes. Siga essas orientações ao colaborar.
 
+## Dashboard endpoints
+
+Os nomes dos endpoints do dashboard são centralizados em `utils/endpoints.py`.
+Atualize este módulo ao adicionar ou renomear rotas relacionadas ao dashboard
+para garantir que os redirecionamentos em todo o projeto permaneçam
+consistentes.
+
 
 ## Configuracao
 

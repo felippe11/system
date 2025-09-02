@@ -11,6 +11,7 @@ from flask import (
 from flask_login import login_required, current_user
 from extensions import db
 import logging
+from utils import endpoints
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import func, and_, or_
@@ -45,7 +46,7 @@ from .dashboard_routes import dashboard_routes
 def dashboard_cliente():
     """Renderiza o painel do cliente com estatísticas e candidaturas."""
     if current_user.tipo != 'cliente':
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     logger.debug("Cliente autenticado: %s (ID: %s)", current_user.email, current_user.id)
     logger.debug("Usuário logado: %s", current_user.email)
@@ -749,7 +750,7 @@ def dashboard_agendamentos():
 def update_reviewer_application(app_id):
     """Atualiza o estágio ou status de uma candidatura de revisor."""
     if current_user.tipo not in ('cliente', 'admin'):
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     action = request.form.get('action')
     if request.is_json and not action:
@@ -774,4 +775,4 @@ def update_reviewer_application(app_id):
 
     if request.is_json:
         return {'success': True}
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))

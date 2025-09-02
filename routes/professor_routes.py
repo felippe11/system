@@ -1,3 +1,4 @@
+from utils import endpoints
 # -*- coding: utf-8 -*-
 """Routes for managing event visits by professors and participants."""
 
@@ -37,7 +38,7 @@ def eventos_disponiveis_professor():
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Buscar eventos disponíveis para agendamento
     eventos = Evento.query.filter(
@@ -65,7 +66,7 @@ def detalhes_evento_professor(evento_id):
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
@@ -100,7 +101,7 @@ def horarios_disponiveis_professor(evento_id):
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Verificar se o professor está bloqueado
     bloqueio = ProfessorBloqueado.query.filter_by(
@@ -165,7 +166,7 @@ def criar_agendamento_professor(horario_id):
     """Permite que o professor crie um agendamento."""
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     horario = HorarioVisitacao.query.get_or_404(horario_id)
     evento = horario.evento
@@ -305,7 +306,7 @@ def adicionar_alunos_professor(agendamento_id):
     """Permite que o professor adicione alunos a um agendamento."""
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -406,7 +407,7 @@ def adicionar_alunos_participante(agendamento_id):
     """Permite que o participante adicione alunos a um agendamento."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -507,7 +508,7 @@ def remover_aluno_professor(aluno_id):
     """Remove um aluno de um agendamento (professor)."""
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     aluno = AlunoVisitante.query.get_or_404(aluno_id)
     agendamento = aluno.agendamento
@@ -541,7 +542,7 @@ def remover_aluno_participante(aluno_id):
     """Remove um aluno de um agendamento (participante)."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     aluno = AlunoVisitante.query.get_or_404(aluno_id)
     agendamento = aluno.agendamento
@@ -585,7 +586,7 @@ def importar_alunos_agendamento(agendamento_id):
     # Apenas participantes (professores) podem acessar
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     
@@ -691,7 +692,7 @@ def confirmacao_agendamento_professor(agendamento_id):
     """
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -722,7 +723,7 @@ def confirmacao_agendamento_participante(agendamento_id):
     """Exibe a página de confirmação do agendamento para participantes."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -752,7 +753,7 @@ def imprimir_agendamento_professor(agendamento_id):
     """Gera o comprovante de um agendamento."""
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -800,7 +801,7 @@ def imprimir_agendamento_participante(agendamento_id):
     """Gera o comprovante de um agendamento para participantes."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -854,7 +855,7 @@ def qrcode_agendamento_professor(agendamento_id):
     """Exibe o QR Code de um agendamento."""
     if current_user.tipo != 'professor':
         flash('Acesso negado! Esta área é exclusiva para professores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -879,7 +880,7 @@ def qrcode_agendamento_participante(agendamento_id):
     """Exibe o QR Code de um agendamento para participantes."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -924,7 +925,7 @@ def horarios_disponiveis_participante(evento_id):
     """Lista horários disponíveis para participantes."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     evento = Evento.query.get_or_404(evento_id)
 
@@ -972,7 +973,7 @@ def criar_agendamento_participante(horario_id):
     """Permite que o participante faça um agendamento de visita em grupo."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     horario = HorarioVisitacao.query.get_or_404(horario_id)
     evento = horario.evento

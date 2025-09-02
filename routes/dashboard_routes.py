@@ -13,6 +13,7 @@ from flask import (
 from flask_login import login_required, current_user, login_user
 from utils.taxa_service import calcular_taxa_cliente, calcular_taxas_clientes
 from services.template_service import TemplateService
+from utils import endpoints
 
 dashboard_routes = Blueprint(
     'dashboard_routes',
@@ -28,10 +29,10 @@ def dashboard():
     tipo = getattr(current_user, "tipo", None)
 
     if tipo == "admin":
-        return redirect(url_for("dashboard_routes.dashboard_admin"))
+        return redirect(url_for(endpoints.DASHBOARD_ADMIN))
 
     elif tipo == "cliente":
-        return redirect(url_for("dashboard_routes.dashboard_cliente"))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     elif tipo == "participante":
         return redirect(
@@ -47,7 +48,7 @@ def dashboard():
         return redirect(url_for("dashboard_professor.dashboard_professor"))
 
     elif tipo == "superadmin":
-        return redirect(url_for("dashboard_routes.dashboard_superadmin"))
+        return redirect(url_for(endpoints.DASHBOARD_SUPERADMIN))
 
     abort(403)
 
@@ -239,7 +240,7 @@ def login_as_cliente(cliente_id: int):
     login_user(cliente)
     session['user_type'] = 'cliente'
 
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @dashboard_routes.route('/login_as_usuario/<int:usuario_id>')
@@ -260,7 +261,7 @@ def login_as_usuario(usuario_id: int):
     login_user(usuario)
     session['user_type'] = usuario.tipo
 
-    return redirect(url_for('dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @dashboard_routes.route('/encerrar_impersonacao')
@@ -271,7 +272,7 @@ def encerrar_impersonacao():
     impersonator_type = session.get('impersonator_type', 'admin')
 
     if not impersonator_id:
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     from models import Usuario
     admin = Usuario.query.get_or_404(int(impersonator_id))
@@ -282,6 +283,4 @@ def encerrar_impersonacao():
     session.pop('impersonator_id', None)
     session.pop('impersonator_type', None)
 
-    return redirect(url_for('dashboard_routes.dashboard_admin'))
-
-
+    return redirect(url_for(endpoints.DASHBOARD_ADMIN))

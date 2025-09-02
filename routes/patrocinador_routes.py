@@ -1,4 +1,5 @@
 from flask import Blueprint
+from utils import endpoints
 patrocinador_routes = Blueprint("patrocinador_routes", __name__)
 
 from flask import render_template, request, redirect, url_for, flash, current_app
@@ -23,12 +24,12 @@ categoria_map = {
 def adicionar_patrocinadores_categorizados():
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     evento_id = request.form.get('evento_id')
     if not evento_id:
         flash("Evento não selecionado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     qtd_realizacao = int(request.form.get('qtd_realizacao', 0))
     qtd_patrocinio = int(request.form.get('qtd_patrocinio', 0))
@@ -69,7 +70,7 @@ def adicionar_patrocinadores_categorizados():
     db.session.commit()
 
     flash(f"Patrocinadores adicionados com sucesso! Total: {total_importados}", "success")
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @patrocinador_routes.route('/remover_patrocinador/<int:patrocinador_id>', methods=['POST'])
@@ -77,7 +78,7 @@ def adicionar_patrocinadores_categorizados():
 def remover_patrocinador(patrocinador_id):
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     patrocinador = Patrocinador.query.get_or_404(patrocinador_id)
 
@@ -105,7 +106,7 @@ def listar_patrocinadores():
     # Verifica se é admin ou cliente
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Se for admin, traz todos; se for cliente, traz só do cliente
     if current_user.tipo == 'admin':
@@ -128,7 +129,7 @@ def gerenciar_patrocinadores():
     """Lista todos os patrocinadores, de todas as categorias."""
     if current_user.tipo not in ['admin','cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Se for admin, traz todos. Se for cliente, filtra pelos eventos do cliente
     if current_user.tipo == 'admin':
@@ -147,7 +148,7 @@ def remover_foto_patrocinador(patrocinador_id):
     """Remove a foto de patrocinador (categoria: Realização, Organização, Apoio, Patrocínio)."""
     if current_user.tipo not in ['admin','cliente']:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     pat = Patrocinador.query.get_or_404(patrocinador_id)
 
@@ -192,8 +193,6 @@ def remover_fotos_selecionadas():
     flash('Fotos removidas com sucesso!', 'success')
     return redirect(url_for('patrocinador_routes.gerenciar_patrocinadores'))
     # Se não houver fotos selecionadas, redireciona para a página de gerenciamento
-
-
 
 
 

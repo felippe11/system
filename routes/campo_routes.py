@@ -2,6 +2,7 @@ from flask import render_template, Blueprint, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from extensions import db
 from models import CampoPersonalizadoCadastro
+from utils import endpoints
 
 campo_routes = Blueprint('campo_routes', __name__)
 
@@ -10,7 +11,7 @@ campo_routes = Blueprint('campo_routes', __name__)
 def adicionar_campo_personalizado():
     if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
         flash('Acesso negado', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     nome_campo = request.form.get('nome_campo')
     tipo_campo = request.form.get('tipo_campo')
     obrigatorio = bool(request.form.get('obrigatorio'))
@@ -20,7 +21,7 @@ def adicionar_campo_personalizado():
     evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
     if not evento:
         flash('Evento inválido', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     novo_campo = CampoPersonalizadoCadastro(
         cliente_id=current_user.id,
@@ -33,27 +34,27 @@ def adicionar_campo_personalizado():
     db.session.commit()
 
     flash('Campo personalizado adicionado com sucesso!', 'success')
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 @campo_routes.route('/remover_campo_personalizado/<int:campo_id>', methods=['POST'])
 @login_required
 def remover_campo_personalizado(campo_id):
     if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
         flash('Acesso negado', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     evento_id = request.form.get('evento_id', type=int)
     campo = CampoPersonalizadoCadastro.query.filter_by(id=campo_id, evento_id=evento_id).first_or_404()
 
     if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
         flash('Você não tem permissão para remover este campo.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     db.session.delete(campo)
     db.session.commit()
 
     flash('Campo personalizado removido com sucesso!', 'success')
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @campo_routes.route('/toggle_obrigatorio_campo/<int:campo_id>', methods=['POST'])
@@ -62,20 +63,20 @@ def toggle_obrigatorio_campo(campo_id):
     """Alterna a obrigatoriedade de um campo personalizado de cadastro."""
     if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
         flash('Acesso negado', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     evento_id = request.form.get('evento_id', type=int)
     campo = CampoPersonalizadoCadastro.query.filter_by(id=campo_id, evento_id=evento_id).first_or_404()
 
     if campo.cliente_id != current_user.id and getattr(current_user, 'tipo', None) != 'admin':
         flash('Você não tem permissão para alterar este campo.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     campo.obrigatorio = not campo.obrigatorio
     db.session.commit()
 
     flash('Campo atualizado com sucesso!', 'success')
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 
@@ -88,7 +89,7 @@ def preview_cadastro():
     """Mostra uma prévia do formulário de cadastro de participante."""
     if not (current_user.is_cliente() or getattr(current_user, 'tipo', None) == 'admin'):
         flash('Acesso negado', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     from models import Evento, EventoInscricaoTipo, ConfiguracaoCliente
     from utils import preco_com_taxa
@@ -125,4 +126,3 @@ def preview_cadastro():
         cliente_id=current_user.id,
         disable_submit=True
     )
-

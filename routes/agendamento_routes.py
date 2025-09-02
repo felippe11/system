@@ -12,6 +12,7 @@ from services.mailjet_service import send_via_mailjet
 from services import pdf_service
 from mailjet_rest.client import ApiError
 import logging
+from utils import endpoints
 
 from utils.arquivo_utils import arquivo_permitido
 from utils.dia_semana import dia_semana
@@ -359,7 +360,7 @@ def eventos_agendamento():
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     hoje = datetime.utcnow().date()
     
@@ -421,7 +422,7 @@ def relatorio_geral_agendamentos():
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Filtros de data
     data_inicio_raw = request.args.get('data_inicio')
@@ -936,7 +937,7 @@ def editar_horario_agendamento():
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     horario_id = request.form.get('horario_id', type=int)
     horario = HorarioVisitacao.query.get_or_404(horario_id)
@@ -945,7 +946,7 @@ def editar_horario_agendamento():
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Coletar dados do formulário
     horario_inicio = request.form.get('horario_inicio')
@@ -1001,7 +1002,7 @@ def excluir_horario_agendamento():
     # Verificar se é um cliente
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     horario_id = request.form.get('horario_id', type=int)
     horario = HorarioVisitacao.query.get_or_404(horario_id)
@@ -1011,7 +1012,7 @@ def excluir_horario_agendamento():
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Verificar se existem agendamentos para este horário
     agendamentos = AgendamentoVisita.query.filter(
@@ -1053,12 +1054,12 @@ def excluir_todos_horarios_agendamento(evento_id):
     """Remove todos os horários de um evento e cancela agendamentos."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     evento = Evento.query.get_or_404(evento_id)
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     try:
         horarios = HorarioVisitacao.query.filter_by(evento_id=evento_id).all()
@@ -1694,7 +1695,7 @@ def configurar_agendamentos(evento_id):
     # Apenas clientes podem configurar agendamentos
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     tipos_inscricao = EventoInscricaoTipo.query.filter_by(evento_id=evento_id).all()
@@ -1702,7 +1703,7 @@ def configurar_agendamentos(evento_id):
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Verificar se já existe configuração
     config = ConfiguracaoAgendamento.query.filter_by(
@@ -1792,14 +1793,14 @@ def gerar_horarios_agendamento(evento_id):
     """
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     config = ConfiguracaoAgendamento.query.filter_by(evento_id=evento_id).first_or_404()
     
@@ -1891,14 +1892,14 @@ def listar_horarios_agendamento(evento_id):
     """
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Agrupar horários por data
     horarios = HorarioVisitacao.query.filter_by(evento_id=evento_id).order_by(
@@ -1929,14 +1930,14 @@ def salas_visitacao(evento_id):
     """
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     if request.method == 'POST':
         nome = request.form.get('nome')
@@ -1974,14 +1975,14 @@ def gerar_relatorio_agendamentos(evento_id):
     """Gera um PDF com agendamentos que tiveram presença via QR code."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     evento = Evento.query.get_or_404(evento_id)
     
     # Verificar se o evento pertence ao cliente
     if evento.cliente_id != current_user.id:
         flash('Este evento não pertence a você!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Filtros (mesmos da listagem)
     data_inicio = request.args.get('data_inicio')
@@ -2172,7 +2173,7 @@ def criar_agendamento():
                                         agendamento_id=agendamento.id,
                                     )
                                 )
-                            return redirect(url_for('dashboard_routes.dashboard'))
+                            return redirect(url_for(endpoints.DASHBOARD))
                         except Exception as e:
                             db.session.rollback()
                             form_erro = f"Erro ao salvar agendamento: {str(e)}"
@@ -2449,7 +2450,7 @@ def criar_evento_agendamento():
     # Verificação de permissão
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Inicialização de variáveis
     form_erro = None
@@ -2912,11 +2913,11 @@ def salvar_config_agendamento():
         # Validar dados
         if not capacidade_maxima or capacidade_maxima < 1:
             flash("A capacidade máxima deve ser um número positivo.", "danger")
-            return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
             
         if not dias_antecedencia or dias_antecedencia < 1:
             flash("Os dias de antecedência devem ser um número positivo.", "danger")
-            return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
             
         # Buscar configuração atual de agendamento do cliente
         config_agendamento = None
@@ -2958,7 +2959,7 @@ def salvar_config_agendamento():
         # Se você tiver campos adicionais, o código para salvá-los seria inserido aqui
             
         # Redirecionar de volta para a página de configurações
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
             
     except Exception as e:
         # Log de erro para depuração
@@ -2968,7 +2969,7 @@ def salvar_config_agendamento():
         flash(f"Erro ao salvar configurações: {str(e)}", "danger")
         
         # Redirecionar de volta para a página de configurações
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
 
 @agendamento_routes.route('/criar-periodo-agendamento', methods=['GET', 'POST'])
 @login_required
@@ -3042,7 +3043,7 @@ def criar_periodo_agendamento():
 @login_required
 def editar_periodo(periodo_id):
     flash('Funcionalidade de edição de período ainda não implementada.', 'info')
-    return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+    return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
 
 
 @agendamento_routes.route('/editar_sala_visitacao/<int:sala_id>', methods=['GET', 'POST'])
@@ -3063,7 +3064,7 @@ def excluir_todos_agendamentos():
         # Verificar se o cliente tem permissão para excluir agendamentos
         if not current_user.is_admin and not current_user.is_cliente:
             flash("Você não tem permissão para realizar esta operação.", "danger")
-            return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
         
         # Buscar todos os eventos do cliente
         eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
@@ -3098,7 +3099,7 @@ def excluir_todos_agendamentos():
             flash("Operação simulada: Todos os agendamentos foram excluídos com sucesso.", "success")
         
         # Redirecionar para o dashboard de agendamentos
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
             
     except Exception as e:
         # Em caso de erro, fazer rollback das alterações
@@ -3112,7 +3113,7 @@ def excluir_todos_agendamentos():
         flash(f"Erro ao excluir agendamentos: {str(e)}", "danger")
         
         # Redirecionar para o dashboard
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
     
 @agendamento_routes.route('/resetar-configuracoes-agendamento', methods=['POST'])
 @login_required
@@ -3125,7 +3126,7 @@ def resetar_configuracoes_agendamento():
         # Verificar se o cliente tem permissão para resetar configurações
         if not current_user.is_admin and not current_user.is_cliente:
             flash("Você não tem permissão para realizar esta operação.", "danger")
-            return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
         
         # Buscar configuração atual de agendamento do cliente
         config_agendamento = None
@@ -3168,7 +3169,7 @@ def resetar_configuracoes_agendamento():
             flash("Operação simulada: Configurações resetadas para valores padrão.", "success")
         
         # Redirecionar para o dashboard de agendamentos, aba configurações
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
             
     except Exception as e:
         # Em caso de erro, fazer rollback das alterações
@@ -3182,7 +3183,7 @@ def resetar_configuracoes_agendamento():
         flash(f"Erro ao resetar configurações: {str(e)}", "danger")
         
         # Redirecionar para o dashboard
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos', _anchor='configuracoes'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS, _anchor='configuracoes'))
     
 @agendamento_routes.route('/exportar-agendamentos')
 @login_required
@@ -3202,7 +3203,7 @@ def exportar_agendamentos():
         # Validar o formato solicitado
         if formato not in ['csv', 'excel']:
             flash("Formato de exportação inválido. Use 'csv' ou 'excel'.", "danger")
-            return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+            return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
         
         # Buscar dados para exportação
         # Em uma implementação real, você buscaria os agendamentos do banco de dados
@@ -3401,7 +3402,7 @@ def exportar_agendamentos():
         flash(f"Erro ao exportar agendamentos: {str(e)}", "danger")
         
         # Redirecionar para o dashboard
-        return redirect(url_for('dashboard_routes.dashboard_agendamentos'))
+        return redirect(url_for(endpoints.DASHBOARD_AGENDAMENTOS))
 
 @agendamento_routes.route('/sala_visitacao/<int:sala_id>/excluir', methods=['POST'])
 @login_required
@@ -4137,7 +4138,7 @@ def listar_cadastros_pendentes():
     # Verificar se é um cliente ou administrador
     if current_user.tipo not in ['cliente', 'admin']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Definir os parâmetros de filtro
     page = request.args.get('page', 1, type=int)
@@ -4410,9 +4411,9 @@ def confirmar_checkin_agendamento(token):
                 )
             if current_user.tipo == 'cliente':
                 return redirect(
-                    url_for('dashboard_routes.dashboard_cliente')
+                    url_for(endpoints.DASHBOARD_CLIENTE)
                 )
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         except Exception as e:
             db.session.rollback()
@@ -4589,7 +4590,7 @@ def adicionar_alunos():
     """
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Você não tem permissão para adicionar alunos.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     if request.method == 'POST':
         # Verifica se há upload de arquivo
@@ -4666,7 +4667,7 @@ def adicionar_alunos():
 
                 db.session.commit()
                 flash(f"✅ {alunos_adicionados} alunos importados com sucesso!", "success")
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
 
             except Exception as e:
                 db.session.rollback()
@@ -4701,7 +4702,7 @@ def adicionar_alunos():
                 db.session.add(novo_usuario)
                 db.session.commit()
                 flash("Aluno adicionado com sucesso!", "success")
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
 
             except Exception as e:
                 db.session.rollback()
@@ -4726,7 +4727,7 @@ def importar_alunos():
     """
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Você não tem permissão para importar alunos.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     if request.method == 'POST':
         # Verifica se há upload de arquivo
@@ -4862,7 +4863,7 @@ def cancelar_agendamento(agendamento_id):
 
     if not any((is_admin, is_professor, is_cliente)):
         flash('Você não tem permissão para cancelar este agendamento.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento.status = 'cancelado'
     agendamento.data_cancelamento = datetime.utcnow()
@@ -4880,15 +4881,15 @@ def cancelar_agendamento(agendamento_id):
     if current_user.tipo == 'professor':
         return redirect(url_for('dashboard_professor.dashboard_professor'))
     if current_user.tipo == 'cliente':
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
-    return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 @agendamento_routes.route('/eventos_disponiveis', methods=['GET'])
 @login_required
 def eventos_disponiveis():
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     eventos = Evento.query.filter(Evento.data_inicio >= datetime.utcnow()).order_by(Evento.data_inicio).all()
 
@@ -4899,7 +4900,7 @@ def eventos_disponiveis():
 def listar_eventos_disponiveis():
     if current_user.tipo != 'professor':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     eventos = Evento.query.all()
     return render_template('eventos_disponiveis.html', eventos=eventos)
@@ -4989,7 +4990,7 @@ def meus_agendamentos_participante():
     """Lista agendamentos do participante logado."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     status = request.args.get('status')
 
@@ -5019,7 +5020,7 @@ def meus_agendamentos_cliente():
     """Lista agendamentos do cliente logado com paginação e filtros."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Parâmetros de filtro e paginação
     page = request.args.get('page', 1, type=int)
@@ -5086,7 +5087,7 @@ def aprovar_agendamento_cliente(agendamento_id):
     """Permite que o cliente aprove um agendamento pendente."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -5165,7 +5166,7 @@ def negar_agendamento_cliente(agendamento_id):
     """Permite que o cliente negue um agendamento pendente."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -5203,7 +5204,7 @@ def adicionar_alunos_cliente(agendamento_id):
     """Permite que o cliente adicione alunos a um agendamento."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -5287,7 +5288,7 @@ def processar_lote_agendamentos():
     # Verificar permissões
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     try:
         # Obter dados do formulário
@@ -5370,7 +5371,7 @@ def cancelar_agendamento_professor(agendamento_id):
     if current_user.tipo not in ('professor', 'participante'):
         msg = 'Acesso negado! Esta área é exclusiva para professores e participantes.'
         flash(msg, 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
     
@@ -5448,7 +5449,7 @@ def cancelar_agendamento_participante(agendamento_id):
     """Permite que o participante cancele seu agendamento."""
     if current_user.tipo != 'participante':
         flash('Acesso negado! Esta área é exclusiva para participantes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -5487,7 +5488,7 @@ def cancelar_agendamento_cliente(agendamento_id):
     """Permite que o cliente cancele um agendamento."""
     if current_user.tipo != 'cliente':
         flash('Acesso negado! Esta área é exclusiva para clientes.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
 
@@ -5552,7 +5553,7 @@ def marcar_presenca_aluno(aluno_id):
     """
     if current_user.tipo != 'cliente':
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     aluno = AlunoVisitante.query.get_or_404(aluno_id)
     agendamento = aluno.agendamento
@@ -5563,7 +5564,7 @@ def marcar_presenca_aluno(aluno_id):
     
     if evento.cliente_id != current_user.id:
         flash('Este agendamento não pertence a um evento seu', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Alternar estado de presença
     aluno.presente = not aluno.presente
@@ -5712,22 +5713,22 @@ def importar_oficinas():
     evento = Evento.query.get(evento_id) if evento_id else None
     if not evento or evento.cliente_id != current_user.id:
         flash("Evento inválido ou não pertence a você!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # 2. Verificar se foi enviado um arquivo
     if "arquivo" not in request.files:
         flash("Nenhum arquivo enviado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
         flash("Nenhum arquivo selecionado.", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # Verifica se a extensão é permitida (.xlsx)
     if not (arquivo_permitido(arquivo.filename) and arquivo.filename.rsplit('.', 1)[1].lower() == "xlsx"):
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # 3. Salvar o arquivo em local temporário
     from werkzeug.utils import secure_filename
@@ -5765,7 +5766,7 @@ def importar_oficinas():
             if col not in df.columns:
                 flash(f"Erro: Coluna '{col}' não encontrada no arquivo Excel!", "danger")
                 os.remove(filepath)
-                return redirect(url_for('dashboard_routes.dashboard_cliente'))
+                return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
         # 4. Percorrer cada linha do DataFrame e criar as oficinas
         total_oficinas_criadas = 0
@@ -5861,7 +5862,7 @@ def importar_oficinas():
         if os.path.exists(filepath):
             os.remove(filepath)
     
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 # API endpoint para materiais de apoio
@@ -6400,5 +6401,3 @@ def historico_comunicacao(agendamento_id):
         current_app.logger.error(f"Erro ao carregar histórico de comunicação: {e}")
         flash('Erro ao carregar histórico de comunicação', 'error')
         return redirect(url_for('agendamento_routes.listar_agendamentos'))
-
-

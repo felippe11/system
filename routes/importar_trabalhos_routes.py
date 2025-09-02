@@ -4,6 +4,7 @@ import pandas as pd
 from extensions import db
 from models import Submission, Assignment, RevisorCandidatura, Usuario, Evento
 from werkzeug.security import generate_password_hash
+from utils import endpoints
 
 import uuid
 from sqlalchemy.orm import joinedload
@@ -23,19 +24,19 @@ importar_trabalhos_routes = Blueprint('importar_trabalhos_routes', __name__)
 def importar_trabalhos():
     if current_user.tipo != 'cliente':
         flash('Acesso negado.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     arquivo = request.files.get('arquivo_trabalhos')
     evento_id = request.form.get('evento_id')
 
     if not arquivo or not evento_id:
         flash('Arquivo ou evento não selecionado.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
     if not arquivo.filename.endswith('.xlsx'):
         flash('Formato de arquivo inválido. Por favor, envie um arquivo .xlsx.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
     try:
@@ -45,7 +46,7 @@ def importar_trabalhos():
         required_columns = ['titulo', 'categoria', 'Rede de Ensino', 'Etapa de Ensino', 'URL do PDF']
         if not all(col in df.columns for col in required_columns):
             flash(f'O arquivo Excel deve conter as seguintes colunas: {", ".join(required_columns)}', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
         revisores = Usuario.query.options(joinedload(Usuario.revisor_candidaturas))\
             .join(RevisorCandidatura, Usuario.email == RevisorCandidatura.email)\
@@ -53,7 +54,7 @@ def importar_trabalhos():
 
         if not revisores:
             flash('Nenhum revisor aprovado encontrado para atribuir os trabalhos.', 'warning')
-            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
         submissions = []
         for index, row in df.iterrows():
@@ -89,4 +90,4 @@ def importar_trabalhos():
         db.session.rollback()
         flash(f'Ocorreu um erro ao importar os trabalhos: {e}', 'danger')
 
-    return redirect(url_for('dashboard_routes.dashboard_cliente'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
