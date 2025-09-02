@@ -533,12 +533,13 @@ def criar_material():
         polo = Polo.query.filter_by(id=data['polo_id'], cliente_id=current_user.id).first()
         if not polo:
             return jsonify({'success': False, 'message': 'Polo não encontrado'}), 404
-        
+
         material = Material(
             nome=data['nome'],
             descricao=data.get('descricao'),
             unidade=data.get('unidade', 'unidade'),
             categoria=data.get('categoria'),
+            preco_unitario=data.get('preco_unitario'),
             quantidade_inicial=data.get('quantidade_inicial', 0),
             quantidade_atual=data.get('quantidade_inicial', 0),
             quantidade_minima=data.get('quantidade_minima', 0),
@@ -588,13 +589,17 @@ def atualizar_material(material_id):
             return jsonify({'success': False, 'message': 'Material não encontrado'}), 404
         
         data = request.get_json()
-        
+
         material.nome = data.get('nome', material.nome)
         material.descricao = data.get('descricao', material.descricao)
         material.unidade = data.get('unidade', material.unidade)
         material.categoria = data.get('categoria', material.categoria)
-        material.quantidade_minima = data.get('quantidade_minima', material.quantidade_minima)
+        material.preco_unitario = data.get('preco_unitario', material.preco_unitario)
+        material.quantidade_minima = data.get(
+            'quantidade_minima', material.quantidade_minima
+        )
         material.updated_at = datetime.utcnow()
+        material.data_atualizacao = datetime.utcnow()
         
         db.session.commit()
         
