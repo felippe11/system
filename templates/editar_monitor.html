@@ -114,17 +114,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="curso" class="form-label">Curso *</label>
-                                <select class="form-select" id="curso" name="curso" required>
-                                    <option value="">Selecione o curso</option>
-                                    <option value="Medicina" {{ 'selected' if monitor.curso == 'Medicina' }}>Medicina</option>
-                                    <option value="Enfermagem" {{ 'selected' if monitor.curso == 'Enfermagem' }}>Enfermagem</option>
-                                    <option value="Fisioterapia" {{ 'selected' if monitor.curso == 'Fisioterapia' }}>Fisioterapia</option>
-                                    <option value="Psicologia" {{ 'selected' if monitor.curso == 'Psicologia' }}>Psicologia</option>
-                                    <option value="Nutrição" {{ 'selected' if monitor.curso == 'Nutrição' }}>Nutrição</option>
-                                    <option value="Farmácia" {{ 'selected' if monitor.curso == 'Farmácia' }}>Farmácia</option>
-                                    <option value="Biomedicina" {{ 'selected' if monitor.curso == 'Biomedicina' }}>Biomedicina</option>
-                                    <option value="Odontologia" {{ 'selected' if monitor.curso == 'Odontologia' }}>Odontologia</option>
-                                </select>
+                                <input type="text" class="form-control" id="curso" name="curso" value="{{ monitor.curso }}" required>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="carga_horaria_disponibilidade" class="form-label">Carga Horária (h/semana) *</label>

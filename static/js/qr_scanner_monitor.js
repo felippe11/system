@@ -16,6 +16,9 @@ class QRScannerMonitor {
                 throw new Error('Câmera não suportada neste navegador');
             }
 
+            // Atualizar status para solicitar permissão
+            this.updateScannerStatus('Solicitando permissão para acessar a câmera...', 'info');
+
             // Solicitar permissão para câmera
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
@@ -40,7 +43,28 @@ class QRScannerMonitor {
             
         } catch (error) {
             console.error('Erro ao inicializar scanner:', error);
-            this.updateScannerStatus('Erro: ' + error.message);
+            
+            // Tratamento específico para diferentes tipos de erro
+            let errorMessage = 'Erro desconhecido';
+            
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage = 'Permissão de câmera negada. Por favor, permita o acesso à câmera e tente novamente.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage = 'Nenhuma câmera encontrada no dispositivo.';
+            } else if (error.name === 'NotSupportedError') {
+                errorMessage = 'Câmera não suportada neste navegador.';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                errorMessage = 'Câmera está sendo usada por outro aplicativo.';
+            } else if (error.name === 'OverconstrainedError' || error.name === 'ConstraintNotSatisfiedError') {
+                errorMessage = 'Configurações de câmera não suportadas.';
+            } else {
+                errorMessage = error.message || 'Erro ao acessar a câmera';
+            }
+            
+            this.updateScannerStatus(errorMessage, 'error');
+            
+            // Adicionar botão para tentar novamente
+            this.addRetryButton();
         }
     }
 
@@ -178,21 +202,45 @@ class QRScannerMonitor {
         }
     }
 
+    // Adicionar botão para tentar novamente
+    addRetryButton() {
+        const statusElement = document.getElementById('scanner-status');
+        if (statusElement) {
+            const retryButton = document.createElement('button');
+            retryButton.className = 'btn btn-primary btn-sm mt-2';
+            retryButton.textContent = 'Tentar Novamente';
+            retryButton.onclick = () => {
+                // Remover botão e tentar novamente
+                retryButton.remove();
+                this.init(this.agendamentoId);
+            };
+            
+            // Adicionar botão após o elemento de status
+            statusElement.parentNode.insertBefore(retryButton, statusElement.nextSibling);
+        }
+    }
+
     // Atualizar status do aluno na lista
     updateAlunoStatus(alunoId, presente) {
-        const alunoRow = document.querySelector(`[data-aluno-id="${alunoId}"]`);
+        const alunoRow = document.getElementById(`aluno-${alunoId}`);
         if (alunoRow) {
-            const statusBadge = alunoRow.querySelector('.status-badge');
-            const presencaBtn = alunoRow.querySelector('.btn-presenca');
+            const statusCell = alunoRow.querySelector('td:nth-child(3)');
+            const timeCell = alunoRow.querySelector('td:nth-child(4)');
+            const actionCell = alunoRow.querySelector('td:nth-child(5)');
             
-            if (statusBadge) {
-                statusBadge.textContent = presente ? 'Presente' : 'Ausente';
-                statusBadge.className = `badge status-badge ${presente ? 'bg-success' : 'bg-danger'}`;
+            if (statusCell) {
+                statusCell.innerHTML = `<span class="badge ${presente ? 'bg-success' : 'bg-danger'}">${presente ? 'Presente' : 'Ausente'}</span>`;
             }
             
-            if (presencaBtn) {
-                presencaBtn.textContent = presente ? 'Marcar Ausente' : 'Marcar Presente';
-                presencaBtn.className = `btn btn-sm ${presente ? 'btn-outline-danger' : 'btn-outline-success'} btn-presenca`;
+            if (timeCell && presente) {
+                timeCell.innerHTML = `${new Date().toLocaleTimeString()}<small class="text-muted d-block">QR Code</small>`;
+            }
+            
+            if (actionCell) {
+                const btnPresente = actionCell.querySelector('.btn-success');
+                const btnAusente = actionCell.querySelector('.btn-danger');
+                if (btnPresente) btnPresente.disabled = presente;
+                if (btnAusente) btnAusente.disabled = !presente;
             }
         }
         
@@ -202,17 +250,27 @@ class QRScannerMonitor {
 
     // Atualizar contadores de presença
     updateContadores() {
-        const totalAlunos = document.querySelectorAll('[data-aluno-id]').length;
-        const presentes = document.querySelectorAll('.status-badge.bg-success').length;
-        const ausentes = totalAlunos - presentes;
+        const totalAlunos = document.querySelectorAll('tr[id^="aluno-"]').length;
         
-        const contadorPresentes = document.getElementById('contador-presentes');
-        const contadorAusentes = document.getElementById('contador-ausentes');
-        const contadorTotal = document.getElementById('contador-total');
+        // Contar apenas badges dentro da tabela de alunos
+        const tabelaAlunos = document.querySelector('table');
+        const presentes = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-success').length : 0;
+        const ausentes = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-danger').length : 0;
+        const pendentes = tabelaAlunos ? tabelaAlunos.querySelectorAll('.badge.bg-secondary').length : 0;
+        
+        // Verificar se a soma está correta
+        const soma = presentes + ausentes + pendentes;
+        if (soma !== totalAlunos) {
+            console.warn(`Inconsistência nos contadores: ${presentes} + ${ausentes} + ${pendentes} = ${soma}, mas total de alunos é ${totalAlunos}`);
+        }
+        
+        const contadorPresentes = document.getElementById('presentes-count');
+        const contadorAusentes = document.getElementById('ausentes-count');
+        const contadorPendentes = document.getElementById('pendentes-count');
         
         if (contadorPresentes) contadorPresentes.textContent = presentes;
         if (contadorAusentes) contadorAusentes.textContent = ausentes;
-        if (contadorTotal) contadorTotal.textContent = totalAlunos;
+        if (contadorPendentes) contadorPendentes.textContent = pendentes;
     }
 
     // Obter CSRF Token

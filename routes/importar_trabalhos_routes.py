@@ -1,13 +1,13 @@
-"""Endpoints for importing work metadata from spreadsheets."""
-
-import json
-import os
-import tempfile
-import uuid
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, redirect, url_for, flash
+from flask_login import login_required, current_user
 import pandas as pd
 from extensions import db
+from models import Submission, Assignment, RevisorCandidatura, Usuario, Evento
 from werkzeug.security import generate_password_hash
+
+import uuid
+from sqlalchemy.orm import joinedload
+
 from models import Submission, WorkMetadata, Usuario
 from sqlalchemy.exc import DataError
 
@@ -16,167 +16,77 @@ importar_trabalhos_routes = Blueprint(
 )
 
 
-@importar_trabalhos_routes.route("/importar_trabalhos", methods=["POST"])
+importar_trabalhos_routes = Blueprint('importar_trabalhos_routes', __name__)
+
+@importar_trabalhos_routes.route('/importar_trabalhos', methods=['POST'])
+@login_required
 def importar_trabalhos():
-    """Import metadata from an uploaded spreadsheet.
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard'))
 
-    The endpoint supports two phases:
+    arquivo = request.files.get('arquivo_trabalhos')
+    evento_id = request.form.get('evento_id')
 
-    1. Upload an Excel file via ``arquivo``. The spreadsheet is parsed and
-       temporarily stored, returning available column names and a preview of the
-       rows.
-    2. Post ``temp_id`` and optionally ``columns`` to persist the stored data as
-       ``Submission`` and ``WorkMetadata`` records.
-    """
-    evento_id = request.form.get("evento_id", type=int)
-    if "arquivo" in request.files:
-        file = request.files["arquivo"]
-        try:
-            df = pd.read_excel(file)
-        except Exception as e:
-            return jsonify({"success": False, "message": f"Erro ao ler o arquivo: {str(e)}"}), 400
-
-        records = df.to_dict(orient="records")
-        rows = []
-        for row_dict in records:
-            attributes = {}
-            for key, value in row_dict.items():
-                if isinstance(value, pd.Timestamp):
-                    value = value.isoformat()
-                elif pd.isna(value):
-                    value = None
-                elif hasattr(value, "item"):
-                    value = value.item()
-                if not isinstance(value, (str, int, float, bool, type(None))):
-                    value = str(value)
-                attributes[key] = value
-            rows.append(attributes)
-
-        temp_id = uuid.uuid4().hex
-        temp_path = os.path.join(
-            tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
-        )
-        with open(temp_path, "w", encoding="utf-8") as tmp:
-            json.dump(rows, tmp)
-
-        preview = rows[:5]
+    if not arquivo or not evento_id:
+        flash('Arquivo ou evento não selecionado.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
 
-        return jsonify(
-            {
-                "success": True,
-                "temp_id": temp_id,
-                "columns": df.columns.tolist(),
-                "data": preview,
-                "message": "Arquivo processado com sucesso",
-                "suggested_mappings": {
-                    "titulo": [col for col in df.columns if any(word in col.lower() for word in ["titulo", "title", "nome"])],
-                    "categoria": [col for col in df.columns if any(word in col.lower() for word in ["categoria", "category", "tipo"])],
-                    "autor_nome": [col for col in df.columns if any(word in col.lower() for word in ["autor", "author", "nome", "name"])],
-                    "autor_email": [col for col in df.columns if any(word in col.lower() for word in ["email", "e-mail", "mail"])],
-                    "distribuicao": {
-                        "regra": [col for col in df.columns if any(word in col.lower() for word in ["area_atuacao", "especialidade", "preferencia"])],
-                        "peso": [col for col in df.columns if any(word in col.lower() for word in ["prioridade", "nivel"])]
-                    }
-                }
-            }
-        )
+    if not arquivo.filename.endswith('.xlsx'):
+        flash('Formato de arquivo inválido. Por favor, envie um arquivo .xlsx.', 'danger')
+        return redirect(url_for('dashboard_routes.dashboard_cliente'))
 
-    temp_id = request.form.get("temp_id")
-    if not temp_id:
-        return jsonify({"success": False, "message": "ID temporário não fornecido"}), 400
-
-    temp_path = os.path.join(
-        tempfile.gettempdir(), f"import_trabalhos_{temp_id}.json"
-    )
-    try:
-        with open(temp_path, "r", encoding="utf-8") as tmp:
-            rows = json.load(tmp)
-    except FileNotFoundError:
-        return jsonify({"success": False, "message": "ID temporário inválido ou expirado"}), 400
-
-    # Obter mapeamento de colunas do formulário
-    titulo_col = request.form.get("titulo")
-    categoria_col = request.form.get("categoria")
-    rede_ensino_col = request.form.get("rede_ensino")
-    etapa_ensino_col = request.form.get("etapa_ensino")
-    pdf_url_col = request.form.get("pdf_url")
-    autor_nome_col = request.form.get("autor_nome")
-    autor_email_col = request.form.get("autor_email")
-
-    imported = 0
-    for idx, row in enumerate(rows, start=1):
-        # Obter título usando o mapeamento
-        raw_title = row.get(titulo_col) if titulo_col else None
-        title = str(raw_title) if raw_title else f"Trabalho {idx}"
-        
-        # Processar informações do autor
-        author_id = None
-        if autor_email_col and row.get(autor_email_col):
-            author_email = str(row.get(autor_email_col)).strip().lower()
-            author_name = str(row.get(autor_nome_col)) if autor_nome_col and row.get(autor_nome_col) else "Autor Importado"
-            
-            # Buscar usuário existente por email
-            existing_user = Usuario.query.filter_by(email=author_email).first()
-            if existing_user:
-                author_id = existing_user.id
-            else:
-                # Criar novo usuário se não existir
-                new_user = Usuario(
-                    nome=author_name,
-                    email=author_email,
-                    tipo="participante",
-                    senha_hash=generate_password_hash(uuid.uuid4().hex)  # Senha temporária
-                )
-                db.session.add(new_user)
-                db.session.flush()  # Para obter o ID
-                author_id = new_user.id
-        
-        submission = Submission(
-            title=title,
-            author_id=author_id,
-            code_hash=generate_password_hash(
-                uuid.uuid4().hex, method="pbkdf2:sha256"
-            ),
-            evento_id=evento_id,
-            attributes=row,
-        )
-        db.session.add(submission)
-
-        # Criar WorkMetadata usando o mapeamento de colunas
-        wm = WorkMetadata(
-            data=row,
-            titulo=row.get(titulo_col) if titulo_col else None,
-            categoria=row.get(categoria_col) if categoria_col else None,
-            rede_ensino=row.get(rede_ensino_col) if rede_ensino_col else None,
-            etapa_ensino=row.get(etapa_ensino_col) if etapa_ensino_col else None,
-            pdf_url=row.get(pdf_url_col) if pdf_url_col else None,
-            evento_id=evento_id,
-        )
-        db.session.add(wm)
-        imported += 1
 
     try:
+
+        df = pd.read_excel(arquivo)
+
+        required_columns = ['titulo', 'categoria', 'Rede de Ensino', 'Etapa de Ensino', 'URL do PDF']
+        if not all(col in df.columns for col in required_columns):
+            flash(f'O arquivo Excel deve conter as seguintes colunas: {", ".join(required_columns)}', 'danger')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+        revisores = Usuario.query.options(joinedload(Usuario.revisor_candidaturas))\
+            .join(RevisorCandidatura, Usuario.email == RevisorCandidatura.email)\
+            .filter(RevisorCandidatura.status == 'aprovado').all()
+
+        if not revisores:
+            flash('Nenhum revisor aprovado encontrado para atribuir os trabalhos.', 'warning')
+            return redirect(url_for('dashboard_routes.dashboard_cliente'))
+
+        submissions = []
+        for index, row in df.iterrows():
+            submission = Submission(
+                title=row['titulo'],
+                file_path=row['URL do PDF'],
+                attributes={
+                    'categoria': row['categoria'],
+                    'rede_ensino': row['Rede de Ensino'],
+                    'etapa_ensino': row['Etapa de Ensino']
+                },
+                evento_id=evento_id,
+                code_hash=generate_password_hash(str(uuid.uuid4()))
+            )
+            submissions.append(submission)
+            db.session.add(submission)
+
+        db.session.flush()
+
+        for i, submission in enumerate(submissions):
+            revisor = revisores[i % len(revisores)]
+            assignment = Assignment(
+                submission_id=submission.id,
+                reviewer_id=revisor.id
+            )
+            db.session.add(assignment)
+
+
         db.session.commit()
-    except DataError as err:
+        flash(f'{len(submissions)} trabalhos importados e atribuídos com sucesso!', 'success')
+
+    except Exception as e:
         db.session.rollback()
-        column = getattr(
-            getattr(getattr(err, "orig", None), "diag", None),
-            "column_name",
-            None,
-        )
-        msg = (
-            f"Valor inválido para o campo '{column}'"
-            if column
-            else "Valor inválido para um dos campos"
-        )
-        return jsonify({"success": False, "message": msg}), 400
+        flash(f'Ocorreu um erro ao importar os trabalhos: {e}', 'danger')
 
-    try:
-        os.remove(temp_path)
-    except OSError:
-        pass
-
-    message = f"Importação concluída! {imported} trabalhos importados."
-    
-    return jsonify({"success": True, "status": "ok", "imported": imported, "message": message})
+    return redirect(url_for('dashboard_routes.dashboard_cliente'))

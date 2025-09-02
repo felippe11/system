@@ -212,7 +212,7 @@
                                             <div>
                                                 <small class="text-muted">Turnos:</small>
                                                 {% for turno in monitor.get_turnos_disponibilidade() %}
-                                                    <span class="badge bg-outline-primary">{{ turno|title }}</span>
+                                                    <span class="badge bg-primary">{{ turno|title }}</span>
                                                 {% endfor %}
                                             </div>
                                         </td>
@@ -235,8 +235,11 @@
                                                     {% endif %}
                                                 {% endfor %}
                                                 <small class="text-muted d-block">Próximo: 
-                                                    {% if ns.proximo %}
-                                                        {{ ns.proximo.strftime('%d/%m') }}
+
+                                                    {% set proximo = agendamentos_monitor|selectattr('agendamento.horario.data', 'ge', today)|first %}
+                                                    {% if proximo %}
+                                                        {{ proximo.agendamento.horario.data.strftime('%d/%m') }}
+
                                                     {% else %}
                                                         Nenhum
                                                     {% endif %}

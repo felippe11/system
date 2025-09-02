@@ -1347,6 +1347,7 @@ class MonitorAgendamento(db.Model):
     monitor = db.relationship("Monitor", backref=db.backref("agendamentos_atribuidos", lazy=True))
     agendamento = db.relationship("AgendamentoVisita", backref=db.backref("monitores_atribuidos", lazy=True))
 
+
     def __init__(
         self,
         monitor_id=None,
@@ -1363,6 +1364,7 @@ class MonitorAgendamento(db.Model):
             self.monitor_id = monitor_id
         if agendamento_id is not None:
             self.agendamento_id = agendamento_id
+
         self.tipo_distribuicao = tipo_distribuicao
         self.status = status
         if data_atribuicao is not None:

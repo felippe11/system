@@ -77,6 +77,7 @@
                                     {% for agendamento in agendamentos %}
                                     <tr>
                                         <td>
+
                                             <strong>
                                                 {{ agendamento.horario.data.strftime('%d/%m/%Y') if agendamento.horario else '-' }}
                                             </strong>
@@ -90,10 +91,12 @@
                                         <td>
                                             {{ agendamento.horario.evento.nome if agendamento.horario and agendamento.horario.evento else 'N/A' }}
                                             {% if agendamento.horario and agendamento.horario.evento and agendamento.horario.evento.descricao %}
+
                                                 <small class="text-muted d-block">{{ agendamento.horario.evento.descricao[:50] }}...</small>
                                             {% endif %}
                                         </td>
                                         <td>
+
                                             {% if agendamento.professor %}
                                                 {{ agendamento.professor.nome }}
                                                 <small class="text-muted d-block">{{ agendamento.professor.email }}</small>
@@ -104,6 +107,7 @@
                                                 N/A
                                             {% endif %}
                                         </td>
+
                                         <td>
                                             <span class="badge bg-info">{{ agendamento.alunos|length }} alunos</span>
                                         </td>
@@ -158,6 +162,7 @@
                             </table>
                         </div>
                         
+
                         <!-- Paginação (se disponível) -->
                         {% if agendamentos.__class__.__name__ == 'Pagination' and agendamentos.pages > 1 %}
                         <nav aria-label="Navegação de páginas">
@@ -194,6 +199,7 @@
                             </ul>
                         </nav>
                         {% endif %}
+
                     {% else %}
                         <div class="text-center py-5">
                             <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
