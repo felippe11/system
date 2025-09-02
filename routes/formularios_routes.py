@@ -330,15 +330,23 @@ def editar_campo(campo_id):
         novo_tipo = request.form.get("tipo")
         novo_obrigatorio = request.form.get("obrigatorio") == "on"
 
-        # Verifica se o campo está protegido
-        if getattr(campo, 'protegido', False):
+        if getattr(campo, "protegido", False):
+            if campo.nome in ("nome", "email"):
+                campo.nome = novo_nome
+                db.session.commit()
+                flash("Campo atualizado com sucesso!", "success")
+                return redirect(
+                    url_for(
+                        "formularios_routes.gerenciar_campos",
+                        formulario_id=campo.formulario_id,
+                    )
+                )
             flash(
                 f"O campo '{campo.nome}' está protegido e não pode ser editado.",
                 "danger",
             )
             return render_template("editar_campo.html", campo=campo)
-        
-        # Verificação adicional para compatibilidade com sistema antigo
+
         if (
             campo.nome in ("nome", "email")
             and RevisorProcess.query.filter_by(
@@ -352,7 +360,7 @@ def editar_campo(campo_id):
                     "danger",
                 )
                 return render_template("editar_campo.html", campo=campo)
-        
+
         campo.nome = novo_nome
         campo.obrigatorio = novo_obrigatorio
 
