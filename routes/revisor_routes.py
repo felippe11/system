@@ -154,6 +154,22 @@ def config_revisor():
     )
 
 
+@revisor_routes.route("/revisor/<int:process_id>/delete", methods=["POST"])
+@login_required
+def delete_process(process_id: int):
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    processo = RevisorProcess.query.get_or_404(process_id)
+    if processo.cliente_id != current_user.id:  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    db.session.delete(processo)
+    db.session.commit()
+    flash("Processo removido", "success")
+    return redirect(url_for("revisor_routes.config_revisor"))
+
+
 # -----------------------------------------------------------------------------
 # CONFIGURAÇÃO DE BAREMAS
 # -----------------------------------------------------------------------------
