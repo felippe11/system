@@ -29,12 +29,6 @@ async function carregarDadosIniciais() {
     try {
         mostrarCarregando(true);
 
-        // Carregar polos e materiais
-        const [polosResponse, materiaisResponse] = await Promise.all([
-            fetch('/api/polos'),
-            fetch('/api/materiais')
-        ]);
-
         const parseAndValidate = async (response) => {
             const contentType = response.headers.get('Content-Type') || '';
             if (!contentType.includes('application/json')) {
@@ -47,9 +41,14 @@ async function carregarDadosIniciais() {
             return data;
         };
 
+        // Carregar polos primeiro
+        const polosResponse = await fetch('/api/polos');
         const polosJson = await parseAndValidate(polosResponse);
-        const materiaisJson = await parseAndValidate(materiaisResponse);
         polosData = polosJson.polos || [];
+
+        // Carregar materiais somente se houver polos
+        const materiaisResponse = await fetch('/api/materiais');
+        const materiaisJson = await parseAndValidate(materiaisResponse);
         materiaisData = materiaisJson.materiais || [];
 
         atualizarCardsPolos();
