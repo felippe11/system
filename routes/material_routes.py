@@ -11,6 +11,7 @@ import json
 from extensions import db, csrf
 from models.user import Cliente, Monitor
 from models.material import Polo, Material, MovimentacaoMaterial, MonitorPolo
+from utils import endpoints
 
 material_routes = Blueprint('material_routes', __name__)
 
@@ -78,7 +79,7 @@ def gerenciar_materiais():
     except Exception as e:
         current_app.logger.error(f"Erro ao carregar página de materiais: {str(e)}")
         flash('Erro ao carregar dados', 'error')
-        return redirect(url_for('dashboard_cliente.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @material_routes.route('/api/polos', methods=['GET'])
