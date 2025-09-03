@@ -12,6 +12,7 @@ from extensions import db, csrf
 from models.user import Cliente, Monitor
 from models.material import Polo, Material, MovimentacaoMaterial, MonitorPolo
 from utils import endpoints
+from sqlalchemy.orm import joinedload
 
 material_routes = Blueprint('material_routes', __name__)
 
@@ -996,6 +997,33 @@ def gerar_relatorio():
 
 
 # ==================== ROTAS DE ATRIBUIÇÃO DE MONITORES ====================
+
+@material_routes.route('/monitores-polos')
+@login_required
+def gerenciar_monitores_polo():
+    """Página para atribuir monitores a polos."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+
+    try:
+        monitores = (
+            Monitor.query.options(
+                joinedload(Monitor.polos_atribuidos).joinedload(MonitorPolo.polo)
+            )
+            .filter_by(cliente_id=current_user.id, ativo=True)
+            .all()
+        )
+        polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+        return render_template(
+            'material/monitores_polos.html', monitores=monitores, polos=polos
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Erro ao carregar atribuições de monitores: {str(e)}"
+        )
+        flash('Erro ao carregar dados', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
 
 @material_routes.route('/api/monitores/atribuir-polo', methods=['POST'])
 @csrf.exempt
