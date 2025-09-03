@@ -14,9 +14,6 @@ function configurarEventListeners() {
     document.getElementById('filtro-status').addEventListener('change', filtrarMateriais);
     document.getElementById('buscar-material').addEventListener('input', filtrarMateriais);
     
-    // Mudança de tipo no modal WhatsApp
-    document.getElementById('whatsapp-tipo').addEventListener('change', gerarTextoWhatsApp);
-    document.getElementById('whatsapp-polo').addEventListener('change', gerarTextoWhatsApp);
 }
 
 async function carregarDadosIniciais() {
@@ -305,100 +302,6 @@ async function verHistorico(materialId) {
     }
 }
 
-function exportarWhatsApp() {
-    const modal = new bootstrap.Modal(document.getElementById('modalWhatsApp'));
-    modal.show();
-    gerarTextoWhatsApp();
-}
-
-function gerarTextoWhatsApp() {
-    const tipo = document.getElementById('whatsapp-tipo').value;
-    const poloId = document.getElementById('whatsapp-polo').value;
-    const textarea = document.getElementById('whatsapp-texto');
-    
-    let materiais = materiaisData;
-    
-    // Filtrar por polo se selecionado
-    if (poloId) {
-        materiais = materiais.filter(m => m.polo_id == poloId);
-    }
-    
-    let texto = '';
-    const data = new Date().toLocaleDateString('pt-BR');
-    
-    switch (tipo) {
-        case 'estoque_baixo':
-            const estoqueBaixo = materiais.filter(m => m.quantidade_atual <= m.quantidade_minima && m.quantidade_atual > 0);
-            texto = `🟡 *MATERIAIS COM ESTOQUE BAIXO* - ${data}\n\n`;
-            estoqueBaixo.forEach(m => {
-                const polo = polosData.find(p => p.id === m.polo_id);
-                texto += `📦 ${m.nome}\n`;
-                texto += `🏢 Polo: ${polo ? polo.nome : 'N/A'}\n`;
-                texto += `📊 Atual: ${m.quantidade_atual} ${m.unidade}\n`;
-                texto += `⚠️ Mínimo: ${m.quantidade_minima} ${m.unidade}\n\n`;
-            });
-            break;
-            
-        case 'sem_estoque':
-            const semEstoque = materiais.filter(m => m.quantidade_atual === 0);
-            texto = `🔴 *MATERIAIS SEM ESTOQUE* - ${data}\n\n`;
-            semEstoque.forEach(m => {
-                const polo = polosData.find(p => p.id === m.polo_id);
-                texto += `📦 ${m.nome}\n`;
-                texto += `🏢 Polo: ${polo ? polo.nome : 'N/A'}\n`;
-                texto += `❌ Estoque: 0 ${m.unidade}\n\n`;
-            });
-            break;
-            
-        case 'lista_compras':
-            const paraComprar = materiais.filter(m => m.quantidade_atual <= m.quantidade_minima);
-            texto = `🛒 *LISTA DE COMPRAS* - ${data}\n\n`;
-            paraComprar.forEach(m => {
-                const polo = polosData.find(p => p.id === m.polo_id);
-                const necessario = m.quantidade_minima - m.quantidade_atual + (m.quantidade_minima * 0.5); // 50% a mais do mínimo
-                texto += `📦 ${m.nome}\n`;
-                texto += `🏢 Polo: ${polo ? polo.nome : 'N/A'}\n`;
-                texto += `🛒 Comprar: ${Math.ceil(necessario)} ${m.unidade}\n\n`;
-            });
-            break;
-            
-        case 'geral':
-            texto = `📊 *RELATÓRIO GERAL DE MATERIAIS* - ${data}\n\n`;
-            const totalMateriais = materiais.length;
-            const emEstoque = materiais.filter(m => m.quantidade_atual > m.quantidade_minima).length;
-            const estoqueBaixoGeral = materiais.filter(m => m.quantidade_atual <= m.quantidade_minima && m.quantidade_atual > 0).length;
-            const semEstoqueGeral = materiais.filter(m => m.quantidade_atual === 0).length;
-            
-            texto += `📈 *RESUMO GERAL*\n`;
-            texto += `📦 Total de materiais: ${totalMateriais}\n`;
-            texto += `✅ Em estoque: ${emEstoque}\n`;
-            texto += `🟡 Estoque baixo: ${estoqueBaixoGeral}\n`;
-            texto += `🔴 Sem estoque: ${semEstoqueGeral}\n\n`;
-            
-            if (estoqueBaixoGeral > 0 || semEstoqueGeral > 0) {
-                texto += `⚠️ *ATENÇÃO NECESSÁRIA*\n`;
-                materiais.filter(m => m.quantidade_atual <= m.quantidade_minima).forEach(m => {
-                    const polo = polosData.find(p => p.id === m.polo_id);
-                    const status = m.quantidade_atual === 0 ? '🔴' : '🟡';
-                    texto += `${status} ${m.nome} (${polo ? polo.nome : 'N/A'}): ${m.quantidade_atual}/${m.quantidade_minima} ${m.unidade}\n`;
-                });
-            }
-            break;
-    }
-    
-    if (!texto.trim()) {
-        texto = 'Nenhum material encontrado para os critérios selecionados.';
-    }
-    
-    textarea.value = texto;
-}
-
-function copiarTextoWhatsApp() {
-    const textarea = document.getElementById('whatsapp-texto');
-    textarea.select();
-    document.execCommand('copy');
-    mostrarAlerta('Texto copiado para a área de transferência!', 'success');
-}
 
 async function gerarRelatorio() {
     try {

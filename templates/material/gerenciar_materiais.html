@@ -110,12 +110,7 @@
                                 <i class="fas fa-shopping-cart"></i> Lista de Compras
                             </button>
                         </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-success w-100 mb-2" onclick="exportarWhatsApp()">
-                                <i class="fab fa-whatsapp"></i> Exportar WhatsApp
-                            </button>
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-8">
                             <div class="dropdown">
                                 <button class="btn btn-outline-info w-100 mb-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-file-excel"></i> Relatórios Excel
@@ -304,67 +299,6 @@
                     <button type="submit" class="btn btn-primary">Registrar</button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal WhatsApp -->
-<div class="modal fade" id="modalWhatsApp" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fab fa-whatsapp"></i> Exportar para WhatsApp</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-globe"></i> Relatórios Gerais</h6>
-                        <div class="d-grid gap-2 mb-3">
-                            <button class="btn btn-warning" onclick="gerarTextoWhatsApp('baixo_estoque')">
-                                <i class="fas fa-exclamation-triangle"></i> Materiais com Estoque Baixo
-                            </button>
-                            <button class="btn btn-danger" onclick="gerarTextoWhatsApp('sem_estoque')">
-                                <i class="fas fa-times-circle"></i> Materiais sem Estoque
-                            </button>
-                            <button class="btn btn-info" onclick="gerarTextoWhatsApp('compras')">
-                                <i class="fas fa-shopping-cart"></i> Lista de Compras
-                            </button>
-                            <button class="btn btn-primary" onclick="gerarTextoWhatsApp('geral')">
-                                <i class="fas fa-chart-bar"></i> Relatório Geral
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-map-marker-alt"></i> Relatórios por Polo</h6>
-                        <div class="mb-2">
-                            <select class="form-select" id="selectPoloPara WhatsApp">
-                                <option value="">Selecione um polo...</option>
-                            </select>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-warning" onclick="gerarTextoWhatsAppPoloSelecionado('baixo_estoque')">
-                                <i class="fas fa-exclamation-triangle"></i> Estoque Baixo
-                            </button>
-                            <button class="btn btn-outline-danger" onclick="gerarTextoWhatsAppPoloSelecionado('sem_estoque')">
-                                <i class="fas fa-times-circle"></i> Sem Estoque
-                            </button>
-                            <button class="btn btn-outline-info" onclick="gerarTextoWhatsAppPoloSelecionado('compras')">
-                                <i class="fas fa-shopping-cart"></i> Lista de Compras
-                            </button>
-                            <button class="btn btn-outline-primary" onclick="gerarTextoWhatsAppPoloSelecionado('geral')">
-                                <i class="fas fa-chart-bar"></i> Relatório Geral
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <hr>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> 
-                    <strong>Como usar:</strong> Clique em um dos botões acima para copiar o texto para a área de transferência. 
-                    Depois, cole no WhatsApp e envie para seus contatos.
-                </div>
-            </div>
         </div>
     </div>
 </div>
