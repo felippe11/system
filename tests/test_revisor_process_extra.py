@@ -221,7 +221,7 @@ def test_config_route_saves_availability(client, app):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                '/config_revisor',
+                '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
                     'num_etapas': 1,
@@ -234,8 +234,9 @@ def test_config_route_saves_availability(client, app):
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (302, 200)
-        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert resp.status_code == 201
+        proc_id = resp.get_json()['id']
+        proc = RevisorProcess.query.get(proc_id)
         assert proc.availability_start.date() == start
         assert proc.availability_end.date() == end
 
@@ -252,7 +253,7 @@ def test_config_route_saves_eventos(client, app):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                '/config_revisor',
+                '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
                     'num_etapas': 1,
@@ -263,8 +264,9 @@ def test_config_route_saves_eventos(client, app):
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (302, 200)
-        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert resp.status_code == 201
+        proc_id = resp.get_json()['id']
+        proc = RevisorProcess.query.get(proc_id)
         assert [e.id for e in proc.eventos] == [evento.id]
 
 
@@ -278,7 +280,12 @@ def test_config_route_renders_eventos(client, app):
         with client:
             with app.test_request_context():
                 login_user(cliente)
-            resp = client.get('/config_revisor')
+            proc = (
+                RevisorProcess.query.filter_by(cliente_id=cliente.id)
+                .filter(RevisorProcess.eventos.any())
+                .all()[0]
+            )
+            resp = client.get(f'/revisor/processos/{proc.id}')
             with app.test_request_context():
                 logout_user()
 
