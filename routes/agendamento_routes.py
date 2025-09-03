@@ -941,6 +941,12 @@ def editar_horario_agendamento():
     
     horario_id = request.form.get('horario_id', type=int)
     horario = HorarioVisitacao.query.get_or_404(horario_id)
+
+    if horario.fechado:
+        flash('Este horário está fechado para agendamentos.', 'warning')
+        return redirect(
+            url_for('dashboard_participante_routes.dashboard_participante')
+        )
     evento = horario.evento
     
     # Verificar se o evento pertence ao cliente
@@ -1041,8 +1047,35 @@ def excluir_horario_agendamento():
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao excluir horário: {str(e)}', 'danger')
-    
+
     return redirect(url_for('agendamento_routes.listar_horarios_agendamento', evento_id=evento_id))
+
+
+@agendamento_routes.route('/toggle_horario_agendamento', methods=['POST'])
+@login_required
+def toggle_horario_agendamento():
+    """Alterna o estado de fechamento de um horário de visitação."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    horario_id = request.form.get('horario_id', type=int)
+    horario = HorarioVisitacao.query.get_or_404(horario_id)
+    evento = horario.evento
+
+    if evento.cliente_id != current_user.id:
+        flash('Este evento não pertence a você!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+    horario.fechado = not horario.fechado
+    db.session.commit()
+
+    mensagem = 'Horário fechado com sucesso!' if horario.fechado else 'Horário reaberto com sucesso!'
+    flash(mensagem, 'success')
+
+    return redirect(
+        url_for('agendamento_routes.listar_horarios_agendamento', evento_id=horario.evento_id)
+    )
 
 
 @agendamento_routes.route(
@@ -4615,6 +4648,12 @@ def agendar_visita(horario_id):
         )
 
     horario = HorarioVisitacao.query.get_or_404(horario_id)
+
+    if horario.fechado:
+        flash('Este horário está fechado para agendamentos.', 'warning')
+        return redirect(
+            url_for('dashboard_participante_routes.dashboard_participante')
+        )
 
     if request.method == 'POST':
         # Coletar detalhes do agendamento

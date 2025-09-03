@@ -207,3 +207,64 @@ def test_excluir_todos_horarios(client, app):
         assert all(a.status == 'cancelado' for a in agendamentos)
         assert all(a.data_cancelamento is not None for a in agendamentos)
 
+
+def test_toggle_horario_agendamento(client, app):
+    login(client)
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cliente@test').first()
+        evento = Evento(cliente_id=cliente.id, nome='Evento T', descricao='d')
+        db.session.add(evento)
+        db.session.commit()
+        horario = HorarioVisitacao(
+            evento_id=evento.id,
+            data=date.today(),
+            horario_inicio=time(9, 0),
+            horario_fim=time(10, 0),
+            capacidade_total=30,
+            vagas_disponiveis=30,
+        )
+        db.session.add(horario)
+        db.session.commit()
+        horario_id = horario.id
+
+    resp = client.post(
+        '/toggle_horario_agendamento', data={'horario_id': horario_id}, follow_redirects=True
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        assert HorarioVisitacao.query.get(horario_id).fechado is True
+
+    resp = client.post(
+        f'/agendar_visita/{horario_id}',
+        data={
+            'escola_nome': 'Escola',
+            'turma': 'A',
+            'nivel_ensino': 'fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=True,
+    )
+    assert b'Este horário está fechado para agendamentos.' in resp.data
+    with app.app_context():
+        assert AgendamentoVisita.query.count() == 0
+
+    client.post(
+        '/toggle_horario_agendamento', data={'horario_id': horario_id}, follow_redirects=True
+    )
+    with app.app_context():
+        assert HorarioVisitacao.query.get(horario_id).fechado is False
+
+    resp = client.post(
+        f'/agendar_visita/{horario_id}',
+        data={
+            'escola_nome': 'Escola',
+            'turma': 'A',
+            'nivel_ensino': 'fundamental',
+            'quantidade_alunos': 5,
+        },
+        follow_redirects=True,
+    )
+    assert b'Agendamento realizado com sucesso!' in resp.data
+    with app.app_context():
+        assert AgendamentoVisita.query.count() == 1
+
