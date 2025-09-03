@@ -38,24 +38,16 @@ async function carregarDadosIniciais() {
         const polosJson = await polosResponse.json();
         if (!polosJson.success) {
             mostrarAlerta(
-                polosJson.message || 'Nenhum polo atribuído ao monitor',
-                'info'
+                polosJson.message || 'Erro ao carregar polos',
+                'error'
             );
-            polosData = [];
-            materiaisData = [];
-            atualizarCardsPolos();
-            atualizarTabelaMateriais();
             return;
         }
 
         polosData = polosJson.polos || [];
 
         if (polosData.length === 0) {
-            mostrarAlerta('Nenhum polo atribuído ao monitor', 'info');
-            materiaisData = [];
-            atualizarCardsPolos();
-            atualizarTabelaMateriais();
-            return;
+            mostrarAlerta('Nenhum polo cadastrado', 'info');
         }
 
         const materiaisResponse = await fetch('/api/materiais');
