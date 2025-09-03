@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Atribuir Monitores{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">👥 Atribuir Monitores aos Polos</h2>
+            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <table class="table table-striped" id="tabela-monitores">
+                <thead>
+                    <tr>
+                        <th>Monitor</th>
+                        <th>Polos Atribuídos</th>
+                        <th>Atribuir Polo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for monitor in monitores %}
+                    <tr data-monitor-id="{{ monitor.id }}">
+                        <td>{{ monitor.nome_completo }}</td>
+                        <td>
+                            <ul class="list-unstyled mb-0 polos-atribuidos">
+                                {% for mp in monitor.polos_atribuidos if mp.ativo %}
+                                <li data-polo-id="{{ mp.polo.id }}">
+                                    {{ mp.polo.nome }}
+                                    <button class="btn btn-sm btn-danger ms-2 remover-polo" data-polo-id="{{ mp.polo.id }}">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <div class="input-group">
+                                <select class="form-select select-polo">
+                                    <option value="">Selecione um polo</option>
+                                    {% for polo in polos %}
+                                    <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-primary atribuir-polo">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='js/monitores_polos.js') }}"></script>
+{% endblock %}
