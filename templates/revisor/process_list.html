@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Processos de Revisores{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Processos de Revisores</h1>
+    <a href="{{ url_for('revisor_routes.new_process') }}" class="btn btn-primary">Novo Processo</a>
+  </div>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Descrição</th>
+        <th>Período</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for proc in processos %}
+      <tr>
+        <td>{{ proc.nome or '—' }}</td>
+        <td>{{ proc.descricao or '—' }}</td>
+        <td>
+          {% if proc.availability_start %}{{ proc.availability_start.strftime('%d/%m/%Y') }}{% endif %} -
+          {% if proc.availability_end %}{{ proc.availability_end.strftime('%d/%m/%Y') }}{% endif %}
+        </td>
+        <td>{{ proc.status or '—' }}</td>
+        <td>
+          <a href="{{ url_for('revisor_routes.edit_process', process_id=proc.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+          <form method="post" action="{{ url_for('revisor_routes.delete_process', process_id=proc.id) }}" style="display:inline-block" onsubmit="return confirm('Excluir processo?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="text-center">Nenhum processo cadastrado.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

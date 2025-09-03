@@ -86,18 +86,19 @@ def _ensure_secret_key(setup_state):  # pragma: no cover
 # -----------------------------------------------------------------------------
 # CONFIGURAÇÃO DO PROCESSO PELO CLIENTE
 # -----------------------------------------------------------------------------
-@revisor_routes.route("/config_revisor", methods=["GET", "POST"])
-@login_required
-def config_revisor():
-    """Render or update reviewer process configuration."""
+def _config_process(process_id: int | None = None):
+    """Create or update a reviewer process."""
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
 
-    # Um cliente pode ter no máximo 1 processo configurado.
-    processo: RevisorProcess | None = RevisorProcess.query.filter_by(
-        cliente_id=current_user.id  # type: ignore[attr-defined]
-    ).first()
+    processo: RevisorProcess | None = None
+    if process_id is not None:
+        processo = RevisorProcess.query.get_or_404(process_id)
+        if processo.cliente_id != current_user.id:  # type: ignore[attr-defined]
+            flash("Acesso negado!", "danger")
+            return redirect(url_for(endpoints.DASHBOARD))
+
     formularios: List[Formulario] = Formulario.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
@@ -107,13 +108,14 @@ def config_revisor():
 
     selected_event_ids: List[int] = [e.id for e in processo.eventos] if processo else []
 
-
     if request.method == "POST":
         try:
             dados = parse_revisor_form(request)
         except ValueError as exc:
             flash(str(exc), "danger")
-            return redirect(url_for("revisor_routes.config_revisor"))
+            if process_id:
+                return redirect(url_for("revisor_routes.edit_process", process_id=process_id))
+            return redirect(url_for("revisor_routes.new_process"))
 
         created_form: Formulario | None = None
         if not dados.get("formulario_id"):
@@ -140,7 +142,7 @@ def config_revisor():
                 rh.ensure_reviewer_required_fields(formulario)
         db.session.commit()
         flash("Processo atualizado", "success")
-        return redirect(url_for("revisor_routes.config_revisor"))
+        return redirect(url_for("revisor_routes.list_processes"))
 
     etapas: List[RevisorEtapa] = (
         processo.etapas if processo else []
@@ -161,13 +163,46 @@ def config_revisor():
         processo=processo,
         formularios=formularios,
         etapas=etapas,
-
         criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
     )
 
 
+@revisor_routes.route("/revisor/processes")
+@login_required
+def list_processes():
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    processos = RevisorProcess.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    return render_template("revisor/process_list.html", processos=processos)
+
+
+@revisor_routes.route("/revisor/processes/new", methods=["GET", "POST"])
+@login_required
+def new_process():
+    return _config_process(None)
+
+
+@revisor_routes.route("/revisor/processes/<int:process_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_process(process_id: int):
+    return _config_process(process_id)
+
+
+@revisor_routes.route("/config_revisor", methods=["GET", "POST"])
+@login_required
+def config_revisor():
+    processo = RevisorProcess.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).first()
+    return _config_process(processo.id if processo else None)
+
+
+@revisor_routes.route("/revisor/processes/<int:process_id>/delete", methods=["POST"])
 @revisor_routes.route("/revisor/<int:process_id>/delete", methods=["POST"])
 @login_required
 def delete_process(process_id: int):
@@ -181,7 +216,7 @@ def delete_process(process_id: int):
     db.session.delete(processo)
     db.session.commit()
     flash("Processo removido", "success")
-    return redirect(url_for("revisor_routes.config_revisor"))
+    return redirect(url_for("revisor_routes.list_processes"))
 
 
 # -----------------------------------------------------------------------------
