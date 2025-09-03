@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Material{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📦 Editar Material</h2>
+                    <p class="text-muted mb-0">Atualize as informações do material selecionado</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Material</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-polo" class="form-label">Polo *</label>
+                                    <select class="form-select" id="material-polo" name="polo_id" required>
+                                        {% for polo in polos %}
+                                        <option value="{{ polo.id }}" {% if polo.id == material.polo_id %}selected{% endif %}>{{ polo.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-categoria" class="form-label">Categoria</label>
+                                    <select class="form-select" id="material-categoria" name="categoria">
+                                        <option value="">Selecione uma categoria</option>
+                                        {% set categorias = ['Papelaria','Limpeza','Informática','Móveis','Equipamentos','Consumíveis','Outros'] %}
+                                        {% for cat in categorias %}
+                                        <option value="{{ cat }}" {% if cat == material.categoria %}selected{% endif %}>{{ cat }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="material-nome" class="form-label">Nome do Material *</label>
+                            <input type="text" class="form-control" id="material-nome" name="nome" value="{{ material.nome }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="material-descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="material-descricao" name="descricao" rows="3">{{ material.descricao }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-unidade" class="form-label">Unidade *</label>
+                                    <select class="form-select" id="material-unidade" name="unidade" required>
+                                        {% set unidades = ['un','cx','pct','kg','l','m','m²','resma','dz'] %}
+                                        {% for un in unidades %}
+                                        <option value="{{ un }}" {% if un == material.unidade %}selected{% endif %}>{{ un }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-quantidade-atual" class="form-label">Quantidade Atual</label>
+                                    <input type="number" class="form-control" id="material-quantidade-atual" value="{{ material.quantidade_atual }}" disabled>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="material-quantidade-minima" class="form-label">Estoque Mínimo</label>
+                                    <input type="number" class="form-control" id="material-quantidade-minima" name="quantidade_minima" value="{{ material.quantidade_minima }}" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-preco" class="form-label">Preço Unitário (R$)</label>
+                                    <input type="number" class="form-control" id="material-preco" name="preco_unitario" step="0.01" min="0" value="{{ material.preco_unitario or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="material-fornecedor" class="form-label">Fornecedor</label>
+                                    <input type="text" class="form-control" id="material-fornecedor" name="fornecedor" value="{{ material.fornecedor }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Salvar Material
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
