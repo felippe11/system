@@ -102,16 +102,21 @@ def listar_polos():
                 .join(MonitorPolo, MonitorPolo.polo_id == Polo.id)
                 .filter(
                     MonitorPolo.monitor_id == current_user.id,
-                    MonitorPolo.ativo == True,
-                    Polo.ativo == True
+                    MonitorPolo.ativo.is_(True),
+                    Polo.ativo.is_(True),
+                    Polo.cliente_id == current_user.cliente_id,
                 )
                 .all()
             )
             if not polos:
-                return jsonify({
-                    'success': False,
-                    'message': 'Nenhum polo associado ao monitor'
-                })
+
+                return jsonify(
+                    {
+                        'success': False,
+                        'message': 'Nenhum polo associado ao monitor',
+                    }
+                )
+
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
         else:
@@ -512,19 +517,24 @@ def listar_materiais():
         polo_id = request.args.get('polo_id')
         
         if verificar_acesso_cliente():
-            query = Material.query.filter_by(cliente_id=current_user.id, ativo=True)
-        else:  # Monitor
-            # Buscar polos atribuídos ao monitor
-            polos_monitor = db.session.query(MonitorPolo.polo_id).filter_by(
-                monitor_id=current_user.id, ativo=True
-            ).subquery()
-            query = Material.query.filter(
-                Material.polo_id.in_(polos_monitor),
-                Material.ativo == True
+            query = Material.query.filter_by(
+                cliente_id=current_user.id, ativo=True
             )
-        
+        else:
+            query = (
+                Material.query.join(
+                    MonitorPolo, MonitorPolo.polo_id == Material.polo_id
+                )
+                .filter(
+                    MonitorPolo.monitor_id == current_user.id,
+                    MonitorPolo.ativo.is_(True),
+                    Material.ativo.is_(True),
+                    Material.cliente_id == current_user.cliente_id,
+                )
+            )
+
         if polo_id:
-            query = query.filter_by(polo_id=polo_id)
+            query = query.filter(Material.polo_id == polo_id)
         
         materiais = query.all()
         

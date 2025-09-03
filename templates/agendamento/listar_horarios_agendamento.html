@@ -21,6 +21,9 @@
       </div>
       
       <div class="d-flex justify-content-end mb-4">
+        <a href="{{ url_for('agendamento_routes.adicionar_horario_agendamento', evento_id=evento.id) }}" class="btn btn-primary me-2">
+          <i class="bi bi-plus-circle"></i> Adicionar Horário
+        </a>
         <a href="{{ url_for('agendamento_routes.gerar_horarios_agendamento', evento_id=evento.id) }}" class="btn btn-success me-2">
           <i class="bi bi-calendar-plus"></i> Gerar Novos Horários
         </a>
@@ -87,6 +90,14 @@
                             </div>
                           </td>
                           <td class="text-center">
+                            <form method="POST" action="{{ url_for('agendamento_routes.toggle_horario_agendamento') }}" class="d-inline">
+                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                              <input type="hidden" name="horario_id" value="{{ horario.id }}">
+                              <button type="submit" class="btn btn-sm {% if horario.fechado %}btn-success{% else %}btn-warning{% endif %}" data-bs-toggle="tooltip" title="{% if horario.fechado %}Reabrir{% else %}Fechar{% endif %}">
+                                <i class="bi bi-{% if horario.fechado %}unlock{% else %}lock{% endif %}"></i>
+                              </button>
+                            </form>
+
                             <button class="btn btn-sm btn-primary" data-bs-toggle="tooltip" title="Editar"
                                     onclick="editarHorario({{ horario.id }}, '{{ horario.horario_inicio.strftime('%H:%M') }}', '{{ horario.horario_fim.strftime('%H:%M') }}', {{ horario.capacidade_total }}, {{ horario.vagas_disponiveis }})">
                               <i class="bi bi-pencil"></i>

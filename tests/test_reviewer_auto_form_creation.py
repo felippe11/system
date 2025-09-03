@@ -68,18 +68,27 @@ def test_config_revisor_creates_basic_form(app, client):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
+
                 "/config_revisor",
-                data={"formulario_id": "", "num_etapas": 1, "stage_name": ["Etapa 1"]},
+                data={
+                    "formulario_id": "",
+                    "nome": "Proc",
+                    "status": "ativo",
+                    "num_etapas": 1,
+                    "stage_name": ["Etapa 1"],
+                },
+
             )
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (200, 302)
+        assert resp.status_code == 201
+        proc_id = resp.get_json()["id"]
         form = Formulario.query.filter_by(cliente_id=cliente.id).first()
         assert form is not None
         campos = {c.nome: c for c in form.campos}
         assert {"nome", "email"} <= set(campos)
         assert campos["nome"].obrigatorio is True
         assert campos["email"].obrigatorio is True
-        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        proc = RevisorProcess.query.get(proc_id)
         assert proc is not None and proc.formulario_id == form.id

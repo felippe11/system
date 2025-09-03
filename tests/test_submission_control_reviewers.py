@@ -43,7 +43,11 @@ def app():
         )
         db.session.add_all([admin, cliente])
         db.session.flush()
-        proc = RevisorProcess(cliente_id=cliente.id)
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(proc)
         db.session.flush()
         db.session.add_all(

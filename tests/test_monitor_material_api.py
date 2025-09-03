@@ -30,19 +30,21 @@ def app():
     with app.app_context():
         db.create_all()
 
-        cliente = Cliente(nome='Cliente', email='c@test', senha='x')
-        db.session.add(cliente)
+        cliente1 = Cliente(nome='Cliente', email='c@test', senha='x')
+        cliente2 = Cliente(nome='Outro', email='o@test', senha='x')
+        db.session.add_all([cliente1, cliente2])
         db.session.commit()
 
-        polo_a = Polo(nome='Polo A', cliente_id=cliente.id, ativo=True)
-        polo_b = Polo(nome='Polo B', cliente_id=cliente.id, ativo=True)
-        db.session.add_all([polo_a, polo_b])
+        polo_a = Polo(nome='Polo A', cliente_id=cliente1.id, ativo=True)
+        polo_b = Polo(nome='Polo B', cliente_id=cliente1.id, ativo=True)
+        polo_c = Polo(nome='Polo C', cliente_id=cliente2.id, ativo=True)
+        db.session.add_all([polo_a, polo_b, polo_c])
         db.session.commit()
 
         mat_a = Material(
             nome='Material A',
             polo_id=polo_a.id,
-            cliente_id=cliente.id,
+            cliente_id=cliente1.id,
             quantidade_inicial=1,
             quantidade_atual=1,
             quantidade_minima=0,
@@ -50,12 +52,20 @@ def app():
         mat_b = Material(
             nome='Material B',
             polo_id=polo_b.id,
-            cliente_id=cliente.id,
+            cliente_id=cliente1.id,
             quantidade_inicial=1,
             quantidade_atual=1,
             quantidade_minima=0,
         )
-        db.session.add_all([mat_a, mat_b])
+        mat_c = Material(
+            nome='Material C',
+            polo_id=polo_c.id,
+            cliente_id=cliente2.id,
+            quantidade_inicial=1,
+            quantidade_atual=1,
+            quantidade_minima=0,
+        )
+        db.session.add_all([mat_a, mat_b, mat_c])
         db.session.commit()
 
         monitor1 = Monitor(
@@ -67,7 +77,7 @@ def app():
             email='m1@test',
             telefone_whatsapp='1',
             codigo_acesso='ABC123',
-            cliente_id=cliente.id,
+            cliente_id=cliente1.id,
         )
         monitor2 = Monitor(
             nome_completo='Monitor Dois',
@@ -78,17 +88,22 @@ def app():
             email='m2@test',
             telefone_whatsapp='2',
             codigo_acesso='DEF456',
-            cliente_id=cliente.id,
+            cliente_id=cliente1.id,
         )
         db.session.add_all([monitor1, monitor2])
         db.session.commit()
 
-        atribuicao = MonitorPolo(
+        atribuicao1 = MonitorPolo(
             monitor_id=monitor1.id,
             polo_id=polo_a.id,
             ativo=True,
         )
-        db.session.add(atribuicao)
+        atribuicao2 = MonitorPolo(
+            monitor_id=monitor1.id,
+            polo_id=polo_c.id,
+            ativo=True,
+        )
+        db.session.add_all([atribuicao1, atribuicao2])
         db.session.commit()
     yield app
 
@@ -117,6 +132,7 @@ def test_monitor_with_assignments(client, app):
         assert data['success'] is True
         assert len(data['polos']) == 1
         assert data['polos'][0]['nome'] == 'Polo A'
+        assert 'Polo C' not in [p['nome'] for p in data['polos']]
 
         resp = client.get('/api/materiais')
         data = resp.get_json()
@@ -124,6 +140,7 @@ def test_monitor_with_assignments(client, app):
         assert data['success'] is True
         assert len(data['materiais']) == 1
         assert data['materiais'][0]['nome'] == 'Material A'
+        assert 'Material C' not in [m['nome'] for m in data['materiais']]
 
 
 def test_monitor_without_assignments(client, app):
@@ -135,8 +152,8 @@ def test_monitor_without_assignments(client, app):
         resp = client.get('/api/polos')
         data = resp.get_json()
         assert resp.status_code == 200
-        assert data['success'] is True
-        assert data['polos'] == []
+        assert data['success'] is False
+        assert data['message'] == 'Nenhum polo associado ao monitor'
 
         resp = client.get('/api/materiais')
         data = resp.get_json()
