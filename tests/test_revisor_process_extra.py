@@ -63,11 +63,19 @@ def app():
             publico=True,
             status='ativo',
         )
-        db.session.add_all([e1, e2])
+        e3 = Evento(
+            cliente_id=c2.id,
+            nome='E3',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
+        db.session.add_all([e1, e2, e3])
         db.session.commit()
 
         e1.formularios.append(f1)
         e2.formularios.append(f2)
+        e3.formularios.append(f2)
         db.session.commit()
 
         db.session.add(
@@ -111,10 +119,22 @@ def app():
             formulario_id=f1.id,
             num_etapas=1,
             exibir_para_participantes=False,
+
             nome="Proc",
             status="ativo",
+
         )
-        db.session.add_all([proc1, proc2, proc3])
+        proc_inactive = RevisorProcess(
+            cliente_id=c2.id,
+            formulario_id=f2.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=1),
+            availability_end=date.today() + timedelta(days=1),
+            exibir_para_participantes=True,
+            status='finalizado',
+            eventos=[e3],
+        )
+        db.session.add_all([proc1, proc2, proc3, proc_inactive])
         db.session.commit()
     yield app
 
@@ -142,6 +162,7 @@ def test_visibility_flag_filters(app):
             .filter(
                 RevisorProcess.exibir_para_participantes.is_(True),
                 RevisorProcess.eventos.any(),
+                RevisorProcess.status == 'ativo',
             )
             .all()
         )
@@ -163,7 +184,9 @@ def test_eligible_events_route(client, app):
     data = resp.get_json()
     with app.app_context():
         e1 = Evento.query.filter_by(nome='E1').first()
+        e3 = Evento.query.filter_by(nome='E3').first()
     assert data == [{'id': e1.id, 'nome': 'E1'}]
+    assert {'id': e3.id, 'nome': 'E3'} not in data
 
 
 def test_select_event_route(client):
@@ -172,6 +195,7 @@ def test_select_event_route(client):
     html = resp.get_data(as_text=True)
     assert 'E1' in html
     assert 'E2' not in html
+    assert 'E3' not in html
 
 
 def test_revisorprocess_eventos_relationship(app):
@@ -204,7 +228,7 @@ def test_config_route_saves_availability(client, app):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                '/config_revisor',
+                '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
                     'nome': 'Proc',
@@ -219,8 +243,9 @@ def test_config_route_saves_availability(client, app):
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (302, 200)
-        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert resp.status_code == 201
+        proc_id = resp.get_json()['id']
+        proc = RevisorProcess.query.get(proc_id)
         assert proc.availability_start.date() == start
         assert proc.availability_end.date() == end
 
@@ -237,7 +262,7 @@ def test_config_route_saves_eventos(client, app):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                '/config_revisor',
+                '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
                     'nome': 'Proc',
@@ -250,8 +275,9 @@ def test_config_route_saves_eventos(client, app):
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (302, 200)
-        proc = RevisorProcess.query.filter_by(cliente_id=cliente.id).first()
+        assert resp.status_code == 201
+        proc_id = resp.get_json()['id']
+        proc = RevisorProcess.query.get(proc_id)
         assert [e.id for e in proc.eventos] == [evento.id]
 
 
@@ -265,7 +291,12 @@ def test_config_route_renders_eventos(client, app):
         with client:
             with app.test_request_context():
                 login_user(cliente)
-            resp = client.get('/config_revisor')
+            proc = (
+                RevisorProcess.query.filter_by(cliente_id=cliente.id)
+                .filter(RevisorProcess.eventos.any())
+                .all()[0]
+            )
+            resp = client.get(f'/revisor/processos/{proc.id}')
             with app.test_request_context():
                 logout_user()
 

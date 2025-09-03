@@ -6,6 +6,7 @@ import pytest
 from io import BytesIO
 from flask import send_file
 from werkzeug.security import generate_password_hash
+from datetime import datetime, timedelta
 from config import Config
 Config.SQLALCHEMY_DATABASE_URI = 'sqlite://'
 Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(Config.SQLALCHEMY_DATABASE_URI)
@@ -26,6 +27,7 @@ utils_stub.gerar_comprovante_pdf = lambda *a, **k: ''
 utils_stub.enviar_email = lambda *a, **k: None
 utils_stub.formatar_brasilia = lambda *a, **k: ''
 utils_stub.determinar_turno = lambda *a, **k: ''
+utils_stub.endpoints = types.SimpleNamespace(DASHBOARD='dashboard')
 sys.modules.setdefault('utils', utils_stub)
 utils_security = types.ModuleType('utils.security')
 utils_security.sanitize_input = lambda x: x
@@ -69,6 +71,7 @@ sys.modules.setdefault('utils.arquivo_utils', arquivo_utils_stub)
 
 from app import create_app
 from extensions import db, login_manager
+
 from models import (
     Usuario,
     Cliente,
@@ -77,6 +80,7 @@ from models import (
     CampoFormulario,
     RevisorProcess,
     RevisorCandidatura,
+    Evento,
 )
 from routes.auth_routes import auth_routes
 
@@ -321,3 +325,60 @@ def test_approve_revisor_cpf_collision_error(client, app, monkeypatch, caplog):
         cand_db = RevisorCandidatura.query.get(cand_id)
         assert cand_db.status == 'pendente'
         assert Usuario.query.filter_by(email='cand2@test').first() is None
+
+
+def test_eligible_events_filters_by_status(client, app):
+    with app.app_context():
+        cliente = Cliente.query.filter_by(email='cli@test').first()
+        form = Formulario(nome='Form2', cliente_id=cliente.id)
+        cliente2 = Cliente(nome='Cli2', email='cli2@test', senha=generate_password_hash('123', method="pbkdf2:sha256"))
+        db.session.add_all([form, cliente2])
+        db.session.commit()
+        form2 = Formulario(nome='Form3', cliente_id=cliente2.id)
+        db.session.add(form2)
+        db.session.commit()
+        e_active = Evento(
+            cliente_id=cliente.id,
+            nome='EA',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
+        e_inactive = Evento(
+            cliente_id=cliente2.id,
+            nome='EI',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
+        db.session.add_all([e_active, e_inactive])
+        db.session.commit()
+        proc_active = RevisorProcess(
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            availability_start=datetime.utcnow() - timedelta(days=1),
+            availability_end=datetime.utcnow() + timedelta(days=1),
+            exibir_para_participantes=True,
+            status='ativo',
+            eventos=[e_active],
+        )
+        proc_inactive = RevisorProcess(
+            cliente_id=cliente2.id,
+            formulario_id=form2.id,
+            num_etapas=1,
+            availability_start=datetime.utcnow() - timedelta(days=1),
+            availability_end=datetime.utcnow() + timedelta(days=1),
+            exibir_para_participantes=True,
+            status='finalizado',
+            eventos=[e_inactive],
+        )
+        db.session.add_all([proc_active, proc_inactive])
+        db.session.commit()
+        e_active_id, e_inactive_id = e_active.id, e_inactive.id
+
+    resp = client.get('/revisor/eligible_events')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert {'id': e_active_id, 'nome': 'EA'} in data
+    assert {'id': e_inactive_id, 'nome': 'EI'} not in data

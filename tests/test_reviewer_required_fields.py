@@ -82,7 +82,7 @@ def test_config_revisor_adds_default_fields(app, client):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                "/config_revisor",
+                "/revisor/processos",
                 data={
                     "formulario_id": formulario.id,
                     "nome": "Proc",
@@ -94,7 +94,7 @@ def test_config_revisor_adds_default_fields(app, client):
             with app.test_request_context():
                 logout_user()
 
-        assert resp.status_code in (200, 302)
+        assert resp.status_code == 201
         campos = CampoFormulario.query.filter_by(formulario_id=formulario.id).all()
         campos = {c.nome: c for c in campos}
         assert {"nome", "email"} <= set(campos)

@@ -64,6 +64,6 @@ def test_form_creation_does_not_create_revisor_process(client, app):
     with app.app_context():
         form = Formulario.query.filter_by(nome='F1').first()
         assert form is not None
-        proc = RevisorProcess.query.filter_by(cliente_id=form.cliente_id).first()
-        assert proc is None
+        procs = RevisorProcess.query.filter_by(cliente_id=form.cliente_id).all()
+        assert procs == []
 
