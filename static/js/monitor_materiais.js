@@ -64,10 +64,6 @@ async function carregarDadosIniciais() {
 
 
         polosData = polosJson.polos || [];
-
-        // Carregar materiais somente se houver polos
-        const materiaisResponse = await fetch('/api/materiais');
-        const materiaisJson = await parseAndValidate(materiaisResponse);
         materiaisData = materiaisJson.materiais || [];
 
         if (polosData.length === 0) {
