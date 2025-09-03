@@ -67,29 +67,39 @@ def test_delete_process_removes_related_data(app, client):
         )
         db.session.add(cliente)
         db.session.commit()
-        proc = RevisorProcess(cliente_id=cliente.id, num_etapas=1)
-        db.session.add(proc)
+        proc1 = RevisorProcess(cliente_id=cliente.id, num_etapas=1)
+        db.session.add(proc1)
         db.session.commit()
-        etapa = RevisorEtapa(process_id=proc.id, numero=1, nome="E1")
-        criterio = RevisorCriterio(process_id=proc.id, nome="C1")
+        etapa = RevisorEtapa(process_id=proc1.id, numero=1, nome="E1")
+        criterio = RevisorCriterio(process_id=proc1.id, nome="C1")
         cand = RevisorCandidatura(
-            process_id=proc.id, nome="Cand", email="cand@test"
+            process_id=proc1.id, nome="Cand", email="cand@test"
         )
         db.session.add_all([etapa, criterio, cand])
         db.session.commit()
         status = RevisorCandidaturaEtapa(candidatura_id=cand.id, etapa_id=etapa.id)
         db.session.add(status)
         db.session.commit()
+        proc2 = RevisorProcess(cliente_id=cliente.id, num_etapas=1)
+        db.session.add(proc2)
+        db.session.commit()
 
     with client:
         with client.session_transaction() as sess:
             sess["_user_id"] = str(cliente.id)
             sess["_fresh"] = True
-        resp = client.post(f"/revisor/{proc.id}/delete")
-        assert resp.status_code == 302
+        resp_list = client.get("/revisor/processos")
+        assert resp_list.status_code == 200
+        ids = {p["id"] for p in resp_list.get_json()}
+        assert {proc1.id, proc2.id} == ids
+        resp = client.delete(f"/revisor/processos/{proc1.id}")
+        assert resp.status_code == 204
+        resp_list = client.get("/revisor/processos")
+        assert resp_list.get_json() == [{"id": proc2.id, "formulario_id": None}]
 
     with app.app_context():
-        assert RevisorProcess.query.get(proc.id) is None
+        assert RevisorProcess.query.get(proc1.id) is None
+        assert RevisorProcess.query.get(proc2.id) is not None
         assert RevisorEtapa.query.count() == 0
         assert RevisorCriterio.query.count() == 0
         assert RevisorCandidatura.query.count() == 0
