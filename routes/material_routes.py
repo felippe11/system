@@ -89,42 +89,26 @@ def listar_polos():
     """API para listar polos acessíveis ao usuário atual.
 
     - Cliente: lista todos os polos do cliente.
-    - Monitor: lista apenas polos atribuídos ao monitor.
+    - Monitor: lista todos os polos do cliente do monitor.
     - Admin: lista todos os polos ativos.
     """
-    
+
     try:
         if verificar_acesso_cliente():
-            polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+            polos = Polo.query.filter_by(
+                cliente_id=current_user.id, ativo=True
+            ).all()
         elif verificar_acesso_monitor():
-            polos = (
-                db.session.query(Polo)
-                .join(MonitorPolo, MonitorPolo.polo_id == Polo.id)
-                .filter(
-                    MonitorPolo.monitor_id == current_user.id,
-                    MonitorPolo.ativo.is_(True),
-                    Polo.ativo.is_(True),
-                    Polo.cliente_id == current_user.cliente_id,
-                )
-                .all()
-            )
-            if not polos:
-
-                return jsonify(
-                    {
-                        'success': False,
-                        'message': 'Nenhum polo associado ao monitor',
-                    }
-                )
-
+            polos = Polo.query.filter_by(
+                cliente_id=current_user.cliente_id, ativo=True
+            ).all()
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
         else:
             return jsonify({'success': False, 'message': 'Acesso negado'}), 403
-        return jsonify({
-            'success': True,
-            'polos': [polo.to_dict() for polo in polos]
-        })
+        return jsonify(
+            {'success': True, 'polos': [polo.to_dict() for polo in polos]}
+        )
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -336,16 +320,11 @@ def registrar_movimentacao_api():
         material = Material.query.get(material_id)
         if not material:
             return jsonify({'success': False, 'message': 'Material não encontrado'}), 404
-        
-        # Verificar se o monitor tem acesso ao polo do material
-        acesso_polo = MonitorPolo.query.filter_by(
-            monitor_id=current_user.id,
-            polo_id=material.polo_id,
-            ativo=True
-        ).first()
-        
-        if not acesso_polo:
-            return jsonify({'success': False, 'message': 'Acesso negado ao polo deste material'}), 403
+
+        if material.cliente_id != current_user.cliente_id:
+            return jsonify(
+                {'success': False, 'message': 'Acesso negado ao material'}
+            ), 403
         
         # Calcular nova quantidade
         if tipo == 'entrada':
@@ -521,16 +500,8 @@ def listar_materiais():
                 cliente_id=current_user.id, ativo=True
             )
         else:
-            query = (
-                Material.query.join(
-                    MonitorPolo, MonitorPolo.polo_id == Material.polo_id
-                )
-                .filter(
-                    MonitorPolo.monitor_id == current_user.id,
-                    MonitorPolo.ativo.is_(True),
-                    Material.ativo.is_(True),
-                    Material.cliente_id == current_user.cliente_id,
-                )
+            query = Material.query.filter_by(
+                cliente_id=current_user.cliente_id, ativo=True
             )
 
         if polo_id:
@@ -682,15 +653,14 @@ def monitor_materiais():
         return redirect(url_for('main.index'))
     
     try:
-        # Buscar polos atribuídos ao monitor
-        polos_atribuidos = db.session.query(Polo).join(MonitorPolo).filter(
-            MonitorPolo.monitor_id == current_user.id,
-            MonitorPolo.ativo == True,
-            Polo.ativo == True
+        # Buscar todos os polos do cliente do monitor
+        polos_cliente = Polo.query.filter_by(
+            cliente_id=current_user.cliente_id, ativo=True
         ).all()
-        
-        return render_template('material/monitor_materiais.html',
-                             polos=polos_atribuidos)
+
+        return render_template(
+            'material/monitor_materiais.html', polos=polos_cliente
+        )
     
     except Exception as e:
         current_app.logger.error(f"Erro ao carregar dashboard do monitor: {str(e)}")
@@ -711,14 +681,12 @@ def registrar_movimentacao(material_id):
         
         # Verificar acesso ao material
         if verificar_acesso_cliente():
-            material = Material.query.filter_by(id=material_id, cliente_id=current_user.id).first()
-        else:  # Monitor
-            # Verificar se o monitor tem acesso ao polo do material
-            material = db.session.query(Material).join(MonitorPolo).filter(
-                Material.id == material_id,
-                MonitorPolo.monitor_id == current_user.id,
-                MonitorPolo.polo_id == Material.polo_id,
-                MonitorPolo.ativo == True
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.id
+            ).first()
+        else:
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.cliente_id
             ).first()
         
         if not material:
@@ -786,13 +754,12 @@ def listar_movimentacoes(material_id):
     try:
         # Verificar acesso ao material
         if verificar_acesso_cliente():
-            material = Material.query.filter_by(id=material_id, cliente_id=current_user.id).first()
-        else:  # Monitor
-            material = db.session.query(Material).join(MonitorPolo).filter(
-                Material.id == material_id,
-                MonitorPolo.monitor_id == current_user.id,
-                MonitorPolo.polo_id == Material.polo_id,
-                MonitorPolo.ativo == True
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.id
+            ).first()
+        else:
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.cliente_id
             ).first()
         
         if not material:
