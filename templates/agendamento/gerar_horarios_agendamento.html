@@ -50,15 +50,6 @@
               </div>
             </div>
 
-            <div class="mb-3">
-              <label class="form-label">Datas com Horários Extras</label>
-              <div id="datas-extra-container"></div>
-              <button type="button" class="btn btn-secondary mb-2" id="add-extra">
-                <i class="bi bi-plus"></i> Adicionar Data Extra
-              </button>
-              <div class="form-text">Datas que terão horários adicionais.</div>
-            </div>
-
             <div class="alert alert-warning">
               <i class="bi bi-exclamation-triangle"></i> Atenção:
               <ul>
@@ -120,32 +111,6 @@
       }
     });
 
-    const container = document.getElementById('datas-extra-container');
-    document.getElementById('add-extra').addEventListener('click', function() {
-      const row = document.createElement('div');
-      row.className = 'row g-2 mb-2 extra-row';
-      row.innerHTML = `
-        <div class="col-md-4">
-          <input type="date" class="form-control" name="datas_extra[]">
-        </div>
-        <div class="col-md-3">
-          <input type="time" class="form-control" name="horario_inicio_extra[]">
-        </div>
-        <div class="col-md-3">
-          <input type="time" class="form-control" name="horario_fim_extra[]">
-        </div>
-        <div class="col-md-2">
-          <button type="button" class="btn btn-outline-danger w-100 remove-extra"><i class="bi bi-trash"></i></button>
-        </div>
-      `;
-      container.appendChild(row);
-    });
-
-    container.addEventListener('click', function(e) {
-      if (e.target.closest('.remove-extra')) {
-        e.target.closest('.extra-row').remove();
-      }
-    });
   });
 </script>
 {% endblock %}
