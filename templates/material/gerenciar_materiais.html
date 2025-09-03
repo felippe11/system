@@ -262,6 +262,108 @@
 
 
 
+<!-- Modal Material -->
+<div class="modal fade" id="modalMaterial" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-material">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-polo" class="form-label">Polo *</label>
+                                <select id="material-polo" class="form-select" required>
+                                    <option value="">Selecione um polo</option>
+                                    {% for polo in polos %}
+                                    <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-categoria" class="form-label">Categoria</label>
+                                <select id="material-categoria" class="form-select">
+                                    <option value="">Selecione uma categoria</option>
+                                    <option value="Papelaria">Papelaria</option>
+                                    <option value="Limpeza">Limpeza</option>
+                                    <option value="Informática">Informática</option>
+                                    <option value="Móveis">Móveis</option>
+                                    <option value="Equipamentos">Equipamentos</option>
+                                    <option value="Consumíveis">Consumíveis</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material-nome" class="form-label">Nome do Material *</label>
+                        <input type="text" class="form-control" id="material-nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material-descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="material-descricao" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-unidade" class="form-label">Unidade *</label>
+                                <select id="material-unidade" class="form-select" required>
+                                    <option value="">Selecione</option>
+                                    <option value="un">Unidade</option>
+                                    <option value="cx">Caixa</option>
+                                    <option value="pct">Pacote</option>
+                                    <option value="kg">Quilograma</option>
+                                    <option value="l">Litro</option>
+                                    <option value="m">Metro</option>
+                                    <option value="m²">Metro²</option>
+                                    <option value="resma">Resma</option>
+                                    <option value="dz">Dúzia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-quantidade-inicial" class="form-label">Quantidade Atual</label>
+                                <input type="number" class="form-control" id="material-quantidade-inicial" min="0" disabled>
+                                <div class="form-text">Quantidade atual em estoque</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-quantidade-minima" class="form-label">Estoque Mínimo</label>
+                                <input type="number" class="form-control" id="material-quantidade-minima" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-preco" class="form-label">Preço Unitário (R$)</label>
+                                <input type="number" class="form-control" id="material-preco" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-fornecedor" class="form-label">Fornecedor</label>
+                                <input type="text" class="form-control" id="material-fornecedor">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Movimentação -->
 <div class="modal fade" id="modalMovimentacao" tabindex="-1">
     <div class="modal-dialog">
