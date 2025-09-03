@@ -85,6 +85,8 @@ def test_config_revisor_adds_default_fields(app, client):
                 "/config_revisor",
                 data={
                     "formulario_id": formulario.id,
+                    "nome": "Proc",
+                    "status": "ativo",
                     "num_etapas": 1,
                     "stage_name": ["Etapa 1"],
                 },

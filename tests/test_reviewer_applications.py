@@ -69,7 +69,7 @@ sys.modules.setdefault('utils.arquivo_utils', arquivo_utils_stub)
 
 from app import create_app
 from extensions import db, login_manager
-
+from models import (
     Usuario,
     Cliente,
     ReviewerApplication,
@@ -185,7 +185,13 @@ def test_revisor_approval_without_email(client, app):
         campo_nome = CampoFormulario(formulario_id=form.id, nome='nome', tipo='text')
         db.session.add(campo_nome)
         db.session.commit()
-        proc = RevisorProcess(cliente_id=cliente.id, formulario_id=form.id, num_etapas=1)
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(proc)
         db.session.commit()
         campo_id = campo_nome.id
@@ -225,7 +231,11 @@ def test_approve_revisor_cpf_collision(client, app, monkeypatch):
         db.session.add(form)
         db.session.commit()
         proc = RevisorProcess(
-            cliente_id=cliente.id, formulario_id=form.id, num_etapas=1
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(proc)
         db.session.commit()
@@ -272,7 +282,11 @@ def test_approve_revisor_cpf_collision_error(client, app, monkeypatch, caplog):
         db.session.add(form)
         db.session.commit()
         proc = RevisorProcess(
-            cliente_id=cliente.id, formulario_id=form.id, num_etapas=1
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(proc)
         db.session.commit()
