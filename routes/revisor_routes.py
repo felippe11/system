@@ -492,6 +492,7 @@ def select_event():
     processos = (
         RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
         .filter(
+            RevisorProcess.status == "ativo",
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),
@@ -845,6 +846,7 @@ def eligible_events():
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
+            RevisorProcess.status == "ativo",
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),
