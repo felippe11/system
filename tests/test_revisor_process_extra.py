@@ -63,11 +63,19 @@ def app():
             publico=True,
             status='ativo',
         )
-        db.session.add_all([e1, e2])
+        e3 = Evento(
+            cliente_id=c2.id,
+            nome='E3',
+            inscricao_gratuita=True,
+            publico=True,
+            status='ativo',
+        )
+        db.session.add_all([e1, e2, e3])
         db.session.commit()
 
         e1.formularios.append(f1)
         e2.formularios.append(f2)
+        e3.formularios.append(f2)
         db.session.commit()
 
         db.session.add(
@@ -108,9 +116,18 @@ def app():
             formulario_id=f1.id,
             num_etapas=1,
             exibir_para_participantes=False,
-
         )
-        db.session.add_all([proc1, proc2, proc3])
+        proc_inactive = RevisorProcess(
+            cliente_id=c2.id,
+            formulario_id=f2.id,
+            num_etapas=1,
+            availability_start=date.today() - timedelta(days=1),
+            availability_end=date.today() + timedelta(days=1),
+            exibir_para_participantes=True,
+            status='finalizado',
+            eventos=[e3],
+        )
+        db.session.add_all([proc1, proc2, proc3, proc_inactive])
         db.session.commit()
     yield app
 
@@ -138,6 +155,7 @@ def test_visibility_flag_filters(app):
             .filter(
                 RevisorProcess.exibir_para_participantes.is_(True),
                 RevisorProcess.eventos.any(),
+                RevisorProcess.status == 'ativo',
             )
             .all()
         )
@@ -159,7 +177,9 @@ def test_eligible_events_route(client, app):
     data = resp.get_json()
     with app.app_context():
         e1 = Evento.query.filter_by(nome='E1').first()
+        e3 = Evento.query.filter_by(nome='E3').first()
     assert data == [{'id': e1.id, 'nome': 'E1'}]
+    assert {'id': e3.id, 'nome': 'E3'} not in data
 
 
 def test_select_event_route(client):
@@ -168,6 +188,7 @@ def test_select_event_route(client):
     html = resp.get_data(as_text=True)
     assert 'E1' in html
     assert 'E2' not in html
+    assert 'E3' not in html
 
 
 def test_revisorprocess_eventos_relationship(app):

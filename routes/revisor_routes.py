@@ -133,7 +133,7 @@ def _config_process(process_id: int | None = None):
             db.session.add(processo)
 
         update_revisor_process(processo, dados)
-        update_process_eventos(processo, dados["eventos_ids"])
+        update_process_eventos(processo, dados.get("eventos_ids"))
         recreate_stages(processo, dados["stage_names"])
         recreate_criterios(processo, dados["criterios"])
         if created_form is None and processo.formulario_id:
@@ -527,6 +527,7 @@ def select_event():
     processos = (
         RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
         .filter(
+            RevisorProcess.status == "ativo",
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),
@@ -548,7 +549,9 @@ def select_event():
             if ev:
                 eventos.append(ev)
 
-        status = "Aberto" if proc.is_available() else "Encerrado"
+        status = proc.status if getattr(proc, "status", None) else (
+            "Aberto" if proc.is_available() else "Encerrado"
+        )
         if not eventos:
             registros.append({"evento": None, "processo": proc, "status": status})
             continue
@@ -878,6 +881,7 @@ def eligible_events():
         .filter(
             Evento.status == "ativo",
             Evento.publico.is_(True),
+            RevisorProcess.status == "ativo",
             RevisorProcess.exibir_para_participantes.is_(True),
             or_(
                 RevisorProcess.availability_start.is_(None),

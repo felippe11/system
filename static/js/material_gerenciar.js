@@ -34,7 +34,8 @@ function configurarEventos() {
     });
     
     // Forms
-    // Event listeners removidos - agora usando páginas separadas
+    // Event listeners
+    document.getElementById('form-material')?.addEventListener('submit', salvarMaterial);
     document.getElementById('form-movimentacao')?.addEventListener('submit', salvarMovimentacao);
 
     // Exportação WhatsApp
@@ -368,6 +369,49 @@ async function salvarMovimentacao(event) {
     }
 }
 
+// Salvar material
+async function salvarMaterial(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('form-material');
+    const materialId = form.getAttribute('data-edit-id');
+
+    const formData = {
+        polo_id: document.getElementById('material-polo').value,
+        nome: document.getElementById('material-nome').value,
+        descricao: document.getElementById('material-descricao').value,
+        unidade: document.getElementById('material-unidade').value,
+        categoria: document.getElementById('material-categoria').value,
+        quantidade_minima: parseInt(document.getElementById('material-quantidade-minima').value) || 0,
+        preco_unitario: parseFloat(document.getElementById('material-preco').value) || null,
+        fornecedor: document.getElementById('material-fornecedor').value || null
+    };
+
+    try {
+        const response = await fetch(`/api/materiais/${materialId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+            showAlert('Material atualizado com sucesso!', 'success');
+            form.reset();
+            form.removeAttribute('data-edit-id');
+            bootstrap.Modal.getInstance(document.getElementById('modalMaterial')).hide();
+            carregarDados();
+        } else {
+            const error = await response.json();
+            showAlert(error.message || 'Erro ao atualizar material', 'danger');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showAlert('Erro ao atualizar material', 'danger');
+    }
+}
+
 // Editar material
 function editarMaterial(materialId) {
     const material = materiaisData.find(m => m.id === materialId);
@@ -381,6 +425,8 @@ function editarMaterial(materialId) {
     document.getElementById('material-categoria').value = material.categoria || '';
     document.getElementById('material-quantidade-inicial').value = material.quantidade_atual;
     document.getElementById('material-quantidade-minima').value = material.quantidade_minima;
+    document.getElementById('material-preco').value = material.preco_unitario || '';
+    document.getElementById('material-fornecedor').value = material.fornecedor || '';
     
     // Alterar título e ação do modal
     document.querySelector('#modalMaterial .modal-title').textContent = 'Editar Material';

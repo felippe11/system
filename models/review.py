@@ -370,7 +370,9 @@ class RevisorProcess(db.Model):
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     num_etapas = db.Column(db.Integer, default=1)
 
+
     # Informações básicas
+
     nome = db.Column(db.String(255), nullable=True)
     descricao = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(50), nullable=True)
@@ -379,6 +381,7 @@ class RevisorProcess(db.Model):
     availability_start = db.Column(db.DateTime, nullable=True)
     availability_end = db.Column(db.DateTime, nullable=True)
     exibir_para_participantes = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(50), default="ativo")
 
     cliente = db.relationship(
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
