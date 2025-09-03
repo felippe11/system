@@ -109,12 +109,14 @@ def listar_polos():
                 .all()
             )
             if not polos:
+
                 return jsonify(
                     {
                         'success': False,
                         'message': 'Nenhum polo associado ao monitor',
                     }
                 )
+
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
         else:

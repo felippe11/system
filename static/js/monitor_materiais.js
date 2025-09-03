@@ -49,6 +49,7 @@ async function carregarDadosIniciais() {
         }
 
         polosData = polosJson.polos || [];
+
         if (polosData.length === 0) {
             mostrarAlerta('Nenhum polo atribuído ao monitor', 'info');
             materiaisData = [];

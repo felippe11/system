@@ -125,7 +125,11 @@ def app():
         db.session.add(evento)
         db.session.commit()
 
-        process = RevisorProcess(cliente_id=cliente.id)
+        process = RevisorProcess(
+            cliente_id=cliente.id,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(process)
         db.session.commit()
 

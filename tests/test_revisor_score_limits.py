@@ -16,7 +16,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-
+from models import (
     Usuario,
     Cliente,
     Evento,
@@ -52,7 +52,12 @@ def app():
             formacao="X",
             tipo="revisor",
         )
-        process = RevisorProcess(cliente_id=cliente.id, num_etapas=1)
+        process = RevisorProcess(
+            cliente_id=cliente.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add_all([reviewer, process])
         db.session.flush()
         barema_proc = ProcessoBarema(process_id=process.id)
