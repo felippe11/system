@@ -491,29 +491,48 @@ def listar_materiais():
     """API para listar materiais."""
     if not (verificar_acesso_cliente() or verificar_acesso_monitor()):
         return jsonify({'success': False, 'message': 'Acesso negado'}), 403
-    
+
     try:
         polo_id = request.args.get('polo_id')
-        
+
         if verificar_acesso_cliente():
             query = Material.query.filter_by(
                 cliente_id=current_user.id, ativo=True
             )
         else:
-            query = Material.query.filter_by(
-                cliente_id=current_user.cliente_id, ativo=True
+            # Verificar associação do monitor com um cliente
+            cliente_id = current_user.cliente_id
+            if cliente_id is None:
+                associacao = MonitorPolo.query.join(Polo).filter(
+                    MonitorPolo.monitor_id == current_user.id,
+                    MonitorPolo.ativo.is_(True)
+                ).first()
+                if not associacao:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Monitor não associado a nenhum cliente'
+                    }), 400
+                cliente_id = associacao.polo.cliente_id
+
+            query = Material.query.join(
+                MonitorPolo, MonitorPolo.polo_id == Material.polo_id
+            ).filter(
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
+                Material.cliente_id == cliente_id,
+                Material.ativo.is_(True)
             )
 
         if polo_id:
             query = query.filter(Material.polo_id == polo_id)
-        
+
         materiais = query.all()
-        
+
         return jsonify({
             'success': True,
             'materiais': [material.to_dict() for material in materiais]
         })
-    
+
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
