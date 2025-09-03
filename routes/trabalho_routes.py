@@ -22,7 +22,6 @@ from extensions import db, csrf
 from models import (
     AuditLog,
     Assignment,
-    DistributionLog,
     Evento,
     Formulario,
     RespostaCampo,
