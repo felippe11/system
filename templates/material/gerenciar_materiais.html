@@ -266,48 +266,6 @@
 
 
 
-<!-- Modal Movimentação -->
-<div class="modal fade" id="modalMovimentacao" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Registrar Movimentação</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="form-movimentacao">
-                <div class="modal-body">
-                    <input type="hidden" id="movimentacao-material-id">
-                    <div class="mb-3">
-                        <label class="form-label">Material:</label>
-                        <p class="form-control-plaintext" id="movimentacao-material-nome"></p>
-                    </div>
-                    <div class="mb-3">
-                        <label for="movimentacao-tipo" class="form-label">Tipo de Movimentação *</label>
-                        <select class="form-select" id="movimentacao-tipo" required>
-                            <option value="entrada">Entrada (Compra/Recebimento)</option>
-                            <option value="saida">Saída (Consumo/Uso)</option>
-                            <option value="ajuste">Ajuste de Estoque</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="movimentacao-quantidade" class="form-label">Quantidade *</label>
-                        <input type="number" class="form-control" id="movimentacao-quantidade" min="1" required>
-                        <div class="form-text">Estoque atual: <span id="estoque-atual"></span></div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="movimentacao-observacao" class="form-label">Observação</label>
-                        <textarea class="form-control" id="movimentacao-observacao" rows="3" placeholder="Descreva o motivo da movimentação..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Registrar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- Modal WhatsApp -->
 <div class="modal fade" id="modalWhatsApp" tabindex="-1">
     <div class="modal-dialog modal-lg">

@@ -1239,3 +1239,21 @@ def editar_material(material_id):
         'material/editar_material.html', material=material, polos=polos
     )
 
+
+@material_routes.route('/materiais/<int:material_id>/movimentar')
+@login_required
+def movimentar_material(material_id):
+    """Página para registrar movimentação de um material."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    material = Material.query.filter_by(
+        id=material_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not material:
+        flash('Material não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template('material/movimentar_material.html', material=material)
+
