@@ -5,7 +5,9 @@ from jinja2 import Template
 
 from extensions import db
 from models.submission_system import (
-    ReviewerProfile, DistributionLog, DistributionConfig
+    ReviewerProfile,
+    AutoDistributionLog,
+    DistributionConfig,
 )
 from models.review import Assignment, Submission
 from models.user import Usuario
@@ -22,7 +24,9 @@ class NotificationService:
         self.evento_id = evento_id
         self.evento = Evento.query.get(evento_id)
     
-    def notify_distribution_completed(self, distribution_log: DistributionLog) -> Dict:
+    def notify_distribution_completed(
+        self, distribution_log: AutoDistributionLog
+    ) -> Dict:
         """Notifica sobre conclusão da distribuição automática."""
         try:
             # Obter administradores do evento
@@ -252,7 +256,9 @@ class NotificationService:
             html=html_content
         )
     
-    def _calculate_success_rate(self, distribution_log: DistributionLog) -> float:
+    def _calculate_success_rate(
+        self, distribution_log: AutoDistributionLog
+    ) -> float:
         """Calcula taxa de sucesso da distribuição."""
         if distribution_log.total_submissions == 0:
             return 0.0

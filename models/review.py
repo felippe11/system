@@ -381,8 +381,12 @@ class DistributionLog(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # relationships
-    evento = db.relationship("Evento", backref=db.backref("distribution_logs", lazy=True))
-    distributor = db.relationship("Usuario", backref=db.backref("distribution_logs", lazy=True))
+    evento = db.relationship(
+        "Evento", backref=db.backref("manual_distribution_logs", lazy=True)
+    )
+    distributor = db.relationship(
+        "Usuario", backref=db.backref("manual_distribution_logs", lazy=True)
+    )
 
     def __repr__(self):
         return f"<DistributionLog {self.id} evento={self.evento_id} type={self.distribution_type}>"
