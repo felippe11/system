@@ -1077,3 +1077,73 @@ def novo_material():
         return redirect(url_for('main.index'))
     
     return render_template('material/novo_material.html')
+
+
+@material_routes.route('/editar-polo/<int:polo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_polo(polo_id):
+    """Página para editar um polo existente."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+
+    polo = Polo.query.filter_by(
+        id=polo_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not polo:
+        flash('Polo não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    if request.method == 'POST':
+        polo.nome = request.form.get('nome', polo.nome)
+        polo.descricao = request.form.get('descricao', polo.descricao)
+        polo.endereco = request.form.get('endereco', polo.endereco)
+        polo.responsavel = request.form.get('responsavel', polo.responsavel)
+        polo.telefone = request.form.get('telefone', polo.telefone)
+        polo.email = request.form.get('email', polo.email)
+        polo.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash('Polo atualizado com sucesso', 'success')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template('material/editar_polo.html', polo=polo)
+
+
+@material_routes.route('/editar-material/<int:material_id>', methods=['GET', 'POST'])
+@login_required
+def editar_material(material_id):
+    """Página para editar um material existente."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+
+    material = Material.query.filter_by(
+        id=material_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not material:
+        flash('Material não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+
+    if request.method == 'POST':
+        material.polo_id = int(request.form.get('polo_id') or material.polo_id)
+        material.nome = request.form.get('nome', material.nome)
+        material.descricao = request.form.get('descricao', material.descricao)
+        material.unidade = request.form.get('unidade', material.unidade)
+        material.categoria = request.form.get('categoria', material.categoria)
+        material.quantidade_minima = int(
+            request.form.get('quantidade_minima') or material.quantidade_minima
+        )
+        preco = request.form.get('preco_unitario')
+        material.preco_unitario = float(preco) if preco else None
+        material.fornecedor = request.form.get('fornecedor', material.fornecedor)
+        material.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash('Material atualizado com sucesso', 'success')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template(
+        'material/editar_material.html', material=material, polos=polos
+    )
+
