@@ -240,7 +240,7 @@ def config_revisor():
 
 @revisor_routes.route("/revisor/config", methods=["GET"])
 @login_required
-def config_revisor():
+def config_overview():
     """Main configuration page for reviewer processes.
     
     Lists all existing reviewer processes for the current client
