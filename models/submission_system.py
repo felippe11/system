@@ -131,12 +131,12 @@ class DistributionConfig(db.Model):
         return f"<DistributionConfig evento={self.evento_id} mode={self.distribution_mode}>"
 
 
-class DistributionLog(db.Model):
+class AutoDistributionLog(db.Model):
     """Log de auditoria das distribuições automáticas."""
-    
-    __tablename__ = "distribution_log"
+
+    __tablename__ = "auto_distribution_log"
     __table_args__ = {"extend_existing": True}
-    
+
     id = db.Column(db.Integer, primary_key=True)
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=False)
     
@@ -160,10 +160,15 @@ class DistributionLog(db.Model):
     duration_seconds = db.Column(db.Integer, nullable=True)
     
     # Relacionamentos
-    evento = db.relationship("Evento", backref=db.backref("distribution_logs", lazy=True))
-    
+    evento = db.relationship(
+        "Evento", backref=db.backref("auto_distribution_logs", lazy=True)
+    )
+
     def __repr__(self):
-        return f"<DistributionLog evento={self.evento_id} submissions={self.total_submissions}>"
+        return (
+            f"<AutoDistributionLog evento={self.evento_id} "
+            f"submissions={self.total_submissions}>"
+        )
     
     def mark_completed(self):
         """Marca a distribuição como concluída e calcula a duração."""

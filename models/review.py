@@ -357,6 +357,7 @@ class Assignment(db.Model):
     reviewer = db.relationship("Usuario", foreign_keys=[reviewer_id], backref=db.backref("assignments", lazy=True))
     distributor = db.relationship("Usuario", foreign_keys=[distributed_by], backref=db.backref("distributed_assignments", lazy=True))
 
+
 # Associação N:N entre processos de revisor e eventos (removida - usando a definição do topo do arquivo)
 
 class RevisorProcess(db.Model):
