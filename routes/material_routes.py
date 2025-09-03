@@ -668,6 +668,113 @@ def monitor_materiais():
         return redirect(url_for('main.index'))
 
 
+@material_routes.route('/monitor/materiais/nova-movimentacao', methods=['GET', 'POST'])
+@login_required
+def nova_movimentacao_monitor():
+    """Exibe formulário e registra movimentações para monitores."""
+    if not verificar_acesso_monitor():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('main.index'))
+
+    if request.method == 'POST':
+        material_id = request.form.get('material_id', type=int)
+        tipo = request.form.get('tipo')
+        quantidade = request.form.get('quantidade', type=int)
+        observacoes = request.form.get('observacoes', '')
+
+        material = Material.query.get(material_id)
+        if not material:
+            flash('Material não encontrado', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        acesso = MonitorPolo.query.filter_by(
+            monitor_id=current_user.id,
+            polo_id=material.polo_id,
+            ativo=True
+        ).first()
+        if not acesso:
+            flash('Acesso negado ao polo deste material', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        if tipo == 'entrada':
+            nova_quantidade = material.quantidade_atual + quantidade
+        elif tipo == 'saida':
+            nova_quantidade = material.quantidade_atual - quantidade
+            if nova_quantidade < 0:
+                flash('Quantidade insuficiente em estoque', 'error')
+                return redirect(
+                    url_for('material_routes.nova_movimentacao_monitor',
+                            polo_id=material.polo_id, material_id=material.id)
+                )
+        elif tipo == 'ajuste':
+            nova_quantidade = quantidade
+        else:
+            flash('Tipo de movimentação inválido', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        movimentacao = MovimentacaoMaterial(
+            material_id=material_id,
+            monitor_id=current_user.id,
+            tipo=tipo,
+            quantidade=quantidade,
+            observacao=observacoes
+        )
+
+        material.quantidade_atual = nova_quantidade
+        material.updated_at = datetime.utcnow()
+
+        try:
+            db.session.add(movimentacao)
+            db.session.commit()
+            flash('Movimentação registrada com sucesso', 'success')
+            return redirect(url_for('material_routes.monitor_materiais'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(
+                f"Erro ao registrar movimentação: {str(e)}"
+            )
+            flash('Erro ao registrar movimentação', 'error')
+            return redirect(
+                url_for('material_routes.nova_movimentacao_monitor',
+                        polo_id=material.polo_id, material_id=material.id)
+            )
+
+    polos = (
+        db.session.query(Polo)
+        .join(MonitorPolo)
+        .filter(
+            MonitorPolo.monitor_id == current_user.id,
+            MonitorPolo.ativo.is_(True),
+            Polo.ativo.is_(True)
+        )
+        .all()
+    )
+
+    polo_id = request.args.get('polo_id', type=int)
+    material_id = request.args.get('material_id', type=int)
+    materiais = []
+    if polo_id:
+        materiais = (
+            Material.query
+            .join(MonitorPolo, MonitorPolo.polo_id == Material.polo_id)
+            .filter(
+                Material.polo_id == polo_id,
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
+                Material.ativo.is_(True)
+            )
+            .all()
+        )
+
+    return render_template(
+        'material/nova_movimentacao_monitor.html',
+        polos=polos,
+        materiais=materiais,
+        polo_id=polo_id,
+        material_id=material_id
+    )
+
+
 @material_routes.route('/api/materiais/<int:material_id>/movimentacao', methods=['POST'])
 @csrf.exempt
 @login_required
