@@ -512,9 +512,14 @@ def progress(codigo: str):
         revisor_user = Usuario.query.filter_by(email=cand.email).first()
         if revisor_user:
             assignments = Assignment.query.filter_by(reviewer_id=revisor_user.id).all()
-            submission_ids = [assignment.submission_id for assignment in assignments]
-            if submission_ids:
-                trabalhos_designados = Submission.query.filter(Submission.id.in_(submission_ids)).all()
+            resposta_formulario_ids = [assignment.resposta_formulario_id for assignment in assignments]
+            if resposta_formulario_ids:
+                # Buscar trabalhos através das respostas de formulário
+                from models.event import RespostaFormulario
+                respostas = RespostaFormulario.query.filter(RespostaFormulario.id.in_(resposta_formulario_ids)).all()
+                trabalho_ids = [resposta.trabalho_id for resposta in respostas if resposta.trabalho_id]
+                if trabalho_ids:
+                    trabalhos_designados = Submission.query.filter(Submission.id.in_(trabalho_ids)).all()
 
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template(
@@ -679,15 +684,22 @@ def approve(cand_id: int):
         from datetime import timedelta
         
         # Busca trabalhos disponíveis do mesmo cliente que ainda precisam de revisores
+        from models.event import RespostaFormulario
+        
+        # Buscar IDs de trabalhos já atribuídos ao revisor
+        trabalhos_atribuidos_ids = (
+            db.session.query(RespostaFormulario.trabalho_id)
+            .join(Assignment, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(Assignment.reviewer_id == reviewer.id)
+            .filter(RespostaFormulario.trabalho_id.isnot(None))
+        )
+        
         trabalhos_disponiveis = (
             Submission.query
             .join(Evento, Submission.evento_id == Evento.id)
             .filter(
                 Evento.cliente_id == cand.process.cliente_id,
-                ~Submission.id.in_(
-                    db.session.query(Assignment.submission_id)
-                    .filter(Assignment.reviewer_id == reviewer.id)
-                )
+                ~Submission.id.in_(trabalhos_atribuidos_ids)
             )
             .limit(5)  # Limita a 5 trabalhos iniciais
             .all()
@@ -708,9 +720,22 @@ def approve(cand_id: int):
             )
             db.session.add(review)
             
+            # Busca ou cria RespostaFormulario para o trabalho
+            resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=trabalho.id).first()
+            if not resposta_formulario:
+                # Cria uma resposta de formulário básica se não existir
+                resposta_formulario = RespostaFormulario(
+                    trabalho_id=trabalho.id,
+                    formulario_id=None,  # Pode ser None para assignments automáticos
+                    respostas={},
+                    data_submissao=datetime.utcnow()
+                )
+                db.session.add(resposta_formulario)
+                db.session.flush()  # Para obter o ID
+            
             # Cria Assignment
             assignment = Assignment(
-                submission_id=trabalho.id,
+                resposta_formulario_id=resposta_formulario.id,
                 reviewer_id=reviewer.id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias),
             )
@@ -840,9 +865,16 @@ def view_candidatura(cand_id: int):
 def avaliar(submission_id: int):
     """Permite ao revisor atribuir notas a uma submissão com base no barema."""
     submission = Submission.query.get_or_404(submission_id)
-    assignment = Assignment.query.filter_by(
-        submission_id=submission.id, reviewer_id=current_user.id
-    ).first()
+    # Buscar assignment através da resposta de formulário
+    assignment = (
+        Assignment.query
+        .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+        .filter(
+            RespostaFormulario.trabalho_id == submission.id,
+            Assignment.reviewer_id == current_user.id
+        )
+        .first()
+    )
     if not assignment:
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))

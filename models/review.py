@@ -332,23 +332,60 @@ class Review(db.Model):
 # ASSIGNMENT (vincula revisor ↔ submissão)
 # -----------------------------------------------------------------------------
 class Assignment(db.Model):
-    """Liga um revisor a uma submissão, controlando prazo e conclusão."""
+    """Liga um revisor a uma submissão de trabalho (RespostaFormulario), controlando prazo e conclusão."""
 
     __tablename__ = "assignment"
     __table_args__ = {"extend_existing": True}
 
     id = db.Column(db.Integer, primary_key=True)
-    submission_id = db.Column(
-        db.Integer, db.ForeignKey("submission.id"), nullable=False
+    resposta_formulario_id = db.Column(
+        db.Integer, db.ForeignKey("respostas_formulario.id"), nullable=False
     )
     reviewer_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
     deadline = db.Column(db.DateTime, nullable=True)
     completed = db.Column(db.Boolean, default=False)
+    
+    # New fields for distribution tracking
+    distribution_type = db.Column(db.String(20), nullable=True)  # 'manual' or 'automatic'
+    distribution_date = db.Column(db.DateTime, nullable=True)
+    distributed_by = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
 
-    submission = db.relationship(
-        "Submission", backref=db.backref("assignments", lazy=True)
+    resposta_formulario = db.relationship(
+        "RespostaFormulario", backref=db.backref("assignments", lazy=True)
     )
-    reviewer = db.relationship("Usuario", backref=db.backref("assignments", lazy=True))
+    reviewer = db.relationship("Usuario", foreign_keys=[reviewer_id], backref=db.backref("assignments", lazy=True))
+    distributor = db.relationship("Usuario", foreign_keys=[distributed_by], backref=db.backref("distributed_assignments", lazy=True))
+
+
+# -----------------------------------------------------------------------------
+# DISTRIBUTION LOG (log de distribuições de trabalhos)
+# -----------------------------------------------------------------------------
+class DistributionLog(db.Model):
+    """Registra histórico de distribuições de trabalhos para revisores."""
+
+    __tablename__ = "distribution_log"
+    __table_args__ = {"extend_existing": True}
+
+    id = db.Column(db.Integer, primary_key=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
+    distribution_type = db.Column(db.String(20), nullable=False)  # 'manual' or 'automatic'
+    total_works = db.Column(db.Integer, nullable=False)
+    total_reviewers = db.Column(db.Integer, nullable=False)
+    assignments_created = db.Column(db.Integer, nullable=False)
+    distribution_date = db.Column(db.DateTime, nullable=False)
+    distributed_by = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    filters_applied = db.Column(db.JSON, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    evento = db.relationship("Evento", backref=db.backref("distribution_logs", lazy=True))
+    distributor = db.relationship("Usuario", backref=db.backref("distribution_logs", lazy=True))
+
+    def __repr__(self):
+        return f"<DistributionLog {self.id} evento={self.evento_id} type={self.distribution_type}>"
 
 
 # Associação N:N entre processos de revisor e eventos (removida - usando a definição do topo do arquivo)
