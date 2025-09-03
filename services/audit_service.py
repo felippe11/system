@@ -8,8 +8,11 @@ import json
 
 from extensions import db
 from models.submission_system import (
-    DistributionLog, ReviewerProfile, DistributionConfig,
-    ImportedSubmission, SpreadsheetMapping
+    AutoDistributionLog,
+    ReviewerProfile,
+    DistributionConfig,
+    ImportedSubmission,
+    SpreadsheetMapping,
 )
 from models.review import Assignment, Submission, Review
 from models.user import Usuario
@@ -29,14 +32,14 @@ class AuditService:
         """Gera relatório completo de distribuições."""
         try:
             # Filtros de data
-            query = DistributionLog.query.filter_by(evento_id=self.evento_id)
+            query = AutoDistributionLog.query.filter_by(evento_id=self.evento_id)
             
             if start_date:
-                query = query.filter(DistributionLog.started_at >= start_date)
+                query = query.filter(AutoDistributionLog.started_at >= start_date)
             if end_date:
-                query = query.filter(DistributionLog.started_at <= end_date)
+                query = query.filter(AutoDistributionLog.started_at <= end_date)
             
-            distributions = query.order_by(desc(DistributionLog.started_at)).all()
+            distributions = query.order_by(desc(AutoDistributionLog.started_at)).all()
             
             # Estatísticas gerais
             total_distributions = len(distributions)
@@ -241,9 +244,9 @@ class AuditService:
         """Gera relatório de análise de conflitos."""
         try:
             # Buscar logs de distribuição com conflitos
-            distributions = DistributionLog.query.filter(
-                DistributionLog.evento_id == self.evento_id,
-                DistributionLog.conflicts_detected > 0
+            distributions = AutoDistributionLog.query.filter(
+                AutoDistributionLog.evento_id == self.evento_id,
+                AutoDistributionLog.conflicts_detected > 0
             ).all()
             
             conflict_analysis = []
@@ -307,7 +310,9 @@ class AuditService:
             logger.error(f"Erro ao exportar CSV: {str(e)}")
             raise
     
-    def _analyze_distribution_periods(self, distributions: List[DistributionLog]) -> Dict:
+    def _analyze_distribution_periods(
+        self, distributions: List[AutoDistributionLog]
+    ) -> Dict:
         """Analisa distribuições por período."""
         if not distributions:
             return {}
@@ -335,7 +340,9 @@ class AuditService:
             "peak_month": max(monthly_stats.values(), key=lambda x: x["submissions"])["month"] if monthly_stats else None
         }
     
-    def _calculate_efficiency_metrics(self, distributions: List[DistributionLog]) -> Dict:
+    def _calculate_efficiency_metrics(
+        self, distributions: List[AutoDistributionLog]
+    ) -> Dict:
         """Calcula métricas de eficiência."""
         if not distributions:
             return {}
@@ -402,7 +409,9 @@ class AuditService:
             logger.error(f"Erro ao analisar carga de trabalho: {str(e)}")
             return {}
     
-    def _calculate_distribution_success_rate(self, distribution: DistributionLog) -> float:
+    def _calculate_distribution_success_rate(
+        self, distribution: AutoDistributionLog
+    ) -> float:
         """Calcula taxa de sucesso de uma distribuição."""
         if distribution.total_submissions == 0:
             return 0.0
@@ -410,7 +419,9 @@ class AuditService:
         successful_assignments = distribution.total_assignments - distribution.fallback_assignments
         return round((successful_assignments / distribution.total_submissions) * 100, 2)
     
-    def _calculate_duration_minutes(self, distribution: DistributionLog) -> Optional[float]:
+    def _calculate_duration_minutes(
+        self, distribution: AutoDistributionLog
+    ) -> Optional[float]:
         """Calcula duração da distribuição em minutos."""
         if not distribution.completed_at:
             return None
@@ -447,7 +458,9 @@ class AuditService:
             logger.error(f"Erro ao calcular tempo médio de revisão: {str(e)}")
             return None
     
-    def _extract_conflict_details(self, distribution: DistributionLog) -> List[Dict]:
+    def _extract_conflict_details(
+        self, distribution: AutoDistributionLog
+    ) -> List[Dict]:
         """Extrai detalhes dos conflitos de uma distribuição."""
         # Por enquanto, retorna informações básicas
         # TODO: Implementar log detalhado de conflitos
