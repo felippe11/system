@@ -93,6 +93,17 @@ def gerenciar_materiais():
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
+@material_routes.route('/materiais/lista-compras')
+@login_required
+def listar_compras():
+    """Página para geração da lista de compras de materiais."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    return render_template('material/lista_compras.html')
+
+
 @material_routes.route('/api/polos', methods=['GET'])
 @csrf.exempt
 @login_required
