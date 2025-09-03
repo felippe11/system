@@ -842,7 +842,7 @@ def distribuicao_manual():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         # Buscar agendamentos sem monitor atribuído
@@ -983,7 +983,7 @@ def importacao_massa():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('importacao_massa.html')
 
@@ -1096,7 +1096,7 @@ def download_template():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         import pandas as pd
@@ -1139,7 +1139,7 @@ def cadastro_multiplo():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('cadastro_multiplo.html')
 
