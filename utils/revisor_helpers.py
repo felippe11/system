@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Optional
 
 from flask import Request
 
@@ -24,6 +24,19 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         formulario_id = int(raw_form_id) if raw_form_id else None
     except (TypeError, ValueError):
         formulario_id = None
+
+
+    nome = req.form.get("nome", "").strip()
+    if not nome:
+        raise ValueError("Nome do processo é obrigatório")
+
+    descricao = req.form.get("descricao", "").strip() or None
+
+    status = req.form.get("status", "").strip()
+    if status not in {"Aberto", "Encerrado", "Pendente"}:
+        raise ValueError("Status inválido")
+
+
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
     if len(stage_names) < num_etapas or any(
@@ -54,6 +67,9 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
 
     return {
         "formulario_id": formulario_id,
+        "nome": nome,
+        "descricao": descricao,
+        "status": status,
         "num_etapas": num_etapas,
         "stage_names": stage_names,
         "availability_start": _parse_dt(start_raw),
@@ -67,14 +83,25 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
 def update_revisor_process(processo: RevisorProcess, dados: Dict[str, Any]) -> None:
     """Updates a reviewer process with parsed data."""
     processo.formulario_id = dados.get("formulario_id")
+    processo.nome = dados.get("nome")
+    processo.descricao = dados.get("descricao")
+    processo.status = dados.get("status")
     processo.num_etapas = dados.get("num_etapas")
     processo.availability_start = dados.get("availability_start")
     processo.availability_end = dados.get("availability_end")
     processo.exibir_para_participantes = dados.get("exibir_para_participantes")
 
 
-def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> None:
-    """Atualiza a relação de eventos associados ao processo."""
+def update_process_eventos(
+    processo: RevisorProcess, eventos_ids: Optional[Iterable[int]]
+) -> None:
+    """Atualiza a relação de eventos associados ao processo.
+
+    Limpa os vínculos existentes e associa apenas os eventos cujos IDs são
+    fornecidos. Quando ``eventos_ids`` está vazio ou ``None``, o processo
+    permanece sem eventos vinculados.
+    """
+
     processo.eventos = []
     if eventos_ids:
         processo.eventos = Evento.query.filter(Evento.id.in_(eventos_ids)).all()

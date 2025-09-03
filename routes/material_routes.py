@@ -109,7 +109,8 @@ def listar_polos():
             )
             if not polos:
                 return jsonify({
-                    'success': False,
+                    'success': True,
+                    'polos': [],
                     'message': 'Nenhum polo associado ao monitor'
                 })
         elif verificar_acesso_admin():

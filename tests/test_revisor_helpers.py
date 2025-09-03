@@ -9,6 +9,7 @@ from extensions import db
 os.environ.setdefault("SECRET_KEY", "test")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "y")
+os.environ.setdefault("DB_PASS", "test")
 from config import Config
 from models import Evento, Formulario
 from models.user import Cliente
@@ -49,6 +50,9 @@ def test_parse_revisor_form(app):
     with app.test_request_context(
         method="POST",
         data={
+            "nome": "Processo A",
+            "descricao": "Desc",
+            "status": "Aberto",
             "formulario_id": 1,
             "num_etapas": 2,
             "stage_name": ["Etapa 1", "Etapa 2"],
@@ -61,6 +65,9 @@ def test_parse_revisor_form(app):
         },
     ):
         dados = parse_revisor_form(request)
+    assert dados["nome"] == "Processo A"
+    assert dados["descricao"] == "Desc"
+    assert dados["status"] == "Aberto"
     assert dados["formulario_id"] == 1
     assert dados["num_etapas"] == 2
     assert dados["stage_names"] == ["Etapa 1", "Etapa 2"]
@@ -68,6 +75,15 @@ def test_parse_revisor_form(app):
     assert dados["availability_end"].date() == date(2024, 1, 20)
     assert dados["exibir_para_participantes"] is True
     assert dados["eventos_ids"] == [1, 2]
+
+
+def test_parse_revisor_form_no_eventos(app):
+    with app.test_request_context(
+        method="POST",
+        data={"num_etapas": 1, "stage_name": ["Etapa"]},
+    ):
+        dados = parse_revisor_form(request)
+    assert dados["eventos_ids"] == []
 
 
 def test_parse_revisor_form_missing_stage(app):
@@ -79,9 +95,18 @@ def test_parse_revisor_form_missing_stage(app):
             parse_revisor_form(request)
 
 
+def test_parse_revisor_form_missing_nome(app):
+    with app.test_request_context(
+        method="POST", data={"status": "Aberto", "num_etapas": 1, "stage_name": ["E1"]}
+    ):
+        with pytest.raises(ValueError):
+            parse_revisor_form(request)
+
+
 def test_parse_revisor_form_without_formulario_id(app):
     with app.test_request_context(
-        method="POST", data={"num_etapas": 1, "stage_name": ["Etapa 1"]}
+        method="POST",
+        data={"nome": "Proc", "status": "Aberto", "num_etapas": 1, "stage_name": ["Etapa 1"]},
     ):
         dados = parse_revisor_form(request)
     assert dados["formulario_id"] is None
@@ -96,6 +121,8 @@ def test_update_and_recreate_stages(app):
         with app.test_request_context(
             method="POST",
             data={
+                "nome": "Proc",
+                "status": "Aberto",
                 "formulario_id": form.id,
                 "num_etapas": 2,
                 "stage_name": ["E1", "E2"],
@@ -112,6 +139,8 @@ def test_update_and_recreate_stages(app):
         with app.test_request_context(
             method="POST",
             data={
+                "nome": "Proc",
+                "status": "Aberto",
                 "formulario_id": form.id,
                 "num_etapas": 1,
                 "stage_name": ["Novo"],
@@ -143,3 +172,15 @@ def test_update_process_eventos(app):
         update_process_eventos(processo, [e2.id])
         db.session.refresh(processo)
         assert [e.id for e in processo.eventos] == [e2.id]
+
+
+def test_update_process_eventos_none(app):
+    with app.app_context():
+        cliente, _ = _create_cliente_formulario()
+        processo = RevisorProcess(cliente_id=cliente.id)
+        db.session.add(processo)
+        db.session.commit()
+
+        update_process_eventos(processo, None)
+        db.session.refresh(processo)
+        assert processo.eventos == []

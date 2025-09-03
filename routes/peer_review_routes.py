@@ -75,7 +75,10 @@ def submission_control():
     processos_seletivos = (
         db.session.query(RevisorProcess, Formulario)
         .join(Formulario, RevisorProcess.formulario_id == Formulario.id)
-        .filter(RevisorProcess.cliente_id == cliente_id)
+        .filter(
+            RevisorProcess.cliente_id == cliente_id,
+            RevisorProcess.status == "ativo",
+        )
         .all()
     )
     
