@@ -65,6 +65,7 @@
         </h5>
       </div>
       <div class="card-body">
+
         <div class="row mb-3">
           <div class="col-md-6 mb-3 mb-md-0">
             <label class="form-label fw-semibold">Nome do Processo</label>
@@ -82,11 +83,13 @@
             </select>
             <div class="invalid-feedback">Por favor, selecione o status.</div>
           </div>
+
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Descrição</label>
           <textarea class="form-control" name="descricao" rows="3">{{ processo.descricao if processo else '' }}</textarea>
         </div>
+
       </div>
     </div>
 
@@ -99,6 +102,7 @@
         </h5>
       </div>
       <div class="card-body">
+
         <div class="row">
           <div class="col-md-6 mb-3">
             <label class="form-label fw-semibold">
@@ -183,7 +187,7 @@
           <div class="col-md-6 mb-3">
             <label class="form-label fw-semibold">
               <i class="bi bi-calendar-event me-1"></i>
-              Eventos Vinculados
+              Eventos Vinculados <small class="text-muted">(opcional)</small>
             </label>
             <select class="form-select" name="eventos_ids" multiple size="4">
               {% for ev in eventos %}

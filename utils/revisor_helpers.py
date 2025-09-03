@@ -25,6 +25,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     except (TypeError, ValueError):
         formulario_id = None
 
+
     nome = req.form.get("nome", "").strip()
     if not nome:
         raise ValueError("Nome do processo é obrigatório")
@@ -34,6 +35,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     status = req.form.get("status", "").strip()
     if status not in {"Aberto", "Encerrado", "Pendente"}:
         raise ValueError("Status inválido")
+
 
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
