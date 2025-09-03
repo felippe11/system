@@ -358,42 +358,7 @@ class Assignment(db.Model):
     distributor = db.relationship("Usuario", foreign_keys=[distributed_by], backref=db.backref("distributed_assignments", lazy=True))
 
 
-# -----------------------------------------------------------------------------
-# DISTRIBUTION LOG (log de distribuições de trabalhos)
-# -----------------------------------------------------------------------------
-class DistributionLog(db.Model):
-    """Registra histórico de distribuições de trabalhos para revisores."""
-
-    __tablename__ = "distribution_log"
-    __table_args__ = {"extend_existing": True}
-
-    id = db.Column(db.Integer, primary_key=True)
-    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
-    distribution_type = db.Column(db.String(20), nullable=False)  # 'manual' or 'automatic'
-    total_works = db.Column(db.Integer, nullable=False)
-    total_reviewers = db.Column(db.Integer, nullable=False)
-    assignments_created = db.Column(db.Integer, nullable=False)
-    distribution_date = db.Column(db.DateTime, nullable=False)
-    distributed_by = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
-    filters_applied = db.Column(db.JSON, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # relationships
-    evento = db.relationship(
-        "Evento", backref=db.backref("manual_distribution_logs", lazy=True)
-    )
-    distributor = db.relationship(
-        "Usuario", backref=db.backref("manual_distribution_logs", lazy=True)
-    )
-
-    def __repr__(self):
-        return f"<DistributionLog {self.id} evento={self.evento_id} type={self.distribution_type}>"
-
-
 # Associação N:N entre processos de revisor e eventos (removida - usando a definição do topo do arquivo)
-
 
 class RevisorProcess(db.Model):
     """Configura um processo seletivo de revisores."""
