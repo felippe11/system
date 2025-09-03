@@ -7,7 +7,7 @@ from .submission_system import (
     ReviewerProfile,
     ReviewerPreference,
     DistributionConfig,
-    DistributionLog,
+    AutoDistributionLog as DistributionLog,
     ImportedSubmission,
     SpreadsheetMapping,
 )  # noqa: F401
