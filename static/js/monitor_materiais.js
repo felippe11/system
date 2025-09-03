@@ -29,52 +29,52 @@ async function carregarDadosIniciais() {
     try {
         mostrarCarregando(true);
 
-
-        // Carregar polos e materiais
-        const [polosResponse, materiaisResponse] = await Promise.all([
-            fetch('/api/polos'),
-            fetch('/api/materiais')
-        ]);
-
-        if (polosResponse.status === 403 || materiaisResponse.status === 403) {
+        const polosResponse = await fetch('/api/polos');
+        if (polosResponse.status === 403) {
             mostrarAlerta('Sessão expirada, faça login novamente', 'error');
             return;
         }
 
-        const parseJSON = async (response) => {
-
-            const contentType = response.headers.get('Content-Type') || '';
-            if (!contentType.includes('application/json')) {
-                throw new Error('Sessão expirada');
-            }
-            return response.json();
-        };
-
-
-        const polosJson = await parseJSON(polosResponse);
-        const materiaisJson = await parseJSON(materiaisResponse);
-
-        if (!polosJson.success || !materiaisJson.success) {
-            throw new Error(
-                polosJson.message ||
-                    materiaisJson.message ||
-                    'Erro ao carregar dados'
+        const polosJson = await polosResponse.json();
+        if (!polosJson.success) {
+            mostrarAlerta(
+                polosJson.message || 'Nenhum polo atribuído ao monitor',
+                'info'
             );
+            polosData = [];
+            materiaisData = [];
+            atualizarCardsPolos();
+            atualizarTabelaMateriais();
+            return;
         }
-
 
         polosData = polosJson.polos || [];
-
-        // Carregar materiais somente se houver polos
-        const materiaisResponse = await fetch('/api/materiais');
-        const materiaisJson = await parseAndValidate(materiaisResponse);
-        materiaisData = materiaisJson.materiais || [];
-
         if (polosData.length === 0) {
             mostrarAlerta('Nenhum polo atribuído ao monitor', 'info');
+            materiaisData = [];
+            atualizarCardsPolos();
+            atualizarTabelaMateriais();
+            return;
         }
-        if (materiaisData.length === 0) {
-            mostrarAlerta('Nenhum material disponível', 'info');
+
+        const materiaisResponse = await fetch('/api/materiais');
+        if (materiaisResponse.status === 403) {
+            mostrarAlerta('Sessão expirada, faça login novamente', 'error');
+            return;
+        }
+
+        const materiaisJson = await materiaisResponse.json();
+        if (!materiaisJson.success) {
+            mostrarAlerta(
+                materiaisJson.message || 'Erro ao carregar materiais',
+                'error'
+            );
+            materiaisData = [];
+        } else {
+            materiaisData = materiaisJson.materiais || [];
+            if (materiaisData.length === 0) {
+                mostrarAlerta('Nenhum material disponível', 'info');
+            }
         }
 
         atualizarCardsPolos();
@@ -86,7 +86,6 @@ async function carregarDadosIniciais() {
         } else {
             mostrarAlerta(error.message || 'Erro ao carregar dados', 'error');
         }
-        return;
     } finally {
         mostrarCarregando(false);
     }
