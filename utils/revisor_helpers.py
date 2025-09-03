@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Optional
 
 from flask import Request
 
@@ -73,8 +73,16 @@ def update_revisor_process(processo: RevisorProcess, dados: Dict[str, Any]) -> N
     processo.exibir_para_participantes = dados.get("exibir_para_participantes")
 
 
-def update_process_eventos(processo: RevisorProcess, eventos_ids: List[int]) -> None:
-    """Atualiza a relação de eventos associados ao processo."""
+def update_process_eventos(
+    processo: RevisorProcess, eventos_ids: Optional[Iterable[int]]
+) -> None:
+    """Atualiza a relação de eventos associados ao processo.
+
+    Limpa os vínculos existentes e associa apenas os eventos cujos IDs são
+    fornecidos. Quando ``eventos_ids`` está vazio ou ``None``, o processo
+    permanece sem eventos vinculados.
+    """
+
     processo.eventos = []
     if eventos_ids:
         processo.eventos = Evento.query.filter(Evento.id.in_(eventos_ids)).all()
