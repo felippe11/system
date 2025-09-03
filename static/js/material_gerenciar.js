@@ -475,7 +475,7 @@ function gerarRelatorioGeral() {
 
 // Gerar lista de compras
 function gerarListaCompras() {
-    window.open('/relatorios/materiais/excel?tipo=compras', '_blank');
+    window.location.href = '/materiais/lista-compras';
 }
 
 // Função para baixar relatório em Excel
