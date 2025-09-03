@@ -52,6 +52,24 @@ def create_app():
     csrf.init_app(app)
     CORS(app)
 
+    # CSRF error handler for API endpoints
+    from flask_wtf.csrf import CSRFError
+    from flask import jsonify, request
+    
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        # Skip CSRF validation for distribution endpoints
+        if request.path in ['/api/distribution/manual', '/api/distribution/automatic']:
+            return None  # Let the request proceed without CSRF validation
+        # Check if this is an API request (starts with /api/ or has JSON content type)
+        if request.path.startswith('/api/') or request.content_type == 'application/json' or 'application/json' in request.headers.get('Accept', ''):
+            return jsonify({
+                'error': 'CSRF token missing or invalid',
+                'message': 'Token CSRF ausente ou inválido'
+            }), 400
+        # For non-API requests, return the default HTML error
+        return e.description, 400
+
     login_manager.login_view = "auth_routes.login"
     login_manager.session_protection = "strong"
 

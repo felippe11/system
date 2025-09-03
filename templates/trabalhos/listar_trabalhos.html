@@ -1,0 +1,811 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Trabalhos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-file-alt text-primary me-2"></i>
+                            Meus Trabalhos
+                        </h4>
+                        <a href="{{ url_for('trabalho_routes.novo_trabalho') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>
+                            Adicionar Trabalho
+                        </a>
+                    </div>
+                    
+                    <!-- Distribution Controls -->
+                    <div class="distribution-controls" id="distributionControls" style="display: none;">
+                        <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                            <div class="d-flex align-items-center">
+                                <span class="me-3">
+                                    <strong id="selectedCount">0</strong> trabalho(s) selecionado(s)
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="selectAllBtn">
+                                    <i class="fas fa-check-square me-1"></i>
+                                    Selecionar Todos
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectionBtn">
+                                    <i class="fas fa-square me-1"></i>
+                                    Limpar Seleção
+                                </button>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-success me-2" id="manualDistributionBtn" disabled>
+                                    <i class="fas fa-user-edit me-1"></i>
+                                    Distribuição Manual
+                                </button>
+                                <button type="button" class="btn btn-info" id="automaticDistributionBtn" disabled>
+                                    <i class="fas fa-magic me-1"></i>
+                                    Distribuição Automática
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    {% if trabalhos %}
+                        <div class="mb-3">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Total de trabalhos: {{ trabalhos|length }}
+                            </p>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th width="50">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="selectAllCheckbox">
+                                                <label class="form-check-label" for="selectAllCheckbox">
+                                                    <span class="visually-hidden">Selecionar todos</span>
+                                                </label>
+                                            </div>
+                                        </th>
+                                        <th>Título</th>
+                                        <th>Categoria</th>
+                                        <th>Rede de Ensino</th>
+                                        <th>Etapa de Ensino</th>
+                                        <th>Data de Cadastro</th>
+                                        <th class="text-center">Status Distribuição</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for trabalho in trabalhos %}
+                                        <tr>
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input work-checkbox" 
+                                                           type="checkbox" 
+                                                           name="trabalho_ids"
+                                                           value="{{ trabalho.id }}" 
+                                                           id="work_{{ trabalho.id }}">
+                                                    <label class="form-check-label" for="work_{{ trabalho.id }}">
+                                                        <span class="visually-hidden">Selecionar trabalho</span>
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <strong>{{ trabalho.título or 'Sem título' }}</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info">{{ trabalho.categoria or 'Não informado' }}</span>
+                                            </td>
+                                            <td>{{ trabalho.rede_de_ensino or 'Não informado' }}</td>
+                                            <td>{{ trabalho.etapa_de_ensino or 'Não informado' }}</td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ trabalho.data_submissao.strftime('%d/%m/%Y às %H:%M') if trabalho.data_submissao else 'Não informado' }}
+                                                </small>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-secondary" id="distributionStatus_{{ trabalho.id }}">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    Não Distribuído
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group" role="group">
+                                                    <a href="{{ url_for('trabalho_routes.visualizar_trabalho', trabalho_id=trabalho.id) }}" 
+                                                       class="btn btn-sm btn-outline-info" 
+                                                       title="Visualizar">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('trabalho_routes.editar_trabalho', trabalho_id=trabalho.id) }}" 
+                                                       class="btn btn-sm btn-outline-warning" 
+                                                       title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-danger" 
+                                                            title="Excluir"
+                                                            onclick="confirmarExclusao({{ trabalho.id }}, '{{ trabalho.título or 'este trabalho' }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">Nenhum trabalho cadastrado</h5>
+                            <p class="text-muted mb-4">Você ainda não cadastrou nenhum trabalho.</p>
+                            <a href="{{ url_for('trabalho_routes.novo_trabalho') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Cadastrar Primeiro Trabalho
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Distribution Modal -->
+<div class="modal fade" id="manualDistributionModal" tabindex="-1" aria-labelledby="manualDistributionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manualDistributionModalLabel">
+                    <i class="fas fa-user-edit me-2"></i>
+                    Distribuição Manual de Trabalhos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-file-alt me-2"></i>Trabalhos Selecionados</h6>
+                        <div id="selectedWorksList" class="border rounded p-3 mb-3" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Selected works will be populated here -->
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-users me-2"></i>Revisores Disponíveis</h6>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="reviewerSearch" placeholder="Buscar revisor...">
+                        </div>
+                        <div id="reviewersList" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Reviewers will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6><i class="fas fa-clipboard-list me-2"></i>Atribuições</h6>
+                    <div id="assignmentsList" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                        <p class="text-muted text-center mb-0">Nenhuma atribuição criada ainda</p>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="manualDeadline" class="form-label">Prazo para Revisão</label>
+                            <input type="date" class="form-control" id="manualDeadline" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="manualNotes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="manualNotes" rows="2" placeholder="Observações sobre a distribuição..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-success" id="executeManualDistribution" disabled>
+                    <i class="fas fa-check me-1"></i>
+                    Executar Distribuição
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Automatic Distribution Modal -->
+<div class="modal fade" id="automaticDistributionModal" tabindex="-1" aria-labelledby="automaticDistributionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="automaticDistributionModalLabel">
+                    <i class="fas fa-magic me-2"></i>
+                    Distribuição Automática de Trabalhos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-file-alt me-2"></i>Trabalhos Selecionados</h6>
+                        <div id="autoSelectedWorksList" class="border rounded p-3 mb-3" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Selected works will be populated here -->
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-cog me-2"></i>Configurações</h6>
+                        <div class="mb-3">
+                            <label for="reviewersPerWork" class="form-label">Revisores por Trabalho</label>
+                            <input type="number" class="form-control" id="reviewersPerWork" min="1" max="5" value="2">
+                            <small class="form-text text-muted">Número de revisores que avaliarão cada trabalho</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="maxAssignmentsPerReviewer" class="form-label">Máximo de Trabalhos por Revisor</label>
+                            <input type="number" class="form-control" id="maxAssignmentsPerReviewer" min="1" value="5">
+                            <small class="form-text text-muted">Limite de trabalhos que cada revisor pode receber</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="autoDeadline" class="form-label">Prazo para Revisão</label>
+                        <input type="date" class="form-control" id="autoDeadline" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="autoNotes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="autoNotes" rows="2" placeholder="Observações sobre a distribuição..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6><i class="fas fa-filter me-2"></i>Filtros de Revisores</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="excludeAuthors" checked>
+                                <label class="form-check-label" for="excludeAuthors">
+                                    Excluir autores dos próprios trabalhos
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="balanceWorkload" checked>
+                                <label class="form-check-label" for="balanceWorkload">
+                                    Balancear carga de trabalho
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Prévia da Distribuição:</strong>
+                        <div id="distributionPreview" class="mt-2">
+                            <span class="text-muted">Configure os parâmetros acima para ver a prévia</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-outline-info" id="previewDistribution">
+                    <i class="fas fa-eye me-1"></i>
+                    Prévia
+                </button>
+                <button type="button" class="btn btn-info" id="executeAutoDistribution">
+                    <i class="fas fa-magic me-1"></i>
+                    Executar Distribuição
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o trabalho <strong id="nomeTrabalho"></strong>?</p>
+                <p class="text-muted">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>
+                    Cancelar
+                </button>
+                <form id="formExclusao" method="POST" style="display: inline;">
+                    {{ csrf_token() }}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>
+                        Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// CSRF token function removed - not needed for distribution endpoints
+
+function confirmarExclusao(trabalhoId, nomeTrabalho) {
+    document.getElementById('nomeTrabalho').textContent = nomeTrabalho;
+    document.getElementById('formExclusao').action = 
+        "{{ url_for('trabalho_routes.excluir_trabalho', trabalho_id=0) }}".replace('0', trabalhoId);
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+
+// Distribution functionality
+document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing distribution interface...');
+        
+        // Get DOM elements
+        const workCheckboxes = document.querySelectorAll('.work-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        const distributionControls = document.getElementById('distributionControls');
+        const selectedCount = document.getElementById('selectedCount');
+        const manualDistributionBtn = document.getElementById('manualDistributionBtn');
+        const automaticDistributionBtn = document.getElementById('automaticDistributionBtn');
+        
+        console.log('Found elements:', {
+            workCheckboxes: workCheckboxes.length,
+            selectAllCheckbox: !!selectAllCheckbox,
+            distributionControls: !!distributionControls,
+            selectedCount: !!selectedCount
+        });
+    
+    function updateSelectionCount() {
+        const checkedBoxes = document.querySelectorAll('input[name="trabalho_ids"]:checked');
+        const count = checkedBoxes.length;
+        
+        selectedCount.textContent = count;
+        
+        if (count > 0) {
+            distributionControls.style.display = 'block';
+            manualDistributionBtn.disabled = false;
+            automaticDistributionBtn.disabled = false;
+        } else {
+            distributionControls.style.display = 'none';
+            manualDistributionBtn.disabled = true;
+            automaticDistributionBtn.disabled = true;
+        }
+        
+        // Update select all checkbox state
+        const totalCheckboxes = workCheckboxes.length;
+        if (count === 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        } else if (count === totalCheckboxes) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.indeterminate = true;
+        }
+    }
+    
+    // Individual checkbox change
+    workCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectionCount);
+    });
+    
+    // Select all checkbox
+    selectAllCheckbox.addEventListener('change', function() {
+        workCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateSelectionCount();
+    });
+    
+    // Select all button
+    selectAllBtn.addEventListener('click', function() {
+        workCheckboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateSelectionCount();
+    });
+    
+    // Clear selection button
+    clearSelectionBtn.addEventListener('click', function() {
+        workCheckboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateSelectionCount();
+    });
+    
+    // Distribution buttons
+    manualDistributionBtn.addEventListener('click', function() {
+        const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked'))
+            .map(cb => cb.value);
+        openManualDistributionModal(selectedWorks);
+    });
+    
+    automaticDistributionBtn.addEventListener('click', function() {
+        const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked'))
+            .map(cb => cb.value);
+        openAutomaticDistributionModal(selectedWorks);
+    });
+    
+    // Initialize
+    updateSelectionCount();
+});
+
+// Modal functions
+function openManualDistributionModal(workIds) {
+    const modal = new bootstrap.Modal(document.getElementById('manualDistributionModal'));
+    
+    // Populate selected works
+    populateSelectedWorks('selectedWorksList', workIds);
+    
+    // Load available reviewers
+    loadAvailableReviewers();
+    
+    // Set default deadline (7 days from now)
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+    document.getElementById('manualDeadline').value = deadline.toISOString().split('T')[0];
+    
+    // Clear previous assignments
+    document.getElementById('assignmentsList').innerHTML = '<p class="text-muted text-center mb-0">Nenhuma atribuição criada ainda</p>';
+    
+    modal.show();
+}
+
+function openAutomaticDistributionModal(workIds) {
+    const modal = new bootstrap.Modal(document.getElementById('automaticDistributionModal'));
+    
+    // Populate selected works
+    populateSelectedWorks('autoSelectedWorksList', workIds);
+    
+    // Set default deadline (7 days from now)
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+    document.getElementById('autoDeadline').value = deadline.toISOString().split('T')[0];
+    
+    // Clear preview
+    document.getElementById('distributionPreview').innerHTML = '<span class="text-muted">Configure os parâmetros acima para ver a prévia</span>';
+    
+    modal.show();
+}
+
+function populateSelectedWorks(containerId, workIds) {
+    const container = document.getElementById(containerId);
+    let html = '';
+    
+    workIds.forEach(workId => {
+        const workRow = document.querySelector(`#work_${workId}`).closest('tr');
+        const title = workRow.querySelector('td:nth-child(2) strong').textContent;
+        const category = workRow.querySelector('td:nth-child(3)').textContent.trim();
+        
+        html += `
+            <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                <div>
+                    <strong>${title}</strong><br>
+                    <small class="text-muted">${category}</small>
+                </div>
+                <span class="badge bg-primary">${workId}</span>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html || '<p class="text-muted text-center mb-0">Nenhum trabalho selecionado</p>';
+}
+
+function loadAvailableReviewers() {
+    fetch('/api/reviewers', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                populateReviewersList(data.reviewers);
+            } else {
+                console.error('Error loading reviewers:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading reviewers:', error);
+        });
+}
+
+function populateReviewersList(reviewers) {
+    const container = document.getElementById('reviewersList');
+    let html = '';
+    
+    reviewers.forEach(reviewer => {
+        html += `
+            <div class="reviewer-item d-flex justify-content-between align-items-center p-2 border-bottom" data-reviewer-id="${reviewer.id}">
+                <div>
+                    <strong>${reviewer.nome}</strong><br>
+                    <small class="text-muted">${reviewer.email}</small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-info">${reviewer.current_assignments} trabalhos</span><br>
+                    <button class="btn btn-sm btn-outline-primary mt-1" onclick="addReviewerAssignment(${reviewer.id}, '${reviewer.nome}')">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html || '<p class="text-muted text-center mb-0">Nenhum revisor disponível</p>';
+}
+
+let manualAssignments = [];
+
+function addReviewerAssignment(reviewerId, reviewerName) {
+    const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked')).map(cb => cb.value);
+    
+    selectedWorks.forEach(workId => {
+        const workRow = document.querySelector(`#work_${workId}`).closest('tr');
+        const workTitle = workRow.querySelector('td:nth-child(2) strong').textContent;
+        
+        // Check if assignment already exists
+        const existingAssignment = manualAssignments.find(a => a.workId === workId && a.reviewerId === reviewerId);
+        if (!existingAssignment) {
+            manualAssignments.push({
+                workId: workId,
+                workTitle: workTitle,
+                reviewerId: reviewerId,
+                reviewerName: reviewerName
+            });
+        }
+    });
+    
+    updateAssignmentsList();
+}
+
+function updateAssignmentsList() {
+    const container = document.getElementById('assignmentsList');
+    let html = '';
+    
+    manualAssignments.forEach((assignment, index) => {
+        html += `
+            <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                <div>
+                    <strong>${assignment.workTitle}</strong> → <strong>${assignment.reviewerName}</strong>
+                </div>
+                <button class="btn btn-sm btn-outline-danger" onclick="removeAssignment(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html || '<p class="text-muted text-center mb-0">Nenhuma atribuição criada ainda</p>';
+    
+    // Enable/disable execute button
+    document.getElementById('executeManualDistribution').disabled = manualAssignments.length === 0;
+}
+
+function removeAssignment(index) {
+    manualAssignments.splice(index, 1);
+    updateAssignmentsList();
+}
+
+// Reviewer search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const reviewerSearch = document.getElementById('reviewerSearch');
+    if (reviewerSearch) {
+        reviewerSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const reviewerItems = document.querySelectorAll('.reviewer-item');
+            
+            reviewerItems.forEach(item => {
+                const reviewerName = item.querySelector('strong').textContent.toLowerCase();
+                const reviewerEmail = item.querySelector('small').textContent.toLowerCase();
+                
+                if (reviewerName.includes(searchTerm) || reviewerEmail.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Execute manual distribution
+    const executeManualBtn = document.getElementById('executeManualDistribution');
+    if (executeManualBtn) {
+        executeManualBtn.addEventListener('click', function() {
+            executeManualDistribution();
+        });
+    }
+    
+    // Execute automatic distribution
+    const executeAutoBtn = document.getElementById('executeAutoDistribution');
+    if (executeAutoBtn) {
+        executeAutoBtn.addEventListener('click', function() {
+            executeAutomaticDistribution();
+        });
+    }
+    
+    // Preview automatic distribution
+    const previewBtn = document.getElementById('previewDistribution');
+    if (previewBtn) {
+        previewBtn.addEventListener('click', function() {
+            previewAutomaticDistribution();
+        });
+    }
+});
+
+function executeManualDistribution() {
+    const deadline = document.getElementById('manualDeadline').value;
+    const notes = document.getElementById('manualNotes').value;
+    
+    if (!deadline) {
+        alert('Por favor, defina um prazo para a revisão.');
+        return;
+    }
+    
+    if (manualAssignments.length === 0) {
+        alert('Por favor, crie pelo menos uma atribuição.');
+        return;
+    }
+    
+    const data = {
+        assignments: manualAssignments,
+        deadline: deadline,
+        notes: notes
+    };
+    
+    fetch('/api/distribution/manual', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Distribuição manual executada com sucesso!');
+            const modal = document.getElementById('manualDistributionModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                bootstrap.Modal.getInstance(modal).hide();
+            } else {
+                // Fallback para fechar modal sem Bootstrap
+                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
+            location.reload(); // Refresh to show updated status
+        } else {
+            alert('Erro na distribuição: ' + (data.error || data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao executar distribuição manual.');
+    });
+}
+
+function executeAutomaticDistribution() {
+    const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked')).map(cb => cb.value);
+    const reviewersPerWork = document.getElementById('reviewersPerWork').value;
+    const maxAssignments = document.getElementById('maxAssignmentsPerReviewer').value;
+    const deadline = document.getElementById('autoDeadline').value;
+    const notes = document.getElementById('autoNotes').value;
+    const excludeAuthors = document.getElementById('excludeAuthors').checked;
+    const balanceWorkload = document.getElementById('balanceWorkload').checked;
+    
+    if (!deadline) {
+        alert('Por favor, defina um prazo para a revisão.');
+        return;
+    }
+    
+    const data = {
+        work_ids: selectedWorks,
+        reviewers_per_work: parseInt(reviewersPerWork),
+        max_assignments_per_reviewer: parseInt(maxAssignments),
+        deadline: deadline,
+        notes: notes,
+        exclude_authors: excludeAuthors,
+        balance_workload: balanceWorkload
+    };
+    
+    fetch('/api/distribution/automatic', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Distribuição automática executada com sucesso! ${data.assignments_created} atribuições criadas.`);
+            const modal = document.getElementById('automaticDistributionModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                bootstrap.Modal.getInstance(modal).hide();
+            } else {
+                // Fallback para fechar modal sem Bootstrap
+                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
+            location.reload(); // Refresh to show updated status
+        } else {
+            alert('Erro na distribuição: ' + (data.error || data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao executar distribuição automática.');
+    });
+}
+
+function previewAutomaticDistribution() {
+    const selectedWorks = Array.from(document.querySelectorAll('.work-checkbox:checked')).map(cb => cb.value);
+    const reviewersPerWork = document.getElementById('reviewersPerWork').value;
+    const maxAssignments = document.getElementById('maxAssignmentsPerReviewer').value;
+    
+    // Simple preview calculation
+    const totalAssignments = selectedWorks.length * parseInt(reviewersPerWork);
+    const estimatedReviewers = Math.ceil(totalAssignments / parseInt(maxAssignments));
+    
+    const previewHtml = `
+        <div class="row text-center">
+            <div class="col-md-3">
+                <strong>${selectedWorks.length}</strong><br>
+                <small>Trabalhos</small>
+            </div>
+            <div class="col-md-3">
+                <strong>${reviewersPerWork}</strong><br>
+                <small>Revisores/Trabalho</small>
+            </div>
+            <div class="col-md-3">
+                <strong>${totalAssignments}</strong><br>
+                <small>Total Atribuições</small>
+            </div>
+            <div class="col-md-3">
+                <strong>~${estimatedReviewers}</strong><br>
+                <small>Revisores Necessários</small>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('distributionPreview').innerHTML = previewHtml;
+}
+</script>
+{% endblock %}

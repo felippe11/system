@@ -13,7 +13,25 @@ def login_required(f):
     """Decorator que exige que o usuário esteja logado."""
     @wraps(f)
     def wrapper(*args, **kwargs):
-        return flask_login_required(f)(*args, **kwargs)
+        if not current_user.is_authenticated:
+            # Debug logging
+            print(f"DEBUG: Path: {request.path}")
+            print(f"DEBUG: Accept header: {request.headers.get('Accept', '')}")
+            print(f"DEBUG: Content-Type header: {request.headers.get('Content-Type', '')}")
+            print(f"DEBUG: request.is_json: {request.is_json}")
+            
+            # Check if request expects JSON (either Content-Type or Accept header)
+            is_json_request = (request.is_json or 
+                             'application/json' in request.headers.get('Accept', '') or
+                             request.path.startswith('/api/'))
+            print(f"DEBUG: is_json_request: {is_json_request}")
+            
+            if is_json_request:
+                print("DEBUG: Returning JSON error")
+                return jsonify({'error': 'Autenticação necessária'}), 401
+            print("DEBUG: Redirecting to login")
+            return redirect(url_for('auth_routes.login'))
+        return f(*args, **kwargs)
     return wrapper
 
 
