@@ -98,12 +98,11 @@ def list_processes() -> Any:
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
 
-
     processos = RevisorProcess.query.filter_by(
         cliente_id=current_user.id  # type: ignore[attr-defined]
     ).all()
-    data = [{"id": p.id, "formulario_id": p.formulario_id} for p in processos]
-    return jsonify(data)
+    
+    return render_template("revisor/process_list.html", processos=processos)
 
 
 @revisor_routes.route("/revisor/processos", methods=["POST"])
@@ -221,6 +220,41 @@ def edit_process(process_id: int):
 
 # Removidos endpoints antigos/duplicados baseados em _config_process
 # para manter somente o fluxo atual em /revisor/processos
+
+
+@revisor_routes.route("/revisor/config", methods=["GET"])
+@login_required
+def config_revisor():
+    """Main configuration page for reviewer processes.
+    
+    Lists all existing reviewer processes for the current client
+    and provides options to create new ones or edit existing ones.
+    """
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    # Get all reviewer processes for the current client
+    processos = RevisorProcess.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    
+    # Get all forms for the current client
+    formularios = Formulario.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    
+    # Get all events for the current client
+    eventos = Evento.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    
+    return render_template(
+        "revisor/config_overview.html",
+        processos=processos,
+        formularios=formularios,
+        eventos=eventos,
+    )
 
 
 @revisor_routes.route("/revisor/processes/<int:process_id>/delete", methods=["POST"])
@@ -511,15 +545,38 @@ def progress(codigo: str):
     if cand.status == 'aprovado':
         revisor_user = Usuario.query.filter_by(email=cand.email).first()
         if revisor_user:
-            assignments = Assignment.query.filter_by(reviewer_id=revisor_user.id).all()
-            resposta_formulario_ids = [assignment.resposta_formulario_id for assignment in assignments]
-            if resposta_formulario_ids:
-                # Buscar trabalhos através das respostas de formulário
-                from models.event import RespostaFormulario
-                respostas = RespostaFormulario.query.filter(RespostaFormulario.id.in_(resposta_formulario_ids)).all()
-                trabalho_ids = [resposta.trabalho_id for resposta in respostas if resposta.trabalho_id]
-                if trabalho_ids:
-                    trabalhos_designados = Submission.query.filter(Submission.id.in_(trabalho_ids)).all()
+            # Buscar assignments com informações completas
+            assignments = (
+                Assignment.query
+                .options(
+                    db.joinedload(Assignment.resposta_formulario),
+                    db.joinedload(Assignment.reviewer)
+                )
+                .filter_by(reviewer_id=revisor_user.id)
+                .all()
+            )
+            
+            # Processar assignments para obter trabalhos com informações detalhadas
+            for assignment in assignments:
+                if assignment.resposta_formulario and assignment.resposta_formulario.trabalho_id:
+                    trabalho = Submission.query.get(assignment.resposta_formulario.trabalho_id)
+                    if trabalho:
+                        # Adicionar informações do assignment ao trabalho
+                        trabalho.assignment_deadline = assignment.deadline
+                        trabalho.assignment_completed = assignment.completed
+                        trabalho.assignment_id = assignment.id
+                        trabalho.distribution_date = assignment.distribution_date
+                        
+                        # Calcular dias restantes para o prazo
+                        if assignment.deadline:
+                            from datetime import date
+                            today = date.today()
+                            deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
+                            trabalho.days_left = (deadline_date - today).days
+                        else:
+                            trabalho.days_left = None
+                        
+                        trabalhos_designados.append(trabalho)
 
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template(

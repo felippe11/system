@@ -33,6 +33,7 @@ from models import (
     WorkMetadata,
 )
 from models.review import Assignment
+from sqlalchemy import func
 from services.submission_service import SubmissionService
 from utils.mfa import mfa_required
 
@@ -251,10 +252,44 @@ def listar_trabalhos():
         formulario_id=formulario.id
     ).order_by(RespostaFormulario.data_submissao.desc()).all()
     
+    # Buscar informações de distribuição para cada trabalho
+    trabalho_ids = [resposta.id for resposta in respostas]
+    
+    # Buscar assignments com informações dos revisores
+    from models.user import Usuario
+    assignments_with_reviewers = db.session.query(
+        Assignment.resposta_formulario_id,
+        Usuario.nome.label('reviewer_name')
+    ).join(
+        Usuario, Assignment.reviewer_id == Usuario.id
+    ).filter(
+        Assignment.resposta_formulario_id.in_(trabalho_ids)
+    ).all()
+    
+    # Organizar assignments por trabalho
+    assignment_dict = {}
+    for assignment in assignments_with_reviewers:
+        trabalho_id = assignment.resposta_formulario_id
+        if trabalho_id not in assignment_dict:
+            assignment_dict[trabalho_id] = []
+        assignment_dict[trabalho_id].append(assignment.reviewer_name)
+    
     # Organizar dados dos trabalhos
     trabalhos = []
     for resposta in respostas:
         trabalho = {'id': resposta.id, 'data_submissao': resposta.data_submissao}
+        
+        # Adicionar status de distribuição e revisores
+        reviewer_names = assignment_dict.get(resposta.id, [])
+        if reviewer_names:
+            trabalho['distribution_status'] = 'Distribuído'
+            trabalho['assignment_count'] = len(reviewer_names)
+            trabalho['reviewer_names'] = reviewer_names
+        else:
+            trabalho['distribution_status'] = 'Não Distribuído'
+            trabalho['assignment_count'] = 0
+            trabalho['reviewer_names'] = []
+        
         for resposta_campo in resposta.respostas_campos:
             campo_nome = resposta_campo.campo.nome
             trabalho[campo_nome.lower().replace(' ', '_')] = resposta_campo.valor
@@ -320,15 +355,31 @@ def novo_trabalho():
 @login_required
 def editar_trabalho(trabalho_id):
     """Editar trabalho existente."""
-    if current_user.tipo != "cliente":
+    if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     
     # Buscar resposta do formulário
-    resposta = RespostaFormulario.query.filter_by(
-        id=trabalho_id,
-        usuario_id=current_user.id
-    ).first()
+    if current_user.tipo == "admin":
+        # Admin pode editar qualquer trabalho
+        resposta = RespostaFormulario.query.get(trabalho_id)
+    elif current_user.tipo == "revisor":
+        # Revisor pode editar trabalhos distribuídos para ele ou seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter(
+            db.or_(
+                RespostaFormulario.usuario_id == current_user.id,
+                RespostaFormulario.id.in_(
+                    db.session.query(Assignment.resposta_formulario_id)
+                    .filter(Assignment.reviewer_id == current_user.id)
+                )
+            )
+        ).filter(RespostaFormulario.id == trabalho_id).first()
+    else:
+        # Cliente só pode editar seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter_by(
+            id=trabalho_id,
+            usuario_id=current_user.id
+        ).first()
     
     if not resposta:
         flash("Trabalho não encontrado.", "danger")
@@ -380,15 +431,31 @@ def editar_trabalho(trabalho_id):
 @login_required
 def excluir_trabalho(trabalho_id):
     """Excluir trabalho."""
-    if current_user.tipo != "cliente":
+    if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     
     # Buscar resposta do formulário
-    resposta = RespostaFormulario.query.filter_by(
-        id=trabalho_id,
-        usuario_id=current_user.id
-    ).first()
+    if current_user.tipo == "admin":
+        # Admin pode excluir qualquer trabalho
+        resposta = RespostaFormulario.query.get(trabalho_id)
+    elif current_user.tipo == "revisor":
+        # Revisor pode excluir trabalhos distribuídos para ele ou seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter(
+            db.or_(
+                RespostaFormulario.usuario_id == current_user.id,
+                RespostaFormulario.id.in_(
+                    db.session.query(Assignment.resposta_formulario_id)
+                    .filter(Assignment.reviewer_id == current_user.id)
+                )
+            )
+        ).filter(RespostaFormulario.id == trabalho_id).first()
+    else:
+        # Cliente só pode excluir seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter_by(
+            id=trabalho_id,
+            usuario_id=current_user.id
+        ).first()
     
     if not resposta:
         flash("Trabalho não encontrado.", "danger")
@@ -413,15 +480,31 @@ def excluir_trabalho(trabalho_id):
 @login_required
 def visualizar_trabalho(trabalho_id):
     """Visualizar detalhes do trabalho."""
-    if current_user.tipo != "cliente":
+    if current_user.tipo not in ["cliente", "admin", "revisor"]:
         flash("Acesso negado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     
     # Buscar resposta do formulário
-    resposta = RespostaFormulario.query.filter_by(
-        id=trabalho_id,
-        usuario_id=current_user.id
-    ).first()
+    if current_user.tipo == "admin":
+        # Admin pode visualizar qualquer trabalho
+        resposta = RespostaFormulario.query.get(trabalho_id)
+    elif current_user.tipo == "revisor":
+        # Revisor pode visualizar trabalhos distribuídos para ele ou seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter(
+            db.or_(
+                RespostaFormulario.usuario_id == current_user.id,
+                RespostaFormulario.id.in_(
+                    db.session.query(Assignment.resposta_formulario_id)
+                    .filter(Assignment.reviewer_id == current_user.id)
+                )
+            )
+        ).filter(RespostaFormulario.id == trabalho_id).first()
+    else:
+        # Cliente só pode visualizar seus próprios trabalhos
+        resposta = RespostaFormulario.query.filter_by(
+            id=trabalho_id,
+            usuario_id=current_user.id
+        ).first()
     
     if not resposta:
         flash("Trabalho não encontrado.", "danger")
@@ -524,6 +607,7 @@ def manual_distribution():
         
         work_ids = data.get('work_ids', [])
         assignments = data.get('assignments', [])
+        deadline = data.get('deadline')  # Get deadline from top level
         notes = data.get('notes', '')
         
         if not work_ids or not assignments:
@@ -541,9 +625,8 @@ def manual_distribution():
         
         # Create assignments
         for assignment_data in assignments:
-            work_id = assignment_data.get('work_id')
-            reviewer_id = assignment_data.get('reviewer_id')
-            deadline = assignment_data.get('deadline')
+            work_id = assignment_data.get('workId')  # Changed from 'work_id' to 'workId'
+            reviewer_id = assignment_data.get('reviewerId')  # Changed from 'reviewer_id' to 'reviewerId'
             
             if not all([work_id, reviewer_id]):
                 continue
@@ -561,7 +644,7 @@ def manual_distribution():
             assignment = Assignment(
                 resposta_formulario_id=work_id,
                 reviewer_id=reviewer_id,
-                deadline=deadline,
+                deadline=deadline,  # Use deadline from top level
                 distribution_type='manual',
                 distribution_date=db.func.now(),
                 distributed_by=None,
@@ -683,6 +766,78 @@ def automatic_distribution():
         db.session.rollback()
         current_app.logger.error(f"Error in automatic distribution: {e}")
         return {"error": "Internal server error"}, 500
+
+
+@trabalho_routes.route("/api/distribution/undo/<int:work_id>", methods=["DELETE"])
+@csrf.exempt
+def undo_work_distribution(work_id):
+    """API endpoint to undo distribution for a specific work."""
+    
+    try:
+        # Check if work exists
+        work = RespostaFormulario.query.get(work_id)
+        if not work:
+            return {"error": "Work not found"}, 404
+        
+        # Delete all assignments for this work
+        assignments = Assignment.query.filter_by(resposta_formulario_id=work_id).all()
+        
+        if not assignments:
+            return {"error": "No distribution found for this work"}, 404
+        
+        assignments_deleted = len(assignments)
+        
+        for assignment in assignments:
+            db.session.delete(assignment)
+        
+        db.session.commit()
+        
+        return {
+            "success": True,
+            "message": f"Successfully removed {assignments_deleted} assignments for work ID {work_id}",
+            "assignments_deleted": assignments_deleted
+        }, 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error undoing work distribution: {e}")
+        return {"error": "Internal server error"}, 500
+
+
+@trabalho_routes.route("/api/distribution/undo-all", methods=["DELETE"])
+@csrf.exempt
+def undo_all_distributions():
+    """API endpoint to undo all work distributions."""
+    
+    try:
+        # Get all assignments
+        assignments = Assignment.query.all()
+        
+        if not assignments:
+            return {"error": "No distributions found"}, 404
+        
+        assignments_deleted = len(assignments)
+        works_affected = len(set(assignment.resposta_formulario_id for assignment in assignments))
+        
+        # Delete all assignments
+        for assignment in assignments:
+            db.session.delete(assignment)
+        
+        db.session.commit()
+        
+        return {
+            "success": True,
+            "message": f"Successfully removed all distributions. {assignments_deleted} assignments from {works_affected} works were deleted.",
+            "assignments_deleted": assignments_deleted,
+            "works_affected": works_affected
+        }, 200
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error undoing all distributions: {e}")
+        return {"error": "Internal server error"}, 500
+
+
         try:
             df = pd.read_excel(arquivo)
         except Exception:
