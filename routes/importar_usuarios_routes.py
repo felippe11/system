@@ -1,6 +1,7 @@
 from flask import Blueprint, request, redirect, url_for, flash
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
+from utils import endpoints
 
 import pandas as pd
 import os
@@ -24,11 +25,11 @@ importar_usuarios_routes = Blueprint('importar_usuarios_routes', __name__)
 def importar_usuarios():
     if "arquivo" not in request.files:
         flash("Nenhum arquivo enviado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     arquivo = request.files["arquivo"]
     if arquivo.filename == "":
         flash("Nenhum arquivo selecionado.", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     if arquivo and arquivo_permitido(arquivo.filename):
         filename = secure_filename(arquivo.filename)
         filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
@@ -40,7 +41,7 @@ def importar_usuarios():
             colunas_obrigatorias = ["nome", "cpf", "email", "senha", "formacao", "tipo"]
             if not all(col in df.columns for col in colunas_obrigatorias):
                 flash("Erro: O arquivo deve conter as colunas: " + ", ".join(colunas_obrigatorias), "danger")
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
             total_importados = 0
             for _, row in df.iterrows():
                 cpf_str = str(row["cpf"]).strip()
@@ -73,6 +74,4 @@ def importar_usuarios():
         os.remove(filepath)
     else:
         flash("Formato de arquivo inválido. Envie um arquivo Excel (.xlsx)", "danger")
-    return redirect(url_for('dashboard_routes.dashboard'))
-
-
+    return redirect(url_for(endpoints.DASHBOARD))

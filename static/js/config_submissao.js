@@ -24,244 +24,259 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-  function attachOnce(el, event, handler) {
-    if (!el) return;
-    const key = `listener_${event}`;
-    if (el.dataset[key]) return;
-    el.dataset[key] = 'true';
-    el.addEventListener(event, handler);
-  }
+    function attachOnce(el, event, handler) {
+        if (!el) return;
+        const key = `listener_${event}`;
+        if (el.dataset[key]) return;
+        el.dataset[key] = 'true';
+        el.addEventListener(event, handler);
+    }
 
-
-  document.querySelectorAll('.btn-toggle').forEach((btn) => {
-    attachOnce(btn, 'click', async () => {
-      const url = btn.dataset.toggleUrl;
-      if (!url) return;
-      try {
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'X-CSRFToken': csrfToken,
-          },
-          credentials: 'include',
+    document.querySelectorAll('.btn-toggle').forEach((btn) => {
+        attachOnce(btn, 'click', async () => {
+            const url = btn.dataset.toggleUrl;
+            if (!url) return;
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                    },
+                    credentials: 'include',
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success) {
+                        btn.textContent = data.enabled ? 'Ativado' : 'Desativado';
+                        btn.className = data.enabled
+                            ? 'btn btn-success btn-toggle'
+                            : 'btn btn-secondary btn-toggle';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao alternar configuração:', error);
+            }
         });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.success) {
-            atualizarBotao(btn, data.value);
-          } else {
-            alert(data.message || 'Erro ao atualizar');
-          }
-        } else {
-          const data = await resp.json().catch(() => null);
-          alert(data?.message || 'Erro ao processar solicitação');
-        }
-      } catch (err) {
-        console.error('Erro de rede', err);
-      }
     });
-  });
 
-    const formImportarTrabalhos = document.getElementById('formImportarTrabalhos');
-    const modalContainer = document.getElementById('mapearColunasModal');
-    const template = document.getElementById('mapearColunasTemplate');
-
-    console.log('Elementos encontrados:');
-    console.log('Formulário de importação encontrado:', formImportarTrabalhos);
-    console.log('modalContainer:', modalContainer ? 'encontrado' : 'não encontrado');
-    console.log('template:', template ? 'encontrado' : 'não encontrado');
-    console.log('form.dataset.context:', formImportarTrabalhos ? formImportarTrabalhos.dataset.context : 'form não existe');
-
-    // Só anexa o handler se o formulário existe, tem o modal de mapeamento e está no contexto correto
-    // Isso evita conflito com submission_import.js
-    if (formImportarTrabalhos && modalContainer && template && formImportarTrabalhos.dataset.context === 'config-submissao') {
-        console.log('Anexando handler de submit ao formulário');
-        formImportarTrabalhos.addEventListener('submit', async function(e) {
-            console.log('Evento de submit capturado');
+    // Funcionalidade de Importação de Trabalhos
+    const importModal = document.getElementById('importarTrabalhosModal');
+    if (importModal) {
+        const uploadForm = document.getElementById('uploadForm');
+        const mappingForm = document.getElementById('mappingForm');
+        const step1 = document.getElementById('importStep1');
+        const step2 = document.getElementById('importStep2');
+        const step3 = document.getElementById('importStep3');
+        const voltarBtn = document.getElementById('voltarStep1');
+        
+        let uploadedData = null;
+        
+        // Reset modal ao abrir
+        importModal.addEventListener('show.bs.modal', function() {
+            showStep(1);
+            uploadForm.reset();
+            uploadedData = null;
+        });
+        
+        // Upload do arquivo
+        uploadForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const fileInput = this.querySelector('input[type="file"]');
-            console.log('Input de arquivo:', fileInput);
-            const file = fileInput.files[0];
-            console.log('Arquivo selecionado:', file);
+            const formData = new FormData(uploadForm);
             
-            if (!file) {
-                console.log('Nenhum arquivo selecionado');
-                alert('Por favor, selecione um arquivo.');
-                return;
-            }
-            
-            const formData = new FormData();
-            formData.append('arquivo', file);
-            console.log('FormData criado:', formData);
-            console.log('URL de ação:', this.action);
             try {
-                console.log('Enviando requisição para:', this.action);
-                console.log('FormData contém:', Array.from(formData.entries()));
-                console.log('CSRF Token:', csrfToken);
-                
-                const resp = await fetch(this.action, {
+                const response = await fetch('/importar_trabalhos', {
                     method: 'POST',
                     body: formData,
-                    headers: { 'X-CSRFToken': csrfToken },
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
                 });
                 
-                console.log('=== RESPOSTA DETALHADA ===');
-                console.log('Status:', resp.status);
-                console.log('Status Text:', resp.statusText);
-                console.log('Headers:', Object.fromEntries(resp.headers.entries()));
-                console.log('URL:', resp.url);
-                console.log('OK:', resp.ok);
+                const result = await response.json();
                 
-                if (!resp.ok) {
-                    console.error('Erro na resposta HTTP:', resp.status, resp.statusText);
-                    const responseText = await resp.text();
-                    console.error('Corpo da resposta de erro:', responseText);
-                    try {
-                        const errData = JSON.parse(responseText);
-                        alert(errData?.message || 'Erro ao importar');
-                    } catch {
-                        alert('Erro ao importar: ' + resp.statusText);
-                    }
-                    return;
+                if (result.success) {
+                    uploadedData = result;
+                    populateColumnSelects(result.columns, result.suggested_mappings);
+                    populatePreview(result.columns, result.data);
+                    document.getElementById('totalRows').textContent = result.total_rows;
+                    document.getElementById('tempId').value = result.temp_id;
+                    document.getElementById('eventoIdHidden').value = document.getElementById('eventoSelect').value;
+                    showStep(2);
+                } else {
+                    alert('Erro ao fazer upload: ' + result.message);
                 }
-                
-                const responseText = await resp.text();
-                console.log('Texto da resposta:', responseText);
-                
-                let data;
-                try {
-                    data = JSON.parse(responseText);
-                } catch (parseError) {
-                    console.error('Erro ao fazer parse do JSON:', parseError);
-                    console.error('Resposta não é JSON válido:', responseText);
-                    alert('Erro: Resposta inválida do servidor');
-                    return;
-                }
-                
-                console.log('=== DADOS PARSEADOS ===');
-                console.log('Dados completos:', data);
-                console.log('data.success:', data.success);
-                console.log('data.message:', data.message);
-                console.log('data.columns:', data.columns);
-                console.log('data.data:', data.data);
-                if (data.success) {
-                    console.log('Sucesso - criando modal de mapeamento');
-                    const columns = data.columns || [];
-                    const rows = data.data || [];
-                    if (!columns.length) {
-                        alert('Nenhuma coluna encontrada');
-                        return;
-                    }
-
-      if (template && modalContainer) {
-        modalContainer.innerHTML = template.innerHTML;
-        const modalEl = modalContainer.querySelector('.modal');
-        const selectsWrap = modalEl.querySelector('#mapearCampos');
-        const fields = ['titulo', 'categoria', 'rede_ensino', 'etapa_ensino', 'pdf_url'];
-        fields.forEach((field) => {
-          const div = document.createElement('div');
-          div.className = 'mb-3';
-          const label = document.createElement('label');
-          label.className = 'form-label';
-          label.htmlFor = field;
-          label.textContent = field.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-          const select = document.createElement('select');
-          select.className = 'form-select';
-          select.id = field;
-          select.dataset.field = field;
-          select.required = true;
-          const optEmpty = document.createElement('option');
-          optEmpty.value = '';
-          optEmpty.textContent = 'Selecione';
-          select.appendChild(optEmpty);
-          columns.forEach((col) => {
-            const opt = document.createElement('option');
-            opt.value = col;
-            opt.textContent = col;
-            select.appendChild(opt);
-          });
-          div.appendChild(label);
-          div.appendChild(select);
-          selectsWrap.appendChild(div);
-        });
-
-        const modal = new bootstrap.Modal(modalEl);
-        const confirmBtn = modalEl.querySelector('#confirmarMapeamento');
-        attachOnce(confirmBtn, 'click', async () => {
-          const selects = selectsWrap.querySelectorAll('select');
-          const chosen = [];
-          for (const sel of selects) {
-            if (!sel.value) {
-              alert('Preencha todas as colunas');
-              return;
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao fazer upload do arquivo.');
             }
-            chosen.push(sel.value);
-          }
-          const payload = new FormData();
-          chosen.forEach((c) => payload.append('columns', c));
-          payload.append('temp_id', data.temp_id);
-          payload.append('data', JSON.stringify(rows));
-          try {
-            console.log('=== SEGUNDA REQUISIÇÃO (CONFIRMAÇÃO) ===');
-            console.log('URL:', formImportarTrabalhos.action);
-            console.log('Payload:', Array.from(payload.entries()));
-            console.log('CSRF Token:', csrfToken);
+        });
+        
+        // Mapeamento e importação final
+        mappingForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            const resp2 = await fetch(formImportarTrabalhos.action, {
-              method: 'POST',
-              body: payload,
-              headers: { 'X-CSRFToken': csrfToken },
+            showStep(3);
+            
+            const formData = new FormData(mappingForm);
+            
+            try {
+                const response = await fetch('/importar_trabalhos', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Adicionar feedback visual durante upload
+                    const uploadProgress = document.createElement('div');
+                    uploadProgress.className = 'progress mb-3';
+                    uploadProgress.innerHTML = `
+                      <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    `;
+                    
+                    // Atualizar evento de submit do uploadForm
+                    uploadForm.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        // Exibir loader e desativar botão
+                        this.insertAdjacentElement('beforebegin', uploadProgress);
+                        const submitBtn = this.querySelector('button[type="submit"]');
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> Processando...`;
+                    
+                        const formData = new FormData(uploadForm);
+                        
+                        try {
+                            const response = await fetch('/importar_trabalhos', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-CSRFToken': csrfToken
+                                }
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                // Atualizar progresso para 100%
+                                uploadProgress.querySelector('.progress-bar').style.width = '100%';
+                                
+                                // Transição automática após 1s
+                                setTimeout(() => {
+                                    showStep(2);
+                                    uploadProgress.remove();
+                                    submitBtn.disabled = false;
+                                    submitBtn.textContent = 'Próxima Etapa →';
+                                }, 1000);
+                            } else {
+                                // Feedback de erro no modal
+                                const errorAlert = `<div class="alert alert-danger mt-3">${result.message}</div>`;
+                                this.insertAdjacentHTML('afterend', errorAlert);
+                                setTimeout(() => document.querySelector('.alert').remove(), 5000);
+                            }
+                            
+                            // Restaurar botão em caso de erro
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Enviar Arquivo';
+                    });
+                    
+                    // Adicionar navegação automática na conclusão
+                    const successAlert = `<div class="alert alert-success">✅ Arquivo processado com sucesso! Redirecionando...</div>`;
+                    
+                    // Modificar o handler de sucesso final
+                    if (result.success) {
+                        document.getElementById('importStep3').insertAdjacentHTML('afterbegin', successAlert);
+                        setTimeout(() => {
+                            window.location.href = '/distribuicao_trabalhos?temp_id=' + result.temp_id;
+                        }, 2000);
+                    }
+                    
+                } else {
+                    alert('Erro na importação: ' + result.message);
+                    showStep(2);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro durante a importação.');
+                showStep(2);
+            }
+        });
+        
+        // Botão voltar
+        voltarBtn.addEventListener('click', function() {
+            showStep(1);
+        });
+        
+        function showStep(stepNumber) {
+            step1.style.display = stepNumber === 1 ? 'block' : 'none';
+            step2.style.display = stepNumber === 2 ? 'block' : 'none';
+            step3.style.display = stepNumber === 3 ? 'block' : 'none';
+        }
+        
+        function populateColumnSelects(columns, suggestedMappings) {
+            const selects = {
+                'tituloSelect': 'titulo',
+                'categoriaSelect': 'categoria',
+                'autorNomeSelect': 'autor_nome',
+                'autorEmailSelect': 'autor_email',
+                'redeEnsinoSelect': 'rede_ensino',
+                'etapaEnsinoSelect': 'etapa_ensino'
+            };
+            
+            Object.keys(selects).forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const mappingKey = selects[selectId];
+                
+                // Limpar opções existentes (exceto a primeira)
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+                
+                // Adicionar colunas
+                columns.forEach(column => {
+                    const option = document.createElement('option');
+                    option.value = column;
+                    option.textContent = column;
+                    select.appendChild(option);
+                });
+                
+                // Aplicar sugestão automática se disponível
+                if (suggestedMappings && suggestedMappings[mappingKey] && suggestedMappings[mappingKey].length > 0) {
+                    select.value = suggestedMappings[mappingKey][0];
+                }
+            });
+        }
+        
+        function populatePreview(columns, data) {
+            const header = document.getElementById('previewHeader');
+            const body = document.getElementById('previewBody');
+            
+            // Limpar conteúdo anterior
+            header.innerHTML = '';
+            body.innerHTML = '';
+            
+            // Criar cabeçalho
+            columns.forEach(column => {
+                const th = document.createElement('th');
+                th.textContent = column;
+                header.appendChild(th);
             });
             
-            console.log('=== RESPOSTA DA CONFIRMAÇÃO ===');
-            console.log('Status:', resp2.status);
-            console.log('Status Text:', resp2.statusText);
-            console.log('Headers:', Object.fromEntries(resp2.headers.entries()));
-            console.log('OK:', resp2.ok);
-            
-            const responseText2 = await resp2.text();
-            console.log('Texto da resposta:', responseText2);
-            
-            let resData;
-            try {
-              resData = JSON.parse(responseText2);
-            } catch (parseError) {
-              console.error('Erro ao fazer parse do JSON na confirmação:', parseError);
-              console.error('Resposta não é JSON válido:', responseText2);
-              alert('Erro: Resposta inválida do servidor na confirmação');
-              return;
-            }
-            
-            console.log('=== DADOS DA CONFIRMAÇÃO ===');
-            console.log('Dados completos:', resData);
-            console.log('resData.success:', resData.success);
-            console.log('resData.message:', resData.message);
-            
-            if (resp2.ok) {
-              alert(resData?.message || 'Importação concluída');
-              window.location.reload();
-            } else {
-              alert(resData?.message || 'Erro ao importar');
-            }
-          } catch (err2) {
-            console.error('Erro de rede na confirmação:', err2);
-            alert('Erro de rede: ' + err2.message);
-          }
-        });
-        modal.show();
-      }
-                } else {
-                    console.log('Dados recebidos no else:', data);
-                    console.log('Tipo de data:', typeof data);
-                    const errorMessage = data?.message || 'Erro desconhecido - dados inválidos';
-                    console.error('Erro nos dados:', errorMessage);
-                    alert('Erro: ' + errorMessage);
-                }
-            } catch (err) {
-                console.error('Erro capturado:', err);
-                alert('Erro ao processar arquivo: ' + err.message);
-            }
-        });
+            // Criar linhas de dados (máximo 5 para preview)
+            data.slice(0, 5).forEach(row => {
+                const tr = document.createElement('tr');
+                columns.forEach(column => {
+                    const td = document.createElement('td');
+                    td.textContent = row[column] || '';
+                    tr.appendChild(td);
+                });
+                body.appendChild(tr);
+            });
+        }
     }
 });

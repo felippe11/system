@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}Importação de Planilhas - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-import"></i>
+                        Importação de Planilhas de Submissões
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info">{{ evento.nome }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="text-muted">
+                                Importe submissões de planilhas Excel (.xlsx, .xls) ou CSV. 
+                                O sistema analisará automaticamente a estrutura e sugerirá mapeamentos de colunas.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-right">
+                            <a href="{{ url_for('submission_distribution.download_template', evento_id=evento.id) }}" 
+                               class="btn btn-outline-primary">
+                                <i class="fas fa-download"></i> Baixar Template
+                            </a>
+                            <a href="{{ url_for('submission_distribution.distribution_dashboard', evento_id=evento.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Etapa 1: Upload de Arquivo -->
+    <div class="row" id="step-1">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <span class="badge badge-primary">1</span>
+                        Upload de Arquivo
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label for="file-input">Selecione a planilha</label>
+                                    <div class="custom-file">
+                                        <input type="file" class="custom-file-input" id="file-input" name="file" 
+                                               accept=".xlsx,.xls,.csv" required>
+                                        <label class="custom-file-label" for="file-input">Escolher arquivo...</label>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Formatos suportados: Excel (.xlsx, .xls) e CSV (.csv). Tamanho máximo: 10MB.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary btn-block" id="analyze-btn">
+                                        <i class="fas fa-search"></i> Analisar Planilha
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    
+                    <!-- Mapeamentos Salvos -->
+                    {% if saved_mappings %}
+                    <div class="mt-4">
+                        <h5>Mapeamentos Salvos</h5>
+                        <div class="row">
+                            {% for mapping in saved_mappings %}
+                            <div class="col-md-4 mb-2">
+                                <div class="card card-outline card-info">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title">{{ mapping.name }}</h6>
+                                        <p class="card-text small text-muted">{{ mapping.description or 'Sem descrição' }}</p>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="loadMapping({{ mapping.id }})">
+                                            <i class="fas fa-upload"></i> Usar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Etapa 2: Mapeamento de Colunas -->
+    <div class="row" id="step-2" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <span class="badge badge-warning">2</span>
+                        Mapeamento de Colunas
+                    </h4>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="auto-map-btn">
+                            <i class="fas fa-magic"></i> Mapeamento Automático
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Colunas Detectadas</h5>
+                            <div id="detected-columns" class="list-group">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Campos do Sistema</h5>
+                            <form id="mapping-form">
+                                <div class="form-group">
+                                    <label for="map-title">Título *</label>
+                                    <select class="form-control" id="map-title" name="title" required>
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-author">Autor *</label>
+                                    <select class="form-control" id="map-author" name="author" required>
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-email">E-mail do Autor</label>
+                                    <select class="form-control" id="map-email" name="email">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-category">Categoria</label>
+                                    <select class="form-control" id="map-category" name="category">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-modality">Modalidade</label>
+                                    <select class="form-control" id="map-modality" name="modality">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-type">Tipo</label>
+                                    <select class="form-control" id="map-type" name="type">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-keywords">Palavras-chave</label>
+                                    <select class="form-control" id="map-keywords" name="keywords">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-abstract">Resumo</label>
+                                    <select class="form-control" id="map-abstract" name="abstract">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="map-institution">Instituição</label>
+                                    <select class="form-control" id="map-institution" name="institution">
+                                        <option value="">Selecione uma coluna...</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Normalização -->
+                    <div class="mt-4">
+                        <h5>Normalização de Dados</h5>
+                        <div id="normalization-section">
+                            <!-- Preenchido via JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-success" id="import-btn" disabled>
+                            <i class="fas fa-file-import"></i> Executar Importação
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="save-mapping-btn">
+                            <i class="fas fa-save"></i> Salvar Mapeamento
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetImport()">
+                            <i class="fas fa-undo"></i> Recomeçar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Etapa 3: Progresso da Importação -->
+    <div class="row" id="step-3" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="card-title">
+                        <span class="badge badge-success">3</span>
+                        Progresso da Importação
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3">
+                        <div class="progress-bar" role="progressbar" style="width: 0%" id="import-progress"></div>
+                    </div>
+                    <p id="import-status">Iniciando importação...</p>
+                    
+                    <div id="import-results" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="fas fa-file-alt"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Total de Linhas</span>
+                                        <span class="info-box-number" id="total-rows">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Importadas</span>
+                                        <span class="info-box-number" id="imported-rows">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Com Avisos</span>
+                                        <span class="info-box-number" id="warning-rows">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-danger"><i class="fas fa-times"></i></span>
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">Com Erros</span>
+                                        <span class="info-box-number" id="error-rows">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-primary" id="process-btn" style="display: none;">
+                                <i class="fas fa-cogs"></i> Processar Submissões
+                            </button>
+                            <button type="button" class="btn btn-success" id="finish-btn" style="display: none;">
+                                <i class="fas fa-check"></i> Finalizar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetImport()">
+                                <i class="fas fa-undo"></i> Nova Importação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Salvar Mapeamento -->
+<div class="modal fade" id="saveMappingModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Salvar Mapeamento</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="save-mapping-form">
+                    <div class="form-group">
+                        <label for="mapping-name">Nome do Mapeamento</label>
+                        <input type="text" class="form-control" id="mapping-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="mapping-description">Descrição (opcional)</label>
+                        <textarea class="form-control" id="mapping-description" name="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirm-save-mapping">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Helper para obter token CSRF do meta (Flask-WTF)
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+let currentFile = null;
+let analysisResult = null;
+let currentBatchId = null;
+
+$(document).ready(function() {
+    // Custom file input
+    $('.custom-file-input').on('change', function() {
+        const fileName = $(this).val().split('\\').pop();
+        $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
+    });
+    
+    // Upload form
+    $('#upload-form').on('submit', function(e) {
+        e.preventDefault();
+        analyzeSpreadsheet();
+    });
+    
+    // Mapping form validation
+    $('#mapping-form select').on('change', function() {
+        validateMapping();
+    });
+    
+    // Import button
+    $('#import-btn').on('click', function() {
+        executeImport();
+    });
+    
+    // Save mapping button
+    $('#save-mapping-btn').on('click', function() {
+        $('#saveMappingModal').modal('show');
+    });
+    
+    // Confirm save mapping
+    $('#confirm-save-mapping').on('click', function() {
+        saveMapping();
+    });
+    
+    // Auto mapping
+    $('#auto-map-btn').on('click', function() {
+        autoMapColumns();
+    });
+    
+    // Process button
+    $('#process-btn').on('click', function() {
+        processImportedSubmissions();
+    });
+    
+    // Finish button
+    $('#finish-btn').on('click', function() {
+        window.location.href = '{{ url_for("submission_distribution.distribution_dashboard", evento_id=evento.id) }}';
+    });
+});
+
+function analyzeSpreadsheet() {
+    const fileInput = document.getElementById('file-input');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Selecione um arquivo primeiro.');
+        return;
+    }
+    
+    currentFile = file;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    $('#analyze-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Analisando...');
+    
+    $.ajax({
+        url: '{{ url_for("submission_distribution.analyze_spreadsheet", evento_id=evento.id) }}',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+        },
+        success: function(response) {
+            if (response.success) {
+                analysisResult = response;
+                showMappingStep(response);
+            } else {
+                alert('Erro na análise: ' + response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Erro na comunicação: ' + error);
+        },
+        complete: function() {
+            $('#analyze-btn').prop('disabled', false).html('<i class="fas fa-search"></i> Analisar Planilha');
+        }
+    });
+}
+
+function showMappingStep(analysis) {
+    $('#step-1').hide();
+    $('#step-2').show();
+    
+    // Preencher colunas detectadas
+    const columnsHtml = analysis.columns.map((col, index) => {
+        const sampleData = analysis.sample_data && analysis.sample_data.length > 0 
+            ? (analysis.sample_data[0][col] ?? 'N/A')
+            : 'N/A';
+        
+        return `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1">${col}</h6>
+                    <small>Coluna ${index + 1}</small>
+                </div>
+                <p class="mb-1"><strong>Exemplo:</strong> ${sampleData}</p>
+            </div>
+        `;
+    }).join('');
+    
+    $('#detected-columns').html(columnsHtml);
+    
+    // Preencher opções dos selects
+    const options = '<option value="">Selecione uma coluna...</option>' + 
+        analysis.columns.map((col) => `<option value="${col}">${col}</option>`).join('');
+    
+    $('#mapping-form select').html(options);
+    
+    // Auto-mapeamento inicial
+    autoMapColumns();
+}
+
+function autoMapColumns() {
+    if (!analysisResult) return;
+    
+    const mappings = {
+        'title': ['titulo', 'title', 'nome', 'trabalho'],
+        'author': ['autor', 'author', 'autores', 'nome_autor'],
+        'email': ['email', 'e-mail', 'mail', 'email_autor'],
+        'category': ['categoria', 'category', 'area', 'tipo'],
+        'modality': ['modalidade', 'modality', 'formato'],
+        'type': ['tipo', 'type', 'classificacao'],
+        'keywords': ['palavras', 'keywords', 'tags', 'chaves'],
+        'abstract': ['resumo', 'abstract', 'descricao'],
+        'institution': ['instituicao', 'institution', 'universidade']
+    };
+    
+    Object.keys(mappings).forEach(field => {
+        const keywords = mappings[field];
+        const match = analysisResult.columns.find(col => 
+            keywords.some(keyword => col.toLowerCase().includes(keyword.toLowerCase()))
+        );
+        if (match) {
+            $(`#map-${field}`).val(match);
+        }
+    });
+    
+    validateMapping();
+    showNormalizationOptions();
+}
+
+function validateMapping() {
+    const title = $('#map-title').val();
+    const author = $('#map-author').val();
+    
+    const isValid = title && author;
+    $('#import-btn').prop('disabled', !isValid);
+    
+    return isValid;
+}
+
+function showNormalizationOptions() {
+    if (!analysisResult || !analysisResult.unique_values) return;
+    
+    const categoryColumn = $('#map-category').val();
+    const modalityColumn = $('#map-modality').val();
+    const typeColumn = $('#map-type').val();
+    
+    let html = '';
+    
+    [categoryColumn, modalityColumn, typeColumn].forEach((columnIndex, i) => {
+        if (columnIndex && analysisResult.unique_values[columnIndex]) {
+            const fieldName = ['category', 'modality', 'type'][i];
+            const fieldLabel = ['Categoria', 'Modalidade', 'Tipo'][i];
+            const values = analysisResult.unique_values[columnIndex];
+            
+            html += `
+                <div class="card card-outline card-secondary mb-3">
+                    <div class="card-header">
+                        <h6 class="card-title">Normalização: ${fieldLabel}</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">Valores únicos encontrados (${values.length}):</p>
+                        <div class="row">
+                            ${values.map(value => `
+                                <div class="col-md-4 mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">${value}</span>
+                                        </div>
+                                        <input type="text" class="form-control" 
+                                               data-field="${fieldName}" data-original="${value}" 
+                                               value="${value}" placeholder="Normalizar para...">
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    $('#normalization-section').html(html);
+}
+
+function executeImport() {
+    if (!validateMapping()) {
+        alert('Preencha os campos obrigatórios (Título e Autor).');
+        return;
+    }
+    
+    $('#step-2').hide();
+    $('#step-3').show();
+    
+    const columnMapping = {};
+    $('#mapping-form select').each(function() {
+        const field = $(this).attr('name');
+        const columnIndex = $(this).val();
+        if (columnIndex) {
+            columnMapping[field] = parseInt(columnIndex);
+        }
+    });
+    
+    const normalizationConfig = {};
+    $('#normalization-section input').each(function() {
+        const field = $(this).data('field');
+        const original = $(this).data('original');
+        const normalized = $(this).val();
+        
+        if (original !== normalized) {
+            if (!normalizationConfig[field]) {
+                normalizationConfig[field] = {};
+            }
+            normalizationConfig[field][original] = normalized;
+        }
+    });
+    
+    const formData = new FormData();
+    formData.append('file', currentFile);
+    formData.append('column_mapping', JSON.stringify(columnMapping));
+    formData.append('normalization_config', JSON.stringify(normalizationConfig));
+    
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 90) progress = 90;
+        $('#import-progress').css('width', progress + '%');
+    }, 500);
+    
+    $.ajax({
+        url: '{{ url_for("submission_distribution.execute_import", evento_id=evento.id) }}',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+        },
+        success: function(response) {
+            clearInterval(progressInterval);
+            $('#import-progress').css('width', '100%');
+            
+            if (response.success) {
+                currentBatchId = response.batch_id;
+                showImportResults(response);
+            } else {
+                alert('Erro na importação: ' + response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            clearInterval(progressInterval);
+            alert('Erro na comunicação: ' + error);
+        }
+    });
+}
+
+function showImportResults(result) {
+    $('#import-status').text('Importação concluída!');
+    
+    $('#total-rows').text(result.total_rows || 0);
+    $('#imported-rows').text(result.imported_rows || 0);
+    $('#warning-rows').text(result.warning_rows || 0);
+    $('#error-rows').text(result.error_rows || 0);
+    
+    $('#import-results').show();
+    
+    if (result.imported_rows > 0) {
+        $('#process-btn').show();
+    } else {
+        $('#finish-btn').show();
+    }
+}
+
+function processImportedSubmissions() {
+    if (!currentBatchId) return;
+    
+    $('#process-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processando...');
+    
+    $.ajax({
+        url: '{{ url_for("submission_distribution.process_imported", evento_id=evento.id) }}',
+        method: 'POST',
+        data: { batch_id: currentBatchId },
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+        },
+        success: function(response) {
+            if (response.success) {
+                alert(`Processamento concluído!\n\nSubmissões criadas: ${response.created_submissions}`);
+                $('#process-btn').hide();
+                $('#finish-btn').show();
+            } else {
+                alert('Erro no processamento: ' + response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Erro na comunicação: ' + error);
+        },
+        complete: function() {
+            $('#process-btn').prop('disabled', false).html('<i class="fas fa-cogs"></i> Processar Submissões');
+        }
+    });
+}
+
+function saveMapping() {
+    const name = $('#mapping-name').val();
+    const description = $('#mapping-description').val();
+    
+    if (!name) {
+        alert('Nome do mapeamento é obrigatório.');
+        return;
+    }
+    
+    const columnMapping = {};
+    $('#mapping-form select').each(function() {
+        const field = $(this).attr('name');
+        const columnIndex = $(this).val();
+        if (columnIndex) {
+            columnMapping[field] = parseInt(columnIndex);
+        }
+    });
+    
+    // Implementar salvamento via AJAX
+    alert('Funcionalidade de salvamento será implementada.');
+    $('#saveMappingModal').modal('hide');
+}
+
+function loadMapping(mappingId) {
+    // Implementar carregamento de mapeamento salvo
+    alert('Funcionalidade de carregamento será implementada.');
+}
+
+function resetImport() {
+    $('#step-2, #step-3').hide();
+    $('#step-1').show();
+    $('#file-input').val('');
+    $('.custom-file-label').removeClass('selected').html('Escolher arquivo...');
+    currentFile = null;
+    analysisResult = null;
+    currentBatchId = null;
+}
+</script>
+{% endblock %}

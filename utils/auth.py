@@ -2,6 +2,7 @@ from functools import wraps
 from flask import session, redirect, url_for, flash, abort, request, jsonify
 from flask_login import current_user, login_required as flask_login_required
 import logging
+from utils import endpoints
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ def admin_required(f):
             if request.is_json:
                 return jsonify({'error': 'Acesso negado - privilégios de administrador necessários'}), 403
             flash('Acesso negado - privilégios de administrador necessários!', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         return f(*args, **kwargs)
     return wrapper
@@ -73,7 +74,7 @@ def superadmin_required(f):
             if request.is_json:
                 return jsonify({'error': 'Acesso negado - privilégios de super administrador necessários'}), 403
             flash('Acesso negado - privilégios de super administrador necessários!', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         return f(*args, **kwargs)
     return wrapper
@@ -95,7 +96,7 @@ def cliente_required(f):
             if request.is_json:
                 return jsonify({'error': 'Acesso negado - acesso restrito a clientes'}), 403
             flash('Acesso negado - acesso restrito a clientes!', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         return f(*args, **kwargs)
     return wrapper
@@ -117,7 +118,7 @@ def ministrante_required(f):
             if request.is_json:
                 return jsonify({'error': 'Acesso negado - acesso restrito a ministrantes'}), 403
             flash('Acesso negado - acesso restrito a ministrantes!', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         return f(*args, **kwargs)
     return wrapper
@@ -139,7 +140,7 @@ def participante_required(f):
             if request.is_json:
                 return jsonify({'error': 'Acesso negado - acesso restrito a participantes'}), 403
             flash('Acesso negado - acesso restrito a participantes!', 'danger')
-            return redirect(url_for('dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD))
         
         return f(*args, **kwargs)
     return wrapper
@@ -166,7 +167,7 @@ def role_required(*allowed_roles):
                         'error': f'Acesso negado - roles permitidos: {", ".join(allowed_roles)}'
                     }), 403
                 flash(f'Acesso negado - roles permitidos: {", ".join(allowed_roles)}!', 'danger')
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
             
             return f(*args, **kwargs)
         return wrapper
@@ -251,7 +252,7 @@ def require_permission(permission_name, resource_id=None):
                         'error': f'Permissão negada - {permission_name} necessária'
                     }), 403
                 flash(f'Permissão negada - {permission_name} necessária!', 'danger')
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
             
             return f(*args, **kwargs)
         return wrapper
@@ -332,7 +333,7 @@ def require_resource_access(resource_type, resource_id_param='id', action='view'
                         'error': f'Acesso negado ao {resource_type} {resource_id}'
                     }), 403
                 flash(f'Acesso negado ao {resource_type}!', 'danger')
-                return redirect(url_for('dashboard_routes.dashboard'))
+                return redirect(url_for(endpoints.DASHBOARD))
             
             return f(*args, **kwargs)
         return wrapper

@@ -83,6 +83,19 @@
                   <a href="{{ url_for('agendamento_routes.editar_horario_agendamento', horario_id=horario.id) if has_editar_horario else '#' }}" class="btn btn-warning">
                     <i class="bi bi-pencil"></i>
                   </a>
+                  <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="d-inline">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="acao" value="{{ 'reabrir' if horario.fechado else 'fechar' }}">
+                    <input type="hidden" name="horario_id" value="{{ horario.id }}">
+                    <input type="hidden" name="evento_id" value="{{ evento_selecionado.id }}">
+                    <button type="submit" class="btn btn-secondary">
+                      {% if horario.fechado %}
+                      <i class="bi bi-unlock"></i>
+                      {% else %}
+                      <i class="bi bi-lock"></i>
+                      {% endif %}
+                    </button>
+                  </form>
                   <form method="POST" action="{{ url_for('agendamento_routes.configurar_horarios_agendamento') }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este horário?');">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="acao" value="excluir">

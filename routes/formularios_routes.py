@@ -14,6 +14,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
+from utils import endpoints
 
 from flask_login import login_required, current_user
 from utils.mfa import mfa_required
@@ -329,15 +330,23 @@ def editar_campo(campo_id):
         novo_tipo = request.form.get("tipo")
         novo_obrigatorio = request.form.get("obrigatorio") == "on"
 
-        # Verifica se o campo está protegido
-        if getattr(campo, 'protegido', False):
+        if getattr(campo, "protegido", False):
+            if campo.nome in ("nome", "email"):
+                campo.nome = novo_nome
+                db.session.commit()
+                flash("Campo atualizado com sucesso!", "success")
+                return redirect(
+                    url_for(
+                        "formularios_routes.gerenciar_campos",
+                        formulario_id=campo.formulario_id,
+                    )
+                )
             flash(
                 f"O campo '{campo.nome}' está protegido e não pode ser editado.",
                 "danger",
             )
             return render_template("editar_campo.html", campo=campo)
-        
-        # Verificação adicional para compatibilidade com sistema antigo
+
         if (
             campo.nome in ("nome", "email")
             and RevisorProcess.query.filter_by(
@@ -351,7 +360,7 @@ def editar_campo(campo_id):
                     "danger",
                 )
                 return render_template("editar_campo.html", campo=campo)
-        
+
         campo.nome = novo_nome
         campo.obrigatorio = novo_obrigatorio
 
@@ -509,7 +518,7 @@ def preencher_formulario(formulario_id):
 def listar_formularios_participante():
     if current_user.tipo != "participante":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Busca apenas formulários disponíveis para o participante
     # Filtra formulários criados pelo mesmo cliente ao qual o participante está associado
@@ -851,7 +860,7 @@ def dar_feedback_resposta(resposta_id):
     # só Ministrantes ou Clientes
     if not (isinstance(current_user, Ministrante) or current_user.tipo == "cliente"):
         flash("Apenas clientes e ministrantes podem dar feedback.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     resposta = RespostaFormulario.query.get_or_404(resposta_id)
 
@@ -859,7 +868,7 @@ def dar_feedback_resposta(resposta_id):
     if current_user.tipo == "cliente":
         if resposta.formulario.cliente_id != current_user.id:
             flash("Acesso negado", "danger")
-            return redirect(url_for("dashboard_routes.dashboard_cliente"))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # Ministrantes só podem avaliar respostas de eventos/oficinas que ministram
     elif isinstance(current_user, Ministrante):
@@ -923,7 +932,7 @@ def dar_feedback_resposta(resposta_id):
 def listar_templates():
     if current_user.tipo not in ["admin", "cliente"]:
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Filter by cliente if not admin
     if current_user.tipo == "cliente":
@@ -942,7 +951,7 @@ def listar_templates():
 def criar_template():
     if current_user.tipo not in ["admin", "cliente"]:
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     if request.method == "POST":
         nome = request.form.get("nome")
@@ -1125,7 +1134,7 @@ def listar_respostas():
     # Verifica se o usuário é cliente ou ministrante
     if current_user.tipo not in ["cliente", "ministrante"]:
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # --- Se for cliente ---
     if current_user.tipo == "cliente":
@@ -1155,7 +1164,7 @@ def listar_respostas():
     # Se não houver respostas
     if not respostas:
         flash("Não há respostas disponíveis no momento.", "info")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     formulario = respostas[0].formulario
 
@@ -1171,7 +1180,7 @@ def definir_status_inline():
     # 0) Verifica se o usuário possui permissão
     if getattr(current_user, "tipo", None) not in ("cliente", "ministrante"):
         flash("Acesso negado!", "danger")
-        return redirect(request.referrer or url_for("dashboard_routes.dashboard"))
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD))
 
     # 1) Pega valores do form
     resposta_id = request.form.get("resposta_id")
@@ -1180,13 +1189,13 @@ def definir_status_inline():
     # 2) Valida
     if not resposta_id or not novo_status:
         flash("Dados incompletos!", "danger")
-        return redirect(request.referrer or url_for("dashboard_routes.dashboard"))
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD))
 
     # 3) Busca a resposta no banco
     resposta = RespostaFormulario.query.get(resposta_id)
     if not resposta:
         flash("Resposta não encontrada!", "warning")
-        return redirect(request.referrer or url_for("dashboard_routes.dashboard"))
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD))
 
     # 4) Atualiza e registra log
     resposta.status_avaliacao = novo_status

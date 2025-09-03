@@ -92,6 +92,8 @@ def app():
             availability_end=date.today() + timedelta(days=1),
             exibir_para_participantes=True,
             evento_id=linked_direct.id,
+            nome="Proc",
+            status="ativo",
         )
         proc_assoc = RevisorProcess(
             cliente_id=cliente.id,
@@ -100,6 +102,8 @@ def app():
             availability_start=date.today() - timedelta(days=1),
             availability_end=date.today() + timedelta(days=1),
             exibir_para_participantes=True,
+            nome="Proc",
+            status="ativo",
         )
         proc_inactive = RevisorProcess(
             cliente_id=cliente.id,
@@ -109,6 +113,8 @@ def app():
             availability_end=date.today() - timedelta(days=1),
             exibir_para_participantes=True,
             evento_id=inactive.id,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add_all([proc_direct, proc_assoc, proc_inactive])
         db.session.commit()
@@ -166,6 +172,8 @@ def test_open_process_without_valid_events(app):
             availability_end=date.today() + timedelta(days=1),
             exibir_para_participantes=True,
             evento_id=invalid_event.id,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(proc)
         db.session.commit()

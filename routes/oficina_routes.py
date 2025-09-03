@@ -23,6 +23,7 @@ from models import (
 from models.user import Ministrante, Cliente
 from extensions import db
 import logging
+from utils import endpoints
 logger = logging.getLogger(__name__)
 
 from datetime import datetime
@@ -41,7 +42,7 @@ def lista_participantes(oficina_id):
     """
     if current_user.tipo not in ['admin', 'cliente']:
         flash("Acesso não autorizado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
         
     # Busca a oficina com seus inscritos
     oficina = Oficina.query.get_or_404(oficina_id)
@@ -49,7 +50,7 @@ def lista_participantes(oficina_id):
     # Verificar se a oficina pertence ao cliente atual
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash("Você não tem permissão para acessar esta oficina!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     return render_template(
         'oficina/lista_participantes.html',
@@ -61,7 +62,7 @@ def lista_participantes(oficina_id):
 def criar_oficina():
     if current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado!', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     estados = obter_estados()
     ministrantes_disponiveis = (
@@ -237,7 +238,7 @@ def criar_oficina():
             db.session.commit()
             flash('Atividade criada com sucesso!', 'success')
             return redirect(
-                url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard')
+                url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD)
             )
 
         except Exception as e:
@@ -271,7 +272,7 @@ def editar_oficina(oficina_id):
 
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash('Você não tem permissão para editar esta atividade.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     estados = obter_estados()
     if current_user.tipo == 'cliente':
@@ -408,7 +409,7 @@ def editar_oficina(oficina_id):
 
             db.session.commit()
             flash('Oficina editada com sucesso!', 'success')
-            return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
 
         except Exception as e:
             db.session.rollback()
@@ -439,7 +440,7 @@ def excluir_oficina(oficina_id):
     # 🚨 Cliente só pode excluir oficinas que ele criou
     if current_user.tipo == 'cliente' and oficina.cliente_id != current_user.id:
         flash('Você não tem permissão para excluir esta oficina.', 'danger')
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     try:
         logger.debug("Excluindo oficina ID: %s", oficina_id)
@@ -490,7 +491,7 @@ def excluir_oficina(oficina_id):
         logger.error("Erro ao excluir oficina %s: %s", oficina_id, str(e))
         flash(f'Erro ao excluir oficina: {str(e)}', 'danger')
 
-    return redirect(url_for('dashboard_routes.dashboard_cliente' if current_user.tipo == 'cliente' else 'dashboard_routes.dashboard'))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
 
 
 @oficina_routes.route("/excluir_todas_oficinas", methods=["POST"])
@@ -508,7 +509,7 @@ def excluir_todas_oficinas():
 
         if not oficinas:
             flash("Não há oficinas para excluir.", "warning")
-            return redirect(url_for("dashboard_routes.dashboard_cliente" if current_user.tipo == 'cliente' else "dashboard_routes.dashboard"))
+            return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
 
         for oficina in oficinas:
             db.session.query(Checkin).filter_by(oficina_id=oficina.id).delete()
@@ -527,7 +528,7 @@ def excluir_todas_oficinas():
         db.session.rollback()
         flash(f"Erro ao excluir oficinas: {str(e)}", "danger")
 
-    return redirect(url_for("dashboard_routes.dashboard_cliente" if current_user.tipo == 'cliente' else "dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE if current_user.tipo == 'cliente' else endpoints.DASHBOARD))
 
 @oficina_routes.route('/api/oficinas_mesmo_evento/<int:oficina_id>')
 @login_required
@@ -594,4 +595,3 @@ def listar_oficinas():
         oficinas = Oficina.query.all()
 
     return render_template('oficinas.html', oficinas=oficinas)
-

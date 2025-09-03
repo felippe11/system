@@ -1,0 +1,2028 @@
+{% extends "base.html" %}
+
+{% block title %}Editor Avançado de Declarações - Estilo Canva{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --canva-purple: #8b5cf6;
+    --canva-blue: #3b82f6;
+    --canva-gray-50: #f9fafb;
+    --canva-gray-100: #f3f4f6;
+    --canva-gray-200: #e5e7eb;
+    --canva-gray-300: #d1d5db;
+    --canva-gray-600: #4b5563;
+    --canva-gray-800: #1f2937;
+    --canva-gray-900: #111827;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .editor-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--canva-gray-50);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  
+  .top-toolbar {
+    background: white;
+    border-bottom: 1px solid var(--canva-gray-200);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    z-index: 1000;
+  }
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .toolbar-center {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .canva-btn {
+    background: white;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .canva-btn:hover {
+    background: var(--canva-gray-50);
+    border-color: var(--canva-gray-400);
+  }
+
+  .canva-btn.primary {
+    background: var(--canva-purple);
+    border-color: var(--canva-purple);
+    color: white;
+  }
+
+  .canva-btn.primary:hover {
+    background: #7c3aed;
+    border-color: #7c3aed;
+  }
+
+  .canva-btn.active {
+    background: var(--canva-blue);
+    border-color: var(--canva-blue);
+    color: white;
+  }
+  
+  .editor-workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  
+  .sidebar {
+    width: 320px;
+    background: white;
+    border-right: 1px solid var(--canva-gray-200);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--canva-gray-200);
+    background: var(--canva-gray-50);
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-tab.active {
+    background: var(--canva-purple);
+    border-color: var(--canva-purple);
+    color: white;
+  }
+  
+  .canvas-container {
+    flex: 1;
+    background: var(--canva-gray-100);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+    overflow: auto;
+    position: relative;
+  }
+
+  .canvas-wrapper {
+    position: relative;
+    transform-origin: center;
+    transition: transform 0.2s ease;
+  }
+  
+  .declaration-canvas {
+    width: 794px;
+    min-height: 1123px;
+    background: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .canvas-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    background-image: 
+      linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .canvas-grid.visible {
+    opacity: 1;
+  }
+  
+  .properties-panel {
+    width: 320px;
+    background: white;
+    border-left: 1px solid var(--canva-gray-200);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .draggable-element {
+    position: absolute;
+    border: 2px solid transparent;
+    cursor: move;
+    min-width: 50px;
+    min-height: 20px;
+    padding: 8px;
+    word-wrap: break-word;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .draggable-element:hover {
+    border-color: var(--canva-blue);
+    box-shadow: 0 0 0 1px var(--canva-blue);
+  }
+  
+  .draggable-element.selected {
+    border-color: var(--canva-purple);
+    box-shadow: 0 0 0 2px var(--canva-purple);
+  }
+  
+  .element-controls {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: var(--canva-purple);
+    border-radius: 8px;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  .draggable-element.selected .element-controls {
+    display: flex;
+  }
+  
+  .element-controls button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+
+  .element-controls button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+  
+  .resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--canva-purple);
+    border: 2px solid white;
+    border-radius: 50%;
+    display: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  
+  .draggable-element.selected .resize-handle {
+    display: block;
+  }
+  
+  .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+  .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+  .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+  .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+  
+  .element-library {
+    padding: 20px;
+    flex: 1;
+  }
+
+  .element-category {
+    margin-bottom: 24px;
+  }
+
+  .category-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .elements-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .element-item {
+    background: white;
+    border: 1px solid var(--canva-gray-200);
+    border-radius: 8px;
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .element-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--canva-purple);
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+  }
+  
+  .element-item:hover {
+    background: var(--canva-gray-50);
+    border-color: var(--canva-purple);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  .element-item:hover::before {
+    transform: scaleX(1);
+  }
+
+  .element-icon {
+    font-size: 24px;
+    color: var(--canva-purple);
+    margin-bottom: 8px;
+  }
+
+  .element-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    margin-bottom: 4px;
+  }
+
+  .element-description {
+    font-size: 10px;
+    color: var(--canva-gray-600);
+    line-height: 1.3;
+  }
+  
+  .properties-content {
+    padding: 20px;
+    flex: 1;
+  }
+
+  .properties-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--canva-gray-200);
+    background: var(--canva-gray-50);
+  }
+
+  .properties-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    margin: 0;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--canva-gray-700);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .form-control {
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .form-control:focus {
+    border-color: var(--canva-purple);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    outline: none;
+  }
+  
+  .color-picker {
+    width: 48px;
+    height: 36px;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .color-picker:hover {
+    border-color: var(--canva-purple);
+  }
+  
+  .template-actions {
+    padding: 20px;
+    border-top: 1px solid var(--canva-gray-200);
+    background: white;
+  }
+  
+  .variable-tag {
+    background: linear-gradient(135deg, var(--canva-purple), var(--canva-blue));
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-block;
+    margin: 4px;
+    transition: all 0.2s ease;
+  }
+
+  .variable-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  }
+
+  .zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  .zoom-btn {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .zoom-btn:hover {
+    background: var(--canva-gray-100);
+  }
+
+  .zoom-level {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--canva-gray-600);
+    min-width: 40px;
+    text-align: center;
+  }
+
+  .floating-toolbar {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border: 1px solid var(--canva-gray-300);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+  }
+
+  /* Sidebar Tabs */
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--canva-gray-200);
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    background: var(--canva-gray-100);
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .sidebar-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--canva-gray-600);
+  }
+
+  .sidebar-tab.active {
+    background: white;
+    color: var(--canva-blue-600);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Element Categories */
+  .element-category {
+    margin-bottom: 24px;
+  }
+
+  .category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--canva-gray-700);
+    margin-bottom: 12px;
+    padding: 0 16px;
+  }
+
+  .category-title i {
+    color: var(--canva-blue-500);
+  }
+
+  .elements-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 16px;
+  }
+
+  .element-item {
+    background: white;
+    border: 1px solid var(--canva-gray-200);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+  }
+
+  .element-item:hover {
+    border-color: var(--canva-blue-300);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .element-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--canva-blue-100);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+    font-weight: 600;
+    color: var(--canva-blue-600);
+    font-size: 14px;
+  }
+
+  .element-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--canva-gray-800);
+    margin-bottom: 4px;
+  }
+
+  .element-description {
+    font-size: 10px;
+    color: var(--canva-gray-500);
+    line-height: 1.3;
+  }
+
+  /* Canvas Wrapper */
+  .canvas-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px 20px;
+    overflow: auto;
+    position: relative;
+  }
+
+  .canvas-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.1;
+    background-image: 
+      linear-gradient(to right, var(--canva-gray-300) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--canva-gray-300) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+  }
+
+  .variable-tag {
+    background: var(--canva-purple-100);
+    color: var(--canva-purple-600);
+    border: 1px solid var(--canva-purple-200);
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-block;
+    margin: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .variable-tag:hover {
+    background: var(--canva-purple-200);
+    border-color: var(--canva-purple-300);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-container">
+  <!-- Top Toolbar -->
+  <div class="top-toolbar">
+    <div class="toolbar-left">
+      <h5 class="mb-0 fw-bold" style="color: var(--canva-purple);">📄 Editor de Declarações</h5>
+      <span class="text-muted">{{ template.nome if template else 'Novo Template' }}</span>
+    </div>
+    
+    <div class="toolbar-center">
+      <button class="canva-btn" id="undoAction" title="Desfazer">
+        <i class="fas fa-undo"></i>
+      </button>
+      <button class="canva-btn" id="redoAction" title="Refazer">
+        <i class="fas fa-redo"></i>
+      </button>
+      <div style="width: 1px; height: 24px; background: var(--canva-gray-300); margin: 0 8px;"></div>
+      <button class="canva-btn" id="toggleGrid" title="Mostrar/Ocultar Grid">
+        <i class="fas fa-th"></i>
+      </button>
+      <button class="canva-btn active" id="toggleSnap" title="Ativar/Desativar Snap">
+        <i class="fas fa-magnet"></i>
+      </button>
+    </div>
+    
+    <div class="toolbar-right">
+      <button class="canva-btn" id="previewTemplate">
+        <i class="fas fa-eye"></i> Pré-visualizar
+      </button>
+      <button class="canva-btn" id="livePreviewToggle">
+        <i class="fas fa-play"></i> Preview ao Vivo
+      </button>
+      <button class="canva-btn" id="exportTemplate">
+        <i class="fas fa-download"></i> Exportar
+      </button>
+      <button class="canva-btn primary" id="saveTemplate">
+        <i class="fas fa-save"></i> Salvar
+      </button>
+    </div>
+  </div>
+
+  <!-- Workspace -->
+  <div class="editor-workspace">
+    <!-- Sidebar - Biblioteca de Elementos -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-tabs">
+          <div class="sidebar-tab active" data-tab="elements">Elementos</div>
+          <div class="sidebar-tab" data-tab="templates">Templates</div>
+        </div>
+      </div>
+      
+      <div class="element-library" id="elementsTab">
+        <!-- Elementos Básicos -->
+        <div class="element-category">
+          <div class="category-title">
+            <i class="fas fa-font"></i>
+            Texto
+          </div>
+          <div class="elements-grid">
+            <div class="element-item" data-type="text">
+              <div class="element-icon">A</div>
+              <div class="element-title">Texto</div>
+              <div class="element-description">Texto personalizado</div>
+            </div>
+            <div class="element-item" data-type="title">
+              <div class="element-icon">H</div>
+              <div class="element-title">Título</div>
+              <div class="element-description">Título principal</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elementos de Dados -->
+        <div class="element-category">
+          <div class="category-title">
+            <i class="fas fa-database"></i>
+            Dados
+          </div>
+          <div class="elements-grid">
+            <div class="element-item" data-type="participant-name">
+              <div class="element-icon"><i class="fas fa-user"></i></div>
+              <div class="element-title">Participante</div>
+              <div class="element-description">Nome do participante</div>
+            </div>
+            <div class="element-item" data-type="event-name">
+              <div class="element-icon"><i class="fas fa-calendar"></i></div>
+              <div class="element-title">Evento</div>
+              <div class="element-description">Nome do evento</div>
+            </div>
+            <div class="element-item" data-type="workload">
+              <div class="element-icon"><i class="fas fa-clock"></i></div>
+              <div class="element-title">Carga Horária</div>
+              <div class="element-description">Horas do curso</div>
+            </div>
+            <div class="element-item" data-type="date-period">
+              <div class="element-icon"><i class="fas fa-calendar-alt"></i></div>
+              <div class="element-title">Período</div>
+              <div class="element-description">Data início/fim</div>
+            </div>
+            <div class="element-item" data-type="date">
+              <div class="element-icon"><i class="fas fa-calendar-day"></i></div>
+              <div class="element-title">Data Emissão</div>
+              <div class="element-description">Data atual</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elementos Visuais -->
+        <div class="element-category">
+          <div class="category-title">
+            <i class="fas fa-palette"></i>
+            Visual
+          </div>
+          <div class="elements-grid">
+            <div class="element-item" data-type="signature">
+              <div class="element-icon"><i class="fas fa-signature"></i></div>
+              <div class="element-title">Assinatura</div>
+              <div class="element-description">Linha de assinatura</div>
+            </div>
+            <div class="element-item" data-type="logo">
+              <div class="element-icon"><i class="fas fa-image"></i></div>
+              <div class="element-title">Logo</div>
+              <div class="element-description">Imagem/logotipo</div>
+            </div>
+            <div class="element-item" data-type="border">
+              <div class="element-icon"><i class="fas fa-border-style"></i></div>
+              <div class="element-title">Borda</div>
+              <div class="element-description">Moldura decorativa</div>
+            </div>
+            <div class="element-item" data-type="qr-code">
+              <div class="element-icon"><i class="fas fa-qrcode"></i></div>
+              <div class="element-title">QR Code</div>
+              <div class="element-description">Código de validação</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Variáveis Dinâmicas -->
+        <div class="element-category">
+          <div class="category-title">
+            <i class="fas fa-code"></i>
+            Variáveis Dinâmicas
+          </div>
+          <div id="dynamicVariables">
+            <!-- Variáveis serão carregadas dinamicamente -->
+          </div>
+          <button class="canva-btn w-100 mt-3" data-bs-toggle="modal" data-bs-target="#newVariableModal">
+            <i class="fas fa-plus"></i> Nova Variável
+          </button>
+        </div>
+      </div>
+
+      <div class="element-library" id="templatesTab" style="display: none;">
+        <div class="element-category">
+          <div class="category-title">
+            <i class="fas fa-file-alt"></i>
+            Templates Predefinidos
+          </div>
+          <div class="elements-grid">
+            <div class="element-item" data-template="certificate">
+              <div class="element-icon"><i class="fas fa-certificate"></i></div>
+              <div class="element-title">Certificado</div>
+              <div class="element-description">Template padrão</div>
+            </div>
+            <div class="element-item" data-template="diploma">
+              <div class="element-icon"><i class="fas fa-scroll"></i></div>
+              <div class="element-title">Diploma</div>
+              <div class="element-description">Formato diploma</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-container">
+      <div class="floating-toolbar">
+        <button class="canva-btn" id="alignLeft" title="Alinhar à Esquerda">
+          <i class="fas fa-align-left"></i>
+        </button>
+        <button class="canva-btn" id="alignCenter" title="Centralizar">
+          <i class="fas fa-align-center"></i>
+        </button>
+        <button class="canva-btn" id="alignRight" title="Alinhar à Direita">
+          <i class="fas fa-align-right"></i>
+        </button>
+        <div style="width: 1px; height: 20px; background: var(--canva-gray-300); margin: 0 8px;"></div>
+        <button class="canva-btn" id="bringToFront" title="Trazer para Frente">
+          <i class="fas fa-layer-group"></i>
+        </button>
+        <button class="canva-btn" id="sendToBack" title="Enviar para Trás">
+          <i class="fas fa-layer-group fa-flip-vertical"></i>
+        </button>
+      </div>
+      
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <div class="declaration-canvas" id="declarationCanvas">
+          <div class="canvas-grid" id="canvasGrid"></div>
+          <!-- Elementos serão adicionados aqui -->
+        </div>
+      </div>
+      
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomOut">
+          <i class="fas fa-minus"></i>
+        </button>
+        <div class="zoom-level" id="zoomLevel">100%</div>
+        <button class="zoom-btn" id="zoomIn">
+          <i class="fas fa-plus"></i>
+        </button>
+        <div style="width: 1px; height: 20px; background: var(--canva-gray-300); margin: 0 8px;"></div>
+        <button class="zoom-btn" id="zoomFit">
+          <i class="fas fa-expand-arrows-alt"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Painel de Propriedades -->
+    <div class="properties-panel">
+      <div class="properties-content">
+        <h6 class="fw-bold mb-3">Configurações do Template</h6>
+        
+        <div class="form-group">
+          <label class="form-label">Nome do Template</label>
+          <input type="text" class="form-control" id="templateTitle" value="{{ template.nome if template else '' }}" placeholder="Digite o nome do template">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Tipo de Declaração</label>
+          <select class="form-select" id="declarationType">
+            <option value="individual" {{ 'selected' if template and template.tipo == 'individual' else '' }}>Individual</option>
+            <option value="coletiva" {{ 'selected' if template and template.tipo == 'coletiva' else '' }}>Coletiva</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Orientação da Página</label>
+          <select class="form-select" id="pageOrientation">
+            <option value="portrait">Retrato</option>
+            <option value="landscape">Paisagem</option>
+          </select>
+        </div>
+        
+        <hr>
+        
+        <div id="elementProperties">
+          <p class="text-muted">Selecione um elemento para editar suas propriedades.</p>
+        </div>
+      </div>
+      
+      <div class="template-actions">
+        <button class="btn btn-primary w-100 mb-2" onclick="declarationEditor.saveTemplate()">
+          <i class="fas fa-save"></i> Salvar Template
+        </button>
+        <button class="btn btn-outline-secondary w-100" onclick="window.location.href='{{ url_for('declaracao.listar_templates') }}'">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Nova Variável -->
+<div class="modal fade" id="newVariableModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Variável Dinâmica</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nome da Variável</label>
+          <input type="text" class="form-control" id="variableName" placeholder="Ex: NOME_INSTITUICAO">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Descrição</label>
+          <input type="text" class="form-control" id="variableDescription" placeholder="Ex: Nome da Instituição">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Valor Padrão</label>
+          <input type="text" class="form-control" id="variableDefault" placeholder="Valor quando variável estiver vazia">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="variableType">
+            <option value="text">Texto</option>
+            <option value="date">Data</option>
+            <option value="number">Número</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="declarationEditor.saveNewVariable()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/interactjs/dist/interact.min.js"></script>
+<script>
+class DeclarationEditor {
+  constructor() {
+    this.canvas = document.getElementById('declarationCanvas');
+    this.elements = [];
+    this.selectedElement = null;
+    this.nextElementId = 1;
+    this.history = [];
+    this.historyIndex = -1;
+    this.livePreview = false;
+    
+    this.init();
+  }
+  
+  init() {
+    this.setupEventListeners();
+    this.setupDragAndDrop();
+    this.loadTemplate();
+    this.saveState();
+  }
+  
+  setupEventListeners() {
+    // Event listeners para elementos da biblioteca
+    document.querySelectorAll('.element-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const type = item.getAttribute('data-type');
+        this.addElement(type);
+      });
+    });
+    
+    // Event listener para clique no canvas
+    this.canvas.addEventListener('click', (e) => {
+      if (e.target === this.canvas) {
+        this.deselectElement();
+      }
+    });
+  }
+  
+  setupDragAndDrop() {
+    // Configurar interact.js para elementos arrastáveis
+    interact('.draggable-element')
+      .draggable({
+        listeners: {
+          start: (event) => {
+            this.selectElement(event.target);
+          },
+          move: (event) => {
+            const target = event.target;
+            let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+            let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+            
+            // Snap to grid se habilitado
+            if (this.snapToGrid) {
+              x = Math.round(x / this.gridSize) * this.gridSize;
+              y = Math.round(y / this.gridSize) * this.gridSize;
+            }
+            
+            // Mostrar guidelines
+            this.showGuidelines(target, x, y);
+            
+            target.style.transform = `translate(${x}px, ${y}px)`;
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+            
+            this.updateElementPosition(target.id, x, y);
+          },
+          end: (event) => {
+            // Esconder guidelines ao terminar o arraste
+            this.hideGuidelines();
+          }
+        }
+      })
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          move: (event) => {
+            const target = event.target;
+            let x = (parseFloat(target.getAttribute('data-x')) || 0);
+            let y = (parseFloat(target.getAttribute('data-y')) || 0);
+            
+            let width = event.rect.width;
+            let height = event.rect.height;
+            
+            // Snap to grid para redimensionamento
+            if (this.snapToGrid) {
+              width = Math.round(width / this.gridSize) * this.gridSize;
+              height = Math.round(height / this.gridSize) * this.gridSize;
+            }
+            
+            target.style.width = width + 'px';
+            target.style.height = height + 'px';
+            
+            x += event.deltaRect.left;
+            y += event.deltaRect.top;
+            
+            target.style.transform = `translate(${x}px, ${y}px)`;
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+            
+            this.updateElementSize(target.id, width, height);
+            this.updateElementPosition(target.id, x, y);
+          }
+        }
+      });
+    
+    // Configurar grid e guidelines
+    this.setupGrid();
+    this.setupGuidelines();
+  }
+  
+  setupGrid() {
+    this.gridSize = 10;
+    this.snapToGrid = true;
+    
+    // Criar overlay de grid
+    if (!document.getElementById('gridOverlay')) {
+      const gridOverlay = document.createElement('div');
+      gridOverlay.id = 'gridOverlay';
+      gridOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        opacity: 0.1;
+        background-image: 
+          linear-gradient(to right, #000 1px, transparent 1px),
+          linear-gradient(to bottom, #000 1px, transparent 1px);
+        background-size: ${this.gridSize}px ${this.gridSize}px;
+        z-index: 1;
+      `;
+      this.canvas.appendChild(gridOverlay);
+    }
+  }
+  
+  setupGuidelines() {
+    this.guidelines = {
+      vertical: [],
+      horizontal: []
+    };
+    
+    // Criar containers para guidelines
+    if (!document.getElementById('guidelinesContainer')) {
+      const container = document.createElement('div');
+      container.id = 'guidelinesContainer';
+      container.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+      `;
+      this.canvas.appendChild(container);
+    }
+  }
+  
+  showGuidelines(draggedElement, x, y) {
+    this.hideGuidelines();
+    
+    const container = document.getElementById('guidelinesContainer');
+    if (!container) return;
+    
+    const tolerance = 5;
+    const draggedRect = {
+      left: x,
+      top: y,
+      right: x + draggedElement.offsetWidth,
+      bottom: y + draggedElement.offsetHeight,
+      centerX: x + draggedElement.offsetWidth / 2,
+      centerY: y + draggedElement.offsetHeight / 2
+    };
+    
+    // Verificar alinhamento com outros elementos
+    this.canvas.querySelectorAll('.draggable-element').forEach(element => {
+      if (element === draggedElement) return;
+      
+      const rect = element.getBoundingClientRect();
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const elementRect = {
+        left: rect.left - canvasRect.left,
+        top: rect.top - canvasRect.top,
+        right: rect.right - canvasRect.left,
+        bottom: rect.bottom - canvasRect.top,
+        centerX: (rect.left + rect.right) / 2 - canvasRect.left,
+        centerY: (rect.top + rect.bottom) / 2 - canvasRect.top
+      };
+      
+      // Guidelines verticais
+      if (Math.abs(draggedRect.left - elementRect.left) < tolerance) {
+        this.createGuideline('vertical', elementRect.left);
+      }
+      if (Math.abs(draggedRect.right - elementRect.right) < tolerance) {
+        this.createGuideline('vertical', elementRect.right);
+      }
+      if (Math.abs(draggedRect.centerX - elementRect.centerX) < tolerance) {
+        this.createGuideline('vertical', elementRect.centerX);
+      }
+      
+      // Guidelines horizontais
+      if (Math.abs(draggedRect.top - elementRect.top) < tolerance) {
+        this.createGuideline('horizontal', elementRect.top);
+      }
+      if (Math.abs(draggedRect.bottom - elementRect.bottom) < tolerance) {
+        this.createGuideline('horizontal', elementRect.bottom);
+      }
+      if (Math.abs(draggedRect.centerY - elementRect.centerY) < tolerance) {
+        this.createGuideline('horizontal', elementRect.centerY);
+      }
+    });
+  }
+  
+  createGuideline(type, position) {
+    const container = document.getElementById('guidelinesContainer');
+    const guideline = document.createElement('div');
+    
+    if (type === 'vertical') {
+      guideline.style.cssText = `
+        position: absolute;
+        left: ${position}px;
+        top: 0;
+        width: 1px;
+        height: 100%;
+        background-color: #007bff;
+        z-index: 10;
+      `;
+    } else {
+      guideline.style.cssText = `
+        position: absolute;
+        left: 0;
+        top: ${position}px;
+        width: 100%;
+        height: 1px;
+        background-color: #007bff;
+        z-index: 10;
+      `;
+    }
+    
+    guideline.className = 'guideline';
+    container.appendChild(guideline);
+  }
+  
+  hideGuidelines() {
+    const container = document.getElementById('guidelinesContainer');
+    if (container) {
+      container.querySelectorAll('.guideline').forEach(guideline => {
+        guideline.remove();
+      });
+    }
+  }
+  
+  toggleGrid() {
+    const gridOverlay = document.getElementById('gridOverlay');
+    const toggleBtn = document.getElementById('toggleGrid');
+    
+    if (gridOverlay) {
+      const isVisible = gridOverlay.style.display !== 'none';
+      gridOverlay.style.display = isVisible ? 'none' : 'block';
+      toggleBtn.classList.toggle('active', !isVisible);
+    }
+  }
+  
+  toggleSnap() {
+    this.snapToGrid = !this.snapToGrid;
+    const toggleBtn = document.getElementById('toggleSnap');
+    toggleBtn.classList.toggle('active', this.snapToGrid);
+  }
+  
+  setGridSize(size) {
+    this.gridSize = size;
+    const gridOverlay = document.getElementById('gridOverlay');
+    if (gridOverlay) {
+      gridOverlay.style.backgroundSize = `${size}px ${size}px`;
+    }
+  }
+  
+  addElement(type) {
+    const elementId = `element_${this.nextElementId++}`;
+    const element = this.createElement(type, elementId);
+    
+    this.canvas.appendChild(element);
+    this.elements.push({
+      id: elementId,
+      type: type,
+      x: 50,
+      y: 50,
+      width: element.offsetWidth || 200,
+      height: element.offsetHeight || 40,
+      properties: this.getDefaultProperties(type)
+    });
+    
+    this.selectElement(element);
+    this.setupDragAndDrop();
+    this.saveState();
+  }
+  
+  createElement(type, id) {
+    const element = document.createElement('div');
+    element.id = id;
+    element.className = 'draggable-element';
+    element.style.left = '50px';
+    element.style.top = '50px';
+    element.setAttribute('data-x', 50);
+    element.setAttribute('data-y', 50);
+    
+    // Adicionar controles
+    const controls = document.createElement('div');
+    controls.className = 'element-controls';
+    controls.innerHTML = `
+      <button onclick="declarationEditor.deleteElement('${id}')" title="Excluir">
+        <i class="fas fa-trash"></i>
+      </button>
+    `;
+    element.appendChild(controls);
+    
+    // Adicionar handles de redimensionamento
+    ['nw', 'ne', 'sw', 'se'].forEach(pos => {
+      const handle = document.createElement('div');
+      handle.className = `resize-handle ${pos}`;
+      element.appendChild(handle);
+    });
+    
+    // Definir conteúdo baseado no tipo
+    switch(type) {
+      case 'text':
+        element.innerHTML += 'Texto personalizado';
+        break;
+      case 'title':
+        element.innerHTML += 'DECLARAÇÃO';
+        element.style.fontSize = '24px';
+        element.style.fontWeight = 'bold';
+        element.style.textAlign = 'center';
+        break;
+      case 'participant-name':
+        element.innerHTML += '{{ usuario.nome }}';
+        element.style.fontWeight = 'bold';
+        break;
+      case 'event-name':
+        element.innerHTML += '{{ evento.nome }}';
+        break;
+      case 'workload':
+        element.innerHTML += '{{ dados.carga_horaria }} horas';
+        break;
+      case 'date-period':
+        element.innerHTML += 'de {{ evento.data_inicio }} a {{ evento.data_fim }}';
+        break;
+      case 'date':
+        element.innerHTML += new Date().toLocaleDateString('pt-BR');
+        break;
+      case 'signature':
+        element.innerHTML += '_'.repeat(50);
+        element.style.textAlign = 'center';
+        element.style.borderBottom = '1px solid #000';
+        break;
+      case 'logo':
+        element.innerHTML += '<div style="border: 2px dashed #ccc; padding: 20px; text-align: center;">Logo/Imagem</div>';
+        break;
+      case 'border':
+        element.innerHTML += '';
+        element.style.border = '3px solid #000';
+        element.style.width = '100%';
+        element.style.height = '100%';
+        element.style.position = 'absolute';
+        element.style.top = '0';
+        element.style.left = '0';
+        break;
+    }
+    
+    // Event listener para seleção
+    element.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectElement(element);
+    });
+    
+    return element;
+  }
+  
+  getDefaultProperties(type) {
+    return {
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#000000',
+      textAlign: 'left',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      backgroundColor: 'transparent'
+    };
+  }
+  
+  selectElement(element) {
+    // Desselecionar elemento anterior
+    this.deselectElement();
+    
+    // Selecionar novo elemento
+    this.selectedElement = element;
+    element.classList.add('selected');
+    
+    // Mostrar propriedades
+    this.showElementProperties();
+  }
+  
+  deselectElement() {
+    if (this.selectedElement) {
+      this.selectedElement.classList.remove('selected');
+      this.selectedElement = null;
+    }
+    
+    // Limpar painel de propriedades
+    document.getElementById('elementProperties').innerHTML = '<p class="text-muted">Selecione um elemento para editar suas propriedades.</p>';
+  }
+  
+  showElementProperties() {
+    if (!this.selectedElement) return;
+    
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    if (!elementData) return;
+    
+    const properties = elementData.properties || this.getDefaultProperties(elementData.type);
+    
+    document.getElementById('elementProperties').innerHTML = `
+      <h6>Propriedades do Elemento</h6>
+      
+      <div class="mb-3">
+        <label class="form-label">Texto</label>
+        <textarea class="form-control" id="elementText" rows="2">${this.selectedElement.textContent || ''}</textarea>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Fonte</label>
+        <select class="form-select" id="fontFamily">
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Times New Roman, serif">Times New Roman</option>
+          <option value="Helvetica, sans-serif">Helvetica</option>
+          <option value="Georgia, serif">Georgia</option>
+        </select>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Tamanho da Fonte</label>
+        <input type="range" class="form-range" id="fontSize" min="8" max="72" value="${parseInt(properties.fontSize)}">
+        <small class="text-muted">Tamanho: <span id="fontSizeValue">${properties.fontSize}</span></small>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Cor do Texto</label>
+        <input type="color" class="color-picker" id="textColor" value="${properties.color}">
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Alinhamento</label>
+        <div class="btn-group w-100" role="group">
+          <input type="radio" class="btn-check" name="textAlign" id="alignLeft" value="left" ${properties.textAlign === 'left' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignLeft"><i class="fas fa-align-left"></i></label>
+          
+          <input type="radio" class="btn-check" name="textAlign" id="alignCenter" value="center" ${properties.textAlign === 'center' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignCenter"><i class="fas fa-align-center"></i></label>
+          
+          <input type="radio" class="btn-check" name="textAlign" id="alignRight" value="right" ${properties.textAlign === 'right' ? 'checked' : ''}>
+          <label class="btn btn-outline-secondary" for="alignRight"><i class="fas fa-align-right"></i></label>
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="fontBold" ${properties.fontWeight === 'bold' ? 'checked' : ''}>
+          <label class="form-check-label" for="fontBold">Negrito</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="fontItalic" ${properties.fontStyle === 'italic' ? 'checked' : ''}>
+          <label class="form-check-label" for="fontItalic">Itálico</label>
+        </div>
+      </div>
+      
+      <div class="mb-3">
+        <label class="form-label">Cor de Fundo</label>
+        <div class="d-flex align-items-center">
+          <input type="color" class="color-picker me-2" id="backgroundColor" value="${properties.backgroundColor === 'transparent' ? '#ffffff' : properties.backgroundColor}">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="transparentBg" ${properties.backgroundColor === 'transparent' ? 'checked' : ''}>
+            <label class="form-check-label" for="transparentBg">Transparente</label>
+          </div>
+        </div>
+      </div>
+      
+      <button class="btn btn-primary w-100 mt-3" onclick="declarationEditor.applyProperties()">Aplicar Alterações</button>
+    `;
+    
+    // Definir valores selecionados
+    document.getElementById('fontFamily').value = properties.fontFamily;
+    
+    // Event listener para atualização em tempo real do tamanho da fonte
+    document.getElementById('fontSize').addEventListener('input', (e) => {
+      document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+    });
+  }
+  
+  applyProperties() {
+    if (!this.selectedElement) return;
+    
+    const elementData = this.elements.find(el => el.id === this.selectedElement.id);
+    if (!elementData) return;
+    
+    // Coletar valores
+    const text = document.getElementById('elementText').value;
+    const fontFamily = document.getElementById('fontFamily').value;
+    const fontSize = document.getElementById('fontSize').value + 'px';
+    const textColor = document.getElementById('textColor').value;
+    const textAlign = document.querySelector('input[name="textAlign"]:checked').value;
+    const fontWeight = document.getElementById('fontBold').checked ? 'bold' : 'normal';
+    const fontStyle = document.getElementById('fontItalic').checked ? 'italic' : 'normal';
+    const transparentBg = document.getElementById('transparentBg').checked;
+    const backgroundColor = transparentBg ? 'transparent' : document.getElementById('backgroundColor').value;
+    
+    // Aplicar estilos
+    this.selectedElement.style.fontFamily = fontFamily;
+    this.selectedElement.style.fontSize = fontSize;
+    this.selectedElement.style.color = textColor;
+    this.selectedElement.style.textAlign = textAlign;
+    this.selectedElement.style.fontWeight = fontWeight;
+    this.selectedElement.style.fontStyle = fontStyle;
+    this.selectedElement.style.backgroundColor = backgroundColor;
+    
+    // Atualizar texto (preservando controles)
+    const controls = this.selectedElement.querySelector('.element-controls');
+    const handles = this.selectedElement.querySelectorAll('.resize-handle');
+    this.selectedElement.innerHTML = text;
+    this.selectedElement.appendChild(controls);
+    handles.forEach(handle => this.selectedElement.appendChild(handle));
+    
+    // Salvar propriedades
+    elementData.properties = {
+      fontSize, fontFamily, color: textColor, textAlign,
+      fontWeight, fontStyle, backgroundColor
+    };
+    
+    this.saveState();
+  }
+  
+  deleteElement(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.remove();
+      this.elements = this.elements.filter(el => el.id !== elementId);
+      
+      if (this.selectedElement && this.selectedElement.id === elementId) {
+        this.deselectElement();
+      }
+      
+      this.saveState();
+    }
+  }
+  
+  updateElementPosition(elementId, x, y) {
+    const elementData = this.elements.find(el => el.id === elementId);
+    if (elementData) {
+      elementData.x = x;
+      elementData.y = y;
+    }
+  }
+  
+  updateElementSize(elementId, width, height) {
+    const elementData = this.elements.find(el => el.id === elementId);
+    if (elementData) {
+      elementData.width = width;
+      elementData.height = height;
+    }
+  }
+  
+  setZoom(level) {
+    this.canvas.style.transform = `scale(${level})`;
+    this.canvas.style.transformOrigin = 'top left';
+  }
+  
+  saveState() {
+    const state = {
+      elements: JSON.parse(JSON.stringify(this.elements)),
+      html: this.canvas.innerHTML
+    };
+    
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(state);
+    this.historyIndex++;
+    
+    // Limitar histórico
+    if (this.history.length > 50) {
+      this.history.shift();
+      this.historyIndex--;
+    }
+    
+    // Atualizar live preview se ativo
+    if (this.livePreview) {
+      setTimeout(() => this.updateLivePreview(), 100);
+    }
+  }
+  
+  undo() {
+    if (this.historyIndex > 0) {
+      this.historyIndex--;
+      this.restoreState(this.history[this.historyIndex]);
+    }
+  }
+  
+  redo() {
+    if (this.historyIndex < this.history.length - 1) {
+      this.historyIndex++;
+      this.restoreState(this.history[this.historyIndex]);
+    }
+  }
+  
+  restoreState(state) {
+    this.elements = JSON.parse(JSON.stringify(state.elements));
+    this.canvas.innerHTML = state.html;
+    this.deselectElement();
+    this.setupDragAndDrop();
+  }
+  
+  saveTemplate() {
+    const titulo = document.getElementById('templateTitle').value;
+    const tipo = document.getElementById('declarationType').value;
+    const orientacao = document.getElementById('pageOrientation').value;
+    
+    if (!titulo) {
+      alert('Por favor, insira um título para o template.');
+      return;
+    }
+    
+    const templateData = {
+      nome: titulo,
+      tipo: tipo,
+      orientacao: orientacao,
+      elementos: this.elements,
+      configuracoes: {
+        largura: this.canvas.offsetWidth,
+        altura: this.canvas.offsetHeight,
+        versao: '2.0'
+      },
+      conteudo: this.generateHTML()
+    };
+    
+    // Enviar para o servidor
+    fetch('/declaracao/salvar_template_avancado', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(templateData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('Template salvo com sucesso!');
+        window.location.href = '/declaracao/templates';
+      } else {
+        alert('Erro ao salvar template: ' + data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Erro:', error);
+      alert('Erro ao salvar template.');
+    });
+  }
+  
+  generateHTML() {
+    // Gerar HTML limpo sem controles de edição
+    const tempCanvas = this.canvas.cloneNode(true);
+    tempCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
+    tempCanvas.querySelectorAll('.draggable-element').forEach(el => {
+      el.classList.remove('draggable-element', 'selected');
+      el.style.border = 'none';
+      el.style.cursor = 'default';
+    });
+    
+    return tempCanvas.innerHTML;
+  }
+  
+  previewTemplate() {
+    // Criar modal de preview se não existir
+    if (!document.getElementById('previewModal')) {
+      this.createPreviewModal();
+    }
+    
+    const previewCanvas = document.getElementById('previewCanvas');
+    previewCanvas.innerHTML = this.generateHTML();
+    
+    // Substituir variáveis por valores de exemplo para preview
+    this.replaceVariablesForPreview(previewCanvas);
+    
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+  }
+  
+  createPreviewModal() {
+    const modalHTML = `
+      <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Pré-visualização da Declaração</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+              <div id="previewCanvas" class="declaration-canvas" style="margin: 0 auto; transform: scale(0.8); transform-origin: center;"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+              <button type="button" class="btn btn-primary" onclick="declarationEditor.generatePDF()">Gerar PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+  
+  enableLivePreview() {
+    this.livePreview = true;
+    
+    // Criar painel de preview ao vivo
+    if (!document.getElementById('livePreviewPanel')) {
+      const panel = document.createElement('div');
+      panel.id = 'livePreviewPanel';
+      panel.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        width: 300px;
+        height: 400px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        overflow: hidden;
+      `;
+      
+      panel.innerHTML = `
+        <div style="padding: 10px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;">
+          <strong>Preview ao Vivo</strong>
+          <button class="btn btn-sm btn-outline-secondary float-end" onclick="declarationEditor.closeLivePreview()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="livePreviewContent" style="padding: 10px; height: calc(100% - 50px); overflow: auto;">
+          <div id="livePreviewCanvas" style="transform: scale(0.3); transform-origin: top left; width: 333%; height: 333%;"></div>
+        </div>
+      `;
+      
+      document.body.appendChild(panel);
+    }
+    
+    this.updateLivePreview();
+  }
+  
+  updateLivePreview() {
+    if (!this.livePreview) return;
+    
+    const liveCanvas = document.getElementById('livePreviewCanvas');
+    if (liveCanvas) {
+      liveCanvas.innerHTML = this.generateHTML();
+      this.replaceVariablesForPreview(liveCanvas);
+    }
+  }
+  
+  closeLivePreview() {
+    this.livePreview = false;
+    const panel = document.getElementById('livePreviewPanel');
+    if (panel) {
+      panel.remove();
+    }
+    
+    // Atualizar botão
+    const btn = document.getElementById('livePreviewToggle');
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-play"></i> Preview ao Vivo';
+      btn.classList.remove('active');
+    }
+  }
+  
+  toggleLivePreview() {
+    const btn = document.getElementById('livePreviewToggle');
+    
+    if (this.livePreview) {
+      this.closeLivePreview();
+    } else {
+      this.enableLivePreview();
+      btn.innerHTML = '<i class="fas fa-stop"></i> Parar Preview';
+      btn.classList.add('active');
+    }
+  }
+  
+  exportTemplate() {
+    alert('Funcionalidade de exportação será implementada.');
+  }
+  
+  generatePDF() {
+    alert('Funcionalidade de geração de PDF será implementada.');
+  }
+  
+  loadTemplate() {
+    // Carregar template existente se houver
+    {% if template %}
+    try {
+      const templateData = {{ template.configuracoes|tojson|safe }};
+      if (templateData && templateData.elementos) {
+        this.elements = templateData.elementos;
+        this.nextElementId = Math.max(...this.elements.map(el => parseInt(el.id.split('_')[1]) || 0)) + 1;
+        
+        // Recriar elementos no canvas
+        this.elements.forEach(elementData => {
+          const element = this.createElement(elementData.type, elementData.id);
+          element.style.left = elementData.x + 'px';
+          element.style.top = elementData.y + 'px';
+          element.style.width = elementData.width + 'px';
+          element.style.height = elementData.height + 'px';
+          
+          // Aplicar propriedades
+          if (elementData.properties) {
+            Object.assign(element.style, elementData.properties);
+          }
+          
+          this.canvas.appendChild(element);
+        });
+        
+        this.setupDragAndDrop();
+      }
+    } catch (error) {
+      console.error('Erro ao carregar template:', error);
+    }
+    {% endif %}
+  }
+
+  // Funcionalidades das abas da sidebar
+  setupSidebarTabs() {
+    const tabs = document.querySelectorAll('.sidebar-tab');
+    const elementsTab = document.getElementById('elementsTab');
+    const templatesTab = document.getElementById('templatesTab');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // Remove active class from all tabs
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // Show/hide content
+        const tabType = tab.dataset.tab;
+        if (tabType === 'elements') {
+          elementsTab.style.display = 'block';
+          templatesTab.style.display = 'none';
+        } else if (tabType === 'templates') {
+          elementsTab.style.display = 'none';
+          templatesTab.style.display = 'block';
+        }
+      });
+    });
+  }
+
+  // Controles de zoom
+  setupZoomControls() {
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+    const zoomFitBtn = document.getElementById('zoomFit');
+    const zoomLevel = document.getElementById('zoomLevel');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    
+    let currentZoom = 1;
+
+    const updateZoom = (zoom) => {
+      currentZoom = Math.max(0.25, Math.min(3, zoom));
+      this.canvas.style.transform = `scale(${currentZoom})`;
+      zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+    };
+
+    zoomInBtn.addEventListener('click', () => {
+      updateZoom(currentZoom + 0.1);
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+      updateZoom(currentZoom - 0.1);
+    });
+
+    zoomFitBtn.addEventListener('click', () => {
+      updateZoom(1);
+    });
+  }
+
+  // Controles de alinhamento
+  setupAlignmentControls() {
+    const alignLeftBtn = document.getElementById('alignLeft');
+    const alignCenterBtn = document.getElementById('alignCenter');
+    const alignRightBtn = document.getElementById('alignRight');
+    const bringToFrontBtn = document.getElementById('bringToFront');
+    const sendToBackBtn = document.getElementById('sendToBack');
+
+    alignLeftBtn.addEventListener('click', () => {
+      if (this.selectedElement) {
+        this.selectedElement.style.left = '20px';
+        this.updateElementData();
+      }
+    });
+
+    alignCenterBtn.addEventListener('click', () => {
+      if (this.selectedElement) {
+        const canvasWidth = this.canvas.offsetWidth;
+        const elementWidth = this.selectedElement.offsetWidth;
+        this.selectedElement.style.left = ((canvasWidth - elementWidth) / 2) + 'px';
+        this.updateElementData();
+      }
+    });
+
+    alignRightBtn.addEventListener('click', () => {
+      if (this.selectedElement) {
+        const canvasWidth = this.canvas.offsetWidth;
+        const elementWidth = this.selectedElement.offsetWidth;
+        this.selectedElement.style.left = (canvasWidth - elementWidth - 20) + 'px';
+        this.updateElementData();
+      }
+    });
+
+    bringToFrontBtn.addEventListener('click', () => {
+      if (this.selectedElement) {
+        this.selectedElement.style.zIndex = '1000';
+        this.updateElementData();
+      }
+    });
+
+    sendToBackBtn.addEventListener('click', () => {
+      if (this.selectedElement) {
+        this.selectedElement.style.zIndex = '1';
+        this.updateElementData();
+      }
+    });
+  }
+  
+  saveNewVariable() {
+    const variableData = {
+      nome: document.getElementById('variableName').value,
+      descricao: document.getElementById('variableDescription').value,
+      valor_padrao: document.getElementById('variableDefault').value,
+      tipo: document.getElementById('variableType').value
+    };
+    
+    fetch('/declaracao/salvar_variavel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(variableData)
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('newVariableModal')).hide();
+        this.loadDynamicVariables();
+      } else {
+        alert('Erro ao salvar variável: ' + data.message);
+      }
+    });
+  }
+  
+  loadDynamicVariables() {
+    fetch('/declaracao/variaveis_dinamicas')
+    .then(response => response.json())
+    .then(data => {
+      const container = document.getElementById('dynamicVariables');
+      container.innerHTML = '';
+      
+      data.variaveis.forEach(variavel => {
+        const item = document.createElement('div');
+        item.className = 'element-item';
+        item.innerHTML = `
+          <i class="fas fa-tag me-2"></i>
+          <strong>{${variavel.nome}}</strong>
+          <small class="d-block text-muted">${variavel.descricao}</small>
+        `;
+        item.addEventListener('click', () => {
+          this.addVariableElement(variavel);
+        });
+        container.appendChild(item);
+      });
+    })
+    .catch(error => {
+      console.error('Erro ao carregar variáveis dinâmicas:', error);
+      this.addDefaultVariables();
+    });
+  }
+  
+  addVariableElement(variavel) {
+    const elementId = `element_${this.nextElementId++}`;
+    const element = this.createElement('text', elementId);
+    element.innerHTML = `{${variavel.nome}}`;
+    
+    this.canvas.appendChild(element);
+    this.elements.push({
+      id: elementId,
+      type: 'variable',
+      variavel: variavel.nome,
+      x: 50,
+      y: 50,
+      width: 200,
+      height: 40,
+      properties: this.getDefaultProperties('text')
+    });
+    
+    this.selectElement(element);
+    this.saveState();
+  }
+  
+  addDefaultVariables() {
+    const defaultVariables = [
+      { nome: 'NOME_INSTITUICAO', descricao: 'Nome da Instituição' },
+      { nome: 'NOME_CURSO', descricao: 'Nome do Curso' },
+      { nome: 'PERIODO', descricao: 'Período do Curso' }
+    ];
+    
+    const container = document.getElementById('dynamicVariables');
+    defaultVariables.forEach(variavel => {
+      const item = document.createElement('div');
+      item.className = 'element-item';
+      item.innerHTML = `
+        <i class="fas fa-tag me-2"></i>
+        <strong>{${variavel.nome}}</strong>
+        <small class="d-block text-muted">${variavel.descricao}</small>
+      `;
+      item.addEventListener('click', () => {
+        this.addVariableElement(variavel);
+      });
+      container.appendChild(item);
+    });
+  }
+}
+
+// Função auxiliar para substituir variáveis no preview
+DeclarationEditor.prototype.replaceVariablesForPreview = function(container) {
+  const sampleData = {
+    'usuario.nome': 'João Silva Santos',
+    'usuario.cpf': '123.456.789-00',
+    'evento.nome': 'Curso de Desenvolvimento Web',
+    'evento.data_inicio': '01/01/2024',
+    'evento.data_fim': '31/01/2024',
+    'dados.carga_horaria': '40'
+  };
+  
+  container.querySelectorAll('*').forEach(element => {
+    if (element.innerHTML) {
+      let content = element.innerHTML;
+      Object.keys(sampleData).forEach(variable => {
+        const regex = new RegExp(`\{\{\s*${variable}\s*\}\}`, 'g');
+        content = content.replace(regex, sampleData[variable]);
+      });
+      element.innerHTML = content;
+    }
+  });
+};
+
+// Inicializar editor
+let declarationEditor;
+// Função para inicializar o editor quando Bootstrap estiver disponível
+function initializeEditor() {
+  if (typeof bootstrap === 'undefined') {
+    // Se Bootstrap não estiver carregado, aguardar um pouco e tentar novamente
+    setTimeout(initializeEditor, 100);
+    return;
+  }
+  
+  declarationEditor = new DeclarationEditor();
+  
+  // Carregar variáveis dinâmicas
+  declarationEditor.loadDynamicVariables();
+  
+  // Configurar novas funcionalidades
+  declarationEditor.setupSidebarTabs();
+  declarationEditor.setupZoomControls();
+  declarationEditor.setupAlignmentControls();
+  
+  // Event listeners para controles do toolbar
+  document.getElementById('saveTemplate').addEventListener('click', () => declarationEditor.saveTemplate());
+  document.getElementById('previewTemplate').addEventListener('click', () => declarationEditor.previewTemplate());
+  document.getElementById('livePreviewToggle').addEventListener('click', () => declarationEditor.toggleLivePreview());
+  document.getElementById('exportTemplate').addEventListener('click', () => declarationEditor.exportTemplate());
+  document.getElementById('undoAction').addEventListener('click', () => declarationEditor.undo());
+  document.getElementById('redoAction').addEventListener('click', () => declarationEditor.redo());
+  document.getElementById('toggleGrid').addEventListener('click', () => declarationEditor.toggleGrid());
+  document.getElementById('toggleSnap').addEventListener('click', () => declarationEditor.toggleSnap());
+  
+  // Event listener para zoom (compatibilidade com controle antigo)
+  const zoomLevelSelect = document.querySelector('select[id="zoomLevel"]');
+  if (zoomLevelSelect) {
+    zoomLevelSelect.addEventListener('change', (e) => {
+      declarationEditor.setZoom(parseFloat(e.target.value));
+    });
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initializeEditor);
+</script>
+{% endblock %}

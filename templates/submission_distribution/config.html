@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Configuração de Distribuição - {{ evento.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-cogs"></i>
+                        Configuração de Distribuição Automática
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-info">{{ evento.nome }}</span>
+                    </div>
+                </div>
+                
+                <form method="POST" action="{{ url_for('submission_distribution.save_distribution_config', evento_id=evento.id) }}">
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Configurações Básicas -->
+                            <div class="col-md-6">
+                                <div class="card card-outline card-primary">
+                                    <div class="card-header">
+                                        <h4 class="card-title">Configurações Básicas</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label for="reviewers_per_submission">Revisores por Submissão</label>
+                                            <input type="number" class="form-control" id="reviewers_per_submission" 
+                                                   name="reviewers_per_submission" value="{{ config.reviewers_per_submission or 2 }}" 
+                                                   min="1" max="10" required>
+                                            <small class="form-text text-muted">Número de revisores que avaliarão cada trabalho</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="distribution_mode">Modo de Distribuição</label>
+                                            <select class="form-control" id="distribution_mode" name="distribution_mode">
+                                                <option value="balanced" {{ 'selected' if config.distribution_mode == 'balanced' else '' }}>Balanceado</option>
+                                                <option value="stratified" {{ 'selected' if config.distribution_mode == 'stratified' else '' }}>Estratificado por Categoria</option>
+                                                <option value="random" {{ 'selected' if config.distribution_mode == 'random' else '' }}>Aleatório</option>
+                                            </select>
+                                            <small class="form-text text-muted">Estratégia para distribuir os trabalhos</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="blind_type">Tipo de Revisão</label>
+                                            <select class="form-control" id="blind_type" name="blind_type">
+                                                <option value="single" {{ 'selected' if config.blind_type == 'single' else '' }}>Simples-cega</option>
+                                                <option value="double" {{ 'selected' if config.blind_type == 'double' else '' }}>Dupla-cega</option>
+                                                <option value="open" {{ 'selected' if config.blind_type == 'open' else '' }}>Aberta</option>
+                                            </select>
+                                            <small class="form-text text-muted">Nível de anonimato na revisão</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="max_submissions_per_reviewer">Máximo de Trabalhos por Revisor</label>
+                                            <input type="number" class="form-control" id="max_submissions_per_reviewer" 
+                                                   name="max_submissions_per_reviewer" value="{{ config.max_submissions_per_reviewer or 15 }}" 
+                                                   min="1" max="50" required>
+                                            <small class="form-text text-muted">Limite global de trabalhos por revisor</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Configurações Avançadas -->
+                            <div class="col-md-6">
+                                <div class="card card-outline card-warning">
+                                    <div class="card-header">
+                                        <h4 class="card-title">Configurações Avançadas</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable_conflict_detection" 
+                                                       name="enable_conflict_detection" {{ 'checked' if config.enable_conflict_detection else '' }}>
+                                                <label class="custom-control-label" for="enable_conflict_detection">Detectar Conflitos de Interesse</label>
+                                            </div>
+                                            <small class="form-text text-muted">Evita atribuições entre pessoas da mesma instituição ou coautores</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable_load_balancing" 
+                                                       name="enable_load_balancing" {{ 'checked' if config.enable_load_balancing else '' }}>
+                                                <label class="custom-control-label" for="enable_load_balancing">Balanceamento de Carga</label>
+                                            </div>
+                                            <small class="form-text text-muted">Distribui trabalhos de forma equilibrada entre revisores</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="enable_affinity_matching" 
+                                                       name="enable_affinity_matching" {{ 'checked' if config.enable_affinity_matching else '' }}>
+                                                <label class="custom-control-label" for="enable_affinity_matching">Correspondência por Afinidade</label>
+                                            </div>
+                                            <small class="form-text text-muted">Prioriza revisores com maior afinidade às categorias</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label for="min_affinity_level">Nível Mínimo de Afinidade</label>
+                                            <select class="form-control" id="min_affinity_level" name="min_affinity_level">
+                                                <option value="0" {{ 'selected' if config.min_affinity_level == 0 else '' }}>Qualquer (0)</option>
+                                                <option value="1" {{ 'selected' if config.min_affinity_level == 1 else '' }}>Baixa (1)</option>
+                                                <option value="2" {{ 'selected' if config.min_affinity_level == 2 else '' }}>Média (2)</option>
+                                                <option value="3" {{ 'selected' if config.min_affinity_level == 3 else '' }}>Alta (3)</option>
+                                            </select>
+                                            <small class="form-text text-muted">Afinidade mínima necessária para atribuição</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="allow_overload_on_shortage" 
+                                                       name="allow_overload_on_shortage" {{ 'checked' if config.allow_overload_on_shortage else '' }}>
+                                                <label class="custom-control-label" for="allow_overload_on_shortage">Permitir Sobrecarga em Escassez</label>
+                                            </div>
+                                            <small class="form-text text-muted">Permite exceder limites quando há poucos revisores</small>
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <div class="custom-control custom-switch">
+                                                <input type="checkbox" class="custom-control-input" id="fallback_to_random" 
+                                                       name="fallback_to_random" {{ 'checked' if config.fallback_to_random else '' }}>
+                                                <label class="custom-control-label" for="fallback_to_random">Fallback Aleatório</label>
+                                            </div>
+                                            <small class="form-text text-muted">Usa distribuição aleatória quando critérios falham</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Estatísticas -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card card-outline card-info">
+                                    <div class="card-header">
+                                        <h4 class="card-title">Estatísticas do Evento</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="info-box">
+                                                    <span class="info-box-icon bg-info"><i class="fas fa-file-alt"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Submissões</span>
+                                                        <span class="info-box-number">{{ evento.submissions|length }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-box">
+                                                    <span class="info-box-icon bg-success"><i class="fas fa-users"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Revisores</span>
+                                                        <span class="info-box-number">{{ reviewers|length }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-box">
+                                                    <span class="info-box-icon bg-warning"><i class="fas fa-tags"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Categorias</span>
+                                                        <span class="info-box-number">{{ categories|length }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="info-box">
+                                                    <span class="info-box-icon bg-danger"><i class="fas fa-tasks"></i></span>
+                                                    <div class="info-box-content">
+                                                        <span class="info-box-text">Atribuições</span>
+                                                        <span class="info-box-number">0</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Configuração
+                        </button>
+                        <a href="{{ url_for('submission_distribution.distribution_dashboard', evento_id=evento.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Validação do formulário
+    $('form').on('submit', function(e) {
+        const reviewersPerSubmission = parseInt($('#reviewers_per_submission').val());
+        const maxSubmissionsPerReviewer = parseInt($('#max_submissions_per_reviewer').val());
+        const totalReviewers = {{ reviewers|length }};
+        const totalSubmissions = {{ evento.submissions|length }};
+        
+        if (totalSubmissions > 0 && totalReviewers > 0) {
+            const totalReviewsNeeded = totalSubmissions * reviewersPerSubmission;
+            const totalReviewCapacity = totalReviewers * maxSubmissionsPerReviewer;
+            
+            if (totalReviewsNeeded > totalReviewCapacity) {
+                e.preventDefault();
+                alert('Atenção: A capacidade total de revisão (' + totalReviewCapacity + ') é menor que o número de revisões necessárias (' + totalReviewsNeeded + '). Ajuste os parâmetros.');
+                return false;
+            }
+        }
+    });
+    
+    // Atualizar informações dinâmicas
+    function updateStats() {
+        const reviewersPerSubmission = parseInt($('#reviewers_per_submission').val()) || 2;
+        const totalSubmissions = {{ evento.submissions|length }};
+        const totalReviewsNeeded = totalSubmissions * reviewersPerSubmission;
+        
+        // Adicionar informação dinâmica
+        if (!$('#dynamic-stats').length) {
+            $('.card-body').append('<div id="dynamic-stats" class="alert alert-info mt-3"></div>');
+        }
+        
+        $('#dynamic-stats').html(
+            '<strong>Cálculo:</strong> ' + totalSubmissions + ' submissões × ' + 
+            reviewersPerSubmission + ' revisores = <strong>' + totalReviewsNeeded + ' revisões necessárias</strong>'
+        );
+    }
+    
+    $('#reviewers_per_submission').on('input', updateStats);
+    updateStats();
+});
+</script>
+{% endblock %}

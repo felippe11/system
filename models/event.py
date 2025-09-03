@@ -925,6 +925,7 @@ class HorarioVisitacao(db.Model):
     horario_fim = db.Column(db.Time, nullable=False)
     capacidade_total = db.Column(db.Integer, nullable=False)
     vagas_disponiveis = db.Column(db.Integer, nullable=False)
+    fechado = db.Column(db.Boolean, default=False, nullable=False)
 
     # Relações
     evento = db.relationship(
@@ -1348,13 +1349,30 @@ class MonitorAgendamento(db.Model):
     monitor = db.relationship("Monitor", backref=db.backref("agendamentos_atribuidos", lazy=True))
     agendamento = db.relationship("AgendamentoVisita", backref=db.backref("monitores_atribuidos", lazy=True))
 
-    def __init__(self, monitor_id, agendamento_id, data_atribuicao=None, tipo_distribuicao="manual", status="ativo"):
-        self.monitor_id = monitor_id
-        self.agendamento_id = agendamento_id
-        if data_atribuicao is not None:
-            self.data_atribuicao = data_atribuicao
+
+    def __init__(
+        self,
+        monitor_id=None,
+        agendamento_id=None,
+        tipo_distribuicao="manual",
+        status="ativo",
+        data_atribuicao=None,
+        observacoes=None,
+        **kwargs,
+    ):
+        # Permite passagem de colunas como kwargs sem quebrar
+        super().__init__(**kwargs)
+        if monitor_id is not None:
+            self.monitor_id = monitor_id
+        if agendamento_id is not None:
+            self.agendamento_id = agendamento_id
+
         self.tipo_distribuicao = tipo_distribuicao
         self.status = status
+        if data_atribuicao is not None:
+            self.data_atribuicao = data_atribuicao
+        if observacoes is not None:
+            self.observacoes = observacoes
 
     def __repr__(self):
         return f"<MonitorAgendamento monitor_id={self.monitor_id} agendamento_id={self.agendamento_id}>"
@@ -1587,25 +1605,7 @@ class HistoricoCertificado(db.Model):
         return f"<HistoricoCertificado {self.tipo_certificado} - {self.usuario_id}>"
 
 
-class VariavelDinamica(db.Model):
-    """Variáveis dinâmicas personalizadas para templates."""
-    __tablename__ = "variavel_dinamica"
-
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-    nome = db.Column(db.String(50), nullable=False)  # Ex: NOME_INSTITUICAO
-    descricao = db.Column(db.String(200), nullable=True)
-    valor_padrao = db.Column(db.Text, nullable=True)
-    tipo = db.Column(db.String(20), default="texto")  # texto, data, numero, lista
-    opcoes = db.Column(db.JSON, nullable=True)  # Para tipo lista
-    ativo = db.Column(db.Boolean, default=True)
-    
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-
-    cliente = db.relationship("Cliente", backref="variaveis_dinamicas")
-
-    def __repr__(self):
-        return f"<VariavelDinamica {self.nome}>"
+## Removido: Classe duplicada VariavelDinamica (definida em models/certificado.py)
 
 
 class NotificacaoAgendamento(db.Model):

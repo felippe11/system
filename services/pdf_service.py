@@ -7,6 +7,7 @@ import logging
 import psutil
 import os
 import time
+from utils import endpoints
 
 logger = logging.getLogger(__name__)
 
@@ -905,12 +906,12 @@ def gerar_certificados(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     inscritos = oficina.inscritos
     if not inscritos:
         flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
@@ -1037,12 +1038,12 @@ def gerar_certificados(oficina_id):
     oficina = Oficina.query.get(oficina_id)
     if not oficina:
         flash("Oficina não encontrada!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     inscritos = oficina.inscritos
     if not inscritos:
         flash("Não há inscritos nesta oficina para gerar certificados!", "warning")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     pdf_path = f"static/certificados/certificados_oficina_{oficina.id}.pdf"
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
@@ -1404,7 +1405,7 @@ def gerar_pdf_checkins_qr():
 
     if not checkins_qr:
         flash("Não há check-ins via QR Code para gerar o relatório.", "warning")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # (continua com sua lógica atual do PDF sem alterações)
     # 2. Configuração do documento
@@ -1881,7 +1882,7 @@ def exportar_checkins_pdf_opcoes():
 
     if not current_user.is_cliente():
         flash("Acesso negado.", "danger")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Query base
     base_query = Checkin.query.filter(Checkin.cliente_id == current_user.id)
@@ -1896,7 +1897,7 @@ def exportar_checkins_pdf_opcoes():
 
     if not checkins:
         flash("Nenhum check-in encontrado para os filtros aplicados.", "info")
-        return redirect(url_for('dashboard_routes.dashboard'))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     # Gerar PDF
     buffer = BytesIO()
@@ -2059,7 +2060,7 @@ def exportar_checkins_evento_pdf(evento_id):
             if not evento:
                 flash("Evento não encontrado ou não pertence ao seu acesso.", "danger")
                 logger.info("[DEBUG] Evento não pertence ao cliente logado.")
-                return redirect(url_for('dashboard_routes.dashboard_cliente'))
+                return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     else:
         evento = Evento.query.get_or_404(evento_id)
 
@@ -2075,7 +2076,7 @@ def exportar_checkins_evento_pdf(evento_id):
 
     if not checkins:
         flash("Nenhum check-in encontrado para este evento.", "warning")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     # DEBUG de alguns dados dos check-ins
     for c in checkins[:5]:
@@ -3621,12 +3622,12 @@ def gerar_etiquetas(cliente_id):
     """Gera um PDF de etiquetas para o cliente"""
     if current_user.tipo != 'cliente' or current_user.id != cliente_id:
         flash("Acesso negado!", "danger")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     pdf_path = gerar_etiquetas_pdf(cliente_id)
     if not pdf_path:
         flash("Nenhum usuário encontrado para gerar etiquetas!", "warning")
-        return redirect(url_for('dashboard_routes.dashboard_cliente'))
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
     return send_file(pdf_path, as_attachment=True)
 
@@ -4464,4 +4465,3 @@ def formatar_brasilia(dt):
         dt = dt.replace(tzinfo=pytz.utc)
     brasilia = pytz.timezone("America/Sao_Paulo")
     return dt.astimezone(brasilia).strftime('%d/%m/%Y %H:%M:%S')
-

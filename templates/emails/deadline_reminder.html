@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lembrete de Prazo - Revisão</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .urgent-box {
+            background-color: #f8d7da;
+            border: 2px solid #f5c6cb;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .deadline-countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            margin: 10px 0;
+        }
+        .pending-card {
+            background-color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .completed-card {
+            background-color: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            opacity: 0.8;
+        }
+        .submission-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .submission-meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-pending {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .progress-bar {
+            background-color: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background-color: #28a745;
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: white;
+            border-radius: 5px;
+        }
+        .stat-number {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #6c757d;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⏰ Lembrete de Prazo</h1>
+        <p>{{ evento_nome }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Olá <strong>{{ reviewer_name }}</strong>,</p>
+        
+        {% if days_remaining <= 1 %}
+        <div class="urgent-box">
+            <h3>🚨 PRAZO URGENTE!</h3>
+            <div class="deadline-countdown">
+                {% if days_remaining == 0 %}
+                    Prazo expira HOJE!
+                {% else %}
+                    {{ days_remaining }} dia restante
+                {% endif %}
+            </div>
+            <p><strong>Data limite:</strong> {{ deadline.strftime('%d/%m/%Y às %H:%M') }}</p>
+        </div>
+        {% else %}
+        <div class="warning-box">
+            <h3>⚠️ Lembrete de Prazo</h3>
+            <div class="deadline-countdown">{{ days_remaining }} dias restantes</div>
+            <p><strong>Data limite:</strong> {{ deadline.strftime('%d/%m/%Y às %H:%M') }}</p>
+        </div>
+        {% endif %}
+        
+        <p>Este é um lembrete sobre suas revisões pendentes para o evento <strong>{{ evento_nome }}</strong>.</p>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-number" style="color: #dc3545;">{{ pending_count }}</div>
+                <div class="stat-label">Pendentes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" style="color: #28a745;">{{ completed_count }}</div>
+                <div class="stat-label">Concluídas</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" style="color: #007bff;">{{ total_assignments }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ completion_percentage }}%;"></div>
+        </div>
+        <p style="text-align: center; font-size: 14px; color: #6c757d;">
+            Progresso: {{ completion_percentage }}% concluído
+        </p>
+        
+        {% if pending_assignments %}
+        <h3>📋 Revisões Pendentes:</h3>
+        
+        {% for assignment in pending_assignments %}
+        <div class="pending-card">
+            <div class="submission-title">
+                {{ assignment.submission.title }}
+                <span class="status-badge status-pending">Pendente</span>
+            </div>
+            <div class="submission-meta">
+                <strong>Categoria:</strong> {{ assignment.submission.category }}<br>
+                <strong>Modalidade:</strong> {{ assignment.submission.modality }}<br>
+                <strong>ID:</strong> #{{ assignment.submission.id }}
+                {% if assignment.assigned_at %}
+                <br><strong>Atribuída em:</strong> {{ assignment.assigned_at.strftime('%d/%m/%Y') }}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if completed_assignments %}
+        <h3>✅ Revisões Concluídas:</h3>
+        
+        {% for assignment in completed_assignments[:3] %}
+        <div class="completed-card">
+            <div class="submission-title">
+                {{ assignment.submission.title }}
+                <span class="status-badge status-completed">Concluída</span>
+            </div>
+            <div class="submission-meta">
+                <strong>Concluída em:</strong> {{ assignment.completed_at.strftime('%d/%m/%Y às %H:%M') }}<br>
+                <strong>Nota:</strong> {{ assignment.score }}/{{ assignment.max_score }}
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if completed_assignments|length > 3 %}
+        <p style="text-align: center; color: #6c757d;">
+            ... e mais {{ completed_assignments|length - 3 }} revisão(ões) concluída(s)
+        </p>
+        {% endif %}
+        {% endif %}
+        
+        <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h4 style="color: #004085; margin-top: 0;">💡 Dicas para Finalizar suas Revisões:</h4>
+            <ul style="margin-bottom: 0;">
+                <li>Reserve tempo suficiente para uma avaliação cuidadosa</li>
+                <li>Leia completamente o trabalho antes de avaliar</li>
+                <li>Use os critérios de avaliação estabelecidos</li>
+                <li>Forneça feedback construtivo e específico</li>
+                <li>Verifique se preencheu todos os campos obrigatórios</li>
+                <li>Salve seu progresso regularmente</li>
+            </ul>
+        </div>
+        
+        {% if days_remaining <= 2 %}
+        <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 15px 0; text-align: center;">
+            <strong>⚠️ Atenção:</strong> Se não conseguir completar suas revisões no prazo, 
+            entre em contato com a organização imediatamente: 
+            <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ review_system_url }}" class="btn">🔗 Continuar Revisões</a>
+            <a href="{{ contact_url }}" class="btn btn-secondary">📞 Contatar Organização</a>
+        </div>
+        
+        <p style="font-size: 14px; color: #6c757d;">
+            <strong>Lembrete automático:</strong> Este email foi enviado automaticamente. 
+            Você receberá lembretes adicionais conforme o prazo se aproxima.
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>Sistema IAFAP - Gestão de Revisões</p>
+        <p>Para cancelar lembretes, complete suas revisões ou entre em contato conosco.</p>
+    </div>
+</body>
+</html>

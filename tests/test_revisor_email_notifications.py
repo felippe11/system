@@ -42,7 +42,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-
+from models import (
     Cliente,
     Formulario,
     CampoFormulario,
@@ -85,6 +85,8 @@ def app():
             formulario_id=form.id,
             num_etapas=3,
             exibir_para_participantes=True,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(proc)
         db.session.commit()

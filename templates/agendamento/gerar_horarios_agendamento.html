@@ -42,16 +42,16 @@
                 <input type="date" class="form-control" id="data_inicial" name="data_inicial" required>
                 <div class="form-text">Data de início para geração dos horários.</div>
               </div>
-              
+
               <div class="col-md-6">
                 <label for="data_final" class="form-label">Data Final</label>
                 <input type="date" class="form-control" id="data_final" name="data_final" required>
                 <div class="form-text">Data final para geração dos horários.</div>
               </div>
             </div>
-            
+
             <div class="alert alert-warning">
-              <i class="bi bi-exclamation-triangle"></i> Atenção: 
+              <i class="bi bi-exclamation-triangle"></i> Atenção:
               <ul>
                 <li>Serão gerados horários apenas para os dias da semana selecionados nas configurações.</li>
                 <li>Horários já existentes não serão duplicados.</li>
@@ -110,6 +110,7 @@
         dataFinal.value = this.value;
       }
     });
+
   });
 </script>
 {% endblock %}

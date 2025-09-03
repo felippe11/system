@@ -11,6 +11,7 @@ from flask import (
 from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from extensions import db
+from utils import endpoints
 
 from models import (
     Usuario,
@@ -38,6 +39,9 @@ peer_review_routes = Blueprint(
     "peer_review_routes", __name__, template_folder="../templates/peer_review"
 )
 
+# Notificação por e-mail para revisores
+from services.review_notification_service import notify_reviewer
+
 
 @peer_review_routes.app_context_processor
 def inject_reviewer_registration_flag():
@@ -58,7 +62,7 @@ def submission_control():
     """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
     
     # Get current client ID
     cliente_id = getattr(current_user, "id", None)
@@ -71,7 +75,10 @@ def submission_control():
     processos_seletivos = (
         db.session.query(RevisorProcess, Formulario)
         .join(Formulario, RevisorProcess.formulario_id == Formulario.id)
-        .filter(RevisorProcess.cliente_id == cliente_id)
+        .filter(
+            RevisorProcess.cliente_id == cliente_id,
+            RevisorProcess.status == "ativo",
+        )
         .all()
     )
     
@@ -419,7 +426,7 @@ def assign_reviews():
     """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None  # salva log mesmo sem usuário
@@ -521,7 +528,7 @@ def assign_by_filters():
     """Distribui submissões a revisores aprovados com base em filtros."""
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     data = request.get_json() or {}
     filtros: dict = data.get("filters", {})
@@ -637,7 +644,7 @@ def auto_assign(evento_id):
     """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     usuario = Usuario.query.get(getattr(current_user, "id", None))
     uid = usuario.id if usuario else None  # salva log mesmo sem usuário
@@ -708,7 +715,7 @@ def create_review():
     """Cria uma revisão única para uma submissão e um revisor."""
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     data = request.get_json(silent=True) or {}
     submission_id = request.form.get("submission_id") or data.get("submission_id")
@@ -878,7 +885,7 @@ def editor_reviews(evento_id):
     """
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     trabalhos = Submission.query.filter_by(evento_id=evento_id).all()
     return render_template("peer_review/dashboard_editor.html", trabalhos=trabalhos)
@@ -890,7 +897,7 @@ def client_reviews_panel():
     """Painel para clientes acompanharem o progresso das revisões."""
     if current_user.tipo not in ("cliente", "admin", "superadmin"):
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     submissions = (
         Submission.query.join(Evento)

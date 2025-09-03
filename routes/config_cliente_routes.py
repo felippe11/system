@@ -6,9 +6,11 @@ from flask import (
     url_for,
     flash,
     render_template,
+    current_app,
 )
 from flask_login import login_required, current_user
 from extensions import db
+from utils import endpoints
 
 from models import (
     ConfiguracaoCliente,
@@ -241,7 +243,7 @@ def toggle_certificado_individual():
 
     status = "ativado" if config.habilitar_certificado_individual else "desativado"
     flash(f"Certificado individual {status} com sucesso!", "success")
-    return redirect(url_for("dashboard_routes.dashboard_cliente"))
+    return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
 @config_cliente_routes.route("/toggle_feedback", methods=["POST"])
@@ -258,7 +260,7 @@ def toggle_feedback():
     db.session.commit()
     status = "ativado" if config.habilitar_feedback else "desativado"
     flash(f"Feedback global {status} com sucesso!", "success")
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @config_cliente_routes.route("/toggle_cliente/<int:cliente_id>")
@@ -266,7 +268,7 @@ def toggle_feedback():
 def toggle_cliente(cliente_id):
     if current_user.tipo != "admin":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     cliente = Cliente.query.get_or_404(cliente_id)
     logging.debug("Antes: %s", cliente.ativo)
@@ -277,7 +279,7 @@ def toggle_cliente(cliente_id):
     flash(
         f"Cliente {'ativado' if cliente.ativo else 'desativado'} com sucesso", "success"
     )
-    return redirect(url_for("dashboard_routes.dashboard"))
+    return redirect(url_for(endpoints.DASHBOARD))
 
 
 @config_cliente_routes.route("/toggle_submissao_trabalhos", methods=["POST"])
@@ -974,7 +976,7 @@ def config_submissao():
     """Página de configuração das opções de submissão e revisão"""
     if current_user.tipo != "cliente":
         flash("Acesso negado!", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return redirect(url_for(endpoints.DASHBOARD))
 
     config_cliente = ConfiguracaoCliente.query.filter_by(
         cliente_id=current_user.id
@@ -1001,12 +1003,31 @@ def config_submissao():
         ).all()
     }
 
+    # Verificar se há um arquivo template para processar automaticamente
+    arquivo_template = request.args.get('arquivo')
+    evento_id = request.args.get('evento_id')
+    auto_import_data = None
+    
+    if arquivo_template == 'template_trabalhos.xlsx' and evento_id:
+        try:
+            import os
+            template_path = os.path.join(current_app.static_folder, 'templates', 'template_trabalhos.xlsx')
+            if os.path.exists(template_path):
+                auto_import_data = {
+                    'template_file': arquivo_template,
+                    'evento_id': evento_id,
+                    'template_path': template_path
+                }
+        except Exception as e:
+            flash(f"Erro ao carregar template: {str(e)}", "warning")
+
     return render_template(
         "config/config_submissao.html",
         config_cliente=config_cliente,
         eventos=eventos,
         formularios=formularios,
         revisao_configs=revisao_configs,
+        auto_import_data=auto_import_data,
     )
 
 

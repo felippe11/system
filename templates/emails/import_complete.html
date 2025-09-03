@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importação Concluída</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #17a2b8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .stats {
+            background-color: white;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #17a2b8;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #17a2b8;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+        .success-rate {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .rate-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+        }
+        .rate-excellent { background-color: #28a745; }
+        .rate-good { background-color: #ffc107; color: #212529; }
+        .rate-poor { background-color: #dc3545; }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .alert {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .error-list {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .error-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-left: 3px solid #dc3545;
+            font-size: 13px;
+        }
+        .mapping-info {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .mapping-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .mapping-table th,
+        .mapping-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 13px;
+        }
+        .mapping-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Importação de Planilha Concluída</h1>
+        <p>{{ evento_nome }}</p>
+    </div>
+    
+    <div class="content">
+        <p>Olá,</p>
+        
+        <p>A importação da planilha foi concluída com sucesso!</p>
+        
+        <div class="stats">
+            <h3>📈 Estatísticas da Importação</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ total_records }}</div>
+                    <div class="stat-label">Registros Processados</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ successful_records }}</div>
+                    <div class="stat-label">Importados com Sucesso</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ failed_records }}</div>
+                    <div class="stat-label">Registros com Erro</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ processing_time }}s</div>
+                    <div class="stat-label">Tempo de Processamento</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="success-rate">
+            <h4>Taxa de Sucesso</h4>
+            {% set rate_class = 'rate-excellent' if success_rate >= 90 else 'rate-good' if success_rate >= 70 else 'rate-poor' %}
+            <div class="rate-circle {{ rate_class }}">
+                {{ success_rate }}%
+            </div>
+            <p style="margin: 0; color: #6c757d; font-size: 14px;">
+                {{ successful_records }} de {{ total_records }} registros importados
+            </p>
+        </div>
+        
+        {% if success_rate >= 90 %}
+        <div class="alert alert-success">
+            <strong>✅ Excelente!</strong> A importação foi muito bem-sucedida com alta taxa de sucesso.
+        </div>
+        {% elif success_rate >= 70 %}
+        <div class="alert alert-warning">
+            <strong>⚠️ Atenção!</strong> A importação foi concluída, mas alguns registros apresentaram problemas.
+        </div>
+        {% else %}
+        <div class="alert alert-danger">
+            <strong>❌ Problemas Detectados!</strong> Muitos registros falharam na importação. Verifique os dados e tente novamente.
+        </div>
+        {% endif %}
+        
+        <div class="mapping-info">
+            <h4>🗂️ Mapeamento de Colunas Utilizado</h4>
+            <p><strong>Lote:</strong> {{ batch_id }}</p>
+            <p><strong>Arquivo:</strong> {{ filename }}</p>
+            <p><strong>Processado em:</strong> {{ processed_at.strftime('%d/%m/%Y às %H:%M:%S') }}</p>
+            
+            <table class="mapping-table">
+                <thead>
+                    <tr>
+                        <th>Campo do Sistema</th>
+                        <th>Coluna da Planilha</th>
+                        <th>Confiança</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field, mapping in column_mapping.items() %}
+                    <tr>
+                        <td>{{ field|title }}</td>
+                        <td>{{ mapping.column }}</td>
+                        <td>{{ mapping.confidence }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if failed_records > 0 and error_samples %}
+        <div class="alert alert-warning">
+            <h4>⚠️ Erros Encontrados</h4>
+            <p>{{ failed_records }} registro(s) não puderam ser importados. Principais problemas:</p>
+            
+            <div class="error-list">
+                {% for error in error_samples[:10] %}
+                <div class="error-item">
+                    <strong>Linha {{ error.row }}:</strong> {{ error.message }}
+                    {% if error.field %}<br><small>Campo: {{ error.field }}</small>{% endif %}
+                </div>
+                {% endfor %}
+                
+                {% if error_samples|length > 10 %}
+                <div style="text-align: center; padding: 10px; color: #6c757d;">
+                    ... e mais {{ error_samples|length - 10 }} erro(s)
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <h3>📋 Próximos Passos</h3>
+        <ol>
+            <li>Revisar os dados importados no sistema</li>
+            {% if failed_records > 0 %}
+            <li>Corrigir os erros na planilha original</li>
+            <li>Reimportar apenas os registros com falha (se necessário)</li>
+            {% endif %}
+            <li>Configurar as preferências dos revisores</li>
+            <li>Executar a distribuição automática</li>
+            <li>Verificar as atribuições geradas</li>
+        </ol>
+        
+        {% if normalization_applied %}
+        <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <h4 style="color: #004085; margin-top: 0;">🔄 Normalização Aplicada</h4>
+            <p>Os seguintes dados foram normalizados automaticamente:</p>
+            <ul>
+                {% for field, count in normalization_applied.items() %}
+                <li><strong>{{ field|title }}:</strong> {{ count }} valor(es) normalizado(s)</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ submissions_url }}" class="btn">📋 Ver Submissões Importadas</a>
+            <a href="{{ distribution_url }}" class="btn btn-secondary">🎯 Configurar Distribuição</a>
+        </div>
+        
+        {% if failed_records > 0 %}
+        <div style="text-align: center; margin: 15px 0;">
+            <a href="{{ error_report_url }}" class="btn btn-secondary">📄 Baixar Relatório de Erros</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="footer">
+        <p>Sistema IAFAP - Importação de Submissões</p>
+        <p>Este é um email automático, não responda a esta mensagem.</p>
+    </div>
+</body>
+</html>

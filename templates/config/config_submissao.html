@@ -79,12 +79,173 @@
         </div>
 
 
+        <!-- Seção de Importação de Trabalhos -->
+        <div class="config-item p-4 form-group border rounded bg-light mt-4">
+          <h6 class="mb-3 fw-semibold text-primary">
+            <i class="bi bi-upload me-2"></i>Importação de Trabalhos
+          </h6>
+          <p class="small text-muted mb-4">Importe trabalhos em lote através de planilhas Excel ou CSV.</p>
+          
+          <div class="row g-3">
+            <div class="col-md-8">
+              <div class="d-flex align-items-center">
+                <div class="me-3">
+                  <i class="bi bi-file-earmark-spreadsheet text-success" style="font-size: 2rem;"></i>
+                </div>
+                <div>
+                  <h6 class="mb-1">Importar Planilha de Trabalhos</h6>
+                  <p class="small text-muted mb-0">Faça upload de arquivos Excel (.xlsx) ou CSV com os dados dos trabalhos e autores.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 text-end">
+              
+            </div>
+          </div>
+          
+          <div class="mt-3">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              <strong>Formatos suportados:</strong> Excel (.xlsx), CSV (.csv)<br>
+              <strong>Colunas recomendadas:</strong> Título, Categoria, Nome do Autor, Email do Autor, Rede de Ensino, Etapa de Ensino
+            </small>
+          </div>
+        </div>
+
         <div class="text-end mt-4">
-          <a href="{{ url_for('peer_review_routes.submission_control') }}" class="btn btn-outline-primary">Distribuição de Trabalhos</a>
+          <a href="{{ url_for('peer_review_routes.submission_control') }}" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importarTrabalhosModal">
+  <i class="bi bi-upload me-2"></i>Gerenciar Submissões
+</a>
         </div>
       </div>
     </div>
     </div>
+
+  <!-- Modal de Importação de Trabalhos -->
+  <div class="modal fade" id="importarTrabalhosModal" tabindex="-1" aria-labelledby="importarTrabalhosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="importarTrabalhosModalLabel">
+            <i class="bi bi-upload me-2"></i>Importar Trabalhos
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="importStep1" class="import-step">
+            <h6 class="mb-3">Passo 1: Selecionar Arquivo</h6>
+            <form id="uploadForm" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label for="eventoSelect" class="form-label">Evento de Destino</label>
+                <select class="form-select" id="eventoSelect" name="evento_id" required>
+                  <option value="">Selecione um evento...</option>
+                  {% for evento in eventos %}
+                  <option value="{{ evento.id }}">{{ evento.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="arquivoInput" class="form-label">Arquivo da Planilha</label>
+                <input type="file" class="form-control" id="arquivoInput" name="arquivo" accept=".xlsx,.xls,.csv" required>
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>
+                  Formatos aceitos: Excel (.xlsx, .xls) ou CSV (.csv)
+                </div>
+              </div>
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                  <i class="bi bi-cloud-upload me-2"></i>Fazer Upload
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          <div id="importStep2" class="import-step" style="display: none;">
+            <h6 class="mb-3">Passo 2: Mapear Colunas</h6>
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Preview dos dados:</strong> <span id="totalRows"></span> linhas encontradas
+            </div>
+            
+            <form id="mappingForm">
+              <input type="hidden" id="tempId" name="temp_id">
+              <input type="hidden" id="eventoIdHidden" name="evento_id">
+              
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Título do Trabalho</label>
+                  <select class="form-select" name="titulo" id="tituloSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Categoria</label>
+                  <select class="form-select" name="categoria" id="categoriaSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Nome do Autor</label>
+                  <select class="form-select" name="autor_nome" id="autorNomeSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-medium">Email do Autor</label>
+                  <select class="form-select" name="autor_email" id="autorEmailSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Rede de Ensino</label>
+                  <select class="form-select" name="rede_ensino" id="redeEnsinoSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Etapa de Ensino</label>
+                  <select class="form-select" name="etapa_ensino" id="etapaEnsinoSelect">
+                    <option value="">Selecione a coluna...</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h6>Preview dos Dados</h6>
+                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                  <table class="table table-sm table-striped" id="previewTable">
+                    <thead class="table-dark sticky-top">
+                      <tr id="previewHeader"></tr>
+                    </thead>
+                    <tbody id="previewBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-secondary" id="voltarStep1">
+                  <i class="bi bi-arrow-left me-2"></i>Voltar
+                </button>
+                <button type="submit" class="btn btn-success">
+                  <i class="bi bi-check-circle me-2"></i>Importar Trabalhos
+                </button>
+              </div>
+            </form>
+          </div>
+          
+          <div id="importStep3" class="import-step" style="display: none;">
+            <div class="text-center py-4">
+              <div class="spinner-border text-success mb-3" role="status">
+                <span class="visually-hidden">Importando...</span>
+              </div>
+              <h6>Importando trabalhos...</h6>
+              <p class="text-muted">Por favor, aguarde enquanto processamos os dados.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div id="mapearColunasModal"></div>
   <script type="text/template" id="mapearColunasTemplate">
@@ -101,5 +262,85 @@
 <script src="{{ url_for('static', filename='js/config_revisao.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard_cliente.js') }}"></script>
 <script src="{{ url_for('static', filename='js/config_submissao.js') }}"></script>
+
+{% if auto_import_data %}
+<script>
+// Auto-importação de template
+document.addEventListener('DOMContentLoaded', function() {
+    const autoImportData = {{ auto_import_data | tojson }};
+    
+    if (autoImportData && autoImportData.template_file === 'template_trabalhos.xlsx') {
+        // Mostrar modal automaticamente
+        const modal = new bootstrap.Modal(document.getElementById('importarTrabalhosModal'));
+        modal.show();
+        
+        // Pré-selecionar o evento
+        const eventoSelect = document.getElementById('eventoSelect');
+        if (eventoSelect && autoImportData.evento_id) {
+            eventoSelect.value = autoImportData.evento_id;
+        }
+        
+        // Simular upload do template automaticamente
+        setTimeout(() => {
+            fetch('/static/templates/template_trabalhos.xlsx')
+                .then(response => response.blob())
+                .then(blob => {
+                    const file = new File([blob], 'template_trabalhos.xlsx', {
+                        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    });
+                    
+                    const formData = new FormData();
+                    formData.append('arquivo', file);
+                    formData.append('evento_id', autoImportData.evento_id);
+                    
+                    // Mostrar feedback visual
+                    const uploadForm = document.getElementById('uploadForm');
+                    const submitBtn = uploadForm.querySelector('button[type="submit"]') || uploadForm.querySelector('input[type="submit"]');
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Processando template...';
+                    }
+                    
+                    // Fazer upload
+                     return fetch('/importar_trabalhos', {
+                         method: 'POST',
+                         body: formData,
+                         headers: {
+                             'X-CSRFToken': document.querySelector('meta[name=csrf-token]').getAttribute('content')
+                         }
+                     });
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Avançar para etapa 2 automaticamente
+                        if (window.showStep) {
+                            window.showStep(2);
+                        }
+                        
+                        // Mostrar notificação de sucesso
+                        const successAlert = document.createElement('div');
+                        successAlert.className = 'alert alert-success mt-3';
+                        successAlert.innerHTML = '<i class="bi bi-check-circle me-2"></i>Template carregado automaticamente! Configure o mapeamento das colunas.';
+                        
+                        const step2 = document.getElementById('importStep2');
+                        if (step2) {
+                            step2.insertAdjacentElement('afterbegin', successAlert);
+                        }
+                    } else {
+                        alert('Erro ao processar template: ' + result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao processar template automaticamente.');
+                });
+        }, 1000);
+    }
+});
+</script>
+{% endif %}
+
 {% endblock %}
 

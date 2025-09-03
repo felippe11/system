@@ -205,6 +205,9 @@
     <button class="btn btn-success btn-sm" id="previewTemplate">
       <i class="fas fa-eye"></i> Pré-visualizar
     </button>
+    <button class="btn btn-outline-success btn-sm" id="livePreviewToggle">
+      <i class="fas fa-play"></i> Preview ao Vivo
+    </button>
     <button class="btn btn-info btn-sm" id="exportTemplate">
       <i class="fas fa-download"></i> Exportar
     </button>
@@ -214,6 +217,13 @@
     </button>
     <button class="btn btn-outline-secondary btn-sm" id="redoAction">
       <i class="fas fa-redo"></i>
+    </button>
+    <div class="vr"></div>
+    <button class="btn btn-outline-secondary btn-sm" id="toggleGrid" title="Mostrar/Ocultar Grid">
+      <i class="fas fa-th"></i>
+    </button>
+    <button class="btn btn-outline-secondary btn-sm active" id="toggleSnap" title="Ativar/Desativar Snap">
+      <i class="fas fa-magnet"></i>
     </button>
     <div class="vr"></div>
     <select class="form-select form-select-sm" id="zoomLevel" style="width: auto;">
@@ -475,14 +485,27 @@ class CertificateEditor {
         listeners: {
           move: (event) => {
             const target = event.target;
-            const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-            const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+            let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+            let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+            
+            // Snap to grid se habilitado
+            if (this.snapToGrid) {
+              x = Math.round(x / this.gridSize) * this.gridSize;
+              y = Math.round(y / this.gridSize) * this.gridSize;
+            }
+            
+            // Mostrar guidelines
+            this.showGuidelines(target, x, y);
             
             target.style.transform = `translate(${x}px, ${y}px)`;
             target.setAttribute('data-x', x);
             target.setAttribute('data-y', y);
             
             this.updateElementPosition(target.id, x, y);
+          },
+          end: (event) => {
+            // Esconder guidelines ao terminar o arraste
+            this.hideGuidelines();
           }
         }
       })
@@ -494,8 +517,17 @@ class CertificateEditor {
             let x = (parseFloat(target.getAttribute('data-x')) || 0);
             let y = (parseFloat(target.getAttribute('data-y')) || 0);
             
-            target.style.width = event.rect.width + 'px';
-            target.style.height = event.rect.height + 'px';
+            let width = event.rect.width;
+            let height = event.rect.height;
+            
+            // Snap to grid para redimensionamento
+            if (this.snapToGrid) {
+              width = Math.round(width / this.gridSize) * this.gridSize;
+              height = Math.round(height / this.gridSize) * this.gridSize;
+            }
+            
+            target.style.width = width + 'px';
+            target.style.height = height + 'px';
             
             x += event.deltaRect.left;
             y += event.deltaRect.top;
@@ -504,12 +536,184 @@ class CertificateEditor {
             target.setAttribute('data-x', x);
             target.setAttribute('data-y', y);
             
-            this.updateElementSize(target.id, event.rect.width, event.rect.height);
+            this.updateElementSize(target.id, width, height);
             this.updateElementPosition(target.id, x, y);
           }
         }
       });
+    
+    // Configurar grid e guidelines
+    this.setupGrid();
+    this.setupGuidelines();
   }
+  
+  setupGrid() {
+    this.gridSize = 10;
+    this.snapToGrid = true;
+    
+    // Criar overlay de grid
+    if (!document.getElementById('gridOverlay')) {
+      const gridOverlay = document.createElement('div');
+      gridOverlay.id = 'gridOverlay';
+      gridOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        opacity: 0.1;
+        background-image: 
+          linear-gradient(to right, #000 1px, transparent 1px),
+          linear-gradient(to bottom, #000 1px, transparent 1px);
+        background-size: ${this.gridSize}px ${this.gridSize}px;
+        z-index: 1;
+      `;
+      this.canvas.appendChild(gridOverlay);
+    }
+  }
+  
+  setupGuidelines() {
+    this.guidelines = {
+      vertical: [],
+      horizontal: []
+    };
+    
+    // Criar containers para guidelines
+    if (!document.getElementById('guidelinesContainer')) {
+      const container = document.createElement('div');
+      container.id = 'guidelinesContainer';
+      container.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+      `;
+      this.canvas.appendChild(container);
+    }
+  }
+  
+  showGuidelines(draggedElement, x, y) {
+    this.hideGuidelines();
+    
+    const container = document.getElementById('guidelinesContainer');
+    if (!container) return;
+    
+    const tolerance = 5; // pixels de tolerância para snap
+    const draggedRect = {
+      left: x,
+      top: y,
+      right: x + draggedElement.offsetWidth,
+      bottom: y + draggedElement.offsetHeight,
+      centerX: x + draggedElement.offsetWidth / 2,
+      centerY: y + draggedElement.offsetHeight / 2
+    };
+    
+    // Verificar alinhamento com outros elementos
+    this.canvas.querySelectorAll('.draggable-element').forEach(element => {
+      if (element === draggedElement) return;
+      
+      const rect = element.getBoundingClientRect();
+      const canvasRect = this.canvas.getBoundingClientRect();
+      const elementRect = {
+        left: rect.left - canvasRect.left,
+        top: rect.top - canvasRect.top,
+        right: rect.right - canvasRect.left,
+        bottom: rect.bottom - canvasRect.top,
+        centerX: (rect.left + rect.right) / 2 - canvasRect.left,
+        centerY: (rect.top + rect.bottom) / 2 - canvasRect.top
+      };
+      
+      // Guidelines verticais
+      if (Math.abs(draggedRect.left - elementRect.left) < tolerance) {
+        this.createGuideline('vertical', elementRect.left);
+      }
+      if (Math.abs(draggedRect.right - elementRect.right) < tolerance) {
+        this.createGuideline('vertical', elementRect.right);
+      }
+      if (Math.abs(draggedRect.centerX - elementRect.centerX) < tolerance) {
+        this.createGuideline('vertical', elementRect.centerX);
+      }
+      
+      // Guidelines horizontais
+      if (Math.abs(draggedRect.top - elementRect.top) < tolerance) {
+        this.createGuideline('horizontal', elementRect.top);
+      }
+      if (Math.abs(draggedRect.bottom - elementRect.bottom) < tolerance) {
+        this.createGuideline('horizontal', elementRect.bottom);
+      }
+      if (Math.abs(draggedRect.centerY - elementRect.centerY) < tolerance) {
+        this.createGuideline('horizontal', elementRect.centerY);
+      }
+    });
+  }
+  
+  createGuideline(type, position) {
+    const container = document.getElementById('guidelinesContainer');
+    const guideline = document.createElement('div');
+    
+    if (type === 'vertical') {
+      guideline.style.cssText = `
+        position: absolute;
+        left: ${position}px;
+        top: 0;
+        width: 1px;
+        height: 100%;
+        background-color: #007bff;
+        z-index: 10;
+      `;
+    } else {
+      guideline.style.cssText = `
+        position: absolute;
+        left: 0;
+        top: ${position}px;
+        width: 100%;
+        height: 1px;
+        background-color: #007bff;
+        z-index: 10;
+      `;
+    }
+    
+    guideline.className = 'guideline';
+    container.appendChild(guideline);
+  }
+  
+  hideGuidelines() {
+     const container = document.getElementById('guidelinesContainer');
+     if (container) {
+       container.querySelectorAll('.guideline').forEach(guideline => {
+         guideline.remove();
+       });
+     }
+   }
+   
+   toggleGrid() {
+     const gridOverlay = document.getElementById('gridOverlay');
+     const toggleBtn = document.getElementById('toggleGrid');
+     
+     if (gridOverlay) {
+       const isVisible = gridOverlay.style.display !== 'none';
+       gridOverlay.style.display = isVisible ? 'none' : 'block';
+       toggleBtn.classList.toggle('active', !isVisible);
+     }
+   }
+   
+   toggleSnap() {
+     this.snapToGrid = !this.snapToGrid;
+     const toggleBtn = document.getElementById('toggleSnap');
+     toggleBtn.classList.toggle('active', this.snapToGrid);
+   }
+   
+   setGridSize(size) {
+     this.gridSize = size;
+     const gridOverlay = document.getElementById('gridOverlay');
+     if (gridOverlay) {
+       gridOverlay.style.backgroundSize = `${size}px ${size}px`;
+     }
+   }
   
   addElement(type) {
     const elementId = `element_${this.nextElementId++}`;
@@ -977,6 +1181,11 @@ class CertificateEditor {
       this.history.shift();
       this.historyIndex--;
     }
+    
+    // Atualizar live preview se ativo
+    if (this.livePreview) {
+      setTimeout(() => this.updateLivePreview(), 100);
+    }
   }
   
   undo() {
@@ -1061,21 +1270,137 @@ class CertificateEditor {
   }
   
   previewTemplate() {
+    // Criar modal de preview se não existir
+    if (!document.getElementById('previewModal')) {
+      this.createPreviewModal();
+    }
+    
     const previewCanvas = document.getElementById('previewCanvas');
     previewCanvas.innerHTML = this.canvas.innerHTML;
     
     // Remover controles de edição da pré-visualização
-    previewCanvas.querySelectorAll('.element-controls, .resize-handle').forEach(el => el.remove());
+    previewCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
     previewCanvas.querySelectorAll('.draggable-element').forEach(el => {
       el.classList.remove('draggable-element', 'selected');
       el.style.border = 'none';
       el.style.cursor = 'default';
+      el.style.transform = 'none';
     });
     
     // Substituir variáveis por valores de exemplo para preview
     this.replaceVariablesForPreview(previewCanvas);
     
-    document.getElementById('previewMode').style.display = 'flex';
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+  }
+  
+  createPreviewModal() {
+    const modalHTML = `
+      <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Pré-visualização do Certificado</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+              <div id="previewCanvas" class="certificate-canvas" style="margin: 0 auto; transform: scale(0.8); transform-origin: center;"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+              <button type="button" class="btn btn-primary" onclick="editor.generatePDF()">Gerar PDF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+  
+  enableLivePreview() {
+    this.livePreview = true;
+    
+    // Criar painel de preview ao vivo
+    if (!document.getElementById('livePreviewPanel')) {
+      const panel = document.createElement('div');
+      panel.id = 'livePreviewPanel';
+      panel.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        width: 300px;
+        height: 400px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        overflow: hidden;
+      `;
+      
+      panel.innerHTML = `
+        <div style="padding: 10px; border-bottom: 1px solid #dee2e6; background: #f8f9fa;">
+          <strong>Preview ao Vivo</strong>
+          <button class="btn btn-sm btn-outline-secondary float-end" onclick="editor.closeLivePreview()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div id="livePreviewContent" style="padding: 10px; height: calc(100% - 50px); overflow: auto;">
+          <div id="livePreviewCanvas" style="transform: scale(0.3); transform-origin: top left; width: 333%; height: 333%;"></div>
+        </div>
+      `;
+      
+      document.body.appendChild(panel);
+    }
+    
+    this.updateLivePreview();
+  }
+  
+  updateLivePreview() {
+    if (!this.livePreview) return;
+    
+    const liveCanvas = document.getElementById('livePreviewCanvas');
+    if (liveCanvas) {
+      liveCanvas.innerHTML = this.canvas.innerHTML;
+      
+      // Limpar elementos de edição
+      liveCanvas.querySelectorAll('.element-controls, .resize-handle, .guideline, #gridOverlay, #guidelinesContainer').forEach(el => el.remove());
+      liveCanvas.querySelectorAll('.draggable-element').forEach(el => {
+        el.classList.remove('draggable-element', 'selected');
+        el.style.border = 'none';
+        el.style.cursor = 'default';
+      });
+      
+      this.replaceVariablesForPreview(liveCanvas);
+    }
+  }
+  
+  closeLivePreview() {
+    this.livePreview = false;
+    const panel = document.getElementById('livePreviewPanel');
+    if (panel) {
+      panel.remove();
+    }
+    
+    // Atualizar botão
+    const btn = document.getElementById('livePreviewToggle');
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-play"></i> Preview ao Vivo';
+      btn.classList.remove('active');
+    }
+  }
+  
+  toggleLivePreview() {
+    const btn = document.getElementById('livePreviewToggle');
+    
+    if (this.livePreview) {
+      this.closeLivePreview();
+    } else {
+      this.enableLivePreview();
+      btn.innerHTML = '<i class="fas fa-stop"></i> Parar Preview';
+      btn.classList.add('active');
+    }
   }
   
   exportTemplate() {
@@ -1307,6 +1632,21 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Carregar variáveis dinâmicas
   editor.loadDynamicVariables();
+  
+  // Event listeners para controles do toolbar
+  document.getElementById('saveTemplate').addEventListener('click', () => editor.saveTemplate());
+  document.getElementById('previewTemplate').addEventListener('click', () => editor.previewTemplate());
+  document.getElementById('livePreviewToggle').addEventListener('click', () => editor.toggleLivePreview());
+  document.getElementById('exportTemplate').addEventListener('click', () => editor.exportTemplate());
+  document.getElementById('undoAction').addEventListener('click', () => editor.undo());
+  document.getElementById('redoAction').addEventListener('click', () => editor.redo());
+  document.getElementById('toggleGrid').addEventListener('click', () => editor.toggleGrid());
+  document.getElementById('toggleSnap').addEventListener('click', () => editor.toggleSnap());
+  
+  // Event listener para zoom
+  document.getElementById('zoomLevel').addEventListener('change', (e) => {
+    editor.setZoom(parseFloat(e.target.value));
+  });
 });
 
 // Função auxiliar para substituir variáveis no preview

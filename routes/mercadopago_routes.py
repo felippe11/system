@@ -4,6 +4,7 @@ from extensions import db
 from models import Inscricao, Configuracao, ConfiguracaoCliente
 from models.user import Cliente
 import os
+from utils import endpoints
 
 from services.mp_service import get_sdk
 from decimal import Decimal
@@ -77,7 +78,7 @@ def atualizar_taxa():
         assert 0 <= perc <= 100
     except:
         flash("Percentual da taxa geral inválido", "danger")
-        return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+        return redirect(request.referrer or url_for(endpoints.DASHBOARD_ADMIN))
 
     cfg = Configuracao.query.first()
     if not cfg:
@@ -108,7 +109,7 @@ def atualizar_taxa():
                 # Verifica se a taxa diferenciada é menor que a taxa geral
                 if perc_cliente >= perc:
                     flash("A taxa diferenciada deve ser menor que a taxa geral do sistema", "danger")
-                    return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+                    return redirect(request.referrer or url_for(endpoints.DASHBOARD_ADMIN))
                     
                 # Busca a configuração do cliente ou cria uma nova
                 if not config_cliente:
@@ -120,8 +121,8 @@ def atualizar_taxa():
                 flash(f"Taxa diferenciada para cliente ID {cliente_id} salva com sucesso!", "success")
             except:
                 flash("Erro ao salvar a taxa diferenciada. Verifique os valores informados.", "danger")
-                return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+                return redirect(request.referrer or url_for(endpoints.DASHBOARD_ADMIN))
     
     db.session.commit()
     flash("Percentual geral salvo!", "success")
-    return redirect(request.referrer or url_for('dashboard_routes.dashboard_admin'))
+    return redirect(request.referrer or url_for(endpoints.DASHBOARD_ADMIN))

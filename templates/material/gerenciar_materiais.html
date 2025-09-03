@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Materiais{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📦 Gerenciar Materiais</h2>
+                    <p class="text-muted mb-0">Controle de estoque e materiais por polo formativo</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('material_routes.novo_polo') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-plus"></i> Novo Polo
+                    </a>
+                    <a href="{{ url_for('material_routes.novo_material') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Novo Material
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas Gerais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ total_materiais }}</h4>
+                            <p class="mb-0">Total de Materiais</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-boxes fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ materiais_baixo_estoque }}</h4>
+                            <p class="mb-0">Baixo Estoque</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ materiais_esgotados }}</h4>
+                            <p class="mb-0">Esgotados</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-times-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ polos|length }}</h4>
+                            <p class="mb-0">Polos Ativos</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-map-marker-alt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">🚀 Ações Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-primary w-100 mb-2" onclick="gerarRelatorioGeral()">
+                                <i class="fas fa-chart-bar"></i> Relatório Geral
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-warning w-100 mb-2" onclick="gerarListaCompras()">
+                                <i class="fas fa-shopping-cart"></i> Lista de Compras
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-success w-100 mb-2" onclick="exportarWhatsApp()">
+                                <i class="fab fa-whatsapp"></i> Exportar WhatsApp
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="dropdown">
+                                <button class="btn btn-outline-info w-100 mb-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-file-excel"></i> Relatórios Excel
+                                </button>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('geral')">
+                                        <i class="fas fa-chart-bar"></i> Relatório Geral
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('baixo_estoque')">
+                                        <i class="fas fa-exclamation-triangle"></i> Estoque Baixo
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('sem_estoque')">
+                                        <i class="fas fa-times-circle"></i> Sem Estoque
+                                    </a>
+                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('compras')">
+                                        <i class="fas fa-shopping-cart"></i> Lista de Compras
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="filtro-polo" class="form-label">Filtrar por Polo:</label>
+                            <select id="filtro-polo" class="form-select">
+                                <option value="">Todos os Polos</option>
+                                {% for polo in polos %}
+                                <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filtro-status" class="form-label">Filtrar por Status:</label>
+                            <select id="filtro-status" class="form-select">
+                                <option value="">Todos</option>
+                                <option value="normal">Normal</option>
+                                <option value="baixo">Baixo Estoque</option>
+                                <option value="esgotado">Esgotado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="busca-material" class="form-label">Buscar Material:</label>
+                            <input type="text" id="busca-material" class="form-control" placeholder="Nome do material...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas por Polo -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📍 Estatísticas por Polo</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="carregarEstatisticasPolos()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for stat in estatisticas_polos %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card border-left-primary">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ stat.polo.nome }}</h6>
+                                    <div class="row text-center">
+                                        <div class="col-4">
+                                            <small class="text-muted">Total</small>
+                                            <div class="h5 mb-0">{{ stat.total_materiais }}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-warning">Baixo</small>
+                                            <div class="h5 mb-0 text-warning">{{ stat.baixo_estoque }}</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <small class="text-danger">Esgotado</small>
+                                            <div class="h5 mb-0 text-danger">{{ stat.esgotados }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="verMateriaisPolo({{ stat.polo.id }})">
+                                            <i class="fas fa-eye"></i> Ver Materiais
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="editarPolo({{ stat.polo.id }})">
+                                            <i class="fas fa-edit"></i> Editar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Materiais -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📦 Lista de Materiais</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="atualizarLista()">
+                            <i class="fas fa-sync-alt"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabela-materiais">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Polo</th>
+                                    <th>Categoria</th>
+                                    <th>Estoque Atual</th>
+                                    <th>Estoque Mínimo</th>
+                                    <th>Status</th>
+                                    <th>Necessário</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-materiais">
+                                <!-- Carregado via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Modal Material -->
+<div class="modal fade" id="modalMaterial" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-material">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-polo" class="form-label">Polo *</label>
+                                <select id="material-polo" class="form-select" required>
+                                    <option value="">Selecione um polo</option>
+                                    {% for polo in polos %}
+                                    <option value="{{ polo.id }}">{{ polo.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-categoria" class="form-label">Categoria</label>
+                                <select id="material-categoria" class="form-select">
+                                    <option value="">Selecione uma categoria</option>
+                                    <option value="Papelaria">Papelaria</option>
+                                    <option value="Limpeza">Limpeza</option>
+                                    <option value="Informática">Informática</option>
+                                    <option value="Móveis">Móveis</option>
+                                    <option value="Equipamentos">Equipamentos</option>
+                                    <option value="Consumíveis">Consumíveis</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material-nome" class="form-label">Nome do Material *</label>
+                        <input type="text" class="form-control" id="material-nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="material-descricao" class="form-label">Descrição</label>
+                        <textarea class="form-control" id="material-descricao" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-unidade" class="form-label">Unidade *</label>
+                                <select id="material-unidade" class="form-select" required>
+                                    <option value="">Selecione</option>
+                                    <option value="un">Unidade</option>
+                                    <option value="cx">Caixa</option>
+                                    <option value="pct">Pacote</option>
+                                    <option value="kg">Quilograma</option>
+                                    <option value="l">Litro</option>
+                                    <option value="m">Metro</option>
+                                    <option value="m²">Metro²</option>
+                                    <option value="resma">Resma</option>
+                                    <option value="dz">Dúzia</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-quantidade-inicial" class="form-label">Quantidade Atual</label>
+                                <input type="number" class="form-control" id="material-quantidade-inicial" min="0" disabled>
+                                <div class="form-text">Quantidade atual em estoque</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="material-quantidade-minima" class="form-label">Estoque Mínimo</label>
+                                <input type="number" class="form-control" id="material-quantidade-minima" min="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-preco" class="form-label">Preço Unitário (R$)</label>
+                                <input type="number" class="form-control" id="material-preco" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="material-fornecedor" class="form-label">Fornecedor</label>
+                                <input type="text" class="form-control" id="material-fornecedor">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Movimentação -->
+<div class="modal fade" id="modalMovimentacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Movimentação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-movimentacao">
+                <div class="modal-body">
+                    <input type="hidden" id="movimentacao-material-id">
+                    <div class="mb-3">
+                        <label class="form-label">Material:</label>
+                        <p class="form-control-plaintext" id="movimentacao-material-nome"></p>
+                    </div>
+                    <div class="mb-3">
+                        <label for="movimentacao-tipo" class="form-label">Tipo de Movimentação *</label>
+                        <select class="form-select" id="movimentacao-tipo" required>
+                            <option value="entrada">Entrada (Compra/Recebimento)</option>
+                            <option value="saida">Saída (Consumo/Uso)</option>
+                            <option value="ajuste">Ajuste de Estoque</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="movimentacao-quantidade" class="form-label">Quantidade *</label>
+                        <input type="number" class="form-control" id="movimentacao-quantidade" min="1" required>
+                        <div class="form-text">Estoque atual: <span id="estoque-atual"></span></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="movimentacao-observacao" class="form-label">Observação</label>
+                        <textarea class="form-control" id="movimentacao-observacao" rows="3" placeholder="Descreva o motivo da movimentação..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal WhatsApp -->
+<div class="modal fade" id="modalWhatsApp" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fab fa-whatsapp"></i> Exportar para WhatsApp</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-globe"></i> Relatórios Gerais</h6>
+                        <div class="d-grid gap-2 mb-3">
+                            <button class="btn btn-warning" onclick="gerarTextoWhatsApp('baixo_estoque')">
+                                <i class="fas fa-exclamation-triangle"></i> Materiais com Estoque Baixo
+                            </button>
+                            <button class="btn btn-danger" onclick="gerarTextoWhatsApp('sem_estoque')">
+                                <i class="fas fa-times-circle"></i> Materiais sem Estoque
+                            </button>
+                            <button class="btn btn-info" onclick="gerarTextoWhatsApp('compras')">
+                                <i class="fas fa-shopping-cart"></i> Lista de Compras
+                            </button>
+                            <button class="btn btn-primary" onclick="gerarTextoWhatsApp('geral')">
+                                <i class="fas fa-chart-bar"></i> Relatório Geral
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-map-marker-alt"></i> Relatórios por Polo</h6>
+                        <div class="mb-2">
+                            <select class="form-select" id="selectPoloPara WhatsApp">
+                                <option value="">Selecione um polo...</option>
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-warning" onclick="gerarTextoWhatsAppPoloSelecionado('baixo_estoque')">
+                                <i class="fas fa-exclamation-triangle"></i> Estoque Baixo
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="gerarTextoWhatsAppPoloSelecionado('sem_estoque')">
+                                <i class="fas fa-times-circle"></i> Sem Estoque
+                            </button>
+                            <button class="btn btn-outline-info" onclick="gerarTextoWhatsAppPoloSelecionado('compras')">
+                                <i class="fas fa-shopping-cart"></i> Lista de Compras
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="gerarTextoWhatsAppPoloSelecionado('geral')">
+                                <i class="fas fa-chart-bar"></i> Relatório Geral
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 
+                    <strong>Como usar:</strong> Clique em um dos botões acima para copiar o texto para a área de transferência. 
+                    Depois, cole no WhatsApp e envie para seus contatos.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/material_gerenciar.js') }}"></script>
+{% endblock %}

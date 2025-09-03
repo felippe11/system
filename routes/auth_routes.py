@@ -1,3 +1,4 @@
+from utils import endpoints
 # routes/auth_routes.py
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
@@ -135,13 +136,13 @@ def login():
         flash('Login realizado com sucesso!', 'success')
 
         destino = {
-            'admin':        'dashboard_routes.dashboard',
-            'cliente':      'dashboard_routes.dashboard',
+            'admin':        endpoints.DASHBOARD,
+            'cliente':      endpoints.DASHBOARD,
             'participante': 'dashboard_participante_routes.dashboard_participante',
             'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
             'professor':    'dashboard_professor.dashboard_professor',
-            'superadmin':   'dashboard_routes.dashboard_superadmin'
-        }.get(session.get('user_type'), 'dashboard_routes.dashboard')
+            'superadmin':   endpoints.DASHBOARD_SUPERADMIN
+        }.get(session.get('user_type'), endpoints.DASHBOARD)
 
         try:
             return redirect(next_page or url_for(destino))
@@ -173,13 +174,13 @@ def mfa():
             session['mfa_authenticated'] = True
             flash('Login realizado com sucesso!', 'success')
             destino = {
-                'admin':        'dashboard_routes.dashboard',
-                'cliente':      'dashboard_routes.dashboard',
+                'admin':        endpoints.DASHBOARD,
+                'cliente':      endpoints.DASHBOARD,
                 'participante': 'dashboard_participante_routes.dashboard_participante',
                 'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
                 'professor':    'dashboard_professor.dashboard_professor',
-                'superadmin':   'dashboard_routes.dashboard_superadmin'
-            }.get(session.get('user_type'), 'dashboard_routes.dashboard')
+                'superadmin':   endpoints.DASHBOARD_SUPERADMIN
+            }.get(session.get('user_type'), endpoints.DASHBOARD)
             return redirect(next_page or url_for(destino))
         else:
             flash('Código inválido', 'danger')

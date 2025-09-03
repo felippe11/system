@@ -1,4 +1,11 @@
-from flask import Flask, url_for as flask_url_for, send_from_directory
+from flask import (
+    Flask,
+    url_for as flask_url_for,
+    send_from_directory,
+    request,
+    jsonify,
+    redirect,
+)
 from flask_cors import CORS
 from flask_socketio import join_room
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -72,6 +79,16 @@ def create_app():
 
     login_manager.login_view = "auth_routes.login"
     login_manager.session_protection = "strong"
+
+    @login_manager.unauthorized_handler
+    def handle_unauthorized():
+        """Return JSON for unauthorized AJAX requests."""
+        if (
+            request.accept_mimetypes["application/json"]
+            >= request.accept_mimetypes["text/html"]
+        ):
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+        return redirect(flask_url_for(login_manager.login_view))
 
     # Cache busting para arquivos estáticos
     def versioned_url_for(endpoint: str, **values):

@@ -102,7 +102,10 @@ class RevisorEtapa(db.Model):
     nome = db.Column(db.String(255), nullable=False)
     descricao = db.Column(db.Text, nullable=True)
 
-    process = db.relationship("RevisorProcess", backref=db.backref("etapas", lazy=True))
+    process = db.relationship(
+        "RevisorProcess",
+        backref=db.backref("etapas", cascade="all, delete-orphan", lazy=True),
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorEtapa process={self.process_id} numero={self.numero}>"
@@ -116,7 +119,10 @@ class RevisorCriterio(db.Model):
     process_id = db.Column(db.Integer, db.ForeignKey("revisor_process.id"), nullable=False)
     nome = db.Column(db.String(255), nullable=False)
 
-    process = db.relationship("RevisorProcess", backref=db.backref("criterios", lazy=True))
+    process = db.relationship(
+        "RevisorProcess",
+        backref=db.backref("criterios", cascade="all, delete-orphan", lazy=True),
+    )
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<RevisorCriterio process={self.process_id} nome={self.nome}>"
@@ -160,7 +166,8 @@ class RevisorCandidatura(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     process = db.relationship(
-        "RevisorProcess", backref=db.backref("candidaturas", lazy=True)
+        "RevisorProcess",
+        backref=db.backref("candidaturas", cascade="all, delete-orphan", lazy=True),
     )
 
     def __repr__(self) -> str:  # pragma: no cover
@@ -180,7 +187,10 @@ class RevisorCandidaturaEtapa(db.Model):
     observacoes = db.Column(db.Text, nullable=True)
 
     candidatura = db.relationship(
-        "RevisorCandidatura", backref=db.backref("etapas_status", lazy=True)
+        "RevisorCandidatura",
+        backref=db.backref(
+            "etapas_status", cascade="all, delete-orphan", lazy=True
+        ),
     )
     etapa = db.relationship("RevisorEtapa")
 
@@ -395,12 +405,23 @@ class RevisorProcess(db.Model):
         nullable=True,
     )
     evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
+    nome = db.Column(db.String(255), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), nullable=False)
     num_etapas = db.Column(db.Integer, default=1)
+
+
+    # Informações básicas
+
+    nome = db.Column(db.String(255), nullable=True)
+    descricao = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), nullable=True)
 
     # Controle de disponibilidade do processo
     availability_start = db.Column(db.DateTime, nullable=True)
     availability_end = db.Column(db.DateTime, nullable=True)
     exibir_para_participantes = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(50), default="ativo")
 
     cliente = db.relationship(
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
