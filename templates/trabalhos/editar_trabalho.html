@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Trabalho{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit text-warning me-2"></i>
+                        Editar Trabalho
+                    </h4>
+                    <div>
+                        <a href="{{ url_for('trabalho_routes.visualizar_trabalho', trabalho_id=resposta.id) }}" class="btn btn-outline-info me-2">
+                            <i class="fas fa-eye me-1"></i>
+                            Visualizar
+                        </a>
+                        <a href="{{ url_for('trabalho_routes.listar_trabalhos') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        {% for campo in formulario.campos %}
+                            {% set valor_atual = '' %}
+                            {% for resposta_campo in resposta.respostas_campos %}
+                                {% if resposta_campo.campo_id == campo.id %}
+                                    {% set valor_atual = resposta_campo.valor %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <div class="mb-3">
+                                <label for="campo_{{ campo.id }}" class="form-label">
+                                    {{ campo.nome }}
+                                    {% if campo.obrigatorio %}
+                                        <span class="text-danger">*</span>
+                                    {% endif %}
+                                </label>
+                                
+                                {% if campo.descricao %}
+                                    <small class="form-text text-muted d-block mb-2">
+                                        {{ campo.descricao }}
+                                    </small>
+                                {% endif %}
+                                
+                                {% if campo.tipo == 'text' %}
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="campo_{{ campo.id }}" 
+                                           name="campo_{{ campo.id }}"
+                                           value="{{ valor_atual }}"
+                                           {% if campo.obrigatorio %}required{% endif %}>
+                                    
+                                {% elif campo.tipo == 'select' %}
+                                    <select class="form-select" 
+                                            id="campo_{{ campo.id }}" 
+                                            name="campo_{{ campo.id }}"
+                                            {% if campo.obrigatorio %}required{% endif %}>
+                                        <option value="">Selecione uma opção</option>
+                                        {% if campo.opcoes %}
+                                            {% for opcao in campo.opcoes.split(',') %}
+                                                <option value="{{ opcao.strip() }}" 
+                                                        {% if valor_atual == opcao.strip() %}selected{% endif %}>
+                                                    {{ opcao.strip() }}
+                                                </option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                    
+                                {% elif campo.tipo == 'url' %}
+                                    <input type="url" 
+                                           class="form-control" 
+                                           id="campo_{{ campo.id }}" 
+                                           name="campo_{{ campo.id }}"
+                                           value="{{ valor_atual }}"
+                                           placeholder="https://exemplo.com/arquivo.pdf"
+                                           {% if campo.obrigatorio %}required{% endif %}>
+                                    
+                                {% elif campo.tipo == 'textarea' %}
+                                    <textarea class="form-control" 
+                                              id="campo_{{ campo.id }}" 
+                                              name="campo_{{ campo.id }}"
+                                              rows="4"
+                                              {% if campo.obrigatorio %}required{% endif %}>{{ valor_atual }}</textarea>
+                                              
+                                {% else %}
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="campo_{{ campo.id }}" 
+                                           name="campo_{{ campo.id }}"
+                                           value="{{ valor_atual }}"
+                                           {% if campo.obrigatorio %}required{% endif %}>
+                                {% endif %}
+                                
+                                {% if campo.obrigatorio %}
+                                    <div class="invalid-feedback">
+                                        Por favor, preencha este campo.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('trabalho_routes.listar_trabalhos') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save me-1"></i>
+                                Atualizar Trabalho
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do formulário
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %}

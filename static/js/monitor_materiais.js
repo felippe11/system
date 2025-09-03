@@ -14,12 +14,6 @@ function configurarEventListeners() {
     document.getElementById('filtro-status').addEventListener('change', filtrarMateriais);
     document.getElementById('buscar-material').addEventListener('input', filtrarMateriais);
     
-    // Form de movimentação
-    document.getElementById('formMovimentacao').addEventListener('submit', registrarMovimentacao);
-    
-    // Mudança de polo no modal de movimentação
-    document.getElementById('movimentacao-polo').addEventListener('change', carregarMateriaisPolo);
-    
     // Mudança de tipo no modal WhatsApp
     document.getElementById('whatsapp-tipo').addEventListener('change', gerarTextoWhatsApp);
     document.getElementById('whatsapp-polo').addEventListener('change', gerarTextoWhatsApp);
@@ -38,24 +32,16 @@ async function carregarDadosIniciais() {
         const polosJson = await polosResponse.json();
         if (!polosJson.success) {
             mostrarAlerta(
-                polosJson.message || 'Nenhum polo atribuído ao monitor',
-                'info'
+                polosJson.message || 'Erro ao carregar polos',
+                'error'
             );
-            polosData = [];
-            materiaisData = [];
-            atualizarCardsPolos();
-            atualizarTabelaMateriais();
             return;
         }
 
         polosData = polosJson.polos || [];
 
         if (polosData.length === 0) {
-            mostrarAlerta('Nenhum polo atribuído ao monitor', 'info');
-            materiaisData = [];
-            atualizarCardsPolos();
-            atualizarTabelaMateriais();
-            return;
+            mostrarAlerta('Nenhum polo cadastrado', 'info');
         }
 
         const materiaisResponse = await fetch('/api/materiais');
@@ -166,8 +152,9 @@ function atualizarTabelaMateriais(materiaisFiltrados = null) {
     materiais.forEach(material => {
         const polo = polosData.find(p => p.id === material.polo_id);
         const status = getStatusMaterial(material);
-        const ultimaMovimentacao = material.ultima_movimentacao ? 
+        const ultimaMovimentacao = material.ultima_movimentacao ?
             new Date(material.ultima_movimentacao).toLocaleDateString('pt-BR') : 'Nunca';
+        const urlMov = `/monitor/materiais/nova-movimentacao?material_id=${material.id}&polo_id=${material.polo_id}`;
         
         const row = `
             <tr>
@@ -191,9 +178,10 @@ function atualizarTabelaMateriais(materiaisFiltrados = null) {
                         <button class="btn btn-outline-primary" onclick="verHistorico(${material.id})" title="Histórico">
                             <i class="fas fa-history"></i>
                         </button>
-                        <button class="btn btn-outline-success" onclick="novaMovimentacao(${material.id}, ${material.polo_id})" title="Nova Movimentação">
+                        <a class="btn btn-outline-success" href="${urlMov}"
+                            title="Nova Movimentação">
                             <i class="fas fa-plus"></i>
-                        </button>
+                        </a>
                     </div>
                 </td>
             </tr>
@@ -267,72 +255,6 @@ function filtrarMateriais() {
 function filtrarPorPolo(poloId) {
     document.getElementById('filtro-polo').value = poloId;
     filtrarMateriais();
-}
-
-async function carregarMateriaisPolo() {
-    const poloId = document.getElementById('movimentacao-polo').value;
-    const selectMaterial = document.getElementById('movimentacao-material');
-    
-    selectMaterial.innerHTML = '<option value="">Selecione um material</option>';
-    
-    if (poloId) {
-        const materiaisPolo = materiaisData.filter(m => m.polo_id == poloId);
-        materiaisPolo.forEach(material => {
-            selectMaterial.innerHTML += `<option value="${material.id}">${material.nome}</option>`;
-        });
-    }
-}
-
-async function registrarMovimentacao(event) {
-    event.preventDefault();
-    
-    const formData = {
-        material_id: document.getElementById('movimentacao-material').value,
-        tipo: document.getElementById('movimentacao-tipo').value,
-        quantidade: parseInt(document.getElementById('movimentacao-quantidade').value),
-        observacoes: document.getElementById('movimentacao-observacoes').value
-    };
-    
-    try {
-        const response = await fetch('/api/movimentacoes', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            mostrarAlerta('Movimentação registrada com sucesso!', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('modalMovimentacao')).hide();
-            document.getElementById('formMovimentacao').reset();
-            carregarDadosIniciais(); // Recarregar dados
-        } else {
-            throw new Error(result.message || 'Erro ao registrar movimentação');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarAlerta(error.message, 'error');
-    }
-}
-
-function novaMovimentacao(materialId = null, poloId = null) {
-    if (poloId) {
-        document.getElementById('movimentacao-polo').value = poloId;
-        carregarMateriaisPolo();
-    }
-    
-    if (materialId) {
-        setTimeout(() => {
-            document.getElementById('movimentacao-material').value = materialId;
-        }, 100);
-    }
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalMovimentacao'));
-    modal.show();
 }
 
 async function verHistorico(materialId) {

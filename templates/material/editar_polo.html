@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Polo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">📍 Editar Polo Formativo</h2>
+                    <p class="text-muted mb-0">Atualize os dados do polo selecionado</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Informações do Polo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-3">
+                                    <label for="polo-nome" class="form-label">Nome do Polo *</label>
+                                    <input type="text" class="form-control" id="polo-nome"
+                                           name="nome" value="{{ polo.nome }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="polo-descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="polo-descricao" name="descricao" rows="3">{{ polo.descricao }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="polo-endereco" class="form-label">Endereço</label>
+                            <input type="text" class="form-control" id="polo-endereco"
+                                           name="endereco" value="{{ polo.endereco }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="polo-responsavel" class="form-label">Responsável</label>
+                                    <input type="text" class="form-control" id="polo-responsavel"
+                                           name="responsavel" value="{{ polo.responsavel }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="polo-telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control" id="polo-telefone"
+                                           name="telefone" value="{{ polo.telefone }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="polo-email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" id="polo-email"
+                                           name="email" value="{{ polo.email }}">
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Polo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

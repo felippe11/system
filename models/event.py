@@ -512,9 +512,10 @@ class RespostaFormulario(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     formulario_id = db.Column(
-        db.Integer, db.ForeignKey("formularios.id"), nullable=False
+        db.Integer, db.ForeignKey("formularios.id"), nullable=True
     )
-    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    trabalho_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=True)
     data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
 
     # NOVA COLUNA PARA STATUS

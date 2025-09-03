@@ -330,7 +330,16 @@ def discard_all_submissions():
         
         # 2. Excluir Assignments
         print("Excluindo Assignments...")
-        assignments_deleted = Assignment.query.filter(Assignment.submission_id.in_(submission_ids)).delete(synchronize_session=False)
+        # Buscar assignments através de RespostaFormulario
+        assignments_to_delete = (
+            Assignment.query
+            .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+            .filter(RespostaFormulario.trabalho_id.in_(submission_ids))
+            .all()
+        )
+        assignments_deleted = len(assignments_to_delete)
+        for assignment in assignments_to_delete:
+            db.session.delete(assignment)
         print(f"Assignments excluídas: {assignments_deleted}")
         
         # 3. Excluir AuditLogs relacionados
@@ -469,8 +478,21 @@ def assign_reviews():
             config = ConfiguracaoCliente.query.filter_by(cliente_id=cliente_id).first()
             prazo_dias = config.prazo_parecer_dias if config else 14
 
+            # Busca ou cria RespostaFormulario para o trabalho
+            resposta_formulario = RespostaFormulario.query.filter_by(trabalho_id=submission.id).first()
+            if not resposta_formulario:
+                # Cria uma resposta de formulário básica se não existir
+                resposta_formulario = RespostaFormulario(
+                    trabalho_id=submission.id,
+                    formulario_id=None,  # Pode ser None para assignments manuais
+                    respostas={},
+                    data_submissao=datetime.utcnow()
+                )
+                db.session.add(resposta_formulario)
+                db.session.flush()  # Para obter o ID
+
             assignment = Assignment(
-                submission_id=submission.id,
+                resposta_formulario_id=resposta_formulario.id,
                 reviewer_id=reviewer_id,
                 deadline=datetime.utcnow() + timedelta(days=prazo_dias),
             )

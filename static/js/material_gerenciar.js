@@ -255,7 +255,7 @@ function criarLinhaTabela(material) {
                 <button class="btn btn-outline-primary" onclick="abrirMovimentacao(${material.id})" title="Movimentar">
                     <i class="fas fa-exchange-alt"></i>
                 </button>
-                <button class="btn btn-outline-secondary" onclick="editarMaterial(${material.id})" title="Editar">
+                <button class="btn btn-outline-secondary" onclick="window.location.href='/editar-material/${material.id}'" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
                 <button class="btn btn-outline-danger" onclick="excluirMaterial(${material.id})" title="Excluir">
@@ -412,29 +412,6 @@ async function salvarMaterial(event) {
     }
 }
 
-// Editar material
-function editarMaterial(materialId) {
-    const material = materiaisData.find(m => m.id === materialId);
-    if (!material) return;
-    
-    // Preencher formulário com dados do material
-    document.getElementById('material-polo').value = material.polo_id;
-    document.getElementById('material-nome').value = material.nome;
-    document.getElementById('material-descricao').value = material.descricao || '';
-    document.getElementById('material-unidade').value = material.unidade;
-    document.getElementById('material-categoria').value = material.categoria || '';
-    document.getElementById('material-quantidade-inicial').value = material.quantidade_atual;
-    document.getElementById('material-quantidade-minima').value = material.quantidade_minima;
-    document.getElementById('material-preco').value = material.preco_unitario || '';
-    document.getElementById('material-fornecedor').value = material.fornecedor || '';
-    
-    // Alterar título e ação do modal
-    document.querySelector('#modalMaterial .modal-title').textContent = 'Editar Material';
-    document.getElementById('form-material').setAttribute('data-edit-id', materialId);
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalMaterial'));
-    modal.show();
-}
 
 // Excluir material
 async function excluirMaterial(materialId) {
@@ -473,26 +450,6 @@ function verMateriaisPolo(poloId) {
     document.getElementById('tabela-materiais').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Editar polo
-function editarPolo(poloId) {
-    const polo = polosData.find(p => p.id === poloId);
-    if (!polo) return;
-    
-    // Preencher formulário com dados do polo
-    document.getElementById('polo-nome').value = polo.nome;
-    document.getElementById('polo-descricao').value = polo.descricao || '';
-    document.getElementById('polo-endereco').value = polo.endereco || '';
-    document.getElementById('polo-responsavel').value = polo.responsavel || '';
-    document.getElementById('polo-telefone').value = polo.telefone || '';
-    document.getElementById('polo-email').value = polo.email || '';
-    
-    // Alterar título e ação do modal
-    document.querySelector('#modalPolo .modal-title').textContent = 'Editar Polo';
-    document.getElementById('form-polo').setAttribute('data-edit-id', poloId);
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalPolo'));
-    modal.show();
-}
 
 // Atualizar lista
 function atualizarLista() {
