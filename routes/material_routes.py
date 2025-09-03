@@ -40,7 +40,7 @@ def gerenciar_materiais():
     """Página principal de gerenciamento de materiais para clientes."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         # Buscar polos do cliente
@@ -701,7 +701,7 @@ def monitor_materiais():
     """Dashboard de materiais para monitores."""
     if not verificar_acesso_monitor():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         # Buscar todos os polos do cliente do monitor
@@ -716,7 +716,7 @@ def monitor_materiais():
     except Exception as e:
         current_app.logger.error(f"Erro ao carregar dashboard do monitor: {str(e)}")
         flash('Erro ao carregar dados', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
 
 
 @material_routes.route('/monitor/materiais/nova-movimentacao', methods=['GET', 'POST'])
@@ -725,7 +725,7 @@ def nova_movimentacao_monitor():
     """Exibe formulário e registra movimentações para monitores."""
     if not verificar_acesso_monitor():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
 
     if request.method == 'POST':
         material_id = request.form.get('material_id', type=int)
@@ -1004,7 +1004,7 @@ def gerenciar_monitores_polo():
     """Página para atribuir monitores a polos."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
 
     try:
         monitores = (
@@ -1144,7 +1144,7 @@ def novo_polo():
     """Página para cadastro de novo polo."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('material/novo_polo.html')
 
@@ -1155,7 +1155,7 @@ def novo_material():
     """Página para cadastro de novo material."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('material/novo_material.html')
 
@@ -1166,7 +1166,7 @@ def editar_polo(polo_id):
     """Página para editar um polo existente."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
 
     polo = Polo.query.filter_by(
         id=polo_id, cliente_id=current_user.id, ativo=True
@@ -1196,7 +1196,7 @@ def editar_material(material_id):
     """Página para editar um material existente."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
 
     material = Material.query.filter_by(
         id=material_id, cliente_id=current_user.id, ativo=True
