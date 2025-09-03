@@ -46,18 +46,28 @@ def gerenciar_materiais():
         polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
         
         # Estatísticas gerais
-        total_materiais = Material.query.filter_by(cliente_id=current_user.id, ativo=True).count()
-        materiais_baixo_estoque = Material.query.filter_by(cliente_id=current_user.id, ativo=True).filter(
-            Material.quantidade_atual <= Material.quantidade_minima
+        total_materiais = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
         ).count()
-        materiais_esgotados = Material.query.filter_by(cliente_id=current_user.id, ativo=True).filter(
-            Material.quantidade_atual <= 0
+        materiais_baixo_estoque = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+            Material.quantidade_atual <= Material.quantidade_minima,
+        ).count()
+        materiais_esgotados = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+            Material.quantidade_atual <= 0,
         ).count()
         
         # Estatísticas por polo
         estatisticas_polos = []
         for polo in polos:
-            materiais_polo = Material.query.filter_by(polo_id=polo.id, ativo=True).all()
+            materiais_polo = Material.query.filter(
+                Material.polo_id == polo.id,
+                Material.ativo.isnot(False),
+            ).all()
             total_polo = len(materiais_polo)
             baixo_estoque_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= m.quantidade_minima)
             esgotados_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= 0)
@@ -130,7 +140,10 @@ def estatisticas_polos():
         estatisticas = []
         
         for polo in polos:
-            materiais = Material.query.filter_by(polo_id=polo.id, ativo=True).all()
+            materiais = Material.query.filter(
+                Material.polo_id == polo.id,
+                Material.ativo.isnot(False),
+            ).all()
             
             total_materiais = len(materiais)
             em_estoque = len([m for m in materiais if m.quantidade_atual > m.quantidade_minima])
@@ -205,7 +218,10 @@ def gerar_relatorio_excel():
             cliente_id = polos_monitor[0].cliente_id
         
         # Construir query
-        query = Material.query.filter_by(cliente_id=cliente_id, ativo=True)
+        query = Material.query.filter(
+            Material.cliente_id == cliente_id,
+            Material.ativo.isnot(False),
+        )
         
         if polo_id:
             query = query.filter_by(polo_id=polo_id)
@@ -462,7 +478,10 @@ def deletar_polo(polo_id):
             return jsonify({'success': False, 'message': 'Polo não encontrado'}), 404
         
         # Verificar se há materiais ativos no polo
-        materiais_ativos = Material.query.filter_by(polo_id=polo_id, ativo=True).count()
+        materiais_ativos = Material.query.filter(
+            Material.polo_id == polo_id,
+            Material.ativo.isnot(False),
+        ).count()
         if materiais_ativos > 0:
             return jsonify({
                 'success': False, 
@@ -520,7 +539,7 @@ def listar_materiais():
                 MonitorPolo.monitor_id == current_user.id,
                 MonitorPolo.ativo.is_(True),
                 Material.cliente_id == cliente_id,
-                Material.ativo.is_(True)
+                Material.ativo.isnot(False)
             )
 
         if polo_id:
@@ -780,7 +799,7 @@ def nova_movimentacao_monitor():
                 Material.polo_id == polo_id,
                 MonitorPolo.monitor_id == current_user.id,
                 MonitorPolo.ativo.is_(True),
-                Material.ativo.is_(True)
+                Material.ativo.isnot(False)
             )
             .all()
         )
@@ -918,7 +937,10 @@ def gerar_relatorio():
         polo_id = request.args.get('polo_id')
         tipo_relatorio = request.args.get('tipo', 'geral')  # geral, baixo_estoque, compras
         
-        query = Material.query.filter_by(cliente_id=current_user.id, ativo=True)
+        query = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+        )
         
         if polo_id:
             query = query.filter_by(polo_id=polo_id)

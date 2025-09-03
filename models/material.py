@@ -63,7 +63,7 @@ class Material(db.Model):
     quantidade_minima = db.Column(db.Integer, nullable=False, default=0)  # estoque mínimo
     
     # Controle
-    ativo = db.Column(db.Boolean, default=True)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
