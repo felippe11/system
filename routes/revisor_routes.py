@@ -218,8 +218,24 @@ def edit_process(process_id: int):
 
 
 
-# Removidos endpoints antigos/duplicados baseados em _config_process
-# para manter somente o fluxo atual em /revisor/processos
+# Compat: rota antiga que redireciona para o fluxo atual
+@revisor_routes.route("/config_revisor", methods=["GET", "POST"])
+@login_required
+def config_revisor():
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    processo = RevisorProcess.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).first()
+
+    if processo is None:
+        processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
+        db.session.add(processo)
+        db.session.commit()
+
+    return redirect(url_for("revisor_routes.edit_process", process_id=processo.id))
 
 
 @revisor_routes.route("/revisor/config", methods=["GET"])

@@ -12,6 +12,7 @@ from extensions import db, csrf
 from models.user import Cliente, Monitor
 from models.material import Polo, Material, MovimentacaoMaterial, MonitorPolo
 from utils import endpoints
+from sqlalchemy.orm import joinedload
 
 material_routes = Blueprint('material_routes', __name__)
 
@@ -39,25 +40,35 @@ def gerenciar_materiais():
     """Página principal de gerenciamento de materiais para clientes."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         # Buscar polos do cliente
         polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
         
         # Estatísticas gerais
-        total_materiais = Material.query.filter_by(cliente_id=current_user.id, ativo=True).count()
-        materiais_baixo_estoque = Material.query.filter_by(cliente_id=current_user.id, ativo=True).filter(
-            Material.quantidade_atual <= Material.quantidade_minima
+        total_materiais = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
         ).count()
-        materiais_esgotados = Material.query.filter_by(cliente_id=current_user.id, ativo=True).filter(
-            Material.quantidade_atual <= 0
+        materiais_baixo_estoque = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+            Material.quantidade_atual <= Material.quantidade_minima,
+        ).count()
+        materiais_esgotados = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+            Material.quantidade_atual <= 0,
         ).count()
         
         # Estatísticas por polo
         estatisticas_polos = []
         for polo in polos:
-            materiais_polo = Material.query.filter_by(polo_id=polo.id, ativo=True).all()
+            materiais_polo = Material.query.filter(
+                Material.polo_id == polo.id,
+                Material.ativo.isnot(False),
+            ).all()
             total_polo = len(materiais_polo)
             baixo_estoque_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= m.quantidade_minima)
             esgotados_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= 0)
@@ -89,42 +100,38 @@ def listar_polos():
     """API para listar polos acessíveis ao usuário atual.
 
     - Cliente: lista todos os polos do cliente.
-    - Monitor: lista apenas polos atribuídos ao monitor.
+    - Monitor: lista todos os polos do cliente do monitor.
     - Admin: lista todos os polos ativos.
     """
-    
+
     try:
         if verificar_acesso_cliente():
-            polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+            polos = Polo.query.filter_by(
+                cliente_id=current_user.id, ativo=True
+            ).all()
         elif verificar_acesso_monitor():
-            polos = (
-                db.session.query(Polo)
-                .join(MonitorPolo, MonitorPolo.polo_id == Polo.id)
-                .filter(
+            cliente_id = current_user.cliente_id
+            if cliente_id is None:
+                associacao = Polo.query.join(MonitorPolo).filter(
                     MonitorPolo.monitor_id == current_user.id,
                     MonitorPolo.ativo.is_(True),
-                    Polo.ativo.is_(True),
-                    Polo.cliente_id == current_user.cliente_id,
-                )
-                .all()
-            )
-            if not polos:
-
-                return jsonify(
-                    {
-                        'success': False,
-                        'message': 'Nenhum polo associado ao monitor',
-                    }
-                )
-
+                ).first()
+                if associacao:
+                    cliente_id = associacao.cliente_id
+                    current_user.cliente_id = cliente_id
+                else:
+                    return jsonify({'success': True, 'polos': []})
+            polos = Polo.query.join(MonitorPolo).filter(
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
+            ).all()
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
         else:
             return jsonify({'success': False, 'message': 'Acesso negado'}), 403
-        return jsonify({
-            'success': True,
-            'polos': [polo.to_dict() for polo in polos]
-        })
+        return jsonify(
+            {'success': True, 'polos': [polo.to_dict() for polo in polos]}
+        )
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -146,7 +153,10 @@ def estatisticas_polos():
         estatisticas = []
         
         for polo in polos:
-            materiais = Material.query.filter_by(polo_id=polo.id, ativo=True).all()
+            materiais = Material.query.filter(
+                Material.polo_id == polo.id,
+                Material.ativo.isnot(False),
+            ).all()
             
             total_materiais = len(materiais)
             em_estoque = len([m for m in materiais if m.quantidade_atual > m.quantidade_minima])
@@ -221,7 +231,10 @@ def gerar_relatorio_excel():
             cliente_id = polos_monitor[0].cliente_id
         
         # Construir query
-        query = Material.query.filter_by(cliente_id=cliente_id, ativo=True)
+        query = Material.query.filter(
+            Material.cliente_id == cliente_id,
+            Material.ativo.isnot(False),
+        )
         
         if polo_id:
             query = query.filter_by(polo_id=polo_id)
@@ -336,16 +349,11 @@ def registrar_movimentacao_api():
         material = Material.query.get(material_id)
         if not material:
             return jsonify({'success': False, 'message': 'Material não encontrado'}), 404
-        
-        # Verificar se o monitor tem acesso ao polo do material
-        acesso_polo = MonitorPolo.query.filter_by(
-            monitor_id=current_user.id,
-            polo_id=material.polo_id,
-            ativo=True
-        ).first()
-        
-        if not acesso_polo:
-            return jsonify({'success': False, 'message': 'Acesso negado ao polo deste material'}), 403
+
+        if material.cliente_id != current_user.cliente_id:
+            return jsonify(
+                {'success': False, 'message': 'Acesso negado ao material'}
+            ), 403
         
         # Calcular nova quantidade
         if tipo == 'entrada':
@@ -483,7 +491,10 @@ def deletar_polo(polo_id):
             return jsonify({'success': False, 'message': 'Polo não encontrado'}), 404
         
         # Verificar se há materiais ativos no polo
-        materiais_ativos = Material.query.filter_by(polo_id=polo_id, ativo=True).count()
+        materiais_ativos = Material.query.filter(
+            Material.polo_id == polo_id,
+            Material.ativo.isnot(False),
+        ).count()
         if materiais_ativos > 0:
             return jsonify({
                 'success': False, 
@@ -512,37 +523,48 @@ def listar_materiais():
     """API para listar materiais."""
     if not (verificar_acesso_cliente() or verificar_acesso_monitor()):
         return jsonify({'success': False, 'message': 'Acesso negado'}), 403
-    
+
     try:
         polo_id = request.args.get('polo_id')
-        
+
         if verificar_acesso_cliente():
             query = Material.query.filter_by(
                 cliente_id=current_user.id, ativo=True
             )
         else:
-            query = (
-                Material.query.join(
-                    MonitorPolo, MonitorPolo.polo_id == Material.polo_id
-                )
-                .filter(
+            # Verificar associação do monitor com um cliente
+            cliente_id = current_user.cliente_id
+            if cliente_id is None:
+                associacao = MonitorPolo.query.join(Polo).filter(
                     MonitorPolo.monitor_id == current_user.id,
-                    MonitorPolo.ativo.is_(True),
-                    Material.ativo.is_(True),
-                    Material.cliente_id == current_user.cliente_id,
-                )
+                    MonitorPolo.ativo.is_(True)
+                ).first()
+                if not associacao:
+                    return jsonify({
+                        'success': False,
+                        'message': 'Monitor não associado a nenhum cliente'
+                    }), 400
+                cliente_id = associacao.polo.cliente_id
+
+            query = Material.query.join(
+                MonitorPolo, MonitorPolo.polo_id == Material.polo_id
+            ).filter(
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
+                Material.cliente_id == cliente_id,
+                Material.ativo.isnot(False)
             )
 
         if polo_id:
             query = query.filter(Material.polo_id == polo_id)
-        
+
         materiais = query.all()
-        
+
         return jsonify({
             'success': True,
             'materiais': [material.to_dict() for material in materiais]
         })
-    
+
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -679,23 +701,129 @@ def monitor_materiais():
     """Dashboard de materiais para monitores."""
     if not verificar_acesso_monitor():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
-        # Buscar polos atribuídos ao monitor
-        polos_atribuidos = db.session.query(Polo).join(MonitorPolo).filter(
-            MonitorPolo.monitor_id == current_user.id,
-            MonitorPolo.ativo == True,
-            Polo.ativo == True
+        # Buscar todos os polos do cliente do monitor
+        polos_cliente = Polo.query.filter_by(
+            cliente_id=current_user.cliente_id, ativo=True
         ).all()
-        
-        return render_template('material/monitor_materiais.html',
-                             polos=polos_atribuidos)
+
+        return render_template(
+            'material/monitor_materiais.html', polos=polos_cliente
+        )
     
     except Exception as e:
         current_app.logger.error(f"Erro ao carregar dashboard do monitor: {str(e)}")
         flash('Erro ao carregar dados', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
+
+
+@material_routes.route('/monitor/materiais/nova-movimentacao', methods=['GET', 'POST'])
+@login_required
+def nova_movimentacao_monitor():
+    """Exibe formulário e registra movimentações para monitores."""
+    if not verificar_acesso_monitor():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    if request.method == 'POST':
+        material_id = request.form.get('material_id', type=int)
+        tipo = request.form.get('tipo')
+        quantidade = request.form.get('quantidade', type=int)
+        observacoes = request.form.get('observacoes', '')
+
+        material = Material.query.get(material_id)
+        if not material:
+            flash('Material não encontrado', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        acesso = MonitorPolo.query.filter_by(
+            monitor_id=current_user.id,
+            polo_id=material.polo_id,
+            ativo=True
+        ).first()
+        if not acesso:
+            flash('Acesso negado ao polo deste material', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        if tipo == 'entrada':
+            nova_quantidade = material.quantidade_atual + quantidade
+        elif tipo == 'saida':
+            nova_quantidade = material.quantidade_atual - quantidade
+            if nova_quantidade < 0:
+                flash('Quantidade insuficiente em estoque', 'error')
+                return redirect(
+                    url_for('material_routes.nova_movimentacao_monitor',
+                            polo_id=material.polo_id, material_id=material.id)
+                )
+        elif tipo == 'ajuste':
+            nova_quantidade = quantidade
+        else:
+            flash('Tipo de movimentação inválido', 'error')
+            return redirect(url_for('material_routes.nova_movimentacao_monitor'))
+
+        movimentacao = MovimentacaoMaterial(
+            material_id=material_id,
+            monitor_id=current_user.id,
+            tipo=tipo,
+            quantidade=quantidade,
+            observacao=observacoes
+        )
+
+        material.quantidade_atual = nova_quantidade
+        material.updated_at = datetime.utcnow()
+
+        try:
+            db.session.add(movimentacao)
+            db.session.commit()
+            flash('Movimentação registrada com sucesso', 'success')
+            return redirect(url_for('material_routes.monitor_materiais'))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(
+                f"Erro ao registrar movimentação: {str(e)}"
+            )
+            flash('Erro ao registrar movimentação', 'error')
+            return redirect(
+                url_for('material_routes.nova_movimentacao_monitor',
+                        polo_id=material.polo_id, material_id=material.id)
+            )
+
+    polos = (
+        db.session.query(Polo)
+        .join(MonitorPolo)
+        .filter(
+            MonitorPolo.monitor_id == current_user.id,
+            MonitorPolo.ativo.is_(True),
+            Polo.ativo.is_(True)
+        )
+        .all()
+    )
+
+    polo_id = request.args.get('polo_id', type=int)
+    material_id = request.args.get('material_id', type=int)
+    materiais = []
+    if polo_id:
+        materiais = (
+            Material.query
+            .join(MonitorPolo, MonitorPolo.polo_id == Material.polo_id)
+            .filter(
+                Material.polo_id == polo_id,
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
+                Material.ativo.isnot(False)
+            )
+            .all()
+        )
+
+    return render_template(
+        'material/nova_movimentacao_monitor.html',
+        polos=polos,
+        materiais=materiais,
+        polo_id=polo_id,
+        material_id=material_id
+    )
 
 
 @material_routes.route('/api/materiais/<int:material_id>/movimentacao', methods=['POST'])
@@ -711,14 +839,12 @@ def registrar_movimentacao(material_id):
         
         # Verificar acesso ao material
         if verificar_acesso_cliente():
-            material = Material.query.filter_by(id=material_id, cliente_id=current_user.id).first()
-        else:  # Monitor
-            # Verificar se o monitor tem acesso ao polo do material
-            material = db.session.query(Material).join(MonitorPolo).filter(
-                Material.id == material_id,
-                MonitorPolo.monitor_id == current_user.id,
-                MonitorPolo.polo_id == Material.polo_id,
-                MonitorPolo.ativo == True
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.id
+            ).first()
+        else:
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.cliente_id
             ).first()
         
         if not material:
@@ -786,13 +912,12 @@ def listar_movimentacoes(material_id):
     try:
         # Verificar acesso ao material
         if verificar_acesso_cliente():
-            material = Material.query.filter_by(id=material_id, cliente_id=current_user.id).first()
-        else:  # Monitor
-            material = db.session.query(Material).join(MonitorPolo).filter(
-                Material.id == material_id,
-                MonitorPolo.monitor_id == current_user.id,
-                MonitorPolo.polo_id == Material.polo_id,
-                MonitorPolo.ativo == True
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.id
+            ).first()
+        else:
+            material = Material.query.filter_by(
+                id=material_id, cliente_id=current_user.cliente_id
             ).first()
         
         if not material:
@@ -825,7 +950,10 @@ def gerar_relatorio():
         polo_id = request.args.get('polo_id')
         tipo_relatorio = request.args.get('tipo', 'geral')  # geral, baixo_estoque, compras
         
-        query = Material.query.filter_by(cliente_id=current_user.id, ativo=True)
+        query = Material.query.filter(
+            Material.cliente_id == current_user.id,
+            Material.ativo.isnot(False),
+        )
         
         if polo_id:
             query = query.filter_by(polo_id=polo_id)
@@ -869,6 +997,33 @@ def gerar_relatorio():
 
 
 # ==================== ROTAS DE ATRIBUIÇÃO DE MONITORES ====================
+
+@material_routes.route('/monitores-polos')
+@login_required
+def gerenciar_monitores_polo():
+    """Página para atribuir monitores a polos."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    try:
+        monitores = (
+            Monitor.query.options(
+                joinedload(Monitor.polos_atribuidos).joinedload(MonitorPolo.polo)
+            )
+            .filter_by(cliente_id=current_user.id, ativo=True)
+            .all()
+        )
+        polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+        return render_template(
+            'material/monitores_polos.html', monitores=monitores, polos=polos
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Erro ao carregar atribuições de monitores: {str(e)}"
+        )
+        flash('Erro ao carregar dados', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
 
 @material_routes.route('/api/monitores/atribuir-polo', methods=['POST'])
 @csrf.exempt
@@ -989,7 +1144,7 @@ def novo_polo():
     """Página para cadastro de novo polo."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('material/novo_polo.html')
 
@@ -1000,6 +1155,76 @@ def novo_material():
     """Página para cadastro de novo material."""
     if not verificar_acesso_cliente():
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('material/novo_material.html')
+
+
+@material_routes.route('/editar-polo/<int:polo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_polo(polo_id):
+    """Página para editar um polo existente."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    polo = Polo.query.filter_by(
+        id=polo_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not polo:
+        flash('Polo não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    if request.method == 'POST':
+        polo.nome = request.form.get('nome', polo.nome)
+        polo.descricao = request.form.get('descricao', polo.descricao)
+        polo.endereco = request.form.get('endereco', polo.endereco)
+        polo.responsavel = request.form.get('responsavel', polo.responsavel)
+        polo.telefone = request.form.get('telefone', polo.telefone)
+        polo.email = request.form.get('email', polo.email)
+        polo.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash('Polo atualizado com sucesso', 'success')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template('material/editar_polo.html', polo=polo)
+
+
+@material_routes.route('/editar-material/<int:material_id>', methods=['GET', 'POST'])
+@login_required
+def editar_material(material_id):
+    """Página para editar um material existente."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    material = Material.query.filter_by(
+        id=material_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not material:
+        flash('Material não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    polos = Polo.query.filter_by(cliente_id=current_user.id, ativo=True).all()
+
+    if request.method == 'POST':
+        material.polo_id = int(request.form.get('polo_id') or material.polo_id)
+        material.nome = request.form.get('nome', material.nome)
+        material.descricao = request.form.get('descricao', material.descricao)
+        material.unidade = request.form.get('unidade', material.unidade)
+        material.categoria = request.form.get('categoria', material.categoria)
+        material.quantidade_minima = int(
+            request.form.get('quantidade_minima') or material.quantidade_minima
+        )
+        preco = request.form.get('preco_unitario')
+        material.preco_unitario = float(preco) if preco else None
+        material.fornecedor = request.form.get('fornecedor', material.fornecedor)
+        material.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash('Material atualizado com sucesso', 'success')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template(
+        'material/editar_material.html', material=material, polos=polos
+    )
+

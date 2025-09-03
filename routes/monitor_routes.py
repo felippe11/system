@@ -557,6 +557,8 @@ def gerenciar_monitores():
     
     # Query base
     query = Monitor.query
+    if current_user.tipo == "cliente":
+        query = query.filter(Monitor.cliente_id == current_user.id)
     
     # Aplicar filtros
     if status_filter == 'ativo':
@@ -677,7 +679,8 @@ def cadastrar_monitor():
             dias_disponibilidade=','.join(dias_disponibilidade),
             turnos_disponibilidade=','.join(turnos_disponibilidade),
             codigo_acesso=gerar_codigo_acesso(),
-            ativo=True
+            ativo=True,
+            cliente_id=current_user.id
         )
         
         db.session.add(monitor)
@@ -841,7 +844,7 @@ def distribuicao_manual():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         # Buscar agendamentos sem monitor atribuído
@@ -982,7 +985,7 @@ def importacao_massa():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('importacao_massa.html')
 
@@ -1057,7 +1060,8 @@ def processar_importacao():
                     dias_disponibilidade=str(dados['dias_disponibilidade']).strip(),
                     turnos_disponibilidade=str(dados['turnos_disponibilidade']).strip(),
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True
+                    ativo=True,
+                    cliente_id=current_user.id
                 )
                 
                 db.session.add(novo_monitor)
@@ -1094,7 +1098,7 @@ def download_template():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     try:
         import pandas as pd
@@ -1137,7 +1141,7 @@ def cadastro_multiplo():
     # Verificar se o usuário é admin ou cliente
     if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
         flash('Acesso negado', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('evento_routes.home'))
     
     return render_template('cadastro_multiplo.html')
 
@@ -1198,7 +1202,8 @@ def processar_cadastro_multiplo():
                     dias_disponibilidade=dias_disponibilidade,
                     turnos_disponibilidade=turnos_disponibilidade,
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True
+                    ativo=True,
+                    cliente_id=current_user.id
                 )
                 
                 db.session.add(novo_monitor)

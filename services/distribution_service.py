@@ -6,8 +6,11 @@ from collections import defaultdict
 
 from extensions import db
 from models.submission_system import (
-    ReviewerProfile, ReviewerPreference, DistributionConfig, 
-    DistributionLog, SubmissionCategory
+    ReviewerProfile,
+    ReviewerPreference,
+    DistributionConfig,
+    AutoDistributionLog,
+    SubmissionCategory,
 )
 from models.review import Submission, Assignment
 from models.user import Usuario
@@ -42,7 +45,7 @@ class DistributionService:
         """Distribui submissões para revisores automaticamente."""
         try:
             # Inicializar log
-            self.log_entry = DistributionLog(
+            self.log_entry = AutoDistributionLog(
                 evento_id=self.evento_id,
                 distribution_seed=seed or str(random.randint(1000, 9999))
             )
