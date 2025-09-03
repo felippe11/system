@@ -10,7 +10,7 @@ os.environ.setdefault("GOOGLE_CLIENT_SECRET", "x")
 
 from config import Config
 from extensions import db, login_manager, csrf
-
+from models import (
     Cliente,
     Formulario,
     RevisorProcess,
@@ -65,6 +65,8 @@ def app():
             cliente_id=cliente.id,
             formulario_id=form.id,
             num_etapas=1,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(proc)
         db.session.commit()

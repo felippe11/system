@@ -118,6 +118,8 @@ def app():
             availability_start=now - timedelta(days=1),
             availability_end=now + timedelta(days=1),
             exibir_para_participantes=True,
+            nome="Proc",
+            status="ativo",
         )
         proc.eventos.append(evento)
         db.session.add(proc)
@@ -248,6 +250,9 @@ def test_navbar_shows_link_for_participant_when_disabled(client, app):
 def test_is_available_method():
     now = datetime.utcnow()
     proc = RevisorProcess(
+        cliente_id=1,
+        nome="Proc",
+        status="ativo",
         availability_start=now - timedelta(hours=1),
         availability_end=now + timedelta(hours=1),
     )

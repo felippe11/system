@@ -67,8 +67,15 @@ def test_delete_process_removes_related_data(app, client):
         )
         db.session.add(cliente)
         db.session.commit()
-        proc1 = RevisorProcess(cliente_id=cliente.id, num_etapas=1)
-        db.session.add(proc1)
+
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
+        )
+        db.session.add(proc)
+
         db.session.commit()
         etapa = RevisorEtapa(process_id=proc1.id, numero=1, nome="E1")
         criterio = RevisorCriterio(process_id=proc1.id, nome="C1")

@@ -54,6 +54,9 @@ def test_parse_revisor_form(app):
             "descricao": "Desc",
             "status": "Aberto",
             "formulario_id": 1,
+            "nome": "Proc",
+            "descricao": "Desc",
+            "status": "ativo",
             "num_etapas": 2,
             "stage_name": ["Etapa 1", "Etapa 2"],
             "availability_start": "2024-01-10",
@@ -69,6 +72,9 @@ def test_parse_revisor_form(app):
     assert dados["descricao"] == "Desc"
     assert dados["status"] == "Aberto"
     assert dados["formulario_id"] == 1
+    assert dados["nome"] == "Proc"
+    assert dados["descricao"] == "Desc"
+    assert dados["status"] == "ativo"
     assert dados["num_etapas"] == 2
     assert dados["stage_names"] == ["Etapa 1", "Etapa 2"]
     assert dados["availability_start"].date() == date(2024, 1, 10)
@@ -89,7 +95,12 @@ def test_parse_revisor_form_no_eventos(app):
 def test_parse_revisor_form_missing_stage(app):
     with app.test_request_context(
         method="POST",
-        data={"num_etapas": 2, "stage_name": ["Etapa 1"]},
+        data={
+            "num_etapas": 2,
+            "stage_name": ["Etapa 1"],
+            "nome": "Proc",
+            "status": "ativo",
+        },
     ):
         with pytest.raises(ValueError):
             parse_revisor_form(request)
@@ -106,7 +117,14 @@ def test_parse_revisor_form_missing_nome(app):
 def test_parse_revisor_form_without_formulario_id(app):
     with app.test_request_context(
         method="POST",
-        data={"nome": "Proc", "status": "Aberto", "num_etapas": 1, "stage_name": ["Etapa 1"]},
+
+        data={
+            "num_etapas": 1,
+            "stage_name": ["Etapa 1"],
+            "nome": "Proc",
+            "status": "ativo",
+        },
+
     ):
         dados = parse_revisor_form(request)
     assert dados["formulario_id"] is None
@@ -114,7 +132,11 @@ def test_parse_revisor_form_without_formulario_id(app):
 def test_update_and_recreate_stages(app):
     with app.app_context():
         cliente, form = _create_cliente_formulario()
-        processo = RevisorProcess(cliente_id=cliente.id)
+        processo = RevisorProcess(
+            cliente_id=cliente.id,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(processo)
         db.session.commit()
 
@@ -124,6 +146,8 @@ def test_update_and_recreate_stages(app):
                 "nome": "Proc",
                 "status": "Aberto",
                 "formulario_id": form.id,
+                "nome": "Proc",
+                "status": "ativo",
                 "num_etapas": 2,
                 "stage_name": ["E1", "E2"],
                 "exibir_para_participantes": "on",
@@ -142,6 +166,8 @@ def test_update_and_recreate_stages(app):
                 "nome": "Proc",
                 "status": "Aberto",
                 "formulario_id": form.id,
+                "nome": "Proc",
+                "status": "ativo",
                 "num_etapas": 1,
                 "stage_name": ["Novo"],
             },
@@ -161,7 +187,11 @@ def test_update_process_eventos(app):
         e2 = Evento(cliente_id=cliente.id, nome="E2", inscricao_gratuita=True, publico=True)
         db.session.add_all([e1, e2])
         db.session.commit()
-        processo = RevisorProcess(cliente_id=cliente.id)
+        processo = RevisorProcess(
+            cliente_id=cliente.id,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(processo)
         db.session.commit()
 

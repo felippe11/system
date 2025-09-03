@@ -13,7 +13,7 @@ Config.SQLALCHEMY_ENGINE_OPTIONS = Config.build_engine_options(
 
 from app import create_app
 from extensions import db
-
+from models import (
     Cliente,
     ConfiguracaoCliente,
     RevisorProcess,
@@ -49,7 +49,11 @@ def app():
         evento = Evento(cliente_id=cliente.id, nome='E1')
         db.session.add(evento)
         db.session.flush()
-        proc = RevisorProcess(cliente_id=cliente.id)
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(proc)
         db.session.flush()
         proc.eventos.append(evento)

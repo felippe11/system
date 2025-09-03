@@ -68,8 +68,16 @@ def test_config_revisor_creates_basic_form(app, client):
             with app.test_request_context():
                 login_user(cliente)
             resp = client.post(
-                "/revisor/processos",
-                data={"formulario_id": "", "num_etapas": 1, "stage_name": ["Etapa 1"]},
+
+                "/config_revisor",
+                data={
+                    "formulario_id": "",
+                    "nome": "Proc",
+                    "status": "ativo",
+                    "num_etapas": 1,
+                    "stage_name": ["Etapa 1"],
+                },
+
             )
             with app.test_request_context():
                 logout_user()

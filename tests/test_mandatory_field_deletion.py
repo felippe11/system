@@ -62,7 +62,11 @@ def app():
         db.session.commit()
 
         processo = RevisorProcess(
-            cliente_id=cliente.id, formulario_id=form.id, num_etapas=1
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
         )
         db.session.add(processo)
         db.session.commit()

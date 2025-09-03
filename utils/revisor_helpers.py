@@ -25,17 +25,11 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     except (TypeError, ValueError):
         formulario_id = None
 
-
     nome = req.form.get("nome", "").strip()
     if not nome:
         raise ValueError("Nome do processo é obrigatório")
-
-    descricao = req.form.get("descricao", "").strip() or None
-
-    status = req.form.get("status", "").strip()
-    if status not in {"Aberto", "Encerrado", "Pendente"}:
-        raise ValueError("Status inválido")
-
+    descricao = req.form.get("descricao")
+    status = req.form.get("status", "ativo")
 
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]
@@ -83,9 +77,11 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
 def update_revisor_process(processo: RevisorProcess, dados: Dict[str, Any]) -> None:
     """Updates a reviewer process with parsed data."""
     processo.formulario_id = dados.get("formulario_id")
-    processo.nome = dados.get("nome")
+
+    processo.nome = dados.get("nome", processo.nome)
     processo.descricao = dados.get("descricao")
-    processo.status = dados.get("status")
+    processo.status = dados.get("status", processo.status)
+
     processo.num_etapas = dados.get("num_etapas")
     processo.availability_start = dados.get("availability_start")
     processo.availability_end = dados.get("availability_end")

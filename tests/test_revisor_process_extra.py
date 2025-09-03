@@ -86,20 +86,21 @@ def app():
                 availability_start=date.today() - timedelta(days=1),
                 availability_end=date.today() + timedelta(days=1),
                 exibir_para_participantes=True,
+                nome="Proc",
+                status="ativo",
             )
         )
 
         proc1 = RevisorProcess(
-
             cliente_id=c1.id,
             formulario_id=f1.id,
             num_etapas=1,
             availability_start=date.today() - timedelta(days=1),
             availability_end=date.today() + timedelta(days=1),
-
             exibir_para_participantes=True,
             eventos=[e1],
-
+            nome="Proc",
+            status="ativo",
         )
 
         proc2 = RevisorProcess(
@@ -110,12 +111,18 @@ def app():
             availability_end=date.today() - timedelta(days=1),
             exibir_para_participantes=True,
             eventos=[e2],
+            nome="Proc",
+            status="ativo",
         )
         proc3 = RevisorProcess(
             cliente_id=c1.id,
             formulario_id=f1.id,
             num_etapas=1,
             exibir_para_participantes=False,
+
+            nome="Proc",
+            status="ativo",
+
         )
         proc_inactive = RevisorProcess(
             cliente_id=c2.id,
@@ -224,6 +231,8 @@ def test_config_route_saves_availability(client, app):
                 '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
+                    'nome': 'Proc',
+                    'status': 'ativo',
                     'num_etapas': 1,
                     'stage_name': ['Etapa 1'],
                     'availability_start': start.strftime('%Y-%m-%d'),
@@ -256,6 +265,8 @@ def test_config_route_saves_eventos(client, app):
                 '/revisor/processos',
                 data={
                     'formulario_id': formulario.id,
+                    'nome': 'Proc',
+                    'status': 'ativo',
                     'num_etapas': 1,
                     'stage_name': ['Etapa 1'],
                     'eventos_ids': [evento.id],

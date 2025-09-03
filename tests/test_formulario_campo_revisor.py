@@ -55,7 +55,13 @@ def app():
         )
         db.session.add_all([campo_email, campo_nome])
         db.session.commit()
-        proc = RevisorProcess(cliente_id=cliente.id, formulario_id=form.id, num_etapas=1)
+        proc = RevisorProcess(
+            cliente_id=cliente.id,
+            formulario_id=form.id,
+            num_etapas=1,
+            nome="Proc",
+            status="ativo",
+        )
         db.session.add(proc)
         db.session.commit()
     yield app
