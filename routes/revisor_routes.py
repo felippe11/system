@@ -513,7 +513,9 @@ def select_event():
             if ev:
                 eventos.append(ev)
 
-        status = "Aberto" if proc.is_available() else "Encerrado"
+        status = proc.status if getattr(proc, "status", None) else (
+            "Aberto" if proc.is_available() else "Encerrado"
+        )
         if not eventos:
             registros.append({"evento": None, "processo": proc, "status": status})
             continue
