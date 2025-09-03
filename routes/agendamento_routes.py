@@ -1826,27 +1826,6 @@ def gerar_horarios_agendamento(evento_id):
                 config=config,
             )
 
-        # Datas com horários extras
-        datas_extra = [
-            datetime.strptime(d, '%Y-%m-%d').date()
-            for d in request.form.getlist('datas_extra[]')
-            if d
-        ]
-        inicio_extra = [
-            datetime.strptime(h, '%H:%M').time()
-            for h in request.form.getlist('horario_inicio_extra[]')
-            if h
-        ]
-        fim_extra = [
-            datetime.strptime(h, '%H:%M').time()
-            for h in request.form.getlist('horario_fim_extra[]')
-            if h
-        ]
-        extras = {
-            d: (i, f)
-            for d, i, f in zip(datas_extra, inicio_extra, fim_extra)
-        }
-
         # Converter dias da semana do formulário (0=Domingo … 6=Sábado)
         # para os valores usados por datetime.weekday() (0=Segunda … 6=Domingo)
         dias_permitidos = [
@@ -1907,38 +1886,6 @@ def gerar_horarios_agendamento(evento_id):
 
                     horario_atual = horario_fim
 
-            if data_atual in extras:
-                extra_inicio, extra_fim = extras[data_atual]
-                horario_extra = datetime.combine(data_atual, extra_inicio)
-                fim_extra_dt = datetime.combine(data_atual, extra_fim)
-                while horario_extra < fim_extra_dt:
-                    hf_extra = horario_extra + timedelta(
-                        minutes=config.intervalo_minutos
-                    )
-                    if hf_extra > fim_extra_dt:
-                        hf_extra = fim_extra_dt
-
-                    if not tem_conflito(
-                        intervalos_existentes,
-                        horario_extra.time(),
-                        hf_extra.time(),
-                    ):
-                        novo_horario = HorarioVisitacao(
-                            evento_id=evento_id,
-                            data=data_atual,
-                            horario_inicio=horario_extra.time(),
-                            horario_fim=hf_extra.time(),
-                            capacidade_total=config.capacidade_padrao,
-                            vagas_disponiveis=config.capacidade_padrao,
-                        )
-                        db.session.add(novo_horario)
-                        horarios_criados += 1
-                        intervalos_existentes.append(
-                            (horario_extra.time(), hf_extra.time())
-                        )
-
-                    horario_extra = hf_extra
-
             data_atual += timedelta(days=1)
 
         try:
@@ -1960,6 +1907,77 @@ def gerar_horarios_agendamento(evento_id):
     return render_template(
         'gerar_horarios_agendamento.html', evento=evento, config=config
     )
+
+
+@agendamento_routes.route(
+    '/adicionar_horario_agendamento/<int:evento_id>', methods=['GET', 'POST']
+)
+@login_required
+def adicionar_horario_agendamento(evento_id):
+    """Adicionar um único horário de visitação."""
+    if current_user.tipo != 'cliente':
+        flash('Acesso negado! Esta área é exclusiva para organizadores.', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD))
+
+    evento = Evento.query.get_or_404(evento_id)
+
+    if evento.cliente_id != current_user.id:
+        flash('Este evento não pertence a você!', 'danger')
+        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+    if request.method == 'POST':
+        data_str = request.form.get('data')
+        inicio_str = request.form.get('horario_inicio')
+        fim_str = request.form.get('horario_fim')
+        capacidade = request.form.get('capacidade', type=int)
+
+        if not data_str or not inicio_str or not fim_str or capacidade is None:
+            flash('Todos os campos são obrigatórios.', 'danger')
+            return render_template('adicionar_horario_agendamento.html', evento=evento)
+
+        data = datetime.strptime(data_str, '%Y-%m-%d').date()
+        inicio = datetime.strptime(inicio_str, '%H:%M').time()
+        fim = datetime.strptime(fim_str, '%H:%M').time()
+
+        if fim <= inicio:
+            flash('O horário final deve ser posterior ao inicial.', 'danger')
+            return render_template('adicionar_horario_agendamento.html', evento=evento)
+
+        conflito = (
+            HorarioVisitacao.query.filter_by(evento_id=evento_id, data=data)
+            .filter(
+                HorarioVisitacao.horario_inicio < fim,
+                HorarioVisitacao.horario_fim > inicio,
+            )
+            .first()
+        )
+        if conflito:
+            flash('Já existe um horário neste intervalo.', 'warning')
+            return render_template('adicionar_horario_agendamento.html', evento=evento)
+
+        novo_horario = HorarioVisitacao(
+            evento_id=evento_id,
+            data=data,
+            horario_inicio=inicio,
+            horario_fim=fim,
+            capacidade_total=capacidade,
+            vagas_disponiveis=capacidade,
+        )
+        db.session.add(novo_horario)
+        try:
+            db.session.commit()
+            flash('Horário adicionado com sucesso!', 'success')
+            return redirect(
+                url_for(
+                    'agendamento_routes.listar_horarios_agendamento',
+                    evento_id=evento_id,
+                )
+            )
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao adicionar horário: {str(e)}', 'danger')
+
+    return render_template('adicionar_horario_agendamento.html', evento=evento)
 
 
 @agendamento_routes.route('/listar_horarios_agendamento/<int:evento_id>')
