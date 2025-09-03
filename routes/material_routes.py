@@ -109,8 +109,20 @@ def listar_polos():
                 cliente_id=current_user.id, ativo=True
             ).all()
         elif verificar_acesso_monitor():
-            polos = Polo.query.filter_by(
-                cliente_id=current_user.cliente_id, ativo=True
+            cliente_id = current_user.cliente_id
+            if cliente_id is None:
+                associacao = Polo.query.join(MonitorPolo).filter(
+                    MonitorPolo.monitor_id == current_user.id,
+                    MonitorPolo.ativo.is_(True),
+                ).first()
+                if associacao:
+                    cliente_id = associacao.cliente_id
+                    current_user.cliente_id = cliente_id
+                else:
+                    return jsonify({'success': True, 'polos': []})
+            polos = Polo.query.join(MonitorPolo).filter(
+                MonitorPolo.monitor_id == current_user.id,
+                MonitorPolo.ativo.is_(True),
             ).all()
         elif verificar_acesso_admin():
             polos = Polo.query.filter_by(ativo=True).all()
