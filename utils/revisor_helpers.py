@@ -106,7 +106,20 @@ def update_process_eventos(
 
 def recreate_stages(processo: RevisorProcess, stage_names: List[str]) -> None:
     """Recreates stages for the given reviewer process."""
+    # First, delete dependent records from revisor_candidatura_etapa
+    # Get all stage IDs for this process
+    etapa_ids = [etapa.id for etapa in RevisorEtapa.query.filter_by(process_id=processo.id).all()]
+    
+    if etapa_ids:
+        # Import here to avoid circular imports
+        from models.review import RevisorCandidaturaEtapa
+        # Delete all candidatura_etapa records that reference these stages
+        RevisorCandidaturaEtapa.query.filter(RevisorCandidaturaEtapa.etapa_id.in_(etapa_ids)).delete(synchronize_session=False)
+    
+    # Now we can safely delete the stages
     RevisorEtapa.query.filter_by(process_id=processo.id).delete()
+    
+    # Create new stages
     for idx, nome in enumerate(stage_names, start=1):
         if nome:
             db.session.add(RevisorEtapa(process_id=processo.id, numero=idx, nome=nome))

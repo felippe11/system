@@ -44,6 +44,10 @@
                                     <i class="fas fa-magic me-1"></i>
                                     Distribuição Automática
                                 </button>
+                                <button type="button" class="btn btn-outline-danger" id="undoAllDistributionsBtn" onclick="confirmarDesfazerTodasDistribuicoes()">
+                                    <i class="fas fa-undo-alt me-1"></i>
+                                    Desfazer Todas as Distribuições
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -118,10 +122,23 @@
                                                 </small>
                                             </td>
                                             <td class="text-center">
-                                                <span class="badge bg-secondary" id="distributionStatus_{{ trabalho.id }}">
-                                                    <i class="fas fa-clock me-1"></i>
-                                                    Não Distribuído
-                                                </span>
+                                                {% if trabalho.distribution_status == 'Distribuído' %}
+                                                    <span class="badge bg-success" id="distributionStatus_{{ trabalho.id }}" 
+                                                          title="Revisores: {{ trabalho.reviewer_names|join(', ') }}">
+                                                        <i class="fas fa-check me-1"></i>
+                                                        Distribuído ({{ trabalho.assignment_count }}): 
+                                                        {% if trabalho.reviewer_names|length <= 2 %}
+                                                            {{ trabalho.reviewer_names|join(', ') }}
+                                                        {% else %}
+                                                            {{ trabalho.reviewer_names[:2]|join(', ') }} e mais {{ trabalho.reviewer_names|length - 2 }}
+                                                        {% endif %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary" id="distributionStatus_{{ trabalho.id }}">
+                                                        <i class="fas fa-clock me-1"></i>
+                                                        Não Distribuído
+                                                    </span>
+                                                {% endif %}
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group" role="group">
@@ -135,6 +152,14 @@
                                                        title="Editar">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
+                                                    {% if trabalho.distribution_status and trabalho.distribution_status.startswith('Distribuído') %}
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-secondary" 
+                                                            title="Desfazer Distribuição"
+                                                            onclick="confirmarDesfazerDistribuicao({{ trabalho.id }})">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                    {% endif %}
                                                     <button type="button" 
                                                             class="btn btn-sm btn-outline-danger" 
                                                             title="Excluir"
@@ -344,8 +369,8 @@
                     <i class="fas fa-times me-1"></i>
                     Cancelar
                 </button>
-                <form id="formExclusao" method="POST" style="display: inline;">
-                    {{ csrf_token() }}
+                <form id="formExclusao" method="POST" style="display: inline;" action="">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash me-1"></i>
                         Excluir
@@ -681,7 +706,11 @@ function executeManualDistribution() {
         return;
     }
     
+    // Extract work_ids from assignments
+    const work_ids = [...new Set(manualAssignments.map(assignment => assignment.workId))];
+    
     const data = {
+        work_ids: work_ids,
         assignments: manualAssignments,
         deadline: deadline,
         notes: notes
@@ -806,6 +835,63 @@ function previewAutomaticDistribution() {
     `;
     
     document.getElementById('distributionPreview').innerHTML = previewHtml;
+}
+
+// Undo distribution functions
+function confirmarDesfazerDistribuicao(workId) {
+    if (confirm('Tem certeza que deseja desfazer a distribuição deste trabalho? Esta ação não pode ser desfeita.')) {
+        desfazerDistribuicao(workId);
+    }
+}
+
+function confirmarDesfazerTodasDistribuicoes() {
+    if (confirm('Tem certeza que deseja desfazer TODAS as distribuições? Esta ação não pode ser desfeita e afetará todos os trabalhos distribuídos.')) {
+        desfazerTodasDistribuicoes();
+    }
+}
+
+function desfazerDistribuicao(workId) {
+    fetch(`/api/distribution/undo/${workId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Distribuição desfeita com sucesso! ${data.assignments_deleted} atribuições removidas.`);
+            location.reload(); // Refresh to show updated status
+        } else {
+            alert('Erro ao desfazer distribuição: ' + (data.error || data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao desfazer distribuição.');
+    });
+}
+
+function desfazerTodasDistribuicoes() {
+    fetch('/api/distribution/undo-all', {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Todas as distribuições foram desfeitas com sucesso! ${data.total_assignments} atribuições removidas de ${data.works_affected} trabalhos.`);
+            location.reload(); // Refresh to show updated status
+        } else {
+            alert('Erro ao desfazer todas as distribuições: ' + (data.error || data.message || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Erro ao desfazer todas as distribuições.');
+    });
 }
 </script>
 {% endblock %}
