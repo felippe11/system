@@ -677,7 +677,8 @@ def cadastrar_monitor():
             dias_disponibilidade=','.join(dias_disponibilidade),
             turnos_disponibilidade=','.join(turnos_disponibilidade),
             codigo_acesso=gerar_codigo_acesso(),
-            ativo=True
+            ativo=True,
+            cliente_id=current_user.id
         )
         
         db.session.add(monitor)
@@ -1057,7 +1058,8 @@ def processar_importacao():
                     dias_disponibilidade=str(dados['dias_disponibilidade']).strip(),
                     turnos_disponibilidade=str(dados['turnos_disponibilidade']).strip(),
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True
+                    ativo=True,
+                    cliente_id=current_user.id
                 )
                 
                 db.session.add(novo_monitor)
@@ -1198,7 +1200,8 @@ def processar_cadastro_multiplo():
                     dias_disponibilidade=dias_disponibilidade,
                     turnos_disponibilidade=turnos_disponibilidade,
                     codigo_acesso=gerar_codigo_acesso(),
-                    ativo=True
+                    ativo=True,
+                    cliente_id=current_user.id
                 )
                 
                 db.session.add(novo_monitor)
