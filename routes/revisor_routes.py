@@ -131,7 +131,7 @@ def config_revisor():
             db.session.add(processo)
 
         update_revisor_process(processo, dados)
-        update_process_eventos(processo, dados["eventos_ids"])
+        update_process_eventos(processo, dados.get("eventos_ids"))
         recreate_stages(processo, dados["stage_names"])
         recreate_criterios(processo, dados["criterios"])
         if created_form is None and processo.formulario_id:

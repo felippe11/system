@@ -9,6 +9,7 @@ from extensions import db
 os.environ.setdefault("SECRET_KEY", "test")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "x")
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "y")
+os.environ.setdefault("DB_PASS", "test")
 from config import Config
 from models import Evento, Formulario
 from models.user import Cliente
@@ -68,6 +69,15 @@ def test_parse_revisor_form(app):
     assert dados["availability_end"].date() == date(2024, 1, 20)
     assert dados["exibir_para_participantes"] is True
     assert dados["eventos_ids"] == [1, 2]
+
+
+def test_parse_revisor_form_no_eventos(app):
+    with app.test_request_context(
+        method="POST",
+        data={"num_etapas": 1, "stage_name": ["Etapa"]},
+    ):
+        dados = parse_revisor_form(request)
+    assert dados["eventos_ids"] == []
 
 
 def test_parse_revisor_form_missing_stage(app):
@@ -143,3 +153,15 @@ def test_update_process_eventos(app):
         update_process_eventos(processo, [e2.id])
         db.session.refresh(processo)
         assert [e.id for e in processo.eventos] == [e2.id]
+
+
+def test_update_process_eventos_none(app):
+    with app.app_context():
+        cliente, _ = _create_cliente_formulario()
+        processo = RevisorProcess(cliente_id=cliente.id)
+        db.session.add(processo)
+        db.session.commit()
+
+        update_process_eventos(processo, None)
+        db.session.refresh(processo)
+        assert processo.eventos == []
