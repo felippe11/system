@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Compras{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">🛒 Lista de Compras</h2>
+        <div>
+            <button id="btn-whatsapp" class="btn btn-success me-2">
+                <i class="fab fa-whatsapp"></i> WhatsApp
+            </button>
+            <button id="btn-pdf" class="btn btn-danger me-2">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button id="btn-xlsx" class="btn btn-primary">
+                <i class="fas fa-file-excel"></i> XLSX
+            </button>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="incluir-baixa" checked>
+                <label class="form-check-label" for="incluir-baixa">
+                    Incluir materiais em baixa
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="incluir-esgotados" checked>
+                <label class="form-check-label" for="incluir-esgotados">
+                    Incluir esgotados
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped" id="tabela-lista-compras">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Polo</th>
+                    <th>Qtd Atual</th>
+                    <th>Qtd Mínima</th>
+                    <th>Comprar</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="{{ url_for('static', filename='js/lista_compras.js') }}"></script>
+{% endblock %}

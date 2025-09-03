@@ -317,17 +317,9 @@ function filtrarMateriais() {
 
 // Funções de salvar polo e material removidas - agora usando páginas separadas
 
-// Abrir modal de movimentação
+// Abrir página de movimentação
 function abrirMovimentacao(materialId) {
-    const material = materiaisData.find(m => m.id === materialId);
-    if (!material) return;
-    
-    document.getElementById('movimentacao-material-id').value = materialId;
-    document.getElementById('movimentacao-material-nome').textContent = material.nome;
-    document.getElementById('estoque-atual').textContent = `${material.quantidade_atual} ${material.unidade}`;
-    
-    const modal = new bootstrap.Modal(document.getElementById('modalMovimentacao'));
-    modal.show();
+    window.location.href = `/materiais/${materialId}/movimentar`;
 }
 
 // Salvar movimentação
@@ -472,7 +464,7 @@ function gerarRelatorioGeral() {
 
 // Gerar lista de compras
 function gerarListaCompras() {
-    window.open('/relatorios/materiais/excel?tipo=compras', '_blank');
+    window.location.href = '/materiais/lista-compras';
 }
 
 // Função para baixar relatório em Excel

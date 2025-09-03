@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Movimentar Material{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Movimentar Material</h2>
+    <form id="movimentacao-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" id="material-id" value="{{ material.id }}">
+        <div class="mb-3">
+            <label class="form-label">Material:</label>
+            <p class="form-control-plaintext">{{ material.nome }}</p>
+        </div>
+        <div class="mb-3">
+            <label for="tipo" class="form-label">Tipo de Movimentação *</label>
+            <select id="tipo" class="form-select" required>
+                <option value="entrada">Entrada (Compra/Recebimento)</option>
+                <option value="saida">Saída (Consumo/Uso)</option>
+                <option value="ajuste">Ajuste de Estoque</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="quantidade" class="form-label">Quantidade *</label>
+            <input type="number" id="quantidade" class="form-control" min="1" required>
+            <div class="form-text">Estoque atual: {{ material.quantidade_atual }} {{ material.unidade }}</div>
+        </div>
+        <div class="mb-3">
+            <label for="observacao" class="form-label">Observação</label>
+            <textarea id="observacao" class="form-control" rows="3" placeholder="Descreva o motivo da movimentação..."></textarea>
+        </div>
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('material_routes.gerenciar_materiais') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Registrar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getCSRFToken() {
+    return document.querySelector('meta[name=csrf-token]').getAttribute('content');
+}
+
+document.getElementById('movimentacao-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const materialId = document.getElementById('material-id').value;
+    const data = {
+        tipo: document.getElementById('tipo').value,
+        quantidade: parseInt(document.getElementById('quantidade').value),
+        observacao: document.getElementById('observacao').value
+    };
+    const resp = await fetch(`/api/materiais/${materialId}/movimentacao`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    if (resp.ok && result.success) {
+        window.location.href = "{{ url_for('material_routes.gerenciar_materiais') }}";
+    } else {
+        alert(result.message || 'Erro ao registrar movimentação');
+    }
+});
+</script>
+{% endblock %}
