@@ -374,6 +374,7 @@ class RevisorProcess(db.Model):
     availability_start = db.Column(db.DateTime, nullable=True)
     availability_end = db.Column(db.DateTime, nullable=True)
     exibir_para_participantes = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(50), default="ativo")
 
     cliente = db.relationship(
         "Cliente", backref=db.backref("revisor_processes", lazy=True)
