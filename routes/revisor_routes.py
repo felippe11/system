@@ -218,37 +218,9 @@ def edit_process(process_id: int):
     )
 
 
-@revisor_routes.route("/revisor/processes")
-@login_required
-def list_processes():
-    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
-        flash("Acesso negado!", "danger")
-        return redirect(url_for(endpoints.DASHBOARD))
-    processos = RevisorProcess.query.filter_by(
-        cliente_id=current_user.id  # type: ignore[attr-defined]
-    ).all()
-    return render_template("revisor/process_list.html", processos=processos)
 
-
-@revisor_routes.route("/revisor/processes/new", methods=["GET", "POST"])
-@login_required
-def new_process():
-    return _config_process(None)
-
-
-@revisor_routes.route("/revisor/processes/<int:process_id>/edit", methods=["GET", "POST"])
-@login_required
-def edit_process(process_id: int):
-    return _config_process(process_id)
-
-
-@revisor_routes.route("/config_revisor", methods=["GET", "POST"])
-@login_required
-def config_revisor():
-    processo = RevisorProcess.query.filter_by(
-        cliente_id=current_user.id  # type: ignore[attr-defined]
-    ).first()
-    return _config_process(processo.id if processo else None)
+# Removidos endpoints antigos/duplicados baseados em _config_process
+# para manter somente o fluxo atual em /revisor/processos
 
 
 @revisor_routes.route("/revisor/processes/<int:process_id>/delete", methods=["POST"])
