@@ -29,17 +29,56 @@
 
 {% block content %}
 <div class="container py-4">
+  <!-- Breadcrumbs -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('revisor_routes.list_processes') }}">
+          <i class="bi bi-house me-1"></i>
+          Processos de Revisores
+        </a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        {% if is_new %}
+          <i class="bi bi-plus-circle me-1"></i>
+          Criar Novo Processo
+        {% else %}
+          <i class="bi bi-pencil me-1"></i>
+          Editar: {{ processo.nome or 'Processo' }}
+        {% endif %}
+      </li>
+    </ol>
+  </nav>
+
   <div class="row">
     <div class="col-12">
       <div class="d-flex align-items-center justify-content-between mb-4">
         <div class="d-flex align-items-center">
-          <div class="step-indicator me-3">1</div>
+          <div class="step-indicator me-3">
+            {% if is_new %}
+              <i class="bi bi-plus"></i>
+            {% else %}
+              <i class="bi bi-pencil"></i>
+            {% endif %}
+          </div>
           <div>
-            <h1 class="h3 mb-0">Configurar Processo de Revisores</h1>
-            <p class="text-muted mb-0">Configure as etapas e critérios do processo seletivo</p>
+            <h1 class="h3 mb-0">
+              {% if is_new %}
+                Criar Novo Processo de Revisores
+              {% else %}
+                Editar Processo de Revisores
+              {% endif %}
+            </h1>
+            <p class="text-muted mb-0">
+              {% if is_new %}
+                Configure um novo processo seletivo para revisores
+              {% else %}
+                Modifique as configurações do processo "{{ processo.nome or 'Sem nome' }}"
+              {% endif %}
+            </p>
           </div>
         </div>
-        {% if processo %}
+        {% if processo and processo.id %}
         <form
           method="post"
           action="{{ url_for('revisor_routes.delete_process', process_id=processo.id) }}"
@@ -55,7 +94,8 @@
     </div>
   </div>
 
-  <form method="post" id="configForm" novalidate>
+  <form method="post" id="configForm" novalidate 
+        {% if is_new %}action="{{ url_for('revisor_routes.create_process') }}"{% endif %}>
     <!-- Informações do Processo -->
     <div class="card config-card mb-4">
       <div class="card-header bg-light">
@@ -222,7 +262,7 @@
               Número de Etapas
             </label>
             <input type="number" class="form-control" name="num_etapas" 
-                   value="{{ processo.num_etapas if processo else 1 }}" 
+                   value="{{ processo.num_etapas if processo and processo.num_etapas else 1 }}" 
                    min="1" max="10" required id="numEtapas">
             <div class="invalid-feedback">
               Por favor, informe o número de etapas (1-10).
@@ -236,7 +276,7 @@
             Nomes das Etapas
           </h6>
           <div id="etapasContainer">
-            {% set total = processo.num_etapas if processo else 1 %}
+            {% set total = processo.num_etapas if processo and processo.num_etapas else 1 %}
             {% for i in range(total) %}
             <div class="input-group mb-2 etapa-input">
               <span class="input-group-text">
@@ -265,14 +305,18 @@
             <small class="text-muted">Revise todas as informações antes de salvar</small>
           </div>
           <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
-              <i class="bi bi-arrow-left me-1"></i>
-              Cancelar
-            </button>
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-circle me-1"></i>
-              Salvar Configuração
+              <i class="bi bi-check-lg me-2"></i>
+              {% if is_new %}
+                Criar Processo
+              {% else %}
+                Salvar Alterações
+              {% endif %}
             </button>
+            <a href="{{ url_for('revisor_routes.list_processes') }}" class="btn btn-outline-secondary">
+              <i class="bi bi-arrow-left me-2"></i>
+              Voltar à Lista
+            </a>
           </div>
         </div>
       </div>

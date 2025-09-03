@@ -1,45 +1,206 @@
 {% extends "base.html" %}
 {% block title %}Processos de Revisores{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.process-card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 0.5rem;
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.process-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+.status-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+.create-process-card {
+  border: 2px dashed #007bff;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e3f2fd 100%);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.create-process-card:hover {
+  border-color: #0056b3;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  transform: translateY(-2px);
+}
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6c757d;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3 mb-0">Processos de Revisores</h1>
-    <a href="{{ url_for('revisor_routes.config_revisor') }}" class="btn btn-primary">Novo Processo</a>
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <h1 class="h3 mb-1">Processos de Revisores</h1>
+          <p class="text-muted mb-0">Gerencie os processos seletivos para revisores</p>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('revisor_routes.new_process') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle me-2"></i>
+            Criar Novo Processo
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>Descrição</th>
-        <th>Período</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
+
+  <!-- Processes Grid -->
+  <div class="row">
+    {% if processos %}
+      <!-- Create New Process Card -->
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card create-process-card h-100">
+          <div class="card-body text-center">
+            <a href="{{ url_for('revisor_routes.new_process') }}" class="text-decoration-none">
+              <div class="mb-3">
+                <i class="bi bi-plus-circle" style="font-size: 3rem; color: #007bff;"></i>
+              </div>
+              <h5 class="card-title text-primary mb-2">Criar Novo Processo</h5>
+              <p class="card-text text-muted">Configure um novo processo seletivo para revisores</p>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Existing Processes -->
       {% for proc in processos %}
-      <tr>
-        <td>{{ proc.nome or '—' }}</td>
-        <td>{{ proc.descricao or '—' }}</td>
-        <td>
-          {% if proc.availability_start %}{{ proc.availability_start.strftime('%d/%m/%Y') }}{% endif %} -
-          {% if proc.availability_end %}{{ proc.availability_end.strftime('%d/%m/%Y') }}{% endif %}
-        </td>
-        <td>{{ proc.status or '—' }}</td>
-        <td>
-          <a href="{{ url_for('revisor_routes.edit_process', process_id=proc.id) }}" class="btn btn-sm btn-secondary">Editar</a>
-          <form method="post" action="{{ url_for('revisor_routes.delete_process', process_id=proc.id) }}" style="display:inline-block" onsubmit="return confirm('Excluir processo?');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-          </form>
-        </td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="5" class="text-center">Nenhum processo cadastrado.</td>
-      </tr>
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card process-card h-100">
+          <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold">{{ proc.nome or 'Processo sem nome' }}</h6>
+            {% if proc.status %}
+              {% set status_class = 'success' if proc.status == 'Aberto' else 'warning' if proc.status == 'Pendente' else 'secondary' %}
+              <span class="badge bg-{{ status_class }} status-badge">{{ proc.status }}</span>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <p class="card-text text-muted mb-3">{{ proc.descricao or 'Sem descrição' }}</p>
+            
+            {% if proc.availability_start or proc.availability_end %}
+            <div class="mb-3">
+              <small class="text-muted">
+                <i class="bi bi-calendar-range me-1"></i>
+                <strong>Período:</strong>
+                {% if proc.availability_start %}{{ proc.availability_start.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+                até
+                {% if proc.availability_end %}{{ proc.availability_end.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+              </small>
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <small class="text-muted">
+                <i class="bi bi-list-ol me-1"></i>
+                <strong>Etapas:</strong> {{ proc.num_etapas or 0 }}
+              </small>
+            </div>
+
+            {% if proc.exibir_para_participantes %}
+            <div class="mb-3">
+              <small class="text-success">
+                <i class="bi bi-eye me-1"></i>
+                Visível para participantes
+              </small>
+            </div>
+            {% endif %}
+          </div>
+          <div class="card-footer bg-transparent">
+            <div class="d-flex justify-content-between align-items-center">
+              <a href="{{ url_for('revisor_routes.edit_process', process_id=proc.id) }}" 
+                 class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-pencil me-1"></i>
+                Editar
+              </a>
+              <form method="post" 
+                    action="{{ url_for('revisor_routes.delete_process', process_id=proc.id) }}" 
+                    style="display:inline-block" 
+                    onsubmit="return confirm('Tem certeza que deseja excluir este processo? Esta ação não pode ser desfeita.');"
+                    class="ms-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="bi bi-trash me-1"></i>
+                  Excluir
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    {% else %}
+      <!-- Empty State -->
+      <div class="col-12">
+        <div class="empty-state">
+          <div class="mb-4">
+            <i class="bi bi-clipboard-data" style="font-size: 4rem; color: #dee2e6;"></i>
+          </div>
+          <h4 class="mb-3">Nenhum processo cadastrado</h4>
+          <p class="mb-4">Comece criando seu primeiro processo seletivo para revisores.</p>
+          <a href="{{ url_for('revisor_routes.new_process') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-plus-circle me-2"></i>
+            Criar Primeiro Processo
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if processos %}
+  <!-- Summary Section -->
+  <div class="row mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-clipboard-data text-primary" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|length }}</h5>
+              <small class="text-muted">Total de Processos</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-check-circle text-success" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Aberto')|list|length }}</h5>
+              <small class="text-muted">Processos Abertos</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-clock text-warning" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Pendente')|list|length }}</h5>
+              <small class="text-muted">Processos Pendentes</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-x-circle text-secondary" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Encerrado')|list|length }}</h5>
+              <small class="text-muted">Processos Encerrados</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

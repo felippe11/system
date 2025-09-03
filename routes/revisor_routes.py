@@ -105,6 +105,36 @@ def list_processes() -> Any:
     return render_template("revisor/process_list.html", processos=processos)
 
 
+@revisor_routes.route("/revisor/processos/novo", methods=["GET"])
+@login_required
+def new_process():
+    """Render form to create a new review process."""
+    if current_user.tipo != "cliente":  # type: ignore[attr-defined]
+        flash("Acesso negado!", "danger")
+        return redirect(url_for(endpoints.DASHBOARD))
+    
+    formularios: List[Formulario] = Formulario.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    eventos: List[Evento] = Evento.query.filter_by(
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).all()
+    
+    # Create empty process for form rendering
+    processo = RevisorProcess(cliente_id=current_user.id, num_etapas=1)  # type: ignore[attr-defined]
+    
+    return render_template(
+        "revisor/config.html",
+        processo=processo,
+        formularios=formularios,
+        etapas=[],
+        criterios=[],
+        eventos=eventos,
+        selected_event_ids=[],
+        is_new=True
+    )
+
+
 @revisor_routes.route("/revisor/processos", methods=["POST"])
 @login_required
 def create_process() -> Any:
@@ -142,7 +172,8 @@ def create_process() -> Any:
         if formulario:
             rh.ensure_reviewer_required_fields(formulario)
     db.session.commit()
-    return jsonify({"id": processo.id}), 201
+    flash("Processo criado com sucesso!", "success")
+    return redirect(url_for("revisor_routes.edit_process", process_id=processo.id))
 
 
 @revisor_routes.route("/revisor/processos/<int:process_id>", methods=["GET", "POST"])
@@ -152,7 +183,17 @@ def edit_process(process_id: int):
     if current_user.tipo != "cliente":  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
-    processo = RevisorProcess.query.get_or_404(process_id)
+    
+    # Check if process exists
+    processo = RevisorProcess.query.filter_by(
+        id=process_id, 
+        cliente_id=current_user.id  # type: ignore[attr-defined]
+    ).first()
+    
+    if not processo:
+        flash("Processo não encontrado. Crie um novo processo ou edite um existente.", "warning")
+        return redirect(url_for("revisor_routes.list_processes"))
+    
     if processo.cliente_id != current_user.id:  # type: ignore[attr-defined]
         flash("Acesso negado!", "danger")
         return redirect(url_for(endpoints.DASHBOARD))
@@ -206,6 +247,9 @@ def edit_process(process_id: int):
             "warning",
         )
         criterios = []
+    # Determinar se é um novo processo
+    is_new = processo.id is None
+    
     return render_template(
         "revisor/config.html",
         processo=processo,
@@ -214,6 +258,7 @@ def edit_process(process_id: int):
         criterios=criterios,
         eventos=eventos,
         selected_event_ids=selected_event_ids,
+        is_new=is_new,
     )
 
 
@@ -652,9 +697,14 @@ def select_event():
             if ev:
                 eventos.append(ev)
 
-        status = proc.status if getattr(proc, "status", None) else (
-            "Aberto" if proc.is_available() else "Encerrado"
-        )
+        # Mapear status do banco para exibição no template
+        db_status = getattr(proc, "status", None)
+        if db_status == "ativo":
+            status = "Aberto"
+        elif db_status == "inativo":
+            status = "Encerrado"
+        else:
+            status = "Aberto" if proc.is_available() else "Encerrado"
         if not eventos:
             registros.append({"evento": None, "processo": proc, "status": status})
             continue
