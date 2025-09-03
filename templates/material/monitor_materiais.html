@@ -15,9 +15,10 @@
                     <a href="{{ url_for('monitor_routes.dashboard') }}" class="btn btn-outline-secondary me-2">
                         <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
                     </a>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalMovimentacao">
+                    <a href="{{ url_for('material_routes.nova_movimentacao_monitor') }}"
+                        class="btn btn-success">
                         <i class="fas fa-plus me-2"></i>Nova Movimentação
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -103,59 +104,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Nova Movimentação -->
-<div class="modal fade" id="modalMovimentacao" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Nova Movimentação</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="formMovimentacao">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Polo</label>
-                        <select class="form-select" id="movimentacao-polo" required>
-                            <option value="">Selecione um polo</option>
-                            {% for polo in polos %}
-                            <option value="{{ polo.id }}">{{ polo.nome }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Material</label>
-                        <select class="form-select" id="movimentacao-material" required>
-                            <option value="">Selecione um material</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Tipo de Movimentação</label>
-                        <select class="form-select" id="movimentacao-tipo" required>
-                            <option value="entrada">Entrada (Recebimento)</option>
-                            <option value="saida">Saída (Consumo)</option>
-                            <option value="ajuste">Ajuste de Estoque</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Quantidade</label>
-                        <input type="number" class="form-control" id="movimentacao-quantidade" min="1" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Observações</label>
-                        <textarea class="form-control" id="movimentacao-observacoes" rows="3" placeholder="Observações sobre a movimentação..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Registrar Movimentação
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
