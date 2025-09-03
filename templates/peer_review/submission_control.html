@@ -432,7 +432,8 @@
                     <option value="">Todos os processos seletivos</option>
                     {% for processo, formulario in processos_seletivos %}
                       <option value="{{ processo.id }}">
-                        {{ formulario.nome if formulario.nome else 'Processo ' + processo.id|string }}
+                        {{ processo.nome or (formulario.nome if formulario.nome else 'Processo ' + processo.id|string) }}
+                        {% if processo.status %}- {{ processo.status }}{% endif %}
                         {% if processo.evento_id %}
                           - {{ processo.evento.nome if processo.evento else 'Evento ' + processo.evento_id|string }}
                         {% endif %}

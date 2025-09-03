@@ -56,6 +56,40 @@
   </div>
 
   <form method="post" id="configForm" novalidate>
+    <!-- Informações do Processo -->
+    <div class="card config-card mb-4">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-info-circle me-2"></i>
+          Informações do Processo
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6 mb-3 mb-md-0">
+            <label class="form-label fw-semibold">Nome do Processo</label>
+            <input type="text" class="form-control" name="nome" value="{{ processo.nome if processo else '' }}" required>
+            <div class="invalid-feedback">Por favor, informe o nome do processo.</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Status</label>
+            {% set pstatus = processo.status if processo else '' %}
+            <select class="form-select" name="status" required>
+              <option value="">Selecione...</option>
+              <option value="Aberto" {% if pstatus == 'Aberto' %}selected{% endif %}>Aberto</option>
+              <option value="Pendente" {% if pstatus == 'Pendente' %}selected{% endif %}>Pendente</option>
+              <option value="Encerrado" {% if pstatus == 'Encerrado' %}selected{% endif %}>Encerrado</option>
+            </select>
+            <div class="invalid-feedback">Por favor, selecione o status.</div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Descrição</label>
+          <textarea class="form-control" name="descricao" rows="3">{{ processo.descricao if processo else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
     <!-- Configurações Básicas -->
     <div class="card config-card mb-4">
       <div class="card-header bg-light">
