@@ -557,6 +557,8 @@ def gerenciar_monitores():
     
     # Query base
     query = Monitor.query
+    if current_user.tipo == "cliente":
+        query = query.filter(Monitor.cliente_id == current_user.id)
     
     # Aplicar filtros
     if status_filter == 'ativo':
