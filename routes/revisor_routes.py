@@ -606,16 +606,38 @@ def progress(codigo: str):
     if cand.status == 'aprovado':
         revisor_user = Usuario.query.filter_by(email=cand.email).first()
         if revisor_user:
-            # Buscar assignments com informações completas
-            assignments = (
+            # Determinar o evento associado à candidatura
+            processo = cand.process
+            evento_id = None
+            
+            if processo.evento_id:
+                evento_id = processo.evento_id
+            elif processo.eventos:
+                evento_id = processo.eventos[0].id  # Usar o primeiro evento associado
+            
+            # Buscar assignments do revisor filtrados por evento (se disponível)
+            query = (
                 Assignment.query
                 .options(
                     db.joinedload(Assignment.resposta_formulario),
                     db.joinedload(Assignment.reviewer)
                 )
                 .filter_by(reviewer_id=revisor_user.id)
-                .all()
+                # Garantir que apenas assignments distribuídos sejam mostrados
+                .filter(Assignment.distribution_date.isnot(None))
             )
+            
+            # Filtrar por evento se disponível
+            if evento_id:
+                from models.event import RespostaFormulario
+                query = (
+                    query
+                    .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
+                    .join(Submission, RespostaFormulario.trabalho_id == Submission.id)
+                    .filter(Submission.evento_id == evento_id)
+                )
+            
+            assignments = query.all()
             
             # Processar assignments para obter trabalhos com informações detalhadas
             for assignment in assignments:
@@ -851,7 +873,6 @@ def approve(cand_id: int):
                 resposta_formulario = RespostaFormulario(
                     trabalho_id=trabalho.id,
                     formulario_id=None,  # Pode ser None para assignments automáticos
-                    respostas={},
                     data_submissao=datetime.utcnow()
                 )
                 db.session.add(resposta_formulario)

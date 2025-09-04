@@ -516,6 +516,7 @@ class RespostaFormulario(db.Model):
     )
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     trabalho_id = db.Column(db.Integer, db.ForeignKey("submission.id"), nullable=True)
+    evento_id = db.Column(db.Integer, db.ForeignKey("evento.id"), nullable=True)
     data_submissao = db.Column(db.DateTime, default=datetime.utcnow)
 
     # NOVA COLUNA PARA STATUS
@@ -531,6 +532,7 @@ class RespostaFormulario(db.Model):
         "Formulario", back_populates="respostas"
     )  # 🔄 Corrigido o back_populates
     usuario = db.relationship("Usuario", backref=db.backref("respostas", lazy=True))
+    evento = db.relationship("Evento", backref=db.backref("respostas_formulario", lazy=True))
 
     def __repr__(self):
         return f"<RespostaFormulario ID {self.id} - Formulário {self.formulario_id} - Usuário {self.usuario_id}>"
