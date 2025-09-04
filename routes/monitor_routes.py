@@ -1331,16 +1331,25 @@ def distribuir_automaticamente():
                 .all()
             )
         
-        # Obter monitores ativos
+        # Obter monitores ativos e contagens de agendamentos já atribuídos
         monitores_ativos = Monitor.query.filter_by(ativo=True).all()
-        
+        agendamentos_ativos = dict(
+            db.session.query(
+                MonitorAgendamento.monitor_id,
+                db.func.count(MonitorAgendamento.id),
+            )
+            .filter(MonitorAgendamento.status == 'ativo')
+            .group_by(MonitorAgendamento.monitor_id)
+            .all()
+        )
+
         if not monitores_ativos:
             current_app.logger.warning("Nenhum monitor ativo encontrado")
             return jsonify({
                 'success': False,
                 'message': 'Nenhum monitor ativo encontrado',
             })
-        
+
         atribuicoes = 0
         atribuicoes_detalhes = []
         pendentes = []
@@ -1379,24 +1388,20 @@ def distribuir_automaticamente():
                 if _norm_token(dia_agendamento) in dias_monitor:
                     if _norm_token(turno_agendamento) in turnos_monitor:
                         # Verificar carga horária (apenas agendamentos ativos)
-                        agendamentos_monitor = MonitorAgendamento.query.filter_by(
-                            monitor_id=monitor.id,
-                            status='ativo'
-                        ).count()
-                        
+                        agendamentos_monitor = agendamentos_ativos.get(
+                            monitor.id, 0
+                        )
+
                         # Assumindo 4 horas por agendamento em média
                         horas_utilizadas = agendamentos_monitor * 4
                         if horas_utilizadas < monitor.carga_horaria_disponibilidade:
                             monitores_disponiveis.append(monitor)
-            
+
             # Atribuir ao monitor com menor carga atual (apenas agendamentos ativos)
             if monitores_disponiveis:
                 monitor_escolhido = min(
                     monitores_disponiveis,
-                    key=lambda m: MonitorAgendamento.query.filter_by(
-                        monitor_id=m.id,
-                        status='ativo'
-                    ).count(),
+                    key=lambda m: agendamentos_ativos.get(m.id, 0),
                 )
 
                 # Criar atribuição
@@ -1409,6 +1414,9 @@ def distribuir_automaticamente():
                 )
 
                 db.session.add(atribuicao)
+                agendamentos_ativos[monitor_escolhido.id] = agendamentos_ativos.get(
+                    monitor_escolhido.id, 0
+                ) + 1
                 atribuicoes += 1
                 current_app.logger.info(
                     "Monitor %s atribuído ao agendamento %s",
