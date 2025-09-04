@@ -1299,7 +1299,7 @@ def distribuicao_automatica():
     
     # Obter estatísticas para exibir na página
     hoje = datetime.now().date()
-    agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
+    agendamentos_query = db.session.query(AgendamentoVisita).join(
         HorarioVisitacao
     ).filter(
         HorarioVisitacao.data >= hoje,
@@ -1307,9 +1307,19 @@ def distribuicao_automatica():
         ~AgendamentoVisita.id.in_(
             db.session.query(MonitorAgendamento.agendamento_id)
         )
-    ).count()
-    
-    monitores_ativos = Monitor.query.filter_by(ativo=True).count()
+    )
+    if current_user.tipo == 'cliente':
+        agendamentos_query = agendamentos_query.filter(
+            AgendamentoVisita.cliente_id == current_user.id
+        )
+    agendamentos_sem_monitor = agendamentos_query.count()
+
+    monitores_query = Monitor.query.filter_by(ativo=True)
+    if current_user.tipo == 'cliente':
+        monitores_query = monitores_query.filter(
+            Monitor.cliente_id == current_user.id
+        )
+    monitores_ativos = monitores_query.count()
     
     return render_template('monitor/distribuicao_automatica.html',
                          agendamentos_sem_monitor=agendamentos_sem_monitor,
@@ -1347,6 +1357,10 @@ def distribuir_automaticamente():
             HorarioVisitacao.data >= hoje,
             AgendamentoVisita.status.in_(['confirmado', 'pendente'])
         )
+        if current_user.tipo == 'cliente':
+            base_query = base_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id
+            )
 
         if modo == 'redistribuir_todos':
             # Desativar atribuições ativas futuras antes de redistribuir
@@ -1355,8 +1369,12 @@ def distribuir_automaticamente():
                 .join(AgendamentoVisita, MonitorAgendamento.agendamento_id == AgendamentoVisita.id)
                 .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
                 .filter(HorarioVisitacao.data >= hoje, MonitorAgendamento.status == 'ativo')
-                .all()
             )
+            if current_user.tipo == 'cliente':
+                ativos = ativos.filter(
+                    AgendamentoVisita.cliente_id == current_user.id
+                )
+            ativos = ativos.all()
             for ma in ativos:
                 ma.status = 'inativo'
             db.session.flush()
@@ -1369,15 +1387,22 @@ def distribuir_automaticamente():
             )
         
         # Obter monitores ativos e contagens de agendamentos já atribuídos
-        monitores_ativos = Monitor.query.filter_by(ativo=True).all()
-        agendamentos_ativos = dict(
-            db.session.query(
-                MonitorAgendamento.monitor_id,
-                db.func.count(MonitorAgendamento.id),
+        monitores_query = Monitor.query.filter_by(ativo=True)
+        if current_user.tipo == 'cliente':
+            monitores_query = monitores_query.filter(
+                Monitor.cliente_id == current_user.id
             )
-            .filter(MonitorAgendamento.status == 'ativo')
-            .group_by(MonitorAgendamento.monitor_id)
-            .all()
+        monitores_ativos = monitores_query.all()
+        agendamentos_ativos_query = db.session.query(
+            MonitorAgendamento.monitor_id,
+            db.func.count(MonitorAgendamento.id),
+        ).filter(MonitorAgendamento.status == 'ativo')
+        if current_user.tipo == 'cliente':
+            agendamentos_ativos_query = agendamentos_ativos_query.join(Monitor).filter(
+                Monitor.cliente_id == current_user.id
+            )
+        agendamentos_ativos = dict(
+            agendamentos_ativos_query.group_by(MonitorAgendamento.monitor_id).all()
         )
 
         if not monitores_ativos:
