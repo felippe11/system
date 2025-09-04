@@ -1925,70 +1925,85 @@
 
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
 
-
-    <table class="table table-sm">
-      <thead>
-        <tr><th>Nome</th><th>Etapa</th><th>Status</th><th>Ações</th></tr>
-      </thead>
-      <tbody>
+    <div class="table-responsive table-responsive-sm table-responsive-md table-responsive-lg" style="max-height: 400px; overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; min-width: 100%;">
+      <table class="table table-sm table-hover mb-0" style="min-width: 600px;">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th class="text-nowrap" style="min-width: 150px;">Nome</th>
+            <th class="text-nowrap text-center" style="min-width: 80px;">Etapa</th>
+            <th class="text-nowrap text-center" style="min-width: 100px;">Status</th>
+            <th class="text-nowrap text-center" style="min-width: 250px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
         {% for cand in revisor_candidaturas %}
         <tr>
-          <td>{{ cand.nome or cand.email }}</td>
-          <td>{{ cand.etapa_atual }}</td>
-          <td>{{ cand.status }}</td>
-          <td>
-            <form method="post" action="{{ url_for('revisor_routes.advance', cand_id=cand.id) }}" class="d-inline">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-sm btn-primary">Avançar</button>
-            </form>
-
-            <form method="post" action="{{ url_for('revisor_routes.approve', cand_id=cand.id) }}" class="d-inline ms-1">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-sm btn-success">Aprovar</button>
-            </form>
-            <form method="post" action="{{ url_for('revisor_routes.reject', cand_id=cand.id) }}" class="d-inline ms-1">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn btn-sm btn-danger">Rejeitar</button>
-            </form>
-            <a href="{{ url_for('revisor_routes.view_candidatura', cand_id=cand.id) }}" class="btn btn-sm btn-secondary ms-1">Ver Detalhes</a>
+          <td class="text-truncate" style="max-width: 200px;" title="{{ cand.nome or cand.email }}">{{ cand.nome or cand.email }}</td>
+          <td class="text-center">{{ cand.etapa_atual }}</td>
+          <td class="text-center">
+            <span class="badge {% if cand.status == 'aprovado' %}bg-success{% elif cand.status == 'rejeitado' %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+              {{ cand.status }}
+            </span>
+          </td>
+          <td class="text-nowrap">
+            <div class="btn-group btn-group-sm d-flex flex-wrap gap-1" role="group">
+              <form method="post" action="{{ url_for('revisor_routes.advance', cand_id=cand.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-primary" title="Avançar">Avançar</button>
+              </form>
+              <form method="post" action="{{ url_for('revisor_routes.approve', cand_id=cand.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-success" title="Aprovar">Aprovar</button>
+              </form>
+              <form method="post" action="{{ url_for('revisor_routes.reject', cand_id=cand.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger" title="Rejeitar">Rejeitar</button>
+              </form>
+              <a href="{{ url_for('revisor_routes.view_candidatura', cand_id=cand.id) }}" class="btn btn-sm btn-secondary" title="Ver Detalhes">Detalhes</a>
+            </div>
           </td>
         </tr>
         {% else %}
-          <tr><td colspan="5">Nenhum candidato.</td></tr>
+          <tr><td colspan="4" class="text-center text-muted">Nenhum candidato.</td></tr>
           {% endfor %}
         </tbody>
       </table>
+    </div>
 
     <h5 class="fw-bold mt-4">Candidaturas Aprovadas</h5>
-    <input
-      type="text"
-      id="searchAprovados"
-      class="form-control mb-3"
-      placeholder="Buscar por nome ou email"
-    >
-    <table class="table table-sm">
-      <thead>
-        <tr><th>Nome</th><th>Código</th><th>Ações</th></tr>
-      </thead>
-      <tbody id="listaAprovados">
+    <input type="text" id="searchAprovados" class="form-control mb-3" placeholder="Buscar por nome ou email">
+    <div class="table-responsive table-responsive-sm table-responsive-md table-responsive-lg" style="max-height: 400px; overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; min-width: 100%;">
+      <table class="table table-sm table-hover mb-0" style="min-width: 500px;">
+        <thead class="table-light sticky-top">
+          <tr>
+            <th class="text-nowrap" style="min-width: 200px;">Nome</th>
+            <th class="text-nowrap text-center" style="min-width: 120px;">Código</th>
+            <th class="text-nowrap text-center" style="min-width: 180px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="listaAprovados">
         {% for cand in revisor_candidaturas_aprovadas %}
         <tr>
-          <td>{{ cand.nome or cand.email }}</td>
-          <td class="codigo">{{ cand.codigo }}</td>
-          <td>
+          <td class="text-truncate" style="max-width: 250px;" title="{{ cand.nome or cand.email }}">{{ cand.nome or cand.email }}</td>
+          <td class="codigo text-center">
+            <code class="bg-light px-2 py-1 rounded">{{ cand.codigo }}</code>
+          </td>
+          <td class="text-center">
             <button
-              class="btn btn-sm btn-outline-secondary copiar-codigo"
+              class="btn btn-sm btn-outline-primary copiar-codigo"
               data-codigo="{{ cand.codigo }}"
+              title="Copiar código do revisor"
             >
-              Copiar código
+              <i class="fas fa-copy me-1"></i>Copiar código
             </button>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="3">Nenhum candidato aprovado.</td></tr>
+        <tr><td colspan="3" class="text-center text-muted">Nenhum candidato aprovado.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+      </table>
+    </div>
   </div>
   <!-- /ABA 6: REVISORES -->
 <!-- Mantendo a integração com o script original sem modificações -->
