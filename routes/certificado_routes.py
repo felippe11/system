@@ -55,6 +55,14 @@ certificado_routes = Blueprint(
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.pdf'}
+ALLOWED_MIME_TYPES = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.pdf': 'application/pdf',
+}
+
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
 @login_required
@@ -114,15 +122,35 @@ def gerar_certificado_evento():
 @require_permission('certificados.edit')
 
 def salvar_personalizacao_certificado():
+    """Salva personalização do certificado após validar os arquivos enviados."""
     cliente = Cliente.query.get(current_user.id)
+
+    upload_dir = os.path.join('static', 'uploads', 'certificados')
+    os.makedirs(upload_dir, exist_ok=True)
 
     for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
         arquivo = request.files.get(campo)
-        if arquivo:
-            filename = secure_filename(arquivo.filename)
-            path = os.path.join('static/uploads/certificados', filename)
-            arquivo.save(path)
-            setattr(cliente, campo, path)
+        if not arquivo or not arquivo.filename:
+            continue
+
+        filename = secure_filename(arquivo.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        mimetype = arquivo.mimetype
+
+        if ext not in ALLOWED_MIME_TYPES or ALLOWED_MIME_TYPES[ext] != mimetype:
+            flash(
+                'Arquivo inválido para {}. Permitidos: {}'.format(
+                    campo.replace('_', ' '), ', '.join(sorted(ALLOWED_EXTENSIONS))
+                ),
+                'danger',
+            )
+            return redirect(
+                url_for('certificado_routes.upload_personalizacao_certificado')
+            )
+
+        path = os.path.join(upload_dir, filename)
+        arquivo.save(path)
+        setattr(cliente, campo, path)
 
     cliente.texto_personalizado = request.form.get('texto_personalizado')
     db.session.commit()
