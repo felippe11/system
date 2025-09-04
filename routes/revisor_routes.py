@@ -320,7 +320,6 @@ def config_overview():
 
 @revisor_routes.route("/revisor/processes/<int:process_id>/delete", methods=["POST"])
 @revisor_routes.route("/revisor/<int:process_id>/delete", methods=["POST"])
-@revisor_routes.route("/revisor/processos/<int:process_id>", methods=["DELETE"])
 @login_required
 def delete_process(process_id: int):
     """Remove a review process owned by the current client."""
