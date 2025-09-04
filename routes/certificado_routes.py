@@ -2292,13 +2292,13 @@ def gerar_declaracao_individual(evento_id, usuario_id):
         flash('Usuário não participou deste evento', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template ativo
+    # Buscar template individual ativo
     template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+        cliente_id=current_user.id, ativo=True, tipo='individual'
     ).first()
-    
+
     if not template:
-        flash('Nenhum template de declaração encontrado', 'error')
+        flash('Nenhum template de declaração individual encontrado', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declaração
@@ -2331,13 +2331,13 @@ def gerar_declaracoes_lote(evento_id):
         flash('Nenhum participante encontrado para este evento', 'warning')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template ativo
+    # Buscar template coletivo ativo
     template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+        cliente_id=current_user.id, ativo=True, tipo='coletiva'
     ).first()
-    
+
     if not template:
-        flash('Nenhum template de declaração encontrado', 'error')
+        flash('Nenhum template de declaração coletiva encontrado', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declarações
