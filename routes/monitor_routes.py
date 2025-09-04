@@ -999,10 +999,17 @@ def remover_atribuicao():
         
         # Buscar e remover a atribuição
         atribuicao = MonitorAgendamento.query.filter_by(agendamento_id=agendamento_id).first()
-        
+
         if not atribuicao:
             return jsonify({'success': False, 'message': 'Atribuição não encontrada'})
-        
+
+        if current_user.tipo == 'cliente':
+            if (
+                atribuicao.monitor.cliente_id != current_user.id
+                or atribuicao.agendamento.cliente_id != current_user.id
+            ):
+                return jsonify({'success': False, 'message': 'Atribuição não pertence a você'})
+
         db.session.delete(atribuicao)
         db.session.commit()
         
