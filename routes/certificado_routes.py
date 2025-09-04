@@ -2043,19 +2043,27 @@ def editar_declaracao_template(template_id):
         id=template_id, cliente_id=current_user.id
     ).first_or_404()
     
-    if request.method == 'POST':
-        data = request.get_json()
-        
-        template.nome = data['nome']
-        template.conteudo = data['conteudo']
-        template.tipo = data.get('tipo', template.tipo)
-        template.ativo = data.get('ativo', template.ativo)
-        
-        db.session.commit()
-        
-        return {'success': True, 'message': 'Template atualizado com sucesso'}
-    
-    return render_template('certificado/editar_declaracao.html', template=template)
+    if request.method == 'GET':
+        return {
+            'template': {
+                'id': template.id,
+                'nome': template.nome,
+                'conteudo': template.conteudo,
+                'tipo': template.tipo,
+                'ativo': template.ativo,
+            }
+        }
+
+    data = request.get_json()
+
+    template.nome = data['nome']
+    template.conteudo = data['conteudo']
+    template.tipo = data.get('tipo', template.tipo)
+    template.ativo = data.get('ativo', template.ativo)
+
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template atualizado com sucesso'}
 
 
 @certificado_routes.route('/declaracoes/deletar/<int:template_id>', methods=['DELETE'])
