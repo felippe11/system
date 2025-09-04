@@ -2070,8 +2070,111 @@ def deletar_declaracao_template(template_id):
     
     db.session.delete(template)
     db.session.commit()
-    
+
     return {'success': True, 'message': 'Template deletado com sucesso'}
+
+@certificado_routes.route('/declaracoes/duplicar/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('declaracoes.create')
+@require_resource_access('template', 'template_id', 'view')
+def duplicar_declaracao_template(template_id):
+    """Duplicar template de declaração existente."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id,
+        cliente_id=current_user.id
+    ).first()
+
+    if not template:
+        return {'success': False, 'message': 'Template não encontrado'}, 404
+
+    novo_template = DeclaracaoTemplate(
+        nome=f"{template.nome} (Cópia)",
+        conteudo=template.conteudo,
+        tipo=template.tipo,
+        ativo=False,
+        cliente_id=current_user.id,
+    )
+
+    db.session.add(novo_template)
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template duplicado com sucesso'}
+
+
+@certificado_routes.route('/declaracoes/toggle-ativo/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('declaracoes.edit')
+@require_resource_access('template', 'template_id', 'edit')
+def toggle_declaracao_ativo(template_id):
+    """Alternar status ativo de um template."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id,
+        cliente_id=current_user.id
+    ).first()
+
+    if not template:
+        return {'success': False, 'message': 'Template não encontrado'}, 404
+
+    if template.ativo:
+        template.ativo = False
+        status = 'desativado'
+    else:
+        DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).update(
+            {'ativo': False}
+        )
+        template.ativo = True
+        status = 'ativado'
+
+    db.session.commit()
+
+    return {
+        'success': True,
+        'message': f'Template {status} com sucesso',
+        'ativo': template.ativo,
+    }
+
+
+@certificado_routes.route('/declaracoes/importar', methods=['POST'])
+@login_required
+@require_permission('declaracoes.create')
+def importar_declaracao_template():
+    """Importar template de declaração a partir de JSON."""
+    data = request.get_json()
+
+    if not data:
+        return {'success': False, 'message': 'Nenhum dado enviado'}, 400
+
+    nome = data.get('nome')
+    conteudo = data.get('conteudo')
+    tipo = data.get('tipo', 'comparecimento')
+    ativo = data.get('ativo', False)
+
+    if not nome or not conteudo:
+        return {'success': False, 'message': 'Nome e conteúdo são obrigatórios'}, 400
+
+    existente = DeclaracaoTemplate.query.filter_by(
+        cliente_id=current_user.id, nome=nome
+    ).first()
+    if existente:
+        return {'success': False, 'message': 'Template com este nome já existe'}, 400
+
+    if ativo:
+        DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).update(
+            {'ativo': False}
+        )
+
+    template = DeclaracaoTemplate(
+        nome=nome,
+        conteudo=conteudo,
+        tipo=tipo,
+        ativo=ativo,
+        cliente_id=current_user.id,
+    )
+
+    db.session.add(template)
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template importado com sucesso'}
 
 
 @certificado_routes.route('/declaracoes/gerar_individual/<int:evento_id>/<int:usuario_id>')
