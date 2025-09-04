@@ -1669,6 +1669,77 @@ def excluir_regra_certificado(regra_id):
         return {'success': False, 'message': 'Erro ao excluir regra'}, 500
 
 
+@certificado_routes.route('/solicitar_declaracao', methods=['POST'])
+@login_required
+def solicitar_declaracao():
+    """Solicitar declaração de participação."""
+    try:
+        data = request.get_json(silent=True) or request.form
+
+        solicitacao_existente = SolicitacaoCertificado.query.filter_by(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            tipo_certificado='declaracao',
+            status='pendente'
+        ).first()
+
+        if solicitacao_existente:
+            mensagem = (
+                'Já existe uma solicitação pendente para esta declaração'
+            )
+            if request.is_json:
+                return {'success': False, 'message': mensagem}, 400
+            flash(mensagem, 'warning')
+            return redirect(
+                request.referrer
+                or url_for(
+                    'dashboard_participante_routes.dashboard_participante'
+                )
+            )
+
+        dados_participacao = calcular_atividades_participadas(
+            current_user.id, data['evento_id']
+        )
+
+        solicitacao = SolicitacaoCertificado(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            tipo_certificado='declaracao',
+            justificativa=data.get('justificativa', ''),
+            dados_participacao=dados_participacao
+        )
+
+        db.session.add(solicitacao)
+        db.session.commit()
+
+        criar_notificacao_solicitacao(solicitacao)
+
+        mensagem = 'Solicitação enviada com sucesso'
+        if request.is_json:
+            return {
+                'success': True,
+                'message': mensagem,
+                'solicitacao_id': solicitacao.id,
+            }
+        flash(mensagem, 'success')
+        return redirect(
+            request.referrer
+            or url_for('dashboard_participante_routes.dashboard_participante')
+        )
+
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        logger.error(f"Erro ao solicitar declaração: {str(e)}")
+        mensagem = 'Erro ao enviar solicitação'
+        if request.is_json:
+            return {'success': False, 'message': mensagem}, 500
+        flash(mensagem, 'danger')
+        return redirect(
+            request.referrer
+            or url_for('dashboard_participante_routes.dashboard_participante')
+        )
+
+
 @certificado_routes.route('/solicitar_certificado', methods=['POST'])
 @login_required
 def solicitar_certificado():

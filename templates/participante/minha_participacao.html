@@ -373,24 +373,29 @@
         }
         
         function solicitarDeclaracao(tipo) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '{{ url_for("certificado_routes.solicitar_declaracao") }}';
-            
-            const tipoInput = document.createElement('input');
-            tipoInput.type = 'hidden';
-            tipoInput.name = 'tipo';
-            tipoInput.value = tipo;
-            form.appendChild(tipoInput);
-            
-            const eventoInput = document.createElement('input');
-            eventoInput.type = 'hidden';
-            eventoInput.name = 'evento_id';
-            eventoInput.value = '{{ evento.id if evento else "" }}';
-            form.appendChild(eventoInput);
-            
-            document.body.appendChild(form);
-            form.submit();
+            const payload = {
+                tipo: tipo,
+                evento_id: '{{ evento.id if evento else "" }}'
+            };
+
+            fetch('{{ url_for("certificado_routes.solicitar_declaracao") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Solicitação enviada com sucesso!');
+                    location.reload();
+                } else {
+                    alert('Erro: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Erro ao enviar solicitação');
+                console.error(error);
+            });
         }
     </script>
 </body>
