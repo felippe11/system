@@ -119,7 +119,7 @@
                         {% for trabalho in trabalhos_designados %}
                         <tr>
                             <td>
-                                <strong>{{ trabalho.title }}</strong>
+                                <strong>{{ trabalho.titulo }}</strong>
                                 {% if trabalho.distribution_date %}
                                 <br><small class="text-muted">
                                     <i class="bi bi-calendar-plus"></i> 
@@ -128,9 +128,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if trabalho.submitted_at %}
-                                    {{ trabalho.submitted_at.strftime('%d/%m/%Y') }}
-                                    <br><small class="text-muted">{{ trabalho.submitted_at.strftime('%H:%M') }}</small>
+                                {% if trabalho.data_submissao %}
+                                    {{ trabalho.data_submissao.strftime('%d/%m/%Y') }}
+                                    <br><small class="text-muted">{{ trabalho.data_submissao.strftime('%H:%M') }}</small>
                                 {% else %}
                                     <span class="text-muted">Não informado</span>
                                 {% endif %}
@@ -179,7 +179,7 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ trabalho.file_path }}" target="_blank" class="btn btn-sm btn-primary">
+                                    <a href="{{ trabalho.pdf_url }}" target="_blank" class="btn btn-sm btn-primary">
                                         <i class="bi bi-file-earmark-pdf"></i> Ver PDF
                                     </a>
                                     {% if not trabalho.assignment_completed %}
