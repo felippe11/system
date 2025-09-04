@@ -55,6 +55,14 @@ certificado_routes = Blueprint(
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.pdf'}
+ALLOWED_MIME_TYPES = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.pdf': 'application/pdf',
+}
+
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
 @login_required
@@ -114,15 +122,35 @@ def gerar_certificado_evento():
 @require_permission('certificados.edit')
 
 def salvar_personalizacao_certificado():
+    """Salva personalização do certificado após validar os arquivos enviados."""
     cliente = Cliente.query.get(current_user.id)
+
+    upload_dir = os.path.join('static', 'uploads', 'certificados')
+    os.makedirs(upload_dir, exist_ok=True)
 
     for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
         arquivo = request.files.get(campo)
-        if arquivo:
-            filename = secure_filename(arquivo.filename)
-            path = os.path.join('static/uploads/certificados', filename)
-            arquivo.save(path)
-            setattr(cliente, campo, path)
+        if not arquivo or not arquivo.filename:
+            continue
+
+        filename = secure_filename(arquivo.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        mimetype = arquivo.mimetype
+
+        if ext not in ALLOWED_MIME_TYPES or ALLOWED_MIME_TYPES[ext] != mimetype:
+            flash(
+                'Arquivo inválido para {}. Permitidos: {}'.format(
+                    campo.replace('_', ' '), ', '.join(sorted(ALLOWED_EXTENSIONS))
+                ),
+                'danger',
+            )
+            return redirect(
+                url_for('certificado_routes.upload_personalizacao_certificado')
+            )
+
+        path = os.path.join(upload_dir, filename)
+        arquivo.save(path)
+        setattr(cliente, campo, path)
 
     cliente.texto_personalizado = request.form.get('texto_personalizado')
     db.session.commit()
@@ -2104,7 +2132,15 @@ def criar_declaracao_template():
     """Criar novo template de declaração de comparecimento."""
     if request.method == 'POST':
         data = request.get_json()
-        
+        existente = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        ).first()
+        if existente:
+            return {
+                'success': False,
+                'message': 'Template com este nome já existe'
+            }, 400
+
         template = DeclaracaoTemplate(
             nome=data['nome'],
             conteudo=data['conteudo'],
@@ -2112,10 +2148,10 @@ def criar_declaracao_template():
             ativo=data.get('ativo', True),
             cliente_id=current_user.id
         )
-        
+
         db.session.add(template)
         db.session.commit()
-        
+
         return {'success': True, 'message': 'Template de declaração criado com sucesso'}
     
     return render_template('certificado/criar_declaracao.html')
@@ -2143,6 +2179,19 @@ def editar_declaracao_template(template_id):
         }
 
     data = request.get_json()
+
+    existente = (
+        DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        )
+        .filter(DeclaracaoTemplate.id != template.id)
+        .first()
+    )
+    if existente:
+        return {
+            'success': False,
+            'message': 'Template com este nome já existe'
+        }, 400
 
     template.nome = data['nome']
     template.conteudo = data['conteudo']
@@ -2273,6 +2322,7 @@ def importar_declaracao_template():
     return {'success': True, 'message': 'Template importado com sucesso'}
 
 
+
 @certificado_routes.route('/declaracoes/gerar_individual/<int:evento_id>/<int:usuario_id>')
 @login_required
 @require_permission('declaracoes.generate')
@@ -2305,6 +2355,7 @@ def gerar_declaracao_individual(evento_id, usuario_id):
     pdf_path = gerar_declaracao_personalizada(usuario, evento, participacao, template, current_user)
     
     return send_file(pdf_path, mimetype="application/pdf")
+
 
 
 @certificado_routes.route('/declaracoes/gerar_lote/<int:evento_id>')
