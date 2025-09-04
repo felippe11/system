@@ -1893,26 +1893,7 @@
   <!-- /ABA 5: FINANCEIRO -->
   <!-- ABA 6: REVISORES -->
   <div class="tab-pane fade" id="revisores" role="tabpanel">
-    <h5 class="fw-bold mt-4">Importar Trabalhos para Revisão</h5>
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <form action="{{ url_for('importar_trabalhos_routes.importar_trabalhos') }}" method="POST" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label for="arquivo_trabalhos" class="form-label">Selecione o arquivo Excel (.xlsx)</label>
-                    <input class="form-control" type="file" id="arquivo_trabalhos" name="arquivo_trabalhos" accept=".xlsx" required>
-                </div>
-                <div class="mb-3">
-                    <label for="evento_id_trabalhos" class="form-label">Selecione o Evento</label>
-                    <select class="form-select" id="evento_id_trabalhos" name="evento_id" required>
-                      {% for ev in usuario.eventos %}
-                        <option value="{{ ev.id }}">{{ ev.nome }}</option>
-                      {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary">Importar e Atribuir Trabalhos</button>
-            </form>
-        </div>
-    </div>
+
 
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
 
