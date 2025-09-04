@@ -849,24 +849,42 @@ def distribuicao_manual():
     try:
         # Buscar agendamentos sem monitor atribuído
         # Outer join apenas com atribuições ativas para identificar sem monitor
-        agendamentos_sem_monitor = db.session.query(
+        agendamentos_sem_monitor_query = db.session.query(
             AgendamentoVisita,
             HorarioVisitacao
         ).join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).outerjoin(
             MonitorAgendamento,
-            (AgendamentoVisita.id == MonitorAgendamento.agendamento_id) & (MonitorAgendamento.status == 'ativo')
+            (AgendamentoVisita.id == MonitorAgendamento.agendamento_id)
+            & (MonitorAgendamento.status == 'ativo')
         ).filter(
             MonitorAgendamento.id.is_(None),
             HorarioVisitacao.data >= datetime.now().date()
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
-        
+        )
+
+        # Se cliente, filtrar por cliente_id
+        if current_user.tipo == "cliente":
+            agendamentos_sem_monitor_query = agendamentos_sem_monitor_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id
+            )
+
+        agendamentos_sem_monitor = (
+            agendamentos_sem_monitor_query
+            .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+            .all()
+        )
+
         # Buscar monitores ativos
-        monitores_ativos = Monitor.query.filter_by(ativo=True).order_by(Monitor.nome_completo).all()
-        
+        monitores_query = Monitor.query.filter_by(ativo=True)
+        if current_user.tipo == "cliente":
+            monitores_query = monitores_query.filter(
+                Monitor.cliente_id == current_user.id
+            )
+        monitores_ativos = monitores_query.order_by(Monitor.nome_completo).all()
+
         # Buscar agendamentos já atribuídos (para referência)
-        agendamentos_atribuidos = db.session.query(
+        agendamentos_atribuidos_query = db.session.query(
             MonitorAgendamento,
             AgendamentoVisita,
             HorarioVisitacao,
@@ -880,7 +898,19 @@ def distribuicao_manual():
         ).filter(
             HorarioVisitacao.data >= datetime.now().date(),
             MonitorAgendamento.status == 'ativo'
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+        )
+
+        if current_user.tipo == "cliente":
+            agendamentos_atribuidos_query = agendamentos_atribuidos_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id,
+                Monitor.cliente_id == current_user.id
+            )
+
+        agendamentos_atribuidos = (
+            agendamentos_atribuidos_query
+            .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+            .all()
+        )
         
         return render_template('monitor/distribuicao_manual.html',
                              agendamentos_sem_monitor=agendamentos_sem_monitor,
@@ -907,19 +937,26 @@ def atribuir_monitor():
         if not agendamento_id or not monitor_id:
             return jsonify({'success': False, 'message': 'Dados incompletos'})
         
-        # Verificar se o agendamento existe e não tem monitor
+        # Verificar se o agendamento e o monitor existem
         agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+        monitor = Monitor.query.get_or_404(monitor_id)
+
+        if current_user.tipo == "cliente":
+            if (
+                agendamento.cliente_id != current_user.id
+                or monitor.cliente_id != current_user.id
+            ):
+                return jsonify({'success': False, 'message': 'Acesso negado'})
+
         # Verificar apenas atribuições ativas
         monitor_existente = MonitorAgendamento.query.filter_by(
             agendamento_id=agendamento_id,
             status='ativo'
         ).first()
-        
+
         if monitor_existente:
             return jsonify({'success': False, 'message': 'Agendamento já possui monitor atribuído'})
-        
-        # Verificar se o monitor existe e está ativo
-        monitor = Monitor.query.get_or_404(monitor_id)
+
         if not monitor.ativo:
             return jsonify({'success': False, 'message': 'Monitor não está ativo'})
         
@@ -962,10 +999,17 @@ def remover_atribuicao():
         
         # Buscar e remover a atribuição
         atribuicao = MonitorAgendamento.query.filter_by(agendamento_id=agendamento_id).first()
-        
+
         if not atribuicao:
             return jsonify({'success': False, 'message': 'Atribuição não encontrada'})
-        
+
+        if current_user.tipo == 'cliente':
+            if (
+                atribuicao.monitor.cliente_id != current_user.id
+                or atribuicao.agendamento.cliente_id != current_user.id
+            ):
+                return jsonify({'success': False, 'message': 'Atribuição não pertence a você'})
+
         db.session.delete(atribuicao)
         db.session.commit()
         
@@ -977,6 +1021,42 @@ def remover_atribuicao():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
+
+@monitor_routes.route('/reset-agendamentos', methods=['POST'])
+@login_required
+def reset_agendamentos():
+    """Desvincula agendamentos de um monitor ou de todos."""
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        monitor_id = payload.get('monitor_id')
+        hoje = datetime.now().date()
+
+        query = db.session.query(MonitorAgendamento).join(
+            AgendamentoVisita
+        ).join(HorarioVisitacao).filter(
+            MonitorAgendamento.status == 'ativo',
+            HorarioVisitacao.data >= hoje,
+        )
+
+        if current_user.tipo == 'cliente':
+            query = query.filter(AgendamentoVisita.cliente_id == current_user.id)
+
+        if monitor_id:
+            query = query.filter(MonitorAgendamento.monitor_id == monitor_id)
+
+        atribuicoes = query.all()
+        for atrib in atribuicoes:
+            atrib.status = 'inativo'
+
+        db.session.commit()
+        return jsonify({'success': True, 'removidos': len(atribuicoes)})
+
+    except Exception as exc:  # pragma: no cover - unexpected
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(exc)})
 
 @monitor_routes.route('/importacao-massa')
 @login_required
@@ -1251,6 +1331,12 @@ def remover_atribuicao_route():
     """Wrapper para remover_atribuicao com prefixo /monitor/"""
     return remover_atribuicao()
 
+@monitor_routes.route('/monitor/reset-agendamentos', methods=['POST'])
+@login_required
+def reset_agendamentos_route():
+    """Wrapper para reset_agendamentos com prefixo /monitor."""
+    return reset_agendamentos()
+
 @monitor_routes.route('/distribuicao-automatica')
 @login_required
 def distribuicao_automatica():
@@ -1262,7 +1348,7 @@ def distribuicao_automatica():
     
     # Obter estatísticas para exibir na página
     hoje = datetime.now().date()
-    agendamentos_sem_monitor = db.session.query(AgendamentoVisita).join(
+    agendamentos_query = db.session.query(AgendamentoVisita).join(
         HorarioVisitacao
     ).filter(
         HorarioVisitacao.data >= hoje,
@@ -1270,9 +1356,19 @@ def distribuicao_automatica():
         ~AgendamentoVisita.id.in_(
             db.session.query(MonitorAgendamento.agendamento_id)
         )
-    ).count()
-    
-    monitores_ativos = Monitor.query.filter_by(ativo=True).count()
+    )
+    if current_user.tipo == 'cliente':
+        agendamentos_query = agendamentos_query.filter(
+            AgendamentoVisita.cliente_id == current_user.id
+        )
+    agendamentos_sem_monitor = agendamentos_query.count()
+
+    monitores_query = Monitor.query.filter_by(ativo=True)
+    if current_user.tipo == 'cliente':
+        monitores_query = monitores_query.filter(
+            Monitor.cliente_id == current_user.id
+        )
+    monitores_ativos = monitores_query.count()
     
     return render_template('monitor/distribuicao_automatica.html',
                          agendamentos_sem_monitor=agendamentos_sem_monitor,
@@ -1310,6 +1406,10 @@ def distribuir_automaticamente():
             HorarioVisitacao.data >= hoje,
             AgendamentoVisita.status.in_(['confirmado', 'pendente'])
         )
+        if current_user.tipo == 'cliente':
+            base_query = base_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id
+            )
 
         if modo == 'redistribuir_todos':
             # Desativar atribuições ativas futuras antes de redistribuir
@@ -1318,8 +1418,12 @@ def distribuir_automaticamente():
                 .join(AgendamentoVisita, MonitorAgendamento.agendamento_id == AgendamentoVisita.id)
                 .join(HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id)
                 .filter(HorarioVisitacao.data >= hoje, MonitorAgendamento.status == 'ativo')
-                .all()
             )
+            if current_user.tipo == 'cliente':
+                ativos = ativos.filter(
+                    AgendamentoVisita.cliente_id == current_user.id
+                )
+            ativos = ativos.all()
             for ma in ativos:
                 ma.status = 'inativo'
             db.session.flush()
@@ -1331,16 +1435,32 @@ def distribuir_automaticamente():
                 .all()
             )
         
-        # Obter monitores ativos
-        monitores_ativos = Monitor.query.filter_by(ativo=True).all()
-        
+        # Obter monitores ativos e contagens de agendamentos já atribuídos
+        monitores_query = Monitor.query.filter_by(ativo=True)
+        if current_user.tipo == 'cliente':
+            monitores_query = monitores_query.filter(
+                Monitor.cliente_id == current_user.id
+            )
+        monitores_ativos = monitores_query.all()
+        agendamentos_ativos_query = db.session.query(
+            MonitorAgendamento.monitor_id,
+            db.func.count(MonitorAgendamento.id),
+        ).filter(MonitorAgendamento.status == 'ativo')
+        if current_user.tipo == 'cliente':
+            agendamentos_ativos_query = agendamentos_ativos_query.join(Monitor).filter(
+                Monitor.cliente_id == current_user.id
+            )
+        agendamentos_ativos = dict(
+            agendamentos_ativos_query.group_by(MonitorAgendamento.monitor_id).all()
+        )
+
         if not monitores_ativos:
             current_app.logger.warning("Nenhum monitor ativo encontrado")
             return jsonify({
                 'success': False,
                 'message': 'Nenhum monitor ativo encontrado',
             })
-        
+
         atribuicoes = 0
         atribuicoes_detalhes = []
         pendentes = []
@@ -1379,24 +1499,20 @@ def distribuir_automaticamente():
                 if _norm_token(dia_agendamento) in dias_monitor:
                     if _norm_token(turno_agendamento) in turnos_monitor:
                         # Verificar carga horária (apenas agendamentos ativos)
-                        agendamentos_monitor = MonitorAgendamento.query.filter_by(
-                            monitor_id=monitor.id,
-                            status='ativo'
-                        ).count()
-                        
+                        agendamentos_monitor = agendamentos_ativos.get(
+                            monitor.id, 0
+                        )
+
                         # Assumindo 4 horas por agendamento em média
                         horas_utilizadas = agendamentos_monitor * 4
                         if horas_utilizadas < monitor.carga_horaria_disponibilidade:
                             monitores_disponiveis.append(monitor)
-            
+
             # Atribuir ao monitor com menor carga atual (apenas agendamentos ativos)
             if monitores_disponiveis:
                 monitor_escolhido = min(
                     monitores_disponiveis,
-                    key=lambda m: MonitorAgendamento.query.filter_by(
-                        monitor_id=m.id,
-                        status='ativo'
-                    ).count(),
+                    key=lambda m: agendamentos_ativos.get(m.id, 0),
                 )
 
                 # Criar atribuição
@@ -1409,6 +1525,9 @@ def distribuir_automaticamente():
                 )
 
                 db.session.add(atribuicao)
+                agendamentos_ativos[monitor_escolhido.id] = agendamentos_ativos.get(
+                    monitor_escolhido.id, 0
+                ) + 1
                 atribuicoes += 1
                 current_app.logger.info(
                     "Monitor %s atribuído ao agendamento %s",

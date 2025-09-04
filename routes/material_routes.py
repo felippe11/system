@@ -93,6 +93,17 @@ def gerenciar_materiais():
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
+@material_routes.route('/materiais/lista-compras')
+@login_required
+def listar_compras():
+    """Página para geração da lista de compras de materiais."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    return render_template('material/lista_compras.html')
+
+
 @material_routes.route('/api/polos', methods=['GET'])
 @csrf.exempt
 @login_required
@@ -1227,4 +1238,22 @@ def editar_material(material_id):
     return render_template(
         'material/editar_material.html', material=material, polos=polos
     )
+
+
+@material_routes.route('/materiais/<int:material_id>/movimentar')
+@login_required
+def movimentar_material(material_id):
+    """Página para registrar movimentação de um material."""
+    if not verificar_acesso_cliente():
+        flash('Acesso negado', 'error')
+        return redirect(url_for('evento_routes.home'))
+
+    material = Material.query.filter_by(
+        id=material_id, cliente_id=current_user.id, ativo=True
+    ).first()
+    if not material:
+        flash('Material não encontrado', 'error')
+        return redirect(url_for('material_routes.gerenciar_materiais'))
+
+    return render_template('material/movimentar_material.html', material=material)
 

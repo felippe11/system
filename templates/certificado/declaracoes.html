@@ -89,7 +89,7 @@
                                             <button class="btn btn-outline-success" onclick="previewTemplate({{ template.id }})">
                                                 <i class="fas fa-eye"></i> Preview
                                             </button>
-                                            <button class="btn btn-outline-warning" onclick="toggleAtivo({{ template.id }}, {{ template.ativo|lower }})">
+                                            <button class="btn btn-outline-warning" onclick="toggleAtivo({{ template.id }})">
                                                 <i class="fas fa-{% if template.ativo %}pause{% else %}play{% endif %}"></i>
                                             </button>
                                         </div>
@@ -335,13 +335,29 @@ function previewTemplate(id) {
 }
 
 function duplicarTemplate(id) {
-    // Implementar duplicação
-    alert('Funcionalidade de duplicação em desenvolvimento');
+    $.post(`/certificado/declaracoes/duplicar/${id}`, function(response) {
+        if (response.success) {
+            alert(response.message);
+            location.reload();
+        } else {
+            alert('Erro: ' + (response.message || 'Erro desconhecido'));
+        }
+    }).fail(function() {
+        alert('Erro ao duplicar template');
+    });
 }
 
-function toggleAtivo(id, ativo) {
-    // Implementar toggle de status ativo
-    alert('Funcionalidade de ativar/desativar em desenvolvimento');
+function toggleAtivo(id) {
+    $.post(`/certificado/declaracoes/toggle-ativo/${id}`, function(response) {
+        if (response.success) {
+            alert(response.message);
+            location.reload();
+        } else {
+            alert('Erro: ' + (response.message || 'Erro desconhecido'));
+        }
+    }).fail(function() {
+        alert('Erro ao alterar status');
+    });
 }
 
 function inserirVariavel() {
@@ -382,7 +398,49 @@ function previewConteudo() {
 }
 
 function importarTemplate() {
-    alert('Funcionalidade de importação em desenvolvimento');
+    const input = $('<input type="file" accept="application/json">');
+    input.on('change', function() {
+        const file = this.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            let data;
+            try {
+                data = JSON.parse(e.target.result);
+            } catch (err) {
+                alert('Arquivo JSON inválido');
+                return;
+            }
+
+            if (!data.nome || !data.conteudo) {
+                alert('JSON deve conter os campos nome e conteudo');
+                return;
+            }
+
+            $.ajax({
+                url: '/certificado/declaracoes/importar',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(data),
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (response.message || 'Erro desconhecido'));
+                    }
+                },
+                error: function() {
+                    alert('Erro ao importar template');
+                }
+            });
+        };
+        reader.readAsText(file);
+    });
+    input.trigger('click');
 }
 
 // Busca de templates

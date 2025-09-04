@@ -41,22 +41,30 @@
                     
                     <!-- Grupo 2: Distribuição -->
                     <div class="btn-group" role="group" aria-label="Distribuição de Monitores">
-                        <a href="{{ url_for('monitor_routes.distribuicao_automatica') }}" 
-                           class="btn btn-success" 
-                           data-bs-toggle="tooltip" 
-                           data-bs-placement="top" 
+                        <a href="{{ url_for('monitor_routes.distribuicao_automatica') }}"
+                           class="btn btn-success"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
                            title="Distribuir monitores automaticamente">
                             <i class="fas fa-magic"></i>
                             <span class="d-none d-sm-inline ms-1">Automática</span>
                         </a>
-                        <a href="{{ url_for('monitor_routes.distribuicao_manual') }}" 
-                           class="btn btn-outline-success" 
-                           data-bs-toggle="tooltip" 
-                           data-bs-placement="top" 
+                        <a href="{{ url_for('monitor_routes.distribuicao_manual') }}"
+                           class="btn btn-outline-success"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
                            title="Distribuir monitores manualmente">
                             <i class="fas fa-users-cog"></i>
                             <span class="d-none d-sm-inline ms-1">Manual</span>
                         </a>
+                        <button class="btn btn-outline-danger"
+                                onclick="resetAgendamentos()"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Desvincular todos os agendamentos">
+                            <i class="fas fa-ban"></i>
+                            <span class="d-none d-sm-inline ms-1">Reset</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -177,10 +185,23 @@
                 </div>
                 <div class="card-body">
                     {% if monitores %}
+                        <button id="copy-codes" class="btn btn-outline-secondary mb-3">Copiar códigos</button>
+                        <button id="whatsapp-codes" class="btn btn-outline-success mb-3 ms-2"
+                                data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="Enviar via WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
+                        <button id="whatsapp-distribuicao"
+                                class="btn btn-outline-success mb-3 ms-2"
+                                data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="Compartilhar distribuição">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
+                                        <th><input type="checkbox" id="select-all"></th>
                                         <th>Nome</th>
                                         <th>Curso</th>
                                         <th>Disponibilidade</th>
@@ -192,7 +213,12 @@
                                 </thead>
                                 <tbody>
                                     {% for monitor in monitores %}
-                                    <tr>
+                                    {% set agendamentos_monitor = monitor.agendamentos_atribuidos %}
+                                    {% set agendamentos_monitor_ativos = agendamentos_monitor | selectattr('status','equalto','ativo') | list %}
+                                    <tr class="monitor-row" data-nome="{{ monitor.nome_completo }}" data-agendamentos="{{ agendamentos_monitor_ativos|length }}">
+                                        <td>
+                                            <input type="checkbox" class="monitor-checkbox" data-nome="{{ monitor.nome_completo }}" data-codigo="{{ monitor.codigo_acesso }}">
+                                        </td>
                                         <td>
                                             <strong>{{ monitor.nome_completo }}</strong>
                                             <small class="text-muted d-block">Código: {{ monitor.codigo_acesso }}</small>
@@ -221,8 +247,6 @@
                                             <small class="text-muted">{{ monitor.telefone_whatsapp }}</small>
                                         </td>
                                         <td>
-                                            {% set agendamentos_monitor = monitor.agendamentos_atribuidos %}
-                                            {% set agendamentos_monitor_ativos = agendamentos_monitor | selectattr('status','equalto','ativo') | list %}
                                             <span class="badge bg-primary">{{ agendamentos_monitor_ativos|length }} agendamentos</span>
                                             {% if agendamentos_monitor_ativos %}
                                                 {% set ns = namespace(proximo=None) %}
@@ -263,18 +287,26 @@
                                                     <i class="fas fa-edit me-1"></i>
                                                     <span class="d-none d-md-inline">Editar</span>
                                                 </button>
-                                                <button class="btn btn-outline-info" 
-                                                        onclick="verAgendamentos({{ monitor.id }})" 
-                                                        data-bs-toggle="tooltip" 
-                                                        data-bs-placement="top" 
+                                                <button class="btn btn-outline-info"
+                                                        onclick="verAgendamentos({{ monitor.id }})"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
                                                         title="Visualizar agendamentos do monitor">
                                                     <i class="fas fa-calendar-alt me-1"></i>
                                                     <span class="d-none d-md-inline">Agendamentos</span>
                                                 </button>
-                                                <button class="btn btn-outline-{{ 'warning' if monitor.ativo else 'success' }}" 
-                                                        onclick="toggleStatus({{ monitor.id }}, {{ monitor.ativo|lower }})" 
-                                                        data-bs-toggle="tooltip" 
-                                                        data-bs-placement="top" 
+                                                <button class="btn btn-outline-warning"
+                                                        onclick="resetAgendamentos({{ monitor.id }})"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
+                                                        title="Desvincular agendamentos do monitor">
+                                                    <i class="fas fa-unlink me-1"></i>
+                                                    <span class="d-none d-lg-inline">Desvincular</span>
+                                                </button>
+                                                <button class="btn btn-outline-{{ 'warning' if monitor.ativo else 'success' }}"
+                                                        onclick="toggleStatus({{ monitor.id }}, {{ monitor.ativo|lower }})"
+                                                        data-bs-toggle="tooltip"
+                                                        data-bs-placement="top"
                                                         title="{{ 'Desativar monitor' if monitor.ativo else 'Ativar monitor' }}">
                                                     <i class="fas {{ 'fa-pause' if monitor.ativo else 'fa-play' }} me-1"></i>
                                                     <span class="d-none d-lg-inline">{{ 'Desativar' if monitor.ativo else 'Ativar' }}</span>
@@ -318,7 +350,72 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.monitor-checkbox').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+    }
+
+    const copyBtn = document.getElementById('copy-codes');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', copySelectedCodes);
+    }
+
+    const whatsappBtn = document.getElementById('whatsapp-codes');
+    if (whatsappBtn) {
+        whatsappBtn.addEventListener('click', shareSelectedCodes);
+    }
+
+    const whatsappDistribBtn = document.getElementById('whatsapp-distribuicao');
+    if (whatsappDistribBtn) {
+        whatsappDistribBtn.addEventListener('click', shareDistribution);
+    }
 });
+
+function copySelectedCodes() {
+    const selected = document.querySelectorAll('.monitor-checkbox:checked');
+    const allBoxes = document.querySelectorAll('.monitor-checkbox');
+    const source = selected.length ? selected : allBoxes;
+    const lines = Array.from(source).map(cb => `${cb.dataset.nome} – Código: ${cb.dataset.codigo}`);
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        alert('Códigos copiados para a área de transferência');
+    });
+}
+
+function shareSelectedCodes() {
+    const selected = document.querySelectorAll('.monitor-checkbox:checked');
+    const allBoxes = document.querySelectorAll('.monitor-checkbox');
+    const source = selected.length ? selected : allBoxes;
+    const lines = Array.from(source).map(
+        cb => `${cb.dataset.nome} – Código: ${cb.dataset.codigo}`
+    );
+    const message = lines.join('\n');
+    navigator.clipboard.writeText(message).then(() => {
+        const url =
+            `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    });
+}
+
+function shareDistribution() {
+    const rows = document.querySelectorAll('.monitor-row');
+    const lines = Array.from(rows).map(row => {
+        const nome = row.dataset.nome;
+        const qtd = row.dataset.agendamentos;
+        return `${nome} – ${qtd} agendamento${qtd === '1' ? '' : 's'}`;
+    });
+    const semMonitor = {{ agendamentos_descobertos }};
+    lines.push(`Agendamentos sem monitor: ${semMonitor}`);
+    const message = 'Distribuição de agendamentos:\n' + lines.join('\n');
+    navigator.clipboard.writeText(message).then(() => {
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    });
+}
 
 function editarMonitor(monitorId) {
     // Redirecionar para página de edição do monitor
@@ -328,6 +425,35 @@ function editarMonitor(monitorId) {
 function verAgendamentos(monitorId) {
     // Redirecionar para página de agendamentos do monitor
     window.location.href = `{{ url_for('monitor_routes.listar_agendamentos') }}?monitor_id=${monitorId}`;
+}
+
+function resetAgendamentos(monitorId = null) {
+    const alvo = monitorId ? 'este monitor' : 'todos os monitores';
+    if (!confirm(`Deseja desvincular agendamentos de ${alvo}?`)) {
+        return;
+    }
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                     document.querySelector('input[name="csrf_token"]')?.value;
+    fetch('/reset-agendamentos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ monitor_id: monitorId })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Desvinculados ${data.removidos} agendamentos`);
+                window.location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(() => {
+            alert('Erro ao desvincular agendamentos');
+        });
 }
 
 function toggleStatus(monitorId, ativo) {

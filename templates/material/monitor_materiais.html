@@ -78,9 +78,6 @@
                         <button class="btn btn-outline-success btn-sm" onclick="gerarRelatorio()">
                             <i class="fas fa-file-excel me-2"></i>Relatório
                         </button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="exportarWhatsApp()">
-                            <i class="fab fa-whatsapp me-2"></i>WhatsApp
-                        </button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -138,47 +135,6 @@
     </div>
 </div>
 
-<!-- Modal Exportar WhatsApp -->
-<div class="modal fade" id="modalWhatsApp" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Exportar para WhatsApp</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Tipo de Relatório</label>
-                    <select class="form-select" id="whatsapp-tipo">
-                        <option value="estoque_baixo">Materiais com Estoque Baixo</option>
-                        <option value="sem_estoque">Materiais Sem Estoque</option>
-                        <option value="lista_compras">Lista de Compras</option>
-                        <option value="geral">Relatório Geral</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Polo (opcional)</label>
-                    <select class="form-select" id="whatsapp-polo">
-                        <option value="">Todos os polos</option>
-                        {% for polo in polos %}
-                        <option value="{{ polo.id }}">{{ polo.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Texto para WhatsApp</label>
-                    <textarea class="form-control" id="whatsapp-texto" rows="10" readonly></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-success" onclick="copiarTextoWhatsApp()">
-                    <i class="fas fa-copy me-2"></i>Copiar Texto
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}

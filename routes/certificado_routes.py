@@ -1,11 +1,27 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    send_file,
+    after_this_request,
+    jsonify,
+)
 from utils import endpoints
 
 from flask_login import login_required, current_user
 
 from werkzeug.utils import secure_filename
 from extensions import db
-from models import Oficina, CertificadoTemplate, Evento
+from models import (
+    Oficina,
+    CertificadoTemplate,
+    Evento,
+    Checkin,
+    DeclaracaoComparecimento,
+)
 from models.user import Cliente
 
 from models.certificado import (
@@ -28,6 +44,7 @@ from datetime import datetime
 import logging
 
 import json
+from sqlalchemy import func
 
 
 certificado_routes = Blueprint(
@@ -37,6 +54,14 @@ certificado_routes = Blueprint(
 )
 
 logger = logging.getLogger(__name__)
+
+ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.pdf'}
+ALLOWED_MIME_TYPES = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.pdf': 'application/pdf',
+}
 
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
@@ -97,15 +122,35 @@ def gerar_certificado_evento():
 @require_permission('certificados.edit')
 
 def salvar_personalizacao_certificado():
+    """Salva personalização do certificado após validar os arquivos enviados."""
     cliente = Cliente.query.get(current_user.id)
+
+    upload_dir = os.path.join('static', 'uploads', 'certificados')
+    os.makedirs(upload_dir, exist_ok=True)
 
     for campo in ['logo_certificado', 'assinatura_certificado', 'fundo_certificado']:
         arquivo = request.files.get(campo)
-        if arquivo:
-            filename = secure_filename(arquivo.filename)
-            path = os.path.join('static/uploads/certificados', filename)
-            arquivo.save(path)
-            setattr(cliente, campo, path)
+        if not arquivo or not arquivo.filename:
+            continue
+
+        filename = secure_filename(arquivo.filename)
+        ext = os.path.splitext(filename)[1].lower()
+        mimetype = arquivo.mimetype
+
+        if ext not in ALLOWED_MIME_TYPES or ALLOWED_MIME_TYPES[ext] != mimetype:
+            flash(
+                'Arquivo inválido para {}. Permitidos: {}'.format(
+                    campo.replace('_', ' '), ', '.join(sorted(ALLOWED_EXTENSIONS))
+                ),
+                'danger',
+            )
+            return redirect(
+                url_for('certificado_routes.upload_personalizacao_certificado')
+            )
+
+        path = os.path.join(upload_dir, filename)
+        arquivo.save(path)
+        setattr(cliente, campo, path)
 
     cliente.texto_personalizado = request.form.get('texto_personalizado')
     db.session.commit()
@@ -1652,6 +1697,77 @@ def excluir_regra_certificado(regra_id):
         return {'success': False, 'message': 'Erro ao excluir regra'}, 500
 
 
+@certificado_routes.route('/solicitar_declaracao', methods=['POST'])
+@login_required
+def solicitar_declaracao():
+    """Solicitar declaração de participação."""
+    try:
+        data = request.get_json(silent=True) or request.form
+
+        solicitacao_existente = SolicitacaoCertificado.query.filter_by(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            tipo_certificado='declaracao',
+            status='pendente'
+        ).first()
+
+        if solicitacao_existente:
+            mensagem = (
+                'Já existe uma solicitação pendente para esta declaração'
+            )
+            if request.is_json:
+                return {'success': False, 'message': mensagem}, 400
+            flash(mensagem, 'warning')
+            return redirect(
+                request.referrer
+                or url_for(
+                    'dashboard_participante_routes.dashboard_participante'
+                )
+            )
+
+        dados_participacao = calcular_atividades_participadas(
+            current_user.id, data['evento_id']
+        )
+
+        solicitacao = SolicitacaoCertificado(
+            usuario_id=current_user.id,
+            evento_id=data['evento_id'],
+            tipo_certificado='declaracao',
+            justificativa=data.get('justificativa', ''),
+            dados_participacao=dados_participacao
+        )
+
+        db.session.add(solicitacao)
+        db.session.commit()
+
+        criar_notificacao_solicitacao(solicitacao)
+
+        mensagem = 'Solicitação enviada com sucesso'
+        if request.is_json:
+            return {
+                'success': True,
+                'message': mensagem,
+                'solicitacao_id': solicitacao.id,
+            }
+        flash(mensagem, 'success')
+        return redirect(
+            request.referrer
+            or url_for('dashboard_participante_routes.dashboard_participante')
+        )
+
+    except Exception as e:  # noqa: BLE001
+        db.session.rollback()
+        logger.error(f"Erro ao solicitar declaração: {str(e)}")
+        mensagem = 'Erro ao enviar solicitação'
+        if request.is_json:
+            return {'success': False, 'message': mensagem}, 500
+        flash(mensagem, 'danger')
+        return redirect(
+            request.referrer
+            or url_for('dashboard_participante_routes.dashboard_participante')
+        )
+
+
 @certificado_routes.route('/solicitar_certificado', methods=['POST'])
 @login_required
 def solicitar_certificado():
@@ -2016,7 +2132,15 @@ def criar_declaracao_template():
     """Criar novo template de declaração de comparecimento."""
     if request.method == 'POST':
         data = request.get_json()
-        
+        existente = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        ).first()
+        if existente:
+            return {
+                'success': False,
+                'message': 'Template com este nome já existe'
+            }, 400
+
         template = DeclaracaoTemplate(
             nome=data['nome'],
             conteudo=data['conteudo'],
@@ -2024,10 +2148,10 @@ def criar_declaracao_template():
             ativo=data.get('ativo', True),
             cliente_id=current_user.id
         )
-        
+
         db.session.add(template)
         db.session.commit()
-        
+
         return {'success': True, 'message': 'Template de declaração criado com sucesso'}
     
     return render_template('certificado/criar_declaracao.html')
@@ -2043,19 +2167,40 @@ def editar_declaracao_template(template_id):
         id=template_id, cliente_id=current_user.id
     ).first_or_404()
     
-    if request.method == 'POST':
-        data = request.get_json()
-        
-        template.nome = data['nome']
-        template.conteudo = data['conteudo']
-        template.tipo = data.get('tipo', template.tipo)
-        template.ativo = data.get('ativo', template.ativo)
-        
-        db.session.commit()
-        
-        return {'success': True, 'message': 'Template atualizado com sucesso'}
-    
-    return render_template('certificado/editar_declaracao.html', template=template)
+    if request.method == 'GET':
+        return {
+            'template': {
+                'id': template.id,
+                'nome': template.nome,
+                'conteudo': template.conteudo,
+                'tipo': template.tipo,
+                'ativo': template.ativo,
+            }
+        }
+
+    data = request.get_json()
+
+    existente = (
+        DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        )
+        .filter(DeclaracaoTemplate.id != template.id)
+        .first()
+    )
+    if existente:
+        return {
+            'success': False,
+            'message': 'Template com este nome já existe'
+        }, 400
+
+    template.nome = data['nome']
+    template.conteudo = data['conteudo']
+    template.tipo = data.get('tipo', template.tipo)
+    template.ativo = data.get('ativo', template.ativo)
+
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template atualizado com sucesso'}
 
 
 @certificado_routes.route('/declaracoes/deletar/<int:template_id>', methods=['DELETE'])
@@ -2070,8 +2215,112 @@ def deletar_declaracao_template(template_id):
     
     db.session.delete(template)
     db.session.commit()
-    
+
     return {'success': True, 'message': 'Template deletado com sucesso'}
+
+@certificado_routes.route('/declaracoes/duplicar/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('declaracoes.create')
+@require_resource_access('template', 'template_id', 'view')
+def duplicar_declaracao_template(template_id):
+    """Duplicar template de declaração existente."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id,
+        cliente_id=current_user.id
+    ).first()
+
+    if not template:
+        return {'success': False, 'message': 'Template não encontrado'}, 404
+
+    novo_template = DeclaracaoTemplate(
+        nome=f"{template.nome} (Cópia)",
+        conteudo=template.conteudo,
+        tipo=template.tipo,
+        ativo=False,
+        cliente_id=current_user.id,
+    )
+
+    db.session.add(novo_template)
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template duplicado com sucesso'}
+
+
+@certificado_routes.route('/declaracoes/toggle-ativo/<int:template_id>', methods=['POST'])
+@login_required
+@require_permission('declaracoes.edit')
+@require_resource_access('template', 'template_id', 'edit')
+def toggle_declaracao_ativo(template_id):
+    """Alternar status ativo de um template."""
+    template = DeclaracaoTemplate.query.filter_by(
+        id=template_id,
+        cliente_id=current_user.id
+    ).first()
+
+    if not template:
+        return {'success': False, 'message': 'Template não encontrado'}, 404
+
+    if template.ativo:
+        template.ativo = False
+        status = 'desativado'
+    else:
+        DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).update(
+            {'ativo': False}
+        )
+        template.ativo = True
+        status = 'ativado'
+
+    db.session.commit()
+
+    return {
+        'success': True,
+        'message': f'Template {status} com sucesso',
+        'ativo': template.ativo,
+    }
+
+
+@certificado_routes.route('/declaracoes/importar', methods=['POST'])
+@login_required
+@require_permission('declaracoes.create')
+def importar_declaracao_template():
+    """Importar template de declaração a partir de JSON."""
+    data = request.get_json()
+
+    if not data:
+        return {'success': False, 'message': 'Nenhum dado enviado'}, 400
+
+    nome = data.get('nome')
+    conteudo = data.get('conteudo')
+    tipo = data.get('tipo', 'comparecimento')
+    ativo = data.get('ativo', False)
+
+    if not nome or not conteudo:
+        return {'success': False, 'message': 'Nome e conteúdo são obrigatórios'}, 400
+
+    existente = DeclaracaoTemplate.query.filter_by(
+        cliente_id=current_user.id, nome=nome
+    ).first()
+    if existente:
+        return {'success': False, 'message': 'Template com este nome já existe'}, 400
+
+    if ativo:
+        DeclaracaoTemplate.query.filter_by(cliente_id=current_user.id).update(
+            {'ativo': False}
+        )
+
+    template = DeclaracaoTemplate(
+        nome=nome,
+        conteudo=conteudo,
+        tipo=tipo,
+        ativo=ativo,
+        cliente_id=current_user.id,
+    )
+
+    db.session.add(template)
+    db.session.commit()
+
+    return {'success': True, 'message': 'Template importado com sucesso'}
+
 
 
 @certificado_routes.route('/declaracoes/gerar_individual/<int:evento_id>/<int:usuario_id>')
@@ -2093,19 +2342,20 @@ def gerar_declaracao_individual(evento_id, usuario_id):
         flash('Usuário não participou deste evento', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template ativo
+    # Buscar template individual ativo
     template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+        cliente_id=current_user.id, ativo=True, tipo='individual'
     ).first()
-    
+
     if not template:
-        flash('Nenhum template de declaração encontrado', 'error')
+        flash('Nenhum template de declaração individual encontrado', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declaração
     pdf_path = gerar_declaracao_personalizada(usuario, evento, participacao, template, current_user)
     
     return send_file(pdf_path, mimetype="application/pdf")
+
 
 
 @certificado_routes.route('/declaracoes/gerar_lote/<int:evento_id>')
@@ -2132,13 +2382,13 @@ def gerar_declaracoes_lote(evento_id):
         flash('Nenhum participante encontrado para este evento', 'warning')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
-    # Buscar template ativo
+    # Buscar template coletivo ativo
     template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
+        cliente_id=current_user.id, ativo=True, tipo='coletiva'
     ).first()
-    
+
     if not template:
-        flash('Nenhum template de declaração encontrado', 'error')
+        flash('Nenhum template de declaração coletiva encontrado', 'error')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
     
     # Gerar declarações
@@ -2179,6 +2429,29 @@ def gerar_declaracoes_lote(evento_id):
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
 
 
+@certificado_routes.route('/declaracoes/preview-participantes/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def preview_participantes(evento_id):
+    """Retorna lista resumida de participantes do evento."""
+    from models.event import Evento, Checkin
+    from models.user import Usuario
+
+    Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+
+    participantes = (
+        db.session.query(Usuario.id, Usuario.nome)
+        .join(Checkin, Checkin.usuario_id == Usuario.id)
+        .filter(Checkin.evento_id == evento_id)
+        .distinct()
+        .all()
+    )
+
+    dados = [{'id': p.id, 'nome': p.nome} for p in participantes]
+    return jsonify({'participantes': dados})
+
+
 @certificado_routes.route('/declaracoes/preview/<int:template_id>/<int:evento_id>')
 @login_required
 @require_permission('declaracoes.view')
@@ -2212,8 +2485,151 @@ def preview_declaracao(template_id, evento_id):
     pdf_path = gerar_declaracao_personalizada(
         UsuarioExemplo(), evento, participacao_exemplo, template, current_user
     )
-    
+
     return send_file(pdf_path, mimetype="application/pdf")
+
+
+@certificado_routes.route('/declaracoes/estatisticas/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def estatisticas_declaracoes(evento_id):
+    """Retorna estatísticas de emissão de declarações."""
+    total_participantes = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .count()
+    )
+
+    declaracoes_emitidas = (
+        DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id, status='emitida'
+        ).count()
+    )
+
+    participantes_elegiveis = total_participantes
+    novas_declaracoes = max(participantes_elegiveis - declaracoes_emitidas, 0)
+
+    return jsonify(
+        {
+            'estatisticas': {
+                'total_participantes': total_participantes,
+                'participantes_elegiveis': participantes_elegiveis,
+                'declaracoes_ja_emitidas': declaracoes_emitidas,
+                'novas_declaracoes': novas_declaracoes,
+            }
+        }
+    )
+
+
+@certificado_routes.route('/declaracoes/status-liberacao/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def status_liberacao_declaracoes(evento_id):
+    """Retorna status da liberação de declarações."""
+    participantes_elegiveis = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .count()
+    )
+
+    declaracoes_disponiveis = (
+        DeclaracaoComparecimento.query.filter(
+            DeclaracaoComparecimento.evento_id == evento_id,
+            DeclaracaoComparecimento.status.in_(['liberada', 'emitida'])
+        ).count()
+    )
+
+    data_liberacao = (
+        db.session.query(func.min(DeclaracaoComparecimento.data_liberacao))
+        .filter(DeclaracaoComparecimento.evento_id == evento_id)
+        .scalar()
+    )
+
+    status = {
+        'liberado': declaracoes_disponiveis > 0,
+        'participantes_elegiveis': participantes_elegiveis,
+        'declaracoes_disponiveis': declaracoes_disponiveis,
+        'data_liberacao': data_liberacao.isoformat() if data_liberacao else None,
+    }
+
+    return jsonify({'status': status})
+
+
+@certificado_routes.route('/declaracoes/habilitar-liberacao', methods=['POST'])
+@login_required
+@require_permission('declaracoes.release')
+def habilitar_liberacao_declaracoes():
+    """Habilita a liberação de declarações para um evento."""
+    dados = request.get_json() or {}
+    evento_id = dados.get('evento_id')
+    template_id = dados.get('template_id')
+
+    evento = Evento.query.filter_by(
+        id=evento_id, cliente_id=current_user.id
+    ).first_or_404()
+
+    template = None
+    if template_id:
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, cliente_id=current_user.id
+        ).first()
+    if not template:
+        template = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, ativo=True
+        ).first()
+    if not template:
+        return jsonify({'success': False, 'message': 'Template não encontrado'}), 400
+
+    participantes = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .all()
+    )
+
+    for (usuario_id,) in participantes:
+        declaracao = DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id, usuario_id=usuario_id
+        ).first()
+        if not declaracao:
+            declaracao = DeclaracaoComparecimento(
+                cliente_id=current_user.id,
+                evento_id=evento_id,
+                usuario_id=usuario_id,
+                titulo=template.nome,
+                conteudo=template.conteudo,
+                template_id=template.id,
+            )
+            db.session.add(declaracao)
+
+        declaracao.status = 'liberada'
+        declaracao.data_liberacao = datetime.utcnow()
+        declaracao.template_id = template.id
+        declaracao.titulo = template.nome
+        declaracao.conteudo = template.conteudo
+
+    db.session.commit()
+
+    return jsonify({'success': True})
+
+
+@certificado_routes.route(
+    '/declaracoes/desabilitar-liberacao/<int:evento_id>', methods=['POST']
+)
+@login_required
+@require_permission('declaracoes.release')
+@require_resource_access('evento', 'evento_id', 'edit')
+def desabilitar_liberacao_declaracoes(evento_id):
+    """Desabilita a liberação de declarações de um evento."""
+    DeclaracaoComparecimento.query.filter_by(evento_id=evento_id).update(
+        {'status': 'pendente', 'data_liberacao': None}
+    )
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 def verificar_participacao_evento(usuario_id, evento_id):
