@@ -2321,41 +2321,6 @@ def importar_declaracao_template():
 
     return {'success': True, 'message': 'Template importado com sucesso'}
 
-
-@certificado_routes.route('/declaracoes/gerar_individual/<int:evento_id>/<int:usuario_id>')
-@login_required
-@require_permission('declaracoes.generate')
-@require_resource_access('evento', 'evento_id', 'view')
-def gerar_declaracao_individual(evento_id, usuario_id):
-    """Gerar declaração individual de comparecimento."""
-    from models.event import Evento
-    from models.user import Usuario
-    
-    evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
-    usuario = Usuario.query.get_or_404(usuario_id)
-    
-    # Verificar se o usuário participou do evento
-    participacao = verificar_participacao_evento(usuario_id, evento_id)
-    
-    if not participacao['participou']:
-        flash('Usuário não participou deste evento', 'error')
-        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
-    
-    # Buscar template ativo
-    template = DeclaracaoTemplate.query.filter_by(
-        cliente_id=current_user.id, ativo=True, tipo='comparecimento'
-    ).first()
-    
-    if not template:
-        flash('Nenhum template de declaração encontrado', 'error')
-        return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
-    
-    # Gerar declaração
-    pdf_path = gerar_declaracao_personalizada(usuario, evento, participacao, template, current_user)
-    
-    return send_file(pdf_path, mimetype="application/pdf")
-
-
 @certificado_routes.route('/declaracoes/gerar_lote/<int:evento_id>')
 @login_required
 @require_permission('declaracoes.bulk_generate')
