@@ -197,6 +197,14 @@ class CertificadoTemplateAvancado(db.Model):
 class DeclaracaoTemplate(db.Model):
     """Templates para declarações de comparecimento."""
     __tablename__ = "declaracao_template"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "cliente_id",
+            "nome",
+            name="uq_declaracao_template_cliente_nome",
+        ),
+        {"extend_existing": True},
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)

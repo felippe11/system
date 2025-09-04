@@ -2104,7 +2104,15 @@ def criar_declaracao_template():
     """Criar novo template de declaração de comparecimento."""
     if request.method == 'POST':
         data = request.get_json()
-        
+        existente = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        ).first()
+        if existente:
+            return {
+                'success': False,
+                'message': 'Template com este nome já existe'
+            }, 400
+
         template = DeclaracaoTemplate(
             nome=data['nome'],
             conteudo=data['conteudo'],
@@ -2112,10 +2120,10 @@ def criar_declaracao_template():
             ativo=data.get('ativo', True),
             cliente_id=current_user.id
         )
-        
+
         db.session.add(template)
         db.session.commit()
-        
+
         return {'success': True, 'message': 'Template de declaração criado com sucesso'}
     
     return render_template('certificado/criar_declaracao.html')
@@ -2143,6 +2151,19 @@ def editar_declaracao_template(template_id):
         }
 
     data = request.get_json()
+
+    existente = (
+        DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, nome=data.get('nome')
+        )
+        .filter(DeclaracaoTemplate.id != template.id)
+        .first()
+    )
+    if existente:
+        return {
+            'success': False,
+            'message': 'Template com este nome já existe'
+        }, 400
 
     template.nome = data['nome']
     template.conteudo = data['conteudo']
