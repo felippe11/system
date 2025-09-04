@@ -105,11 +105,13 @@
                                             </small>
                                         </td>
                                         <td>
-
-                                            <span class="badge bg-primary">{{ agendamento.alunos|length }} visitantes</span>
-
-                                            <span class="badge bg-primary">{{ agendamento.quantidade_alunos }} visitantes</span>
-
+                                            <span class="badge bg-primary">
+                                                {% if agendamento.alunos is not none %}
+                                                    {{ agendamento.alunos|length }} visitantes
+                                                {% else %}
+                                                    {{ agendamento.quantidade_alunos }} visitantes
+                                                {% endif %}
+                                            </span>
                                         </td>
                                         <td>
                                             <button class="btn btn-sm btn-success" 
