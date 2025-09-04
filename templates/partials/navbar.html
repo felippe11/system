@@ -129,20 +129,14 @@
       <div class="modal-body">
         <!-- Acesso para revisores já cadastrados -->
         <h6 class="fw-bold text-primary text-center mb-2">Acesso de revisores existentes</h6>
-        <p>Insira abaixo o localizador e o código fornecidos para acessar suas tarefas de revisão.</p>
-
-        <form method="post" action="{{ url_for('peer_review_routes.reviewer_dashboard') }}">
+        <p>Para acessar suas tarefas de revisão, insira abaixo o código da candidatura.</p>
+        <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
           <div class="mb-3">
-            <label for="locatorInput" class="form-label">Localizador</label>
-            <input type="text" class="form-control" id="locatorInput" name="locator">
+            <label for="codigoAcomp" class="form-label">Código da Candidatura</label>
+            <input type="text" class="form-control" id="codigoAcomp" name="codigo">
           </div>
-          <div class="mb-3">
-            <label for="codeInput" class="form-label">Código de Acesso</label>
-            <input type="password" class="form-control" id="codeInput" name="code">
-          </div>
-          <button type="submit" class="btn btn-primary">Entrar</button>
+          <button type="submit" class="btn btn-secondary">Acompanhar</button>
         </form>
-
 
         <!-- Candidatura ou acompanhamento -->
         <hr class="my-4">
@@ -151,14 +145,6 @@
            href="{{ url_for('revisor_routes.select_event') }}">
           Quero ser revisor
         </a>
-
-        <form method="get" action="{{ url_for('revisor_routes.progress_query') }}">
-          <div class="mb-3">
-            <label for="codigoAcomp" class="form-label">Código da Candidatura</label>
-            <input type="text" class="form-control" id="codigoAcomp" name="codigo">
-          </div>
-          <button type="submit" class="btn btn-secondary">Acompanhar</button>
-        </form>
       </div>
     </div>
   </div>

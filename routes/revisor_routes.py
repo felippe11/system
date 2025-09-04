@@ -670,12 +670,20 @@ def progress(codigo: str):
                 }
                 trabalhos_designados.append(trabalho)
 
+    # Determinar o nome do revisor
+    nome_revisor = cand.nome
+    if cand.status == 'aprovado':
+        revisor_user = Usuario.query.filter_by(email=cand.email).first()
+        if revisor_user and revisor_user.nome:
+            nome_revisor = revisor_user.nome
+    
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template(
         "revisor/progress.html",
         candidatura=cand,
         pdf_url=pdf_url,
-        trabalhos_designados=trabalhos_designados
+        trabalhos_designados=trabalhos_designados,
+        nome_revisor=nome_revisor
     )
 
 
