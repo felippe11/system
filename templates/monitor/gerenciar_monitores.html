@@ -178,6 +178,11 @@
                 <div class="card-body">
                     {% if monitores %}
                         <button id="copy-codes" class="btn btn-outline-secondary mb-3">Copiar códigos</button>
+                        <button id="whatsapp-codes" class="btn btn-outline-success mb-3 ms-2"
+                                data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="Enviar via WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </button>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -337,6 +342,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (copyBtn) {
         copyBtn.addEventListener('click', copySelectedCodes);
     }
+
+    const whatsappBtn = document.getElementById('whatsapp-codes');
+    if (whatsappBtn) {
+        whatsappBtn.addEventListener('click', shareSelectedCodes);
+    }
 });
 
 function copySelectedCodes() {
@@ -346,6 +356,21 @@ function copySelectedCodes() {
     const lines = Array.from(source).map(cb => `${cb.dataset.nome} – Código: ${cb.dataset.codigo}`);
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
         alert('Códigos copiados para a área de transferência');
+    });
+}
+
+function shareSelectedCodes() {
+    const selected = document.querySelectorAll('.monitor-checkbox:checked');
+    const allBoxes = document.querySelectorAll('.monitor-checkbox');
+    const source = selected.length ? selected : allBoxes;
+    const lines = Array.from(source).map(
+        cb => `${cb.dataset.nome} – Código: ${cb.dataset.codigo}`
+    );
+    const message = lines.join('\n');
+    navigator.clipboard.writeText(message).then(() => {
+        const url =
+            `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     });
 }
 
