@@ -553,13 +553,32 @@ function previewDeclaracaoIndividual() {
 
 function previewLoteDeclaracoes() {
     const eventoId = $('#eventoLote').val();
-    
+
     if (!eventoId) {
         alert('Por favor, selecione um evento.');
         return;
     }
-    
-    // Implementar preview da lista de participantes
-    alert('Preview da lista de participantes em desenvolvimento');
+
+    $.get(`/certificado/declaracoes/preview-participantes/${eventoId}`, function(data) {
+        const participantes = data.participantes || [];
+        let html = '';
+
+        if (participantes.length) {
+            html += '<table class="table table-striped">';
+            html += '<thead><tr><th>#</th><th>Nome</th></tr></thead><tbody>';
+            participantes.forEach((p, idx) => {
+                html += `<tr><td>${idx + 1}</td><td>${p.nome}</td></tr>`;
+            });
+            html += '</tbody></table>';
+        } else {
+            html = '<p>Nenhum participante encontrado.</p>';
+        }
+
+        $('#previewTitle').text('Participantes do Evento');
+        $('#previewContent').html(html);
+        $('#modalPreview').modal('show');
+    }).fail(function() {
+        alert('Erro ao carregar participantes.');
+    });
 }
 </script>
