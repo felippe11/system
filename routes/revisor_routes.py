@@ -649,13 +649,23 @@ def progress(codigo: str):
                     for rc in resposta.respostas_campos
                     if rc.campo and rc.campo.nome
                 }
+                
+                # Calcular dias restantes para o prazo
+                days_left = None
+                if assignment.deadline:
+                    from datetime import date
+                    today = date.today()
+                    deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
+                    days_left = (deadline_date - today).days
+                
                 trabalho = {
-                    "titulo": campos.get("titulo"),
-                    "pdf_url": campos.get("pdf_url"),
+                    "titulo": campos.get("Título"),
+                    "pdf_url": campos.get("URL do PDF"),
                     "data_submissao": resposta.data_submissao,
-                    "deadline": assignment.deadline,
-                    "completed": assignment.completed,
+                    "assignment_deadline": assignment.deadline,
+                    "assignment_completed": assignment.completed,
                     "distribution_date": assignment.distribution_date,
+                    "days_left": days_left,
                     "id": assignment.id,
                 }
                 trabalhos_designados.append(trabalho)
