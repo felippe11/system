@@ -117,9 +117,9 @@
             {% set pstatus = processo.status if processo else '' %}
             <select class="form-select" name="status" required>
               <option value="">Selecione...</option>
-              <option value="Aberto" {% if pstatus == 'Aberto' %}selected{% endif %}>Aberto</option>
-              <option value="Pendente" {% if pstatus == 'Pendente' %}selected{% endif %}>Pendente</option>
-              <option value="Encerrado" {% if pstatus == 'Encerrado' %}selected{% endif %}>Encerrado</option>
+              <option value="aberto" {% if pstatus == 'aberto' or pstatus == 'Aberto' %}selected{% endif %}>Aberto</option>
+              <option value="pendente" {% if pstatus == 'pendente' or pstatus == 'Pendente' %}selected{% endif %}>Pendente</option>
+              <option value="encerrado" {% if pstatus == 'encerrado' or pstatus == 'Encerrado' %}selected{% endif %}>Encerrado</option>
             </select>
             <div class="invalid-feedback">Por favor, selecione o status.</div>
           </div>

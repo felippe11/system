@@ -60,6 +60,48 @@
     </div>
   </div>
 
+  {% if processos %}
+  <!-- Summary Section -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-clipboard-data text-primary" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|length }}</h5>
+              <small class="text-muted">Total de Processos</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-check-circle text-success" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'aberto')|list|length }}</h5>
+              <small class="text-muted">Processos Abertos</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-clock text-warning" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'pendente')|list|length }}</h5>
+              <small class="text-muted">Processos Pendentes</small>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-2">
+                <i class="bi bi-x-circle text-secondary" style="font-size: 1.5rem;"></i>
+              </div>
+              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'encerrado')|list|length }}</h5>
+              <small class="text-muted">Processos Encerrados</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- Processes Grid -->
   <div class="row">
     {% if processos %}
@@ -85,8 +127,9 @@
           <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <h6 class="mb-0 fw-bold">{{ proc.nome or 'Processo sem nome' }}</h6>
             {% if proc.status %}
-              {% set status_class = 'success' if proc.status == 'Aberto' else 'warning' if proc.status == 'Pendente' else 'secondary' %}
-              <span class="badge bg-{{ status_class }} status-badge">{{ proc.status }}</span>
+              {% set status_class = 'success' if proc.status == 'aberto' else 'warning' if proc.status == 'pendente' else 'secondary' %}
+              {% set status_display = proc.status|title %}
+              <span class="badge bg-{{ status_class }} status-badge">{{ status_display }}</span>
             {% endif %}
           </div>
           <div class="card-body">
@@ -161,46 +204,6 @@
     {% endif %}
   </div>
 
-  {% if processos %}
-  <!-- Summary Section -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-body">
-          <div class="row text-center">
-            <div class="col-md-3">
-              <div class="mb-2">
-                <i class="bi bi-clipboard-data text-primary" style="font-size: 1.5rem;"></i>
-              </div>
-              <h5 class="mb-1">{{ processos|length }}</h5>
-              <small class="text-muted">Total de Processos</small>
-            </div>
-            <div class="col-md-3">
-              <div class="mb-2">
-                <i class="bi bi-check-circle text-success" style="font-size: 1.5rem;"></i>
-              </div>
-              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Aberto')|list|length }}</h5>
-              <small class="text-muted">Processos Abertos</small>
-            </div>
-            <div class="col-md-3">
-              <div class="mb-2">
-                <i class="bi bi-clock text-warning" style="font-size: 1.5rem;"></i>
-              </div>
-              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Pendente')|list|length }}</h5>
-              <small class="text-muted">Processos Pendentes</small>
-            </div>
-            <div class="col-md-3">
-              <div class="mb-2">
-                <i class="bi bi-x-circle text-secondary" style="font-size: 1.5rem;"></i>
-              </div>
-              <h5 class="mb-1">{{ processos|selectattr('status', 'equalto', 'Encerrado')|list|length }}</h5>
-              <small class="text-muted">Processos Encerrados</small>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+
 </div>
 {% endblock %}

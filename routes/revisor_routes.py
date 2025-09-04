@@ -675,8 +675,8 @@ def select_event():
     processos = (
         RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
         .filter(
-            RevisorProcess.status == "ativo",
-            RevisorProcess.exibir_para_participantes.is_(True),
+            RevisorProcess.status.in_(["aberto", "pendente", "encerrado"]),
+            # Removido filtro exibir_para_participantes para mostrar todos os processos
             or_(
                 RevisorProcess.availability_start.is_(None),
                 func.date(RevisorProcess.availability_start) <= today,
@@ -697,14 +697,9 @@ def select_event():
             if ev:
                 eventos.append(ev)
 
-        # Mapear status do banco para exibição no template
-        db_status = getattr(proc, "status", None)
-        if db_status == "ativo":
-            status = "Aberto"
-        elif db_status == "inativo":
-            status = "Encerrado"
-        else:
-            status = "Aberto" if proc.is_available() else "Encerrado"
+        # Usar o status diretamente do banco (já padronizado)
+        status = proc.status.capitalize() if proc.status else "Pendente"
+        
         if not eventos:
             registros.append({"evento": None, "processo": proc, "status": status})
             continue
@@ -850,7 +845,6 @@ def approve(cand_id: int):
                 resposta_formulario = RespostaFormulario(
                     trabalho_id=trabalho.id,
                     formulario_id=None,  # Pode ser None para assignments automáticos
-                    respostas={},
                     data_submissao=datetime.utcnow()
                 )
                 db.session.add(resposta_formulario)
