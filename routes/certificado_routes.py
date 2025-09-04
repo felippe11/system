@@ -1,4 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    send_file,
+    after_this_request,
+    jsonify,
+)
 from utils import endpoints
 
 from flask_login import login_required, current_user
@@ -2177,6 +2187,29 @@ def gerar_declaracoes_lote(evento_id):
     else:
         flash('Nenhuma declaração pôde ser gerada', 'warning')
         return redirect(url_for(endpoints.DASHBOARD_CLIENTE))
+
+
+@certificado_routes.route('/declaracoes/preview-participantes/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def preview_participantes(evento_id):
+    """Retorna lista resumida de participantes do evento."""
+    from models.event import Evento, Checkin
+    from models.user import Usuario
+
+    Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+
+    participantes = (
+        db.session.query(Usuario.id, Usuario.nome)
+        .join(Checkin, Checkin.usuario_id == Usuario.id)
+        .filter(Checkin.evento_id == evento_id)
+        .distinct()
+        .all()
+    )
+
+    dados = [{'id': p.id, 'nome': p.nome} for p in participantes]
+    return jsonify({'participantes': dados})
 
 
 @certificado_routes.route('/declaracoes/preview/<int:template_id>/<int:evento_id>')
