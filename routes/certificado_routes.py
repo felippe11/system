@@ -1,11 +1,27 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, after_this_request
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    send_file,
+    after_this_request,
+    jsonify,
+)
 from utils import endpoints
 
 from flask_login import login_required, current_user
 
 from werkzeug.utils import secure_filename
 from extensions import db
-from models import Oficina, CertificadoTemplate, Evento
+from models import (
+    Oficina,
+    CertificadoTemplate,
+    Evento,
+    Checkin,
+    DeclaracaoComparecimento,
+)
 from models.user import Cliente
 
 from models.certificado import (
@@ -28,6 +44,7 @@ from datetime import datetime
 import logging
 
 import json
+from sqlalchemy import func
 
 
 certificado_routes = Blueprint(
@@ -2212,8 +2229,151 @@ def preview_declaracao(template_id, evento_id):
     pdf_path = gerar_declaracao_personalizada(
         UsuarioExemplo(), evento, participacao_exemplo, template, current_user
     )
-    
+
     return send_file(pdf_path, mimetype="application/pdf")
+
+
+@certificado_routes.route('/declaracoes/estatisticas/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def estatisticas_declaracoes(evento_id):
+    """Retorna estatísticas de emissão de declarações."""
+    total_participantes = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .count()
+    )
+
+    declaracoes_emitidas = (
+        DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id, status='emitida'
+        ).count()
+    )
+
+    participantes_elegiveis = total_participantes
+    novas_declaracoes = max(participantes_elegiveis - declaracoes_emitidas, 0)
+
+    return jsonify(
+        {
+            'estatisticas': {
+                'total_participantes': total_participantes,
+                'participantes_elegiveis': participantes_elegiveis,
+                'declaracoes_ja_emitidas': declaracoes_emitidas,
+                'novas_declaracoes': novas_declaracoes,
+            }
+        }
+    )
+
+
+@certificado_routes.route('/declaracoes/status-liberacao/<int:evento_id>')
+@login_required
+@require_permission('declaracoes.view')
+@require_resource_access('evento', 'evento_id', 'view')
+def status_liberacao_declaracoes(evento_id):
+    """Retorna status da liberação de declarações."""
+    participantes_elegiveis = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .count()
+    )
+
+    declaracoes_disponiveis = (
+        DeclaracaoComparecimento.query.filter(
+            DeclaracaoComparecimento.evento_id == evento_id,
+            DeclaracaoComparecimento.status.in_(['liberada', 'emitida'])
+        ).count()
+    )
+
+    data_liberacao = (
+        db.session.query(func.min(DeclaracaoComparecimento.data_liberacao))
+        .filter(DeclaracaoComparecimento.evento_id == evento_id)
+        .scalar()
+    )
+
+    status = {
+        'liberado': declaracoes_disponiveis > 0,
+        'participantes_elegiveis': participantes_elegiveis,
+        'declaracoes_disponiveis': declaracoes_disponiveis,
+        'data_liberacao': data_liberacao.isoformat() if data_liberacao else None,
+    }
+
+    return jsonify({'status': status})
+
+
+@certificado_routes.route('/declaracoes/habilitar-liberacao', methods=['POST'])
+@login_required
+@require_permission('declaracoes.release')
+def habilitar_liberacao_declaracoes():
+    """Habilita a liberação de declarações para um evento."""
+    dados = request.get_json() or {}
+    evento_id = dados.get('evento_id')
+    template_id = dados.get('template_id')
+
+    evento = Evento.query.filter_by(
+        id=evento_id, cliente_id=current_user.id
+    ).first_or_404()
+
+    template = None
+    if template_id:
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, cliente_id=current_user.id
+        ).first()
+    if not template:
+        template = DeclaracaoTemplate.query.filter_by(
+            cliente_id=current_user.id, ativo=True
+        ).first()
+    if not template:
+        return jsonify({'success': False, 'message': 'Template não encontrado'}), 400
+
+    participantes = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .all()
+    )
+
+    for (usuario_id,) in participantes:
+        declaracao = DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id, usuario_id=usuario_id
+        ).first()
+        if not declaracao:
+            declaracao = DeclaracaoComparecimento(
+                cliente_id=current_user.id,
+                evento_id=evento_id,
+                usuario_id=usuario_id,
+                titulo=template.nome,
+                conteudo=template.conteudo,
+                template_id=template.id,
+            )
+            db.session.add(declaracao)
+
+        declaracao.status = 'liberada'
+        declaracao.data_liberacao = datetime.utcnow()
+        declaracao.template_id = template.id
+        declaracao.titulo = template.nome
+        declaracao.conteudo = template.conteudo
+
+    db.session.commit()
+
+    return jsonify({'success': True})
+
+
+@certificado_routes.route(
+    '/declaracoes/desabilitar-liberacao/<int:evento_id>', methods=['POST']
+)
+@login_required
+@require_permission('declaracoes.release')
+@require_resource_access('evento', 'evento_id', 'edit')
+def desabilitar_liberacao_declaracoes(evento_id):
+    """Desabilita a liberação de declarações de um evento."""
+    DeclaracaoComparecimento.query.filter_by(evento_id=evento_id).update(
+        {'status': 'pendente', 'data_liberacao': None}
+    )
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 def verificar_participacao_evento(usuario_id, evento_id):
