@@ -907,19 +907,26 @@ def atribuir_monitor():
         if not agendamento_id or not monitor_id:
             return jsonify({'success': False, 'message': 'Dados incompletos'})
         
-        # Verificar se o agendamento existe e não tem monitor
+        # Verificar se o agendamento e o monitor existem
         agendamento = AgendamentoVisita.query.get_or_404(agendamento_id)
+        monitor = Monitor.query.get_or_404(monitor_id)
+
+        if current_user.tipo == "cliente":
+            if (
+                agendamento.cliente_id != current_user.id
+                or monitor.cliente_id != current_user.id
+            ):
+                return jsonify({'success': False, 'message': 'Acesso negado'})
+
         # Verificar apenas atribuições ativas
         monitor_existente = MonitorAgendamento.query.filter_by(
             agendamento_id=agendamento_id,
             status='ativo'
         ).first()
-        
+
         if monitor_existente:
             return jsonify({'success': False, 'message': 'Agendamento já possui monitor atribuído'})
-        
-        # Verificar se o monitor existe e está ativo
-        monitor = Monitor.query.get_or_404(monitor_id)
+
         if not monitor.ativo:
             return jsonify({'success': False, 'message': 'Monitor não está ativo'})
         
