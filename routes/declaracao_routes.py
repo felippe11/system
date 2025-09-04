@@ -129,9 +129,16 @@ def criar_template():
             nome = request.form.get('nome')
             tipo = request.form.get('tipo')
             conteudo = request.form.get('conteudo')
-            
+
             if not all([nome, tipo, conteudo]):
                 flash('Todos os campos são obrigatórios.', 'error')
+                return render_template('declaracao/criar_template.html')
+
+            existente_nome = DeclaracaoTemplate.query.filter_by(
+                cliente_id=current_user.id, nome=nome
+            ).first()
+            if existente_nome:
+                flash('Já existe um template com este nome.', 'error')
                 return render_template('declaracao/criar_template.html')
                 
             # Verificar se já existe template ativo do mesmo tipo
@@ -186,9 +193,23 @@ def editar_template(template_id):
             return render_template('declaracao/editar_template.html', template=template)
             
         elif request.method == 'POST':
-            template.nome = request.form.get('nome')
-            template.conteudo = request.form.get('conteudo')
-            
+            novo_nome = request.form.get('nome')
+            novo_conteudo = request.form.get('conteudo')
+
+            existente_nome = (
+                DeclaracaoTemplate.query.filter_by(
+                    cliente_id=current_user.id, nome=novo_nome
+                )
+                .filter(DeclaracaoTemplate.id != template.id)
+                .first()
+            )
+            if existente_nome:
+                flash('Já existe um template com este nome.', 'error')
+                return render_template('declaracao/editar_template.html', template=template)
+
+            template.nome = novo_nome
+            template.conteudo = novo_conteudo
+
             # Gerenciar status ativo
             if request.form.get('definir_ativo'):
                 # Desativar outros templates do mesmo tipo
