@@ -1894,6 +1894,34 @@
   <!-- ABA 6: REVISORES -->
   <div class="tab-pane fade" id="revisores" role="tabpanel">
 
+    <!-- Configuração do Limite Máximo de Revisores -->
+    <div class="card mt-4 shadow-sm">
+      <div class="card-header bg-light">
+        <h6 class="fw-bold m-0 d-flex align-items-center">
+          <i class="bi bi-gear-fill me-2 text-primary"></i> Configurações de Revisores
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-medium" for="inputLimiteRevisores">
+              <i class="bi bi-people me-2"></i>Limite Máximo de Revisores
+            </label>
+            <input 
+              type="number" 
+              min="1" 
+              class="form-control" 
+              id="inputLimiteRevisores" 
+              value="{{ config_cliente.limite_total_revisores if config_cliente else 10 }}"
+              data-update-url="{{ url_for('config_cliente_routes.set_limite_total_revisores') }}"
+            >
+            <small class="form-text text-muted">
+              <i class="bi bi-info-circle me-1"></i>Número máximo total de revisores no sistema
+            </small>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <h5 class="fw-bold mt-4">Candidaturas via Formulário</h5>
 
@@ -2166,6 +2194,46 @@
   document.getElementById('tab-cert-historico').addEventListener('shown.bs.tab', function() {
     aplicarFiltrosHistorico();
   });
+
+  // Configuração do Limite Máximo de Revisores
+  const inputLimiteRevisores = document.getElementById('inputLimiteRevisores');
+  if (inputLimiteRevisores) {
+    inputLimiteRevisores.addEventListener('change', function() {
+      const valor = this.value;
+      const url = this.getAttribute('data-update-url');
+      
+      if (!valor || valor < 1) {
+        alert('O valor deve ser maior que 0');
+        return;
+      }
+      
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ value: valor })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Feedback visual de sucesso
+          const originalBorder = this.style.border;
+          this.style.border = '2px solid #28a745';
+          setTimeout(() => {
+            this.style.border = originalBorder;
+          }, 1000);
+        } else {
+          alert('Erro ao atualizar: ' + (data.message || 'Erro desconhecido'));
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao atualizar configuração');
+      });
+    });
+  }
 
 </script>
 {% endblock %}{% endblock %}

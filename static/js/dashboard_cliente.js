@@ -994,4 +994,49 @@ if (buttonContainer) {
     buttonContainer.appendChild(button);
 }
 
+// Configuração do limite máximo de revisores
+document.addEventListener('DOMContentLoaded', function() {
+  const inputLimiteRevisores = document.getElementById('inputLimiteMaxRevisores');
+  if (inputLimiteRevisores) {
+    inputLimiteRevisores.addEventListener('change', function() {
+      const url = this.dataset.updateUrl;
+      if (!url) return;
+      
+      const valor = parseInt(this.value);
+      if (valor < 1) {
+        alert('O limite deve ser pelo menos 1');
+        this.value = 1;
+        return;
+      }
+      
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify({ limite: valor })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Opcional: mostrar feedback visual de sucesso
+          const originalBorder = this.style.border;
+          this.style.border = '2px solid #28a745';
+          setTimeout(() => {
+            this.style.border = originalBorder;
+          }, 1000);
+        } else {
+          alert('Erro ao atualizar limite: ' + (data.message || 'Erro desconhecido'));
+        }
+      })
+      .catch(error => {
+        console.error('Erro na requisição:', error);
+        alert('Erro ao atualizar limite de revisores');
+      });
+    });
+  }
+});
+
 console.log("dashboard_cliente.js carregado e pronto.");
