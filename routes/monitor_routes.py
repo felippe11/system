@@ -849,24 +849,42 @@ def distribuicao_manual():
     try:
         # Buscar agendamentos sem monitor atribuído
         # Outer join apenas com atribuições ativas para identificar sem monitor
-        agendamentos_sem_monitor = db.session.query(
+        agendamentos_sem_monitor_query = db.session.query(
             AgendamentoVisita,
             HorarioVisitacao
         ).join(
             HorarioVisitacao, AgendamentoVisita.horario_id == HorarioVisitacao.id
         ).outerjoin(
             MonitorAgendamento,
-            (AgendamentoVisita.id == MonitorAgendamento.agendamento_id) & (MonitorAgendamento.status == 'ativo')
+            (AgendamentoVisita.id == MonitorAgendamento.agendamento_id)
+            & (MonitorAgendamento.status == 'ativo')
         ).filter(
             MonitorAgendamento.id.is_(None),
             HorarioVisitacao.data >= datetime.now().date()
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
-        
+        )
+
+        # Se cliente, filtrar por cliente_id
+        if current_user.tipo == "cliente":
+            agendamentos_sem_monitor_query = agendamentos_sem_monitor_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id
+            )
+
+        agendamentos_sem_monitor = (
+            agendamentos_sem_monitor_query
+            .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+            .all()
+        )
+
         # Buscar monitores ativos
-        monitores_ativos = Monitor.query.filter_by(ativo=True).order_by(Monitor.nome_completo).all()
-        
+        monitores_query = Monitor.query.filter_by(ativo=True)
+        if current_user.tipo == "cliente":
+            monitores_query = monitores_query.filter(
+                Monitor.cliente_id == current_user.id
+            )
+        monitores_ativos = monitores_query.order_by(Monitor.nome_completo).all()
+
         # Buscar agendamentos já atribuídos (para referência)
-        agendamentos_atribuidos = db.session.query(
+        agendamentos_atribuidos_query = db.session.query(
             MonitorAgendamento,
             AgendamentoVisita,
             HorarioVisitacao,
@@ -880,7 +898,19 @@ def distribuicao_manual():
         ).filter(
             HorarioVisitacao.data >= datetime.now().date(),
             MonitorAgendamento.status == 'ativo'
-        ).order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio).all()
+        )
+
+        if current_user.tipo == "cliente":
+            agendamentos_atribuidos_query = agendamentos_atribuidos_query.filter(
+                AgendamentoVisita.cliente_id == current_user.id,
+                Monitor.cliente_id == current_user.id
+            )
+
+        agendamentos_atribuidos = (
+            agendamentos_atribuidos_query
+            .order_by(HorarioVisitacao.data, HorarioVisitacao.horario_inicio)
+            .all()
+        )
         
         return render_template('monitor/distribuicao_manual.html',
                              agendamentos_sem_monitor=agendamentos_sem_monitor,
