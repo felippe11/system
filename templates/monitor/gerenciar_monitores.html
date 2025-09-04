@@ -177,10 +177,12 @@
                 </div>
                 <div class="card-body">
                     {% if monitores %}
+                        <button id="copy-codes" class="btn btn-outline-secondary mb-3">Copiar códigos</button>
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
+                                        <th><input type="checkbox" id="select-all"></th>
                                         <th>Nome</th>
                                         <th>Curso</th>
                                         <th>Disponibilidade</th>
@@ -193,6 +195,9 @@
                                 <tbody>
                                     {% for monitor in monitores %}
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" class="monitor-checkbox" data-nome="{{ monitor.nome_completo }}" data-codigo="{{ monitor.codigo_acesso }}">
+                                        </td>
                                         <td>
                                             <strong>{{ monitor.nome_completo }}</strong>
                                             <small class="text-muted d-block">Código: {{ monitor.codigo_acesso }}</small>
@@ -318,7 +323,31 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    const selectAll = document.getElementById('select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.monitor-checkbox').forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+    }
+
+    const copyBtn = document.getElementById('copy-codes');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', copySelectedCodes);
+    }
 });
+
+function copySelectedCodes() {
+    const selected = document.querySelectorAll('.monitor-checkbox:checked');
+    const allBoxes = document.querySelectorAll('.monitor-checkbox');
+    const source = selected.length ? selected : allBoxes;
+    const lines = Array.from(source).map(cb => `${cb.dataset.nome} – Código: ${cb.dataset.codigo}`);
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        alert('Códigos copiados para a área de transferência');
+    });
+}
 
 function editarMonitor(monitorId) {
     // Redirecionar para página de edição do monitor
