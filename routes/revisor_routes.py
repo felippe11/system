@@ -630,36 +630,35 @@ def progress(codigo: str):
             # Filtrar por evento se disponível
             if evento_id:
                 from models.event import RespostaFormulario
+
                 query = (
-                    query
-                    .join(RespostaFormulario, Assignment.resposta_formulario_id == RespostaFormulario.id)
-                    .join(Submission, RespostaFormulario.trabalho_id == Submission.id)
-                    .filter(Submission.evento_id == evento_id)
+                    query.join(
+                        RespostaFormulario,
+                        Assignment.resposta_formulario_id == RespostaFormulario.id,
+                    ).filter(RespostaFormulario.evento_id == evento_id)
                 )
-            
+
             assignments = query.all()
-            
-            # Processar assignments para obter trabalhos com informações detalhadas
+
             for assignment in assignments:
-                if assignment.resposta_formulario and assignment.resposta_formulario.trabalho_id:
-                    trabalho = Submission.query.get(assignment.resposta_formulario.trabalho_id)
-                    if trabalho:
-                        # Adicionar informações do assignment ao trabalho
-                        trabalho.assignment_deadline = assignment.deadline
-                        trabalho.assignment_completed = assignment.completed
-                        trabalho.assignment_id = assignment.id
-                        trabalho.distribution_date = assignment.distribution_date
-                        
-                        # Calcular dias restantes para o prazo
-                        if assignment.deadline:
-                            from datetime import date
-                            today = date.today()
-                            deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
-                            trabalho.days_left = (deadline_date - today).days
-                        else:
-                            trabalho.days_left = None
-                        
-                        trabalhos_designados.append(trabalho)
+                resposta = assignment.resposta_formulario
+                if not resposta:
+                    continue
+                campos = {
+                    rc.campo.nome: rc.valor
+                    for rc in resposta.respostas_campos
+                    if rc.campo and rc.campo.nome
+                }
+                trabalho = {
+                    "titulo": campos.get("titulo"),
+                    "pdf_url": campos.get("pdf_url"),
+                    "data_submissao": resposta.data_submissao,
+                    "deadline": assignment.deadline,
+                    "completed": assignment.completed,
+                    "distribution_date": assignment.distribution_date,
+                    "id": assignment.id,
+                }
+                trabalhos_designados.append(trabalho)
 
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template(
