@@ -3654,6 +3654,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from models import CertificadoTemplate, Oficina, Inscricao
 from models.user import Usuario, Cliente
+from models.event import Evento
 from flask_mail import Message
 from extensions import mail
 import logging
@@ -3777,24 +3778,24 @@ from datetime import datetime
 
 def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     """
-    Gera um PDF com etiquetas modernas contendo Nome, ID, QR Code e informações do evento.
+    Gera um PDF com etiquetas simples em preto e branco contendo Nome, ID, QR Code e informações do evento.
+    Layout otimizado para 9 etiquetas por página A4 (3x3).
     Se evento_id for fornecido, apenas gera etiquetas para os usuários inscritos nesse evento.
     """
     
-    # Configurações de layout
-    etiqueta_largura = 85 * mm
-    etiqueta_altura = 54 * mm
-    margem_esquerda = 15 * mm
-    margem_superior = 20 * mm
+    # Configurações de layout para 9 etiquetas por página A4 (3x3)
+    etiqueta_largura = 65 * mm
+    etiqueta_altura = 85 * mm
+    margem_esquerda = 12 * mm
+    margem_superior = 15 * mm
     margem_inferior = 15 * mm
-    espacamento_x = 10 * mm
-    espacamento_y = 8 * mm
+    espacamento_x = 5 * mm
+    espacamento_y = 5 * mm
     
-    # Paleta de cores moderna
-    cor_primaria = colors.HexColor("#3498DB")  # Azul moderno
-    cor_texto_escuro = colors.HexColor("#2C3E50")  # Quase preto
-    cor_texto_claro = colors.HexColor("#ECF0F1")  # Branco off-white
-    cor_detalhe = colors.HexColor("#1ABC9C")  # Verde-água
+    # Cores simples preto e branco
+    cor_texto = colors.black
+    cor_borda = colors.black
+    cor_fundo = colors.white
     
     # Buscar informações do evento se o evento_id foi fornecido
     evento = None
@@ -3812,14 +3813,13 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     pdf_path = os.path.join("static", "etiquetas", pdf_filename)
     os.makedirs("static/etiquetas", exist_ok=True)
     
-    # Documento em landscape
-    c = canvas.Canvas(pdf_path, pagesize=landscape(A4))
-    largura_pagina, altura_pagina = landscape(A4)
+    # Documento A4 retrato para layout 3x3
+    c = canvas.Canvas(pdf_path, pagesize=A4)
+    largura_pagina, altura_pagina = A4
     
-    # Calcular quantidade de colunas/linhas por página
-    max_colunas = int((largura_pagina - margem_esquerda * 2) // (etiqueta_largura + espacamento_x))
-    espaco_vertical = altura_pagina - margem_superior - margem_inferior
-    max_linhas = int(espaco_vertical // (etiqueta_altura + espacamento_y))
+    # Layout fixo 3x3 = 9 etiquetas por página
+    max_colunas = 3
+    max_linhas = 3
     
     # Buscar usuários com base no evento ou cliente
     usuarios = []
@@ -3839,24 +3839,25 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
     linha = 0
     coluna = 0
     
-    # Cabeçalho minimalista no topo da página
+    # Cabeçalho simples preto e branco
     def desenhar_cabecalho():
-        # Retângulo fino na parte superior
-        c.setFillColor(cor_primaria)
-        c.rect(0, altura_pagina - 15*mm, largura_pagina, 8*mm, fill=1, stroke=0)
+        # Linha horizontal simples
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(1)
+        c.line(margem_esquerda, altura_pagina - 12*mm, largura_pagina - margem_esquerda, altura_pagina - 12*mm)
         
         # Texto do cabeçalho
-        c.setFillColor(cor_texto_claro)
-        c.setFont("Helvetica-Bold", 11)
+        c.setFillColor(cor_texto)
+        c.setFont("Helvetica-Bold", 10)
         
         if evento:
             # Limitar o tamanho do nome do evento no cabeçalho
             nome_evento = evento.nome
-            if len(nome_evento) > 40:
-                nome_evento = nome_evento[:37] + "..."
-            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS • {nome_evento}")
+            if len(nome_evento) > 35:
+                nome_evento = nome_evento[:32] + "..."
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS - {nome_evento}")
         else:
-            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS • CLIENTE {cliente_id}")
+            c.drawString(margem_esquerda, altura_pagina - 10*mm, f"ETIQUETAS - CLIENTE {cliente_id}")
         
         # Data gerada à direita
         data_atual = datetime.utcnow().strftime('%d/%m/%Y')
@@ -3892,105 +3893,132 @@ def gerar_etiquetas_pdf(cliente_id, evento_id=None):
         x = margem_esquerda + coluna * (etiqueta_largura + espacamento_x)
         y = altura_pagina - margem_superior - linha * (etiqueta_altura + espacamento_y)
         
-        # Design moderno com faixa lateral colorida
-        # Base branca com cantos arredondados suaves
-        c.setFillColor(colors.white)
-        c.roundRect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, 2*mm, fill=1, stroke=0)
+        # Design simples com borda retangular
+        # Fundo branco com borda preta
+        c.setFillColor(cor_fundo)
+        c.setStrokeColor(cor_borda)
+        c.setLineWidth(1)
+        c.rect(x, y - etiqueta_altura, etiqueta_largura, etiqueta_altura, fill=1, stroke=1)
         
-        # Faixa vertical colorida à esquerda (design moderno)
-        c.setFillColor(cor_primaria)
-        c.rect(x, y - etiqueta_altura, 5*mm, etiqueta_altura, fill=1, stroke=0)
-        
-        # Linha fina horizontal abaixo do nome para separação visual
-        c.setStrokeColor(cor_detalhe)
+        # Linha horizontal para separar seções
+        linha_separacao_y = y - 25*mm
+        c.setStrokeColor(cor_borda)
         c.setLineWidth(0.5)
-        linha_y = y - 14*mm
-        c.line(x + 12*mm, linha_y, x + etiqueta_largura - 7*mm, linha_y)
+        c.line(x + 3*mm, linha_separacao_y, x + etiqueta_largura - 3*mm, linha_separacao_y)
         
-        # Nome do usuário (com tipografia moderna)
+        # Nome do usuário centralizado
         nome = usuario.nome
-        if len(nome) > 22:  # Limite um pouco menor para nomes muito compridos
-            nome = nome[:20] + "..."
+        if len(nome) > 18:  # Limite para caber na etiqueta
+            nome = nome[:16] + "..."
         
-        c.setFillColor(cor_texto_escuro)
-        c.setFont("Helvetica-Bold", 14)
-        # Alinhado à esquerda com recuo após a faixa colorida
-        nome_x = x + 12*mm
-        nome_y = y - 10*mm
+        c.setFillColor(cor_texto)
+        c.setFont("Helvetica-Bold", 12)
+        # Centralizado horizontalmente
+        nome_largura = c.stringWidth(nome, "Helvetica-Bold", 12)
+        nome_x = x + (etiqueta_largura - nome_largura) / 2
+        nome_y = y - 12*mm
         c.drawString(nome_x, nome_y, nome)
         
-        # ID com estilo mais discreto e moderno
-        token_curto = inscricao.qr_code_token[:6] if inscricao and inscricao.qr_code_token else ""
+        # ID do usuário centralizado
+        id_str = f"ID: {usuario.id}"
+        c.setFont("Helvetica", 10)
+        c.setFillColor(cor_texto)
+        id_largura = c.stringWidth(id_str, "Helvetica", 10)
+        id_x = x + (etiqueta_largura - id_largura) / 2
+        c.drawString(id_x, nome_y - 8*mm, id_str)
         
-        # ID combinado com início do token para identificação rápida
-        if token_curto:
-            id_str = f"#{usuario.id} • {token_curto}"
-        else:
-            id_str = f"#{usuario.id}"
-            
-        c.setFont("Helvetica", 9)
-        c.setFillColor(cor_primaria)
-        c.drawString(nome_x, nome_y - 8*mm, id_str)
-        
-        # Adicionar informações do evento à etiqueta
+        # Adicionar informações do evento à etiqueta (abaixo da linha)
         if evento:
-            # Formatação da data de início do evento
-            data_evento = ""
+            # Nome do evento centralizado
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(cor_texto)
+            evento_str = evento.nome
+            if len(evento_str) > 20:  # Limite para o nome do evento
+                evento_str = evento_str[:18] + "..."
+            evento_largura = c.stringWidth(evento_str, "Helvetica-Bold", 9)
+            evento_x = x + (etiqueta_largura - evento_largura) / 2
+            c.drawString(evento_x, linha_separacao_y - 8*mm, evento_str)
+            
+            # Data do evento centralizada
             if evento.data_inicio:
                 data_evento = evento.data_inicio.strftime('%d/%m/%Y')
                 if evento.data_fim and evento.data_fim != evento.data_inicio:
                     data_evento += f" - {evento.data_fim.strftime('%d/%m/%Y')}"
-            
-            c.setFont("Helvetica-Bold", 8)
-            c.setFillColor(cor_detalhe)
-            evento_str = evento.nome
-            if len(evento_str) > 28:  # Limite para o nome do evento
-                evento_str = evento_str[:26] + "..."
-            c.drawString(nome_x, nome_y - 16*mm, evento_str)
-            
-            if data_evento:
-                c.setFont("Helvetica", 7)
-                c.setFillColor(cor_texto_escuro)
-                c.drawString(nome_x, nome_y - 22*mm, data_evento)
+                
+                c.setFont("Helvetica", 8)
+                c.setFillColor(cor_texto)
+                data_largura = c.stringWidth(data_evento, "Helvetica", 8)
+                data_x = x + (etiqueta_largura - data_largura) / 2
+                c.drawString(data_x, linha_separacao_y - 15*mm, data_evento)
         
-        # QR Code com posicionamento e tamanho otimizados
+        # QR Code centralizado na parte inferior
         if inscricao and inscricao.qr_code_token:
-            qr_size = 28 * mm  # Tamanho um pouco maior
+            qr_size = 20 * mm  # Tamanho menor para caber melhor
             qr_code_path = gerar_qr_code_inscricao(inscricao.qr_code_token)
             
             try:
                 qr_image = ImageReader(qr_code_path)
-                # Posicionado à direita para design assimétrico moderno
-                qr_x = x + etiqueta_largura - qr_size - 7*mm
-                qr_y = y - etiqueta_altura + 6*mm  # Mais próximo da base
+                # Centralizado horizontalmente na parte inferior
+                qr_x = x + (etiqueta_largura - qr_size) / 2
+                qr_y = y - etiqueta_altura + 8*mm
                 
                 c.drawImage(qr_image, qr_x, qr_y, qr_size, qr_size)
                 
-                # Pequeno indicador "SCAN" acima do QR
-                c.setFont("Helvetica-Bold", 7)
-                c.setFillColor(cor_detalhe)
-                c.drawString(qr_x, qr_y + qr_size + 2*mm, "SCAN")
+                # Token abaixo do QR Code
+                token_curto = inscricao.qr_code_token[:8]
+                c.setFont("Helvetica", 7)
+                c.setFillColor(cor_texto)
+                token_largura = c.stringWidth(token_curto, "Helvetica", 7)
+                token_x = x + (etiqueta_largura - token_largura) / 2
+                c.drawString(token_x, qr_y - 4*mm, token_curto)
             except Exception:
                 # Fallback de texto se não for possível desenhar o QR
                 c.setFont("Helvetica", 8)
-                c.setFillColor(colors.gray)
-                c.drawString(x + 12*mm, (y - etiqueta_altura) + 10*mm,
-                           f"QR: {inscricao.qr_code_token[:10]}...")
+                c.setFillColor(cor_texto)
+                token_text = f"Token: {inscricao.qr_code_token[:10]}..."
+                token_largura = c.stringWidth(token_text, "Helvetica", 8)
+                token_x = x + (etiqueta_largura - token_largura) / 2
+                c.drawString(token_x, y - etiqueta_altura + 15*mm, token_text)
         
         # Próxima coluna e incrementa contador
         coluna += 1
         total_etiquetas += 1
     
-    # Adicionar página final com resumo
+    # Adicionar página final com resumo simples
     c.showPage()
-    c.setFont("Helvetica-Bold", 16)
-    c.setFillColor(cor_texto_escuro)
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(cor_texto)
     
-    resumo_texto = f"Total de etiquetas geradas: {total_etiquetas}"
+    # Título centralizado
+    titulo = "RESUMO DA GERAÇÃO DE ETIQUETAS"
+    titulo_largura = c.stringWidth(titulo, "Helvetica-Bold", 14)
+    c.drawString((largura_pagina - titulo_largura) / 2, altura_pagina/2 + 20*mm, titulo)
+    
+    # Linha horizontal
+    c.setStrokeColor(cor_borda)
+    c.setLineWidth(1)
+    c.line(largura_pagina/4, altura_pagina/2 + 15*mm, 3*largura_pagina/4, altura_pagina/2 + 15*mm)
+    
+    # Informações do resumo
+    c.setFont("Helvetica", 12)
     if evento:
-        resumo_texto = f"Etiquetas geradas para o evento: {evento.nome}\n\n{resumo_texto}"
+        evento_texto = f"Evento: {evento.nome}"
+        evento_largura = c.stringWidth(evento_texto, "Helvetica", 12)
+        c.drawString((largura_pagina - evento_largura) / 2, altura_pagina/2, evento_texto)
+        
+        total_texto = f"Total de etiquetas: {total_etiquetas}"
+        total_largura = c.stringWidth(total_texto, "Helvetica", 12)
+        c.drawString((largura_pagina - total_largura) / 2, altura_pagina/2 - 10*mm, total_texto)
+    else:
+        total_texto = f"Total de etiquetas geradas: {total_etiquetas}"
+        total_largura = c.stringWidth(total_texto, "Helvetica", 12)
+        c.drawString((largura_pagina - total_largura) / 2, altura_pagina/2, total_texto)
     
-    c.drawString(largura_pagina/2 - 80*mm, altura_pagina/2, resumo_texto)
+    # Data de geração
+    data_geracao = f"Gerado em: {datetime.utcnow().strftime('%d/%m/%Y às %H:%M')}"
+    c.setFont("Helvetica", 10)
+    data_largura = c.stringWidth(data_geracao, "Helvetica", 10)
+    c.drawString((largura_pagina - data_largura) / 2, altura_pagina/2 - 30*mm, data_geracao)
     
     c.save()
     return pdf_path
