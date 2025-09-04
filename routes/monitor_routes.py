@@ -1022,6 +1022,42 @@ def remover_atribuicao():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
+@monitor_routes.route('/reset-agendamentos', methods=['POST'])
+@login_required
+def reset_agendamentos():
+    """Desvincula agendamentos de um monitor ou de todos."""
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['admin', 'cliente']:
+        return jsonify({'success': False, 'message': 'Acesso negado'})
+
+    try:
+        payload = request.get_json(silent=True) or {}
+        monitor_id = payload.get('monitor_id')
+        hoje = datetime.now().date()
+
+        query = db.session.query(MonitorAgendamento).join(
+            AgendamentoVisita
+        ).join(HorarioVisitacao).filter(
+            MonitorAgendamento.status == 'ativo',
+            HorarioVisitacao.data >= hoje,
+        )
+
+        if current_user.tipo == 'cliente':
+            query = query.filter(AgendamentoVisita.cliente_id == current_user.id)
+
+        if monitor_id:
+            query = query.filter(MonitorAgendamento.monitor_id == monitor_id)
+
+        atribuicoes = query.all()
+        for atrib in atribuicoes:
+            atrib.status = 'inativo'
+
+        db.session.commit()
+        return jsonify({'success': True, 'removidos': len(atribuicoes)})
+
+    except Exception as exc:  # pragma: no cover - unexpected
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(exc)})
+
 @monitor_routes.route('/importacao-massa')
 @login_required
 def importacao_massa():
@@ -1294,6 +1330,12 @@ def atribuir_monitor_route():
 def remover_atribuicao_route():
     """Wrapper para remover_atribuicao com prefixo /monitor/"""
     return remover_atribuicao()
+
+@monitor_routes.route('/monitor/reset-agendamentos', methods=['POST'])
+@login_required
+def reset_agendamentos_route():
+    """Wrapper para reset_agendamentos com prefixo /monitor."""
+    return reset_agendamentos()
 
 @monitor_routes.route('/distribuicao-automatica')
 @login_required
