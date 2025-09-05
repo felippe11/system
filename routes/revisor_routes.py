@@ -159,11 +159,13 @@ def create_process() -> Any:
         rh.ensure_reviewer_required_fields(created_form)
         dados["formulario_id"] = created_form.id
 
-    processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
+    processo = RevisorProcess(
+        cliente_id=current_user.id,  # type: ignore[attr-defined]
+        nome=dados["nome"],
+    )
     db.session.add(processo)
-    db.session.flush()
-
     update_revisor_process(processo, dados)
+    db.session.flush()
     update_process_eventos(processo, dados.get("eventos_ids", []))
     recreate_stages(processo, dados.get("stage_names", []))
     recreate_criterios(processo, dados.get("criterios", []))
