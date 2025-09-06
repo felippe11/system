@@ -29,8 +29,8 @@
         <div class="card bg-success text-white text-center">
           <div class="card-body">
             <i class="bi bi-play-circle fs-1 mb-2"></i>
-            <h3 class="mb-0">{{ processos_ativos }}</h3>
-            <small>Processos Ativos</small>
+            <h3 class="mb-0">{{ eventos|length }}</h3>
+            <small>Processos Disponíveis</small>
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@
            data-cliente="{{ item.evento.cliente.nome if item.evento else 'N/A' }}" 
            data-evento="{{ item.evento.nome if item.evento else item.processo.formulario.nome }}" 
            data-status="{{ item.status }}">
-        <div class="card h-100 shadow-sm border-0 {{ 'border-start border-success border-4' if item.status == 'Ativo' else '' }}">
+        <div class="card h-100 shadow-sm border-0 {{ 'border-start border-success border-4' if item.status == 'Aberto' else '' }}">
           <div class="card-header bg-transparent border-0 pb-0">
             <div class="d-flex justify-content-between align-items-start">
               <div class="d-flex align-items-center">
@@ -80,7 +80,7 @@
                   <small class="text-muted">#{{ item.processo.id }}</small>
                 </div>
               </div>
-              {% set status_class = 'success' if item.status == 'Aberto' else 'secondary' %}
+              {% set status_class = 'success' if item.status == 'Aberto' else ('warning' if item.status == 'Pendente' else 'danger') %}
               <span class="badge bg-{{ status_class }} fs-6">{{ item.status }}</span>
             </div>
           </div>
@@ -97,7 +97,7 @@
                     <i class="bi bi-calendar-event text-muted me-2"></i>
                     <div>
                       <small class="text-muted d-block">Início</small>
-                      <strong class="small">{{ item.evento.data_inicio.strftime('%d/%m/%Y') if item.evento.data_inicio else 'Não informado' }}</strong>
+                      <strong class="small">{{ item.processo.availability_start.strftime('%d/%m/%Y') if item.processo.availability_start else 'Não informado' }}</strong>
                     </div>
                   </div>
                 </div>
@@ -106,7 +106,7 @@
                     <i class="bi bi-calendar-x text-muted me-2"></i>
                     <div>
                       <small class="text-muted d-block">Término</small>
-                      <strong class="small">{{ item.evento.data_fim.strftime('%d/%m/%Y') if item.evento.data_fim else 'Não informado' }}</strong>
+                      <strong class="small">{{ item.processo.availability_end.strftime('%d/%m/%Y') if item.processo.availability_end else 'Não informado' }}</strong>
                     </div>
                   </div>
                 </div>
@@ -114,11 +114,31 @@
             </div>
             {% else %}
             <div class="mb-3">
-              <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center mb-2">
                 <i class="bi bi-file-text text-muted me-2"></i>
                 <div>
                   <small class="text-muted d-block">Formulário</small>
                   <strong class="small">{{ item.processo.formulario.nome }}</strong>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-calendar-event text-muted me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Início</small>
+                      <strong class="small">{{ item.processo.availability_start.strftime('%d/%m/%Y') if item.processo.availability_start else 'Não informado' }}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-calendar-x text-muted me-2"></i>
+                    <div>
+                      <small class="text-muted d-block">Término</small>
+                      <strong class="small">{{ item.processo.availability_end.strftime('%d/%m/%Y') if item.processo.availability_end else 'Não informado' }}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

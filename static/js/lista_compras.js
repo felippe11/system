@@ -36,14 +36,11 @@ function filtrarMateriais() {
     const incluirEsgotados = document.getElementById('incluir-esgotados').checked;
 
     return materiais.filter(m => {
-        if (m.quantidade_atual < m.quantidade_minima) {
-            if (m.quantidade_atual === 0 && !incluirEsgotados) {
-                return false;
-            }
-            if (m.quantidade_atual > 0 && !incluirBaixa) {
-                return false;
-            }
-            return true;
+        if (m.status_estoque === 'esgotado') {
+            return incluirEsgotados;
+        }
+        if (m.status_estoque === 'baixo') {
+            return incluirBaixa;
         }
         return false;
     });

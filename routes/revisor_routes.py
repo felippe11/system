@@ -159,11 +159,13 @@ def create_process() -> Any:
         rh.ensure_reviewer_required_fields(created_form)
         dados["formulario_id"] = created_form.id
 
-    processo = RevisorProcess(cliente_id=current_user.id)  # type: ignore[attr-defined]
+    processo = RevisorProcess(
+        cliente_id=current_user.id,  # type: ignore[attr-defined]
+        nome=dados["nome"],
+    )
     db.session.add(processo)
-    db.session.flush()
-
     update_revisor_process(processo, dados)
+    db.session.flush()
     update_process_eventos(processo, dados.get("eventos_ids", []))
     recreate_stages(processo, dados.get("stage_names", []))
     recreate_criterios(processo, dados.get("criterios", []))
@@ -320,7 +322,6 @@ def config_overview():
 
 @revisor_routes.route("/revisor/processes/<int:process_id>/delete", methods=["POST"])
 @revisor_routes.route("/revisor/<int:process_id>/delete", methods=["POST"])
-@revisor_routes.route("/revisor/processos/<int:process_id>", methods=["DELETE"])
 @login_required
 def delete_process(process_id: int):
     """Remove a review process owned by the current client."""
@@ -606,45 +607,84 @@ def progress(codigo: str):
     if cand.status == 'aprovado':
         revisor_user = Usuario.query.filter_by(email=cand.email).first()
         if revisor_user:
-            # Buscar assignments com informações completas
-            assignments = (
+            # Determinar o evento associado à candidatura
+            processo = cand.process
+            evento_id = None
+            
+            if processo.evento_id:
+                evento_id = processo.evento_id
+            elif processo.eventos:
+                evento_id = processo.eventos[0].id  # Usar o primeiro evento associado
+            
+            # Buscar assignments do revisor filtrados por evento (se disponível)
+            query = (
                 Assignment.query
                 .options(
                     db.joinedload(Assignment.resposta_formulario),
                     db.joinedload(Assignment.reviewer)
                 )
                 .filter_by(reviewer_id=revisor_user.id)
-                .all()
+                # Garantir que apenas assignments distribuídos sejam mostrados
+                .filter(Assignment.distribution_date.isnot(None))
             )
             
-            # Processar assignments para obter trabalhos com informações detalhadas
-            for assignment in assignments:
-                if assignment.resposta_formulario and assignment.resposta_formulario.trabalho_id:
-                    trabalho = Submission.query.get(assignment.resposta_formulario.trabalho_id)
-                    if trabalho:
-                        # Adicionar informações do assignment ao trabalho
-                        trabalho.assignment_deadline = assignment.deadline
-                        trabalho.assignment_completed = assignment.completed
-                        trabalho.assignment_id = assignment.id
-                        trabalho.distribution_date = assignment.distribution_date
-                        
-                        # Calcular dias restantes para o prazo
-                        if assignment.deadline:
-                            from datetime import date
-                            today = date.today()
-                            deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
-                            trabalho.days_left = (deadline_date - today).days
-                        else:
-                            trabalho.days_left = None
-                        
-                        trabalhos_designados.append(trabalho)
+            # Filtrar por evento se disponível
+            if evento_id:
+                from models.event import RespostaFormulario
 
+                query = (
+                    query.join(
+                        RespostaFormulario,
+                        Assignment.resposta_formulario_id == RespostaFormulario.id,
+                    ).filter(RespostaFormulario.evento_id == evento_id)
+                )
+
+            assignments = query.all()
+
+            for assignment in assignments:
+                resposta = assignment.resposta_formulario
+                if not resposta:
+                    continue
+                campos = {
+                    rc.campo.nome: rc.valor
+                    for rc in resposta.respostas_campos
+                    if rc.campo and rc.campo.nome
+                }
+                
+                # Calcular dias restantes para o prazo
+                days_left = None
+                if assignment.deadline:
+                    from datetime import date
+                    today = date.today()
+                    deadline_date = assignment.deadline.date() if hasattr(assignment.deadline, 'date') else assignment.deadline
+                    days_left = (deadline_date - today).days
+                
+                trabalho = {
+                    "titulo": campos.get("Título"),
+                    "pdf_url": campos.get("URL do PDF"),
+                    "data_submissao": resposta.data_submissao,
+                    "assignment_deadline": assignment.deadline,
+                    "assignment_completed": assignment.completed,
+                    "distribution_date": assignment.distribution_date,
+                    "days_left": days_left,
+                    "id": assignment.id,
+                }
+                trabalhos_designados.append(trabalho)
+
+    # Determinar o nome do revisor
+    nome_revisor = cand.nome
+    if cand.status == 'aprovado':
+        revisor_user = Usuario.query.filter_by(email=cand.email).first()
+        if revisor_user and revisor_user.nome:
+            nome_revisor = revisor_user.nome
+    
     pdf_url = url_for("revisor_routes.progress_pdf", codigo=codigo)
     return render_template(
         "revisor/progress.html",
         candidatura=cand,
         pdf_url=pdf_url,
-        trabalhos_designados=trabalhos_designados
+        trabalhos_designados=trabalhos_designados,
+        nome_revisor=nome_revisor
     )
 
 
@@ -675,8 +715,7 @@ def select_event():
     processos = (
         RevisorProcess.query.options(selectinload(RevisorProcess.eventos))
         .filter(
-            RevisorProcess.status == "ativo",
-            RevisorProcess.exibir_para_participantes.is_(True),
+            RevisorProcess.status.in_(["aberto", "pendente", "encerrado"]),
             or_(
                 RevisorProcess.availability_start.is_(None),
                 func.date(RevisorProcess.availability_start) <= today,
@@ -699,9 +738,11 @@ def select_event():
 
         # Mapear status do banco para exibição no template
         db_status = getattr(proc, "status", None)
-        if db_status == "ativo":
+        if db_status == "aberto":
             status = "Aberto"
-        elif db_status == "inativo":
+        elif db_status == "pendente":
+            status = "Pendente"
+        elif db_status == "encerrado":
             status = "Encerrado"
         else:
             status = "Aberto" if proc.is_available() else "Encerrado"
@@ -850,7 +891,6 @@ def approve(cand_id: int):
                 resposta_formulario = RespostaFormulario(
                     trabalho_id=trabalho.id,
                     formulario_id=None,  # Pode ser None para assignments automáticos
-                    respostas={},
                     data_submissao=datetime.utcnow()
                 )
                 db.session.add(resposta_formulario)

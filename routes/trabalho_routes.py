@@ -311,11 +311,27 @@ def novo_trabalho():
         flash("Formulário de trabalhos não encontrado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
     
+    # Buscar eventos disponíveis para o cliente
+    eventos = Evento.query.filter_by(cliente_id=current_user.id).all()
+    
     if request.method == "POST":
+        # Validar evento selecionado
+        evento_id = request.form.get('evento_id')
+        if not evento_id:
+            flash("Por favor, selecione um evento.", "warning")
+            return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
+        
+        # Verificar se o evento pertence ao cliente
+        evento = Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first()
+        if not evento:
+            flash("Evento inválido.", "danger")
+            return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
+        
         # Criar nova resposta do formulário
         resposta_formulario = RespostaFormulario(
             formulario_id=formulario.id,
-            usuario_id=current_user.id
+            usuario_id=current_user.id,
+            evento_id=evento_id
         )
         db.session.add(resposta_formulario)
         db.session.flush()
@@ -328,7 +344,7 @@ def novo_trabalho():
             if campo.obrigatorio and not valor:
                 db.session.rollback()
                 flash(f"O campo '{campo.nome}' é obrigatório.", "warning")
-                return render_template("trabalhos/novo_trabalho.html", formulario=formulario)
+                return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
             
             # Criar resposta do campo
             resposta_campo = RespostaCampo(
@@ -347,7 +363,7 @@ def novo_trabalho():
             flash("Erro ao cadastrar trabalho. Tente novamente.", "danger")
             current_app.logger.error(f"Erro ao cadastrar trabalho: {e}")
     
-    return render_template("trabalhos/novo_trabalho.html", formulario=formulario)
+    return render_template("trabalhos/novo_trabalho.html", formulario=formulario, eventos=eventos)
 
 
 @trabalho_routes.route("/trabalhos/<int:trabalho_id>/editar", methods=["GET", "POST"])
@@ -387,6 +403,21 @@ def editar_trabalho(trabalho_id):
     formulario = resposta.formulario
     
     if request.method == "POST":
+        # Atualizar evento se fornecido
+        evento_id = request.form.get('evento_id')
+        if evento_id:
+            try:
+                resposta.evento_id = int(evento_id)
+            except (ValueError, TypeError):
+                flash("Evento inválido selecionado.", "warning")
+                # Buscar eventos para reexibir o formulário
+                if current_user.tipo == "admin":
+                    eventos = Evento.query.order_by(Evento.nome).all()
+                else:
+                    eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.nome).all()
+                return render_template("trabalhos/editar_trabalho.html", 
+                                     formulario=formulario, resposta=resposta, eventos=eventos)
+        
         # Atualizar respostas dos campos
         for campo in formulario.campos:
             valor = request.form.get(f"campo_{campo.id}")
@@ -422,8 +453,14 @@ def editar_trabalho(trabalho_id):
             flash("Erro ao atualizar trabalho. Tente novamente.", "danger")
             current_app.logger.error(f"Erro ao atualizar trabalho: {e}")
     
+    # Buscar eventos do usuário logado para o select
+    if current_user.tipo == "admin":
+        eventos = Evento.query.order_by(Evento.nome).all()
+    else:
+        eventos = Evento.query.filter_by(cliente_id=current_user.id).order_by(Evento.nome).all()
+    
     return render_template("trabalhos/editar_trabalho.html", 
-                         formulario=formulario, resposta=resposta)
+                         formulario=formulario, resposta=resposta, eventos=eventos)
 
 
 @trabalho_routes.route("/trabalhos/<int:trabalho_id>/excluir", methods=["POST"])

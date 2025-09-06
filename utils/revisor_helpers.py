@@ -29,7 +29,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
     if not nome:
         raise ValueError("Nome do processo é obrigatório")
     descricao = req.form.get("descricao")
-    status = req.form.get("status", "ativo")
+    status = req.form.get("status", "aberto").lower()
 
     num_etapas = req.form.get("num_etapas", type=int, default=1)
     stage_names: List[str] = [s.strip() for s in req.form.getlist("stage_name")]

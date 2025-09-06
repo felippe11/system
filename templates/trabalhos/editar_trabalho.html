@@ -38,6 +38,26 @@
                     <form method="POST" class="needs-validation" novalidate>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
+                        <!-- Campo de seleção de evento -->
+                        <div class="mb-3">
+                            <label for="evento_id" class="form-label">
+                                Evento
+                                <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="evento_id" name="evento_id" required>
+                                <option value="">Selecione um evento</option>
+                                {% for evento in eventos %}
+                                    <option value="{{ evento.id }}" 
+                                            {% if resposta.evento_id == evento.id %}selected{% endif %}>
+                                        {{ evento.nome }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                Por favor, selecione um evento.
+                            </div>
+                        </div>
+                        
                         {% for campo in formulario.campos %}
                             {% set valor_atual = '' %}
                             {% for resposta_campo in resposta.respostas_campos %}
