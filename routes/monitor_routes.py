@@ -25,7 +25,15 @@ from PIL import Image
 import unicodedata
 import pandas as pd
 
-from models import Monitor, MonitorAgendamento, PresencaAluno, AgendamentoVisita, AlunoVisitante, HorarioVisitacao
+from models import (
+    Monitor,
+    MonitorCadastroLink,
+    MonitorAgendamento,
+    PresencaAluno,
+    AgendamentoVisita,
+    AlunoVisitante,
+    HorarioVisitacao,
+)
 from extensions import db, csrf
 
 monitor_routes = Blueprint(
@@ -33,6 +41,81 @@ monitor_routes = Blueprint(
     __name__,
     template_folder="../templates/monitor"
 )
+
+# =======================================
+# Link de autoinscrição de monitores
+# =======================================
+
+@monitor_routes.route('/monitor/gerar_link', methods=['POST'])
+@login_required
+def gerar_link_monitor():
+    """Gera link de inscrição para monitores."""
+    if not hasattr(current_user, 'tipo') or current_user.tipo not in ['cliente', 'admin']:
+        return jsonify({'success': False, 'message': 'Não autorizado'}), 403
+
+    data = request.get_json() or {}
+    expires_at_str = data.get('expires_at')
+    if not expires_at_str:
+        return jsonify({'success': False, 'message': 'expires_at é obrigatório'}), 400
+    try:
+        expires_at = datetime.fromisoformat(expires_at_str)
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Data inválida'}), 400
+
+    if current_user.tipo == 'admin':
+        cliente_id = data.get('cliente_id')
+        if not cliente_id:
+            return jsonify({'success': False, 'message': 'cliente_id é obrigatório'}), 400
+    else:
+        cliente_id = current_user.id
+
+    link = MonitorCadastroLink(cliente_id=cliente_id, expires_at=expires_at)
+    db.session.add(link)
+    db.session.commit()
+
+    url = url_for('monitor_routes.monitor_inscricao_form', token=link.token, _external=True)
+    return jsonify({'success': True, 'url': url})
+
+
+@monitor_routes.route('/monitor/inscricao/<token>', methods=['GET'])
+def monitor_inscricao_form(token):
+    """Exibe formulário de autoinscrição para monitores."""
+    link = MonitorCadastroLink.query.filter_by(token=token).first()
+    if not link or not link.is_valid():
+        return make_response('Link inválido ou expirado', 400)
+    return render_template('monitor/auto_inscricao.html', token=token)
+
+
+@monitor_routes.route('/monitor/inscricao/<token>', methods=['POST'])
+def monitor_inscricao_submit(token):
+    """Cria monitor a partir de link válido."""
+    link = MonitorCadastroLink.query.filter_by(token=token).first()
+    if not link or not link.is_valid():
+        return make_response('Link inválido ou expirado', 400)
+
+    monitor = Monitor(
+        nome_completo=request.form.get('nome_completo'),
+        curso=request.form.get('curso'),
+        email=request.form.get('email'),
+        telefone_whatsapp=request.form.get('telefone_whatsapp'),
+        carga_horaria_disponibilidade=int(request.form.get('carga_horaria_disponibilidade', 0)),
+        dias_disponibilidade=','.join(request.form.getlist('dias_disponibilidade')),
+        turnos_disponibilidade=','.join(request.form.getlist('turnos_disponibilidade')),
+        codigo_acesso=gerar_codigo_acesso(),
+        cliente_id=link.cliente_id,
+    )
+    db.session.add(monitor)
+    link.used = True
+    db.session.commit()
+
+    login_user(monitor)
+    session['user_type'] = 'monitor'
+    session['monitor_id'] = monitor.id
+    flash(
+        f'Registro concluído! Seu código de acesso é {monitor.codigo_acesso}',
+        'success',
+    )
+    return redirect(url_for('monitor_routes.dashboard'))
 
 # =======================================
 # Autenticação por Código de Acesso
