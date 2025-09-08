@@ -52,10 +52,11 @@ def gerenciar_materiais():
             Material.ativo.isnot(False),
         ).count()
         materiais_baixo_estoque = Material.query.filter(
-            Material.cliente_id == current_user.id,
-            Material.ativo.isnot(False),
-            Material.quantidade_atual <= Material.quantidade_minima,
-        ).count()
+        Material.cliente_id == current_user.id,
+        Material.ativo.isnot(False),
+        Material.quantidade_atual > 0,
+        Material.quantidade_atual <= Material.quantidade_minima,
+    ).count()
         materiais_esgotados = Material.query.filter(
             Material.cliente_id == current_user.id,
             Material.ativo.isnot(False),
@@ -70,7 +71,7 @@ def gerenciar_materiais():
                 Material.ativo.isnot(False),
             ).all()
             total_polo = len(materiais_polo)
-            baixo_estoque_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= m.quantidade_minima)
+            baixo_estoque_polo = sum(1 for m in materiais_polo if 0 < m.quantidade_atual <= m.quantidade_minima)
             esgotados_polo = sum(1 for m in materiais_polo if m.quantidade_atual <= 0)
             
             estatisticas_polos.append({
@@ -185,7 +186,7 @@ def estatisticas_polos():
                 'sem_estoque': sem_estoque,
                 'valor_total_estoque': valor_total,
                 'percentual_ok': round((em_estoque / total_materiais * 100) if total_materiais > 0 else 0, 1),
-                'materiais_criticos': [m.to_dict() for m in materiais if m.quantidade_atual <= m.quantidade_minima]
+                'materiais_criticos': [m.to_dict() for m in materiais if 0 < m.quantidade_atual <= m.quantidade_minima]
             })
         
         # Estatísticas gerais
@@ -252,11 +253,11 @@ def gerar_relatorio_excel():
             query = query.filter_by(polo_id=polo_id)
         
         if tipo_relatorio == 'baixo_estoque':
-            query = query.filter(Material.quantidade_atual <= Material.quantidade_minima)
+            query = query.filter(Material.quantidade_atual > 0, Material.quantidade_atual <= Material.quantidade_minima)
         elif tipo_relatorio == 'sem_estoque':
             query = query.filter(Material.quantidade_atual == 0)
         elif tipo_relatorio == 'compras':
-            query = query.filter(Material.quantidade_atual < Material.quantidade_minima)
+            query = query.filter(Material.quantidade_atual <= Material.quantidade_minima)
         
         materiais = query.all()
         
@@ -274,8 +275,8 @@ def gerar_relatorio_excel():
                 status = 'Em Estoque'
             
             # Calcular quantidade necessária para compra
-            if material.quantidade_atual < material.quantidade_minima:
-                qtd_necessaria = material.quantidade_minima - material.quantidade_atual + (material.quantidade_minima * 0.5)
+            if material.quantidade_atual <= material.quantidade_minima:
+                qtd_necessaria = (material.quantidade_minima + 1) - material.quantidade_atual
             else:
                 qtd_necessaria = 0
             
@@ -973,7 +974,7 @@ def gerar_relatorio():
         if tipo_relatorio == 'baixo_estoque':
             query = query.filter(Material.quantidade_atual <= Material.quantidade_minima)
         elif tipo_relatorio == 'compras':
-            query = query.filter(Material.quantidade_atual < Material.quantidade_minima)
+            query = query.filter(Material.quantidade_atual <= Material.quantidade_minima)
         
         materiais = query.all()
         

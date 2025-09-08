@@ -19,19 +19,38 @@
         </div>
     </div>
 
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="incluir-baixa" checked>
-                <label class="form-check-label" for="incluir-baixa">
-                    Incluir materiais em baixa
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="incluir-esgotados" checked>
-                <label class="form-check-label" for="incluir-esgotados">
-                    Incluir esgotados
-                </label>
+    <div class="row mb-4">
+        <div class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light border-0">
+                    <h6 class="mb-0 text-muted">
+                        <i class="fas fa-filter me-2"></i>Filtros de Materiais
+                    </h6>
+                </div>
+                <div class="card-body py-2 py-md-3">
+                    <div class="row g-2 g-md-3">
+                        <div class="col-12 col-md-6">
+                            <div class="form-check p-2 p-md-3 border rounded-3 h-100 filter-option filter-baixa selected" id="incluir-baixa" data-checked="true" style="transition: all 0.3s ease; cursor: pointer;" onclick="toggleDiv('incluir-baixa')">
+                                <div class="form-check-label fw-semibold" style="cursor: pointer;">
+                                    <i class="fas fa-check-circle text-success me-2 check-icon"></i>
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    <span class="text-warning">Incluir materiais em baixa</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Materiais com estoque abaixo do mínimo</small>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <div class="form-check p-2 p-md-3 border rounded-3 h-100 filter-option filter-esgotado selected" id="incluir-esgotados" data-checked="true" style="transition: all 0.3s ease; cursor: pointer;" onclick="toggleDiv('incluir-esgotados')">
+                                <div class="form-check-label fw-semibold" style="cursor: pointer;">
+                                    <i class="fas fa-check-circle text-success me-2 check-icon"></i>
+                                    <i class="fas fa-times-circle text-danger me-2"></i>
+                                    <span class="text-danger">Incluir esgotados</span>
+                                </div>
+                                <small class="text-muted d-block mt-1">Materiais com estoque zerado</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -57,4 +76,103 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="{{ url_for('static', filename='js/lista_compras.js') }}"></script>
+
+<style>
+.filter-option {
+    border: 2px solid #e9ecef !important;
+    background: #f8f9fa;
+}
+
+.filter-option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    border-color: #dee2e6 !important;
+}
+
+.filter-baixa:hover {
+    border-color: #ffc107 !important;
+    background: #fff3cd;
+}
+
+.filter-esgotado:hover {
+    border-color: #dc3545 !important;
+    background: #f8d7da;
+}
+
+.filter-option.selected {
+    font-weight: 600;
+    border-color: #28a745 !important;
+    background: #d4edda;
+}
+
+.filter-option:not(.selected) {
+    opacity: 0.6;
+    background: #f8f9fa;
+}
+
+.filter-option:not(.selected) .check-icon {
+    display: none;
+}
+
+.filter-baixa.selected {
+    border-color: #ffc107 !important;
+    background: #fff3cd;
+}
+
+.filter-esgotado.selected {
+    border-color: #dc3545 !important;
+    background: #f8d7da;
+}
+
+/* Responsividade adicional */
+@media (max-width: 576px) {
+    .filter-option {
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-option:hover {
+        transform: none;
+    }
+    
+    .filter-option label {
+        font-size: 0.9rem;
+    }
+    
+    .filter-option small {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .card-header h6 {
+        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .filter-option:hover {
+        transform: translateY(-3px);
+    }
+}
+</style>
+
+<script>
+function toggleDiv(divId) {
+    const div = document.getElementById(divId);
+    const isChecked = div.dataset.checked === 'true';
+    
+    // Toggle estado
+    div.dataset.checked = !isChecked;
+    
+    // Toggle classe visual
+    if (!isChecked) {
+        div.classList.add('selected');
+    } else {
+        div.classList.remove('selected');
+    }
+    
+    // Disparar evento para atualizar a tabela
+    renderTabela();
+}
+</script>
 {% endblock %}
