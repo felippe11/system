@@ -193,6 +193,28 @@ class PasswordResetToken(db.Model):
         return f"<PasswordResetToken usuario_id={self.usuario_id} token={self.token}>"
 
 
+class MonitorCadastroLink(db.Model):
+    """Link para autoinscrição de monitores."""
+
+    __tablename__ = "monitor_cadastro_link"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    token = db.Column(
+        db.String(36), unique=True, nullable=False, default=lambda: str(uuid.uuid4())
+    )
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used = db.Column(db.Boolean, default=False)
+
+    cliente = db.relationship(
+        "Cliente", backref=db.backref("monitor_cadastro_links", lazy=True)
+    )
+
+    def is_valid(self):
+        """Retorna True se o link não foi usado e ainda não expirou."""
+        return (not self.used) and datetime.utcnow() < self.expires_at
+
+
 class Monitor(db.Model, UserMixin):
     __tablename__ = "monitor"
     id = db.Column(db.Integer, primary_key=True)
