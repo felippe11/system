@@ -52,7 +52,7 @@ function renderTabela() {
     const dados = filtrarMateriais();
     tbody.innerHTML = '';
     dados.forEach(mat => {
-        const comprar = Math.ceil(mat.quantidade_minima - mat.quantidade_atual + mat.quantidade_minima * 0.5);
+        const comprar = mat.quantidade_atual <= mat.quantidade_minima ? (mat.quantidade_minima + 1) - mat.quantidade_atual : 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${mat.nome}</td><td>${mat.polo ? mat.polo.nome : ''}</td><td>${mat.quantidade_atual}</td><td>${mat.quantidade_minima}</td><td>${comprar}</td>`;
         tbody.appendChild(tr);
@@ -61,7 +61,7 @@ function renderTabela() {
 
 function gerarTexto() {
     return filtrarMateriais().map(m => {
-        const comprar = Math.ceil(m.quantidade_minima - m.quantidade_atual + m.quantidade_minima * 0.5);
+        const comprar = m.quantidade_atual <= m.quantidade_minima ? (m.quantidade_minima + 1) - m.quantidade_atual : 0;
         return `${m.nome} - Comprar ${comprar} ${m.unidade}`;
     }).join('\n');
 }
@@ -76,9 +76,7 @@ function exportarPDF() {
     const doc = new jsPDF();
     const grupos = filtrarMateriais().reduce((acc, m) => {
         const nomePolo = m.polo ? m.polo.nome : 'Sem Polo';
-        const comprar = Math.ceil(
-            m.quantidade_minima - m.quantidade_atual + m.quantidade_minima * 0.5
-        );
+        const comprar = m.quantidade_atual <= m.quantidade_minima ? (m.quantidade_minima + 1) - m.quantidade_atual : 0;
         if (!acc[nomePolo]) {
             acc[nomePolo] = [];
         }
@@ -107,7 +105,7 @@ function exportarPDF() {
 
 function exportarXLSX() {
     const dados = filtrarMateriais().map(m => {
-        const comprar = Math.ceil(m.quantidade_minima - m.quantidade_atual + m.quantidade_minima * 0.5);
+        const comprar = m.quantidade_atual <= m.quantidade_minima ? (m.quantidade_minima + 1) - m.quantidade_atual : 0;
         return {
             Material: m.nome,
             Polo: m.polo ? m.polo.nome : '',
