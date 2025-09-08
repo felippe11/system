@@ -231,6 +231,13 @@ def meus_trabalhos():
 
 
 # ──────────────────────────── TRABALHOS CLIENTE ─────────────────────────── #
+
+
+def get_trabalhos_form():
+    """Return the 'Formulário de Trabalhos' or ``None`` if absent."""
+    return Formulario.query.filter_by(nome="Formulário de Trabalhos").first()
+
+
 @trabalho_routes.route("/trabalhos")
 @login_required
 def listar_trabalhos():
@@ -238,12 +245,10 @@ def listar_trabalhos():
     if current_user.tipo not in ["cliente", "admin"]:
         flash("Acesso negado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-    
-    # Buscar formulário de trabalhos
-    formulario = Formulario.query.filter_by(nome='Formulário de Trabalhos').first()
+
+    formulario = get_trabalhos_form()
     if not formulario:
-        flash("Formulário de trabalhos não encontrado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return render_template("trabalhos/formulario_nao_encontrado.html")
     
     # Buscar TODAS as respostas do formulário (não apenas do cliente atual)
     # O cliente precisa ver todos os trabalhos para poder distribuí-los
@@ -304,12 +309,10 @@ def novo_trabalho():
     if current_user.tipo != "cliente":
         flash("Acesso negado.", "danger")
         return redirect(url_for("dashboard_routes.dashboard"))
-    
-    # Buscar formulário de trabalhos
-    formulario = Formulario.query.filter_by(nome='Formulário de Trabalhos').first()
+
+    formulario = get_trabalhos_form()
     if not formulario:
-        flash("Formulário de trabalhos não encontrado.", "danger")
-        return redirect(url_for("dashboard_routes.dashboard"))
+        return render_template("trabalhos/formulario_nao_encontrado.html")
     
     # Buscar eventos disponíveis para o cliente
     eventos = Evento.query.filter_by(cliente_id=current_user.id).all()

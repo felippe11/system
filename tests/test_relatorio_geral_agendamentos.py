@@ -12,6 +12,8 @@ from werkzeug.security import generate_password_hash
 
 # Stubs for optional dependencies
 sys.modules.setdefault('pandas', types.ModuleType('pandas'))
+sys.modules['pandas'].DataFrame = type('DataFrame', (), {})
+sys.modules['pandas'].Series = type('Series', (), {})
 sys.modules.setdefault('qrcode', types.ModuleType('qrcode'))
 sys.modules.setdefault('openpyxl', types.ModuleType('openpyxl'))
 sys.modules['openpyxl'].Workbook = object
@@ -290,6 +292,35 @@ def test_generate_pdf_uses_service(client, monkeypatch):
     login(client)
     called = {}
 
+    class DummyPDF:
+        def add_page(self):
+            pass
+
+        def set_font(self, *args, **kwargs):
+            pass
+
+        def cell(self, *args, **kwargs):
+            pass
+
+        def ln(self, *args, **kwargs):
+            pass
+
+        def multi_cell(self, *args, **kwargs):
+            pass
+
+        def set_fill_color(self, *args, **kwargs):
+            pass
+
+        def get_y(self):
+            return 0
+
+        def output(self, name, *args, **kwargs):
+            os.makedirs(os.path.dirname(name), exist_ok=True)
+            with open(name, 'wb') as f:
+                f.write(b'PDF')
+
+    monkeypatch.setattr('routes.agendamento_routes.FPDF', DummyPDF)
+
     def fake_pdf(evento, agendamentos, caminho_pdf):
         called['used'] = True
         os.makedirs(os.path.dirname(caminho_pdf), exist_ok=True)
@@ -302,3 +333,50 @@ def test_generate_pdf_uses_service(client, monkeypatch):
     resp = client.get('/relatorio_geral_agendamentos?gerar_pdf=1')
     assert resp.status_code == 200
 
+
+def test_pdf_generation_includes_professor_visitors(client, monkeypatch):
+    """PDF generation should compute total visitors per professor without errors."""
+    login(client)
+
+    class DummyPDF:
+        instance = None
+
+        def __init__(self):
+            self.cells = []
+            DummyPDF.instance = self
+
+        def add_page(self):
+            pass
+
+        def set_font(self, *args, **kwargs):
+            pass
+
+        def cell(self, w, h=0, txt='', border=0, ln=0, align='', fill=False):
+            self.cells.append(txt)
+
+        def ln(self, *args, **kwargs):
+            pass
+
+        def multi_cell(self, *args, **kwargs):
+            pass
+
+        def set_fill_color(self, *args, **kwargs):
+            pass
+
+        def get_y(self):
+            return 0
+
+        def output(self, name, *args, **kwargs):
+            os.makedirs(os.path.dirname(name), exist_ok=True)
+            with open(name, 'wb') as f:
+                f.write(b'PDF')
+
+    monkeypatch.setattr('routes.agendamento_routes.FPDF', DummyPDF)
+
+    resp = client.get('/relatorio_geral_agendamentos?gerar_pdf=1')
+    assert resp.status_code == 200
+
+    cells = DummyPDF.instance.cells
+    assert 'prof@test' in cells
+    idx = cells.index('prof@test')
+    assert cells[idx + 1] == '10'
