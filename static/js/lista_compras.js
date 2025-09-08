@@ -74,11 +74,33 @@ function exportarWhatsApp() {
 function exportarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    const grupos = filtrarMateriais().reduce((acc, m) => {
+        const nomePolo = m.polo ? m.polo.nome : 'Sem Polo';
+        const comprar = Math.ceil(
+            m.quantidade_minima - m.quantidade_atual + m.quantidade_minima * 0.5
+        );
+        if (!acc[nomePolo]) {
+            acc[nomePolo] = [];
+        }
+        acc[nomePolo].push([
+            m.nome,
+            nomePolo,
+            m.quantidade_atual,
+            m.quantidade_minima,
+            comprar,
+            m.unidade
+        ]);
+        return acc;
+    }, {});
     let y = 10;
-    filtrarMateriais().forEach((m, idx) => {
-        const comprar = Math.ceil(m.quantidade_minima - m.quantidade_atual + m.quantidade_minima * 0.5);
-        doc.text(`${idx + 1}. ${m.nome} - ${comprar} ${m.unidade}`, 10, y);
-        y += 10;
+    Object.keys(grupos).forEach(poloNome => {
+        doc.text(poloNome, 10, y);
+        doc.autoTable({
+            startY: y + 5,
+            head: [['Material', 'Polo', 'Qtd Atual', 'Qtd Mínima', 'Comprar', 'Unidade']],
+            body: grupos[poloNome]
+        });
+        y = doc.lastAutoTable.finalY + 10;
     });
     doc.save('lista_compras.pdf');
 }
