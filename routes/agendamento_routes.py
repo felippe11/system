@@ -689,6 +689,7 @@ def relatorio_geral_agendamentos():
 
     professores_query = (
         db.session.query(
+            Usuario.id.label('id'),
             Usuario.nome.label('nome'),
             Usuario.email.label('email'),
             AgendamentoVisita.responsavel_whatsapp.label(
