@@ -3,8 +3,6 @@ let polos = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     carregarDados();
-    document.getElementById('incluir-baixa').addEventListener('change', renderTabela);
-    document.getElementById('incluir-esgotados').addEventListener('change', renderTabela);
     document.getElementById('btn-whatsapp').addEventListener('click', exportarWhatsApp);
     document.getElementById('btn-pdf').addEventListener('click', exportarPDF);
     document.getElementById('btn-xlsx').addEventListener('click', exportarXLSX);
@@ -32,8 +30,8 @@ async function carregarDados() {
 }
 
 function filtrarMateriais() {
-    const incluirBaixa = document.getElementById('incluir-baixa').checked;
-    const incluirEsgotados = document.getElementById('incluir-esgotados').checked;
+    const incluirBaixa = document.getElementById('incluir-baixa').dataset.checked === 'true';
+    const incluirEsgotados = document.getElementById('incluir-esgotados').dataset.checked === 'true';
 
     return materiais.filter(m => {
         if (m.status_estoque === 'esgotado') {
