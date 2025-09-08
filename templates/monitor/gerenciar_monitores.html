@@ -29,14 +29,22 @@
                             <i class="fas fa-users-plus"></i>
                             <span class="d-none d-sm-inline ms-1">Cadastro Múltiplo</span>
                         </a>
-                        <a href="{{ url_for('monitor_routes.importacao_massa') }}" 
-                           class="btn btn-outline-primary" 
-                           data-bs-toggle="tooltip" 
-                           data-bs-placement="top" 
+                        <a href="{{ url_for('monitor_routes.importacao_massa') }}"
+                           class="btn btn-outline-primary"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
                            title="Importar monitores via planilha">
                             <i class="fas fa-upload"></i>
                             <span class="d-none d-sm-inline ms-1">Importação</span>
                         </a>
+                        <button id="gerar-link-btn"
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Gerar link de inscrição">
+                            <i class="fas fa-link"></i>
+                            <span class="d-none d-sm-inline ms-1">Gerar link</span>
+                        </button>
                     </div>
                     
                     <!-- Grupo 2: Distribuição -->
@@ -339,10 +347,37 @@
     </div>
 </div>
 
+<!-- Modal Gerar Link -->
+<div class="modal fade" id="gerarLinkModal" tabindex="-1" aria-labelledby="gerarLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="gerarLinkModalLabel">Gerar link de inscrição</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="expires-at" class="form-label">Data de expiração</label>
+                    <input type="date" class="form-control" id="expires-at">
+                </div>
+                <div class="mb-3">
+                    <label for="monitor-link" class="form-label">Link gerado</label>
+                    <input type="text" class="form-control" id="monitor-link" readonly>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="gerarLinkMonitor()">Gerar</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="copiarLinkMonitor()">Copiar link</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 {% endblock %}
 
 {% block scripts_extra %}
+<script src="{{ url_for('static', filename='js/gerenciar_monitores.js') }}"></script>
 <script>
 // Inicializar tooltips do Bootstrap
 document.addEventListener('DOMContentLoaded', function() {
