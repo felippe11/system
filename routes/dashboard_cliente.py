@@ -18,10 +18,10 @@ from sqlalchemy import func, and_, or_
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from models import (
-Evento, Oficina, Inscricao, Checkin,
-ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
-EventoInscricaoTipo, Configuracao, ReviewerApplication,
-RevisorCandidatura, RevisorProcess
+    Evento, Oficina, Inscricao, Checkin,
+    ConfiguracaoCliente, AgendamentoVisita, HorarioVisitacao, Usuario,
+    EventoInscricaoTipo, Configuracao, ReviewerApplication,
+    RevisorCandidatura, RevisorProcess, Formulario,
 )
 
 # Modelos opcionais usados no dashboard de agendamentos. Em alguns ambientes
@@ -294,6 +294,11 @@ def dashboard_cliente():
             .all()
         )
         data['revisor_candidaturas_aprovadas'] = revisor_candidaturas_aprovadas
+
+        formulario_trabalho = Formulario.query.filter_by(
+            nome='Formulário de Trabalhos'
+        ).first()
+        data['formulario_trabalho'] = formulario_trabalho
     except SQLAlchemyError as exc:
         logger.exception('Erro ao carregar dashboard do cliente: %s', exc)
         flash('Não foi possível carregar o dashboard do cliente.', 'error')
