@@ -1241,7 +1241,7 @@ function initGeographicMap() {
         
         // Adicionar marcadores baseados nos dados
         {% for cidade in dados_visao.geografia.dados_por_cidade %}
-        L.marker([{{ cidade.latitude|default:"-15.7942" }}, {{ cidade.longitude|default:"-47.8822" }}])
+        L.marker([{{ cidade.latitude|default('-15.7942') }}, {{ cidade.longitude|default('-47.8822') }}])
             .addTo(map)
             .bindPopup('<b>{{ cidade.cidade }}, {{ cidade.estado }}</b><br>Participantes: {{ cidade.total_participantes }}<br>Eventos: {{ cidade.total_eventos }}');
         {% endfor %}
@@ -1261,7 +1261,7 @@ function initEventCalendar() {
                 right: 'dayGridMonth,timeGridWeek,listWeek'
             },
             events: [
-                {% for data, oficinas in dados_visao.ocupacao.ocupacao_por_dia.items %}
+                {% for data, oficinas in dados_visao.ocupacao.ocupacao_por_dia.items() %}
                 {% for oficina in oficinas %}
                 {
                     title: '{{ oficina.oficina }} ({{ oficina.ocupacao }}%)',

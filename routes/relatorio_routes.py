@@ -22,7 +22,7 @@ from models import (
     Sorteio,
     Cliente,
     Pagamento,
-    CertificadoTemplate
+    CertificadoTemplateAvancado
 )
 from models.event import ParticipanteEvento
 from models.user import Ministrante
@@ -180,15 +180,12 @@ def gerar_relatorio_evento():
     from sqlalchemy import func, and_, or_
     import json
     
-    # Log de acesso ao dashboard
+    # Log de acesso ao dashboard (usa assinatura padrao do util)
     log_access_attempt(
-        user_id=current_user.id,
-        action='dashboard_access',
-        resource_type='dashboard',
-        resource_id=request.args.get('evento_id'),
-        success=True,
-        ip_address=request.remote_addr,
-        details=f"Visão: {request.args.get('visao', 'executiva')}"
+        'dashboard_access',
+        'dashboard',
+        request.args.get('evento_id'),
+        True,
     )
     
     # Controle de acesso
@@ -209,12 +206,14 @@ def gerar_relatorio_evento():
         ministrantes = Ministrante.query.join(Oficina).filter(Oficina.cliente_id==current_user.id).distinct().all()
     
     # Obter dados únicos para filtros
-    estados = db.session.query(Evento.estado).distinct().filter(Evento.estado.isnot(None)).all()
-    cidades = db.session.query(Evento.cidade).distinct().filter(Evento.cidade.isnot(None)).all()
+    # Distintos estados e cidades são baseados nas oficinas, que possuem esses campos
+    estados = db.session.query(Oficina.estado).distinct().filter(Oficina.estado.isnot(None)).all()
+    cidades = db.session.query(Oficina.cidade).distinct().filter(Oficina.cidade.isnot(None)).all()
     modalidades = ['presencial', 'online', 'hibrido']
     turnos = ['manha', 'tarde', 'noite']
     status_opcoes = ['pre_inscricao', 'confirmado', 'cancelado', 'presente']
-    tipos_certificado = db.session.query(CertificadoTemplate.tipo).distinct().all()
+    # Tipos de certificado disponíveis vêm do modelo avançado
+    tipos_certificado = db.session.query(CertificadoTemplateAvancado.tipo).distinct().all()
     
     # Processar filtros
     filtros = {
@@ -273,29 +272,130 @@ def gerar_relatorio_evento():
     # Calcular KPIs baseados nos filtros aplicados
     kpis = calcular_kpis_dashboard(query_inscricoes, query_checkins, query_oficinas, filtros)
     
-    # Dados específicos por visão
-    dados_visao = {}
-    
-    if filtros['visao'] == 'executiva':
-        dados_visao = gerar_visao_executiva(query_inscricoes, query_checkins, query_oficinas, filtros)
-    elif filtros['visao'] == 'funil':
-        dados_visao = gerar_visao_funil(query_inscricoes, query_checkins, filtros)
-    elif filtros['visao'] == 'ocupacao':
-        dados_visao = gerar_visao_ocupacao(query_oficinas, query_inscricoes, filtros)
-    elif filtros['visao'] == 'presenca':
-        dados_visao = gerar_visao_presenca(query_checkins, query_inscricoes, filtros)
-    elif filtros['visao'] == 'qualidade':
-        dados_visao = gerar_visao_qualidade(query_inscricoes, filtros)
-    elif filtros['visao'] == 'financeiro':
-        dados_visao = gerar_visao_financeiro(query_inscricoes, filtros)
-    elif filtros['visao'] == 'certificados':
-        dados_visao = gerar_visao_certificados(query_inscricoes, filtros)
-    elif filtros['visao'] == 'operacao':
-        dados_visao = gerar_visao_operacao(query_checkins, filtros)
-    elif filtros['visao'] == 'diversidade':
-        dados_visao = gerar_visao_diversidade(query_inscricoes, filtros)
-    elif filtros['visao'] == 'geografia':
-        dados_visao = gerar_visao_geografia(query_inscricoes, query_oficinas, filtros)
+    # Dados específicos por visão (sempre entregue com todas as chaves esperadas para o template)
+    # Estruturas padrão para evitar UndefinedError em tabs não ativas
+    dados_visao_full = {
+        'executiva': {
+            'top_oficinas_procura': [],
+            'alertas': [],
+            'satisfacao_media': 0,
+            'nps': 0,
+            'tempo_medio_fila': '0 min',
+        },
+        'funil': {
+            'funil_dados': {
+                'visitantes': 0,
+                'inscritos': 0,
+                'confirmados': 0,
+                'pagos': 0,
+                'checkin_1turno': 0,
+                'checkin_2turno': 0,
+                'certificados': 0,
+                'downloads': 0,
+            },
+            'conversoes': {
+                'visitante_inscrito': 0,
+                'inscrito_confirmado': 0,
+                'confirmado_pago': 0,
+                'pago_checkin1': 0,
+                'checkin1_checkin2': 0,
+                'checkin_certificado': 0,
+                'certificado_download': 0,
+            },
+        },
+        'ocupacao': {
+            'ocupacao_por_dia': {},
+            'gargalos': [],
+        },
+        'presenca': {
+            'presenca_por_oficina': [],
+            'retencao_30_dias': 0,
+            'retencao_60_dias': 0,
+            'retencao_90_dias': 0,
+            'reincidencia_faltas': 0,
+        },
+        'qualidade': {
+            'nota_media_geral': 0,
+            'nps_geral': 0,
+            'feedback_por_categoria': {
+                'conteudo': 0,
+                'logistica': 0,
+                'estrutura': 0,
+                'material': 0,
+            },
+            'comentarios_positivos': 0,
+            'comentarios_negativos': 0,
+            'principais_elogios': [],
+            'principais_criticas': [],
+        },
+        'financeiro': {
+            'receita_total': 0.0,
+            'receita_liquida': 0.0,
+            'taxa_conversao_pagamento': 0.0,
+            'ticket_medio': 0.0,
+            'inadimplencia': 0.0,
+            'chargebacks': 0.0,
+            'custo_por_participante': 0.0,
+            'margem_liquida': 0.0,
+        },
+        'certificados': {
+            'certificados_gerados': 0,
+            'certificados_baixados': 0,
+            'taxa_emissao': 0.0,
+            'taxa_download': 0.0,
+            'tempo_medio_emissao': '0 min',
+            'erros_renderizacao': 0,
+            'certificados_por_tipo': {
+                'participacao': 0,
+                'ministrante': 0,
+                'avaliador': 0,
+            },
+        },
+        'operacao': {
+            'qr_validos': 0,
+            'qr_invalidos': 0,
+            'tentativas_fraude': 0,
+            'checkins_fora_janela': 0,
+            'ips_duplicados': 0,
+            'logs_auditoria': 0,
+        },
+        'diversidade': {
+            'distribuicao_genero': {
+                'feminino': 0,
+                'masculino': 0,
+                'outros': 0,
+            },
+            'pcd_atendidos': 0,
+            'solicitacoes_acessibilidade': 0,
+            'ods_relacionados': [],
+        },
+        'geografia': {
+            'dados_por_cidade': [],
+            'ranking_cidades': [],
+        },
+    }
+
+    visao = filtros['visao']
+    if visao == 'executiva':
+        dados_visao_full['executiva'] = gerar_visao_executiva(query_inscricoes, query_checkins, query_oficinas, filtros)
+    elif visao == 'funil':
+        dados_visao_full['funil'] = gerar_visao_funil(query_inscricoes, query_checkins, filtros)
+    elif visao == 'ocupacao':
+        dados_visao_full['ocupacao'] = gerar_visao_ocupacao(query_oficinas, query_inscricoes, filtros)
+    elif visao == 'presenca':
+        dados_visao_full['presenca'] = gerar_visao_presenca(query_checkins, query_inscricoes, filtros)
+    elif visao == 'qualidade':
+        dados_visao_full['qualidade'] = gerar_visao_qualidade(query_inscricoes, filtros)
+    elif visao == 'financeiro':
+        dados_visao_full['financeiro'] = gerar_visao_financeiro(query_inscricoes, filtros)
+    elif visao == 'certificados':
+        dados_visao_full['certificados'] = gerar_visao_certificados(query_inscricoes, filtros)
+    elif visao == 'operacao':
+        dados_visao_full['operacao'] = gerar_visao_operacao(query_checkins, filtros)
+    elif visao == 'diversidade':
+        dados_visao_full['diversidade'] = gerar_visao_diversidade(query_inscricoes, filtros)
+    elif visao == 'geografia':
+        dados_visao_full['geografia'] = gerar_visao_geografia(query_inscricoes, query_oficinas, filtros)
     
     # Exportação de dados
     if request.args.get('export'):
@@ -309,13 +409,10 @@ def gerar_relatorio_evento():
         
         # Log da exportação
         log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_export',
-            resource_type='dashboard',
-            resource_id=filtros.get('evento_id'),
-            success=True,
-            ip_address=request.remote_addr,
-            details=f"Formato: {request.args.get('export')}, Visão: {filtros['visao']}"
+            'dashboard_export',
+            'dashboard',
+            filtros.get('evento_id'),
+            True,
         )
         
         return exportar_dados_dashboard(filtros, kpis, dados_visao, request.args.get('export'))
@@ -334,7 +431,7 @@ def gerar_relatorio_evento():
         tipos_certificado=[t[0] for t in tipos_certificado],
         filtros=filtros,
         kpis=kpis,
-        dados_visao=dados_visao,
+        dados_visao=dados_visao_full,
         visao_atual=filtros['visao']
     )
 
@@ -347,13 +444,13 @@ def calcular_kpis_dashboard(query_inscricoes, query_checkins, query_oficinas, fi
     inscricoes_totais = query_inscricoes.count()
     usuarios_unicos = query_inscricoes.with_entities(Inscricao.usuario_id).distinct().count()
     
-    # Check-ins por turno
-    checkins_manha = query_checkins.filter(func.time(Checkin.data_hora) < '12:00:00').count()
-    checkins_tarde = query_checkins.filter(func.time(Checkin.data_hora) >= '12:00:00').count()
+    # Check-ins por turno (PostgreSQL-safe using date_part)
+    checkins_manha = query_checkins.filter(func.date_part('hour', Checkin.data_hora) < 12).count()
+    checkins_tarde = query_checkins.filter(func.date_part('hour', Checkin.data_hora) >= 12).count()
     checkins_total = query_checkins.count()
     
-    # Confirmados (status confirmado)
-    confirmados = query_inscricoes.filter_by(status='confirmado').count()
+    # Confirmados = inscrições com pagamento aprovado
+    confirmados = query_inscricoes.filter(Inscricao.status_pagamento == 'approved').count()
     
     # Taxa de presença = presentes / confirmados
     taxa_presenca = (checkins_total / confirmados * 100) if confirmados > 0 else 0
@@ -366,12 +463,12 @@ def calcular_kpis_dashboard(query_inscricoes, query_checkins, query_oficinas, fi
     no_show = confirmados - checkins_total
     taxa_no_show = (no_show / confirmados * 100) if confirmados > 0 else 0
     
-    # Cancelamentos
-    cancelamentos = query_inscricoes.filter_by(status='cancelado').count()
+    # Cancelamentos (não há campo de status de inscrição; usando 0 por padrão)
+    cancelamentos = 0
     taxa_cancelamento = (cancelamentos / inscricoes_totais * 100) if inscricoes_totais > 0 else 0
     
     # Receita (simulada - implementar com dados reais de pagamento)
-    receita_bruta = query_inscricoes.filter_by(status='confirmado').count() * 50  # Valor médio simulado
+    receita_bruta = confirmados * 50  # Valor médio simulado
     receita_liquida = receita_bruta * 0.95  # Descontando taxas
     ticket_medio = receita_liquida / confirmados if confirmados > 0 else 0
     
@@ -438,10 +535,10 @@ def gerar_visao_funil(query_inscricoes, query_checkins, filtros):
     # Simular dados do funil
     visitantes = 10000  # Simulado
     inscritos = query_inscricoes.count()
-    confirmados = query_inscricoes.filter_by(status='confirmado').count()
+    confirmados = query_inscricoes.filter(Inscricao.status_pagamento == 'approved').count()
     pagos = confirmados  # Assumindo que confirmados = pagos
-    checkin_1turno = query_checkins.filter(func.time(Checkin.data_hora) < '12:00:00').count()
-    checkin_2turno = query_checkins.filter(func.time(Checkin.data_hora) >= '12:00:00').count()
+    checkin_1turno = query_checkins.filter(func.date_part('hour', Checkin.data_hora) < 12).count()
+    checkin_2turno = query_checkins.filter(func.date_part('hour', Checkin.data_hora) >= 12).count()
     certificados = int(query_checkins.count() * 0.8)
     downloads = int(certificados * 0.6)
     
@@ -562,7 +659,7 @@ def gerar_visao_qualidade(query_inscricoes, filtros):
 
 def gerar_visao_financeiro(query_inscricoes, filtros):
     """Gera dados financeiros."""
-    confirmados = query_inscricoes.filter_by(status='confirmado').count()
+    confirmados = query_inscricoes.filter(Inscricao.status_pagamento == 'approved').count()
     
     # Dados simulados financeiros
     return {
@@ -793,21 +890,13 @@ def api_dashboard_oficina_details(oficina_id):
     """API para detalhes de oficina no dashboard."""
     try:
         # Verificar se o usuário pode acessar esta oficina
-        if not can_access_dashboard_data(current_user, 'oficina', oficina_id):
+        if not can_access_dashboard_data('oficina', oficina_id):
             return {'error': 'Acesso negado'}, 403
         
         oficina = Oficina.query.get_or_404(oficina_id)
         
         # Log do acesso
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='oficina',
-            resource_id=oficina_id,
-            success=True,
-            ip_address=request.remote_addr,
-            details='Drill-down oficina details'
-        )
+        log_access_attempt('dashboard_drill_down', 'oficina', oficina_id, True)
         
         # Calcular métricas da oficina
         inscricoes = Inscricao.query.filter_by(oficina_id=oficina_id).all()
@@ -834,23 +923,15 @@ def api_dashboard_oficina_details(oficina_id):
                 'id': i.id,
                 'usuario_nome': i.usuario.nome if i.usuario else 'N/A',
                 'usuario_email': i.usuario.email if i.usuario else 'N/A',
-                'status': i.status,
-                'data_inscricao': i.data_inscricao.isoformat() if i.data_inscricao else None
+                'status_pagamento': i.status_pagamento,
+                'data_inscricao': i.created_at.isoformat() if i.created_at else None
             } for i in inscricoes[:50]]  # Limitar a 50 registros
         }
         
         return dados
         
     except Exception as e:
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='oficina',
-            resource_id=oficina_id,
-            success=False,
-            ip_address=request.remote_addr,
-            details=f'Erro: {str(e)}'
-        )
+        log_access_attempt('dashboard_drill_down', 'oficina', oficina_id, False)
         return {'error': 'Erro interno do servidor'}, 500
 
 
@@ -861,21 +942,13 @@ def api_dashboard_participante_details(participante_id):
     """API para detalhes de participante no dashboard."""
     try:
         # Verificar se o usuário pode acessar este participante
-        if not can_access_dashboard_data(current_user, 'participante', participante_id):
+        if not can_access_dashboard_data('participante', participante_id):
             return {'error': 'Acesso negado'}, 403
         
         participante = Usuario.query.get_or_404(participante_id)
         
         # Log do acesso
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='participante',
-            resource_id=participante_id,
-            success=True,
-            ip_address=request.remote_addr,
-            details='Drill-down participante details'
-        )
+        log_access_attempt('dashboard_drill_down', 'participante', participante_id, True)
         
         # Calcular métricas do participante
         inscricoes = Inscricao.query.filter_by(usuario_id=participante_id).all()
@@ -897,23 +970,15 @@ def api_dashboard_participante_details(participante_id):
             'inscricoes': [{
                 'id': i.id,
                 'oficina_titulo': i.oficina.titulo if i.oficina else 'N/A',
-                'status': i.status,
-                'data_inscricao': i.data_inscricao.isoformat() if i.data_inscricao else None
+                'status_pagamento': i.status_pagamento,
+                'data_inscricao': i.created_at.isoformat() if i.created_at else None
             } for i in inscricoes[:50]]  # Limitar a 50 registros
         }
         
         return dados
         
     except Exception as e:
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='participante',
-            resource_id=participante_id,
-            success=False,
-            ip_address=request.remote_addr,
-            details=f'Erro: {str(e)}'
-        )
+        log_access_attempt('dashboard_drill_down', 'participante', participante_id, False)
         return {'error': 'Erro interno do servidor'}, 500
 
 
@@ -924,21 +989,13 @@ def api_dashboard_evento_details(evento_id):
     """API para detalhes de evento no dashboard."""
     try:
         # Verificar se o usuário pode acessar este evento
-        if not can_access_dashboard_data(current_user, 'evento', evento_id):
+        if not can_access_dashboard_data('evento', evento_id):
             return {'error': 'Acesso negado'}, 403
         
         evento = Evento.query.get_or_404(evento_id)
         
         # Log do acesso
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='evento',
-            resource_id=evento_id,
-            success=True,
-            ip_address=request.remote_addr,
-            details='Drill-down evento details'
-        )
+        log_access_attempt('dashboard_drill_down', 'evento', evento_id, True)
         
         # Calcular métricas do evento
         oficinas = Oficina.query.filter_by(evento_id=evento_id).all()
@@ -952,9 +1009,10 @@ def api_dashboard_evento_details(evento_id):
                 'descricao': evento.descricao,
                 'data_inicio': evento.data_inicio.isoformat() if evento.data_inicio else None,
                 'data_fim': evento.data_fim.isoformat() if evento.data_fim else None,
-                'estado': evento.estado,
-                'cidade': evento.cidade,
-                'modalidade': evento.modalidade
+                # Evento não possui campos estado/cidade/modalidade
+                'estado': None,
+                'cidade': None,
+                'modalidade': None,
             },
             'metricas': {
                 'total_oficinas': len(oficinas),
@@ -974,15 +1032,5 @@ def api_dashboard_evento_details(evento_id):
         return dados
         
     except Exception as e:
-        log_access_attempt(
-            user_id=current_user.id,
-            action='dashboard_drill_down',
-            resource_type='evento',
-            resource_id=evento_id,
-            success=False,
-            ip_address=request.remote_addr,
-            details=f'Erro: {str(e)}'
-        )
+        log_access_attempt('dashboard_drill_down', 'evento', evento_id, False)
         return {'error': 'Erro interno do servidor'}, 500
-
-

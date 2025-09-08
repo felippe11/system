@@ -423,8 +423,15 @@ def log_access_attempt(action, resource_type=None, resource_id=None, success=Tru
 # Dashboard-Specific Access Control
 # =======================================
 
-def dashboard_access_required(view_type='basic'):
-    """Decorator que controla acesso às diferentes visões do dashboard."""
+def dashboard_access_required(_func=None, *, view_type='basic'):
+    """Decorator que controla acesso às diferentes visões do dashboard.
+
+    Pode ser usado com ou sem parâmetros:
+    - @dashboard_access_required
+    - @dashboard_access_required()
+    - @dashboard_access_required(view_type='advanced')
+    """
+
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
@@ -433,7 +440,7 @@ def dashboard_access_required(view_type='basic'):
                 if request.is_json:
                     return jsonify({'error': 'Autenticação necessária'}), 401
                 return redirect(url_for('auth_routes.login'))
-            
+
             # Verificar permissão básica de dashboard
             if not has_permission('dashboard.view'):
                 log_access_attempt('dashboard_access', 'dashboard', view_type, False)
@@ -441,28 +448,36 @@ def dashboard_access_required(view_type='basic'):
                     return jsonify({'error': 'Acesso negado ao dashboard'}), 403
                 flash('Acesso negado ao dashboard!', 'danger')
                 return redirect(url_for(endpoints.DASHBOARD))
-            
+
             # Verificar permissões específicas por tipo de visão
             current_role = get_current_user_role()
-            
-            if view_type == 'advanced' and current_role not in ('admin', 'superadmin', 'cliente'):
+
+            if view_type == 'advanced' and current_role not in (
+                'admin', 'superadmin', 'cliente'
+            ):
                 log_access_attempt('dashboard_advanced_access', 'dashboard', view_type, False)
                 if request.is_json:
                     return jsonify({'error': 'Acesso negado às funcionalidades avançadas'}), 403
                 flash('Acesso negado às funcionalidades avançadas!', 'danger')
                 return redirect(url_for(endpoints.DASHBOARD))
-            
+
             if view_type == 'audit' and not has_permission('dashboard.audit.view'):
                 log_access_attempt('dashboard_audit_access', 'dashboard', view_type, False)
                 if request.is_json:
                     return jsonify({'error': 'Acesso negado à auditoria'}), 403
                 flash('Acesso negado à auditoria!', 'danger')
                 return redirect(url_for(endpoints.DASHBOARD))
-            
+
             log_access_attempt('dashboard_access', 'dashboard', view_type, True)
             return f(*args, **kwargs)
+
         return wrapper
-    return decorator
+
+    # Suporte a uso sem parâmetros: @dashboard_access_required
+    if _func is None:
+        return decorator
+    else:
+        return decorator(_func)
 
 
 def dashboard_export_required(f):
