@@ -204,7 +204,12 @@ def has_permission(permission_name, resource_id=None):
             'eventos.view', 'eventos.create', 'eventos.edit', 'eventos.delete',
             'usuarios.view', 'usuarios.create', 'usuarios.edit', 'usuarios.delete',
             'relatorios.view', 'relatorios.export',
-            'configuracoes.view', 'configuracoes.edit'
+            'configuracoes.view', 'configuracoes.edit',
+            # Dashboard Analytics Permissions
+            'dashboard.view', 'dashboard.export', 'dashboard.drill_down',
+            'dashboard.temporal_comparison', 'dashboard.advanced_filters',
+            'dashboard.kpis.all', 'dashboard.visoes.all',
+            'dashboard.audit.view', 'dashboard.audit.export'
         },
         'cliente': {
             'certificados.view', 'certificados.create', 'certificados.edit',
@@ -216,19 +221,27 @@ def has_permission(permission_name, resource_id=None):
             'ai.use', 'ai.configure',
             'eventos.view', 'eventos.create', 'eventos.edit',
             'relatorios.view', 'relatorios.export',
-            'configuracoes.view', 'configuracoes.edit'
+            'configuracoes.view', 'configuracoes.edit',
+            # Dashboard Analytics Permissions (Limited)
+            'dashboard.view', 'dashboard.export', 'dashboard.drill_down',
+            'dashboard.temporal_comparison', 'dashboard.advanced_filters',
+            'dashboard.kpis.own_events', 'dashboard.visoes.own_events'
         },
         'ministrante': {
             'certificados.view', 'certificados.generate',
             'declaracoes.view', 'declaracoes.generate',
             'templates.view',
             'eventos.view',
-            'relatorios.view'
+            'relatorios.view',
+            # Dashboard Analytics Permissions (Very Limited)
+            'dashboard.view', 'dashboard.kpis.own_events', 'dashboard.visoes.basic'
         },
         'participante': {
             'certificados.view', 'certificados.download',
             'declaracoes.view', 'declaracoes.download',
-            'eventos.view'
+            'eventos.view',
+            # Dashboard Analytics Permissions (Read-only)
+            'dashboard.view', 'dashboard.kpis.own_participation'
         }
     }
     
@@ -404,3 +417,171 @@ def log_access_attempt(action, resource_type=None, resource_id=None, success=Tru
         logger.info(f"Acesso autorizado: {log_data}")
     else:
         logger.warning(f"Acesso negado: {log_data}")
+
+
+# =======================================
+# Dashboard-Specific Access Control
+# =======================================
+
+def dashboard_access_required(view_type='basic'):
+    """Decorator que controla acesso às diferentes visões do dashboard."""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                log_access_attempt('dashboard_access', 'dashboard', view_type, False)
+                if request.is_json:
+                    return jsonify({'error': 'Autenticação necessária'}), 401
+                return redirect(url_for('auth_routes.login'))
+            
+            # Verificar permissão básica de dashboard
+            if not has_permission('dashboard.view'):
+                log_access_attempt('dashboard_access', 'dashboard', view_type, False)
+                if request.is_json:
+                    return jsonify({'error': 'Acesso negado ao dashboard'}), 403
+                flash('Acesso negado ao dashboard!', 'danger')
+                return redirect(url_for(endpoints.DASHBOARD))
+            
+            # Verificar permissões específicas por tipo de visão
+            current_role = get_current_user_role()
+            
+            if view_type == 'advanced' and current_role not in ('admin', 'superadmin', 'cliente'):
+                log_access_attempt('dashboard_advanced_access', 'dashboard', view_type, False)
+                if request.is_json:
+                    return jsonify({'error': 'Acesso negado às funcionalidades avançadas'}), 403
+                flash('Acesso negado às funcionalidades avançadas!', 'danger')
+                return redirect(url_for(endpoints.DASHBOARD))
+            
+            if view_type == 'audit' and not has_permission('dashboard.audit.view'):
+                log_access_attempt('dashboard_audit_access', 'dashboard', view_type, False)
+                if request.is_json:
+                    return jsonify({'error': 'Acesso negado à auditoria'}), 403
+                flash('Acesso negado à auditoria!', 'danger')
+                return redirect(url_for(endpoints.DASHBOARD))
+            
+            log_access_attempt('dashboard_access', 'dashboard', view_type, True)
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def dashboard_export_required(f):
+    """Decorator que controla acesso às funcionalidades de exportação do dashboard."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            log_access_attempt('dashboard_export', 'dashboard', 'export', False)
+            if request.is_json:
+                return jsonify({'error': 'Autenticação necessária'}), 401
+            return redirect(url_for('auth_routes.login'))
+        
+        if not has_permission('dashboard.export'):
+            log_access_attempt('dashboard_export', 'dashboard', 'export', False)
+            if request.is_json:
+                return jsonify({'error': 'Acesso negado à exportação'}), 403
+            flash('Acesso negado à exportação!', 'danger')
+            return redirect(url_for(endpoints.DASHBOARD))
+        
+        log_access_attempt('dashboard_export', 'dashboard', 'export', True)
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def dashboard_drill_down_required(f):
+    """Decorator que controla acesso às funcionalidades de drill-down."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user.is_authenticated:
+            log_access_attempt('dashboard_drill_down', 'dashboard', 'drill_down', False)
+            if request.is_json:
+                return jsonify({'error': 'Autenticação necessária'}), 401
+            return redirect(url_for('auth_routes.login'))
+        
+        if not has_permission('dashboard.drill_down'):
+            log_access_attempt('dashboard_drill_down', 'dashboard', 'drill_down', False)
+            if request.is_json:
+                return jsonify({'error': 'Acesso negado ao drill-down'}), 403
+            flash('Acesso negado ao drill-down!', 'danger')
+            return redirect(url_for(endpoints.DASHBOARD))
+        
+        log_access_attempt('dashboard_drill_down', 'dashboard', 'drill_down', True)
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def can_access_dashboard_data(data_type, event_id=None):
+    """Verifica se o usuário pode acessar dados específicos do dashboard."""
+    if not current_user.is_authenticated:
+        return False
+    
+    current_role = get_current_user_role()
+    
+    # Super admin e admin podem acessar todos os dados
+    if current_role in ('superadmin', 'admin'):
+        return True
+    
+    # Cliente pode acessar apenas dados de seus próprios eventos
+    if current_role == 'cliente':
+        if event_id:
+            from models import Evento
+            evento = Evento.query.get(event_id)
+            return evento and evento.cliente_id == current_user.id
+        return has_permission('dashboard.kpis.own_events')
+    
+    # Ministrante pode acessar apenas dados de eventos onde é instrutor
+    if current_role == 'ministrante':
+        if event_id:
+            from models import Evento, EventoMinistrante
+            evento_ministrante = EventoMinistrante.query.filter_by(
+                evento_id=event_id,
+                ministrante_id=current_user.id
+            ).first()
+            return evento_ministrante is not None
+        return has_permission('dashboard.kpis.own_events')
+    
+    # Participante pode acessar apenas dados de sua própria participação
+    if current_role == 'participante':
+        if event_id:
+            from models import Inscricao
+            inscricao = Inscricao.query.filter_by(
+                evento_id=event_id,
+                participante_id=current_user.id
+            ).first()
+            return inscricao is not None
+        return has_permission('dashboard.kpis.own_participation')
+    
+    return False
+
+
+def get_dashboard_data_filter():
+    """Retorna filtros de dados baseados no role do usuário."""
+    if not current_user.is_authenticated:
+        return None
+    
+    current_role = get_current_user_role()
+    
+    # Super admin e admin podem ver todos os dados
+    if current_role in ('superadmin', 'admin'):
+        return {}
+    
+    # Cliente pode ver apenas seus próprios eventos
+    if current_role == 'cliente':
+        return {'cliente_id': current_user.id}
+    
+    # Ministrante pode ver apenas eventos onde é instrutor
+    if current_role == 'ministrante':
+        from models import EventoMinistrante
+        eventos_ids = [em.evento_id for em in EventoMinistrante.query.filter_by(
+            ministrante_id=current_user.id
+        ).all()]
+        return {'evento_id__in': eventos_ids}
+    
+    # Participante pode ver apenas eventos onde está inscrito
+    if current_role == 'participante':
+        from models import Inscricao
+        eventos_ids = [i.evento_id for i in Inscricao.query.filter_by(
+            participante_id=current_user.id
+        ).all()]
+        return {'evento_id__in': eventos_ids}
+    
+    return None

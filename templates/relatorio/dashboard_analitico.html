@@ -1,0 +1,1379 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analítico - Relatório de Eventos{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.css" rel="stylesheet">
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/dashboard_analitico.css') }}" rel="stylesheet">
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+    }
+    .kpi-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+        transition: transform 0.2s;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+    .kpi-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .kpi-change {
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
+    }
+    .kpi-change.positive {
+        color: #27ae60;
+    }
+    .kpi-change.negative {
+        color: #e74c3c;
+    }
+    .filter-section {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 2rem;
+    }
+    .view-section {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .view-title {
+        color: #2c3e50;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .alert-item {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    .funnel-step {
+        background: linear-gradient(135deg, #74b9ff, #0984e3);
+        color: white;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-radius: 5px;
+        position: relative;
+    }
+    .funnel-step::after {
+        content: '';
+        position: absolute;
+        right: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 10px solid #0984e3;
+        border-top: 20px solid transparent;
+        border-bottom: 20px solid transparent;
+    }
+    .ocupacao-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    .ocupacao-item {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 5px;
+        border-left: 4px solid #3498db;
+    }
+    .ocupacao-item.alta {
+        border-left-color: #e74c3c;
+        background: #fdf2f2;
+    }
+    .ocupacao-item.media {
+        border-left-color: #f39c12;
+        background: #fef9e7;
+    }
+    .tab-content {
+        margin-top: 1rem;
+    }
+    .export-buttons {
+        margin: 1rem 0;
+    }
+    .drill-down {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .drill-down:hover {
+        background: #e3f2fd;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-chart-line"></i> Dashboard Analítico de Eventos</h1>
+                <p class="mb-0">Visão completa e estratégica dos seus eventos</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="export-buttons">
+                    <button class="btn btn-light" onclick="exportarDados('csv')"><i class="fas fa-file-csv"></i> CSV</button>
+                    <button class="btn btn-light" onclick="exportarDados('xlsx')"><i class="fas fa-file-excel"></i> Excel</button>
+                    <button class="btn btn-light" onclick="exportarDados('pdf')"><i class="fas fa-file-pdf"></i> PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Filtros Globais -->
+    <div class="filter-section">
+        <h4><i class="fas fa-filter"></i> Filtros Globais</h4>
+        <form method="POST" id="filtrosForm">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-building"></i> Cliente</label>
+                    <select class="form-select" name="cliente_id">
+                        <option value="">Todos os clientes</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if filtros.cliente_id == cliente.id|string %}selected{% endif %}>
+                            {{ cliente.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-map-marker-alt"></i> Estado</label>
+                    <select class="form-select" name="estado">
+                        <option value="">Todos os estados</option>
+                        {% for estado in estados %}
+                        <option value="{{ estado }}" {% if filtros.estado == estado %}selected{% endif %}>
+                            {{ estado }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-city"></i> Cidade</label>
+                    <select class="form-select" name="cidade">
+                        <option value="">Todas as cidades</option>
+                        {% for cidade in cidades %}
+                        <option value="{{ cidade }}" {% if filtros.cidade == cidade %}selected{% endif %}>
+                            {{ cidade }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-calendar-alt"></i> Evento</label>
+                    <select class="form-select" name="evento_id">
+                        <option value="">Todos os eventos</option>
+                        {% for evento in eventos %}
+                        <option value="{{ evento.id }}" {% if filtros.evento_id == evento.id|string %}selected{% endif %}>
+                            {{ evento.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-chalkboard-teacher"></i> Oficina</label>
+                    <select class="form-select" name="oficina_id">
+                        <option value="">Todas as oficinas</option>
+                        {% for oficina in oficinas %}
+                        <option value="{{ oficina.id }}" {% if filtros.oficina_id == oficina.id|string %}selected{% endif %}>
+                            {{ oficina.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-user-tie"></i> Formador</label>
+                    <select class="form-select" name="ministrante_id">
+                        <option value="">Todos os formadores</option>
+                        {% for ministrante in ministrantes %}
+                        <option value="{{ ministrante.id }}" {% if filtros.ministrante_id == ministrante.id|string %}selected{% endif %}>
+                            {{ ministrante.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-clock"></i> Turno</label>
+                    <select class="form-select" name="turno">
+                        <option value="">Todos os turnos</option>
+                        {% for turno in turnos %}
+                        <option value="{{ turno }}" {% if filtros.turno == turno %}selected{% endif %}>
+                            {{ turno|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-laptop"></i> Modalidade</label>
+                    <select class="form-select" name="modalidade">
+                        <option value="">Todas as modalidades</option>
+                        {% for modalidade in modalidades %}
+                        <option value="{{ modalidade }}" {% if filtros.modalidade == modalidade %}selected{% endif %}>
+                            {{ modalidade|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Data Início</label>
+                    <input type="date" class="form-control" name="data_inicio" value="{{ filtros.data_inicio }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Data Fim</label>
+                    <input type="date" class="form-control" name="data_fim" value="{{ filtros.data_fim }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-flag"></i> Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">Todos os status</option>
+                        {% for status in status_opcoes %}
+                        <option value="{{ status }}" {% if filtros.status == status %}selected{% endif %}>
+                            {{ status.replace('_', ' ')|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-money-bill"></i> Tipo Pagamento</label>
+                    <select class="form-select" name="pago_gratuito">
+                        <option value="">Todos</option>
+                        <option value="pago" {% if filtros.pago_gratuito == 'pago' %}selected{% endif %}>Pago</option>
+                        <option value="gratuito" {% if filtros.pago_gratuito == 'gratuito' %}selected{% endif %}>Gratuito</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-certificate"></i> Tipo Certificado</label>
+                    <select class="form-select" name="tipo_certificado">
+                        <option value="">Todos os tipos</option>
+                        {% for tipo in tipos_certificado %}
+                        <option value="{{ tipo }}" {% if filtros.tipo_certificado == tipo %}selected{% endif %}>
+                            {{ tipo|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label"><i class="fas fa-users"></i> Público-alvo</label>
+                    <input type="text" class="form-control" name="publico_alvo" placeholder="Ex: professores..." value="{{ filtros.publico_alvo }}">
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label class="form-label"><i class="fas fa-tags"></i> Palavras-chave Check-in</label>
+                    <input type="text" class="form-control" name="palavras_chave" placeholder="Ex: manhã, tarde..." value="{{ filtros.palavras_chave }}">
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-end h-100">
+                        <div class="w-100">
+                            <label class="form-label"><i class="fas fa-search"></i> Busca Geral</label>
+                            <input type="text" class="form-control" name="busca_geral" placeholder="Buscar em nomes, descrições..." value="{{ filtros.busca_geral }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Aplicar Filtros</button>
+                    <button type="button" class="btn btn-secondary" onclick="limparFiltros()"><i class="fas fa-times"></i> Limpar</button>
+                    <button type="button" class="btn btn-info" onclick="salvarFiltros()"><i class="fas fa-bookmark"></i> Salvar Filtros</button>
+                    <button type="button" class="btn btn-warning" id="compararPeriodo" onclick="toggleTemporalComparison()"><i class="fas fa-chart-line"></i> Comparar Período</button>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Seção de Comparação Temporal -->
+        <div id="periodoComparacao" class="comparison-section" style="display: none;">
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Comparação Temporal</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Conteúdo será preenchido dinamicamente pelo JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Executivos -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="kpi-card drill-down" onclick="drillDown('inscricoes')">
+                <div class="kpi-value">{{ kpis.inscricoes_totais }}</div>
+                <div class="kpi-label">Inscrições Totais</div>
+                <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +12% vs período anterior</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card drill-down" onclick="drillDown('presenca')">
+                <div class="kpi-value">{{ kpis.taxa_presenca }}%</div>
+                <div class="kpi-label">Taxa de Presença</div>
+                <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +3.2% vs período anterior</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card drill-down" onclick="drillDown('capacidade')">
+                <div class="kpi-value">{{ kpis.capacidade_usada }}%</div>
+                <div class="kpi-label">Capacidade Usada</div>
+                <div class="kpi-change negative"><i class="fas fa-arrow-down"></i> -1.8% vs período anterior</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card drill-down" onclick="drillDown('receita')">
+                <div class="kpi-value">R$ {{ "%.2f"|format(kpis.receita_liquida) }}</div>
+                <div class="kpi-label">Receita Líquida</div>
+                <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +8.5% vs período anterior</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ kpis.no_show }}</div>
+                <div class="kpi-label">No-Show ({{ kpis.taxa_no_show }}%)</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ kpis.certificados_gerados }}</div>
+                <div class="kpi-label">Certificados Gerados</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-value">{{ kpis.usuarios_unicos }}</div>
+                <div class="kpi-label">Usuários Únicos</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card">
+                <div class="kpi-value">R$ {{ "%.2f"|format(kpis.ticket_medio) }}</div>
+                <div class="kpi-label">Ticket Médio</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Abas das Visões -->
+    <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="executiva-tab" data-bs-toggle="tab" data-bs-target="#executiva" type="button" role="tab">
+                <i class="fas fa-chart-line"></i> Executiva
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="funil-tab" data-bs-toggle="tab" data-bs-target="#funil" type="button" role="tab">
+                <i class="fas fa-funnel-dollar"></i> Funil
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ocupacao-tab" data-bs-toggle="tab" data-bs-target="#ocupacao" type="button" role="tab">
+                <i class="fas fa-calendar-alt"></i> Ocupação
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="presenca-tab" data-bs-toggle="tab" data-bs-target="#presenca" type="button" role="tab">
+                <i class="fas fa-users"></i> Presença
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="qualidade-tab" data-bs-toggle="tab" data-bs-target="#qualidade" type="button" role="tab">
+                <i class="fas fa-star"></i> Qualidade
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro" type="button" role="tab">
+                <i class="fas fa-dollar-sign"></i> Financeiro
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="certificados-tab" data-bs-toggle="tab" data-bs-target="#certificados" type="button" role="tab">
+                <i class="fas fa-certificate"></i> Certificados
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="operacao-tab" data-bs-toggle="tab" data-bs-target="#operacao" type="button" role="tab">
+                <i class="fas fa-cogs"></i> Operação
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="diversidade-tab" data-bs-toggle="tab" data-bs-target="#diversidade" type="button" role="tab">
+                <i class="fas fa-heart"></i> Diversidade
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="geografia-tab" data-bs-toggle="tab" data-bs-target="#geografia" type="button" role="tab">
+                <i class="fas fa-map"></i> Geografia
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="dashboardTabContent">
+        <!-- 1. Visão Executiva -->
+        <div class="tab-pane fade show active" id="executiva" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Visão Executiva (C-level)</h3>
+                
+                <!-- Alertas Rápidos -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Alertas Rápidos</h5>
+                        {% for alerta in dados_visao.executiva.alertas %}
+                        <div class="alert-item">
+                            <i class="fas fa-warning"></i> {{ alerta }}
+                        </div>
+                        {% endfor %}
+                        {% if not dados_visao.executiva.alertas %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Nenhum alerta no momento
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="fas fa-trophy"></i> Top 5 Oficinas por Procura</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Oficina</th>
+                                        <th>Inscrições</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for oficina in dados_visao.executiva.top_oficinas_procura %}
+                                    <tr class="drill-down" onclick="drillDown('oficina', '{{ oficina[0] }}')">
+                                        <td>{{ oficina[0] }}</td>
+                                        <td><span class="badge bg-primary">{{ oficina[1] }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métricas Adicionais -->
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>Satisfação Média</h5>
+                                <div class="kpi-value text-success">{{ dados_visao.executiva.satisfacao_media }}</div>
+                                <small class="text-muted">Escala 1-5</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>NPS</h5>
+                                <div class="kpi-value text-info">{{ dados_visao.executiva.nps }}</div>
+                                <small class="text-muted">Net Promoter Score</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>Tempo Médio de Fila</h5>
+                                <div class="kpi-value text-warning">{{ dados_visao.executiva.tempo_medio_fila }}</div>
+                                <small class="text-muted">Check-in</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Funil de Conversão -->
+        <div class="tab-pane fade" id="funil" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Funil de Conversão</h3>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Visitantes</span>
+                                <span>{{ dados_visao.funil.funil_dados.visitantes }}</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Inscritos</span>
+                                <span>{{ dados_visao.funil.funil_dados.inscritos }} ({{ dados_visao.funil.conversoes.visitante_inscrito }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Confirmados</span>
+                                <span>{{ dados_visao.funil.funil_dados.confirmados }} ({{ dados_visao.funil.conversoes.inscrito_confirmado }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Pagos</span>
+                                <span>{{ dados_visao.funil.funil_dados.pagos }} ({{ dados_visao.funil.conversoes.confirmado_pago }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Check-in 1º Turno</span>
+                                <span>{{ dados_visao.funil.funil_dados.checkin_1turno }} ({{ dados_visao.funil.conversoes.pago_checkin1 }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Check-in 2º Turno</span>
+                                <span>{{ dados_visao.funil.funil_dados.checkin_2turno }} ({{ dados_visao.funil.conversoes.checkin1_checkin2 }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Certificado</span>
+                                <span>{{ dados_visao.funil.funil_dados.certificados }} ({{ dados_visao.funil.conversoes.checkin_certificado }}%)</span>
+                            </div>
+                        </div>
+                        <div class="funnel-step">
+                            <div class="d-flex justify-content-between">
+                                <span>Download</span>
+                                <span>{{ dados_visao.funil.funil_dados.downloads }} ({{ dados_visao.funil.conversoes.certificado_download }}%)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Análise de Conversão</h5>
+                        <div class="chart-container">
+                            <canvas id="funil-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Ocupação & Agenda -->
+        <div class="tab-pane fade" id="ocupacao" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Ocupação & Agenda</h3>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <h5><i class="fas fa-calendar-alt"></i> Calendário de Eventos</h5>
+                        <div id="calendar-container" style="background: white; border-radius: 8px; padding: 1rem;">
+                            <div id="event-calendar"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5><i class="fas fa-calendar"></i> Ocupação por Dia</h5>
+                        <div class="ocupacao-grid">
+                            {% for data, oficinas in dados_visao.ocupacao.ocupacao_por_dia.items() %}
+                            {% for oficina in oficinas %}
+                            <div class="ocupacao-item {% if oficina.ocupacao > 85 %}alta{% elif oficina.ocupacao > 60 %}media{% endif %}">
+                                <strong>{{ data }}</strong><br>
+                                <small>{{ oficina.oficina }}</small><br>
+                                <span class="badge bg-primary">{{ oficina.ocupacao }}% ocupação</span><br>
+                                <small>{{ oficina.vagas_ocupadas }}/{{ oficina.vagas_total }} vagas</small>
+                            </div>
+                            {% endfor %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Gargalos (>85%)</h5>
+                        {% for gargalo in dados_visao.ocupacao.gargalos %}
+                        <div class="alert alert-warning">
+                            <strong>{{ gargalo.oficina }}</strong><br>
+                            <small>{{ gargalo.data }} - {{ gargalo.ocupacao }}% ocupação</small>
+                        </div>
+                        {% endfor %}
+                        {% if not dados_visao.ocupacao.gargalos %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> Nenhum gargalo identificado
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Presença & Frequência -->
+        <div class="tab-pane fade" id="presenca" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Presença & Frequência</h3>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <h5><i class="fas fa-fire"></i> Mapa de Calor - Padrões de Presença</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div id="attendance-heatmap" style="height: 200px;"></div>
+                                <small class="text-muted">Visualização dos padrões de presença por dia da semana e horário</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5>Taxa de Presença por Oficina</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Oficina</th>
+                                        <th>Confirmados</th>
+                                        <th>Presentes</th>
+                                        <th>Taxa de Presença</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in dados_visao.presenca.presenca_por_oficina %}
+                                    <tr class="drill-down" onclick="drillDown('presenca_oficina', '{{ item.oficina }}')">
+                                        <td>{{ item.oficina }}</td>
+                                        <td>{{ item.confirmados }}</td>
+                                        <td>{{ item.presentes }}</td>
+                                        <td>
+                                            <span class="badge {% if item.taxa_presenca > 80 %}bg-success{% elif item.taxa_presenca > 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                                {{ item.taxa_presenca }}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Retenção e Assiduidade</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label>Retenção 30 dias</label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-success" style="width: {{ dados_visao.presenca.retencao_30_dias }}%">{{ dados_visao.presenca.retencao_30_dias }}%</div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Retenção 60 dias</label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-warning" style="width: {{ dados_visao.presenca.retencao_60_dias }}%">{{ dados_visao.presenca.retencao_60_dias }}%</div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label>Retenção 90 dias</label>
+                                    <div class="progress">
+                                        <div class="progress-bar bg-info" style="width: {{ dados_visao.presenca.retencao_90_dias }}%">{{ dados_visao.presenca.retencao_90_dias }}%</div>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info">
+                                    <strong>Reincidência de Faltas:</strong> {{ dados_visao.presenca.reincidencia_faltas }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Qualidade & Feedback -->
+        <div class="tab-pane fade" id="qualidade" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Qualidade & Feedback</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Avaliações por Categoria</h5>
+                        <div class="chart-container">
+                            <canvas id="qualidade-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Feedback Geral</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-success">{{ dados_visao.qualidade.nota_media_geral }}</h3>
+                                        <small>Nota Média Geral</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h3 class="text-info">{{ dados_visao.qualidade.nps_geral }}</h3>
+                                        <small>NPS Geral</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Principais Elogios</h6>
+                            {% for elogio in dados_visao.qualidade.principais_elogios %}
+                            <span class="badge bg-success me-1">{{ elogio }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Principais Críticas</h6>
+                            {% for critica in dados_visao.qualidade.principais_criticas %}
+                            <span class="badge bg-warning me-1">{{ critica }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Financeiro -->
+        <div class="tab-pane fade" id="financeiro" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Financeiro (Mercado Pago)</h3>
+                
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Receita Total</h5>
+                                <h3 class="text-success">R$ {{ "%.2f"|format(dados_visao.financeiro.receita_total) }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Receita Líquida</h5>
+                                <h3 class="text-info">R$ {{ "%.2f"|format(dados_visao.financeiro.receita_liquida) }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Ticket Médio</h5>
+                                <h3 class="text-primary">R$ {{ "%.2f"|format(dados_visao.financeiro.ticket_medio) }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Margem Líquida</h5>
+                                <h3 class="text-warning">{{ dados_visao.financeiro.margem_liquida }}%</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5>Indicadores de Risco</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <tr>
+                                    <td>Taxa de Conversão Pagamento</td>
+                                    <td><span class="badge bg-success">{{ dados_visao.financeiro.taxa_conversao_pagamento }}%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Inadimplência</td>
+                                    <td><span class="badge bg-warning">{{ dados_visao.financeiro.inadimplencia }}%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Chargebacks</td>
+                                    <td><span class="badge bg-danger">{{ dados_visao.financeiro.chargebacks }}%</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Custo por Participante</td>
+                                    <td>R$ {{ "%.2f"|format(dados_visao.financeiro.custo_por_participante) }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Evolução Financeira</h5>
+                        <div class="chart-container">
+                            <canvas id="financeiro-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7. Certificados -->
+        <div class="tab-pane fade" id="certificados" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Certificados</h3>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Certificados Gerados</h5>
+                                <h3 class="text-success">{{ dados_visao.certificados.certificados_gerados }}</h3>
+                                <small>Taxa: {{ dados_visao.certificados.taxa_emissao }}%</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Downloads</h5>
+                                <h3 class="text-info">{{ dados_visao.certificados.certificados_baixados }}</h3>
+                                <small>Taxa: {{ dados_visao.certificados.taxa_download }}%</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h5>Tempo Médio de Emissão</h5>
+                                <h3 class="text-warning">{{ dados_visao.certificados.tempo_medio_emissao }}</h3>
+                                <small>Pós check-in</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5>Certificados por Tipo</h5>
+                        <div class="chart-container">
+                            <canvas id="certificados-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Indicadores de Qualidade</h5>
+                        <div class="alert alert-success">
+                            <strong>Erros de Renderização:</strong> {{ dados_visao.certificados.erros_renderizacao }}
+                        </div>
+                        <div class="progress mb-3">
+                            <div class="progress-bar bg-success" style="width: {{ dados_visao.certificados.taxa_emissao }}%">
+                                Taxa de Emissão: {{ dados_visao.certificados.taxa_emissao }}%
+                            </div>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" style="width: {{ dados_visao.certificados.taxa_download }}%">
+                                Taxa de Download: {{ dados_visao.certificados.taxa_download }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. Operação & Segurança -->
+        <div class="tab-pane fade" id="operacao" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Operação & Segurança</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Leituras de QR Code</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h4 class="text-success">{{ dados_visao.operacao.qr_validos }}</h4>
+                                        <small>QR Válidos</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h4 class="text-danger">{{ dados_visao.operacao.qr_invalidos }}</h4>
+                                        <small>QR Inválidos</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Indicadores de Segurança</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <tr>
+                                    <td>Tentativas de Fraude</td>
+                                    <td><span class="badge bg-danger">{{ dados_visao.operacao.tentativas_fraude }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Check-ins Fora da Janela</td>
+                                    <td><span class="badge bg-warning">{{ dados_visao.operacao.checkins_fora_janela }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td>IPs Duplicados</td>
+                                    <td><span class="badge bg-info">{{ dados_visao.operacao.ips_duplicados }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Logs de Auditoria</td>
+                                    <td><span class="badge bg-secondary">{{ dados_visao.operacao.logs_auditoria }}</span></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Inclusão & Diversidade -->
+        <div class="tab-pane fade" id="diversidade" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Inclusão & Diversidade</h3>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Distribuição por Gênero</h5>
+                        <div class="chart-container">
+                            <canvas id="diversidade-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Indicadores de Inclusão</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <strong>PCD Atendidos:</strong> {{ dados_visao.diversidade.pcd_atendidos }}
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Solicitações de Acessibilidade:</strong> {{ dados_visao.diversidade.solicitacoes_acessibilidade }}
+                                </div>
+                                <div class="mb-3">
+                                    <strong>ODS Relacionados:</strong>
+                                    {% for ods in dados_visao.diversidade.ods_relacionados %}
+                                    <span class="badge bg-success me-1">{{ ods }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 10. Geografia -->
+        <div class="tab-pane fade" id="geografia" role="tabpanel">
+            <div class="view-section">
+                <h3 class="view-title">Geografia</h3>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5>Ranking de Cidades</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Posição</th>
+                                        <th>Cidade</th>
+                                        <th>Estado</th>
+                                        <th>Inscrições</th>
+                                        <th>Receita</th>
+                                        <th>Satisfação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in dados_visao.geografia.ranking_cidades %}
+                                    <tr class="drill-down" onclick="drillDown('cidade', '{{ item.cidade }}')">
+                                        <td>{{ loop.index }}</td>
+                                        <td>{{ item.cidade }}</td>
+                                        <td>{{ item.estado }}</td>
+                                        <td><span class="badge bg-primary">{{ item.inscricoes }}</span></td>
+                                        <td>R$ {{ "%.2f"|format(item.receita) }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ item.satisfacao }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5>Mapa de Distribuição</h5>
+                        <div id="map-container" style="height: 300px; border-radius: 8px; overflow: hidden; margin-bottom: 1rem;">
+                            <div id="geographic-map"></div>
+                        </div>
+                        
+                        <h6>Resumo Geográfico</h6>
+                        <div class="card">
+                            <div class="card-body">
+                                <small>Total de Cidades: <strong>{{ dados_visao.geografia.dados_por_cidade|length }}</strong></small><br>
+                                <small>Estados Atendidos: <strong>{{ dados_visao.geografia.dados_por_cidade|map(attribute='estado')|unique|list|length }}</strong></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Drill-down -->
+<div class="modal fade" id="drillDownModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="drillDownContent">
+                <!-- Conteúdo do drill-down será carregado aqui -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard_analitico.js') }}"></script>
+<script>
+// Configuração dos gráficos
+document.addEventListener('DOMContentLoaded', function() {
+    // Gráfico do Funil
+    const funil = document.getElementById('funil-chart');
+    if (funil) {
+        new Chart(funil, {
+            type: 'bar',
+            data: {
+                labels: ['Visitantes', 'Inscritos', 'Confirmados', 'Pagos', 'Check-in 1º', 'Check-in 2º', 'Certificado', 'Download'],
+                datasets: [{
+                    label: 'Quantidade',
+                    data: [
+                        {{ dados_visao.funil.funil_dados.visitantes }},
+                        {{ dados_visao.funil.funil_dados.inscritos }},
+                        {{ dados_visao.funil.funil_dados.confirmados }},
+                        {{ dados_visao.funil.funil_dados.pagos }},
+                        {{ dados_visao.funil.funil_dados.checkin_1turno }},
+                        {{ dados_visao.funil.funil_dados.checkin_2turno }},
+                        {{ dados_visao.funil.funil_dados.certificados }},
+                        {{ dados_visao.funil.funil_dados.downloads }}
+                    ],
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // Gráfico de Qualidade
+    const qualidade = document.getElementById('qualidade-chart');
+    if (qualidade) {
+        new Chart(qualidade, {
+            type: 'radar',
+            data: {
+                labels: ['Conteúdo', 'Logística', 'Estrutura', 'Material'],
+                datasets: [{
+                    label: 'Avaliação',
+                    data: [
+                        {{ dados_visao.qualidade.feedback_por_categoria.conteudo }},
+                        {{ dados_visao.qualidade.feedback_por_categoria.logistica }},
+                        {{ dados_visao.qualidade.feedback_por_categoria.estrutura }},
+                        {{ dados_visao.qualidade.feedback_por_categoria.material }}
+                    ],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 5
+                    }
+                }
+            }
+        });
+    }
+
+    // Gráfico Financeiro
+    const financeiro = document.getElementById('financeiro-chart');
+    if (financeiro) {
+        new Chart(financeiro, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                datasets: [{
+                    label: 'Receita Mensal',
+                    data: [12000, 15000, 18000, 16000, 20000, 22000],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // Gráfico de Certificados
+    const certificados = document.getElementById('certificados-chart');
+    if (certificados) {
+        new Chart(certificados, {
+            type: 'doughnut',
+            data: {
+                labels: ['Participação', 'Ministrante', 'Avaliador'],
+                datasets: [{
+                    data: [
+                        {{ dados_visao.certificados.certificados_por_tipo.participacao }},
+                        {{ dados_visao.certificados.certificados_por_tipo.ministrante }},
+                        {{ dados_visao.certificados.certificados_por_tipo.avaliador }}
+                    ],
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // Gráfico de Diversidade
+    const diversidade = document.getElementById('diversidade-chart');
+    if (diversidade) {
+        new Chart(diversidade, {
+            type: 'pie',
+            data: {
+                labels: ['Feminino', 'Masculino', 'Outros'],
+                datasets: [{
+                    data: [
+                        {{ dados_visao.diversidade.distribuicao_genero.feminino }},
+                        {{ dados_visao.diversidade.distribuicao_genero.masculino }},
+                        {{ dados_visao.diversidade.distribuicao_genero.outros }}
+                    ],
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+});
+
+// Funções de interação
+function drillDown(tipo, valor) {
+    // Implementar drill-down
+    const modal = new bootstrap.Modal(document.getElementById('drillDownModal'));
+    document.getElementById('drillDownContent').innerHTML = `
+        <h5>Detalhamento: ${tipo}</h5>
+        <p>Valor: ${valor || 'Todos'}</p>
+        <p>Aqui serão exibidos os detalhes específicos...</p>
+    `;
+    modal.show();
+}
+
+function exportarDados(formato) {
+    // Implementar exportação
+    const filtros = new URLSearchParams(new FormData(document.getElementById('filtrosForm')));
+    window.location.href = `/gerar_relatorio_evento/export?formato=${formato}&${filtros.toString()}`;
+}
+
+function limparFiltros() {
+    document.getElementById('filtrosForm').reset();
+    document.getElementById('filtrosForm').submit();
+}
+
+// Inicializar mapa geográfico
+function initGeographicMap() {
+    if (typeof L !== 'undefined' && document.getElementById('geographic-map')) {
+        const map = L.map('geographic-map').setView([-15.7942, -47.8822], 4); // Centro do Brasil
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Adicionar marcadores baseados nos dados
+        {% for cidade in dados_visao.geografia.dados_por_cidade %}
+        L.marker([{{ cidade.latitude|default:"-15.7942" }}, {{ cidade.longitude|default:"-47.8822" }}])
+            .addTo(map)
+            .bindPopup('<b>{{ cidade.cidade }}, {{ cidade.estado }}</b><br>Participantes: {{ cidade.total_participantes }}<br>Eventos: {{ cidade.total_eventos }}');
+        {% endfor %}
+    }
+}
+
+// Inicializar calendário de eventos
+function initEventCalendar() {
+    if (typeof FullCalendar !== 'undefined' && document.getElementById('event-calendar')) {
+        const calendarEl = document.getElementById('event-calendar');
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'pt-br',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,listWeek'
+            },
+            events: [
+                {% for data, oficinas in dados_visao.ocupacao.ocupacao_por_dia.items %}
+                {% for oficina in oficinas %}
+                {
+                    title: '{{ oficina.oficina }} ({{ oficina.ocupacao }}%)',
+                    start: '{{ data }}',
+                    backgroundColor: '{% if oficina.ocupacao > 85 %}#dc3545{% elif oficina.ocupacao > 60 %}#ffc107{% else %}#28a745{% endif %}',
+                    extendedProps: {
+                        ocupacao: {{ oficina.ocupacao }},
+                        vagas_ocupadas: {{ oficina.vagas_ocupadas }},
+                        vagas_total: {{ oficina.vagas_total }}
+                    }
+                },
+                {% endfor %}
+                {% endfor %}
+            ],
+            eventClick: function(info) {
+                alert('Oficina: ' + info.event.title + '\nOcupação: ' + info.event.extendedProps.ocupacao + '%\nVagas: ' + info.event.extendedProps.vagas_ocupadas + '/' + info.event.extendedProps.vagas_total);
+            }
+        });
+        calendar.render();
+    }
+}
+
+// Inicializar mapa de calor de presença
+function initAttendanceHeatmap() {
+    if (typeof Chart !== 'undefined' && document.getElementById('attendance-heatmap')) {
+        const ctx = document.getElementById('attendance-heatmap').getContext('2d');
+        
+        // Dados simulados para o mapa de calor
+        const heatmapData = {
+            labels: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'],
+            datasets: [{
+                label: 'Segunda',
+                data: [85, 92, 88, 75, 82, 90, 87, 79],
+                backgroundColor: 'rgba(255, 99, 132, 0.6)'
+            }, {
+                label: 'Terça',
+                data: [78, 85, 91, 88, 86, 89, 84, 82],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            }, {
+                label: 'Quarta',
+                data: [82, 88, 85, 90, 87, 85, 88, 84],
+                backgroundColor: 'rgba(255, 205, 86, 0.6)'
+            }, {
+                label: 'Quinta',
+                data: [89, 91, 87, 85, 90, 88, 86, 87],
+                backgroundColor: 'rgba(75, 192, 192, 0.6)'
+            }, {
+                label: 'Sexta',
+                data: [76, 82, 79, 84, 81, 78, 80, 75],
+                backgroundColor: 'rgba(153, 102, 255, 0.6)'
+            }]
+        };
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: heatmapData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Horários'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Taxa de Presença (%)'
+                        },
+                        min: 0,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Inicializar todas as visualizações interativas
+document.addEventListener('DOMContentLoaded', function() {
+    // Aguardar um pouco para garantir que as bibliotecas foram carregadas
+    setTimeout(function() {
+        initGeographicMap();
+        initEventCalendar();
+        initAttendanceHeatmap();
+    }, 500);
+});
+
+function salvarFiltros() {
+    // Implementar salvamento de filtros
+    const filtros = new FormData(document.getElementById('filtrosForm'));
+    const params = new URLSearchParams(filtros);
+    const url = window.location.pathname + '?' + params.toString();
+    
+    navigator.clipboard.writeText(url).then(() => {
+        alert('Link dos filtros copiado para a área de transferência!');
+    });
+}
+</script>
+{% endblock %}
