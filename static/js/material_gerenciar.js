@@ -447,16 +447,61 @@ function atualizarLista() {
 
 // Gerar relatório geral
 function gerarRelatorioGeral() {
-    const relatorio = materiaisData.map(material => {
-        const poloNome = material.polo ? material.polo.nome : 'N/A';
-        const status = material.quantidade_atual === 0 ? 'SEM ESTOQUE' :
-                      material.quantidade_atual <= material.quantidade_minima ? 'ESTOQUE BAIXO' : 'OK';
+    const grupos = {
+        'OK': {},
+        'Estoque Baixo': {},
+        'Sem Estoque': {}
+    };
 
-        return `${material.nome} (${poloNome}) - Atual: ${material.quantidade_atual} ${material.unidade} - Status: ${status}`;
-    }).join('\n');
-    
-    const textoCompleto = `📋 RELATÓRIO GERAL DE MATERIAIS\n\n${relatorio}\n\n📊 RESUMO:\n• Total: ${materiaisData.length} materiais\n• OK: ${materiaisData.filter(m => m.quantidade_atual > m.quantidade_minima).length}\n• Estoque Baixo: ${materiaisData.filter(m => m.quantidade_atual > 0 && m.quantidade_atual <= m.quantidade_minima).length}\n• Sem Estoque: ${materiaisData.filter(m => m.quantidade_atual === 0).length}`;
-    
+    materiaisData.forEach(material => {
+        const poloNome = material.polo ? material.polo.nome : 'N/A';
+        const status = material.quantidade_atual === 0
+            ? 'Sem Estoque'
+            : material.quantidade_atual <= material.quantidade_minima
+                ? 'Estoque Baixo'
+                : 'OK';
+
+        if (!grupos[status][poloNome]) {
+            grupos[status][poloNome] = [];
+        }
+        grupos[status][poloNome].push(material);
+    });
+
+    const statusOrder = ['OK', 'Estoque Baixo', 'Sem Estoque'];
+    const linhas = ['📋 RELATÓRIO GERAL'];
+    const contadores = {
+        'OK': 0,
+        'Estoque Baixo': 0,
+        'Sem Estoque': 0
+    };
+
+    statusOrder.forEach(status => {
+        const polos = grupos[status];
+        const totalStatus = Object.values(polos).reduce((sum, lista) => sum + lista.length, 0);
+        contadores[status] = totalStatus;
+        linhas.push(`\n${status} (${totalStatus})`);
+        Object.keys(polos).sort((a, b) => a.localeCompare(b)).forEach(poloNome => {
+            linhas.push(`  ${poloNome}:`);
+            polos[poloNome]
+                .sort((a, b) => a.nome.localeCompare(b.nome))
+                .forEach(material => {
+                    linhas.push(
+                        `    - ${material.nome} - Atual: ${material.quantidade_atual} ${material.unidade}`
+                    );
+                });
+        });
+    });
+
+    linhas.push(
+        `\n📊 RESUMO`,
+        `• Total: ${materiaisData.length} materiais`,
+        `• OK: ${contadores['OK']}`,
+        `• Estoque Baixo: ${contadores['Estoque Baixo']}`,
+        `• Sem Estoque: ${contadores['Sem Estoque']}`
+    );
+
+    const textoCompleto = linhas.join('\n');
+
     navigator.clipboard.writeText(textoCompleto).then(() => {
         showAlert('Relatório copiado para a área de transferência!', 'success');
     });
@@ -482,11 +527,14 @@ function baixarRelatorioExcel(tipo = 'geral', poloId = null) {
             'X-CSRFToken': getCSRFToken()
         }
     })
-    .then(response => {
+    .then(async response => {
         if (response.ok) {
             return response.blob();
         }
-        throw new Error('Erro ao gerar relatório');
+        const data = await response.json().catch(() => ({}));
+        const message =
+            data.error?.message || data.message || 'Erro ao gerar relatório';
+        throw new Error(message);
     })
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
@@ -502,7 +550,7 @@ function baixarRelatorioExcel(tipo = 'geral', poloId = null) {
     })
     .catch(error => {
         console.error('Erro:', error);
-        showAlert('Erro ao baixar relatório', 'danger');
+        showAlert(error.message || 'Erro ao baixar relatório', 'danger');
     })
     .finally(() => {
         hideLoading();
