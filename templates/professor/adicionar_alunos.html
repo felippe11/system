@@ -75,6 +75,13 @@
                             <input type="text" class="form-control" id="cpf" name="cpf" placeholder="Apenas números" {% if total_adicionados >= agendamento.quantidade_alunos %}disabled{% endif %}>
                             <small class="text-muted">Opcional para menores de idade</small>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Endereços</label>
+                            <div id="address-fields"></div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
+                                    onclick="addAddressField()">Adicionar Endereço</button>
+                        </div>
                         
                         <!-- Necessidades Especiais -->
                         <div class="mb-3">
@@ -244,6 +251,68 @@
 </div>
 
 <script>
+const estadosBrasil = {{ estados|tojson }};
+
+function loadBrazilianStates(select) {
+    select.innerHTML = '<option value="">Selecione o estado</option>';
+    estadosBrasil.forEach(function (estado) {
+        const opt = document.createElement('option');
+        opt.value = estado[0];
+        opt.textContent = estado[1];
+        select.appendChild(opt);
+    });
+}
+
+async function loadCities(stateSelect, cityId) {
+    const citySelect = document.getElementById(cityId);
+    const state = stateSelect.value;
+    if (!state) {
+        citySelect.innerHTML = '<option value="">Selecione o estado primeiro</option>';
+        citySelect.disabled = true;
+        return;
+    }
+    citySelect.disabled = true;
+    citySelect.innerHTML = '<option value="">Carregando cidades...</option>';
+    try {
+        // Usa o endpoint local /get_cidades/<estado_sigla>
+        const response = await fetch(`/get_cidades/${state}`);
+        const cidades = await response.json();
+        citySelect.innerHTML = '<option value="">Selecione a cidade</option>';
+        cidades.forEach(function (cidade) {
+            const opt = document.createElement('option');
+            opt.value = cidade;
+            opt.textContent = cidade;
+            citySelect.appendChild(opt);
+        });
+        citySelect.disabled = false;
+    } catch (error) {
+        console.error('Erro ao carregar cidades:', error);
+        citySelect.innerHTML = '<option value="">Erro ao carregar cidades</option>';
+    }
+}
+
+function addAddressField() {
+    const container = document.getElementById('address-fields');
+    const id = Date.now();
+    const div = document.createElement('div');
+    div.className = 'd-flex gap-2 mb-2';
+    div.innerHTML = `
+        <select name="estados[]" class="form-select" required
+                onchange="loadCities(this, 'cidade_${id}')"></select>
+        <select id="cidade_${id}" name="cidades[]" class="form-select" required>
+            <option value="">Selecione o estado primeiro</option>
+        </select>
+        <button type="button" class="btn btn-outline-danger"
+                onclick="this.parentElement.remove()">Remover</button>
+    `;
+    container.appendChild(div);
+    loadBrazilianStates(div.querySelector('select'));
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    addAddressField();
+});
+
 function toggleNecessidadeEspecial() {
     const checkbox = document.getElementById('tem_necessidade_especial');
     const campos = document.getElementById('camposNecessidadeEspecial');
