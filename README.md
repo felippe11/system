@@ -97,6 +97,23 @@ Gmail.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
+### Formulário de Trabalhos
+
+A aplicação depende de um formulário padrão chamado **Formulário de Trabalhos**.
+Ele é criado automaticamente no início da aplicação, mas você pode verificar
+manualmente sua presença:
+
+```bash
+flask check-formulario-trabalhos
+```
+
+Caso o comando informe que o formulário está ausente, execute o script abaixo
+para criá-lo:
+
+```bash
+python scripts/executar_formulario_trabalhos.py
+```
+
 ## Formulários e processo de revisão
 
 Ao criar um formulário ligado ao processo de revisão, utilize o campo
