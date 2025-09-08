@@ -16,7 +16,7 @@ taxa_service.calcular_taxa_cliente = lambda *a, **k: {
 taxa_service.calcular_taxas_clientes = lambda *a, **k: []
 utils_stub.taxa_service = taxa_service
 utils_stub.preco_com_taxa = lambda *a, **k: 1
-utils_stub.obter_estados = lambda *a, **k: []
+utils_stub.obter_estados = lambda *a, **k: [('SP', 'São Paulo')]
 utils_stub.external_url = lambda *a, **k: ''
 utils_stub.gerar_comprovante_pdf = lambda *a, **k: ''
 utils_stub.enviar_email = lambda *a, **k: None
@@ -241,6 +241,8 @@ def test_toggle_horario_agendamento(client, app):
             'turma': 'A',
             'nivel_ensino': 'fundamental',
             'quantidade_alunos': 5,
+            'estados[]': ['SP'],
+            'cidades[]': ['São Paulo'],
         },
         follow_redirects=True,
     )
@@ -261,6 +263,8 @@ def test_toggle_horario_agendamento(client, app):
             'turma': 'A',
             'nivel_ensino': 'fundamental',
             'quantidade_alunos': 5,
+            'estados[]': ['SP'],
+            'cidades[]': ['São Paulo'],
         },
         follow_redirects=True,
     )

@@ -961,6 +961,7 @@ class AgendamentoVisita(db.Model):
     )  # Anos iniciais, finais, etc.
     quantidade_alunos = db.Column(db.Integer, nullable=False)
     rede_ensino = db.Column(db.String(100), nullable=True)
+    estado = db.Column(db.String(2), nullable=True)
     municipio = db.Column(db.String(100), nullable=True)
     bairro = db.Column(db.String(100), nullable=True)
     responsavel_nome = db.Column(db.String(150), nullable=True)
