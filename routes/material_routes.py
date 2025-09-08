@@ -214,6 +214,7 @@ def estatisticas_polos():
 
 
 @material_routes.route('/relatorios/materiais/excel', methods=['GET'])
+@csrf.exempt
 @login_required
 def gerar_relatorio_excel():
     """Gerar relatório de materiais em Excel."""
