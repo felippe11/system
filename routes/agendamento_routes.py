@@ -56,10 +56,8 @@ agendamento_routes = Blueprint(
     template_folder="../templates/agendamento"
 )
 
-class NotificacaoAgendamento:
-    """
-    Classe para gerenciar notificações de agendamentos
-    """
+class NotificacaoAgendamentoService:
+    """Helper methods for agendamento notification emails."""
     
     @staticmethod
     def enviar_email_confirmacao(agendamento):
@@ -88,7 +86,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado para não bloquear a resposta ao usuário
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -120,7 +118,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -152,7 +150,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -182,7 +180,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[cliente.email, assunto, corpo_html]
         )
         thread.start()
@@ -262,7 +260,7 @@ class NotificacaoAgendamento:
             
             # Enviar em um thread separado
             thread = threading.Thread(
-                target=NotificacaoAgendamento._enviar_email_async,
+                target=NotificacaoAgendamentoService._enviar_email_async,
                 args=[monitor.email, assunto, corpo_html]
             )
             thread.daemon = True  # Thread será finalizada quando o programa principal terminar
@@ -294,7 +292,7 @@ class NotificacaoAgendamento:
         
         # Enviar lembretes
         for agendamento in agendamentos:
-            NotificacaoAgendamento.enviar_lembrete_visita(agendamento)
+            NotificacaoAgendamentoService.enviar_lembrete_visita(agendamento)
 
 
 # Integrar notificações com as rotas
@@ -324,7 +322,7 @@ def integrar_notificacoes():
             
             if agendamento:
                 # Enviar notificações
-                NotificacaoAgendamento.notificar_cliente_novo_agendamento(agendamento)
+                NotificacaoAgendamentoService.notificar_cliente_novo_agendamento(agendamento)
         
         return response
     
@@ -347,7 +345,7 @@ def integrar_notificacoes():
         sucesso = any(cat == 'success' for cat, _ in flashes)
         if request.method == 'POST' and sucesso:
             # Enviar notificação de cancelamento
-            NotificacaoAgendamento.enviar_email_cancelamento(agendamento)
+            NotificacaoAgendamentoService.enviar_email_cancelamento(agendamento)
         
         return response
     
@@ -4149,13 +4147,13 @@ def atualizar_status_agendamento(agendamento_id):
 
         if enviar_confirmacao:
             try:
-                NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
+                NotificacaoAgendamentoService.enviar_email_confirmacao(agendamento)
             except Exception as e:
                 logger.warning(f"Erro ao enviar email de confirmação: {str(e)}")
             
             # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
             try:
-                NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+                NotificacaoAgendamentoService.notificar_monitor_alunos_pcd(agendamento)
             except Exception as e:
                 logger.warning(f"Erro ao notificar monitor sobre alunos PCD: {str(e)}")
 
