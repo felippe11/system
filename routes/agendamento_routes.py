@@ -56,10 +56,8 @@ agendamento_routes = Blueprint(
     template_folder="../templates/agendamento"
 )
 
-class NotificacaoAgendamento:
-    """
-    Classe para gerenciar notificações de agendamentos
-    """
+class NotificacaoAgendamentoService:
+    """Helper methods for agendamento notification emails."""
     
     @staticmethod
     def enviar_email_confirmacao(agendamento):
@@ -88,7 +86,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado para não bloquear a resposta ao usuário
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -120,7 +118,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -152,7 +150,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[professor.email, assunto, corpo_html]
         )
         thread.start()
@@ -182,7 +180,7 @@ class NotificacaoAgendamento:
         
         # Enviar em um thread separado
         thread = threading.Thread(
-            target=NotificacaoAgendamento._enviar_email_async,
+            target=NotificacaoAgendamentoService._enviar_email_async,
             args=[cliente.email, assunto, corpo_html]
         )
         thread.start()
@@ -262,7 +260,7 @@ class NotificacaoAgendamento:
             
             # Enviar em um thread separado
             thread = threading.Thread(
-                target=NotificacaoAgendamento._enviar_email_async,
+                target=NotificacaoAgendamentoService._enviar_email_async,
                 args=[monitor.email, assunto, corpo_html]
             )
             thread.daemon = True  # Thread será finalizada quando o programa principal terminar
@@ -294,7 +292,7 @@ class NotificacaoAgendamento:
         
         # Enviar lembretes
         for agendamento in agendamentos:
-            NotificacaoAgendamento.enviar_lembrete_visita(agendamento)
+            NotificacaoAgendamentoService.enviar_lembrete_visita(agendamento)
 
 
 # Integrar notificações com as rotas
@@ -324,7 +322,7 @@ def integrar_notificacoes():
             
             if agendamento:
                 # Enviar notificações
-                NotificacaoAgendamento.notificar_cliente_novo_agendamento(agendamento)
+                NotificacaoAgendamentoService.notificar_cliente_novo_agendamento(agendamento)
         
         return response
     
@@ -347,7 +345,7 @@ def integrar_notificacoes():
         sucesso = any(cat == 'success' for cat, _ in flashes)
         if request.method == 'POST' and sucesso:
             # Enviar notificação de cancelamento
-            NotificacaoAgendamento.enviar_email_cancelamento(agendamento)
+            NotificacaoAgendamentoService.enviar_email_cancelamento(agendamento)
         
         return response
     
@@ -689,6 +687,7 @@ def relatorio_geral_agendamentos():
 
     professores_query = (
         db.session.query(
+            Usuario.id.label('id'),
             Usuario.nome.label('nome'),
             Usuario.email.label('email'),
             AgendamentoVisita.responsavel_whatsapp.label(
@@ -4149,13 +4148,13 @@ def atualizar_status_agendamento(agendamento_id):
 
         if enviar_confirmacao:
             try:
-                NotificacaoAgendamento.enviar_email_confirmacao(agendamento)
+                NotificacaoAgendamentoService.enviar_email_confirmacao(agendamento)
             except Exception as e:
                 logger.warning(f"Erro ao enviar email de confirmação: {str(e)}")
             
             # Notificar monitor sobre alunos PCD/Neurodivergentes se houver
             try:
-                NotificacaoAgendamento.notificar_monitor_alunos_pcd(agendamento)
+                NotificacaoAgendamentoService.notificar_monitor_alunos_pcd(agendamento)
             except Exception as e:
                 logger.warning(f"Erro ao notificar monitor sobre alunos PCD: {str(e)}")
 
@@ -4666,6 +4665,8 @@ def agendar_visita(horario_id):
         )
 
     horario = HorarioVisitacao.query.get_or_404(horario_id)
+    estados_lista = obter_estados()
+    estados_validos = {sigla for sigla, _ in estados_lista}
 
     if horario.fechado:
         flash('Este horário está fechado para agendamentos.', 'warning')
@@ -4678,6 +4679,21 @@ def agendar_visita(horario_id):
         escola_nome = request.form.get('escola_nome')
         turma = request.form.get('turma')
         nivel_ensino = request.form.get('nivel_ensino')
+        estados_form = request.form.getlist('estados[]')
+        cidades_form = request.form.getlist('cidades[]')
+
+        if not estados_form or not cidades_form:
+            flash('Estado e cidade são obrigatórios.', 'danger')
+            return redirect(url_for('agendamento_routes.agendar_visita',
+                                    horario_id=horario_id))
+
+        estado = estados_form[0]
+        cidade = cidades_form[0]
+
+        if estado not in estados_validos or not cidade:
+            flash('Estado ou cidade inválidos.', 'danger')
+            return redirect(url_for('agendamento_routes.agendar_visita',
+                                    horario_id=horario_id))
         try:
             quantidade_alunos = int(request.form.get('quantidade_alunos', 0))
             if quantidade_alunos <= 0:
@@ -4724,6 +4740,8 @@ def agendar_visita(horario_id):
             turma=turma,
             nivel_ensino=nivel_ensino,
             quantidade_alunos=quantidade_alunos,
+            estado=estado,
+            municipio=cidade,
         )
 
         # Reduzir vagas disponíveis
@@ -4739,7 +4757,11 @@ def agendar_visita(horario_id):
             db.session.rollback()
             flash(f'Erro ao agendar: {str(e)}', 'danger')
 
-    return render_template('agendamento/agendar_visita.html', horario=horario)
+    return render_template(
+        'agendamento/agendar_visita.html',
+        horario=horario,
+        estados=estados_lista,
+    )
 
 @agendamento_routes.route('/adicionar_alunos', methods=['GET', 'POST'])
 @login_required
@@ -5383,6 +5405,8 @@ def adicionar_alunos_cliente(agendamento_id):
             # Processar adição de aluno único
             nome_aluno = request.form.get('nome_aluno', '').strip()
             cpf_aluno = request.form.get('cpf_aluno', '').strip()
+            estados_form = request.form.getlist('estados[]')
+            cidades_form = request.form.getlist('cidades[]')
             tem_necessidade_especial = request.form.get('tem_necessidade_especial') == 'on'
             tipo_necessidade = request.form.get('tipo_necessidade', '').strip()
             descricao_necessidade = request.form.get('descricao_necessidade', '').strip()
@@ -5435,9 +5459,11 @@ def adicionar_alunos_cliente(agendamento_id):
         return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
     
     # GET - Renderizar formulário
+    estados = obter_estados()
     return render_template(
         'cliente/adicionar_alunos.html',
-        agendamento=agendamento
+        agendamento=agendamento,
+        estados=estados,
     )
 
 

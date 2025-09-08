@@ -27,6 +27,7 @@ from models import (
     HorarioVisitacao,
     SalaVisitacao,
     AgendamentoVisita,
+    NotificacaoAgendamento,
 )
 from routes import agendamento_routes
 
@@ -129,7 +130,7 @@ def get_agendamento(app):
 
 def test_professor_pode_confirmar_agendamento(client, app, monkeypatch):
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         lambda ag: None,
     )
@@ -145,7 +146,7 @@ def test_professor_pode_confirmar_agendamento(client, app, monkeypatch):
 
 def test_cliente_pode_confirmar_agendamento(client, app, monkeypatch):
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         lambda ag: None,
     )
@@ -179,7 +180,7 @@ def test_email_enviado_quando_confirmado(client, app, monkeypatch):
         assert ag.id == agendamento.id
 
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         fake_enviar_email,
     )
@@ -201,7 +202,7 @@ def test_email_nao_enviado_para_outros_status(client, app, monkeypatch):
         chamado['count'] += 1
 
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         fake_enviar_email,
     )
@@ -215,7 +216,7 @@ def test_email_nao_enviado_para_outros_status(client, app, monkeypatch):
 
 def test_redirecionamento_professor(client, app, monkeypatch):
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         lambda ag: None,
     )
@@ -236,7 +237,7 @@ def test_redirecionamento_professor(client, app, monkeypatch):
 
 def test_redirecionamento_participante(client, app, monkeypatch):
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         lambda ag: None,
     )
@@ -258,7 +259,7 @@ def test_redirecionamento_participante(client, app, monkeypatch):
 
 def test_redirecionamento_cliente(client, app, monkeypatch):
     monkeypatch.setattr(
-        agendamento_routes.NotificacaoAgendamento,
+        agendamento_routes.NotificacaoAgendamentoService,
         'enviar_email_confirmacao',
         lambda ag: None,
     )
@@ -271,3 +272,36 @@ def test_redirecionamento_cliente(client, app, monkeypatch):
     )
     assert resp.status_code == 302
     assert '/cliente/meus_agendamentos' in resp.headers['Location']
+
+
+def test_nao_lidas_count_endpoint(client, app):
+    login(client, 'prof@test', 'p123')
+    with app.app_context():
+        agendamento = AgendamentoVisita.query.first()
+        professor = Usuario.query.filter_by(email='prof@test').first()
+        notificacoes = [
+            NotificacaoAgendamento(
+                agendamento_id=agendamento.id,
+                remetente_id=professor.id,
+                destinatario_id=professor.id,
+                tipo='mensagem',
+                titulo='t1',
+                mensagem='m1',
+            ),
+            NotificacaoAgendamento(
+                agendamento_id=agendamento.id,
+                remetente_id=professor.id,
+                destinatario_id=professor.id,
+                tipo='mensagem',
+                titulo='t2',
+                mensagem='m2',
+            ),
+        ]
+        db.session.add_all(notificacoes)
+        db.session.commit()
+
+    resp = client.get('/api/notificacoes/nao-lidas/count')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success'] is True
+    assert data['count'] == 2
