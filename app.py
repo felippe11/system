@@ -163,6 +163,25 @@ def create_app():
             "Rotas de diagnóstico de reCAPTCHA desabilitadas"
         )
 
+    # Ensure default submission form exists
+    with app.app_context():
+        from models.formulario import ensure_formulario_trabalhos
+
+        ensure_formulario_trabalhos()
+
+    @app.cli.command("check-formulario-trabalhos")
+    def check_formulario_trabalhos_command() -> None:
+        """Verify the presence of the default submission form."""
+        from models.formulario import formulario_trabalhos_exists
+
+        if formulario_trabalhos_exists():
+            app.logger.info("Formulário de Trabalhos presente.")
+        else:
+            app.logger.error(
+                "Formulário de Trabalhos ausente. Execute "
+                "scripts/executar_formulario_trabalhos.py"
+            )
+
     # Agendamento do reconciliador e rotas utilitárias são registrados aqui
     scheduler = BackgroundScheduler()
     scheduler.add_job(
