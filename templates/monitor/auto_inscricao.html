@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastro de Monitor{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Cadastro de Monitor</h2>
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="nome_completo" class="form-label">Nome Completo *</label>
+                <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="curso" class="form-label">Curso *</label>
+                <input type="text" class="form-control" id="curso" name="curso" required>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email *</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="telefone_whatsapp" class="form-label">Telefone WhatsApp *</label>
+                <input type="text" class="form-control" id="telefone_whatsapp" name="telefone_whatsapp" required>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label for="carga_horaria_disponibilidade" class="form-label">Carga Horária de Disponibilidade (horas/semana) *</label>
+            <input type="number" class="form-control" id="carga_horaria_disponibilidade" name="carga_horaria_disponibilidade" min="1" max="40" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Dias de Disponibilidade *</label>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="segunda" name="dias_disponibilidade" value="segunda">
+                        <label class="form-check-label" for="segunda">Segunda-feira</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="terca" name="dias_disponibilidade" value="terca">
+                        <label class="form-check-label" for="terca">Terça-feira</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="quarta" name="dias_disponibilidade" value="quarta">
+                        <label class="form-check-label" for="quarta">Quarta-feira</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="quinta" name="dias_disponibilidade" value="quinta">
+                        <label class="form-check-label" for="quinta">Quinta-feira</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sexta" name="dias_disponibilidade" value="sexta">
+                        <label class="form-check-label" for="sexta">Sexta-feira</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sabado" name="dias_disponibilidade" value="sabado">
+                        <label class="form-check-label" for="sabado">Sábado</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="domingo" name="dias_disponibilidade" value="domingo">
+                        <label class="form-check-label" for="domingo">Domingo</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Turnos de Disponibilidade *</label>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="manha" name="turnos_disponibilidade" value="manha">
+                        <label class="form-check-label" for="manha">Manhã</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="tarde" name="turnos_disponibilidade" value="tarde">
+                        <label class="form-check-label" for="tarde">Tarde</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="noite" name="turnos_disponibilidade" value="noite">
+                        <label class="form-check-label" for="noite">Noite</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+</div>
+{% endblock %}
