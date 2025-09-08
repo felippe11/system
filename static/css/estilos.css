@@ -72,6 +72,20 @@ button:hover {
 }
 
 /* ============================= */
+/*        DROPDOWN MENU          */
+/* ============================= */
+.dropdown-menu {
+    z-index: 9999 !important;
+    position: absolute !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.dropdown-menu.show {
+    z-index: 9999 !important;
+    display: block !important;
+}
+
+/* ============================= */
 /*          RODAPÉ               */
 /* ============================= */
 .footer {

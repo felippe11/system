@@ -111,25 +111,9 @@
                             </button>
                         </div>
                         <div class="col-md-8">
-                            <div class="dropdown">
-                                <button class="btn btn-outline-info w-100 mb-2 dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-file-excel"></i> Relatórios Excel
-                                </button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('geral')">
-                                        <i class="fas fa-chart-bar"></i> Relatório Geral
-                                    </a>
-                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('baixo_estoque')">
-                                        <i class="fas fa-exclamation-triangle"></i> Estoque Baixo
-                                    </a>
-                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('sem_estoque')">
-                                        <i class="fas fa-times-circle"></i> Sem Estoque
-                                    </a>
-                                    <a class="dropdown-item" href="#" onclick="baixarRelatorioExcel('compras')">
-                                        <i class="fas fa-shopping-cart"></i> Lista de Compras
-                                    </a>
-                                </div>
-                            </div>
+                            <button class="btn btn-outline-info w-100 mb-2" type="button" data-bs-toggle="modal" data-bs-target="#modalRelatorios">
+                                <i class="fas fa-file-excel"></i> Relatórios Excel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -262,6 +246,40 @@
 
 
 
+<!-- Modal Relatórios Excel -->
+<div class="modal fade" id="modalRelatorios" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-excel"></i> Relatórios Excel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Selecione o tipo de relatório que deseja baixar:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="baixarRelatorioExcel('geral'); return false;">
+                        <i class="fas fa-chart-bar"></i> Relatório Geral
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="baixarRelatorioExcel('baixo_estoque'); return false;">
+                        <i class="fas fa-exclamation-triangle"></i> Estoque Baixo
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="baixarRelatorioExcel('sem_estoque'); return false;">
+                        <i class="fas fa-times-circle"></i> Sem Estoque
+                    </button>
+                    <button class="btn btn-outline-success" onclick="baixarRelatorioExcel('compras'); return false;">
+                        <i class="fas fa-shopping-cart"></i> Lista de Compras
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Movimentação -->
 <div class="modal fade" id="modalMovimentacao" tabindex="-1">
     <div class="modal-dialog">
@@ -309,4 +327,36 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/material_gerenciar.js') }}"></script>
+
+<script>
+// Aguardar carregamento completo do Bootstrap
+window.addEventListener('load', function() {
+    // Aguardar um pouco mais para garantir que todos os scripts carregaram
+    setTimeout(function() {
+        // Verificar se Bootstrap está disponível
+        if (typeof bootstrap !== 'undefined') {
+            // Forçar inicialização de todos os dropdowns
+            const dropdownElements = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+            dropdownElements.forEach(function(element) {
+                // Verificar se já foi inicializado
+                if (!bootstrap.Dropdown.getInstance(element)) {
+                    new bootstrap.Dropdown(element);
+                }
+            });
+        } else {
+            // Se Bootstrap não estiver disponível, tentar carregar novamente
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js';
+            script.onload = function() {
+                // Inicializar dropdowns após carregamento
+                const dropdownElements = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+                dropdownElements.forEach(function(element) {
+                    new bootstrap.Dropdown(element);
+                });
+            };
+            document.head.appendChild(script);
+        }
+    }, 1000);
+});
+</script>
 {% endblock %}
