@@ -94,6 +94,7 @@ integração com o Mailjet, portanto não é necessário gerar tokens OAuth para
 Gmail.
 
 `APP_BASE_URL` define a URL base para gerar links externos, como o `notification_url` do Mercado Pago. Em desenvolvimento, aponte para um endereço público (ex.: URL do ngrok).
+Esse endereço também é utilizado para construir links de cadastro de monitores.
 
 `RECAPTCHA_PUBLIC_KEY` e `RECAPTCHA_PRIVATE_KEY` devem conter as chaves obtidas no [Google reCAPTCHA](https://www.google.com/recaptcha/admin). Sem valores válidos, o CAPTCHA não funcionará em produção.
 
