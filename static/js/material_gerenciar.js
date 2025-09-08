@@ -482,11 +482,14 @@ function baixarRelatorioExcel(tipo = 'geral', poloId = null) {
             'X-CSRFToken': getCSRFToken()
         }
     })
-    .then(response => {
+    .then(async response => {
         if (response.ok) {
             return response.blob();
         }
-        throw new Error('Erro ao gerar relatório');
+        const data = await response.json().catch(() => ({}));
+        const message =
+            data.error?.message || data.message || 'Erro ao gerar relatório';
+        throw new Error(message);
     })
     .then(blob => {
         const url = window.URL.createObjectURL(blob);
@@ -502,7 +505,7 @@ function baixarRelatorioExcel(tipo = 'geral', poloId = null) {
     })
     .catch(error => {
         console.error('Erro:', error);
-        showAlert('Erro ao baixar relatório', 'danger');
+        showAlert(error.message || 'Erro ao baixar relatório', 'danger');
     })
     .finally(() => {
         hideLoading();
