@@ -36,6 +36,7 @@ from models.certificado import (
 )
 from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
+from services.declaracao_service import liberar_declaracoes_evento
 from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
 
 
@@ -2567,53 +2568,11 @@ def habilitar_liberacao_declaracoes():
     dados = request.get_json() or {}
     evento_id = dados.get('evento_id')
     template_id = dados.get('template_id')
-
-    evento = Evento.query.filter_by(
-        id=evento_id, cliente_id=current_user.id
-    ).first_or_404()
-
-    template = None
-    if template_id:
-        template = DeclaracaoTemplate.query.filter_by(
-            id=template_id, cliente_id=current_user.id
-        ).first()
-    if not template:
-        template = DeclaracaoTemplate.query.filter_by(
-            cliente_id=current_user.id, ativo=True
-        ).first()
-    if not template:
-        return jsonify({'success': False, 'message': 'Template não encontrado'}), 400
-
-    participantes = (
-        db.session.query(Checkin.usuario_id)
-        .filter_by(evento_id=evento_id)
-        .distinct()
-        .all()
-    )
-
-    for (usuario_id,) in participantes:
-        declaracao = DeclaracaoComparecimento.query.filter_by(
-            evento_id=evento_id, usuario_id=usuario_id
-        ).first()
-        if not declaracao:
-            declaracao = DeclaracaoComparecimento(
-                cliente_id=current_user.id,
-                evento_id=evento_id,
-                usuario_id=usuario_id,
-                titulo=template.nome,
-                conteudo=template.conteudo,
-                template_id=template.id,
-            )
-            db.session.add(declaracao)
-
-        declaracao.status = 'liberada'
-        declaracao.data_liberacao = datetime.utcnow()
-        declaracao.template_id = template.id
-        declaracao.titulo = template.nome
-        declaracao.conteudo = template.conteudo
-
-    db.session.commit()
-
+    Evento.query.filter_by(id=evento_id, cliente_id=current_user.id).first_or_404()
+    try:
+        liberar_declaracoes_evento(evento_id, template_id)
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     return jsonify({'success': True})
 
 

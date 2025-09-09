@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from flask import current_app, render_template_string
 
 from extensions import db
-from models import Checkin, Oficina, Evento
+from models import Checkin, Oficina, Evento, DeclaracaoComparecimento
 from models.user import Usuario  # Cliente não é usado aqui
 from models.certificado import DeclaracaoTemplate
 
@@ -108,6 +108,56 @@ def gerar_declaracao_coletiva(evento_id, usuarios_ids=None):
     except Exception as e:
         logger.error(f"Erro ao gerar declaração coletiva: {str(e)}")
         return None
+
+
+def liberar_declaracoes_evento(evento_id, template_id=None):
+    """Libera declarações de comparecimento para todos os participantes."""
+    evento = Evento.query.get(evento_id)
+    if not evento:
+        raise ValueError("Evento não encontrado")
+
+    template = None
+    if template_id:
+        template = DeclaracaoTemplate.query.filter_by(
+            id=template_id, cliente_id=evento.cliente_id
+        ).first()
+    if not template:
+        template = DeclaracaoTemplate.query.filter_by(
+            cliente_id=evento.cliente_id, ativo=True
+        ).first()
+    if not template:
+        raise ValueError("Template não encontrado")
+
+    participantes = (
+        db.session.query(Checkin.usuario_id)
+        .filter_by(evento_id=evento_id)
+        .distinct()
+        .all()
+    )
+
+    for (usuario_id,) in participantes:
+        declaracao = DeclaracaoComparecimento.query.filter_by(
+            evento_id=evento_id, usuario_id=usuario_id
+        ).first()
+        if not declaracao:
+            declaracao = DeclaracaoComparecimento(
+                cliente_id=evento.cliente_id,
+                evento_id=evento_id,
+                usuario_id=usuario_id,
+                titulo=template.nome,
+                conteudo=template.conteudo,
+                template_id=template.id,
+            )
+            db.session.add(declaracao)
+
+        declaracao.status = "liberada"
+        declaracao.data_liberacao = datetime.utcnow()
+        declaracao.template_id = template.id
+        declaracao.titulo = template.nome
+        declaracao.conteudo = template.conteudo
+
+    db.session.commit()
+    return len(participantes)
 
 
 # ------------------------------- #
