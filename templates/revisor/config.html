@@ -296,6 +296,25 @@
       </div>
     </div>
 
+    <!-- Configuração de Campos por Etapa -->
+    <div class="card config-card mb-4" id="camposEtapaCard" style="display: none;">
+      <div class="card-header bg-light">
+        <h5 class="card-title mb-0">
+          <i class="bi bi-diagram-3 me-2"></i>
+          Distribuição de Campos por Etapa
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Importante:</strong> Primeiro selecione um formulário acima para configurar a distribuição dos campos pelas etapas.
+        </div>
+        <div id="camposEtapaContainer">
+          <!-- Conteúdo será carregado dinamicamente via JavaScript -->
+        </div>
+      </div>
+    </div>
+
     <!-- Botões de Ação -->
     <div class="card config-card">
       <div class="card-body">
@@ -353,6 +372,9 @@
   // Gerenciamento dinâmico de etapas
   const numEtapasInput = document.getElementById('numEtapas');
   const etapasContainer = document.getElementById('etapasContainer');
+  const formularioSelect = document.querySelector('select[name="formulario_id"]');
+  const camposEtapaCard = document.getElementById('camposEtapaCard');
+  const camposEtapaContainer = document.getElementById('camposEtapaContainer');
   
   numEtapasInput.addEventListener('change', function() {
     const numEtapas = parseInt(this.value) || 1;
@@ -380,7 +402,87 @@
       `;
       etapasContainer.appendChild(etapaDiv);
     }
+    
+    // Atualiza configuração de campos se formulário estiver selecionado
+    if (formularioSelect.value) {
+      loadCamposEtapa();
+    }
   });
+  
+  // Carregamento de campos do formulário
+  formularioSelect.addEventListener('change', function() {
+    if (this.value) {
+      loadCamposEtapa();
+      camposEtapaCard.style.display = 'block';
+    } else {
+      camposEtapaCard.style.display = 'none';
+    }
+  });
+  
+  function loadCamposEtapa() {
+    const formularioId = formularioSelect.value;
+    const numEtapas = parseInt(numEtapasInput.value) || 1;
+    
+    if (!formularioId) return;
+    
+    // Fazer requisição AJAX para buscar campos do formulário
+    fetch(`/api/formulario/${formularioId}/campos`)
+      .then(response => response.json())
+      .then(campos => {
+        renderCamposEtapa(campos, numEtapas);
+      })
+      .catch(error => {
+        console.error('Erro ao carregar campos:', error);
+        camposEtapaContainer.innerHTML = '<div class="alert alert-danger">Erro ao carregar campos do formulário.</div>';
+      });
+  }
+  
+  function renderCamposEtapa(campos, numEtapas) {
+    let html = '';
+    
+    for (let etapa = 1; etapa <= numEtapas; etapa++) {
+      html += `
+        <div class="mb-4">
+          <h6 class="fw-bold text-primary mb-3">
+            <i class="bi bi-list-check me-2"></i>
+            Etapa ${etapa}
+          </h6>
+          <div class="row">
+      `;
+      
+      campos.forEach(campo => {
+        const etapaCampo = parseInt(campo.etapa) || 1;
+        const checked = etapaCampo === etapa ? 'checked' : '';
+        html += `
+          <div class="col-md-6 mb-2">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" 
+                     name="campo_${campo.id}_etapa" 
+                     value="${etapa}" 
+                     id="campo_${campo.id}_etapa_${etapa}" ${checked}>
+              <label class="form-check-label" for="campo_${campo.id}_etapa_${etapa}">
+                ${campo.nome}
+                ${campo.obrigatorio ? '<span class="text-danger">*</span>' : ''}
+              </label>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </div>
+      `;
+    }
+    
+    camposEtapaContainer.innerHTML = html;
+  }
+  
+  // Inicializar se formulário já estiver selecionado
+  if (formularioSelect.value) {
+    loadCamposEtapa();
+    camposEtapaCard.style.display = 'block';
+  }
   
 
   

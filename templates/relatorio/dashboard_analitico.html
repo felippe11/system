@@ -157,23 +157,30 @@
 </div>
 
 <div class="container-fluid">
+    <!-- Tutorial e Observações -->
+    <div class="alert alert-info mb-4">
+        <h5><i class="fas fa-info-circle"></i> Como usar este dashboard</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>📊 Filtros:</strong> Use os filtros abaixo para segmentar seus dados por localização, evento, oficina, período e outras características.</p>
+                <p><strong>📈 Visões:</strong> Navegue pelas diferentes abas para ver análises específicas como funil de conversão, ocupação, presença e financeiro.</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>💡 Dica:</strong> Clique nos gráficos para fazer drill-down e ver detalhes específicos.</p>
+                <p><strong>📤 Exportação:</strong> Use os botões no topo para exportar relatórios em CSV, Excel ou PDF.</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Filtros Globais -->
     <div class="filter-section">
         <h4><i class="fas fa-filter"></i> Filtros Globais</h4>
+        <div class="alert alert-warning alert-sm mb-3">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Nota:</strong> Você está visualizando apenas os dados dos seus eventos. Os filtros abaixo permitem refinar ainda mais a análise.
+        </div>
         <form method="POST" id="filtrosForm">
             <div class="row">
-                <div class="col-md-3">
-                    <label class="form-label"><i class="fas fa-building"></i> Cliente</label>
-                    <select class="form-select" name="cliente_id">
-                        <option value="">Todos os clientes</option>
-                        {% for cliente in clientes %}
-                        <option value="{{ cliente.id }}" {% if filtros.cliente_id == cliente.id|string %}selected{% endif %}>
-                            {{ cliente.nome }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-map-marker-alt"></i> Estado</label>
                     <select class="form-select" name="estado">
                         <option value="">Todos os estados</option>
@@ -184,7 +191,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-city"></i> Cidade</label>
                     <select class="form-select" name="cidade">
                         <option value="">Todas as cidades</option>
@@ -195,7 +202,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-calendar-alt"></i> Evento</label>
                     <select class="form-select" name="evento_id">
                         <option value="">Todos os eventos</option>
@@ -209,7 +216,7 @@
             </div>
             
             <div class="row mt-3">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-chalkboard-teacher"></i> Oficina</label>
                     <select class="form-select" name="oficina_id">
                         <option value="">Todas as oficinas</option>
@@ -220,7 +227,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-user-tie"></i> Formador</label>
                     <select class="form-select" name="ministrante_id">
                         <option value="">Todos os formadores</option>
@@ -231,7 +238,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-clock"></i> Turno</label>
                     <select class="form-select" name="turno">
                         <option value="">Todos os turnos</option>
@@ -242,7 +249,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-3">
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-laptop"></i> Modalidade</label>
                     <select class="form-select" name="modalidade">
                         <option value="">Todas as modalidades</option>
@@ -253,18 +263,7 @@
                         {% endfor %}
                     </select>
                 </div>
-            </div>
-            
-            <div class="row mt-3">
-                <div class="col-md-2">
-                    <label class="form-label"><i class="fas fa-calendar"></i> Data Início</label>
-                    <input type="date" class="form-control" name="data_inicio" value="{{ filtros.data_inicio }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label"><i class="fas fa-calendar"></i> Data Fim</label>
-                    <input type="date" class="form-control" name="data_fim" value="{{ filtros.data_fim }}">
-                </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-flag"></i> Status</label>
                     <select class="form-select" name="status">
                         <option value="">Todos os status</option>
@@ -275,7 +274,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label class="form-label"><i class="fas fa-money-bill"></i> Tipo Pagamento</label>
                     <select class="form-select" name="pago_gratuito">
                         <option value="">Todos</option>
@@ -283,7 +282,20 @@
                         <option value="gratuito" {% if filtros.pago_gratuito == 'gratuito' %}selected{% endif %}>Gratuito</option>
                     </select>
                 </div>
-                <div class="col-md-2">
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Data Início</label>
+                    <input type="date" class="form-control" name="data_inicio" value="{{ filtros.data_inicio }}">
+                    <small class="form-text text-muted">Filtra eventos a partir desta data</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label"><i class="fas fa-calendar"></i> Data Fim</label>
+                    <input type="date" class="form-control" name="data_fim" value="{{ filtros.data_fim }}">
+                    <small class="form-text text-muted">Filtra eventos até esta data</small>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label"><i class="fas fa-certificate"></i> Tipo Certificado</label>
                     <select class="form-select" name="tipo_certificado">
                         <option value="">Todos os tipos</option>
@@ -294,9 +306,10 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label"><i class="fas fa-users"></i> Público-alvo</label>
                     <input type="text" class="form-control" name="publico_alvo" placeholder="Ex: professores..." value="{{ filtros.publico_alvo }}">
+                    <small class="form-text text-muted">Busca por palavras-chave</small>
                 </div>
             </div>
             
@@ -338,30 +351,44 @@
     </div>
 
     <!-- KPIs Executivos -->
+    <div class="alert alert-light mb-3">
+        <h6><i class="fas fa-lightbulb"></i> <strong>Entendendo os KPIs:</strong></h6>
+        <div class="row">
+            <div class="col-md-6">
+                <small><strong>Taxa de Presença:</strong> Percentual de inscritos que compareceram aos eventos</small><br>
+                <small><strong>Capacidade Usada:</strong> Percentual de vagas preenchidas em relação ao total disponível</small>
+            </div>
+            <div class="col-md-6">
+                <small><strong>No-Show:</strong> Inscritos que não compareceram sem cancelar</small><br>
+                <small><strong>Ticket Médio:</strong> Valor médio pago por participante</small>
+            </div>
+        </div>
+    </div>
+    
     <div class="row">
         <div class="col-md-3">
-            <div class="kpi-card drill-down" onclick="drillDown('inscricoes')">
+            <div class="kpi-card drill-down" onclick="drillDown('inscricoes')" title="Clique para ver detalhes das inscrições">
                 <div class="kpi-value">{{ kpis.inscricoes_totais }}</div>
                 <div class="kpi-label">Inscrições Totais</div>
                 <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +12% vs período anterior</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card drill-down" onclick="drillDown('presenca')">
+            <div class="kpi-card drill-down" onclick="drillDown('presenca')" title="Clique para ver análise de presença">
                 <div class="kpi-value">{{ kpis.taxa_presenca }}%</div>
                 <div class="kpi-label">Taxa de Presença</div>
                 <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +3.2% vs período anterior</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card drill-down" onclick="drillDown('capacidade')">
+            <div class="kpi-card drill-down" onclick="drillDown('capacidade')" title="Clique para ver ocupação por evento">
                 <div class="kpi-value">{{ kpis.capacidade_usada }}%</div>
                 <div class="kpi-label">Capacidade Usada</div>
                 <div class="kpi-change negative"><i class="fas fa-arrow-down"></i> -1.8% vs período anterior</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="kpi-card drill-down" onclick="drillDown('receita')">
+            <div class="kpi-card drill-down" onclick="drillDown('receita')" title="Clique para ver análise financeira">
                 <div class="kpi-value">R$ {{ "%.2f"|format(kpis.receita_liquida) }}</div>
                 <div class="kpi-label">Receita Líquida</div>
                 <div class="kpi-change positive"><i class="fas fa-arrow-up"></i> +8.5% vs período anterior</div>
@@ -456,6 +483,16 @@
             <div class="view-section">
                 <h3 class="view-title">Visão Executiva (C-level)</h3>
                 
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Sobre esta visão:</strong></h6>
+                    <p class="mb-2">Esta seção apresenta os indicadores mais importantes para tomada de decisão estratégica:</p>
+                    <ul class="mb-0">
+                        <li><strong>Alertas:</strong> Situações que requerem atenção imediata</li>
+                        <li><strong>Top Oficinas:</strong> Eventos com maior demanda para replicação</li>
+                        <li><strong>Satisfação/NPS:</strong> Indicadores de qualidade e recomendação</li>
+                    </ul>
+                </div>
+                
                 <!-- Alertas Rápidos -->
                 <div class="row">
                     <div class="col-md-6">
@@ -532,6 +569,24 @@
             <div class="view-section">
                 <h3 class="view-title">Funil de Conversão</h3>
                 
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Como interpretar o funil:</strong></h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>📊 Taxas de conversão típicas:</strong></p>
+                            <small>• Visitante → Inscrito: 15-25%</small><br>
+                            <small>• Inscrito → Confirmado: 70-85%</small><br>
+                            <small>• Confirmado → Check-in: 80-90%</small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>🎯 Pontos de atenção:</strong></p>
+                            <small>• Quedas bruscas indicam problemas no processo</small><br>
+                            <small>• Compare com eventos similares</small><br>
+                            <small>• Monitore especialmente o 1º check-in</small>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row">
                     <div class="col-md-8">
                         <div class="funnel-step">
@@ -597,6 +652,23 @@
         <div class="tab-pane fade" id="ocupacao" role="tabpanel">
             <div class="view-section">
                 <h3 class="view-title">Ocupação & Agenda</h3>
+                
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Entendendo a ocupação:</strong></h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>🟢 Alta ocupação (>80%):</strong> Boa demanda</p>
+                            <p class="mb-1"><strong>🟡 Média ocupação (50-80%):</strong> Revisar estratégia</p>
+                            <p class="mb-1"><strong>🔴 Baixa ocupação (<50%):</strong> Atenção necessária</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>💡 Dicas:</strong></p>
+                            <small>• Clique nos eventos do calendário para detalhes</small><br>
+                            <small>• Identifique padrões de dias/horários</small><br>
+                            <small>• Use para planejar futuros eventos</small>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="row">
                     <div class="col-md-12 mb-4">
@@ -725,6 +797,26 @@
             <div class="view-section">
                 <h3 class="view-title">Qualidade & Feedback</h3>
                 
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Interpretando a qualidade:</strong></h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>📊 Escala de notas:</strong></p>
+                            <small>• 4.5-5.0: Excelente qualidade</small><br>
+                            <small>• 3.5-4.4: Boa qualidade</small><br>
+                            <small>• 2.5-3.4: Qualidade regular</small><br>
+                            <small>• <2.5: Necessita melhorias urgentes</small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>🎯 NPS (Net Promoter Score):</strong></p>
+                            <small>• >50: Zona de excelência</small><br>
+                            <small>• 0-50: Zona de qualidade</small><br>
+                            <small>• <0: Zona crítica</small><br>
+                            <small>• Use elogios/críticas para ações</small>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="row">
                     <div class="col-md-6">
                         <h5>Avaliações por Categoria</h5>
@@ -775,6 +867,24 @@
         <div class="tab-pane fade" id="financeiro" role="tabpanel">
             <div class="view-section">
                 <h3 class="view-title">Financeiro (Mercado Pago)</h3>
+                
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Entendendo as métricas financeiras:</strong></h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>💰 Receitas:</strong></p>
+                            <small>• <strong>Total:</strong> Valor bruto arrecadado</small><br>
+                            <small>• <strong>Líquida:</strong> Após taxas e descontos</small><br>
+                            <small>• <strong>Ticket Médio:</strong> Receita ÷ participantes</small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>⚠️ Indicadores de risco:</strong></p>
+                            <small>• <strong>Inadimplência:</strong> Máx. 5% aceitável</small><br>
+                            <small>• <strong>Chargebacks:</strong> Máx. 1% aceitável</small><br>
+                            <small>• <strong>Conversão:</strong> Min. 70% desejável</small>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="row">
                     <div class="col-md-3">
@@ -849,6 +959,24 @@
         <div class="tab-pane fade" id="certificados" role="tabpanel">
             <div class="view-section">
                 <h3 class="view-title">Certificados</h3>
+                
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> <strong>Métricas de certificados:</strong></h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>📜 Taxas esperadas:</strong></p>
+                            <small>• <strong>Emissão:</strong> 85-95% dos presentes</small><br>
+                            <small>• <strong>Download:</strong> 70-85% dos emitidos</small><br>
+                            <small>• <strong>Tempo emissão:</strong> Máx. 24h ideal</small>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1"><strong>🎯 Ações recomendadas:</strong></p>
+                            <small>• Baixa emissão: Verificar critérios</small><br>
+                            <small>• Baixo download: Melhorar comunicação</small><br>
+                            <small>• Tempo alto: Otimizar processo</small>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="row">
                     <div class="col-md-4">

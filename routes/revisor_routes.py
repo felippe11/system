@@ -173,6 +173,11 @@ def create_process() -> Any:
         formulario = Formulario.query.get(processo.formulario_id)
         if formulario:
             rh.ensure_reviewer_required_fields(formulario)
+    
+    # Update field step assignments
+    if processo.formulario_id and dados.get("campos_etapas"):
+        rh.update_campos_etapas(processo.formulario_id, dados["campos_etapas"])
+    
     db.session.commit()
     flash("Processo criado com sucesso!", "success")
     return redirect(url_for("revisor_routes.edit_process", process_id=processo.id))
@@ -231,6 +236,11 @@ def edit_process(process_id: int):
             formulario = Formulario.query.get(processo.formulario_id)
             if formulario:
                 rh.ensure_reviewer_required_fields(formulario)
+        
+        # Update field step assignments
+        if processo.formulario_id and dados.get("campos_etapas"):
+            rh.update_campos_etapas(processo.formulario_id, dados["campos_etapas"])
+        
         db.session.commit()
         flash("Processo atualizado", "success")
 
@@ -594,7 +604,15 @@ def submit_application(process_id: int):
         flash(f"Seu código: {candidatura.codigo}", "success")
         return redirect(url_for("revisor_routes.progress", codigo=candidatura.codigo))
 
-    return render_template("revisor/candidatura_form.html", formulario=formulario)
+    # Check if process has multiple steps
+    if processo.num_etapas > 1:
+        return render_template(
+            "revisor/candidatura_form_steps.html", 
+            formulario=formulario, 
+            processo=processo
+        )
+    else:
+        return render_template("revisor/candidatura_form.html", formulario=formulario)
 
 
 @revisor_routes.route("/revisor/progress/<codigo>")
@@ -1164,3 +1182,60 @@ def ranking_trabalhos():
         resultados=resultados,
         ordenar_por=ordenar_por,
     )
+
+
+@revisor_routes.route("/api/formulario/<int:formulario_id>/campos", methods=["GET"])
+@login_required
+def get_formulario_campos(formulario_id: int) -> Any:
+    """API endpoint para buscar campos de um formulário específico.
+
+    Observações importantes:
+    - Permite acesso para clientes e também para administradores.
+    - Ordena os campos por ``id`` para garantir consistência.
+    - Normaliza ``etapa`` para inteiro, com fallback em 1.
+    """
+
+    tipo = getattr(current_user, "tipo", None)  # type: ignore[attr-defined]
+    if tipo not in {"cliente", "admin", "superadmin"}:
+        return jsonify({"error": "Acesso negado"}), 403
+
+    # Clientes só podem acessar seus próprios formulários
+    if tipo == "cliente":
+        formulario = Formulario.query.filter_by(
+            id=formulario_id,
+            cliente_id=current_user.id,  # type: ignore[attr-defined]
+        ).first()
+    else:
+        # Admin/Superadmin podem acessar qualquer formulário pelo ID
+        formulario = Formulario.query.get(formulario_id)
+
+    if not formulario:
+        return jsonify({"error": "Formulário não encontrado"}), 404
+
+    # Busca explícita e ordenada para evitar inconsistências de ordenação
+    from models.event import CampoFormulario
+
+    campos_qs = (
+        CampoFormulario.query.filter_by(formulario_id=formulario.id)
+        .order_by(CampoFormulario.id.asc())
+        .all()
+    )
+
+    def _safe_int(value, default=1):
+        try:
+            return int(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    campos = [
+        {
+            "id": campo.id,
+            "nome": campo.nome,
+            "tipo": campo.tipo,
+            "obrigatorio": bool(getattr(campo, "obrigatorio", False)),
+            "etapa": _safe_int(getattr(campo, "etapa", 1), 1),
+        }
+        for campo in campos_qs
+    ]
+
+    return jsonify(campos)
