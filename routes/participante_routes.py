@@ -11,6 +11,7 @@ from models.event import Evento
 from models.event import Oficina
 from extensions import db
 from datetime import datetime
+from services import certificado_service
 
 
 
@@ -113,8 +114,6 @@ def meus_certificados():
     ).count()
     
     # Calcular estatísticas
-    from routes.certificado_routes import calcular_atividades_participadas
-    
     estatisticas = {
         'liberados': len(certificados_disponiveis),
         'pendentes': len(certificados_pendentes),
@@ -128,7 +127,9 @@ def meus_certificados():
     ).filter_by(usuario_id=current_user.id).all()
     
     for evento in eventos_participante:
-        dados = calcular_atividades_participadas(current_user.id, evento.id)
+        dados = certificado_service.calcular_atividades_participadas(
+            current_user.id, evento.id
+        )
         estatisticas['checkins'] += dados.get('total_checkins', 0)
         estatisticas['carga_horaria'] += dados.get('total_horas', 0)
     
@@ -198,11 +199,12 @@ def meus_certificados_evento(evento_id):
     config = CertificadoConfig.query.filter_by(evento_id=evento_id).first()
     
     # Calcular progresso
-    from routes.certificado_routes import calcular_atividades_participadas
-    from services.certificado_service import verificar_criterios_certificado
-    
-    dados_participacao = calcular_atividades_participadas(current_user.id, evento_id)
-    criterios_ok, pendencias = verificar_criterios_certificado(current_user.id, evento_id)
+    dados_participacao = certificado_service.calcular_atividades_participadas(
+        current_user.id, evento_id
+    )
+    criterios_ok, pendencias = certificado_service.verificar_criterios_certificado(
+        current_user.id, evento_id
+    )
     
     progresso = {
         'carga_horaria': dados_participacao.get('total_horas', 0),
@@ -256,11 +258,12 @@ def minha_participacao(evento_id):
         return redirect(url_for('participante_routes.meus_certificados'))
     
     # Calcular dados de participação
-    from routes.certificado_routes import calcular_atividades_participadas
-    from services.certificado_service import verificar_criterios_certificado
-    
-    dados_participacao = calcular_atividades_participadas(current_user.id, evento_id)
-    criterios_ok, pendencias = verificar_criterios_certificado(current_user.id, evento_id)
+    dados_participacao = certificado_service.calcular_atividades_participadas(
+        current_user.id, evento_id
+    )
+    criterios_ok, pendencias = certificado_service.verificar_criterios_certificado(
+        current_user.id, evento_id
+    )
     
     # Buscar configuração
     config = CertificadoConfig.query.filter_by(evento_id=evento_id).first()
@@ -310,8 +313,9 @@ def solicitar_certificado_participante():
             })
         
         # Coletar dados de participação
-        from routes.certificado_routes import calcular_atividades_participadas
-        dados_participacao = calcular_atividades_participadas(current_user.id, evento_id)
+        dados_participacao = certificado_service.calcular_atividades_participadas(
+            current_user.id, evento_id
+        )
         
         # Criar solicitação
         solicitacao = SolicitacaoCertificado(
