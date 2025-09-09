@@ -624,6 +624,7 @@ def submit_application(process_id: int):
 
             num_etapas=processo.num_etapas,
             stage_names=stage_names,
+            step_names=step_names,
             form=form,
 
         )
