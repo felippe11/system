@@ -33,11 +33,15 @@ from routes import agendamento_routes
 
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
     os.environ.setdefault('GOOGLE_CLIENT_ID', 'x')
     os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'y')
     os.environ.setdefault('SECRET_KEY', 'test')
 
+    monkeypatch.setattr(
+        'models.formulario.ensure_formulario_trabalhos',
+        lambda: None,
+    )
     app = create_app()
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
@@ -102,6 +106,7 @@ def app():
         agendamento = AgendamentoVisita(
             horario_id=horario.id,
             professor_id=professor.id,
+            cliente_id=cliente.id,
             escola_nome='Escola',
             turma='T1',
             nivel_ensino='Fundamental',
@@ -158,6 +163,28 @@ def test_cliente_pode_confirmar_agendamento(client, app, monkeypatch):
     assert resp.status_code == 200
     with app.app_context():
         assert AgendamentoVisita.query.get(agendamento.id).status == 'confirmado'
+
+
+def test_cliente_aprovar_agendamento_route(client, app, monkeypatch):
+    monkeypatch.setattr(
+        agendamento_routes.NotificacaoAgendamentoService,
+        'enviar_email_confirmacao',
+        lambda ag: None,
+    )
+    login(client, 'cli@test', '123')
+    agendamento = get_agendamento(app)
+    resp = client.post(
+        f'/cliente/aprovar_agendamento/{agendamento.id}',
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert '/cliente/meus_agendamentos' in resp.headers['Location']
+    follow = client.get(resp.headers['Location'])
+    assert b'Agendamento aprovado com sucesso!' in follow.data
+    with app.app_context():
+        ag = AgendamentoVisita.query.get(agendamento.id)
+        assert ag.status == 'confirmado'
+        assert ag.horario.vagas_disponiveis == 20
 
 
 def test_outro_professor_nao_pode_confirmar(client, app):
