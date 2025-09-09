@@ -607,17 +607,22 @@ def submit_application(process_id: int):
 
     # Create a basic form instance for CSRF protection
     form = FlaskForm()
-    
+    stage_names = [e.nome for e in sorted(processo.etapas, key=lambda e: e.numero)]
+
     # Check if process has multiple steps
     if processo.num_etapas > 1:
         return render_template(
-            "revisor/candidatura_form_steps.html", 
-            formulario=formulario, 
+            "revisor/candidatura_form_steps.html",
+            formulario=formulario,
             processo=processo,
-            form=form
+            num_etapas=processo.num_etapas,
+            stage_names=stage_names,
+            form=form,
         )
     else:
-        return render_template("revisor/candidatura_form.html", formulario=formulario, form=form)
+        return render_template(
+            "revisor/candidatura_form.html", formulario=formulario, form=form
+        )
 
 
 @revisor_routes.route("/revisor/progress/<codigo>")
