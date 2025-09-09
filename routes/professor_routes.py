@@ -1,4 +1,4 @@
-from utils import endpoints
+from utils import endpoints, obter_estados
 # -*- coding: utf-8 -*-
 """Routes for managing event visits by professors and participants."""
 
@@ -421,6 +421,11 @@ def adicionar_alunos_participante(agendamento_id):
 
     alunos = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).all()
 
+    try:
+        estados = obter_estados()
+    except Exception:
+        estados = []
+
     if request.method == 'POST':
         # Verificar se já atingiu o limite de alunos
         total_atual = AlunoVisitante.query.filter_by(agendamento_id=agendamento.id).count()
@@ -503,6 +508,7 @@ def adicionar_alunos_participante(agendamento_id):
         alunos=alunos,
         total_adicionados=len(alunos),
         quantidade_esperada=agendamento.quantidade_alunos,
+        estados=estados,
     )
 
 
