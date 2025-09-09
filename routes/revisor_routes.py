@@ -1204,29 +1204,41 @@ def ranking_trabalhos():
 
 
 @revisor_routes.route("/api/formulario/<int:formulario_id>/campos", methods=["GET"])
-@login_required
 def get_formulario_campos(formulario_id: int) -> Any:
     """API endpoint para buscar campos de um formulário específico.
 
     Observações importantes:
-    - Permite acesso para clientes e também para administradores.
+    - Permite acesso para clientes e administradores.
+    - Usuários públicos podem acessar apenas formulários associados a um
+      processo público.
     - Ordena os campos por ``id`` para garantir consistência.
-    - Normaliza ``etapa`` para inteiro, com fallback em 1.
+    - Normaliza ``etapa`` para inteiro, com *fallback* em 1.
     """
 
-    tipo = getattr(current_user, "tipo", None)  # type: ignore[attr-defined]
-    if tipo not in {"cliente", "admin", "superadmin"}:
-        return jsonify({"error": "Acesso negado"}), 403
+    tipo = (
+        getattr(current_user, "tipo", None) if current_user.is_authenticated else None
+    )
 
-    # Clientes só podem acessar seus próprios formulários
-    if tipo == "cliente":
-        formulario = Formulario.query.filter_by(
-            id=formulario_id,
-            cliente_id=current_user.id,  # type: ignore[attr-defined]
-        ).first()
+    formulario = None
+
+    if tipo in {"cliente", "admin", "superadmin"}:
+        # Clientes só podem acessar seus próprios formulários
+        if tipo == "cliente":
+            formulario = Formulario.query.filter_by(
+                id=formulario_id,
+                cliente_id=current_user.id,  # type: ignore[attr-defined]
+            ).first()
+        else:
+            # Admin/Superadmin podem acessar qualquer formulário pelo ID
+            formulario = Formulario.query.get(formulario_id)
     else:
-        # Admin/Superadmin podem acessar qualquer formulário pelo ID
-        formulario = Formulario.query.get(formulario_id)
+        processo = RevisorProcess.query.filter_by(
+            formulario_id=formulario_id,
+            exibir_para_participantes=True,
+        ).first()
+        if not processo:
+            return jsonify({"error": "Acesso negado"}), 403
+        formulario = processo.formulario
 
     if not formulario:
         return jsonify({"error": "Formulário não encontrado"}), 404
