@@ -25,6 +25,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from flask_wtf import FlaskForm
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -604,15 +605,19 @@ def submit_application(process_id: int):
         flash(f"Seu código: {candidatura.codigo}", "success")
         return redirect(url_for("revisor_routes.progress", codigo=candidatura.codigo))
 
+    # Create a basic form instance for CSRF protection
+    form = FlaskForm()
+    
     # Check if process has multiple steps
     if processo.num_etapas > 1:
         return render_template(
             "revisor/candidatura_form_steps.html", 
             formulario=formulario, 
-            processo=processo
+            processo=processo,
+            form=form
         )
     else:
-        return render_template("revisor/candidatura_form.html", formulario=formulario)
+        return render_template("revisor/candidatura_form.html", formulario=formulario, form=form)
 
 
 @revisor_routes.route("/revisor/progress/<codigo>")

@@ -5278,6 +5278,30 @@ def aprovar_agendamento_cliente(agendamento_id):
         flash('Acesso negado! Este agendamento não pertence a você.', 'danger')
         return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
 
+    # Verificar se o agendamento está pendente
+    if agendamento.status != 'pendente':
+        flash('Este agendamento não está pendente de aprovação!', 'warning')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    horario = agendamento.horario
+    if horario.vagas_disponiveis < agendamento.quantidade_alunos:
+        flash('Não há vagas suficientes para confirmar este agendamento.', 'danger')
+        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+    try:
+        agendamento.status = 'confirmado'
+        agendamento.data_confirmacao = datetime.utcnow()
+        horario.vagas_disponiveis -= agendamento.quantidade_alunos
+        db.session.commit()
+        NotificacaoAgendamentoService.enviar_email_confirmacao(agendamento)
+        flash('Agendamento aprovado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao aprovar agendamento: {str(e)}', 'danger')
+
+    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
+
+
 @agendamento_routes.route('/remover_aluno_cliente/<int:agendamento_id>/<int:aluno_id>', methods=['POST'])
 @login_required
 def remover_aluno_cliente(agendamento_id, aluno_id):
@@ -5285,61 +5309,45 @@ def remover_aluno_cliente(agendamento_id, aluno_id):
     try:
         # Verificar se o agendamento pertence ao cliente logado
         agendamento = Agendamento.query.filter_by(
-            id=agendamento_id, 
+            id=agendamento_id,
             cliente_id=current_user.id
         ).first()
-        
+
         if not agendamento:
             flash('Agendamento não encontrado ou você não tem permissão para acessá-lo.', 'error')
             return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
-        
+
         # Verificar se o agendamento está em status que permite remoção
         if agendamento.status not in ['pendente', 'confirmado']:
             flash('Não é possível remover alunos de agendamentos com este status.', 'error')
             return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
-        
+
         # Buscar o aluno
         aluno = AlunoVisitante.query.filter_by(
             id=aluno_id,
             agendamento_id=agendamento_id
         ).first()
-        
+
         if not aluno:
             flash('Aluno não encontrado.', 'error')
             return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
-        
+
         # Remover o aluno
         db.session.delete(aluno)
-        
+
         # Atualizar quantidade de alunos e vagas disponíveis
         agendamento.quantidade_alunos -= 1
         agendamento.horario.vagas_disponiveis += 1
-        
+
         db.session.commit()
-        
+
         flash(f'Aluno {aluno.nome} removido com sucesso!', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao remover aluno: {str(e)}', 'error')
-    
+
     return redirect(url_for('agendamento_routes.adicionar_alunos_cliente', agendamento_id=agendamento_id))
-
-    # Verificar se o agendamento está pendente
-    if agendamento.status != 'pendente':
-        flash('Este agendamento não está pendente de aprovação!', 'warning')
-        return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
-
-    try:
-        agendamento.status = 'confirmado'
-        agendamento.data_confirmacao = datetime.utcnow()
-        db.session.commit()
-        flash('Agendamento aprovado com sucesso!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao aprovar agendamento: {str(e)}', 'danger')
-
-    return redirect(url_for('agendamento_routes.meus_agendamentos_cliente'))
 
 
 @agendamento_routes.route('/cliente/negar_agendamento/<int:agendamento_id>', methods=['POST'])
