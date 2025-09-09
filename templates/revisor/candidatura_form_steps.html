@@ -222,6 +222,7 @@ let currentStep = 1;
 let totalSteps = 1;
 let stepData = {};
 let formFields = [];
+const stepNames = {{ step_names | tojson }};
 
 // Initialize form when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -278,10 +279,11 @@ function renderStepProgress() {
     
     // Regular steps
     for (let i = 1; i <= totalSteps - 1; i++) {
+        const label = stepNames[i - 1] ? stepNames[i - 1] : `Etapa ${i}`;
         progressHTML += `
             <div class="step-item" id="step-item-${i}">
                 <div class="step-circle">${i}</div>
-                <div class="step-label">Etapa ${i}</div>
+                <div class="step-label">${label}</div>
             </div>
         `;
     }
@@ -304,12 +306,13 @@ function renderStepContents() {
     
     Object.keys(stepData).forEach(stepNum => {
         const fields = stepData[stepNum];
+        const label = stepNames[stepNum - 1] ? stepNames[stepNum - 1] : `Etapa ${stepNum}`;
         contentsHTML += `
             <div class="step-content" id="step-${stepNum}">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">
-                            <i class="fas fa-edit me-2"></i>Etapa ${stepNum}
+                            <i class="fas fa-edit me-2"></i>${label}
                         </h5>
                     </div>
                     <div class="card-body">
