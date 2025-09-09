@@ -1281,7 +1281,7 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
             pdf.cell(190, 8, 'Distribuição por Tipo de Necessidade:', 0, 1)
             pdf.set_font('DejaVu', '', 10)
             for tipo, quantidade in tipos_pcd.items():
-                pdf.cell(190, 6, f'• {tipo}: {quantidade} aluno(s)', 0, 1)
+                pdf.cell(190, 6, f'- {tipo}: {quantidade} aluno(s)', 0, 1)
     
     # Agendamentos detalhados por status
     pdf.add_page()
