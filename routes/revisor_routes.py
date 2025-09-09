@@ -1189,6 +1189,60 @@ def ranking_trabalhos():
     )
 
 
+@revisor_routes.route(
+    "/revisor/api/formulario/<int:formulario_id>/campos", methods=["GET"]
+)
+def get_public_formulario_campos(formulario_id: int) -> Any:
+    """Return public fields for a form used in reviewer applications.
+
+    This endpoint does not require authentication but ensures the form
+    belongs to an available reviewer process that is visible to
+    participants. Only non-protected fields are returned.
+    """
+
+    processo = RevisorProcess.query.filter_by(formulario_id=formulario_id).first()
+    if (
+        not processo
+        or processo.status != "aberto"
+        or not processo.exibir_para_participantes
+        or not processo.is_available()
+    ):
+        return jsonify({"error": "Formulário não disponível"}), 404
+
+    formulario = processo.formulario
+    if not formulario:
+        return jsonify({"error": "Formulário não encontrado"}), 404
+
+    from models.event import CampoFormulario
+
+    campos_qs = (
+        CampoFormulario.query.filter_by(
+            formulario_id=formulario.id, protegido=False
+        )
+        .order_by(CampoFormulario.id.asc())
+        .all()
+    )
+
+    def _safe_int(value, default=1):
+        try:
+            return int(value) if value is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    campos = [
+        {
+            "id": campo.id,
+            "nome": campo.nome,
+            "tipo": campo.tipo,
+            "obrigatorio": bool(getattr(campo, "obrigatorio", False)),
+            "etapa": _safe_int(getattr(campo, "etapa", 1), 1),
+        }
+        for campo in campos_qs
+    ]
+
+    return jsonify(campos)
+
+
 @revisor_routes.route("/api/formulario/<int:formulario_id>/campos", methods=["GET"])
 @login_required
 def get_formulario_campos(formulario_id: int) -> Any:
