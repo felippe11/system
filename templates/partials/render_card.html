@@ -1,0 +1,12 @@
+{% macro render_card(title, icon, card_class="") %}
+<div class="card {{ card_class }}">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="{{ icon }} me-2"></i>{{ title }}
+        </h5>
+    </div>
+    <div class="card-body">
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}
