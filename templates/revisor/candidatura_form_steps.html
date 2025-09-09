@@ -224,7 +224,7 @@ let currentStep = 1;
 let totalSteps = 1;
 let stepData = {};
 let formFields = [];
-const stepNames = {{ step_names | tojson }};
+const stepNames = {{ step_names | default([]) | tojson }};
 
 // Initialize form when page loads
 document.addEventListener('DOMContentLoaded', function() {
