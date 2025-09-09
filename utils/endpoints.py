@@ -19,3 +19,6 @@ DASHBOARD_SUPERADMIN = "dashboard_routes.dashboard_superadmin"
 
 DASHBOARD_AGENDAMENTOS = "dashboard_routes.dashboard_agendamentos"
 """Endpoint for the scheduling dashboard."""
+
+DASHBOARD_PARTICIPANTE = "dashboard_participante_routes.dashboard_participante"
+"""Endpoint for the participant dashboard."""
