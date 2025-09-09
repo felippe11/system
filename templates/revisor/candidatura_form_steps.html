@@ -218,6 +218,8 @@
 </div>
 
 <script>
+const totalProcessSteps = {{ num_etapas }};
+const stageNames = {{ stage_names | tojson }};
 let currentStep = 1;
 let totalSteps = 1;
 let stepData = {};
@@ -254,7 +256,12 @@ function loadFormStructure() {
 // Organize fields by steps
 function organizeFieldsBySteps() {
     stepData = {};
-    
+
+    // Initialize all steps to ensure empty stages are represented
+    for (let i = 1; i <= totalProcessSteps; i++) {
+        stepData[i] = [];
+    }
+
     formFields.forEach(campo => {
         const etapa = campo.etapa || 1;
         if (!stepData[etapa]) {
@@ -262,8 +269,8 @@ function organizeFieldsBySteps() {
         }
         stepData[etapa].push(campo);
     });
-    
-    totalSteps = Math.max(...Object.keys(stepData).map(Number)) + 1; // +1 for summary
+
+    totalSteps = totalProcessSteps + 1; // +1 for summary
 }
 
 // Render step progress and content
@@ -279,7 +286,9 @@ function renderStepProgress() {
     
     // Regular steps
     for (let i = 1; i <= totalSteps - 1; i++) {
-        const label = stepNames[i - 1] ? stepNames[i - 1] : `Etapa ${i}`;
+
+        const label = stageNames[i - 1] || `Etapa ${i}`;
+
         progressHTML += `
             <div class="step-item" id="step-item-${i}">
                 <div class="step-circle">${i}</div>
@@ -306,7 +315,9 @@ function renderStepContents() {
     
     Object.keys(stepData).forEach(stepNum => {
         const fields = stepData[stepNum];
-        const label = stepNames[stepNum - 1] ? stepNames[stepNum - 1] : `Etapa ${stepNum}`;
+
+        const label = stageNames[stepNum - 1] || `Etapa ${stepNum}`;
+
         contentsHTML += `
             <div class="step-content" id="step-${stepNum}">
                 <div class="card">
