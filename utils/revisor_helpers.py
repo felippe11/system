@@ -59,6 +59,17 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         if nome or requisitos:
             criterios.append({"nome": nome, "requisitos": requisitos})
 
+    # Parse field step assignments
+    campos_etapas: Dict[int, int] = {}
+    for key, value in req.form.items():
+        if key.startswith("campo_") and key.endswith("_etapa"):
+            try:
+                campo_id = int(key.split("_")[1])
+                etapa = int(value) if value else 1
+                campos_etapas[campo_id] = etapa
+            except (ValueError, IndexError):
+                continue
+
     return {
         "formulario_id": formulario_id,
         "nome": nome,
@@ -71,6 +82,7 @@ def parse_revisor_form(req: Request) -> Dict[str, Any]:
         "exibir_para_participantes": exibir_para_participantes,
         "eventos_ids": eventos_ids,
         "criterios": criterios,
+        "campos_etapas": campos_etapas,
     }
 
 
@@ -142,6 +154,21 @@ def recreate_criterios(
                 db.session.add(
                     RevisorRequisito(criterio_id=criterio.id, descricao=req_desc)
                 )
+
+
+def update_campos_etapas(formulario_id: int, campos_etapas: Dict[int, int]) -> None:
+    """Updates the step assignment for form fields."""
+    from models.event import CampoFormulario
+    
+    for campo_id, etapa in campos_etapas.items():
+        campo = CampoFormulario.query.filter_by(
+            id=campo_id,
+            formulario_id=formulario_id
+        ).first()
+        if campo:
+            campo.etapa = etapa
+    
+    db.session.flush()
 
 
 def ensure_reviewer_required_fields(formulario: Formulario) -> None:

@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% from "partials/render_card.html" import render_card %}
+
+{% block title %}Candidatura - {{ processo.nome }}{% endblock %}
+
+{% block head %}
+<style>
+    .progress-container {
+        margin-bottom: 2rem;
+    }
+    
+    .step-progress {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    
+    .step-item {
+        flex: 1;
+        text-align: center;
+        position: relative;
+    }
+    
+    .step-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 15px;
+        right: -50%;
+        width: 100%;
+        height: 2px;
+        background-color: #e9ecef;
+        z-index: 1;
+    }
+    
+    .step-item.completed:not(:last-child)::after {
+        background-color: #28a745;
+    }
+    
+    .step-circle {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        position: relative;
+        z-index: 2;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .step-item.active .step-circle {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .step-item.completed .step-circle {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .step-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .step-item.active .step-label {
+        color: #007bff;
+        font-weight: 600;
+    }
+    
+    .step-item.completed .step-label {
+        color: #28a745;
+    }
+    
+    .step-content {
+        display: none;
+    }
+    
+    .step-content.active {
+        display: block;
+    }
+    
+    .step-navigation {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .form-field {
+        margin-bottom: 1.5rem;
+    }
+    
+    .field-icon {
+        color: #6c757d;
+        margin-right: 0.5rem;
+    }
+    
+    .required-asterisk {
+        color: #dc3545;
+        margin-left: 0.25rem;
+    }
+    
+    .field-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .btn-step {
+        min-width: 120px;
+    }
+    
+    .summary-section {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+    
+    .summary-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .summary-value {
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="step-progress" id="stepProgress">
+                    <!-- Steps will be dynamically generated -->
+                </div>
+            </div>
+            
+            <!-- Process Info -->
+            {% if processo %}
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading mb-2">
+                    <i class="fas fa-info-circle me-2"></i>{{ processo.nome }}
+                </h5>
+                {% if processo.descricao %}
+                <p class="mb-0">{{ processo.descricao }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- Form -->
+            <form id="candidaturaForm" method="POST" enctype="multipart/form-data">
+                {{ form.hidden_tag() }}
+                
+                <!-- Step Contents -->
+                <div id="stepContents">
+                    <!-- Steps will be dynamically generated -->
+                </div>
+                
+                <!-- Summary Step -->
+                <div class="step-content" id="step-summary">
+                    {% call render_card("Resumo da Candidatura", "fas fa-check-circle") %}
+                        <div class="summary-section" id="summaryContent">
+                            <!-- Summary will be dynamically generated -->
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Atenção:</strong> Revise todas as informações antes de enviar sua candidatura. 
+                            Após o envio, não será possível fazer alterações.
+                        </div>
+                    {% endcall %}
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="step-navigation">
+                    <button type="button" class="btn btn-outline-secondary btn-step" id="prevBtn" onclick="changeStep(-1)">
+                        <i class="fas fa-arrow-left me-2"></i>Anterior
+                    </button>
+                    
+                    <button type="button" class="btn btn-primary btn-step" id="nextBtn" onclick="changeStep(1)">
+                        Próximo<i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                    
+                    <button type="submit" class="btn btn-success btn-step" id="submitBtn" style="display: none;">
+                        <i class="fas fa-paper-plane me-2"></i>Enviar Candidatura
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const totalProcessSteps = {{ num_etapas }};
+const stageNames = {{ stage_names | tojson }};
+let currentStep = 1;
+let totalSteps = 1;
+let stepData = {};
+let formFields = [];
+const stepNames = {{ step_names | default([]) | tojson }};
+
+// Initialize form when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadFormStructure();
+});
+
+// Load form structure and organize by steps
+function loadFormStructure() {
+    // Get form fields from the server
+    const formId = {{ formulario.id if formulario else 'null' }};
+    if (!formId) {
+        console.error('No form ID available');
+        return;
+    }
+    
+    fetch(`/revisor/api/formulario/${formId}/campos`)
+        .then(response => response.json())
+        .then(campos => {
+            formFields = campos;
+            organizeFieldsBySteps();
+            renderSteps();
+            showStep(1);
+        })
+        .catch(error => {
+            console.error('Error loading form fields:', error);
+        });
+}
+
+// Organize fields by steps
+function organizeFieldsBySteps() {
+    stepData = {};
+
+    // Initialize all steps to ensure empty stages are represented
+    for (let i = 1; i <= totalProcessSteps; i++) {
+        stepData[i] = [];
+    }
+
+    formFields.forEach(campo => {
+        const etapa = campo.etapa || 1;
+        if (!stepData[etapa]) {
+            stepData[etapa] = [];
+        }
+        stepData[etapa].push(campo);
+    });
+
+    totalSteps = totalProcessSteps + 1; // +1 for summary
+}
+
+// Render step progress and content
+function renderSteps() {
+    renderStepProgress();
+    renderStepContents();
+}
+
+// Render step progress bar
+function renderStepProgress() {
+    const progressContainer = document.getElementById('stepProgress');
+    let progressHTML = '';
+    
+    // Regular steps
+    for (let i = 1; i <= totalSteps - 1; i++) {
+
+        const label = stageNames[i - 1] || `Etapa ${i}`;
+
+        progressHTML += `
+            <div class="step-item" id="step-item-${i}">
+                <div class="step-circle">${i}</div>
+                <div class="step-label">${label}</div>
+            </div>
+        `;
+    }
+    
+    // Summary step
+    progressHTML += `
+        <div class="step-item" id="step-item-${totalSteps}">
+            <div class="step-circle"><i class="fas fa-check"></i></div>
+            <div class="step-label">Resumo</div>
+        </div>
+    `;
+    
+    progressContainer.innerHTML = progressHTML;
+}
+
+// Render step contents
+function renderStepContents() {
+    const contentsContainer = document.getElementById('stepContents');
+    let contentsHTML = '';
+    
+    Object.keys(stepData).forEach(stepNum => {
+        const fields = stepData[stepNum];
+
+        const label = stageNames[stepNum - 1] || `Etapa ${stepNum}`;
+
+        contentsHTML += `
+            <div class="step-content" id="step-${stepNum}">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-edit me-2"></i>${label}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        ${renderFieldsForStep(fields)}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    contentsContainer.innerHTML = contentsHTML;
+}
+
+// Render fields for a specific step
+function renderFieldsForStep(fields) {
+    let fieldsHTML = '';
+    
+    fields.forEach(campo => {
+        const required = campo.obrigatorio ? '<span class="required-asterisk">*</span>' : '';
+        const icon = getFieldIcon(campo.tipo);
+        
+        fieldsHTML += `
+            <div class="form-field">
+                <label class="field-label" for="${campo.nome}">
+                    <i class="${icon} field-icon"></i>
+                    ${campo.nome}${required}
+                </label>
+                ${renderFieldInput(campo)}
+            </div>
+        `;
+    });
+    
+    return fieldsHTML;
+}
+
+// Render field input based on type
+function renderFieldInput(campo) {
+    const baseAttrs = `name="${campo.nome}" id="${campo.nome}" class="form-control"`;
+    const required = campo.obrigatorio ? 'required' : '';
+    
+    switch (campo.tipo) {
+        case 'textarea':
+            return `<textarea ${baseAttrs} ${required} rows="4"></textarea>`;
+        case 'number':
+            return `<input type="number" ${baseAttrs} ${required}>`;
+        case 'email':
+            return `<input type="email" ${baseAttrs} ${required}>`;
+        case 'file':
+            return `<input type="file" ${baseAttrs} ${required}>`;
+        case 'date':
+            return `<input type="date" ${baseAttrs} ${required}>`;
+        default:
+            return `<input type="text" ${baseAttrs} ${required}>`;
+    }
+}
+
+// Get icon for field type
+function getFieldIcon(tipo) {
+    const icons = {
+        'text': 'fas fa-font',
+        'textarea': 'fas fa-align-left',
+        'number': 'fas fa-hashtag',
+        'email': 'fas fa-envelope',
+        'file': 'fas fa-file-upload',
+        'date': 'fas fa-calendar-alt'
+    };
+    return icons[tipo] || 'fas fa-edit';
+}
+
+// Show specific step
+function showStep(step) {
+    // Hide all steps
+    document.querySelectorAll('.step-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Show current step
+    if (step <= totalSteps - 1) {
+        document.getElementById(`step-${step}`).classList.add('active');
+    } else {
+        // Show summary
+        document.getElementById('step-summary').classList.add('active');
+        generateSummary();
+    }
+    
+    // Update progress
+    updateStepProgress(step);
+    
+    // Update navigation buttons
+    updateNavigationButtons(step);
+    
+    currentStep = step;
+}
+
+// Update step progress visual state
+function updateStepProgress(step) {
+    document.querySelectorAll('.step-item').forEach((item, index) => {
+        const stepNumber = index + 1;
+        item.classList.remove('active', 'completed');
+        
+        if (stepNumber < step) {
+            item.classList.add('completed');
+        } else if (stepNumber === step) {
+            item.classList.add('active');
+        }
+    });
+}
+
+// Update navigation buttons
+function updateNavigationButtons(step) {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    prevBtn.style.display = step === 1 ? 'none' : 'block';
+    
+    if (step === totalSteps) {
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'block';
+    } else {
+        nextBtn.style.display = 'block';
+        submitBtn.style.display = 'none';
+    }
+}
+
+// Change step
+function changeStep(direction) {
+    const newStep = currentStep + direction;
+    
+    if (newStep < 1 || newStep > totalSteps) {
+        return;
+    }
+    
+    // Validate current step before moving forward
+    if (direction > 0 && !validateCurrentStep()) {
+        return;
+    }
+    
+    showStep(newStep);
+}
+
+// Validate current step
+function validateCurrentStep() {
+    if (currentStep > totalSteps - 1) {
+        return true; // Summary step doesn't need validation
+    }
+    
+    const currentStepElement = document.getElementById(`step-${currentStep}`);
+    const requiredFields = currentStepElement.querySelectorAll('[required]');
+    
+    for (let field of requiredFields) {
+        if (!field.value.trim()) {
+            field.focus();
+            field.classList.add('is-invalid');
+            return false;
+        } else {
+            field.classList.remove('is-invalid');
+        }
+    }
+    
+    return true;
+}
+
+// Generate summary
+function generateSummary() {
+    const summaryContainer = document.getElementById('summaryContent');
+    let summaryHTML = '';
+    
+    formFields.forEach(campo => {
+        const input = document.getElementById(campo.nome);
+        if (input && input.value) {
+            let value = input.value;
+            if (input.type === 'file' && input.files.length > 0) {
+                value = input.files[0].name;
+            }
+            
+            summaryHTML += `
+                <div class="summary-item">
+                    <span class="summary-label">${campo.nome}:</span>
+                    <span class="summary-value">${value}</span>
+                </div>
+            `;
+        }
+    });
+    
+    if (!summaryHTML) {
+        summaryHTML = '<p class="text-muted">Nenhuma informação preenchida ainda.</p>';
+    }
+    
+    summaryContainer.innerHTML = summaryHTML;
+}
+
+// Form submission
+document.getElementById('candidaturaForm').addEventListener('submit', function(e) {
+    if (currentStep !== totalSteps) {
+        e.preventDefault();
+        return;
+    }
+    
+    // Final validation
+    if (!validateAllSteps()) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+});
+
+// Validate all steps
+function validateAllSteps() {
+    const requiredFields = document.querySelectorAll('[required]');
+    
+    for (let field of requiredFields) {
+        if (!field.value.trim()) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+</script>
+{% endblock %}
