@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Inscrição de Formador{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus"></i> Inscrição de Formador
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if link %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Link de Inscrição:</strong> {{ link.descricao or 'Link de inscrição para formadores' }}<br>
+                            <small class="text-muted">Válido até: {{ link.expires_at.strftime('%d/%m/%Y às %H:%M') }}</small>
+                        </div>
+                    {% endif %}
+
+                    <form method="POST" id="formInscricao">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="nome" class="form-label">Nome Completo *</label>
+                                    <input type="text" class="form-control" id="nome" name="nome" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="email" class="form-label">E-mail *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="cpf" class="form-label">CPF *</label>
+                                    <input type="text" class="form-control" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="telefone" class="form-label">Telefone</label>
+                                    <input type="text" class="form-control" id="telefone" name="telefone" placeholder="(00) 00000-0000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="formacao" class="form-label">Formação Acadêmica *</label>
+                            <input type="text" class="form-control" id="formacao" name="formacao" 
+                                   placeholder="Ex: Graduação em Pedagogia, Mestrado em Educação" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="areas_atuacao" class="form-label">Áreas de Atuação *</label>
+                            <textarea class="form-control" id="areas_atuacao" name="areas_atuacao" rows="3" 
+                                      placeholder="Descreva suas principais áreas de atuação e especialidades" required></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="cidade" class="form-label">Cidade *</label>
+                                    <input type="text" class="form-control" id="cidade" name="cidade" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="estado" class="form-label">Estado *</label>
+                                    <select class="form-control" id="estado" name="estado" required>
+                                        <option value="">Selecione o estado</option>
+                                        <option value="AC">Acre</option>
+                                        <option value="AL">Alagoas</option>
+                                        <option value="AP">Amapá</option>
+                                        <option value="AM">Amazonas</option>
+                                        <option value="BA">Bahia</option>
+                                        <option value="CE">Ceará</option>
+                                        <option value="DF">Distrito Federal</option>
+                                        <option value="ES">Espírito Santo</option>
+                                        <option value="GO">Goiás</option>
+                                        <option value="MA">Maranhão</option>
+                                        <option value="MT">Mato Grosso</option>
+                                        <option value="MS">Mato Grosso do Sul</option>
+                                        <option value="MG">Minas Gerais</option>
+                                        <option value="PA">Pará</option>
+                                        <option value="PB">Paraíba</option>
+                                        <option value="PR">Paraná</option>
+                                        <option value="PE">Pernambuco</option>
+                                        <option value="PI">Piauí</option>
+                                        <option value="RJ">Rio de Janeiro</option>
+                                        <option value="RN">Rio Grande do Norte</option>
+                                        <option value="RS">Rio Grande do Sul</option>
+                                        <option value="RO">Rondônia</option>
+                                        <option value="RR">Roraima</option>
+                                        <option value="SC">Santa Catarina</option>
+                                        <option value="SP">São Paulo</option>
+                                        <option value="SE">Sergipe</option>
+                                        <option value="TO">Tocantins</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="senha" class="form-label">Senha *</label>
+                            <input type="password" class="form-control" id="senha" name="senha" 
+                                   placeholder="Mínimo 6 caracteres" required minlength="6">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="confirmar_senha" class="form-label">Confirmar Senha *</label>
+                            <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" 
+                                   placeholder="Digite a senha novamente" required minlength="6">
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="aceitar_termos" required>
+                            <label class="form-check-label" for="aceitar_termos">
+                                Aceito os <a href="#" target="_blank">termos de uso</a> e 
+                                <a href="#" target="_blank">política de privacidade</a> *
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-check"></i> Finalizar Inscrição
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Máscara para CPF
+document.getElementById('cpf').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    e.target.value = value;
+});
+
+// Máscara para telefone
+document.getElementById('telefone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.replace(/(\d{2})(\d)/, '($1) $2');
+    value = value.replace(/(\d{5})(\d)/, '$1-$2');
+    e.target.value = value;
+});
+
+// Validação de senha
+document.getElementById('formInscricao').addEventListener('submit', function(e) {
+    const senha = document.getElementById('senha').value;
+    const confirmarSenha = document.getElementById('confirmar_senha').value;
+    
+    if (senha !== confirmarSenha) {
+        e.preventDefault();
+        alert('As senhas não coincidem. Por favor, verifique.');
+        return false;
+    }
+    
+    if (senha.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres.');
+        return false;
+    }
+});
+</script>
+{% endblock %}
