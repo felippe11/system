@@ -50,7 +50,6 @@ input {
     border: 1px solid var(--bs-secondary);
     transition: all 0.3s ease-in-out;
     width: 100%;
-    max-width: 400px;
     margin-bottom: 15px;
 }
 input:focus {
