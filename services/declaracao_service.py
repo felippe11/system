@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from flask import current_app, render_template_string
 
 from extensions import db
-from models import Checkin, Oficina, Evento
+from models import Checkin, Oficina, Evento, DeclaracaoComparecimento
 from models.user import Usuario  # Cliente não é usado aqui
 from models.certificado import DeclaracaoTemplate
 
@@ -110,6 +110,7 @@ def gerar_declaracao_coletiva(evento_id, usuarios_ids=None):
         return None
 
 
+
 def gerar_declaracao_personalizada(
     usuario, evento, participacao, template, cliente
 ):
@@ -200,6 +201,7 @@ def gerar_declaracao_personalizada(
 
     c.save()
     return pdf_path
+
 
 
 # ------------------------------- #

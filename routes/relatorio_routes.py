@@ -215,9 +215,8 @@ def gerar_relatorio_evento():
     # Tipos de certificado disponíveis vêm do modelo avançado
     tipos_certificado = db.session.query(CertificadoTemplateAvancado.tipo).distinct().all()
     
-    # Processar filtros
+    # Processar filtros (removido cliente_id para segurança)
     filtros = {
-        'cliente_id': request.args.get('cliente_id', type=int),
         'evento_id': request.args.get('evento_id', type=int),
         'oficina_id': request.args.get('oficina_id', type=int),
         'ministrante_id': request.args.get('ministrante_id', type=int),
@@ -245,10 +244,7 @@ def gerar_relatorio_evento():
         query_checkins = query_checkins.filter(Checkin.evento_id.in_([e.id for e in eventos]))
         query_oficinas = query_oficinas.filter_by(cliente_id=current_user.id)
     
-    if filtros['cliente_id']:
-        eventos_cliente = [e.id for e in eventos if e.cliente_id == filtros['cliente_id']]
-        query_inscricoes = query_inscricoes.filter(Inscricao.evento_id.in_(eventos_cliente))
-        query_checkins = query_checkins.filter(Checkin.evento_id.in_(eventos_cliente))
+    # Filtro por cliente_id removido - cada cliente vê apenas seus dados
     
     if filtros['evento_id']:
         query_inscricoes = query_inscricoes.filter_by(evento_id=filtros['evento_id'])

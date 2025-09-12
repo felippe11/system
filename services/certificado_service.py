@@ -170,8 +170,67 @@ def _calcular_carga_horaria_participante(usuario_id, evento_id):
         Checkin.usuario_id == usuario_id,
         Oficina.evento_id == evento_id
     ).all()
-    
+
     return sum(oficina.carga_horaria or 0 for oficina in oficinas_participadas)
+
+
+def calcular_atividades_participadas(usuario_id, evento_id, config=None):
+    """Calcula todas as atividades que o usuário participou no evento."""
+    oficinas_participadas = (
+        db.session.query(Oficina.id, Oficina.titulo, Oficina.carga_horaria)
+        .join(Checkin, Checkin.oficina_id == Oficina.id)
+        .filter(
+            Checkin.usuario_id == usuario_id,
+            Oficina.evento_id == evento_id,
+        )
+        .all()
+    )
+
+    atividades = {
+        "oficinas": [],
+        "atividades_sem_inscricao": [],
+        "total_horas": 0,
+        "total_atividades": 0,
+    }
+
+    for oficina in oficinas_participadas:
+        atividades["oficinas"].append(
+            {
+                "id": oficina.id,
+                "titulo": oficina.titulo,
+                "carga_horaria": int(oficina.carga_horaria),
+                "tipo": "oficina",
+            }
+        )
+        atividades["total_horas"] += int(oficina.carga_horaria)
+
+    if config and getattr(config, "incluir_atividades_sem_inscricao", False):
+        checkins_extras = (
+            db.session.query(Checkin)
+            .filter(
+                Checkin.usuario_id == usuario_id,
+                Checkin.evento_id == evento_id,
+                Checkin.oficina_id.is_(None),
+            )
+            .all()
+        )
+
+        for checkin in checkins_extras:
+            if checkin.palavra_chave and "ATIVIDADE" in checkin.palavra_chave:
+                atividades["atividades_sem_inscricao"].append(
+                    {
+                        "titulo": checkin.palavra_chave.replace("ATIVIDADE-", ""),
+                        "carga_horaria": 2,
+                        "tipo": "atividade_extra",
+                    }
+                )
+                atividades["total_horas"] += 2
+
+    atividades["total_atividades"] = len(atividades["oficinas"]) + len(
+        atividades["atividades_sem_inscricao"]
+    )
+
+    return atividades
 
 
 def _buscar_template_certificado(cliente_id):

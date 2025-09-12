@@ -138,7 +138,7 @@ def login():
         destino = {
             'admin':        endpoints.DASHBOARD,
             'cliente':      endpoints.DASHBOARD,
-            'participante': 'dashboard_participante_routes.dashboard_participante',
+            'participante': endpoints.DASHBOARD_PARTICIPANTE,
             'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
             'professor':    'dashboard_professor.dashboard_professor',
             'superadmin':   endpoints.DASHBOARD_SUPERADMIN
@@ -176,7 +176,7 @@ def mfa():
             destino = {
                 'admin':        endpoints.DASHBOARD,
                 'cliente':      endpoints.DASHBOARD,
-                'participante': 'dashboard_participante_routes.dashboard_participante',
+                'participante': endpoints.DASHBOARD_PARTICIPANTE,
                 'ministrante':  'dashboard_ministrante_routes.dashboard_ministrante',
                 'professor':    'dashboard_professor.dashboard_professor',
                 'superadmin':   endpoints.DASHBOARD_SUPERADMIN
