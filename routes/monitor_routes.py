@@ -641,7 +641,10 @@ def gerenciar_monitores():
     # Query base
     query = Monitor.query
     if current_user.tipo == "cliente":
-        query = query.filter(Monitor.cliente_id == current_user.id)
+        # Para clientes, mostrar monitores associados a eles OU monitores sem cliente_id (globais)
+        query = query.filter(
+            (Monitor.cliente_id == current_user.id) | (Monitor.cliente_id.is_(None))
+        )
     
     # Aplicar filtros
     if status_filter == 'ativo':
