@@ -502,7 +502,8 @@ class CampoFormulario(db.Model):
     regex_validacao = db.Column(db.String(255), nullable=True)
     descricao = db.Column(db.Text, nullable=True)  # Novo campo conforme banco do Render
     protegido = db.Column(db.Boolean, default=False)  # Campo para marcar campos como não editáveis
-    etapa = db.Column(db.Integer, nullable=True, default=1)  # Campo para definir em qual etapa o campo aparece
+    etapa = db.Column(db.Integer, default=1)  # Etapa do formulário (1, 2, 3, etc.)
+    ordem = db.Column(db.Integer, default=0)  # Ordem dentro da etapa
 
     def __repr__(self):
         return f"<Campo {self.nome} ({self.tipo})>"

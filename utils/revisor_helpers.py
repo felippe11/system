@@ -156,21 +156,6 @@ def recreate_criterios(
                 )
 
 
-def update_campos_etapas(formulario_id: int, campos_etapas: Dict[int, int]) -> None:
-    """Updates the step assignment for form fields."""
-    from models.event import CampoFormulario
-    
-    for campo_id, etapa in campos_etapas.items():
-        campo = CampoFormulario.query.filter_by(
-            id=campo_id,
-            formulario_id=formulario_id
-        ).first()
-        if campo:
-            campo.etapa = etapa
-    
-    db.session.flush()
-
-
 def ensure_reviewer_required_fields(formulario: Formulario) -> None:
     """Ensure that reviewer application forms have required name and email fields.
 

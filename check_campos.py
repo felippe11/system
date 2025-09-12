@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
 from app import create_app
-from models.event import CampoFormulario, Formulario
-from models.review import RevisorProcess
+from models.event import CampoFormulario, Formulario, RevisorProcess
 
 app = create_app()
 with app.app_context():

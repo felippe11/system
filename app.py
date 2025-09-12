@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import (
     Flask,
     url_for as flask_url_for,
@@ -91,7 +92,7 @@ def create_app():
         return redirect(flask_url_for(login_manager.login_view))
 
     # Cache busting para arquivos estáticos
-    def versioned_url_for(endpoint: str, **values):
+    def versioned_url_for(endpoint, **values):
         if endpoint == "static":
             filename = values.get("filename")
             if filename:
@@ -170,7 +171,7 @@ def create_app():
         ensure_formulario_trabalhos()
 
     @app.cli.command("check-formulario-trabalhos")
-    def check_formulario_trabalhos_command() -> None:
+    def check_formulario_trabalhos_command():
         """Verify the presence of the default submission form."""
         from models.formulario import formulario_trabalhos_exists
 
@@ -198,7 +199,7 @@ def create_app():
     @app.route("/time")
     def current_time():
         now = datetime.utcnow()
-        return f"Horário de Brasília: {brasilia_filter(now)}"
+        return "Horario de Brasilia: " + str(brasilia_filter(now))
     
     # Rota de debug temporária para testar modal
     @app.route("/debug-modal")
@@ -230,7 +231,7 @@ def create_app():
 
 
 # Função para reconciliar pagamentos pendentes
-def reconciliar_pendentes(app: Flask) -> None:
+def reconciliar_pendentes(app):
     """Reconcile pending payments with Mercado Pago.
 
     Retrieves ``Inscricao`` records with status ``pending`` that are older than
