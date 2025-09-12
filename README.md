@@ -274,6 +274,18 @@ Set `REDIS_URL` to your broker URI and run the worker alongside Gunicorn.
 
 ## API
 
+### `POST /admin/processar_certificados_pendentes`
+
+Aciona o processamento das solicitações de certificados com status
+`pendente`. Apenas administradores podem acessar esta rota. A resposta contém
+um JSON com o número total de solicitações processadas.
+
+Exemplo de uso:
+
+```bash
+curl -X POST https://seu-dominio.com/admin/processar_certificados_pendentes
+```
+
 ### `GET /visualizar/<agendamento_id>`
 
 Retorna os detalhes de um agendamento existente. Quando o cabeçalho

@@ -37,7 +37,16 @@ from models.certificado import (
 from models.event import ConfiguracaoCertificadoAvancada
 from services.pdf_service import gerar_certificado_personalizado  # ajuste conforme a localização
 from services import certificado_service
-from utils.auth import login_required, require_permission, require_resource_access, role_required, cliente_required
+
+from utils.auth import (
+    login_required,
+    require_permission,
+    require_resource_access,
+    role_required,
+    cliente_required,
+    admin_required,
+)
+
 
 
 import os
@@ -63,6 +72,23 @@ ALLOWED_MIME_TYPES = {
     '.jpeg': 'image/jpeg',
     '.pdf': 'application/pdf',
 }
+
+
+@certificado_routes.route(
+    '/admin/processar_certificados_pendentes',
+    methods=['POST'],
+)
+@login_required
+@admin_required
+def processar_certificados_pendentes():
+    """Processa solicitações de certificados com status pendente."""
+    processadas = certificado_service.processar_solicitacoes_pendentes()
+    logger.info(
+        "Usuário %s processou %d solicitações de certificados",
+        current_user.id,
+        processadas,
+    )
+    return jsonify({'processadas': processadas})
 
 
 @certificado_routes.route('/templates_certificado', methods=['GET', 'POST'])
