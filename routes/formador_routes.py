@@ -7,7 +7,10 @@ from werkzeug.utils import secure_filename
 from sqlalchemy import and_
 
 from extensions import db
-from models.user import Ministrante, Cliente, Monitor
+from models.user import Ministrante, Cliente, Monitor, FormadorCadastroLink
+from werkzeug.security import generate_password_hash
+from flask_login import login_user
+from flask import session
 from models.formador import (
     TrilhaFormativa, CampoTrilhaFormativa, RespostaTrilhaFormativa,
     SolicitacaoMaterial, MaterialAprovado, ConfiguracaoRelatorioFormador,
@@ -17,7 +20,91 @@ from models import Oficina
 from utils.auth import ministrante_required
 from utils import endpoints
 
-formador_routes = Blueprint('formador_routes', __name__)
+formador_routes = Blueprint('formador_routes', __name__, url_prefix='/formador')
+
+
+@formador_routes.route('/inscricao/<token>', methods=['GET', 'POST'])
+def inscricao_formador(token):
+    """Página de inscrição para formadores via link"""
+    # Buscar o link pelo token
+    link = FormadorCadastroLink.query.filter_by(token=token).first()
+    
+    if not link:
+        flash('Link de inscrição inválido.', 'error')
+        return redirect(url_for('auth_routes.login'))
+    
+    if not link.is_valid():
+        if link.used:
+            flash('Este link de inscrição já foi utilizado.', 'warning')
+        else:
+            flash('Este link de inscrição expirou.', 'warning')
+        return redirect(url_for('auth_routes.login'))
+    
+    if request.method == 'POST':
+        # Processar dados do formulário
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        formacao = request.form.get('formacao')
+        areas_atuacao = request.form.get('areas_atuacao')
+        cpf = request.form.get('cpf')
+        cidade = request.form.get('cidade')
+        estado = request.form.get('estado')
+        telefone = request.form.get('telefone')
+        senha = request.form.get('senha')
+        
+        # Validações básicas
+        if not all([nome, email, formacao, areas_atuacao, cpf, cidade, estado, senha]):
+            flash('Todos os campos obrigatórios devem ser preenchidos.', 'error')
+            return render_template('formador/inscricao.html', link=link)
+        
+        # Verificar se email já existe
+        if Ministrante.query.filter_by(email=email).first():
+            flash('Este email já está cadastrado.', 'error')
+            return render_template('formador/inscricao.html', link=link)
+        
+        # Verificar se CPF já existe
+        if Ministrante.query.filter_by(cpf=cpf).first():
+            flash('Este CPF já está cadastrado.', 'error')
+            return render_template('formador/inscricao.html', link=link)
+        
+        try:
+            # Criar novo formador
+            novo_formador = Ministrante(
+                nome=nome,
+                email=email,
+                formacao=formacao,
+                areas_atuacao=areas_atuacao,
+                cpf=cpf,
+                cidade=cidade,
+                estado=estado,
+                telefone=telefone,
+                senha=generate_password_hash(senha),
+                cliente_id=link.cliente_id,
+                pix='',  # Campo obrigatório, pode ser preenchido depois
+                ativo=True
+            )
+            
+            db.session.add(novo_formador)
+            
+            # Marcar link como usado
+            link.used = True
+            
+            db.session.commit()
+            
+            # Fazer login automático
+            login_user(novo_formador)
+            session['user_type'] = 'ministrante'
+            
+            flash('Cadastro realizado com sucesso! Bem-vindo(a)!', 'success')
+            return redirect(url_for('formador_routes.dashboard_formador'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao processar cadastro. Tente novamente.', 'error')
+            return render_template('formador/inscricao.html', link=link)
+    
+    # GET - Exibir formulário
+    return render_template('formador/inscricao.html', link=link)
 
 
 @formador_routes.route('/dashboard_formador')
@@ -104,6 +191,30 @@ def minhas_solicitacoes():
     ).order_by(SolicitacaoMaterial.data_solicitacao.desc()).all()
     
     return render_template('formador/minhas_solicitacoes.html', solicitacoes=solicitacoes)
+
+
+@formador_routes.route('/trilhas_formativas')
+@login_required
+@ministrante_required
+def trilhas_formativas():
+    """Lista de trilhas formativas disponíveis"""
+    trilhas_disponiveis = TrilhaFormativa.query.filter_by(
+        cliente_id=current_user.cliente_id,
+        ativo=True
+    ).all()
+    
+    # Verificar quais trilhas já foram respondidas pelo formador
+    trilhas_respondidas = RespostaTrilhaFormativa.query.filter_by(
+        formador_id=current_user.id
+    ).all()
+    
+    trilhas_respondidas_ids = [r.trilha_id for r in trilhas_respondidas]
+    
+    return render_template(
+        'formador/trilhas_formativas.html',
+        trilhas_disponiveis=trilhas_disponiveis,
+        trilhas_respondidas_ids=trilhas_respondidas_ids
+    )
 
 
 @formador_routes.route('/trilha_formativa/<int:trilha_id>', methods=['GET', 'POST'])
