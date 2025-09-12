@@ -1133,8 +1133,16 @@ def gerar_pdf_relatorio_geral_completo(eventos, estatisticas, totais, dados_agre
     pdf = FPDF()
     pdf.add_page()
     
+        # Register fonts before setting them
+    font_dir = os.path.join(current_app.root_path, "fonts")
+    pdf.add_font("DejaVu", "", os.path.join(font_dir, "DejaVuSans.ttf"), uni=True)
+    pdf.add_font("DejaVu", "B", os.path.join(font_dir, "DejaVuSans-Bold.ttf"), uni=True)
+    pdf.add_font(
+        "DejaVu", "I", os.path.join(font_dir, "DejaVuSans-Oblique.ttf"), uni=True
+    )
+
     # Configurar fonte
-    pdf.set_font('DejaVu', 'B', 16)
+    pdf.set_font("DejaVu", "B", 16)
     
     # Título
     pdf.cell(190, 10, 'Relatório Geral de Agendamentos', 0, 1, 'C')
